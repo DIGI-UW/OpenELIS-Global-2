@@ -1,56 +1,33 @@
-# OGC-1054 Tasks
+# OGC-1054 Analyzer QC/Configuration Foundation Tasks
 
-## C0 - Baseline and specifications
+**Status:** Historical branch task record; not the full feature backlog
+**Authoritative backlog:** F0 through R2 in
+[the feature roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 
-- [x] Rebase the single branch onto current `develop`.
-- [x] Run focused analyzer/QC baseline tests.
-- [x] Create the canonical OGC-1054 spec, plan, route contract, and checklist.
-- [x] Reconcile Feature 004, 012, 014, OGC-41, and the roadmap.
-- [x] Replace PR title/body with current acceptance state.
-- [x] Commit the C0 checkpoint.
+## Completed Branch Work
 
-## C1 - URL state and page shell
+- [x] Add route/query helpers and URL-backed analyzer/profile list state.
+- [x] Add shared Carbon page header, breadcrumbs, setup progress, and tables.
+- [x] Add bookmarkable Instrument, Verify, Connect, and Review routes.
+- [x] Redirect `/analyzers/new` to the branch's inline setup entry.
+- [x] Apply a selected shipped bootstrap profile exactly once at create time.
+- [x] Add catalog-bound Result Option selection and legacy-unbound handling.
+- [x] Add mapping/QC fingerprints, actor/time, audit, stale state, and blockers.
+- [x] Integrate operational analyzer QC rules/control lots and Bridge resync.
+- [x] Keep Bridge collections deterministic and FILE runtime Bridge-owned.
+- [x] Run branch-focused JUnit, RTL, formatting, build, and Playwright gates.
+- [x] Record historical July foundation UAT and MP4 evidence.
 
-- [x] Add failing route-helper tests for stable query ordering and safe
-      `returnTo`.
-- [x] Add failing list/profile tests for URL-restored search and filters.
-- [x] Add failing semantic header/breadcrumb tests.
-- [x] Implement shared route helpers and `PageHeader`.
-- [x] Migrate analyzer/QC setup surfaces and remove obsolete `PageTitle`.
-- [x] Run focused tests.
-- [x] Commit C1.
+## Foundation Disposition (F0)
 
-## C2 - Guided setup
+- [ ] Rename PR #3792 from MVP acceptance to foundation.
+- [ ] Rebase onto current `develop` and review the range-diff.
+- [ ] Re-run all affected tests against current code.
+- [ ] Confirm each retained change conforms to the fixed Bridge ownership model.
+- [ ] Remove, migrate, or priority-track every touched legacy/duplicate path.
+- [ ] Merge as a reviewable foundation or extract compatible commits and
+      supersede #3792.
 
-- [x] Add failing router-backed tests for Instrument → Verify → Connect →
-      Review.
-- [x] Add failing tests for QC detour save/cancel return paths.
-- [x] Implement `AnalyzerSetupProgress` and canonical route transitions.
-- [x] Add the Review route and readiness summary.
-- [x] Preserve list/catalog return context without reapplying profiles.
-- [x] Run focused tests.
-- [x] Commit C2.
-
-## C3 - Carbon and responsive remediation
-
-- [x] Add failing profile/mapping table accessibility tests.
-- [x] Convert profile/mapping tables to reusable Carbon composition.
-- [x] Replace ambiguous actions and add translated accessible labels.
-- [x] Verify desktop and mobile layout against the pinned design baseline.
-- [x] Run focused tests.
-- [x] Commit C3.
-
-## C4 - Acceptance closure
-
-- [x] Run targeted and package-level JUnit 4 analyzer/QC suites.
-- [x] Run focused and package-level Vitest/RTL suites.
-- [x] Run Spotless, Prettier, supported ESLint, build, and Playwright guard.
-- [x] Run `digi-uw/code-qa` pre-deployment gates and retain outputs.
-- [x] Complete the `digi-uw/code-qa` evidence bundle after remote recording.
-- [x] Push the exact application build and deploy it to analyzer UAT.
-- [x] Sync Grist steps `AN-QC-001` through `AN-QC-008`.
-- [x] Run and inspect `harness-demo`.
-- [x] Run `harness-demo-video` and retain MP4/screenshots/report.
-- [x] Update evidence and roadmap with exact SHAs and results.
-- [x] Update the PR body after pushing the final provenance commit.
-- [ ] Resolve review comments and CI; keep the PR non-draft.
+Do not add M1-M4 to this branch. Their dependency-ordered tasks and acceptance
+criteria are maintained in the authoritative roadmap and future milestone
+SpecKit sets.

@@ -1,96 +1,87 @@
-# OGC-1054 Implementation Plan
+# OGC-1054 Analyzer QC/Configuration Foundation Plan
 
-## Technical Context
+**Status:** Historical implementation plan for PR #3792
+**Current roadmap:**
+[OGC-1054 Analyzer Feature](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 
-The implementation extends the current Java 21/Spring MVC analyzer services and
-React 17/Carbon application. Shipped profile files remain authoritative.
-Analyzer-specific result mappings and verification metadata remain in existing
-plugin config JSON; durable verification is also recorded through existing
-analyzer audit services.
+## Purpose
 
-Carbon patterns follow the repository's installed version. This work adopts the
-current Carbon composition and accessibility approaches without a dependency
-upgrade.
+This plan records the branch-local implementation that produced the Analyzer
+QC/configuration foundation. It is not the implementation plan for reusable
+Analyzer Types, complete mapping, safe traffic learning, or the full MVP.
 
-## Architecture Decisions
+## Source Boundary
 
-1. Keep `/analyzers` as the single setup entry surface.
-2. Represent setup progress with saved-resource URLs, not component-only state.
-3. Centralize query parsing, serialization, safe `returnTo`, and setup-route
-   construction in pure route helpers.
-4. Replace analyzer-only `PageTitle` usage with a reusable Carbon `PageHeader`.
-5. Use a shared `AnalyzerSetupProgress` component for Instrument, Verify,
-   Connect, and Review.
-6. Use Carbon `DataTable` composition for mapping and profile tabular data.
-7. Keep controllers focused on transport and services responsible for
-   validation, transactions, fingerprints, audit, and bridge sync.
-8. Keep QC on `AnalyzerQcRule`, `QCControlLot`, `QCResult`, and Westgard.
-9. Keep FILE runtime ownership on the bridge.
+`openelis-work` is functional/visual reference material only. It does not
+govern the technical context, architecture, persistence, APIs, routes, runtime
+ownership, migration, or tests in this plan. Those decisions are grounded in
+current repository code, engineering specifications, `AGENTS.md`, and explicit
+contracts.
 
-## Checkpoints
+## Foundation Technical Context
 
-### C0 - Normative baseline
+The branch extended the existing Java 21/Spring MVC analyzer services and React
+17/Carbon application. It used the current create-time profile bootstrap,
+per-analyzer mappings/plugin configuration, existing analyzer audit services,
+and existing operational QC entities. Those choices describe the branch; they
+are not the target reusable-profile architecture.
 
-- Rebase on current `develop`.
-- Rewrite the current spec, route contract, acceptance checklist, and roadmap.
-- Reconcile Feature 004, Feature 012, Feature 014, and OGC-41 references.
-- Update PR title/body to show current, not historical, status.
+## Branch Decisions
 
-### C1 - URL and page-shell contract
+1. Use `/analyzers` as the foundation setup entry.
+2. Represent saved-analyzer setup progress with URL state.
+3. Centralize branch query parsing, safe `returnTo`, and route construction.
+4. Use reusable Carbon page header, progress, and table components.
+5. Keep controllers focused on transport and services on validation,
+   transaction, fingerprint, audit, readiness, and Bridge sync behavior.
+6. Keep operational QC on `AnalyzerQcRule`, `QCControlLot`, `QCResult`, and
+   Westgard.
+7. Keep FILE runtime ownership on Bridge.
 
-- Write failing pure route-helper tests.
-- Write failing page-header and list/profile URL-state tests.
-- Implement canonical query serialization, safe return paths, semantic
-  headings, breadcrumbs, and contextual actions.
-- Remove analyzer/QC dependence on the old `PageTitle`.
+## Completed Foundation Checkpoints
 
-### C2 - Guided setup
+### C0 - Branch baseline
 
-- Write failing RTL tests using real `MemoryRouter` navigation.
-- Add route-aware `AnalyzerSetupProgress`.
-- Navigate create → Verify from the returned analyzer ID.
-- Preserve setup context through QC rule/control-lot detours.
-- Add Connect and Review step routes with explicit readiness presentation.
+- Reconciled the then-current branch spec, route contract, and checklist.
+- Ran focused analyzer/QC baselines.
 
-### C3 - Carbon and responsive remediation
+### C1 - URL and Carbon page shell
 
-- Write failing component tests for table semantics, action accessibility, and
-  narrow viewport behavior.
-- Convert profile/mapping tables and status/actions to current Carbon patterns.
-- Ensure primary actions remain available without incoherent overlap at desktop
-  and mobile widths.
+- Added route/query helpers, URL-backed filters, semantic headings, linked
+  breadcrumbs, and shared Carbon composition.
 
-### C4 - Acceptance closure
+### C2 - Setup shell
 
-- Run focused backend, frontend, formatting, lint, and Playwright guards.
-- Run `digi-uw/code-qa` spec/code, coverage, simplicity, cross-repo, and
-  evidence gates.
-- Deploy the exact PR SHA to the analyzer UAT host.
-- Synchronize stable Grist steps and run UI-only dry-run then video projects.
-- Inspect screenshots, trace, console, runtime state, and compare with
-  `openelis-work@4c0e1a28`.
-- Replace pending evidence with the build-bound report and MP4 bundle.
+- Added Instrument, Verify, Connect, and Review routes.
+- Preserved saved analyzer context through QC rule/control-lot detours.
+
+### C3 - Mapping and responsive safeguards
+
+- Added catalog-bound result-value selection and Carbon tabular composition.
+- Exercised desktop/mobile foundation layouts.
+
+### C4 - Historical foundation evidence
+
+- Ran branch-focused automated validation.
+- Deployed application SHA `2c840a55b03b238a2ad00c987181504c2bef6ef6`.
+- Recorded the eight-step foundation Grist story and MP4.
+
+This evidence did not include reusable profile lifecycle, complete mapping,
+production unknown-traffic capture/hold, or mock-to-Bridge result flow, so it
+does not accept the OGC-1054 MVP.
+
+## Current Disposition
+
+Follow F0 in the authoritative roadmap:
+
+1. rebase and range-diff PR #3792 against current `develop`;
+2. retain compatible foundation work without extending the large PR;
+3. remove or migrate touched legacy/duplicate paths;
+4. merge the branch as a clearly named foundation or extract its reusable
+   commits into the milestone PRs and supersede it.
 
 ## TDD Rule
 
-Each behavioral checkpoint records:
-
-1. the focused failing test;
-2. the smallest passing implementation;
-3. refactoring with the test still green;
-4. final commands and evidence.
-
-Unit/service tests own pure logic and backend contracts. RTL owns component
-composition and route transitions. Playwright owns the complete visible user
-story. Remote UAT owns review acceptance, not API correctness.
-
-## Risks
-
-- The PR is already large. Remediation must remove duplicate or obsolete paths
-  when touched instead of adding parallel setup surfaces.
-- Query state can diverge if components read `window.location` directly.
-  Router location is the sole UI source.
-- `returnTo` is an open-redirect risk. Only same-origin application paths are
-  accepted.
-- Older mocks describe persisted/forkable profile management and richer analyzer
-  dashboards. Those are deliberately deferred and must not leak into MVP claims.
+Future feature work follows the test ownership and red-green-refactor gates in
+the authoritative roadmap. Branch-level component/API tests cannot stand in for
+Bridge transport contracts, integrated harness tests, or UI-only MVP evidence.

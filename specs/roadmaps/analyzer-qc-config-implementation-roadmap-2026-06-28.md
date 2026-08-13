@@ -1,160 +1,73 @@
-# Analyzer QC and Configuration Implementation Roadmap
+# Analyzer QC and Configuration Foundation Roadmap
 
-**Updated:** 2026-07-28
-**Status:** MVP accepted on analyzer UAT; PR merge gates in progress
-**Epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
+**Updated:** 2026-08-13
+**Status:** Historical foundation record; superseded as product roadmap
 **Branch:** `codex/ogc-1054-analyzer-qc-mvp`
 **Pull request:** [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792)
 
-## Objective
+The authoritative feature roadmap is now
+[OGC-1054 Analyzer Feature Authoritative Roadmap](ogc-1054-analyzer-feature-roadmap.md).
+This file records the narrower Analyzer QC/configuration foundation implemented
+and demonstrated in July 2026. It does not define or accept the OGC-1054 MVP.
 
-Deliver a lab-facing, profile-driven analyzer QC/configuration MVP through one
-reviewable branch and non-draft PR. The code currently provides the backend and
-UI foundation. The URL-addressable Carbon workflow, current automated
-validation, build-bound remote UAT, and MP4 evidence are complete. Remaining
-work is PR-level review/CI closure, not feature implementation.
+Git history retains the earlier roadmap and acceptance wording for provenance.
+That wording reduced the feature definition to match the branch and therefore
+must not be used for current planning or status.
 
-The normative feature definition is
-[OGC-1054-analyzer-qc-config](../OGC-1054-analyzer-qc-config/spec.md).
-Git history preserves prior roadmap states; this file describes the current
-state only.
+## Source Boundary
 
-## Governing Decisions
+`DIGI-UW/openelis-work` was and remains functional/visual reference material
+only. Its mocks and product documents may be used to assess visible user
+outcomes and gaps. They do not define persistence, entities, APIs, routes,
+repository ownership, runtime architecture, or implementation sequence.
 
-- Shipped ASTM, HL7, and FILE profile files are the MVP source of truth.
-- Analyzer creation uses existing `defaultConfigId`; profile defaults apply
-  once.
-- Analyzer-specific result mappings and verification metadata use plugin config
-  JSON. No new profile or mapping table is introduced.
-- Analyzer QC uses `AnalyzerQcRule`, `QCControlLot`, `QCResult`, and Westgard.
-  `QcRun` is not part of this path.
-- Bridge owns FILE watching, polling, transport, retries, and runtime parser
-  state. OpenELIS owns configuration, registration, direct ingestion, and
-  result/QC processing. No OpenELIS FILE poller is permitted.
-- Multi-component mapping, result import, and Results/Validation v4 are the next
-  milestone, not hidden MVP scope.
-- Design comparison is pinned to
-  [`DIGI-UW/openelis-work@4c0e1a28`](https://github.com/DIGI-UW/openelis-work/tree/4c0e1a28/designs),
-  including Style Guide v2.3.
+## Foundation Delivered by the Branch
 
-## Current Classification
+| Foundation area | Branch implementation | Current classification |
+| --- | --- | --- |
+| Stabilization | Routed QC loading, string-safe lot payloads, deterministic Bridge collections, and no OpenELIS FILE poller | Implemented foundation |
+| Profile bootstrap | Shipped-file summaries and create-time `defaultConfigId` application | Implemented foundation; not reusable Analyzer Type lifecycle |
+| Guided shell | Inline creation entry plus bookmarkable Instrument, Verify, Connect, and Review routes | Implemented foundation; not the complete guided product story |
+| Mapping safeguards | Catalog-bound result options, legacy-unbound handling, pending resolvers, fingerprints, and audit | Implemented foundation; full editor and traffic producer absent |
+| Operational QC | Analyzer QC rules, control lots, readiness, activation blockers, and Bridge resync | Implemented foundation; distinct from Bridge profile QC identification |
+| Remote evidence | Eight UI steps and MP4 against the exact July application/harness build | Historical foundation evidence only |
 
-| Milestone                   | State    | Current position                                                                                                                              |
-| --------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0 - stabilization          | Accepted | Routed QC loading, string-safe lot payloads, deterministic bridge collections, and FILE ownership pass the 875-test analyzer/QC package gate. |
-| M1 - profile verification   | Accepted | Shipped-profile summaries, setup actions, URL-backed filters, Carbon tables, and inspected desktop/mobile evidence pass.                      |
-| M2 - guided setup           | Accepted | Inline creation, exact-once profile application, canonical routes, browser history, contextual detours, and Review pass the remote UI story.  |
-| M3 - mappings/result values | Accepted | Catalog-bound result options, legacy-unbound state, pending resolution, fingerprints, audit, and persisted reload behavior pass.              |
-| M4 - analyzer QC            | Accepted | Existing QC entities, readiness, bridge sync, blocker presentation, and rule/control-lot detours pass automated and remote acceptance.        |
-| C4 - remote UAT/evidence    | Accepted | Exact-build non-video/video runs pass; Grist report records 8 pass, 0 fail, 0 stale, and 0 required open.                                     |
+## Architecture Context
 
-## Requirement Matrix
+- Bridge is the analyzer runtime and portable profile owner. It owns listeners,
+  parsing, connection probes, protocol execution, FILE watching/transport, and
+  normalized FHIR output.
+- OpenELIS owns lab-facing orchestration, local Test/Result Option bindings,
+  analyzer instances and lab units, audit, operational QC, activation, held
+  clinical results, and alerts/review.
+- The analyzer mock must exercise real Bridge transports for target
+  architecture acceptance.
+- No implementation decision is sourced from `openelis-work`.
 
-| Requirement                          | Code surface                                                | Automated owner          | Design reference                     | UAT step      | State    |
-| ------------------------------------ | ----------------------------------------------------------- | ------------------------ | ------------------------------------ | ------------- | -------- |
-| Searchable shipped-profile catalog   | `AnalyzerRestController`, `AnalyzerTypeManagement`          | JUnit + RTL              | analyzer integration/profile designs | `AN-QC-001`   | Accepted |
-| Inline profile-driven creation       | `AnalyzersList`, `AnalyzerForm`                             | JUnit + RTL + Playwright | setup wizard/form patterns           | `AN-QC-002`   | Accepted |
-| Deterministic mapping verification   | `FieldMapping`, plugin-config/verification services         | JUnit + RTL + Playwright | mapping/data-table patterns          | `AN-QC-003`   | Accepted |
-| Visible connection test              | `AnalyzerForm`, connection endpoint                         | RTL + Playwright         | form/notification patterns           | `AN-QC-004`   | Accepted |
-| Catalog-bound qualitative resolution | result-option/pending-value services and panel              | JUnit + RTL + Playwright | result-option designs                | `AN-QC-005`   | Accepted |
-| Existing-model QC setup              | rule builder, control lots, readiness services              | JUnit + RTL + Playwright | Westgard/QC designs                  | `AN-QC-006`   | Accepted |
-| Explained activation readiness       | verification/readiness services and Review step             | JUnit + RTL + Playwright | status/notification patterns         | `AN-QC-007`   | Accepted |
-| Coherent lab-facing review           | four setup routes, `AnalyzerSetupReview`, shared page shell | RTL + Playwright         | Style Guide v2.3                     | `AN-QC-008`   | Accepted |
-| Deterministic bridge contract        | bridge registration service                                 | JUnit/contract tests     | ownership contract                   | not human UAT | Accepted |
-| Build-bound review provenance        | review-tooling schema v2/build manifest                     | harness tests            | UAT harness contract                 | all           | Accepted |
+## PR #3792 Disposition Gate
 
-## Acceptance Checkpoints
+1. Rename the PR and branch-facing spec/evidence from MVP to foundation.
+2. Rebase onto current `develop` and review a range-diff.
+3. Retain only code compatible with the fixed Bridge boundary and canonical
+   roadmap.
+4. Remove or explicitly migrate touched duplicate/legacy paths.
+5. Either merge a green, reviewable foundation PR or extract compatible commits
+   into the milestone PRs and supersede #3792.
 
-### C0 - Reconcile baseline and specifications
+The PR cannot merge based on July checks or evidence: it is currently
+conflicting, review-required, behind `develop`, and the deployed build is not
+current branch HEAD.
 
-1. Rebase the branch onto current `develop`.
-2. Run focused backend/frontend baselines.
-3. Make the OGC-1054 spec, route contract, checklist, and this roadmap agree.
-4. Reconcile legacy Feature 004/012 contracts and QC/FILE references.
-5. Replace the PR title/body with current-head status.
+## Historical Evidence
 
-**Exit:** no active document or PR claim treats historical API routes, mocks,
-screenshots, or video as final acceptance.
+[The July evidence record](ogc-1054-analyzer-qc-config-mvp-evidence-2026-07-28.md)
+proves only the recorded foundation workflow against application SHA
+`2c840a55b03b238a2ad00c987181504c2bef6ef6`. It does not prove reusable Analyzer
+Types, complete mapping, production unknown-traffic capture/hold, integrated
+mock-to-Bridge traffic, or the full MVP.
 
-### C1 - URL state and Carbon page shell
+## Next Work
 
-1. Add pure, tested analyzer route/query helpers.
-2. Make list/catalog search and filters bookmarkable and browser-history safe.
-3. Add a shared semantic Carbon page header and linked breadcrumbs.
-4. Preserve validated `returnTo` through analyzer/QC actions.
-5. Remove the analyzer/QC `PageTitle` legacy pathway.
-
-**Exit:** AC-1054-01 through AC-1054-03 and AC-1054-11 pass focused tests.
-
-### C2 - Guided setup
-
-1. Implement Instrument → Verify → Connect → Review as canonical URLs.
-2. Navigate from creation using the server-returned analyzer ID.
-3. Preserve selected-profile context without reapplying it during edit.
-4. Keep QC rule/control-lot detours inside the setup story.
-5. Explain current/stale verification and readiness on Review.
-
-**Exit:** AC-1054-04 through AC-1054-06 and AC-1054-12/13 pass focused tests.
-
-### C3 - Carbon and responsive remediation
-
-1. Convert profile/mapping tabular surfaces to reusable Carbon composition.
-2. Use accessible Carbon status, overflow/action, notification, form, and
-   progress patterns.
-3. Keep actions reachable and content non-overlapping at desktop and mobile
-   viewports.
-4. Compare implementation screenshots with the pinned designs and record
-   explicit deferred differences.
-
-**Exit:** focused accessibility/component tests pass and inspected screenshots
-show no incoherent overflow or overlap.
-
-### C4 - Acceptance closure
-
-1. Run targeted and package-level JUnit 4 analyzer/QC suites.
-2. Run focused and package-level RTL/Vitest, format, lint, and Playwright guard.
-3. Run `digi-uw/code-qa` alignment, coverage, simplicity, cross-repo, and
-   evidence gates.
-4. Deploy the exact PR SHA to
-   [analyzers.openelis-global.org](https://analyzers.openelis-global.org/login).
-5. Verify the Grist overlay revision and stable required steps.
-6. Run UI-only non-video evidence, inspect console/screenshots/trace/runtime,
-   then record the MP4.
-7. Attach build metadata, checklist revision, report, screenshots, and video to
-   the PR evidence record.
-
-**Exit:** AC-1054-07 through AC-1054-16 pass; all required Grist steps pass
-against the exact recorded build; PR #3792 is green, non-draft, and mergeable.
-
-## Required Grist Steps
-
-1. `AN-QC-001` - Find and inspect a shipped profile.
-2. `AN-QC-002` - Create an analyzer through inline Instrument setup.
-3. `AN-QC-003` - Review and verify deterministic test/QC mappings.
-4. `AN-QC-004` - Enter connection settings and observe a connection-test result.
-5. `AN-QC-005` - Resolve a pending qualitative value with a valid catalog
-   option.
-6. `AN-QC-006` - Add/select an active QC rule and control lot.
-7. `AN-QC-007` - Observe blocked then satisfied readiness.
-8. `AN-QC-008` - Review the completed analyzer for lab-facing clarity.
-
-Grist is the reviewer-authored source; repository fixtures are a tested
-bootstrap/example only.
-
-## Evidence Policy
-
-The deleted June evidence note and prior recordings remain available through
-git history and do not accept this branch. Current acceptance is recorded in
-`ogc-1054-analyzer-qc-config-mvp-evidence-2026-07-28.md` with the exact
-deployed application/harness SHAs and checklist revision.
-
-Fixture loading may establish preconditions. The acceptance story itself uses
-visible UI controls and assertions only. It must not use `page.request`, API
-assertions, backend polling, forced controls, or arbitrary waits.
-
-## Follow-On Milestone
-
-After PR #3792, create a separate result-import milestone for multi-component
-target-to-component mapping and Results/Validation v4. Use stable component
-codes, preserve the primary-component default, and request bridge changes only
-when OpenELIS contract evidence demonstrates loss of target identity.
+Follow F0, E0, M1-M4, and G0 in the authoritative roadmap. The first product
+review gate is the integrated full MVP deployment with current Grist steps and
+MP4, not another reduced-scope acceptance pass.

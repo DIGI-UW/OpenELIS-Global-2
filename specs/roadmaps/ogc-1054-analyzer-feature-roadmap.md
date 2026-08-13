@@ -1,0 +1,619 @@
+# OGC-1054 Analyzer Feature Authoritative Roadmap
+
+**Updated:** 2026-08-13
+**Status:** Authoritative implementation roadmap; MVP not yet delivered
+**Epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
+**Foundation pull request:** [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792)
+**First product-review gate:** Full MVP deployed to
+`https://analyzers.openelis-work.org` with current Grist UAT and MP4 evidence
+
+This is the single engineering roadmap for Analyzer Types, mapping, guided
+setup, analyzer QC/configuration, and safe analyzer traffic. It supersedes the
+product-scope claims in the older Analyzer QC/config roadmap and in the
+PR #3792 SpecKit set. Those files remain foundation records for git provenance.
+
+## Non-Negotiable Source Boundary
+
+`DIGI-UW/openelis-work` is a **non-technical product and design source**. The
+same rule applies to technical-looking prose copied into Jira product stories.
+
+It may define:
+
+- user goals and lab-facing workflows;
+- visible information, actions, states, and terminology;
+- functional acceptance behavior;
+- visual composition and interaction intent.
+
+It may not define or imply:
+
+- Java, JavaScript, database, entity, table, JSON, or persistence design;
+- API, route, event, message, or payload shape;
+- repository, service, process, or runtime ownership;
+- migration, synchronization, polling, parsing, or transport design;
+- implementation sequencing or test-layer ownership.
+
+Any technical language found in a product brief, prototype, annotation, or gap
+analysis is explicitly non-normative. It must not enter an implementation plan
+unless engineering independently derives and records the decision from current
+code, repository-owned engineering specifications, and an ADR or contract.
+The names used by a mock are product labels, not instructions to create
+same-named code or persistence objects.
+
+For example, the entity, table, annotation, route, and persistence suggestions
+currently embedded in some OGC-1054 child descriptions are not engineering
+decisions. Jira remains authoritative for product outcome, priority, status,
+and dependency only.
+
+## Authority Order
+
+| Question | Authoritative evidence |
+| --- | --- |
+| What should a lab user accomplish? | Current Jira stories plus current `openelis-work` functional requirements and mocks, used only within the boundary above |
+| What does the visual workflow need to communicate? | Current `openelis-work` mocks plus OpenELIS Carbon conventions |
+| Which repository owns behavior? | This roadmap, [`AGENTS.md`](../../AGENTS.md), engineering specs, and current OpenELIS/Bridge code |
+| How is it persisted or transported? | An approved engineering ADR/contract grounded in current code |
+| What exists today? | Current repository code and git history |
+| What is accepted? | Passing automated evidence and exact-build remote UAT; never a route, API shape, old screenshot, or old video alone |
+
+Git is the provenance layer. Revisions to scope or architecture amend this file
+and retain earlier decisions in history; they do not rewrite product documents
+to fit an implementation shortcut.
+
+## Reference Index
+
+### Functional and visual references only
+
+These references answer what a reviewer should be able to accomplish and what
+the experience should communicate. They must not be cited as technical
+evidence in an ADR, migration plan, API contract, or code review.
+
+- [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054): product epic.
+- [OGC-1055](https://uwdigi.atlassian.net/browse/OGC-1055),
+  [OGC-1056](https://uwdigi.atlassian.net/browse/OGC-1056),
+  [OGC-1057](https://uwdigi.atlassian.net/browse/OGC-1057), and
+  [OGC-1058](https://uwdigi.atlassian.net/browse/OGC-1058):
+  dependency-ordered product outcomes.
+- [Analyzer Types & Mapping functional specification](https://github.com/DIGI-UW/openelis-work/blob/main/designs/analyzer-integration/analyzer-profile-mapping.md).
+- [Analyzer Types & Mapping functional prototype](https://digi-uw.github.io/openelis-work/designs/analyzer-integration/analyzer-profile-mapping.html).
+- [Analyzer Types & Mapping functional gap review](https://github.com/DIGI-UW/openelis-work/blob/main/designs/analyzer-integration/analyzer-profile-mapping-gap-analysis.md).
+- [Published OpenELIS design catalog](https://digi-uw.github.io/openelis-work/catalog.html),
+  used for current visual comparison and neighboring workflow context.
+
+### Engineering and implementation references
+
+These references own architecture, repository boundaries, current behavior,
+contracts, migration, and tests.
+
+- [`AGENTS.md`](../../AGENTS.md): analyzer boundary, FILE ownership,
+  constitutional architecture, TDD, Carbon, and legacy-removal rules.
+- [Generic analyzer integration engineering spec](../011-madagascar-analyzer-integration/spec.md).
+- [FILE stream ownership engineering spec](../014-hjra-file-stream-alignment/spec.md).
+- [Bridge registration runtime](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/controller/AnalyzerRegistrationController.java),
+  [Bridge connectivity runtime](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/controller/TestConnectivityController.java),
+  and [Bridge FHIR normalization](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/fhir/FhirBundleBuilder.java).
+- [OpenELIS Bridge synchronization](../../src/main/java/org/openelisglobal/analyzer/service/BridgeRegistrationService.java)
+  and [unified FHIR import](../../src/main/java/org/openelisglobal/analyzerimport/action/AnalyzerFhirImportController.java).
+- [Analyzer mock server](../../tools/analyzer-mock-server/README.md) and its
+  deterministic protocol/QC tests.
+- [Analyzer profile bootstrap assets](../../projects/analyzer-profiles/README.md),
+  explicitly treated as the current transitional path rather than target
+  profile authority.
+- [OpenELIS review tooling](https://github.com/DIGI-UW/openelis-review-tooling)
+  for build-bound Grist UAT and evidence.
+
+## Terminology
+
+| Term | Meaning |
+| --- | --- |
+| Generic analyzer runtime | Existing ASTM, HL7, FILE, FHIR, and Bridge transport foundation |
+| Analyzer profile | A versioned, portable, instrument-facing definition used by Bridge runtime |
+| Analyzer Type | The lab-facing composed view of a Bridge profile plus site-specific OpenELIS catalog bindings and readiness |
+| Site binding | OpenELIS-owned association from normalized analyzer test/result concepts to the local Test and Result Option catalog |
+| Analyzer instance | A configured instrument at a lab, associated with one profile revision, lab units, operational QC, status, and Bridge runtime registration |
+| PR #3792 foundation | Profile-file bootstrap/catalog, route shell, selected mapping/QC/config safeguards, and historical UAT; not the OGC-1054 MVP |
+| OGC-1054 MVP | A complete lab-admin workflow to manage an Analyzer Type, map and verify it, configure and activate an analyzer, and safely receive and resolve known and unknown traffic without developer-edited configuration |
+| Full OGC-1054 rollout | All remaining OGC-1054 workflow refinements, including live capture/reconciliation and mature lifecycle operations |
+| Full analyzer program | OGC-1054 plus multi-component ingestion, Results/Validation integration, per-instrument validation, maintenance, access control, and site rollout |
+
+## Fixed Architecture
+
+The analyzer architecture is already split. This roadmap does not reopen that
+decision.
+
+### Bridge owns analyzer runtime
+
+The Analyzer Bridge owns:
+
+- the versioned portable profile catalog and profile validation contract;
+- ASTM, HL7/MLLP, FILE, and serial-facing listeners and transport;
+- FILE directory watching, retries, delivery, and transport dead-letter state;
+- protocol parsing, framing, analyzer identification, and connection probes;
+- analyzer-code to normalized-code translation used by runtime;
+- QC-sample identification from instrument messages;
+- normalized FHIR output, including preserved raw code/value context;
+- runtime analyzer registration and idempotent full-state reconciliation;
+- bidirectional protocol execution where a profile supports it.
+
+### OpenELIS owns laboratory and clinical decisions
+
+OpenELIS owns:
+
+- the lab-facing Analyzer Types, mapping, setup, review, and alert workflows;
+- analyzer instance identity, assigned lab units, lifecycle, and permissions;
+- local Test and Result Option catalog bindings;
+- mapping confirmation, verification fingerprints, actor/time, and audit;
+- operational analyzer QC rules, control lots, QC results, Westgard evaluation,
+  and activation readiness;
+- durable staging/holding of known and unknown clinical results;
+- user-visible resolution, review, alerts, and downstream clinical processing;
+- desired analyzer-instance configuration and synchronization requests to
+  Bridge.
+
+OpenELIS does not own raw analyzer protocol parsing, instrument listeners,
+runtime FILE polling, protocol-specific connection logic, or a second portable
+profile authority.
+
+### Analyzer mock owns reproducible instruments
+
+`tools/analyzer-mock-server` owns deterministic test instruments and fixtures.
+It must exercise the Bridge through real ASTM, HL7, and FILE transports for
+integration acceptance. Its legacy direct-to-OpenELIS HTTP modes may be used
+only to characterize or retire legacy behavior; they cannot prove the target
+runtime architecture.
+
+### Review tooling owns review provenance
+
+`DIGI-UW/openelis-review-tooling` owns the Grist-backed checklist overlay,
+checklist revision, build manifest, and downloadable review report. It does not
+own application behavior or seed data.
+
+## Target Runtime Contract
+
+The contract is directional and versioned:
+
+1. OpenELIS selects a Bridge profile revision and sends desired instance
+   configuration and active operational QC context.
+2. Bridge validates and applies the desired runtime registration idempotently.
+3. The analyzer mock or a real instrument sends raw traffic to Bridge.
+4. Bridge parses and emits normalized FHIR with analyzer identity, profile
+   revision, raw analyzer code/value, normalized code where known, QC
+   classification, and source metadata.
+5. OpenELIS binds normalized/raw concepts to its local catalog, stages the
+   result, evaluates operational QC, and either proceeds or holds it with a
+   visible reason.
+6. Resolving an unknown local catalog binding updates durable OpenELIS site
+   binding state. A portable profile change, when required, is made through the
+   Bridge profile lifecycle contract and produces a new revision.
+
+Unknown test codes or values must cross the Bridge boundary with enough raw
+context to resolve them. Bridge must not drop them, and OpenELIS must not post
+them as patient results until clinically bound.
+
+## Current Code Baseline
+
+Baseline reviewed on 2026-08-13:
+
+- OpenELIS branch `codex/ogc-1054-analyzer-qc-mvp` at
+  `94585fdedc86c5122c11ffd05ddad7392193082c`;
+- PR #3792 is open, non-draft, conflicting, review-required, and 28 commits
+  behind current `develop`;
+- Bridge submodule at `12a338992eaf791a63159b7e5016f75369722dbf`;
+- July demo application at `2c840a55b03b238a2ad00c987181504c2bef6ef6`,
+  which is not current branch HEAD;
+- current public analyzer UAT uses `analyzers.openelis-global.org`, not the
+  requested `analyzers.openelis-work.org` host.
+
+### Implemented foundation
+
+- Generic ASTM, HL7, FILE, and FHIR analyzer paths and Bridge registration.
+- Bridge-owned FILE watching and Bridge-perspective connection probes.
+- A shipped-profile catalog and exact-once create-time profile bootstrap.
+- URL-addressable Instrument, Verify, Connect, and Review surfaces.
+- Carbon page headers, breadcrumbs, tables, notifications, and URL-backed
+  search/filter state on touched analyzer pages.
+- Local Test mappings and catalog-bound qualitative Result Option selection.
+- Pending-code/value resolver services and UI when pending data already exists.
+- Verification fingerprints, verifier/time, audit events, readiness blockers,
+  and activation gating.
+- Operational analyzer QC rules/control lots and deterministic Bridge payload
+  collections.
+- A UI-only Playwright foundation story and historical July UAT/MP4.
+
+### Partial or absent product behavior
+
+- Bridge-owned reusable profile lifecycle and site-created profile flow.
+- A living analyzer-to-profile-revision association rather than a transient
+  create hint and copied per-analyzer snapshot.
+- Completeness, usage, source, lineage, deactivate/reactivate, fork, and update
+  impact in Analyzer Types.
+- A complete add/edit/remove/repoint mapping editor showing unmatched profile
+  rows instead of skipping them.
+- Explicit QC-identification-code confirmation, separate from operational QC.
+- Capability-aware Results only/Two-way selection.
+- Production creation of pending result values from Bridge traffic.
+- Durable hold plus Alerts/Needs attention for unknown traffic.
+- Live result capture/reconciliation and blank-profile population.
+- Current integrated remote acceptance against current OpenELIS, Bridge, mock,
+  profile, and review-tooling revisions.
+
+Therefore neither PR #3792 nor the July deployment is the OGC-1054 MVP.
+
+## Scope
+
+### Full MVP
+
+The MVP is reached only when a laboratory administrator can:
+
+1. find a shipped or site Analyzer Type, understand readiness and usage, and
+   create or fork a type without editing files;
+2. map every analyzer test, qualitative result value, and QC identification
+   code to valid local concepts through one protocol-neutral editor;
+3. create an analyzer inline, select readable lab units, verify the mappings,
+   configure Bridge-owned connectivity, and see all activation blockers;
+4. configure required operational QC with existing OpenELIS QC entities;
+5. activate the analyzer only after current mapping/QC verification;
+6. receive a known patient result and a QC result through Bridge from the
+   analyzer mock;
+7. hold and visibly flag an unknown test/value, resolve it safely, and process
+   the next matching result deterministically;
+8. reload, bookmark, navigate by breadcrumb, and review the same durable state.
+
+The MVP includes a discoverable Alerts/Needs attention path. A resolver hidden
+inside an analyzer page is not enough for safe operation.
+
+### Full OGC-1054 rollout
+
+After MVP acceptance, complete:
+
+- live “send a result” capture during setup;
+- matched/seen/not-seen reconciliation for every mapping;
+- blank profile population from live traffic;
+- mature alert triage, acknowledgement, concurrency, and navigation;
+- profile revision diff, update impact, rollback, and distribution hardening;
+- scale and accessibility validation for large catalogs and profile libraries.
+
+### Outside OGC-1054
+
+- multi-component target-to-component ingestion
+  ([OGC-1136](https://uwdigi.atlassian.net/browse/OGC-1136));
+- Results Entry/Validation v4 and patient-report behavior;
+- broad analyzer maintenance and fleet health;
+- instrument-by-instrument vendor validation and country rollout;
+- a core OpenELIS FILE poller or raw protocol reader.
+
+## Requirement Crosswalk
+
+The `openelis-work` references in this table supply functional and visual intent
+only. They supply no implementation instructions.
+
+| Product slice | Functional/visual reference | Current code state | Delivery checkpoint |
+| --- | --- | --- | --- |
+| [OGC-1055](https://uwdigi.atlassian.net/browse/OGC-1055) Analyzer Types | Reuse, create/fork, completeness, usage, lifecycle, and list presentation | Mostly absent; shipped-file catalog only | M1 |
+| [OGC-1056](https://uwdigi.atlassian.net/browse/OGC-1056) mapping | Complete test/result/QC-code editor and safe save scope | Partial; result-option safety is strong, full editor absent | M2 |
+| [OGC-1057](https://uwdigi.atlassian.net/browse/OGC-1057) guided setup | Inline instrument, verify, connect, and readable review workflow | Partial; route shell and QC readiness exist | M3 |
+| [OGC-1058](https://uwdigi.atlassian.net/browse/OGC-1058) traffic learning | Hold, alert, resolve, and reconcile unknown traffic | Resolver is partial; production capture/hold/alert absent | M4 and R1 |
+| PR #3792 QC/config extension | Catalog-bound values, operational QC, verification, readiness, URL/Carbon shell | Implemented foundation, not integrated product acceptance | F0 reuse |
+
+Current Jira status was rechecked on 2026-08-13: OGC-1054 and OGC-1055 through
+OGC-1058 are `Ready`; the separate multi-component story OGC-1136 is `Backlog`.
+Only product outcomes and dependencies from those stories are carried forward.
+
+## Functional Acceptance Crosswalk
+
+This table paraphrases the current product acceptance behavior without carrying
+over any proposed data model, endpoint, route, class, annotation, or repository
+ownership from a product artifact.
+
+| Product AC | Functional outcome | Current branch | Target |
+| --- | --- | --- | --- |
+| AC-1 | Add Analyzer starts inline while the analyzer list remains available. | Implemented entry; later steps leave the inline surface. | M3 |
+| AC-2 | Instrument, Verify, and Connect form one progressive, understandable setup story. | Partial routed shell. | M3 |
+| AC-3 | Instrument/type selection is searchable. | Search exists in the separate catalog; setup uses a fixed dropdown. | M3 |
+| AC-4 | A not-listed instrument can start creation of a reusable site type. | Absent. | M1 + M3 |
+| AC-5 | Verify shows every profile test, normalized identity, and match state. | Partial; unmatched bootstrap rows can disappear. | M2 + M3 |
+| AC-6 | Human mapping confirmation is mandatory and auditable. | Partial whole-setup fingerprint. | M2 + M3 |
+| AC-7 | QC identification codes are reviewed and confirmed during Verify. | Absent; operational QC is a different capability. | M2 + M3 |
+| AC-8 | A non-match can map to an existing Test, detour to Test Catalog, or be explicitly excluded. | Partial pending-code resolver. | M2 |
+| AC-9 | One unresolved test does not hide or block independent mapping work. | Partial; skipped bootstrap rows are not visible. | M2 |
+| AC-10 | Results only is the safe default; Two-way appears only when supported and probed. | Absent; initiator mode is exposed instead. | M3 |
+| AC-11 | Every test mapping can be added, edited, removed, or repointed. | Absent for profile-applied rows. | M2 |
+| AC-12 | A qualitative result can target only an option belonging to its mapped Test. | Implemented foundation. | Retain in M2 |
+| AC-13 | Saving shared changes requires explicit new-type or update-shared scope. | Absent. | M2 |
+| AC-14 | A fork has a unique name and visible lineage. | Absent. | M1 + M2 |
+| AC-15 | Unknown traffic is held and visibly flags the analyzer/type and Alerts. | Partial resolver; production hold/alert path absent. | M4 |
+| AC-16 | Analyzer Types shows completeness/usage and the required search/filter states. | Partial shipped-file counts/filtering. | M1 |
+| AC-17 | Types can be deactivated/reactivated without deleting history. | Absent. | M1 |
+| AC-18 | ASTM, HL7, and FILE share one complete editor with only protocol labels varying. | Partial protocol-neutral review components. | M2 |
+| AC-19 | Normal lab setup contains no developer-only fields. | Implemented on the guided shell; retain and extend. | M3 |
+| AC-20 | All visible copy is localized. | Partial; raw status/fallback strings remain. | M1-M4 |
+| AC-21 | Setup can request a live result and reconcile what was received. | Absent. | R1 |
+| AC-22 | Unknown data is never lost; resolution changes future matching behavior. | Absent end to end. | M4 |
+| AC-23 | Live traffic can populate a newly created blank type. | Absent. | R1 |
+
+## Delivery Checkpoints
+
+These are engineering validation milestones, not partial product acceptance.
+The first product review requested from the user is G0, the full deployed MVP.
+Each checkpoint is a separate reviewable PR per the repository constitution;
+paired OpenELIS/Bridge/mock PRs share one contract revision and cannot be
+declared complete independently.
+
+### F0 - Correct scope and disposition the foundation
+
+1. Rename PR #3792 and its SpecKit/evidence claims from MVP to foundation.
+2. Rebase onto current `develop` and produce a range-diff.
+3. Retain only work compatible with the fixed ownership model.
+4. Remove or explicitly migrate every touched legacy/duplicate path.
+5. Do not add the missing full feature to the already-large PR.
+
+**Exit:** PR #3792 is either a green, reviewable foundation PR or its compatible
+commits are extracted into the later milestone PRs and #3792 is superseded. It
+cannot merge while it treats per-analyzer copied JSON as the final reusable
+Analyzer Type authority or claims full MVP acceptance.
+
+### E0 - Engineering contract and migration characterization
+
+1. Record an ADR for the Bridge-owned profile service and the OpenELIS-owned
+   site-binding boundary. Select concrete persistence only from current code
+   constraints, never from product mock terminology.
+2. Version the Bridge profile/runtime, registration, and normalized FHIR
+   contracts.
+3. Characterize `defaultConfigId`, copied plugin JSON, `analyzer_test_map`, raw
+   import endpoints, and existing analyzers in migration tests.
+4. Define no-loss migration, rollback, and anomaly reporting.
+5. Add initially failing cross-repository contract tests for known test,
+   unknown test, unknown value, QC, FILE, and registration reconciliation.
+
+**Exit:** approved ADR, contracts, migration fixture/report, and red tests exist;
+no production feature code starts against an unresolved ownership boundary.
+
+### M1 - Bridge profile lifecycle and Analyzer Types (OGC-1055)
+
+1. Implement the Bridge-owned versioned profile catalog and lifecycle contract.
+2. Expose one OpenELIS lab-facing composed Analyzer Types view with local
+   completeness/readiness/usage, without duplicating profile authority.
+3. Support shipped and site-created types, fork, unique naming, lineage,
+   deactivate/reactivate, and audit/history.
+4. Make search and filters URL-backed and use the current Carbon page shell.
+5. Migrate existing analyzers to a profile revision plus explicit local site
+   binding without silent remapping.
+
+**Exit:** a site-created or shipped Analyzer Type can be reused by multiple
+analyzers, and changing/forking it has deterministic scope and audit. No OE
+filesystem profile catalog or create-only copy path remains authoritative.
+
+### M2 - Safe mapping editor (OGC-1056)
+
+1. Show every profile test row, including unmatched rows, with raw code,
+   normalized code, match state, and local Test selection.
+2. Add/edit/remove/repoint test bindings with active Test catalog search.
+3. Bind qualitative values only to active Result Options owned by that Test.
+4. Show and confirm Bridge profile QC-identification codes separately from
+   operational Westgard/QC configuration.
+5. Support Test Catalog detours with validated return URLs.
+6. Provide explicit Save as new/Update shared scope and affected-analyzer
+   warning; recompute completeness and stale verification deterministically.
+
+**Exit:** ASTM, HL7, and FILE use the same complete editor; invalid or
+cross-test result bindings are rejected server-side; no duplicate mapping
+editor remains.
+
+### M3 - Guided setup, connectivity, and QC (OGC-1057)
+
+1. Complete the inline Instrument -> Verify -> Connect -> Review story while
+   retaining canonical URL/query state, breadcrumbs, reload, and history.
+2. Provide searchable type selection and an instrument-not-listed path that
+   creates a site profile through the Bridge lifecycle contract.
+3. Save readable lab-unit assignments and show them on list/review surfaces.
+4. Require audited mapping and QC-identification confirmation; relevant changes
+   make confirmation stale.
+5. Test connection from Bridge, show protocol-appropriate evidence, and separate
+   connection initiator from Results only/Two-way capability.
+6. Configure operational `AnalyzerQcRule`, `QCControlLot`, `QCResult`, and
+   Westgard readiness without adding `QcRun`.
+7. Block activation with an explicit list of current blockers.
+
+**Exit:** a lab administrator can configure and activate a complete analyzer
+without developer fields or file edits; runtime setup occurs in Bridge.
+
+### M4 - Safe traffic and integrated MVP (OGC-1058 safety scope)
+
+1. Preserve raw context and normalized identity for all Bridge messages.
+2. Stage known patient and QC results in OpenELIS through the unified FHIR path.
+3. Hold unknown tests/values; never discard or post them as patient results.
+4. Create persistent Alerts/Needs attention state linked to analyzer, profile
+   revision, held result, and mapping action.
+5. Resolve through valid local catalog choices, audit the decision, and prove
+   the next matching message maps deterministically.
+6. Exercise ASTM, HL7, and FILE scenarios through Bridge using the analyzer
+   mock. Direct mock-to-OpenELIS delivery does not satisfy this gate.
+7. Remove or priority-track every superseded raw-reader, copied-profile, and
+   duplicate pending-queue path; no new dual-write is allowed.
+
+**Exit:** all MVP acceptance criteria below pass in an integrated environment.
+
+### G0 - Full MVP deployment and first product review
+
+1. Provision DNS/TLS/router for `analyzers.openelis-work.org`, or obtain an
+   explicit product correction to the hostname before deployment.
+2. Deploy exact OpenELIS, Bridge, analyzer-mock, profile catalog, and review
+   tooling revisions.
+3. Publish the full MVP Grist checklist below for that host only.
+4. Run non-video UI-only Playwright; inspect console, screenshots, trace,
+   runtime state, and desktop/mobile visual comparison.
+5. Run the video project only after the non-video story passes.
+6. Download and retain the build-bound Markdown/JSON review report and MP4.
+
+**Exit:** every required UAT step passes against the exact build; the MP4 shows
+the complete visible story; CI and `digi-uw/code-qa` are green. This is the
+first point labeled **OGC-1054 MVP accepted**.
+
+### R1 - Full OGC-1054 feature rollout
+
+Complete live capture, mapping reconciliation, blank-profile learning, mature
+alert triage, profile revision management, and all remaining functional
+acceptance behavior. Repeat the exact-build UAT/evidence gate with a separate
+full-rollout checklist and MP4.
+
+### R2 - Operational rollout
+
+Validate profile upgrade/diff/rollback, scale, disaster recovery, security,
+monitoring, documentation, and representative site deployments. Track each
+instrument with its vendor-grounded integration spec, companion guide, profile,
+mock fixture, contract tests, and site validation.
+
+## Deterministic MVP Acceptance Criteria
+
+| ID | Criterion | Primary proof |
+| --- | --- | --- |
+| MVP-001 | Analyzer Types lists shipped and site types with source, status, completeness, usage, and attention state. | Service/integration + RTL + UI E2E |
+| MVP-002 | Search and filters round-trip through the URL and restore identical visible state after reload/back/forward. | RTL with router + UI E2E |
+| MVP-003 | A user can create a site type or fork a shared type; lineage, unique name, actor, and revision are durable. | Bridge contract + OpenELIS integration + UI E2E |
+| MVP-004 | Deactivation prevents new use but preserves existing history; reactivation is audited; hard delete is unavailable. | Service/integration + RTL |
+| MVP-005 | The editor displays every profile test row, including unmatched rows; no row is skipped because local lookup failed. | Contract + service + RTL |
+| MVP-006 | A test binding accepts only an active local Test; unresolved/ignored choices are explicit and independent per row. | JUnit 4 + RTL + UI E2E |
+| MVP-007 | A result-value binding accepts only an active Result Option owned by its mapped Test; value/label are server-derived. | JUnit 4 + RTL + UI E2E |
+| MVP-008 | QC-identification codes are shown and confirmed separately from operational QC rules/lots. | Bridge/OpenELIS contract + RTL + UI E2E |
+| MVP-009 | Saving a shared mapping requires explicit fork/update scope and names affected analyzers before update. | Service + RTL + UI E2E |
+| MVP-010 | Inline setup supports type selection, instrument-not-listed, name, readable lab units, Verify, Connect, and Review. | RTL + UI E2E |
+| MVP-011 | Every page has one semantic `h1`, linkable breadcrumbs, and canonical URL/query state. | RTL + UI E2E |
+| MVP-012 | Confirmation records actor/time/revision/fingerprint and becomes stale after relevant profile, binding, or QC change. | JUnit 4 integration + audit assertion |
+| MVP-013 | Connection testing executes from Bridge and returns visible protocol-appropriate success/failure evidence. | Bridge test + RTL + UI E2E |
+| MVP-014 | Results only is always available; Two-way is available only when the selected profile and Bridge contract support it. | Bridge contract + RTL |
+| MVP-015 | Operational QC readiness uses existing analyzer QC rules, control lots, QC results, and Westgard only. | JUnit 4 analyzer/QC suite |
+| MVP-016 | Activation is rejected until profile/bindings are current, required QC is ready, and runtime registration is synchronized. | JUnit 4 + contract + UI E2E |
+| MVP-017 | Bridge registration/profile sync is versioned, idempotent, deterministic, and emits explicit empty collections. | Cross-repo contract tests |
+| MVP-018 | A known patient result and QC result travel mock -> Bridge -> FHIR -> OpenELIS and become visible in the correct workflow. | Mock + Bridge + harness integration |
+| MVP-019 | Unknown test/value traffic retains raw context, is held, creates visible attention/alert state, and is not clinically posted. | Contract + OpenELIS integration + UI E2E |
+| MVP-020 | Resolving unknown traffic uses valid local catalog choices, is audited, and makes the next matching message deterministic. | Integration + UI E2E |
+| MVP-021 | ASTM, HL7, and FILE each have known, unknown, QC, and connection fixtures; FILE runtime watching occurs only in Bridge. | Mock/Bridge suites + repository guard |
+| MVP-022 | All user copy is localized; Carbon components/tokens are used; desktop/mobile layouts have no overlap or unreachable action. | RTL/a11y + inspected screenshots |
+| MVP-023 | Playwright performs the complete visible story without `page.request`, API assertions, backend polling, forced controls, or arbitrary waits. | Playwright guard + test audit |
+| MVP-024 | Evidence identifies OpenELIS, Bridge, mock, profile, and review-tooling SHAs/revisions plus deployment time, checklist revision, routes, mark times, screenshots, trace, and MP4. | Build manifest + UAT report |
+
+## Test Strategy
+
+Every checkpoint records the first failing test, passing implementation,
+refactor result, and final evidence. A route or endpoint existing is never a
+functional proof.
+
+| Layer | Owns | Required approach |
+| --- | --- | --- |
+| Bridge unit/service | Profile validation/versioning, parsing, transport, QC identification, probes, idempotent registration | Bridge repository test conventions; real protocol fixtures |
+| OpenELIS unit/service/DAO | Local catalog constraints, site binding, audit, stale verification, readiness, hold/resolve | JUnit 4; ORM validation for new mappings; real Postgres where query behavior matters |
+| Cross-repo contracts | Registration, profile revision, normalized FHIR, raw unknown context, QC, FILE delivery | Versioned fixtures run by both producer and consumer |
+| Analyzer mock | Reproducible ASTM/HL7/FILE known, unknown, QC, failure, and two-way scenarios | `pytest`; deterministic IDs and values; transport to Bridge |
+| Harness integration | OpenELIS + Bridge + mock + database assembled behavior | Real containers and transport; assert durable outcomes, not internal mocks |
+| Frontend | Carbon composition, accessibility, validation, routing/query/breadcrumb state | Vitest/RTL with real router context and minimal network stubs at component boundary |
+| Playwright | Complete lab-facing story | Visible UI only; seed may establish preconditions but cannot perform the story |
+| Remote UAT | Human acceptance and visual coherence | Grist overlay against exact build, inspected evidence, final MP4 |
+
+Minimum final commands, adjusted only to repository-equivalent scripts:
+
+```bash
+# OpenELIS
+mvn -Dtest=org.openelisglobal.analyzer.**,org.openelisglobal.analyzerimport.**,org.openelisglobal.qc.** test
+mvn spotless:check
+
+# Frontend
+cd frontend
+npm test -- --run
+npm run check-format
+npm run lint
+npm run build
+npm run pw:test:harness-demo
+npm run pw:test:harness-demo-video
+
+# Bridge
+cd tools/openelis-analyzer-bridge
+mvn test
+mvn verify
+
+# Analyzer mock
+cd tools/analyzer-mock-server
+python -m pytest
+```
+
+The final code-quality gate uses `digi-uw/code-qa` for spec/code alignment,
+meaningful coverage, simplicity and legacy removal, cross-repository companion
+status, and the evidence bundle.
+
+## Full MVP Grist Checklist
+
+Create these stable, required steps for host
+`analyzers.openelis-work.org`. Do not publish them against the older foundation
+deployment.
+
+| Step key | Reviewer action | Expected result |
+| --- | --- | --- |
+| `AN-MVP-001` | Open Analyzer Types, search/filter, and inspect one shipped type. | Source, status, completeness, usage, protocol, mapping, QC, and attention information is understandable. |
+| `AN-MVP-002` | Create a site type through Instrument not listed, or fork a shared type. | A uniquely named audited revision is created without developer fields or file edits. |
+| `AN-MVP-003` | Open the mapping editor and resolve an unmatched test. | Every source row remains visible; the selected active Test persists and completeness updates. |
+| `AN-MVP-004` | Map a qualitative analyzer value. | Only active options for that mapped Test are selectable; reload preserves the binding. |
+| `AN-MVP-005` | Review QC-identification codes and save with explicit fork/update scope. | QC recognition is confirmed separately from operational QC; affected analyzers are clear. |
+| `AN-MVP-006` | Start inline analyzer setup, choose the type, name, and lab units. | The URL, breadcrumb, visible section, and saved context remain coherent through reload/history. |
+| `AN-MVP-007` | Verify all mappings and inspect actor/time/revision. | Confirmation is audited and all incomplete/stale items remain explicit blockers. |
+| `AN-MVP-008` | Configure connectivity and run the connection test. | The probe runs from Bridge; visible success/failure and supported Results only/Two-way choices are clear. |
+| `AN-MVP-009` | Select/configure an active operational QC rule and control lot. | QC readiness updates without replacing QC-identification confirmation. |
+| `AN-MVP-010` | Review blockers, complete requirements, and activate the analyzer. | Activation is blocked before completion and succeeds only after current verification and runtime sync. |
+| `AN-MVP-011` | Use the visible demo control to emit a known patient and QC result through the mock instrument. | Both travel through Bridge and appear in the correct OpenELIS result/QC workflow. |
+| `AN-MVP-012` | Emit an unknown test/value through the visible demo control. | The result is held, not posted or lost, and the analyzer plus Alerts show Needs attention. |
+| `AN-MVP-013` | Resolve the unknown item and emit the same value again. | Resolution is catalog-safe and audited; the next result maps without another unknown alert. |
+| `AN-MVP-014` | Configure and exercise a FILE profile scenario. | The lab-facing outcome matches other protocols while Bridge owns watching/transport. |
+| `AN-MVP-015` | Review the completed analyzer on desktop and mobile and revisit bookmarked routes. | The summary, breadcrumbs, query state, actions, and responsive Carbon layout remain coherent. |
+
+The fixture loader may prepare catalog/sample data. The reviewer and Playwright
+must execute every user action above through visible controls. Protocol path and
+delivery guarantees are proven separately by harness contracts.
+
+## Deployment and Evidence Contract
+
+`/__review/build.json` for the MVP target must identify:
+
+- OpenELIS repository, branch, SHA, and image digest;
+- Analyzer Bridge repository, SHA, and image digest;
+- analyzer-mock repository/path revision and image digest;
+- profile catalog revision;
+- review-tooling SHA;
+- instance/host, deployment ID, database migration version, and deployment
+  time.
+
+The report must include schema version, checklist revision, stable step key,
+required flag, status, note, marked time, route, actual URL, and the complete
+build manifest. Reordering Grist rows must not move answers between step keys.
+
+Run non-video first. Inspect console errors, screenshots, trace, network/runtime
+diagnostics, and desktop/mobile images against the current functional/visual
+mock intent. This comparison evaluates user outcome, information hierarchy,
+Carbon coherence, and responsive behavior only; it supplies no technical
+implementation directive. Record the MP4 only after defects are resolved.
+
+## Legacy Removal and Migration Gates
+
+- `defaultConfigId` and copied plugin JSON may be read during migration, but
+  cannot remain the final reusable profile authority.
+- Existing per-analyzer mappings are fingerprinted and grouped only when their
+  effective behavior is identical; divergent snapshots become explicit site
+  forks. No silent merge or remap is permitted.
+- Legacy free-text result mappings remain readable as `LEGACY_UNBOUND` and
+  block verification until catalog-bound.
+- After cutover, one writer owns each capability. No dual-write to old and new
+  profile/mapping/pending stores is allowed.
+- Raw OpenELIS ASTM/HL7/FILE runtime routes and direct mock-to-OpenELIS
+  acceptance paths are removed or covered by a priority removal issue before
+  MVP acceptance.
+- Repository guards prove there is no enabled OpenELIS FILE watcher/poller.
+
+## Known Inconsistency Requiring Confirmation
+
+The requested review host is `analyzers.openelis-work.org`, which did not
+resolve during the 2026-08-13 reconnaissance. The current historical UAT host is
+`analyzers.openelis-global.org`. This roadmap treats the requested hostname as
+intentional and makes DNS/TLS/router provisioning part of G0. If it was a typo,
+product must explicitly correct the canonical host before deployment and Grist
+publication.
+
+No other architecture question remains open: Bridge is the analyzer runtime and
+portable profile owner; OpenELIS owns local clinical bindings, audit, QC, held
+results, and lab-facing orchestration; the mock proves real Bridge transports;
+and `openelis-work` remains functional/visual only.

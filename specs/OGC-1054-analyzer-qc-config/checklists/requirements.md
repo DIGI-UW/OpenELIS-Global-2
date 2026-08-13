@@ -1,47 +1,41 @@
-# OGC-1054 Acceptance Checklist
+# OGC-1054 Analyzer QC/Configuration Foundation Checklist
 
-## Specification
+**Scope:** PR #3792 foundation only
+**Full MVP acceptance:**
+[MVP-001 through MVP-024](../../roadmaps/ogc-1054-analyzer-feature-roadmap.md#deterministic-mvp-acceptance-criteria)
 
-- [x] Each implementation change traces to an AC-1054 criterion.
-- [x] Feature 004, 012, 014, OGC-41, roadmap, and API/route contracts agree.
-- [x] Deferred work is absent from MVP completion claims.
-- [x] FILE runtime ownership matches `AGENTS.md`.
+## Source and Scope
 
-## Frontend
+- [x] `openelis-work` is used only for functional/visual comparison.
+- [x] No technical directive is inferred from a product mock or product brief.
+- [x] FILE and analyzer runtime ownership matches `AGENTS.md`.
+- [x] July evidence is labeled historical foundation evidence.
+- [x] Missing full-feature behavior is explicit.
 
-- [x] Carbon components/tokens are used without a Carbon dependency upgrade.
-- [x] Every page has one semantic `h1` and linkable breadcrumbs.
-- [x] Search, filters, setup step, selected profile, and safe return path are
-      bookmarkable.
-- [x] Back, forward, and reload preserve saved-analyzer workflow state.
-- [x] Primary actions remain visible and non-overlapping on desktop and mobile.
-- [x] All new strings are in `frontend/src/languages/en.json`.
-- [x] No duplicate analyzer creation, mapping, pending-value, or QC editor path
-      is introduced.
+## Foundation Frontend
 
-## Testing
+- [x] Touched pages use Carbon components/tokens and localized copy.
+- [x] Touched setup pages have one semantic `h1` and linked breadcrumbs.
+- [x] Branch list/filter/setup state is URL-addressable.
+- [x] Back, forward, and reload preserve saved-analyzer branch state.
+- [x] Primary branch actions remain reachable at tested desktop/mobile widths.
+- [x] `/analyzers/new` does not create a duplicate setup path.
+
+## Foundation Testing
 
 - [x] Pure route and validation logic has focused unit tests.
-- [x] Component tests use real router behavior for navigation acceptance.
-- [x] Backend service tests own result-option, fingerprint, readiness, audit,
-      and bridge contracts.
-- [x] Playwright performs the full visible user story without API-focused
-      shortcuts, forced controls, response polling, or arbitrary waits.
-- [x] Non-video evidence is inspected before recording the MP4.
-- [x] Desktop/mobile screenshots are compared with
-      `openelis-work@4c0e1a28`.
+- [x] Component navigation uses real router behavior.
+- [x] Backend tests own result-option, fingerprint, readiness, audit, and Bridge
+      payload behavior implemented by the branch.
+- [x] Foundation Playwright uses visible UI rather than API-focused shortcuts.
+- [x] Non-video evidence was inspected before the historical MP4.
 
-## Remote UAT
+## Still Required Before Foundation Merge
 
-- [x] Grist contains stable required keys `AN-QC-001` through `AN-QC-008`.
-- [x] The review overlay shows the expected checklist revision.
-- [x] Build metadata identifies application and harness SHAs.
-- [x] Every required step passes against that exact build.
-- [x] Markdown/JSON report, screenshots, trace, and MP4 are retained.
+- [ ] Rebase onto current `develop` and resolve conflicts.
+- [ ] Re-run affected tests and CI on the rebased head.
+- [ ] Complete review and legacy-path disposition.
+- [ ] Update PR title/body to foundation scope.
+- [ ] Reach non-draft, mergeable, reviewed, green status.
 
-## Merge
-
-- [x] Spotless, formatting, lint, focused suites, and package suites pass.
-- [x] `digi-uw/code-qa` gates pass or have explicit disposition.
-- [x] PR title/body and linked evidence describe current HEAD.
-- [ ] PR is non-draft, mergeable, and all required checks/reviews pass.
+Passing this checklist does not satisfy the full MVP checklist.

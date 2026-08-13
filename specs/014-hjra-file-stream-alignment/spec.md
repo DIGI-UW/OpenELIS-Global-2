@@ -18,19 +18,23 @@ runtime watching inside OpenELIS.
 - file stability detection;
 - transport, retries, and delivery;
 - transport/runtime dead-letter behavior;
-- operational watcher/parser state.
+- operational watcher/parser state;
+- profile-driven FILE parsing and normalization to the versioned analyzer FHIR
+  contract.
 
 ### OpenELIS owns
 
 - FILE analyzer and import configuration;
-- shipped FILE profile selection;
+- lab-facing FILE profile selection and site-specific catalog binding;
 - bridge registration and synchronization;
 - the authenticated direct-ingestion endpoint;
-- format normalization and profile-driven result processing;
-- result/QC persistence, audit, and review UI.
+- normalized result binding and clinical processing;
+- result/QC persistence, operational QC evaluation, audit, alerts, and review
+  UI.
 
-No OpenELIS application-side FILE poller is implemented. A future fallback
-would require a separate specification and must be disabled by default.
+An OpenELIS application-side FILE poller is outside the target architecture and
+must not be added. Any proposal to change this requires an explicit architecture
+decision that supersedes this ownership contract.
 
 ## User Stories
 
@@ -42,9 +46,9 @@ configuration with the bridge.
 
 ### US2 - Receive a bridge-delivered file
 
-As a laboratory user, I can review results from a file delivered to the
-OpenELIS direct-ingestion endpoint after profile-driven normalization and
-mapping.
+As a laboratory user, I can review results normalized by Bridge and delivered
+to the OpenELIS direct-ingestion endpoint for local catalog binding, QC, and
+clinical processing.
 
 ### US3 - Add another compatible instrument
 
@@ -60,12 +64,12 @@ a shipped profile rather than a WAR-local per-instrument poller or adapter.
 - Bridge registration create/update/delete changes live bridge watch state.
 - Bridge delivery is idempotent under the direct-ingestion contract.
 - OpenELIS validation rejects unsupported or incomplete FILE configuration.
-- Format readers normalize delivered content; profiles own instrument-specific
-  interpretation.
+- Bridge format readers normalize delivered content; portable profiles own
+  instrument-specific interpretation.
 - Analyzer QC/configuration follows
-  [OGC-1054](../OGC-1054-analyzer-qc-config/spec.md).
+  [the authoritative OGC-1054 roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
 - Production result import and Results/Validation v4 acceptance remain separate
-  from the OGC-1054 configuration MVP.
+  from OGC-1054.
 
 ## Acceptance
 
@@ -74,8 +78,9 @@ a shipped profile rather than a WAR-local per-instrument poller or adapter.
 3. Contract tests prove empty/update/delete registration behavior.
 4. Bridge tests prove watching and delivery; OpenELIS tests do not simulate an
    application-owned poll loop.
-5. Direct ingestion proves authentication, idempotency, format dispatch,
-   processing, and audit.
+5. Direct ingestion proves authentication, idempotency, normalized FHIR
+   handling, local binding, processing, and audit; it does not parse a raw FILE
+   format.
 6. Repository search finds no enabled OpenELIS FILE watcher/poller path.
 
 ## Current Profile Direction

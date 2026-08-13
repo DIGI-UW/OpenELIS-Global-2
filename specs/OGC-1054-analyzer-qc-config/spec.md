@@ -1,128 +1,106 @@
-# OGC-1054 Analyzer QC and Configuration MVP
+# OGC-1054 Analyzer QC and Configuration Foundation
 
-**Status:** MVP accepted on analyzer UAT; PR pending merge
+**Status:** Implemented foundation; not OGC-1054 MVP acceptance
 **Branch:** `codex/ogc-1054-analyzer-qc-mvp`
 **Pull request:** [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792)
-**Design baseline:** [`DIGI-UW/openelis-work@4c0e1a28`](https://github.com/DIGI-UW/openelis-work/tree/4c0e1a28/designs)
+**Authoritative feature roadmap:**
+[OGC-1054 Analyzer Feature](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 
 ## Purpose
 
-Give a laboratory administrator one coherent, profile-driven workflow to add an
-analyzer, verify its test and qualitative-result mappings, configure its
-connection and applicable QC, and review activation readiness.
+Record the bounded behavior implemented by PR #3792: a shipped-profile
+bootstrap/catalog, URL-addressable setup shell, safer local result-value
+bindings, verification/readiness, and operational analyzer QC configuration.
+This SpecKit set is retained for branch provenance and is not the full OGC-1054
+product specification.
 
-Shipped ASTM, HL7, and FILE profile files are the MVP profile source of truth.
-An analyzer stores its selected defaults through the existing
-`defaultConfigId` flow and stores analyzer-specific overrides in plugin config
-JSON. The MVP does not add an `AnalyzerProfile`, result-mapping, or `QcRun`
-table.
+## Source Boundary
 
-## User Stories
+`DIGI-UW/openelis-work` is used only to compare functional user outcomes and
+visual intent. No persistence, entity, API, route, repository-boundary,
+transport, or implementation decision in this specification comes from that
+repository. Current code, engineering specifications, `AGENTS.md`, and an
+approved ADR/contract govern implementation.
 
-### US1 - Inspect a shipped analyzer type
+## Fixed Architecture
 
-As a laboratory administrator, I can search and filter shipped analyzer types,
-inspect protocol, connection mode, mapping/QC counts, and readiness, then start
-setup from a selected type.
+- Bridge owns portable profiles and analyzer runtime: listeners, parsing,
+  connection probes, protocol execution, FILE watching/transport, and
+  normalized FHIR delivery.
+- OpenELIS owns lab-facing setup, local catalog binding, analyzer instance/lab
+  assignment, audit, operational QC, activation, held results, and review.
+- The analyzer mock proves real protocol behavior through Bridge.
+- OpenELIS must not gain a raw protocol runtime or FILE poller.
 
-### US2 - Complete guided analyzer setup
+## Foundation User Stories
 
-As a laboratory administrator, I can complete four explicit, bookmarkable
-steps: Instrument, Verify, Connect, and Review. Browser back/forward and reload
-preserve the current saved-analyzer step.
+### FUS1 - Inspect a shipped bootstrap profile
 
-### US3 - Verify mappings
+A laboratory administrator can search/filter shipped profile files, inspect
+protocol and summary counts, and start analyzer setup.
 
-As a laboratory administrator, I can review profile-applied test mappings,
-pending analyzer codes, and result-value mappings in one workflow. Qualitative
-targets are active catalog options belonging to the mapped OpenELIS test.
+### FUS2 - Use a bookmarkable setup shell
 
-### US4 - Configure analyzer QC
+A laboratory administrator can move through Instrument, Verify, Connect, and
+Review routes with linked breadcrumbs and saved-analyzer state.
 
-As a laboratory administrator, I can create or select active analyzer QC rules
-and control lots through the setup workflow. Readiness is recalculated and
-bridge registration is resynchronized after relevant changes.
+### FUS3 - Apply local mapping safeguards
 
-### US5 - Understand readiness
+A laboratory administrator can review copied test mappings, bind qualitative
+values only to valid options for the mapped Test, resolve an already-pending
+code/value, and record verification state.
 
-As a laboratory administrator, I can see every blocker before activation,
-including stale mapping/QC verification. I can see who last verified each
-configuration and when.
+### FUS4 - Configure operational analyzer QC
 
-## Functional Requirements
+A laboratory administrator can configure existing analyzer QC rules and control
+lots, see readiness blockers, and trigger Bridge registration resynchronization.
 
-- **FR-001:** `/analyzers` is the primary analyzer setup and management page.
-- **FR-002:** `/analyzers/new` redirects to the canonical inline Instrument
-  step.
-- **FR-003:** `/analyzers/types` is a lab-facing shipped-profile catalog, not a
-  developer plugin registry.
-- **FR-004:** Creating an analyzer with `defaultConfigId` applies profile
-  defaults exactly once. Editing the analyzer never reapplies the profile.
-- **FR-005:** The four setup steps have canonical URLs defined in
-  [contracts/frontend-routes.md](contracts/frontend-routes.md).
-- **FR-006:** List search and filters are encoded in the query string and
-  restored on load, reload, back, and forward navigation.
-- **FR-007:** Analyzer pages use a shared Carbon page header with a semantic
-  `h1`, linkable breadcrumb path, and Carbon actions.
-- **FR-008:** Mapping review uses Carbon data-table patterns and exposes test
-  mappings, pending codes, result-value mappings, and verification state.
-- **FR-009:** Result-value resolution requires an
-  `openelisResultOptionId`. The server derives the value and label.
-- **FR-010:** Inactive options and options outside the pending value's mapped
-  test are rejected.
-- **FR-011:** Legacy free-text mappings remain readable as `LEGACY_UNBOUND`,
-  but never count as complete verification.
-- **FR-012:** Mapping and QC verification record IDs, fingerprints, actor, and
-  time in plugin config JSON and emit a durable analyzer audit event.
-- **FR-013:** Mapping or QC changes invalidate the corresponding prior
-  verification through fingerprint mismatch.
-- **FR-014:** `ACTIVE` is blocked until mappings are currently verified and
-  profile-applicable QC requirements are ready.
-- **FR-015:** Connection testing is visible saved-analyzer evidence, not a
-  persisted activation prerequisite.
-- **FR-016:** Bridge registration always emits deterministic `qcRules`,
-  `controlLots`, and `testCodeLoinc` collections, including empty collections.
-- **FR-017:** FILE directory watching and transport remain bridge-owned.
-  OpenELIS configures, registers, ingests direct submissions, and processes
-  results/QC.
+## Foundation Requirements
 
-## Deterministic Acceptance Criteria
+- **FFR-001:** `/analyzers` is the branch's primary setup entry and
+  `/analyzers/new` redirects to it.
+- **FFR-002:** Branch setup/list state uses canonical routes/query parameters,
+  safe same-origin `returnTo`, semantic headings, and linked breadcrumbs.
+- **FFR-003:** Creating with `defaultConfigId` applies a shipped bootstrap
+  profile exactly once; edit does not reapply it.
+- **FFR-004:** Result-value selection requires an active Result Option owned by
+  the mapped Test; server derives label/value.
+- **FFR-005:** Legacy free-text values remain readable as `LEGACY_UNBOUND` and
+  do not satisfy verification.
+- **FFR-006:** Mapping/QC verification records fingerprints, actor, and time and
+  writes durable audit evidence.
+- **FFR-007:** Relevant changes make verification stale; activation is blocked
+  while branch-defined mapping or operational QC readiness is incomplete.
+- **FFR-008:** Existing `AnalyzerQcRule`, `QCControlLot`, `QCResult`, and
+  Westgard paths remain the operational QC model; no `QcRun` is added.
+- **FFR-009:** Bridge registration collections are deterministic, including
+  explicit empty `qcRules`, `controlLots`, and `testCodeLoinc` collections.
+- **FFR-010:** FILE watching, polling, and transport remain Bridge-owned.
 
-| ID         | Acceptance criterion                                                                                                                                                        | Primary proof            |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| AC-1054-01 | Profile catalog search, protocol, and readiness filters round-trip through the URL and restore identical visible rows after reload.                                         | RTL + UI E2E             |
-| AC-1054-02 | Every analyzer/profile/setup page has one semantic `h1` and a breadcrumb whose links resolve to valid application routes.                                                   | RTL + UI E2E             |
-| AC-1054-03 | Starting setup from a profile opens the Instrument URL with the selected profile and a safe encoded `returnTo`.                                                             | RTL + UI E2E             |
-| AC-1054-04 | Submitting Instrument creates exactly one analyzer, applies defaults once, and navigates to Verify using the returned analyzer ID.                                          | JUnit + RTL + UI E2E     |
-| AC-1054-05 | Reload, back, and forward retain the active saved-analyzer setup step without creating or mutating data.                                                                    | UI E2E                   |
-| AC-1054-06 | Verify presents profile-applied test mappings, pending codes, qualitative mappings, and current/stale verification with Carbon table semantics.                             | RTL + UI E2E             |
-| AC-1054-07 | Pending qualitative resolution offers only active options for the mapped test and persists the chosen option ID, derived value, and label.                                  | JUnit + RTL + UI E2E     |
-| AC-1054-08 | Wrong-test and inactive result options return a validation error and leave the pending value unresolved.                                                                    | JUnit                    |
-| AC-1054-09 | Mapping/QC verification stores fingerprints, actor, and time, emits a durable audit event, and becomes stale after relevant change.                                         | JUnit                    |
-| AC-1054-10 | QC-rule and control-lot create/update/delete operations recompute readiness and invoke bridge registration sync.                                                            | JUnit                    |
-| AC-1054-11 | Setup detours to QC rule/control-lot pages preserve `returnTo` and return to the originating Verify step after save or cancel.                                              | RTL + UI E2E             |
-| AC-1054-12 | Connect displays protocol-appropriate fields and a visible success/failure result from a real saved-analyzer connection test.                                               | RTL + UI E2E             |
-| AC-1054-13 | Review lists all readiness blockers; `ACTIVE` is rejected while mapping verification is stale or applicable QC is incomplete.                                               | JUnit + RTL + UI E2E     |
-| AC-1054-14 | Bridge payload collection ordering and empty collections are deterministic; no human UAT inspects payload internals.                                                        | JUnit/contract test      |
-| AC-1054-15 | The focused Playwright acceptance story uses visible UI only: no `page.request`, API assertions, response polling, forced Carbon controls, or arbitrary waits.              | Playwright guard + audit |
-| AC-1054-16 | Final evidence identifies application SHA, harness SHA, deployment time, checklist revision, routes, statuses, mark times, screenshots, and MP4 for all required UAT steps. | Remote UAT report        |
+## Foundation Acceptance Criteria
 
-## Boundaries
+| ID | Criterion | Proof |
+| --- | --- | --- |
+| FAC-001 | Search/filter/setup URL state restores the same visible branch state after reload. | RTL + foundation UI E2E |
+| FAC-002 | Touched analyzer setup pages have one `h1` and valid linked breadcrumbs. | RTL + foundation UI E2E |
+| FAC-003 | Create applies bootstrap defaults once and navigates using the returned analyzer ID. | JUnit 4 + RTL |
+| FAC-004 | Wrong-test/inactive Result Options are rejected without resolving pending state. | JUnit 4 |
+| FAC-005 | Verification/audit/readiness becomes stale after relevant branch-owned changes. | JUnit 4 |
+| FAC-006 | Operational QC changes recompute readiness and resync Bridge registration. | JUnit 4 |
+| FAC-007 | The branch's connection probe result is visibly presented. | RTL + foundation UI E2E |
+| FAC-008 | The foundation Playwright story uses visible UI rather than API-focused shortcuts. | Playwright guard/audit |
 
-The following are separate milestone work:
+## Explicitly Not Delivered
 
-- analyzer result import and Results/Validation v4 integration;
-- multi-component target-to-component mapping;
-- persisted, forkable shared profile management;
-- per-instrument code where a shipped profile expresses the protocol;
-- bridge changes without failing OpenELIS contract evidence;
-- any OpenELIS FILE poller.
+- reusable, versioned Analyzer Type lifecycle and a living analyzer/profile
+  association;
+- site-created/forked types, lineage, completeness, usage, or lifecycle;
+- full add/edit/remove/repoint mapping and unmatched profile-row handling;
+- Bridge profile QC-identification-code confirmation;
+- capability-aware Results only/Two-way behavior;
+- production creation, hold, alert, and resolution of unknown Bridge traffic;
+- integrated analyzer-mock -> Bridge -> FHIR -> OpenELIS MVP evidence;
+- full OGC-1054 acceptance.
 
-## Clarifications
-
-- Profile catalog readiness means the shipped file can start setup. Analyzer
-  activation readiness is calculated from the saved analyzer configuration.
-- A missing `qcApplicable` value does not waive QC. A profile opts out only with
-  explicit `qcApplicable: false`.
-- Connection test state is transient user-facing evidence. It does not replace
-  mapping/QC verification or activation readiness.
+Those outcomes are specified only by the authoritative roadmap and future
+milestone specs.
