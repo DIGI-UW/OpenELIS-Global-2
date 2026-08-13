@@ -39,7 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.jfree.chart.ChartFactory;
-import org.jfree.chart.ChartUtils;
+import org.jfree.chart.ChartUtilities;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.ValueMarker;
@@ -326,7 +326,7 @@ public class QCExportRestController {
         range.setRange(Math.min(-4.0, Math.floor(minZ - 0.5)), Math.max(4.0, Math.ceil(maxZ + 0.5)));
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ChartUtils.writeChartAsPNG(baos, chart, width, height);
+        ChartUtilities.writeChartAsPNG(baos, chart, width, height);
         return baos.toByteArray();
     }
 
