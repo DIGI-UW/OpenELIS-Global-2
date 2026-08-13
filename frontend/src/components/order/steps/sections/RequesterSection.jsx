@@ -38,6 +38,10 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
   const [siteResults, setSiteResults] = useState([]);
   const [isSearchingSites, setIsSearchingSites] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
+  const [departmentResponse, setDepartmentResponse] = useState({
+    siteId: "",
+    options: [],
+  });
 
   // Provider search state - simplified to just name and phone
   const [providerSearch, setProviderSearch] = useState({
@@ -47,6 +51,40 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
   const [providerResults, setProviderResults] = useState([]);
   const [isSearchingProviders, setIsSearchingProviders] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState(null);
+  const sampleOrderItems = orderData?.sampleOrderItems || {};
+  const referringSiteId = sampleOrderItems.referringSiteId || "";
+  const effectiveSelectedSite =
+    selectedSite && String(selectedSite.id) === String(referringSiteId)
+      ? selectedSite
+      : null;
+  const departmentOptions =
+    departmentResponse.siteId === String(referringSiteId)
+      ? departmentResponse.options
+      : [];
+  const isLoadingDepartments =
+    Boolean(referringSiteId) &&
+    departmentResponse.siteId !== String(referringSiteId);
+  const savedProvider =
+    sampleOrderItems.providerId ||
+    sampleOrderItems.providerPersonId ||
+    sampleOrderItems.providerFirstName ||
+    sampleOrderItems.providerLastName
+      ? {
+          id:
+            sampleOrderItems.providerId ||
+            sampleOrderItems.providerPersonId ||
+            "",
+          firstName: sampleOrderItems.providerFirstName || "",
+          lastName: sampleOrderItems.providerLastName || "",
+          phone: sampleOrderItems.providerWorkPhone || "",
+        }
+      : null;
+  const effectiveSelectedProvider =
+    selectedProvider &&
+    (!sampleOrderItems.providerId ||
+      String(selectedProvider.id) === String(sampleOrderItems.providerId))
+      ? selectedProvider
+      : savedProvider;
 
   // Priority options - must match backend OrderPriority enum
   const priorityOptions = [
@@ -66,10 +104,10 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
 
   // Initialize from orderData when referringSiteId changes (e.g., from barcode scan)
   useEffect(() => {
-    if (orderData?.sampleOrderItems?.referringSiteId && !selectedSite) {
+    if (referringSiteId && !effectiveSelectedSite) {
       // Fetch site details
       getFromOpenElisServer(
-        `/rest/organization/${orderData.sampleOrderItems.referringSiteId}`,
+        `/rest/organization/${referringSiteId}`,
         (response) => {
           if (componentMounted.current && response) {
             setSelectedSite(response);
@@ -77,30 +115,29 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
         },
       );
     }
-  }, [orderData?.sampleOrderItems?.referringSiteId]);
+  }, [referringSiteId, effectiveSelectedSite]);
 
-  // Initialize provider from orderData when provider info changes (e.g., from barcode scan)
   useEffect(() => {
-    const providerPersonId = orderData?.sampleOrderItems?.providerPersonId;
-    const providerFirstName = orderData?.sampleOrderItems?.providerFirstName;
-    const providerLastName = orderData?.sampleOrderItems?.providerLastName;
-
-    if (
-      (providerPersonId || providerFirstName || providerLastName) &&
-      !selectedProvider
-    ) {
-      setSelectedProvider({
-        id: providerPersonId || "",
-        firstName: providerFirstName || "",
-        lastName: providerLastName || "",
-        phone: orderData?.sampleOrderItems?.providerWorkPhone || "",
-      });
+    if (!referringSiteId) {
+      return undefined;
     }
-  }, [
-    orderData?.sampleOrderItems?.providerPersonId,
-    orderData?.sampleOrderItems?.providerFirstName,
-    orderData?.sampleOrderItems?.providerLastName,
-  ]);
+
+    let active = true;
+    getFromOpenElisServer(
+      `/rest/departments-for-site?refferingSiteId=${encodeURIComponent(referringSiteId)}`,
+      (response) => {
+        if (active && componentMounted.current) {
+          setDepartmentResponse({
+            siteId: String(referringSiteId),
+            options: Array.isArray(response) ? response : [],
+          });
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [referringSiteId]);
 
   // Site search - can be triggered manually or by autocomplete
   const handleSiteSearch = (searchTerm = siteSearchTerm) => {
@@ -129,7 +166,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
 
   // Autocomplete effect for site search - debounced
   useEffect(() => {
-    if (selectedSite || isReadOnly) return; // Don't search if already selected
+    if (effectiveSelectedSite || isReadOnly) return; // Don't search if already selected
 
     const debounceTimer = setTimeout(() => {
       if (siteSearchTerm.trim().length >= 2) {
@@ -140,7 +177,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
     }, 300); // 300ms debounce
 
     return () => clearTimeout(debounceTimer);
-  }, [siteSearchTerm, selectedSite, isReadOnly]);
+  }, [siteSearchTerm, effectiveSelectedSite, isReadOnly]);
 
   // Site selection
   const handleSelectSite = (site) => {
@@ -154,6 +191,8 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
         referringSiteId: site.id,
         referringSiteName: site.organizationName,
         referringSiteCode: site.shortName,
+        referringSiteDepartmentId: "",
+        referringSiteDepartmentName: "",
       },
     }));
   };
@@ -170,6 +209,23 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
         referringSiteId: "",
         referringSiteName: "",
         referringSiteCode: "",
+        referringSiteDepartmentId: "",
+        referringSiteDepartmentName: "",
+      },
+    }));
+  };
+
+  const handleDepartmentChange = (event) => {
+    const departmentId = event.target.value;
+    const department = departmentOptions.find(
+      (option) => String(option.id) === String(departmentId),
+    );
+    setOrderData((prev) => ({
+      ...prev,
+      sampleOrderItems: {
+        ...prev.sampleOrderItems,
+        referringSiteDepartmentId: departmentId,
+        referringSiteDepartmentName: department?.value || "",
       },
     }));
   };
@@ -236,7 +292,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
 
   // Autocomplete effect for provider search - debounced
   useEffect(() => {
-    if (selectedProvider || isReadOnly) return; // Don't search if already selected
+    if (effectiveSelectedProvider || isReadOnly) return; // Don't search if already selected
 
     const { name } = providerSearch;
     const searchTerm = name || "";
@@ -250,7 +306,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
     }, 300); // 300ms debounce
 
     return () => clearTimeout(debounceTimer);
-  }, [providerSearch.name, selectedProvider, isReadOnly]);
+  }, [providerSearch.name, effectiveSelectedProvider, isReadOnly]);
 
   // Provider selection - use personId from search results if available, otherwise fetch from practitioner endpoint
   const handleSelectProvider = (provider) => {
@@ -307,7 +363,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
   // Clear provider selection
   const handleClearProvider = () => {
     setSelectedProvider(null);
-    setProviderSearch({ lastName: "", firstName: "", phone: "" });
+    setProviderSearch({ name: "", phone: "" });
 
     setOrderData((prev) => ({
       ...prev,
@@ -414,7 +470,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
               })}
               value={siteSearchTerm}
               onChange={(e) => setSiteSearchTerm(e.target.value)}
-              disabled={isReadOnly || selectedSite}
+              disabled={Boolean(isReadOnly || effectiveSelectedSite)}
             />
           </Column>
           <Column lg={5} md={4} sm={4}>
@@ -441,7 +497,9 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
                 kind="primary"
                 size="md"
                 onClick={handleSiteSearch}
-                disabled={isSearchingSites || isReadOnly || selectedSite}
+                disabled={Boolean(
+                  isSearchingSites || isReadOnly || effectiveSelectedSite,
+                )}
               >
                 <FormattedMessage
                   id="label.button.search"
@@ -452,7 +510,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
                 kind="ghost"
                 size="md"
                 onClick={handleClearSiteSearch}
-                disabled={selectedSite}
+                disabled={Boolean(effectiveSelectedSite)}
               >
                 <FormattedMessage
                   id="label.button.clear"
@@ -464,7 +522,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
         </Grid>
 
         {/* Site Results */}
-        {siteResults.length > 0 && !selectedSite && (
+        {siteResults.length > 0 && !effectiveSelectedSite && (
           <div className="search-results">
             <p className="results-count">
               {siteResults.length}{" "}
@@ -532,7 +590,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
         )}
 
         {/* Selected Site Card */}
-        {selectedSite && (
+        {effectiveSelectedSite && (
           <div className="selected-entity-card">
             <div className="selected-card-header">
               <Tag type="green" size="sm">
@@ -546,15 +604,53 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
               </Link>
             </div>
             <div className="selected-card-content">
-              <h5>{selectedSite.organizationName}</h5>
+              <h5>{effectiveSelectedSite.organizationName}</h5>
               <p>
-                {selectedSite.city && `Location: ${selectedSite.city}`}
-                {selectedSite.organizationType &&
-                  ` · Type: ${selectedSite.organizationType}`}
+                {effectiveSelectedSite.city &&
+                  `Location: ${effectiveSelectedSite.city}`}
+                {effectiveSelectedSite.organizationType &&
+                  ` · Type: ${effectiveSelectedSite.organizationType}`}
               </p>
             </div>
           </div>
         )}
+
+        <Grid>
+          <Column lg={10} md={8} sm={4}>
+            <Select
+              id="referringSiteDepartment"
+              labelText={intl.formatMessage({ id: "site.department" })}
+              value={
+                orderData?.sampleOrderItems?.referringSiteDepartmentId || ""
+              }
+              onChange={handleDepartmentChange}
+              disabled={
+                isReadOnly ||
+                !orderData?.sampleOrderItems?.referringSiteId ||
+                isLoadingDepartments ||
+                departmentOptions.length === 0
+              }
+            >
+              <SelectItem
+                value=""
+                text={intl.formatMessage({
+                  id: !orderData?.sampleOrderItems?.referringSiteId
+                    ? "site.department.selectFirst"
+                    : departmentOptions.length > 0
+                      ? "site.department.choose"
+                      : "site.department.none",
+                })}
+              />
+              {departmentOptions.map((department) => (
+                <SelectItem
+                  key={department.id}
+                  value={department.id}
+                  text={department.value}
+                />
+              ))}
+            </Select>
+          </Column>
+        </Grid>
       </div>
 
       {/* Provider Search */}
@@ -582,7 +678,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
               onChange={(e) =>
                 handleProviderFieldChange("name", e.target.value)
               }
-              disabled={isReadOnly || selectedProvider}
+              disabled={Boolean(isReadOnly || effectiveSelectedProvider)}
             />
           </Column>
           <Column lg={6} md={4} sm={4}>
@@ -597,7 +693,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
               onChange={(e) =>
                 handleProviderFieldChange("phone", e.target.value)
               }
-              disabled={isReadOnly || selectedProvider}
+              disabled={Boolean(isReadOnly || effectiveSelectedProvider)}
             />
           </Column>
 
@@ -608,9 +704,11 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
                 kind="primary"
                 size="md"
                 onClick={() => handleProviderSearch()}
-                disabled={
-                  isSearchingProviders || isReadOnly || selectedProvider
-                }
+                disabled={Boolean(
+                  isSearchingProviders ||
+                  isReadOnly ||
+                  effectiveSelectedProvider,
+                )}
               >
                 <FormattedMessage
                   id="label.button.search"
@@ -621,7 +719,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
                 kind="ghost"
                 size="md"
                 onClick={handleClearProviderSearch}
-                disabled={selectedProvider}
+                disabled={Boolean(effectiveSelectedProvider)}
               >
                 <FormattedMessage
                   id="label.button.clear"
@@ -633,7 +731,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
         </Grid>
 
         {/* Provider Results */}
-        {providerResults.length > 0 && !selectedProvider && (
+        {providerResults.length > 0 && !effectiveSelectedProvider && (
           <div className="search-results">
             <p className="results-count">
               {providerResults.length}{" "}
@@ -707,7 +805,7 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
         )}
 
         {/* Selected Provider Card */}
-        {selectedProvider && (
+        {effectiveSelectedProvider && (
           <div className="selected-entity-card">
             <div className="selected-card-header">
               <Tag type="green" size="sm">
@@ -722,12 +820,14 @@ const RequesterSection = ({ orderData, setOrderData, isReadOnly }) => {
             </div>
             <div className="selected-card-content">
               <h5>
-                {selectedProvider.firstName} {selectedProvider.lastName}
+                {effectiveSelectedProvider.firstName}{" "}
+                {effectiveSelectedProvider.lastName}
               </h5>
               <p>
-                {selectedProvider.phone && `Phone: ${selectedProvider.phone}`}
-                {selectedProvider.source &&
-                  ` · Source: ${selectedProvider.source}`}
+                {effectiveSelectedProvider.phone &&
+                  `Phone: ${effectiveSelectedProvider.phone}`}
+                {effectiveSelectedProvider.source &&
+                  ` · Source: ${effectiveSelectedProvider.source}`}
               </p>
             </div>
           </div>

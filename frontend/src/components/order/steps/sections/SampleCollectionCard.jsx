@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -10,12 +10,17 @@ import {
   SelectItem,
   NumberInput,
   TextInput,
-  DatePicker,
-  DatePickerInput,
   TimePicker,
   Link,
 } from "@carbon/react";
 import { Printer } from "@carbon/icons-react";
+import CustomDatePicker from "../../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../../layout/Layout";
+import {
+  formatIsoDateForBackend,
+  formatPickerDateForIso,
+  isCollectionDateBeforeAdmissionDate,
+} from "../../dateUtils";
 
 /**
  * SampleCollectionCard - Card for a single sample with collection details
@@ -41,13 +46,26 @@ const SampleCollectionCard = ({
   onPrintLabels,
   isReadOnly,
   canRemove,
+  admissionDate = "",
 }) => {
   const intl = useIntl();
+  const hasInitializedDefaults = useRef(false);
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
+  const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
+  const collectionDateBeforeAdmission = isCollectionDateBeforeAdmissionDate(
+    sample.collectionDate,
+    admissionDate,
+  );
 
   // Auto-populate dates/times for new samples that don't have values yet
   // collectionDate/Time default to now; receivedDate/Time default to server values
   useEffect(() => {
-    if (!sample.sampleItemId && !isReadOnly) {
+    if (
+      !hasInitializedDefaults.current &&
+      !sample.sampleItemId &&
+      !isReadOnly
+    ) {
       const updates = {};
 
       if (!sample.collectionDate) {
@@ -73,6 +91,7 @@ const SampleCollectionCard = ({
       if (Object.keys(updates).length > 0) {
         onUpdate(sampleIndex, updates);
       }
+      hasInitializedDefaults.current = true;
     }
   }, [
     sample.sampleItemId,
@@ -95,22 +114,6 @@ const SampleCollectionCard = ({
   const handleFieldChange = (field, value) => {
     onUpdate(sampleIndex, { [field]: value });
   };
-
-  const formatDateForPicker = (dateStr) => {
-    if (!dateStr) return "";
-    if (dateStr.includes("/")) {
-      return dateStr;
-    }
-    const parts = dateStr.slice(0, 10).split("-");
-    if (parts.length === 3) {
-      return `${parts[1]}/${parts[2]}/${parts[0]}`;
-    }
-    return dateStr;
-  };
-
-  const todayForPicker = formatDateForPicker(
-    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`,
-  );
 
   return (
     <Tile
@@ -274,40 +277,38 @@ const SampleCollectionCard = ({
 
         {/* Collection Date */}
         <Column lg={4} md={4} sm={4}>
-          <DatePicker
-            datePickerType="single"
-            maxDate={todayForPicker}
-            value={formatDateForPicker(sample.collectionDate)}
-            onChange={(dates) => {
-              if (dates && dates[0]) {
-                const month = String(dates[0].getMonth() + 1).padStart(2, "0");
-                const day = String(dates[0].getDate()).padStart(2, "0");
-                const year = dates[0].getFullYear();
-                handleFieldChange("collectionDate", `${year}-${month}-${day}`);
-              }
-            }}
-          >
-            <DatePickerInput
-              id={`collectionDate-${sampleIndex}`}
-              labelText={
-                <>
+          <CustomDatePicker
+            id={`collectionDate-${sampleIndex}`}
+            labelText={
+              <>
+                <FormattedMessage
+                  id="collect.sample.collectionDate"
+                  defaultMessage="Collection Date"
+                />
+                <span className="helper-inline">
+                  {" "}
                   <FormattedMessage
-                    id="collect.sample.collectionDate"
-                    defaultMessage="Collection Date"
+                    id="collect.sample.collectionDate.helper"
+                    defaultMessage="(optional - filled when specimen is physically collected)"
                   />
-                  <span className="helper-inline">
-                    {" "}
-                    <FormattedMessage
-                      id="collect.sample.collectionDate.helper"
-                      defaultMessage="(optional — filled when specimen is physically collected)"
-                    />
-                  </span>
-                </>
-              }
-              placeholder="mm/dd/yyyy"
-              disabled={isReadOnly}
-            />
-          </DatePicker>
+                </span>
+              </>
+            }
+            value={formatIsoDateForBackend(sample.collectionDate, dateLocale)}
+            updateStateValue
+            disallowFutureDate
+            invalid={collectionDateBeforeAdmission}
+            invalidText={intl.formatMessage({
+              id: "collect.sample.collectionDateBeforeAdmission",
+            })}
+            onChange={(value) =>
+              handleFieldChange(
+                "collectionDate",
+                formatPickerDateForIso(value, dateLocale),
+              )
+            }
+            disabled={isReadOnly}
+          />
         </Column>
 
         {/* Collection Time */}
@@ -362,35 +363,27 @@ const SampleCollectionCard = ({
         </h6>
         <Grid>
           <Column lg={4} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
-              maxDate={todayForPicker}
-              value={formatDateForPicker(
+            <CustomDatePicker
+              id={`receivedDate-${sampleIndex}`}
+              labelText={intl.formatMessage({
+                id: "collect.sample.receivedDate",
+                defaultMessage: "Received Date",
+              })}
+              value={formatIsoDateForBackend(
                 sample.receivedDate ||
                   (sample.sampleItemId ? "" : serverReceivedDate),
+                dateLocale,
               )}
-              onChange={(dates) => {
-                if (dates && dates[0]) {
-                  const month = String(dates[0].getMonth() + 1).padStart(
-                    2,
-                    "0",
-                  );
-                  const day = String(dates[0].getDate()).padStart(2, "0");
-                  const year = dates[0].getFullYear();
-                  handleFieldChange("receivedDate", `${year}-${month}-${day}`);
-                }
-              }}
-            >
-              <DatePickerInput
-                id={`receivedDate-${sampleIndex}`}
-                labelText={intl.formatMessage({
-                  id: "collect.sample.receivedDate",
-                  defaultMessage: "Received Date",
-                })}
-                placeholder="mm/dd/yyyy"
-                disabled={isReadOnly}
-              />
-            </DatePicker>
+              updateStateValue
+              disallowFutureDate
+              onChange={(value) =>
+                handleFieldChange(
+                  "receivedDate",
+                  formatPickerDateForIso(value, dateLocale),
+                )
+              }
+              disabled={isReadOnly}
+            />
             {/* Only show auto-filled hint for new samples without sampleItemId */}
             {!sample.sampleItemId && (
               <span className="auto-filled-hint">

@@ -274,6 +274,46 @@ describe("MicrobiologyOrderEntrySection", () => {
     expect(admissionDate).toBeEnabled();
   });
 
+  it("shows collection timing as read-only context when revisiting the order", () => {
+    renderSection(
+      [
+        {
+          sampleTypeName: "Blood",
+          collectionDate: "2026-08-07",
+          tests: [
+            {
+              id: "2",
+              cultureWorkflowType: "BACTERIOLOGY",
+              methods: [
+                {
+                  methodId: "7",
+                  methodName: "Blood Culture Standard",
+                  isDefault: true,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      {
+        ...baseForm,
+        microbiologyOrderDetail: {
+          ...baseForm.microbiologyOrderDetail,
+          patientOrigin: "INPATIENT",
+          admissionDate: "2026-08-03",
+        },
+      },
+      vi.fn(),
+    );
+
+    expect(screen.getByText("Collection date: 08/07/2026")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Collected 4 days after admission - hospital-origin for surveillance.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("loads deployment origins and applies a configured requesting-unit default", async () => {
     let latestForm;
     const ControlledSection = () => {

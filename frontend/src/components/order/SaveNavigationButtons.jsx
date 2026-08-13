@@ -20,6 +20,7 @@ const SaveNavigationButtons = ({
   onSave,
   onSaveAndNext,
   canProceed = true,
+  canSave = true,
   showBack = true,
   className = "",
 }) => {
@@ -85,7 +86,11 @@ const SaveNavigationButtons = ({
       )}
 
       <div className="save-buttons-group">
-        <Button kind="secondary" onClick={handleSave} disabled={isSubmitting}>
+        <Button
+          kind="secondary"
+          onClick={handleSave}
+          disabled={isSubmitting || !canSave}
+        >
           <FormattedMessage id="button.save.stay" />
         </Button>
 
@@ -94,7 +99,7 @@ const SaveNavigationButtons = ({
             kind="primary"
             className="forward-button"
             onClick={handleSaveAndNext}
-            disabled={isSubmitting || !canProceed}
+            disabled={isSubmitting || !canProceed || !canSave}
           >
             <FormattedMessage id="button.save.next" />
           </Button>
@@ -105,7 +110,7 @@ const SaveNavigationButtons = ({
             kind="primary"
             className="forward-button"
             onClick={handleSave}
-            disabled={isSubmitting || !canProceed}
+            disabled={isSubmitting || !canProceed || !canSave}
           >
             <FormattedMessage id="label.button.submit" />
           </Button>

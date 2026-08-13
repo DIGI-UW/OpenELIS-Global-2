@@ -22,6 +22,8 @@ import {
   buildSubmissionMicrobiologyOrderDetail,
   buildSubmissionSampleOrderItems,
 } from "./orderDataUtils";
+import { ConfigurationContext } from "../layout/Layout";
+import { formatIsoDateForBackend, normalizeDateForState } from "./dateUtils";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -143,21 +145,6 @@ const getCurrentTime = () => {
 };
 
 /**
- * Convert ISO date (YYYY-MM-DD) to backend format (MM/dd/yyyy)
- */
-const convertIsoToBackendDate = (isoDate) => {
-  if (!isoDate) return "";
-  // Check if already in MM/dd/yyyy format
-  if (isoDate.includes("/")) return isoDate;
-  // Convert from YYYY-MM-DD to MM/dd/yyyy
-  const parts = isoDate.split("-");
-  if (parts.length === 3) {
-    return `${parts[1]}/${parts[2]}/${parts[0]}`;
-  }
-  return isoDate;
-};
-
-/**
  * Initialize order data with minimal defaults.
  * Date fields will be populated from API response.
  */
@@ -179,6 +166,9 @@ const getInitialOrderData = () => {
 };
 
 export const OrderProvider = ({ children }) => {
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
+  const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
   const [orderId, setOrderId] = useState(null);
   const [labNumber, setLabNumber] = useState(null);
   const [orderData, setOrderDataState] = useState(getInitialOrderData);
@@ -240,175 +230,205 @@ export const OrderProvider = ({ children }) => {
     setSaveStatus(SaveStatus.UNSAVED);
   }, []);
 
+  const normalizeSamplesForState = useCallback(
+    (loadedSamples = []) =>
+      loadedSamples.map((sample) => ({
+        ...sample,
+        collectionDate: normalizeDateForState(
+          sample.collectionDate,
+          dateLocale,
+        ),
+        receivedDate: normalizeDateForState(sample.receivedDate, dateLocale),
+      })),
+    [dateLocale],
+  );
+
   /**
    * Load an existing order by lab number (accession number).
    * Used when user scans a barcode or enters a lab number.
    * Loads in read-only mode by default (user must click Edit to modify).
    */
-  const loadOrder = useCallback(async (searchLabNumber, readOnly = true) => {
-    setIsLoading(true);
-    setError(null);
+  const loadOrder = useCallback(
+    async (searchLabNumber, readOnly = true) => {
+      setIsLoading(true);
+      setError(null);
 
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/order/search?labNumber=${encodeURIComponent(searchLabNumber)}`,
-        (response) => {
-          setIsLoading(false);
+      return new Promise((resolve, reject) => {
+        getFromOpenElisServer(
+          `/rest/order/search?labNumber=${encodeURIComponent(searchLabNumber)}`,
+          (response) => {
+            setIsLoading(false);
 
-          if (response && response.labNumber) {
-            setOrderId(response.id);
-            setLabNumber(response.labNumber);
+            if (response && response.labNumber) {
+              setOrderId(response.id);
+              setLabNumber(response.labNumber);
 
-            const loadedOrderData = buildLoadedOrderData(response);
+              const loadedOrderData = buildLoadedOrderData(response);
 
-            setOrderDataState(loadedOrderData);
+              setOrderDataState(loadedOrderData);
 
-            // Load sample type requests if no sample_items exist (decoupled workflow)
-            // This handles Step 1 edit where samples are stored as requests, not items
-            const hasSampleItems =
-              response.samples &&
-              response.samples.length > 0 &&
-              response.samples.some((s) => s.sampleItemId);
+              // Load sample type requests if no sample_items exist (decoupled workflow)
+              // This handles Step 1 edit where samples are stored as requests, not items
+              const hasSampleItems =
+                response.samples &&
+                response.samples.length > 0 &&
+                response.samples.some((s) => s.sampleItemId);
 
-            if (!hasSampleItems && response.id) {
-              // Try to load sample type requests
-              getRequestsBySample(response.id)
-                .then((requests) => {
-                  if (requests && requests.length > 0) {
-                    const samplesFromRequests =
-                      convertRequestsToSamples(requests);
-                    setSamplesState(samplesFromRequests);
-                  } else {
-                    setSamplesState(response.samples || [sampleObject]);
-                  }
-                })
-                .catch(() => {
-                  setSamplesState(response.samples || [sampleObject]);
-                });
+              if (!hasSampleItems && response.id) {
+                // Try to load sample type requests
+                getRequestsBySample(response.id)
+                  .then((requests) => {
+                    if (requests && requests.length > 0) {
+                      const samplesFromRequests =
+                        convertRequestsToSamples(requests);
+                      setSamplesState(samplesFromRequests);
+                    } else {
+                      setSamplesState(
+                        normalizeSamplesForState(
+                          response.samples || [sampleObject],
+                        ),
+                      );
+                    }
+                  })
+                  .catch(() => {
+                    setSamplesState(
+                      normalizeSamplesForState(
+                        response.samples || [sampleObject],
+                      ),
+                    );
+                  });
+              } else {
+                setSamplesState(
+                  normalizeSamplesForState(response.samples || [sampleObject]),
+                );
+              }
+
+              setIsReadOnly(readOnly);
+              setIsEditMode(false);
+              setIsDirty(false);
+              setSaveStatus(SaveStatus.SAVED);
+
+              setStepProgress(
+                response.stepProgress || {
+                  enter: false,
+                  collect: false,
+                  label: false,
+                  qa: false,
+                },
+              );
+
+              // Load storageSkipped from backend response
+              const savedStorageSkipped = response.storageSkipped === true;
+              setStorageSkippedState(savedStorageSkipped);
+
+              setError(null);
+              lastSavedDataRef.current = JSON.stringify({
+                orderData: loadedOrderData,
+                samples: response.samples,
+              });
+              resolve(response);
             } else {
-              setSamplesState(response.samples || [sampleObject]);
+              const errorMsg = "Order not found";
+              setError(errorMsg);
+              reject(new Error(errorMsg));
             }
-
-            setIsReadOnly(readOnly);
-            setIsEditMode(false);
-            setIsDirty(false);
-            setSaveStatus(SaveStatus.SAVED);
-
-            setStepProgress(
-              response.stepProgress || {
-                enter: false,
-                collect: false,
-                label: false,
-                qa: false,
-              },
-            );
-
-            // Load storageSkipped from backend response
-            const savedStorageSkipped = response.storageSkipped === true;
-            setStorageSkippedState(savedStorageSkipped);
-
-            setError(null);
-            lastSavedDataRef.current = JSON.stringify({
-              orderData: loadedOrderData,
-              samples: response.samples,
-            });
-            resolve(response);
-          } else {
-            const errorMsg = "Order not found";
-            setError(errorMsg);
-            reject(new Error(errorMsg));
-          }
-        },
-      );
-    });
-  }, []);
+          },
+        );
+      });
+    },
+    [normalizeSamplesForState],
+  );
 
   /**
    * Convert samples array to XML format expected by backend
    * @param samplesArray - Array of sample objects
    * @param envFields - Optional environmentalFields from orderData (for GPS fallback)
    */
-  const buildSampleXML = useCallback((samplesArray, envFields = {}) => {
-    if (!samplesArray || samplesArray.length === 0) {
-      return "";
-    }
-
-    // Check if any sample has a sample type (required for saving)
-    const hasSampleType = samplesArray.some((s) => s.sampleTypeId);
-    if (!hasSampleType) {
-      return "";
-    }
-
-    let sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
-    sampleXmlString += "<samples>";
-
-    samplesArray.forEach((sampleItem) => {
-      // Include sample if it has a sample type (tests are optional for collection step)
-      if (sampleItem.sampleTypeId) {
-        const tests =
-          sampleItem.tests && sampleItem.tests.length > 0
-            ? sampleItem.tests.map((t) => t.id).join(",")
-            : "";
-        const panels =
-          sampleItem.panels && sampleItem.panels.length > 0
-            ? sampleItem.panels.map((p) => p.id).join(",")
-            : "";
-
-        // Get collection data - check both top-level fields (new) and sampleXML (legacy)
-        const sampleXMLData = sampleItem.sampleXML || {};
-        // Convert ISO date (YYYY-MM-DD) to backend format (MM/dd/yyyy)
-        const collectionDate = convertIsoToBackendDate(
-          sampleItem.collectionDate || sampleXMLData.collectionDate || "",
-        );
-        const collectionTime =
-          sampleItem.collectionTime || sampleXMLData.collectionTime || "";
-        const collector =
-          sampleItem.collectorId || sampleXMLData.collector || "";
-        const collectionConditions =
-          sampleItem.collectionConditions ||
-          sampleXMLData.collectionConditions ||
-          "";
-        const quantity = sampleItem.quantity || sampleXMLData.quantity || "";
-        const uom = sampleItem.quantityUnit || sampleXMLData.uom || "";
-        const rejected = sampleItem.sampleRejected ? "true" : "false";
-        const rejectReasonId = sampleItem.rejectionReason || "";
-
-        const receivedDate = convertIsoToBackendDate(
-          sampleItem.receivedDate || sampleXMLData.receivedDate || "",
-        );
-        const receivedTime =
-          sampleItem.receivedTime || sampleXMLData.receivedTime || "";
-
-        // Storage location data - check both top-level sample properties (from OrderLabel)
-        // and nested sampleXML.storageLocation (legacy format)
-        const storageLocation = sampleXMLData.storageLocation || {};
-        const storageLocationId =
-          sampleItem.storageLocationId || storageLocation.id || "";
-        const storageLocationType =
-          sampleItem.storageLocationType || storageLocation.type || "";
-        const storagePositionCoordinate =
-          sampleItem.storagePositionCoordinate ||
-          storageLocation.positionCoordinate ||
-          "";
-
-        // GPS data - fallback to environmentalFields for environmental workflow
-        const gpsLatitude =
-          sampleXMLData.gpsLatitude || envFields.gpsLatitude || "";
-        const gpsLongitude =
-          sampleXMLData.gpsLongitude || envFields.gpsLongitude || "";
-        const gpsAccuracy = sampleXMLData.gpsAccuracy || "";
-        const gpsCaptureMethod = sampleXMLData.gpsCaptureMethod || "";
-
-        // Include sampleItemId for updates - this identifies which existing sample_item to update
-        const sampleItemId = sampleItem.sampleItemId || "";
-
-        sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}'/>`;
+  const buildSampleXML = useCallback(
+    (samplesArray, envFields = {}) => {
+      if (!samplesArray || samplesArray.length === 0) {
+        return "";
       }
-    });
 
-    sampleXmlString += "</samples>";
-    return sampleXmlString;
-  }, []);
+      // Check if any sample has a sample type (required for saving)
+      const hasSampleType = samplesArray.some((s) => s.sampleTypeId);
+      if (!hasSampleType) {
+        return "";
+      }
+
+      let sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
+      sampleXmlString += "<samples>";
+
+      samplesArray.forEach((sampleItem) => {
+        // Include sample if it has a sample type (tests are optional for collection step)
+        if (sampleItem.sampleTypeId) {
+          const tests =
+            sampleItem.tests && sampleItem.tests.length > 0
+              ? sampleItem.tests.map((t) => t.id).join(",")
+              : "";
+          const panels =
+            sampleItem.panels && sampleItem.panels.length > 0
+              ? sampleItem.panels.map((p) => p.id).join(",")
+              : "";
+
+          // Get collection data - check both top-level fields (new) and sampleXML (legacy)
+          const sampleXMLData = sampleItem.sampleXML || {};
+          const collectionDate = formatIsoDateForBackend(
+            sampleItem.collectionDate || sampleXMLData.collectionDate || "",
+            dateLocale,
+          );
+          const collectionTime =
+            sampleItem.collectionTime || sampleXMLData.collectionTime || "";
+          const collector =
+            sampleItem.collectorId || sampleXMLData.collector || "";
+          const collectionConditions =
+            sampleItem.collectionConditions ||
+            sampleXMLData.collectionConditions ||
+            "";
+          const quantity = sampleItem.quantity || sampleXMLData.quantity || "";
+          const uom = sampleItem.quantityUnit || sampleXMLData.uom || "";
+          const rejected = sampleItem.sampleRejected ? "true" : "false";
+          const rejectReasonId = sampleItem.rejectionReason || "";
+
+          const receivedDate = formatIsoDateForBackend(
+            sampleItem.receivedDate || sampleXMLData.receivedDate || "",
+            dateLocale,
+          );
+          const receivedTime =
+            sampleItem.receivedTime || sampleXMLData.receivedTime || "";
+
+          // Storage location data - check both top-level sample properties (from OrderLabel)
+          // and nested sampleXML.storageLocation (legacy format)
+          const storageLocation = sampleXMLData.storageLocation || {};
+          const storageLocationId =
+            sampleItem.storageLocationId || storageLocation.id || "";
+          const storageLocationType =
+            sampleItem.storageLocationType || storageLocation.type || "";
+          const storagePositionCoordinate =
+            sampleItem.storagePositionCoordinate ||
+            storageLocation.positionCoordinate ||
+            "";
+
+          // GPS data - fallback to environmentalFields for environmental workflow
+          const gpsLatitude =
+            sampleXMLData.gpsLatitude || envFields.gpsLatitude || "";
+          const gpsLongitude =
+            sampleXMLData.gpsLongitude || envFields.gpsLongitude || "";
+          const gpsAccuracy = sampleXMLData.gpsAccuracy || "";
+          const gpsCaptureMethod = sampleXMLData.gpsCaptureMethod || "";
+
+          // Include sampleItemId for updates - this identifies which existing sample_item to update
+          const sampleItemId = sampleItem.sampleItemId || "";
+
+          sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}'/>`;
+        }
+      });
+
+      sampleXmlString += "</samples>";
+      return sampleXmlString;
+    },
+    [dateLocale],
+  );
 
   /**
    * Build referral items from samples
@@ -534,7 +554,9 @@ export const OrderProvider = ({ children }) => {
                       setOrderId(response.id);
                     }
                     if (response.samples) {
-                      setSamplesState(response.samples);
+                      setSamplesState(
+                        normalizeSamplesForState(response.samples),
+                      );
                     }
                     // CRITICAL: Update patientUpdateStatus to NO_ACTION after first save
                     // This prevents "stale state" errors when saving again (patient already exists)
@@ -577,6 +599,7 @@ export const OrderProvider = ({ children }) => {
       isEditMode,
       buildSampleXML,
       buildReferralItems,
+      normalizeSamplesForState,
     ],
   );
 

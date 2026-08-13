@@ -49,6 +49,8 @@ const MicrobiologyOrderEntrySection = ({
     "";
   const methodSourceTests =
     cultureTests.length > 0 ? cultureTests : selectedTests;
+  const collectionDate =
+    samples.find((sample) => sample.collectionDate)?.collectionDate || "";
 
   const methods = useMemo(() => {
     const byId = new Map();
@@ -179,6 +181,7 @@ const MicrobiologyOrderEntrySection = ({
         patientOrigins={patientOriginOptions}
         idPrefix="microbiology-order-entry"
         isReadOnly={isReadOnly}
+        collectionDate={collectionDate}
       />
     </Layer>
   );

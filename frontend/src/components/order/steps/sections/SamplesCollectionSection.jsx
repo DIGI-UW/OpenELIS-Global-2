@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useIntl, FormattedMessage } from "react-intl";
+import { FormattedMessage } from "react-intl";
 import { Tile, Button, Stack } from "@carbon/react";
 import { Add, Printer } from "@carbon/icons-react";
 import SampleCollectionCard from "./SampleCollectionCard";
@@ -23,8 +23,8 @@ const SamplesCollectionSection = ({
   unitOfMeasures,
   updateSampleCollectionDetails,
   isReadOnly,
+  admissionDate,
 }) => {
-  const intl = useIntl();
   const componentMounted = useRef(true);
 
   // Get current date/time as fallback
@@ -79,7 +79,7 @@ const SamplesCollectionSection = ({
   };
 
   // Handle print labels for a specific sample
-  const handlePrintLabels = (sampleIndex) => {
+  const handlePrintLabels = (_sampleIndex) => {
     // TODO: Implement label printing
   };
 
@@ -124,6 +124,7 @@ const SamplesCollectionSection = ({
             onPrintLabels={handlePrintLabels}
             isReadOnly={isReadOnly}
             canRemove={samples.length > 1}
+            admissionDate={admissionDate}
           />
         ))}
 

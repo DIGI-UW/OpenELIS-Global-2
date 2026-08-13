@@ -76,12 +76,12 @@ const OrderWorkflowLayout = ({
   currentStep,
   title,
   canProceed = true,
+  canSave = true,
   onSave,
   onSaveAndNext,
   extraButtons,
   showSaveButtons = true,
 }) => {
-  const intl = useIntl();
   const location = useLocation();
   const { isReadOnly, isEditMode, enableEditMode, labNumber, orderData } =
     useOrderContext();
@@ -180,6 +180,7 @@ const OrderWorkflowLayout = ({
               <SaveNavigationButtons
                 currentStep={activeStep}
                 canProceed={canProceed}
+                canSave={canSave}
                 onSave={onSave}
                 onSaveAndNext={onSaveAndNext}
               />
