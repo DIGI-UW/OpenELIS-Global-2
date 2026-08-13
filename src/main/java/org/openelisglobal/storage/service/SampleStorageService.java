@@ -95,6 +95,7 @@ public interface SampleStorageService {
      * @return quantity snapshot: sampleItemId, quantity, remainingQuantity,
      *         exhausted
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> recordSampleUsage(String sampleItemId, java.math.BigDecimal amountUsed,
             boolean markUsedUp, String sysUserId);
 

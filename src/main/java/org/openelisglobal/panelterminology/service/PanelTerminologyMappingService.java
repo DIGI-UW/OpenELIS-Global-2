@@ -3,10 +3,12 @@ package org.openelisglobal.panelterminology.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface PanelTerminologyMappingService extends BaseObjectService<PanelTerminologyMapping, String> {
 
     /** Active terminology mappings for a panel. */
+    @PreAuthorize("hasAuthority('PRIV_PANEL_VIEW')")
     List<PanelTerminologyMapping> getActiveByPanelId(String panelId);
 
     /**
@@ -23,6 +25,7 @@ public interface PanelTerminologyMappingService extends BaseObjectService<PanelT
      * routes e-orders by it): after the reconcile, {@code panel.loinc} is set to
      * the first active SAME_AS LOINC mapping's code, or cleared when none remains.
      */
+    @PreAuthorize("hasAuthority('PRIV_PANEL_MANAGE')")
     void saveMappingsForPanel(String panelId, List<PanelTerminologyMapping> desired, String sysUserId);
 
     /**

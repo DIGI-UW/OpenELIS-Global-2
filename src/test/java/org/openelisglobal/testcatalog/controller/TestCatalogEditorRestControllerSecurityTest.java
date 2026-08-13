@@ -1,8 +1,6 @@
 package org.openelisglobal.testcatalog.controller;
 
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -44,7 +42,8 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * FR-004: the unified Test Catalog editor surface is privilege-gated at the
  * service layer (S011c) — the API returns 401 for the unauthenticated and 403
  * for authenticated users lacking the catalog privileges (PRIV_RESULT_VIEW /
- * PRIV_TEST_CONFIGURE / PRIV_SAMPLE_TYPE_VIEW / PRIV_PANEL_*). Mocks are built
+ * PRIV_TEST_CONFIGURE / PRIV_SAMPLE_TYPE_VIEW / PRIV_PANEL_*). Service
+ * collaborators are JDK-Proxy stubs (nullStub) not Mockito mocks, so
  * withoutAnnotations() so the interface's @PreAuthorize is the single
  * annotation source Spring Security evaluates.
  */
@@ -208,12 +207,21 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
          */
         @Bean
         TestService testService() {
-            TestService testService = mock(TestService.class);
-            when(testService.getTestById(anyString())).thenAnswer(invocation -> {
-                Integer.parseInt(invocation.getArgument(0));
-                return null;
-            });
-            return testService;
+            // JDK-Proxy stub, not a Mockito mock: a Mockito mock subclass re-declares
+            // the interface's @PreAuthorize, and Spring Security's unique-annotation
+            // scan then finds it twice and fails. getTestById mirrors the
+            // LIMSStringNumberUserType id binding — non-numeric ids blow up here — while
+            // every other method falls back to nullStub's null/default.
+            TestService delegate = nullStub(TestService.class);
+            return (TestService) java.lang.reflect.Proxy.newProxyInstance(TestService.class.getClassLoader(),
+                    new Class<?>[] { TestService.class }, (proxy, method, args) -> {
+                        if (method.getName().equals("getTestById") && args != null && args.length == 1
+                                && args[0] instanceof String) {
+                            Integer.parseInt((String) args[0]);
+                            return null;
+                        }
+                        return method.invoke(delegate, args);
+                    });
         }
 
         /**

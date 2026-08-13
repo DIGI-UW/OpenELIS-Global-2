@@ -27,7 +27,15 @@ import org.springframework.security.core.userdetails.UserDetailsService;
  */
 public class RbacPrivilegeEnforcementTest extends BaseWebContextSensitiveTest {
 
+    // AppTestConfig excludes org.openelisglobal.security.login.* from its scan, so
+    // the DB-backed CustomUserDetailsService is not a bean and cannot be autowired.
+    // This test exercises exactly that chain (DB privilege -> authority), so build
+    // one directly and let the context autowire its fields — avoiding a nested
+    // @Configuration, which would fork the shared test ApplicationContext and
+    // corrupt the cache for sibling tests in the same fork.
     @Autowired
+    private org.springframework.beans.factory.config.AutowireCapableBeanFactory beanFactory;
+
     private UserDetailsService userDetailsService;
 
     @Autowired
@@ -38,6 +46,11 @@ public class RbacPrivilegeEnforcementTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/rbac-privilege-enforcement.xml");
+        // Build the DB-backed service and inject its @Autowired collaborators from
+        // the running context (it is not a registered bean here — see field note).
+        org.openelisglobal.security.login.CustomUserDetailsService uds = new org.openelisglobal.security.login.CustomUserDetailsService();
+        beanFactory.autowireBean(uds);
+        this.userDetailsService = uds;
     }
 
     // --- CustomUserDetailsService loads correct authorities from DB ---
