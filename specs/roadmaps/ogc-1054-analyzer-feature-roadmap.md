@@ -484,7 +484,8 @@ silently route around.
 | `ISSUE-R0-004` | Provenance | `RESOLVED` | A commit cannot name its own SHA; committed records name implementation/evidence commits and CI records the final immutable PR-head SHA.                                   |
 | `ISSUE-R0-005` | Provenance | `OPEN`     | PR #3792 carries an earlier divergent blob at this path; after OE-F0 opens, retitle and close #3792 with links to OE-R0/OE-F0 and retain its branch only as history.       |
 | `ISSUE-R0-006` | Provenance | `RESOLVED` | Code audit found #3792-only behavior described as current. R0 now distinguishes current-code facts from historical provenance and enforces one descendant roadmap lineage. |
-| `AMB-F0-001`   | Scope      | `OPEN`     | Compatible behavior in #3792 is not assumed. F0 must classify every considered behavior in the salvage manifest before reimplementation.                                   |
+| `AMB-F0-001`   | Scope      | `RESOLVED` | The F0 salvage manifest classifies every considered #3792 behavior group before production reimplementation and prohibits commit-level cherry-picks.                       |
+| `ISSUE-F0-001` | Test scope | `OPEN`     | The current ASTM harness spec directly calls the simulator while labeled as demo evidence; F0 reclassifies it as foundational and preserves the integration coverage.      |
 | `AMB-E0-001`   | Contract   | `OPEN`     | Portable profile/site-binding persistence and migration semantics require a current-code ADR plus failing producer/consumer tests before code.                             |
 | `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.      |
 | `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                            |
@@ -499,7 +500,7 @@ the checkpoint that discovers or resolves it; IDs are never reused.
 | Order | Checkpoint                | Status on 2026-08-13 | Next transition                      |
 | ----- | ------------------------- | -------------------- | ------------------------------------ |
 | 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge          |
-| 1     | F0 foundation salvage     | `IN_PROGRESS`        | Local implementation/evidence review |
+| 1     | F0 foundation salvage     | `IN_PROGRESS`        | Red guard test at `da3e65ebc`        |
 | 2     | E0 contract and migration | `NOT_STARTED`        | F0 accepted; BR-E0 opened            |
 | 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted                |
 | 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted                |
@@ -613,6 +614,8 @@ for OGC-1054 and names the exact next branch, OE-F0.
 **Exit:** OE-F0 is a small green replacement foundation; every retained behavior
 has a test and every rejected behavior has a reason or legacy guard. #3792 is no
 longer an open delivery candidate.
+
+**Evidence:** [F0 foundation salvage manifest](./ogc-1054-foundation-salvage-manifest.md).
 
 ### E0 - Engineering contract and migration characterization
 
