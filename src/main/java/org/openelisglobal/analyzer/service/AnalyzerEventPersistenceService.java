@@ -5,7 +5,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 
 public interface AnalyzerEventPersistenceService {
 
-    AnalyzerEvent createIfAbsent(AnalyzerEvent event);
+    AnalyzerEventRegistration createIfAbsent(AnalyzerEvent event);
 
     AnalyzerEvent markApplied(AnalyzerEvent event, String targetReference);
 

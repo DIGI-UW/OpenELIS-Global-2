@@ -18,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerEventPersistenceService;
+import org.openelisglobal.analyzer.service.AnalyzerEventRegistration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.form.MicroAstAnalyzerReadingRequestForm;
@@ -46,7 +47,7 @@ public class MicroAstAnalyzerEventServiceTest {
     @Test
     public void routesAnAstResultByAnalyzerAndCardAndMarksTheEnvelopeApplied() {
         AnalyzerEvent event = event("event-1", "RECEIVED");
-        when(persistenceService.createIfAbsent(any())).thenReturn(event);
+        when(persistenceService.createIfAbsent(any())).thenReturn(new AnalyzerEventRegistration(event, true));
         MicroAstRun run = new MicroAstRun();
         run.setId("run-1");
         when(runDAO.getByAnalyzerAndCard("7", "card-42")).thenReturn(Optional.of(run));
@@ -65,7 +66,7 @@ public class MicroAstAnalyzerEventServiceTest {
     @Test
     public void unmatchedEventIsRetainedForExistingAnalyzerReconciliationSurface() {
         AnalyzerEvent event = event("event-2", "RECEIVED");
-        when(persistenceService.createIfAbsent(any())).thenReturn(event);
+        when(persistenceService.createIfAbsent(any())).thenReturn(new AnalyzerEventRegistration(event, true));
         when(runDAO.getByAnalyzerAndCard("7", "unknown-card")).thenReturn(Optional.empty());
 
         service.receive(command("event-2", "7", "unknown-card", null), "1");
@@ -77,13 +78,26 @@ public class MicroAstAnalyzerEventServiceTest {
     @Test
     public void alreadyProcessedExternalEventIsIdempotent() {
         AnalyzerEvent applied = event("event-3", "APPLIED");
-        when(persistenceService.createIfAbsent(any())).thenReturn(applied);
+        when(persistenceService.createIfAbsent(any())).thenReturn(new AnalyzerEventRegistration(applied, false));
 
         AnalyzerEvent result = service.receive(command("event-3", "7", "card-42", "run-1"), "1");
 
         assertSame(applied, result);
         verify(astService, never()).applyAnalyzerResults(any(), any());
         verify(persistenceService, never()).markApplied(any(), any());
+    }
+
+    @Test
+    public void concurrentReceivedDuplicateDoesNotApplyAnalyzerResultsAgain() {
+        AnalyzerEvent received = event("event-4", "RECEIVED");
+        when(persistenceService.createIfAbsent(any())).thenReturn(new AnalyzerEventRegistration(received, false));
+
+        AnalyzerEvent result = service.receive(command("event-4", "7", "card-42", "run-1"), "1");
+
+        assertSame(received, result);
+        verify(astService, never()).applyAnalyzerResults(any(), any());
+        verify(persistenceService, never()).markApplied(any(), any());
+        verify(persistenceService, never()).markFailed(any(), any());
     }
 
     private MicroAstAnalyzerEventCommand command(String externalId, String analyzerId, String sourceId,

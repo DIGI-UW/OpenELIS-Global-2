@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
 import org.openelisglobal.analyzer.service.AnalyzerEventPersistenceService;
+import org.openelisglobal.analyzer.service.AnalyzerEventRegistration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.form.MicroAstAnalyzerResultRequestForm;
@@ -38,8 +39,9 @@ public class MicroAstAnalyzerEventService {
 
     public AnalyzerEvent receive(MicroAstAnalyzerEventCommand command, String performedBy) {
         validate(command);
-        AnalyzerEvent event = persistenceService.createIfAbsent(toEvent(command));
-        if (!"RECEIVED".equals(event.getStatus())) {
+        AnalyzerEventRegistration registration = persistenceService.createIfAbsent(toEvent(command));
+        AnalyzerEvent event = registration.event();
+        if (!registration.created() || !"RECEIVED".equals(event.getStatus())) {
             return event;
         }
         try {
