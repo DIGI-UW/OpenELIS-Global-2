@@ -103,6 +103,21 @@ describe("harness demo dependency guard", () => {
     ]);
   });
 
+  test("rejects unresolved local runtime imports", () => {
+    const frontendRoot = createFrontend({
+      "playwright/tests/demo/harness/story.spec.ts":
+        "import { push } from '../../../helpers/missing'; await push(page);",
+    });
+
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([
+      expect.objectContaining({
+        dependencyPath: "playwright/tests/demo/harness/story.spec.ts",
+        messageId: "unresolvedLocalImport",
+        specPath: "playwright/tests/demo/harness/story.spec.ts",
+      }),
+    ]);
+  });
+
   test("rejects backend access in the demo spec itself", () => {
     const frontendRoot = createFrontend({
       "playwright/tests/demo/harness/story.spec.ts":
