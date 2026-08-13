@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec/011-madagascar-analyzer-integration`  
 **Created**: 2026-01-22  
-**Updated**: 2026-04-20 (status reckoning — three tracks in flight)  
+**Updated**: 2026-08-13 (Bridge ownership alignment)
 **Status**: **In Progress** — MVP code shipped across HL7/ASTM/FILE; site
 validation + post-MVP work open.  
 **Extends**: Feature 004-astm-analyzer-mapping
@@ -12,21 +12,30 @@ validation + post-MVP work open.
 This spec is the umbrella for the **generic analyzer integration architecture**
 that underpins the Madagascar (and subsequent) analyzer deployments. The January
 2026 body below (12-analyzer contract matrix, RS232-via-bridge framing, contract
-deadline 2026-02-28, M0–M21 milestones) is kept for audit/history; the canonical
-**architecture** is now: three generic plugins + profile JSON drops, with all
-per-instrument detail tracked out-of-repo.
+deadline 2026-02-28, M0–M21 milestones) is kept for audit/history. The canonical
+target architecture is the Bridge-owned analyzer runtime defined in
+[`AGENTS.md`](../../AGENTS.md) and the
+[OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+
+Bridge owns portable analyzer profiles, listeners, parsing, protocol execution,
+connection probes, FILE watching/transport, and normalized FHIR delivery.
+OpenELIS owns lab-facing orchestration, local clinical catalog bindings, audit,
+operational QC, activation, held results, and review. Existing OpenELIS generic
+plugins and distro-mounted profile files are transitional code to characterize
+and migrate; do not extend them into a second analyzer runtime or profile
+authority.
 
 ### How an analyzer gets integrated
 
-Adding a new analyzer on an already-supported protocol is a **profile-JSON
-drop** — no new code path per instrument. The three supported integration
-patterns are:
+Adding a new analyzer on an already-supported protocol is profile work in the
+Bridge-owned catalog, not a new OpenELIS code path per instrument. The three
+supported integration patterns are:
 
-| Pattern      | Generic plugin | Transport                                 | Profile directory                  | Typical add-an-analyzer workflow                                         |
-| ------------ | -------------- | ----------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
-| **A2** (HL7) | `GenericHL7`   | Bridge MLLP listener (OGC-325)            | `projects/analyzer-profiles/hl7/`  | Drop profile JSON; register via admin UI                                 |
-| **A** (ASTM) | `GenericASTM`  | Bridge ASTM TCP listener                  | `projects/analyzer-profiles/astm/` | Drop profile JSON; register via admin UI                                 |
-| **C** (FILE) | `GenericFile`  | Bridge watcher or Upload UI (OGC-324/329) | `projects/analyzer-profiles/file/` | Drop profile JSON; add a reader only if the file format is genuinely new |
+| Pattern      | Runtime transport                      | Transitional profile mirror        | Target add-analyzer workflow                                                                                      |
+| ------------ | -------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **A2** (HL7) | Bridge MLLP listener (OGC-325)         | `projects/analyzer-profiles/hl7/`  | Add/version a Bridge profile; configure the instance through OpenELIS                                             |
+| **A** (ASTM) | Bridge ASTM listener                   | `projects/analyzer-profiles/astm/` | Add/version a Bridge profile; configure the instance through OpenELIS                                             |
+| **C** (FILE) | Bridge watcher/transport (OGC-324/329) | `projects/analyzer-profiles/file/` | Add/version a Bridge profile; add Bridge format support only when evidence proves the generic reader insufficient |
 
 Patterns B (pipeline — e.g., TB-Profiler) and E (proprietary serial — e.g.,
 Stago, BCI) are out of scope for the generic plugins; they use dedicated
@@ -42,9 +51,10 @@ enumerate per-instrument status. That lives here:
   spec/companion confidence rating (`VALIDATED` / `HIGH` / `MEDIUM-HIGH` /
   `MEDIUM` / `LOW` / `N/A`), vendor docs, real-file availability, deployment
   status.
-- **Profile JSONs (the code-level analyzer list):**
+- **Transitional profile JSON mirror:**
   [`projects/analyzer-profiles/{astm,hl7,file}/*.json`](../../projects/analyzer-profiles/)
-  (distro `configs/analyzer-profiles/` is authoritative; repo is a mirror).
+  and the current distro mount. These describe the deployed baseline to migrate;
+  they are not the target authority for new work.
 - **Protocol fixtures, captures, and mock flows:**
   `projects/analyzer-mock-server/` + `tools/openelis-analyzer-bridge` — those
   projects own the instrument-technical details (ASTM/HL7 captures, file
@@ -57,8 +67,8 @@ enumerate per-instrument status. That lives here:
   have them)
 - Site validation at HJRA (networking + per-instrument field validation —
   tracked in Confluence, not here)
-- Unified FHIR R4 bridge interface — bridge parses all formats, delivers FHIR
-  transaction Bundles to OE (Phase 3B post-MVP)
+- Complete the unified FHIR R4 Bridge interface — Bridge parsing and normalized
+  delivery are target architecture prerequisites, not optional post-MVP work.
 - HL7 bidirectional (ORM^O01 worklist, QRY^Q02 order download)
 - GeneXpert HL7 mode (OGC-336) — QBP queries
 - Bridge outbound MLLP/ASTM client (LIS_INITIATED mode)
@@ -69,7 +79,9 @@ enumerate per-instrument status. That lives here:
 
 > The body below is **the original January 2026 scoping document** — kept
 > verbatim for audit/history. Where it conflicts with the architecture summary
-> above or the Confluence tracker, the canonical sources win.
+> above, `AGENTS.md`, or the OGC-1054 authoritative roadmap, the newer
+> engineering sources win. Product/design artifacts do not resolve technical
+> conflicts.
 
 ---
 

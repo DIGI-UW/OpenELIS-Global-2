@@ -7,12 +7,37 @@ For FILE-based analyzer workflows in OpenELIS Global 2:
 - Bridge is the runtime owner of directory watching/polling and file transport.
 - OpenELIS owns configuration, bridge registration, direct ingestion endpoint,
   and result processing.
-- No OpenELIS app-side FILE poller is implemented in this branch. If a fallback
-  poller is added later, it must remain disabled by default unless explicitly
-  enabled.
+- An OpenELIS app-side FILE poller is outside the target architecture and must
+  not be added. Any proposal to change this requires an explicit architecture
+  decision that supersedes this ownership model.
 
 When guidance conflicts, this ownership model takes precedence for remediation
 work in feature 014.
+
+## OpenELIS Work Product/Engineering Boundary
+
+For analyzer work, `DIGI-UW/openelis-work` is a non-technical product and design
+source only.
+
+- It may define user goals, lab-facing workflows, visible information and
+  states, functional acceptance behavior, and visual/interaction intent.
+- It does not define entities, tables, persistence, JSON structures, APIs,
+  routes, events, payloads, repository ownership, runtime processes,
+  synchronization, migration, or test-layer ownership.
+- Technical-looking labels, annotations, or examples in that repository are
+  non-normative. Do not use them for or against an implementation choice.
+- Derive implementation only from current OpenELIS, Analyzer Bridge, and
+  analyzer-mock code; repository-owned engineering specifications; and an
+  explicit ADR or versioned contract when a new decision is required.
+- Use `openelis-work` screenshots and prototypes for functional and visual
+  comparison, never as an implementation specification.
+
+For the target analyzer architecture, Analyzer Bridge owns portable analyzer
+profiles and analyzer-facing runtime behavior (listeners, parsing, probes,
+protocol execution, and FILE watching/transport). OpenELIS owns lab-facing
+orchestration, local clinical catalog bindings, audit, operational QC,
+activation, held results, and review. Do not recreate Bridge runtime behavior in
+OpenELIS.
 
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
