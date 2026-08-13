@@ -15,13 +15,15 @@
 **Red commits:** `aae2e6c640a4fc3c1b9bc22c1f04fff0281c8ad8`,
 `875fe34f06bef2b1d68469f5fdd03cfdb0b2aeae`,
 `f5f32b9ac6e55679db5c71b5bb70f6b504f2aea0`, and
-`77b023add0fac2bc1a65527d09c1119299d7ffde`, and
-`7b12470690b387b64ddfd30b37af7f6f0fa070fd`
+`77b023add0fac2bc1a65527d09c1119299d7ffde`,
+`7b12470690b387b64ddfd30b37af7f6f0fa070fd`, and
+`d039fae4c`
 
 **Green commits:** `784e4a37747befdb074678d6218664c0cd9d2859`,
 `73425c750b1ae05fb7a7e860a3355b52e0407b86`, and
-`35e06f987d5e26e5efc7b79bb08527d7458112ba`, and
-`612b1aabb52666f5fbb9c421accbe926b6dd1ada`
+`35e06f987d5e26e5efc7b79bb08527d7458112ba`,
+`612b1aabb52666f5fbb9c421accbe926b6dd1ada`, and
+`877eea555`
 
 **Refactor commit:** `ae6b170c0f5aa7a61c0f1b43bed3a59d529bbe3f`
 
@@ -251,6 +253,26 @@ Observed: all 46 focused direct/dependency tests, lint, and both Playwright
 guards passed. Runtime-import records now preserve source locations and report
 missing local modules before the dependency walk can silently omit them.
 
+### Increment F0-I5: substantive parity selection and precise force checks
+
+**Acceptance:** `F0-B12`, `F0-B14`, partial `MVP-023` static enforcement.
+
+**Red commit:** `d039fae4c` (`test(playwright): expose parity and force guard
+gaps`)
+
+Observed: 41 focused cases ran; 6 failed. The parity runner rejected the
+documented foundational project and selected an empty demo project by default,
+while the lint rule rejected `{ force: true }` on an unrelated domain method.
+
+**Green commit:** `877eea555` (`fix(playwright): run substantive parity checks`)
+
+Observed: all 43 focused cases, both Playwright guards, formatting, and shell
+syntax passed. Non-video parity now selects `harness-foundational` and proves
+that analyzer specs exist before running. Video mode still selects
+`harness-demo-video` but fails closed until M4 supplies a real user-story spec.
+Forced-action enforcement is limited to known Playwright locator actions and
+continues to catch direct and aliased locators without rejecting domain code.
+
 ## Cross-Repository Companion Disposition
 
 F0 changes Playwright classification and enforcement only. It neither consumes
@@ -274,9 +296,9 @@ an exact SHA; absence of a PR by itself is never evidence.
 
 | Layer                    | F0 status           | Rationale / evidence                                                                                                                         |
 | ------------------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Guard unit               | `RUN`               | 46 focused Vitest cases pass across direct AST, capability-alias, import-graph, and fail-closed behavior                                     |
+| Guard unit               | `RUN`               | 54 focused Vitest cases pass across direct AST, capability-alias, import-graph, project selection, and fail-closed behavior                 |
 | Frontend lint            | `RUN`               | `npm run lint` passes with zero warnings                                                                                                     |
-| Playwright project guard | `RUN`               | Bucket and dependency guards pass; `--list` assigns all 13 retained transport cases and 5 existing analyzer checks to `harness-foundational` |
+| Playwright project guard | `RUN`               | Bucket/dependency guards pass; parity selects the non-empty foundational project; `--list` assigns 18 analyzer checks there                  |
 | TypeScript diagnostic    | `RUN_BASELINE_FAIL` | Repo-wide typecheck reports 1,589 existing errors; none name the three changed analyzer specs, which compile through Playwright `--list`     |
 | RTL                      | `NOT_APPLICABLE`    | No React behavior changes in F0                                                                                                              |
 | Backend unit/security    | `RUN`               | Docker-backed analyzer/QC package suite: 793 tests, 0 failures, 0 errors, 0 skipped                                                          |
@@ -307,6 +329,7 @@ review.
 | ------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Meaningful coverage | Request capability, alias, event, import-form, entry-spec, and runner-exemption bypasses remained after I2 | I3 red commits expose the bypasses; `35e06f987` makes 45 cases green without weakening the UI-only rule                        |
 | Meaningful coverage | Missing static local imports could disappear from the dependency walk                                      | I4 red `7b1247069` proves the inversion; green `612b1aabb` reports the missing module with its source location                 |
+| Meaningful coverage | Parity defaulted to an empty demo project and force detection overreached into domain calls                | I5 red `d039fae4c` proves both; green `877eea555` selects a non-empty foundational suite and recognizes locator actions        |
 | Simplicity          | Foundational specs retained no-op demo presentation code and docs overstated the guard scope               | `ae6b170c0` removes 162 no-op lines; docs now name analyzer `harness-demo` specifically and use existing foundational examples |
 | Spec/code alignment | F0 descended from an obsolete R0 and older claims described #3792-only behavior as current                 | F0 is rebased onto exact R0 `53e720c05`; current code, historical provenance, and MVP-010 round-trip behavior are explicit     |
 | Companion review    | Bridge/mock PR status and the first mandatory pair were implicit                                           | Exact F0 `NO_CHANGE` pointers and the invalid-train conditions are recorded above; no empty companion PR is created            |
