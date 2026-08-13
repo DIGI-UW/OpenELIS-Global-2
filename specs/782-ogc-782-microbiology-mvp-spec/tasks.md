@@ -627,21 +627,33 @@ and M-04 section 4.9a. R2 is one official stacked PR based directly on #4004.
 - [x] T301 [R2] Add one registered Playwright `core-app` journey through order
   entry to case Inoculation protocol change using service-created fixtures,
   Carbon-accessible interactions, readiness assertions, and no arbitrary waits.
-  The focused authenticated run passed in 9.7 seconds (setup plus one journey).
+  The latest focused authenticated run passed in 12.2 seconds (setup plus one
+  journey) after adding the complete cross-step date and requester assertions.
   The R1 fixture now creates the alternate non-default Method, test link, and
   compatible culture setup through existing services with no SQL or fixed IDs.
-- [ ] T302 [R2] Capture stable desktop and mobile M-03/M-04 screenshots and
+- [x] T302 [R2] Capture stable desktop and mobile M-03/M-04 screenshots and
   compare them to the pinned mocks, recording only intentional differences.
+  The component-scoped evidence covers the source desktop width and registered
+  mobile width, has no feature-level horizontal overflow, and records the
+  separate pre-existing global mobile-header issue without hiding it.
 - [ ] T303 [R2] Run pinned `tools/code-qa` meaningful coverage, spec/code
   alignment, simplicity, and evidence checks on the R2 diff.
 - [ ] T304 [R2] Publish separate focused M-03 and M-04 Grist stories at the new
   baseline, remove stale controls, verify routes/controls against the deployed
   SHA, and keep historical regression stories outside the focused delta run.
-- [ ] T305 [R2] Push and open the official stacked R2 PR with #4004's branch as
+- [x] T305 [R2] Push and open the official stacked R2 PR with #4004's branch as
   its GitHub base; update both PR descriptions with exact head/base/evidence.
+  PR #4051 is the single R2 PR and is based directly on #4004's branch; its
+  implementation head includes the cross-step completion at `1b256aa4c`.
 - [ ] T306 [R2] Deploy the exact R2 head to AMR, verify `target.json`, run the
   focused automated preflight, and hand the matching stories to Piotr for human
   Pass/Fail/N/A acceptance.
+- [x] T307 [R2] Close the standard-order context gaps exposed by the final M-03
+  browser pass: reuse Department/Ward in Requester, keep ISO date-only React
+  state with configured transport formatting, reject collection before
+  admission, preserve read-only collection state until explicit Edit, and add
+  focused RTL plus Playwright evidence. No schema change or direct fixture
+  seeding is introduced.
 
 ## Dependencies & Execution Order
 

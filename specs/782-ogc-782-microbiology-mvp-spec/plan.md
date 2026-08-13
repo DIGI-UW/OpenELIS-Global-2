@@ -114,6 +114,18 @@ it updates only the case's Method reference, requires a reason, writes immutable
 activity history, preserves existing clinical work, and uses the existing final
 release lock. Workflow reclassification remains a separate action.
 
+The M-03 mock also depends on two shared Order Entry contracts that are not
+additional microbiology fields. R2 reuses the standard Requester
+facility-to-department lookup and selection for Department/Ward; it does not
+introduce microbiology-specific department storage. Order date state remains
+canonical ISO `yyyy-MM-dd` in the React workflow. The admission-date REST
+contract remains ISO, while the existing sample XML contract is serialized
+using `DEFAULT_DATE_LOCALE` and normalized back to ISO when loaded. The
+collection step rejects a collection date earlier than admission before
+submission, and a loaded collection remains read-only until an explicit Edit
+action. These are engineering decisions required to make the pinned M-03
+behavior work through the supported order route, not new product fields.
+
 For R1 M-05, the repository has no authoritative Antibiotic-to-Test mapping.
 The engineering contract therefore retains one immutable ordered-drug snapshot
 per AST run, requires complete coverage before review, and projects one current

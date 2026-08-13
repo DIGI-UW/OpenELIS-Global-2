@@ -16,6 +16,10 @@ M-03 and M-04 behavior. Technical names in that source remain non-binding.
 | M-04 protocol correction | Separate inline Set/Change action in Inoculation with reason and audit | Only available inside Change Workflow | Add protocol-only action |
 | M-04 preservation | Protocol change leaves workflow, inoculations, isolates, AST, and surveillance state unchanged | No independent operation | Prove by service tests |
 | M-04 release guard | Block after final release; use amendment path | Workflow action has final lock | Reuse the same case lock |
+| Standard Requester context | The first-screen mock includes Department/Ward beside the M-03 details without adding it to the five-field microbiology contract | The supported React Requester section had no Department/Ward selection | Reuse the existing facility department lookup in the standard Requester section |
+| Collection chronology | Collection Date is standard order context and may not precede Date of Admission | The two steps were validated independently | Show a correctable inline error and block collection save/continue until valid |
+| Collection revisit | Saved collection timing remains visible as context | A redundant order reload raced the requested read-only mode and made the form editable | Remove the reload race and require an explicit Edit action |
+| Sample date transport | Day-over-12 dates save and reload unchanged under the configured date format | The sample serializer hardcoded `MM/dd/yyyy` while the server validator parses using `DEFAULT_DATE_LOCALE` | Keep canonical ISO UI state and adapt only at the established sample transport boundary |
 
 ## Engineering Decisions
 
@@ -32,6 +36,15 @@ M-03 and M-04 behavior. Technical names in that source remain non-binding.
    Do not create a second protocol-history table.
 5. Derive worklist incubation bounds from the case's current Method while
    retaining the original inoculation timestamp; no clock-reset write is needed.
+6. Keep Department/Ward in the standard Requester model. Resolve options from
+   the selected referring facility, clear a stale selection when the facility
+   changes, and do not add another microbiology field or schema change.
+7. Keep order workflow dates in ISO date-only state. Serialize the legacy
+   sample XML date fields using `DEFAULT_DATE_LOCALE`, normalize loaded values
+   back to ISO, and retain the admission-date REST contract as ISO.
+8. Validate admission/collection chronology in the collection step before a
+   submission is attempted. Preserve loaded collection state as read-only until
+   the user explicitly enters edit mode.
 
 ## Ambiguities And Defaults
 
@@ -41,7 +54,8 @@ M-03 and M-04 behavior. Technical names in that source remain non-binding.
 | Outpatient transition | Source says disable the field but not whether to erase a date already typed | Keep the typed value in local form state while disabled so an accidental selection is reversible; omit/clear it in the submitted order context while Outpatient is selected | Engineering decision to validate in tests |
 | Method summary | Mock shows media/incubation prose but repositories may have partial setup metadata | Render the Method name always and structured available timing/setup metadata; never synthesize missing prose | Accepted degradation |
 | Active Method scope | Source says linked to the ordered test and current workflow | Reuse existing Test-Method and workflow compatibility services; do not add a parallel mapping | Resolved by repo pattern |
-| Date locale | Source asks locale round-trip while the API can transport an ISO date | Keep the domain value date-only and use ISO transport; Carbon/React Intl owns locale presentation | Engineering decision |
+| Date transport boundary | Admission uses an ISO REST value, while the existing sample XML contract is validated using the configured display format | Keep canonical ISO state; adapt admission and sample values at their respective established boundaries | Resolved by supported-route browser evidence |
+| Department/Ward ownership | The mock shows Department/Ward inside the first-screen composition, while M-03 says exactly five editable micro-specific fields | Treat it as standard Requester context and reuse the existing facility department contract | Resolved; no sixth micro field |
 
 ## Acceptance Evidence Map
 
@@ -155,17 +169,33 @@ M-03 and M-04 behavior. Technical names in that source remain non-binding.
   flow uses the valid short label and asserts canonical `section=setup` plus
   `aria-expanded=true` before interacting.
 
-### Flagged External Defect
+### Resolved Shared-Order Drift
 
-The shared generic-order serializer in `OrderContext.jsx` hardcodes
-`MM/dd/yyyy`, while a fresh repository database configures
-`DEFAULT_DATE_LOCALE=fr-FR`. Collection therefore rejects dates such as
-`08/13/2026` before microbiology routing. R2 does not widen into a shared order
-date refactor; its Playwright fixture enters the locale-neutral past date
-`01/01/2026` through the visible Carbon Collection and Received date inputs.
-The serializer should be corrected independently to honor deployment date
-configuration.
+The initial R2 audit concentrated on the explicit v2.1-to-v2.2 M-03 delta. It
+therefore treated Department/Ward and the generic-order date serializer as
+surrounding implementation, even though the pinned first-screen mock shows both
+Department/Ward and Collection Date and AC-M03-20/23 require admission and
+collection to behave coherently. That narrow audit boundary was the cause of
+the gap.
 
-M-03 and M-04 component, service, and focused browser validation is complete.
-Screenshots, code-qa, Grist publication, deployment, and human UAT remain open
-under T302-T306.
+R2 now reuses the standard Requester facility-department contract and fixes the
+shared order date boundary used by this journey. Canonical ISO state prevents
+display-formatted values from entering date arithmetic, the existing sample XML
+receives the format expected by the configured server validator, and loaded
+values normalize back to ISO.
+Collection before admission is a correctable inline error that blocks the
+collection actions. A redundant load effect that raced read-only state was
+removed, so a revisited collection changes only after an explicit Edit action.
+
+Focused Vitest/RTL validation passes 19/19 across the reusable DatePicker, date
+utilities, Requester section, collection card, and microbiology detail section.
+The authenticated `core-app` M-03/M-04 journey passes with its authentication
+dependency in 12.2 seconds using Carbon-accessible interactions and no fixed
+waits. Stable desktop and mobile screenshots show the complete five-field
+M-03 section, its standard-order context, and the M-04 protocol action without
+feature-level horizontal overflow. A separate pre-existing global mobile
+header overflow remains outside R2 and is not masked by the feature evidence.
+
+M-03 and M-04 implementation, component, service, focused browser, and visual
+validation is complete. Code-qa, Grist publication, exact-head deployment, and
+human UAT remain open under T303-T306.
