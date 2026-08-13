@@ -8,7 +8,8 @@ const CustomDatePicker = (props) => {
   const [currentDate, setCurrentDate] = useState(
     props.value ? props.value : "",
   );
-  const { configurationProperties } = useContext(ConfigurationContext);
+  const { configurationProperties = { DEFAULT_DATE_LOCALE: "en-US" } } =
+    useContext(ConfigurationContext) || {};
   const intl = useIntl();
   function handleDatePickerChange(e) {
     const raw = e?.[0];
@@ -71,7 +72,7 @@ const CustomDatePicker = (props) => {
   return (
     <>
       <DatePicker
-        id={props.id}
+        id={`${props.id}-picker`}
         dateFormat={
           configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
             ? "d/m/Y"
@@ -116,6 +117,7 @@ const CustomDatePicker = (props) => {
           })}
           type="text"
           labelText={props.labelText}
+          helperText={props.helperText}
           invalid={props.invalid}
           invalidText={props.invalidText}
           disabled={props.disabled}

@@ -52,3 +52,46 @@ M-03 and M-04 behavior. Technical names in that source remain non-binding.
   registered in `core-app`, with no fixed sleeps or forced actions.
 - Visual: pinned M-03 and M-04 desktop/mobile screenshots with a deviation log.
 - Human UAT: separate M-03 and M-04 stories against the exact deployed R2 SHA.
+
+## M-03 TDD Checkpoint
+
+### Red Evidence
+
+- The focused backend compile initially failed because the order-detail model
+  and request/response contracts had no Date of Admission.
+- The standalone migration test initially found no `admission_date` column.
+- The order-entry response test failed before real culture-setup metadata was
+  available beside the derived Method.
+- Focused Carbon tests failed against the old editable/required protocol,
+  missing admission-date control, and obsolete critical-notification checkbox.
+
+### Green Evidence
+
+- 37 JUnit 4 tests pass across order-detail and routing services, request
+  binding, response mapping, ORM boot, service-created routing integration, and
+  Liquibase update/rollback/reapply.
+- 28 Vitest/RTL tests pass across the reusable DatePicker, microbiology order
+  section, loaded-order panel, case summary, order serialization/readiness,
+  Program derivation, and test selection.
+- The touched Playwright files lint with zero warnings. Playwright discovers the
+  updated M-03 flow in `core-app` and its accessibility assertion in both
+  `core-accessibility` projects, 19 discovered tests including dependencies.
+- Spotless and targeted Prettier formatting pass. No fixed sleep or forced
+  interaction was added; `test.setTimeout` remains only a per-test budget.
+
+### Implemented Boundary
+
+- One nullable `date` column was added through Liquibase with rollback.
+- The browser presents locale-formatted dates while the API persists ISO
+  `yyyy-MM-dd`, avoiding a locale-sensitive server contract.
+- Culture Protocol is a read-only Method projection. Missing defaults show the
+  promised bench-selection state and no longer block case creation.
+- Available media, incubation, and atmosphere values come from the existing
+  culture setup through the existing order-entry response. The UI does not
+  invent missing recipe prose.
+- Legacy order-level critical-notification data remains readable in historical
+  rows but is absent from new request/response and UI contracts.
+
+M-03 component and service validation is complete. Deployed Playwright
+execution, screenshots, M-04 protocol correction, Grist publication, and human
+UAT remain open under T297-T306.

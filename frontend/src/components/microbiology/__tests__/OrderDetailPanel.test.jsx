@@ -31,10 +31,10 @@ describe("OrderDetailPanel", () => {
         orderDetail: {
           cultureMethodId: "",
           patientOrigin: "EMERGENCY",
+          admissionDate: null,
           numberOfSets: 2,
           clinicalHistory: "Fever, suspected sepsis",
           antibioticExposure: true,
-          criticalNotificationPreference: true,
         },
       }),
     };
@@ -54,17 +54,16 @@ describe("OrderDetailPanel", () => {
     await user.click(
       screen.getByLabelText(/Patient has recent antibiotic exposure/i),
     );
-    await user.click(screen.getByLabelText(/Notify clinician immediately/i));
     await user.click(screen.getByRole("button", { name: "Save order detail" }));
 
     await waitFor(() =>
       expect(service.saveOrderDetail).toHaveBeenCalledWith("case-1", {
         cultureMethodId: "",
         patientOrigin: "EMERGENCY",
+        admissionDate: null,
         numberOfSets: 2,
         clinicalHistory: "Fever, suspected sepsis",
         antibioticExposure: true,
-        criticalNotificationPreference: true,
       }),
     );
   });
@@ -74,10 +73,10 @@ describe("OrderDetailPanel", () => {
       orderDetail: {
         cultureMethodId: "method-1",
         patientOrigin: "INPATIENT",
+        admissionDate: "2026-08-03",
         numberOfSets: 3,
         clinicalHistory: "",
         antibioticExposure: true,
-        criticalNotificationPreference: true,
       },
       service: {
         getPatientOrigins: vi.fn().mockResolvedValue({
@@ -94,8 +93,8 @@ describe("OrderDetailPanel", () => {
     expect(
       screen.getByLabelText(/Patient has recent antibiotic exposure/i),
     ).toBeChecked();
-    expect(
-      screen.getByLabelText(/Notify clinician immediately/i),
-    ).toBeChecked();
+    expect(screen.getByLabelText("Date of admission")).toHaveValue(
+      "08/03/2026",
+    );
   });
 });

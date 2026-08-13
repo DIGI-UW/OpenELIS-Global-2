@@ -64,19 +64,14 @@ const MicrobiologyOrderEntrySection = ({
     ...emptyMicrobiologyOrderDetail,
     ...orderFormValues.microbiologyOrderDetail,
   };
-  const defaultMethod =
-    methods.find((method) => method.isDefault) || methods[0];
+  const defaultMethod = methods.find((method) => method.isDefault);
   const isBloodCulture = samples.some((sample) =>
     sample.sampleTypeName?.toLowerCase().includes("blood"),
-  );
-  const isCriticalSite = samples.some((sample) =>
-    /blood|cerebrospinal|\bcsf\b|sterile/i.test(sample.sampleTypeName || ""),
   );
   const fields = {
     ...existingFields,
     patientOrigin: existingFields.patientOrigin || defaultPatientOrigin || "",
-    cultureMethodId:
-      existingFields.cultureMethodId || defaultMethod?.methodId || "",
+    cultureMethodId: defaultMethod?.methodId || "",
     numberOfSets:
       existingFields.numberOfSets === "" ||
       existingFields.numberOfSets === null ||
@@ -88,12 +83,6 @@ const MicrobiologyOrderEntrySection = ({
     antibioticExposure:
       existingFields.antibioticExposure === true ||
       existingFields.antibioticExposure === "true",
-    criticalNotificationPreference:
-      existingFields.criticalNotificationPreference === null ||
-      existingFields.criticalNotificationPreference === ""
-        ? isCriticalSite
-        : existingFields.criticalNotificationPreference === true ||
-          existingFields.criticalNotificationPreference === "true",
   };
 
   useEffect(() => {
@@ -129,8 +118,8 @@ const MicrobiologyOrderEntrySection = ({
     }
   }, [
     fields.antibioticExposure,
+    fields.admissionDate,
     fields.clinicalHistory,
-    fields.criticalNotificationPreference,
     fields.cultureMethodId,
     fields.numberOfSets,
     fields.patientOrigin,
@@ -154,13 +143,13 @@ const MicrobiologyOrderEntrySection = ({
 
   return (
     <Layer
-      className="microbiology-card"
+      className="microbiology-order-entry"
       data-testid="microbiology-order-entry-section"
     >
-      <div className="microbiology-card__header">
+      <div className="microbiology-order-entry__header">
         <div>
           <h3>{intl.formatMessage({ id: "microbiology.orderEntry.title" })}</h3>
-          <p className="microbiology-card__hint">
+          <p className="microbiology-order-entry__hint">
             {intl.formatMessage({ id: "microbiology.orderEntry.hint" })}
           </p>
         </div>

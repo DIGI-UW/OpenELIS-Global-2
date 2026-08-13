@@ -1,6 +1,7 @@
 package org.openelisglobal.sample.form;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -90,7 +91,7 @@ public class SamplePatientEntryFormLabelBindingTest {
     @Test
     public void deserializesMicrobiologyOrderDetailFromSaveBody() throws Exception {
         String body = "{\"warning\":false,\"microbiologyOrderDetail\":{"
-                + "\"patientOrigin\":\"Emergency department\",\"numberOfSets\":2,"
+                + "\"patientOrigin\":\"Emergency department\",\"numberOfSets\":2," + "\"admissionDate\":\"2026-08-03\","
                 + "\"clinicalHistory\":\"Fever\",\"antibioticExposure\":true,"
                 + "\"criticalNotificationPreference\":false}}";
 
@@ -98,9 +99,10 @@ public class SamplePatientEntryFormLabelBindingTest {
 
         assertNotNull(form.getMicrobiologyOrderDetail());
         assertEquals("Emergency department", form.getMicrobiologyOrderDetail().patientOrigin);
+        assertEquals("2026-08-03", form.getMicrobiologyOrderDetail().admissionDate);
         assertEquals(Integer.valueOf(2), form.getMicrobiologyOrderDetail().numberOfSets);
         assertEquals("Fever", form.getMicrobiologyOrderDetail().clinicalHistory);
         assertEquals(Boolean.TRUE, form.getMicrobiologyOrderDetail().antibioticExposure);
-        assertEquals(Boolean.FALSE, form.getMicrobiologyOrderDetail().criticalNotificationPreference);
+        assertFalse(JSON.valueToTree(form.getMicrobiologyOrderDetail()).has("criticalNotificationPreference"));
     }
 }

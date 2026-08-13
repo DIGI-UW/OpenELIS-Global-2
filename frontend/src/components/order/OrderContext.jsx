@@ -21,6 +21,7 @@ import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFor
 import { ConfigurationContext } from "../layout/Layout";
 import {
   buildLoadedOrderData,
+  buildSubmissionMicrobiologyOrderDetail,
   buildSubmissionSampleOrderItems,
 } from "./orderDataUtils";
 
@@ -637,6 +638,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         sampleOrderItems: buildSubmissionSampleOrderItems(
           orderData.sampleOrderItems,
         ),
+        microbiologyOrderDetail: buildSubmissionMicrobiologyOrderDetail(
+          orderData.microbiologyOrderDetail,
+        ),
         initialSampleConditionList: [],
         testSectionList: [],
       };
@@ -871,6 +875,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           // Include per-sample vector observations merged above.
           environmentalFields: envFields,
         }),
+        microbiologyOrderDetail: buildSubmissionMicrobiologyOrderDetail(
+          orderData.microbiologyOrderDetail,
+        ),
         initialSampleConditionList: [],
         testSectionList: [],
       };

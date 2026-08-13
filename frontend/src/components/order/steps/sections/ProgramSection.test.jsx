@@ -20,10 +20,10 @@ import ProgramSection from "./ProgramSection";
 const orderData = {
   microbiologyOrderDetail: {
     patientOrigin: "",
+    admissionDate: "",
     numberOfSets: "",
     clinicalHistory: "",
     antibioticExposure: false,
-    criticalNotificationPreference: null,
     cultureMethodId: "",
   },
   sampleOrderItems: {},
@@ -97,9 +97,7 @@ describe("ProgramSection microbiology derivation", () => {
         "Microbiology is derived from the selected culture test.",
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByDisplayValue("Blood Culture Standard"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Blood Culture Standard")).toBeInTheDocument();
     expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
       "/rest/program/8/questionnaire",
       expect.any(Function),
@@ -133,7 +131,7 @@ describe("ProgramSection microbiology derivation", () => {
       await screen.findByRole("combobox", { name: "Program" }),
     ).toHaveValue("Microbiology");
     expect(screen.getByRole("combobox", { name: "Program" })).toBeDisabled();
-    expect(screen.getByDisplayValue("Blood Culture Standard")).toBeDisabled();
+    expect(screen.getByText("Blood Culture Standard")).toBeInTheDocument();
   });
 
   it("clears the previous Program questionnaire when culture derives Microbiology", async () => {
@@ -251,9 +249,7 @@ describe("ProgramSection microbiology derivation", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Unassigned")).toBeInTheDocument();
-    expect(
-      screen.getByDisplayValue("Blood Culture Standard"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Blood Culture Standard")).toBeInTheDocument();
   });
 
   it("reflects a cleared canonical Program value after culture test removal", async () => {

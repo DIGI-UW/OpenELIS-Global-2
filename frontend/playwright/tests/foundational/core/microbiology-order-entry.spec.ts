@@ -2,6 +2,7 @@ import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import {
   clickMicrobiologyOrderTest as clickTestToggle,
+  MICROBIOLOGY_CULTURE_METHOD_NAME as cultureMethodName,
   MICROBIOLOGY_CULTURE_TEST_NAME as cultureTestName,
   MICROBIOLOGY_NON_CULTURE_TEST_NAME as nonCultureTestName,
   MICROBIOLOGY_TB_CULTURE_TEST_NAME as tbCultureTestName,
@@ -19,8 +20,11 @@ async function fillMicrobiologyDetails(page: Page) {
     page.getByText("Microbiology is derived from the selected culture test."),
   ).toBeVisible();
   await expect(
-    page.getByRole("combobox", { name: "Culture Method" }),
-  ).not.toHaveValue("");
+    details.getByText(cultureMethodName, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Culture Protocol" }),
+  ).toHaveCount(0);
   const patientOrigin = page.getByLabel("Patient Origin");
   await expect(patientOrigin.locator("option")).toHaveCount(7, {
     timeout: LONG_TIMEOUT,
@@ -32,6 +36,7 @@ async function fillMicrobiologyDetails(page: Page) {
     "Unknown",
   );
   await patientOrigin.selectOption("INPATIENT");
+  await page.getByLabel("Date of admission").fill("08/03/2026");
   await page.getByRole("spinbutton", { name: "Number of Sets" }).fill("2");
   await page
     .getByLabel("Clinical History")
@@ -39,11 +44,9 @@ async function fillMicrobiologyDetails(page: Page) {
   await page
     .locator('label[for="microbiology-order-entry-antibiotic-exposure"]')
     .click();
-  await page
-    .locator(
-      'label[for="microbiology-order-entry-critical-notification-preference"]',
-    )
-    .click();
+  await expect(
+    page.getByLabel("Notify clinician immediately for a positive culture"),
+  ).toHaveCount(0);
 }
 
 async function saveEntryAndOpenCollect(page: Page) {
@@ -120,6 +123,9 @@ test.describe("microbiology order entry on the supported workflow", () => {
       page.getByRole("combobox", { name: "Culture Method" }),
     ).toHaveValue("Blood Culture Standard");
     await expect(page.getByLabel("Patient Origin")).toHaveValue("INPATIENT");
+    await expect(page.getByLabel("Date of admission")).toHaveValue(
+      "08/03/2026",
+    );
     await expect(
       page.getByRole("spinbutton", { name: "Number of Sets" }),
     ).toHaveValue("2");
@@ -130,10 +136,8 @@ test.describe("microbiology order entry on the supported workflow", () => {
       page.locator("#microbiology-order-entry-antibiotic-exposure"),
     ).toBeChecked();
     await expect(
-      page.locator(
-        "#microbiology-order-entry-critical-notification-preference",
-      ),
-    ).toBeChecked();
+      page.getByLabel("Notify clinician immediately for a positive culture"),
+    ).toHaveCount(0);
 
     await page.getByTestId("order-step-collect").click();
     await expect(page).toHaveURL(/\/order\/clinical\/collect$/i);

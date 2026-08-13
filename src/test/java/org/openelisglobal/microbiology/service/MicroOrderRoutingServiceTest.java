@@ -137,22 +137,21 @@ public class MicroOrderRoutingServiceTest {
     }
 
     @Test
-    public void routeAnalysesUsesTheSelectedLinkedCultureMethod() {
+    public void routeAnalysesIgnoresSubmittedMethodAndUsesTheTestDefault() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
                 orderDetailService, caseAnalysisService, testMethodService, "");
-        when(testMethodService.testMethodLinkExists("test-BACTERIOLOGY-1", "2")).thenReturn(true);
-        when(referenceService.getActiveCultureSetupForMethod("2", MicroWorkflowType.BACTERIOLOGY))
-                .thenReturn(cultureSetup("2", MicroWorkflowType.BACTERIOLOGY));
+        when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
+                .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
         MicroCase routedCase = new MicroCase();
         routedCase.setId("case-1");
-        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1")).thenReturn(routedCase);
+        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1")).thenReturn(routedCase);
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
         orderDetail.cultureMethodId = "2";
 
         service.routeAnalysesForSampleItem(sampleItem("1001"),
                 List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
 
-        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1");
+        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
     }
 
     @Test
@@ -170,6 +169,24 @@ public class MicroOrderRoutingServiceTest {
                 List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1");
 
         verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1");
+    }
+
+    @Test
+    public void routeAnalysesCreatesCaseWhenNoDefaultCultureMethodResolves() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService, "");
+        Analysis analysis = analysis(MicroWorkflowType.BACTERIOLOGY.name(), null);
+        analysis.setId("analysis-1");
+        MicroCase routedCase = new MicroCase();
+        routedCase.setId("case-without-protocol");
+        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, null, "1")).thenReturn(routedCase);
+
+        List<MicroCase> routed = service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(analysis), "1");
+
+        assertEquals(1, routed.size());
+        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, null, "1");
+        verify(referenceService, never()).getActiveCultureSetupForMethod(any(String.class), any());
+        verify(caseAnalysisService).linkAnalysis(routedCase, analysis, null);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -194,31 +211,19 @@ public class MicroOrderRoutingServiceTest {
                 List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void routeAnalysesRejectsSelectedMethodNotLinkedToTheTest() {
-        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService, caseAnalysisService, testMethodService, "");
-        MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
-        orderDetail.cultureMethodId = "2";
-
-        service.routeAnalysesForSampleItem(sampleItem("1001"),
-                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
-    }
-
     @Test
     public void routeAnalysesKeepsSiblingWorkflowOnItsOwnDefaultMethod() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
                 orderDetailService, caseAnalysisService, testMethodService, "");
-        when(testMethodService.testMethodLinkExists("test-BACTERIOLOGY-1", "2")).thenReturn(true);
-        when(referenceService.getActiveCultureSetupForMethod("2", MicroWorkflowType.BACTERIOLOGY))
-                .thenReturn(cultureSetup("2", MicroWorkflowType.BACTERIOLOGY));
+        when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
+                .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
         when(referenceService.getActiveCultureSetupForMethod("9", MicroWorkflowType.MYCOBACTERIOLOGY_TB))
                 .thenReturn(cultureSetup("9", MicroWorkflowType.MYCOBACTERIOLOGY_TB));
         MicroCase bacteriologyCase = new MicroCase();
         bacteriologyCase.setId("case-bacteriology");
         MicroCase tbCase = new MicroCase();
         tbCase.setId("case-tb");
-        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1"))
+        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1"))
                 .thenReturn(bacteriologyCase);
         when(caseService.createOrGetCase("1001", MicroWorkflowType.MYCOBACTERIOLOGY_TB, "9", "1")).thenReturn(tbCase);
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
@@ -229,7 +234,7 @@ public class MicroOrderRoutingServiceTest {
                         analysis(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), "9")),
                 "1", orderDetail);
 
-        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1");
+        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
         verify(caseService).createOrGetCase("1001", MicroWorkflowType.MYCOBACTERIOLOGY_TB, "9", "1");
     }
 
@@ -301,9 +306,11 @@ public class MicroOrderRoutingServiceTest {
         org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
         test.setId("test-" + workflowType + "-" + methodId);
         test.setCultureWorkflowType(workflowType);
-        Method method = new Method();
-        method.setId(methodId);
-        test.setMethod(method);
+        if (methodId != null) {
+            Method method = new Method();
+            method.setId(methodId);
+            test.setMethod(method);
+        }
         Analysis analysis = new Analysis();
         analysis.setTest(test);
         return analysis;
