@@ -1,4 +1,5 @@
-import { expect, Locator, Page, test } from "../../../helpers/test-base";
+import type { Locator, Page } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import type { DemoPresentation } from "../../../helpers/demo-presentation";
@@ -137,7 +138,7 @@ async function verifyResults(
   await presentation.pause(2_000);
 }
 
-test.describe("GeneXpert ASTM demo story", () => {
+test.describe("GeneXpert ASTM harness integration", () => {
   test.setTimeout(180_000);
 
   test("review and accept staged ASTM results", async ({ page }, testInfo) => {
@@ -171,7 +172,7 @@ test.describe("GeneXpert ASTM demo story", () => {
 
     await presentation.title(
       "Story Complete",
-      "The GeneXpert workflow stayed UI-only in both demo modes.",
+      "The GeneXpert transport and result workflow completed.",
     );
   });
 });

@@ -99,6 +99,10 @@ describe("pw-demo-no-backend-access", () => {
       "visible navigation and URL assertions",
       "await page.goto('/analyzers'); await expect(page).toHaveURL(/analyzers/);",
     ],
+    [
+      "unrelated route helper",
+      "router.route('/analyzers'); await expect(page.getByText('Analyzers')).toBeVisible();",
+    ],
   ])("allows %s", (_name, code) => {
     expect(verify(code)).toEqual([]);
   });
