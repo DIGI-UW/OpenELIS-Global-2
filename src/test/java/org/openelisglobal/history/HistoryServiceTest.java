@@ -14,6 +14,7 @@ import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.security.DaemonAuthenticationToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 public class HistoryServiceTest extends BaseWebContextSensitiveTest {
@@ -66,6 +67,11 @@ public class HistoryServiceTest extends BaseWebContextSensitiveTest {
 
         historyService.insert(history);
 
+        // The insert (under the daemon token) is what's under test; the readback
+        // is gated PRIV_AUDIT_VIEW, which the daemon token lacks, so verify under
+        // the full-privilege principal.
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A", fullTestAuthorities()));
         List<History> persisted = historyService.getHistoryByRefIdAndRefTableId("56789", "5");
         Assert.assertEquals(1, persisted.size());
         Assert.assertEquals(daemonSysUserId, persisted.get(0).getSysUserId());
