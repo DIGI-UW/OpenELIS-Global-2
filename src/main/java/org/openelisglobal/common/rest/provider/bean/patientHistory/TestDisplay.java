@@ -17,6 +17,7 @@ public class TestDisplay {
     String display;
     String testName;
     String sampleType;
+    String sampleTypeId;
     String component;
     String componentId;
     String conceptUuid;
@@ -67,6 +68,14 @@ public class TestDisplay {
 
     public void setSampleType(String sampleType) {
         this.sampleType = sampleType;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
     }
 
     public String getComponent() {

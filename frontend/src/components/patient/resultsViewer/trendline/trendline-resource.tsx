@@ -2,6 +2,7 @@ import { assessValue } from "../loadPatientTestData/helpers";
 import { showNotification } from "../commons";
 import { TreeNode } from "../filter/filter-types";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { TrendKey, trendQuery } from "./trendKey";
 import { useMemo, useState, useEffect } from "react";
 
 function computeTrendlineData(treeNode: TreeNode): Array<TreeNode> {
@@ -37,7 +38,7 @@ function computeTrendlineData(treeNode: TreeNode): Array<TreeNode> {
 
 export function useObstreeData(
   patientUuid: string,
-  conceptUuid: string,
+  trendKey: TrendKey | null,
 ): {
   isLoading: boolean;
   trendlineData: TreeNode;
@@ -54,13 +55,18 @@ export function useObstreeData(
   };
 
   useEffect(() => {
-    if (patientUuid && conceptUuid) {
-      getFromOpenElisServer(
-        `/rest/test-result-tree?patientId=${patientUuid}&testId=${conceptUuid}`,
-        fetchResults,
-      );
+    if (patientUuid && trendKey?.testId) {
+      // The specimen and component travel with the request, so the server
+      // returns the one series being graphed rather than every series the
+      // test has — two components of one test are not one line.
+      getFromOpenElisServer(trendQuery(patientUuid, trendKey), fetchResults);
     }
-  }, [patientUuid, conceptUuid]);
+  }, [
+    patientUuid,
+    trendKey?.testId,
+    trendKey?.sampleTypeId,
+    trendKey?.componentId,
+  ]);
 
   if (error) {
     showNotification({

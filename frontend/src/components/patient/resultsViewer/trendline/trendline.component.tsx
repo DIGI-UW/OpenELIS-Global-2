@@ -3,12 +3,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { Button, InlineLoading, SkeletonText } from "@carbon/react";
 import { ArrowLeft } from "@carbon/react/icons";
 import { LineChart } from "@carbon/charts-react";
-import {
-  formatDate,
-  formatTime,
-  parseDate,
-  ConfigurableLink,
-} from "../commons";
+import { formatDate, formatTime, parseDate } from "../commons";
+import { TrendKey } from "./trendKey";
 import { EmptyState, OBSERVATION_INTERPRETATION } from "../commons";
 import { useObstreeData } from "./trendline-resource";
 import CommonDataTable from "../overview/common-datatable.component";
@@ -36,32 +32,35 @@ const TrendLineBackground = ({ ...props }) => (
 const TrendlineHeader = ({
   patientUuid,
   title,
+  context,
   referenceRange,
   isValidating,
   showBackToTimelineButton,
+  onBackToTimeline,
 }) => {
   const intl = useIntl();
   return (
     <div className="header">
       <div className="backButton">
         {showBackToTimelineButton && (
-          <ConfigurableLink to="#groupedtimeline">
-            <Button
-              kind="ghost"
-              renderIcon={(props) => <ArrowLeft {...props} size={24} />}
-              iconDescription={intl.formatMessage({
-                id: "label.patientHistory.returnToTimeline",
-              })}
-            >
-              <span>
-                <FormattedMessage id="label.patientHistory.backToTimeline" />
-              </span>
-            </Button>
-          </ConfigurableLink>
+          <Button
+            kind="ghost"
+            renderIcon={(props) => <ArrowLeft {...props} size={24} />}
+            iconDescription={intl.formatMessage({
+              id: "label.patientHistory.returnToTimeline",
+            })}
+            onClick={onBackToTimeline}
+            data-testid="back-to-timeline"
+          >
+            <span>
+              <FormattedMessage id="label.patientHistory.backToTimeline" />
+            </span>
+          </Button>
         )}
       </div>
       <div className="content">
         <span className="title">{title}</span>
+        {context && <span className="trendlineContext">{context}</span>}
         <span className="referenceange">{referenceRange}</span>
       </div>
       <div>{isValidating && <InlineLoading className="inlineLoader" />}</div>
@@ -71,32 +70,42 @@ const TrendlineHeader = ({
 
 interface TrendlineProps {
   patientUuid: string;
-  conceptUuid: string;
+  /** The (test, specimen, component) series being graphed. */
+  trendKey: TrendKey;
   basePath: string;
   hideTrendlineHeader?: boolean;
   showBackToTimelineButton?: boolean;
+  onBackToTimeline?: () => void;
 }
 
 const Trendline: React.FC<TrendlineProps> = ({
   patientUuid,
-  conceptUuid,
+  trendKey,
   basePath,
   hideTrendlineHeader = false,
   showBackToTimelineButton = false,
+  onBackToTimeline,
 }) => {
   const { trendlineData, isLoading, isValidating } = useObstreeData(
     patientUuid,
-    conceptUuid,
+    trendKey,
   );
   const intl = useIntl();
   const {
     obs,
-    display: chartTitle,
+    testName,
+    display,
+    sampleType,
+    component,
     hiNormal,
     lowNormal,
     units: leftAxisTitle,
     range: referenceRange,
   } = trendlineData;
+  // The heading has to name the series, not just the test: the same test can
+  // be graphed once per specimen and component.
+  const chartTitle = testName || display;
+  const chartContext = [sampleType, component].filter(Boolean).join(" · ");
   const bottomAxisTitle = intl.formatMessage({
     id: "label.patientHistory.date",
   });
@@ -267,9 +276,11 @@ const Trendline: React.FC<TrendlineProps> = ({
       {!hideTrendlineHeader && (
         <TrendlineHeader
           showBackToTimelineButton={showBackToTimelineButton}
+          onBackToTimeline={onBackToTimeline}
           isValidating={isValidating}
           patientUuid={patientUuid}
           title={dataset}
+          context={chartContext}
           referenceRange={referenceRange}
         />
       )}

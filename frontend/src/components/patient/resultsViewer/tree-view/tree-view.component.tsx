@@ -8,6 +8,8 @@ import Trendline from "../trendline/trendline.component";
 //import styles from '../results-viewer.styles.scss';
 import "../results-viewer.styles.scss";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useHistory, useLocation } from "react-router-dom";
+import { parseTrendHash } from "../trendline/trendKey";
 import TabletOverlay from "../tablet-overlay";
 
 interface TreeViewProps {
@@ -30,8 +32,16 @@ const TreeView: React.FC<TreeViewProps> = ({
   const tablet = useLayoutType() === "tablet";
   const [showTreeOverlay, setShowTreeOverlay] = useState(false);
   const intl = useIntl();
+  const location = useLocation();
+  const history = useHistory();
 
   const { timelineData, resetTree } = useContext(FilterContext);
+
+  // Reading the hash off the router (rather than window.location) is what
+  // makes clicking a test in the timeline swap the view: a hash the component
+  // only sampled at render time never told React anything had changed.
+  const trendKey = parseTrendHash(location.hash);
+  const backToTimeline = () => history.push({ hash: "" });
 
   if (tablet) {
     return (
@@ -103,14 +113,15 @@ const TreeView: React.FC<TreeViewProps> = ({
         </div>
       )}
       <div className="rightSection">
-        {!tablet && window.location.href.includes("#trendline") ? (
+        {!tablet && trendKey ? (
           <Trendline
             patientUuid={patientUuid}
-            conceptUuid={window.location.href.split("#trendline/")[1]}
+            trendKey={trendKey}
             basePath={basePath}
             showBackToTimelineButton
+            onBackToTimeline={backToTimeline}
           />
-        ) : !loading || window.location.href.endsWith("#groupedtimeline") ? (
+        ) : !loading ? (
           <GroupedTimeline />
         ) : (
           <DataTableSkeleton />

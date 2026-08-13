@@ -59,7 +59,10 @@ const RangeSelector: React.FC<{
   ];
 
   return (
-    <Tabs light selected={6} className="range-tabs">
+    // The graph opens on the full history, so "All" is the tab that describes
+    // it. `selected` is not a Carbon v11 prop, which left "1 day" highlighted
+    // over a chart showing every point.
+    <Tabs light defaultSelectedIndex={ranges.length - 1} className="range-tabs">
       <TabList aria-label="Trendline range tabs">
         {ranges.map(([label, onClick], index) => (
           <Tab onClick={onClick} key={index}>

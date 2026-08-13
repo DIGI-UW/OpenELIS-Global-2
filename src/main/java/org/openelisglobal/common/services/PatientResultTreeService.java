@@ -2,6 +2,7 @@ package org.openelisglobal.common.services;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -125,11 +126,18 @@ public class PatientResultTreeService {
     }
 
     /**
-     * The trendline feed: every (sample type, component) series recorded for one
-     * test, optionally narrowed to a single component.
+     * The trend-graph feed: the series recorded for one test, narrowed to a single
+     * specimen and result component when the caller names them.
+     *
+     * <p>
+     * A graph plots one series, so the caller has to be able to say which: the same
+     * test can hold a component per analyte and run on several specimens, and those
+     * are different measurements that must not share a line. Leaving both unset
+     * returns every series the test has, which is only unambiguous for a test with
+     * one component on one specimen.
      */
     @Transactional(readOnly = true)
-    public PanelDisplay getTestResultTree(String patientId, String testId, String componentId) {
+    public PanelDisplay getTestResultTree(String patientId, String testId, String componentId, String sampleTypeId) {
         Test test = testService.get(testId.trim());
         if (test == null) {
             return null;
@@ -145,7 +153,8 @@ public class PatientResultTreeService {
             }
             TypeOfSample sampleType = analysis.getSampleItem() == null ? null
                     : analysis.getSampleItem().getTypeOfSample();
-            if (sampleType == null) {
+            if (sampleType == null
+                    || (!GenericValidator.isBlankOrNull(sampleTypeId) && !sampleTypeId.equals(sampleType.getId()))) {
                 continue;
             }
             PanelNode panelNode = panels.computeIfAbsent(sampleType.getId(), key -> new PanelNode(sampleType));
@@ -250,6 +259,10 @@ public class PatientResultTreeService {
             resultDisplay.setObsDatetime(observationDate(result, dateFormat));
             resultDisplays.add(resultDisplay);
         }
+        // Most recent first: the timeline orders its columns that way, and the
+        // trend graph reads the last entry as the oldest point it has to reach
+        // back to. Insertion order is whatever the result rows came back in.
+        resultDisplays.sort(Comparator.comparing(ResultDisplay::getObsDatetime).reversed());
 
         Result representative = group.results.get(0);
         ResultLimit resultLimit = resultLimitService.getResultLimitForResult(representative.getAnalysis(),
@@ -260,6 +273,7 @@ public class PatientResultTreeService {
         testDisplay.setComponent(component == null ? null : component.getLabel());
         testDisplay.setComponentId(componentId);
         testDisplay.setSampleType(group.sampleType.getLocalizedName());
+        testDisplay.setSampleTypeId(group.sampleType.getId());
         testDisplay.setDisplay(
                 component == null || GenericValidator.isBlankOrNull(component.getLabel()) ? test.getLocalizedName()
                         : test.getLocalizedName() + COMPONENT_SEPARATOR + component.getLabel());

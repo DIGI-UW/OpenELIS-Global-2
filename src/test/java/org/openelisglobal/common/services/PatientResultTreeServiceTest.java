@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.PanelDisplay;
+import org.openelisglobal.common.rest.provider.bean.patientHistory.ResultDisplay;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.ResultTree;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.TestDisplay;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -272,7 +274,7 @@ public class PatientResultTreeServiceTest {
         Analysis analysis = analysis(bloodPressure, sampleType("1", "Serum"), Timestamp.valueOf("2026-08-01 09:00:00"));
         givenPatientResults(result(analysis, "120", systolic.getId()), result(analysis, "80", diastolic.getId()));
 
-        PanelDisplay panel = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, "c-dia");
+        PanelDisplay panel = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, "c-dia", null);
 
         assertNotNull(panel);
         assertEquals(1, panel.getSubSets().size());
@@ -337,5 +339,47 @@ public class PatientResultTreeServiceTest {
         resultLimit.setLowNormal(lowNormal);
         resultLimit.setHighNormal(highNormal);
         return resultLimit;
+    }
+
+    @Test
+    public void getTestResultTree_shouldNarrowToOneSpecimen() {
+        when(testResultComponentService.getActiveComponentsByTestId(TEST_ID)).thenReturn(new ArrayList<>());
+        when(testService.get(TEST_ID)).thenReturn(bloodPressure);
+        when(resultLimitService.getResultLimitForResult(any(), any(), any(), isNull())).thenReturn(limit(1d, 5d));
+        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("1 - 5");
+
+        givenPatientResults(
+                result(analysis(bloodPressure, sampleType("1", "Serum"), Timestamp.valueOf("2026-08-01 09:00:00")), "3",
+                        null),
+                result(analysis(bloodPressure, sampleType("2", "Urine"), Timestamp.valueOf("2026-08-02 09:00:00")), "4",
+                        null));
+
+        PanelDisplay panel = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, null, "2");
+
+        assertEquals("a graph plots one specimen, not both", 1, panel.getSubSets().size());
+        assertEquals("Urine", panel.getSubSets().get(0).getSampleType());
+        assertEquals(1, panel.getSubSets().get(0).getObs().size());
+        assertEquals("4", panel.getSubSets().get(0).getObs().get(0).getValue());
+    }
+
+    @Test
+    public void getTestResultTree_shouldReturnObservationsNewestFirst() {
+        when(testResultComponentService.getActiveComponentsByTestId(TEST_ID)).thenReturn(new ArrayList<>());
+        when(testService.get(TEST_ID)).thenReturn(bloodPressure);
+        when(resultLimitService.getResultLimitForResult(any(), any(), any(), isNull())).thenReturn(limit(1d, 5d));
+        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("1 - 5");
+
+        TypeOfSample serum = sampleType("1", "Serum");
+        // Handed over oldest-first, as the result rows come back.
+        givenPatientResults(
+                result(analysis(bloodPressure, serum, Timestamp.valueOf("2026-08-01 09:00:00")), "3", null),
+                result(analysis(bloodPressure, serum, Timestamp.valueOf("2026-08-03 09:00:00")), "5", null),
+                result(analysis(bloodPressure, serum, Timestamp.valueOf("2026-08-02 09:00:00")), "4", null));
+
+        List<ResultDisplay> obs = patientResultTreeService.getTestResultTree(PATIENT_ID, TEST_ID, null, null)
+                .getSubSets().get(0).getObs();
+
+        assertEquals(Arrays.asList("2026-08-03 09:00:00", "2026-08-02 09:00:00", "2026-08-01 09:00:00"),
+                obs.stream().map(ResultDisplay::getObsDatetime).collect(Collectors.toList()));
     }
 }

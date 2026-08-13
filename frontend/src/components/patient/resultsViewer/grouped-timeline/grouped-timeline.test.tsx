@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import messages from "../../../../languages/en.json";
 import GroupedTimeline from "./grouped-timeline";
 import FilterContext from "../filter/filter-context";
@@ -21,20 +22,22 @@ const timelineData = (rowData: any[]) => ({
 
 const renderTimeline = (rowData: any[]) =>
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <FilterContext.Provider
-        value={
-          {
-            activeTests: [],
-            timelineData: timelineData(rowData),
-            checkboxes: {},
-            someChecked: false,
-          } as any
-        }
-      >
-        <GroupedTimeline />
-      </FilterContext.Provider>
-    </IntlProvider>,
+    <MemoryRouter>
+      <IntlProvider locale="en" messages={messages}>
+        <FilterContext.Provider
+          value={
+            {
+              activeTests: [],
+              timelineData: timelineData(rowData),
+              checkboxes: {},
+              someChecked: false,
+            } as any
+          }
+        >
+          <GroupedTimeline />
+        </FilterContext.Provider>
+      </IntlProvider>
+    </MemoryRouter>,
   );
 
 describe("GroupedTimeline test column", () => {
@@ -100,5 +103,75 @@ describe("GroupedTimeline test column", () => {
 
     expect(screen.getByText("Glucose")).toBeInTheDocument();
     expect(screen.getByText("Serum")).toBeInTheDocument();
+  });
+});
+
+describe("GroupedTimeline trend graph link", () => {
+  /**
+   * The line graph for one test is reached by clicking its name here. That
+   * link was dropped when the timeline was rewritten onto Carbon's DataTable,
+   * which took the graph out of reach entirely — nothing else navigates to it.
+   */
+  const numericRow = {
+    flatName: "Haematology-Serum-Blood Pressure — Systolic",
+    display: "Blood Pressure — Systolic",
+    testName: "Blood Pressure",
+    sampleType: "Serum",
+    component: "Systolic",
+    conceptUuid: "42",
+    sampleTypeId: "1",
+    componentId: "c-sys",
+    obs: [{ obsDatetime: "2026-08-01 09:00:00", value: "130" }],
+    entries: [{ value: "130", interpretation: "HIGH" }],
+  };
+
+  it("links a numeric row to its own test, specimen and component", () => {
+    renderTimeline([numericRow]);
+
+    const link = screen.getByTestId(
+      "trend-link-Haematology-Serum-Blood Pressure — Systolic",
+    );
+    expect(link).toHaveTextContent("Blood Pressure");
+    expect(link).toHaveAttribute(
+      "href",
+      "#trendline/testId=42&sampleTypeId=1&componentId=c-sys",
+    );
+  });
+
+  it("gives each component of a test its own link", () => {
+    renderTimeline([
+      numericRow,
+      {
+        ...numericRow,
+        flatName: "Haematology-Serum-Blood Pressure — Diastolic",
+        component: "Diastolic",
+        componentId: "c-dia",
+        obs: [{ obsDatetime: "2026-08-01 09:00:00", value: "80" }],
+        entries: [{ value: "80", interpretation: "NORMAL" }],
+      },
+    ]);
+
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual([
+      "#trendline/testId=42&sampleTypeId=1&componentId=c-sys",
+      "#trendline/testId=42&sampleTypeId=1&componentId=c-dia",
+    ]);
+  });
+
+  it("offers no graph for a result no line can be drawn through", () => {
+    renderTimeline([
+      {
+        ...numericRow,
+        flatName: "Molecular-Swab-COVID-19 PCR",
+        component: undefined,
+        obs: [{ obsDatetime: "2026-08-01 09:00:00", value: "Detected" }],
+        entries: [{ value: "Detected", interpretation: "NORMAL" }],
+      },
+    ]);
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByText("Blood Pressure")).toBeInTheDocument();
   });
 });

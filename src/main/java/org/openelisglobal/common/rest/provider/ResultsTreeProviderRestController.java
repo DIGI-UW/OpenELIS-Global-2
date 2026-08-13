@@ -28,7 +28,7 @@ public class ResultsTreeProviderRestController {
     @GetMapping(value = "test-result-tree", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public PanelDisplay getTestResultTree(@RequestParam String patientId, @RequestParam String testId,
-            @RequestParam(required = false) String componentId) {
-        return patientResultTreeService.getTestResultTree(patientId, testId, componentId);
+            @RequestParam(required = false) String componentId, @RequestParam(required = false) String sampleTypeId) {
+        return patientResultTreeService.getTestResultTree(patientId, testId, componentId, sampleTypeId);
     }
 }
