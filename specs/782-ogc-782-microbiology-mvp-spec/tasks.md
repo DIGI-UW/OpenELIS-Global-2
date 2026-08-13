@@ -420,6 +420,19 @@ claims.
   tests, registered Playwright journeys, visual comparison, accessibility
   checks, representative-volume qualification, and one `tools/code-qa` pass.
 
+## R2 Order And Bench Protocol Alignment
+
+- [x] Keep order entry focused on routing: show an optional, read-only Culture
+  Method, support optional Date of Admission with outpatient behavior, and do
+  not collect critical-notification details during order entry.
+- [x] Provide a separate case-bench action for recording or changing the culture
+  protocol, with the selected/default method and change history visible.
+- [x] Preserve the revised order and protocol behavior through service-owned
+  persistence, stable URLs, breadcrumbs, and accessible Carbon interactions.
+- [x] Cover the slice with focused service, migration, controller, component,
+  and registered Playwright tests plus visual comparison and one
+  `tools/code-qa` pass.
+
 ## Dependencies & Execution Order
 
 - M1 blocks all later milestones.
@@ -435,6 +448,8 @@ claims.
 - Phases 9 and 10 depend on runnable MVP behavior; the V2 clarification in T187
   does not block MVP acceptance.
 - Phase 12 depends on the story-closure and artifact-reconciliation work.
+- R2 depends on the completed R1 behavior and supersedes R1 where the
+  authoritative order-entry and protocol controls changed.
 
 ## Parallel Opportunities
 
