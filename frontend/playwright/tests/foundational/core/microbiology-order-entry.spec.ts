@@ -1,5 +1,5 @@
 import { test, expect } from "../../../helpers/test-base";
-import type { Page } from "@playwright/test";
+import type { Locator, Page, TestInfo } from "@playwright/test";
 import {
   MICROBIOLOGY_ALTERNATE_CULTURE_METHOD_NAME as alternateCultureMethodName,
   clickMicrobiologyOrderTest as clickTestToggle,
@@ -37,7 +37,10 @@ async function fillMicrobiologyDetails(page: Page) {
     "Unknown",
   );
   await patientOrigin.selectOption("INPATIENT");
-  await page.getByLabel("Date of admission").fill("08/03/2026");
+  const displayedAdmissionDate = await fillConfiguredDate(
+    page.getByLabel("Date of admission"),
+    "2026-08-03",
+  );
   await page.getByRole("spinbutton", { name: "Number of Sets" }).fill("2");
   await page
     .getByLabel("Clinical History")
@@ -48,6 +51,7 @@ async function fillMicrobiologyDetails(page: Page) {
   await expect(
     page.getByLabel("Notify clinician immediately for a positive culture"),
   ).toHaveCount(0);
+  return displayedAdmissionDate;
 }
 
 async function saveEntryAndOpenCollect(page: Page) {
@@ -65,14 +69,32 @@ async function saveEntryAndOpenCollect(page: Page) {
   ).not.toHaveValue("", { timeout: LONG_TIMEOUT });
 }
 
+async function fillConfiguredDate(
+  dateInput: Locator,
+  isoDate: string,
+): Promise<string> {
+  const [year, month, day] = isoDate.split("-");
+  const placeholder = (await dateInput.getAttribute("placeholder")) || "";
+  const formatted = placeholder.toLowerCase().startsWith("dd")
+    ? `${day}/${month}/${year}`
+    : `${month}/${day}/${year}`;
+  await dateInput.click();
+  await dateInput.selectText();
+  await dateInput.pressSequentially(formatted);
+  await dateInput.press("Enter");
+  await expect(dateInput).toHaveValue(formatted);
+  return formatted;
+}
+
 async function collectAndRoute(page: Page) {
   const collectionCard = page.getByTestId("sample-collection-card-0");
-  const localeNeutralPastDate = "01/01/2026";
+  let displayedCollectionDate = "";
   for (const label of ["Collection Date", "Received Date"]) {
     const dateInput = collectionCard.getByLabel(label, { exact: false });
-    await dateInput.fill(localeNeutralPastDate);
-    await dateInput.press("Tab");
-    await expect(dateInput).toHaveValue(localeNeutralPastDate);
+    const displayedDate = await fillConfiguredDate(dateInput, "2026-08-13");
+    if (label === "Collection Date") {
+      displayedCollectionDate = displayedDate;
+    }
   }
   const saveAndNext = page.getByRole("button", { name: "Save & Next" });
   await expect(saveAndNext).toBeEnabled({ timeout: LONG_TIMEOUT });
@@ -80,6 +102,7 @@ async function collectAndRoute(page: Page) {
   await expect(page).toHaveURL(/\/order\/clinical\/label$/i, {
     timeout: LONG_TIMEOUT,
   });
+  return displayedCollectionDate;
 }
 
 async function reloadThroughBarcode(page: Page, labNumber: string) {
@@ -107,18 +130,94 @@ async function reloadThroughBarcode(page: Page, labNumber: string) {
     });
 }
 
+async function attachResponsiveEvidence(
+  page: Page,
+  testInfo: TestInfo,
+  subject: Locator,
+  evidenceName: string,
+) {
+  const originalViewport = page.viewportSize();
+  const viewports = [
+    ["desktop", { width: 1440, height: 1000 }],
+    ["mobile", { width: 393, height: 851 }],
+  ] as const;
+
+  for (const [name, viewport] of viewports) {
+    await page.setViewportSize(viewport);
+    await subject.scrollIntoViewIfNeeded();
+    await expect(subject).toBeVisible({ timeout: LONG_TIMEOUT });
+    const subjectWidth = await subject.evaluate((root) => {
+      const rootBounds = root.getBoundingClientRect();
+      return {
+        clientWidth: root.clientWidth,
+        scrollWidth: root.scrollWidth,
+        overflowingElements: Array.from(root.querySelectorAll("*"))
+          .map((element) => {
+            const bounds = element.getBoundingClientRect();
+            return {
+              className: element.className?.toString().slice(0, 120),
+              id: element.id,
+              right: Math.round(bounds.right),
+              tagName: element.tagName,
+              width: Math.round(bounds.width),
+            };
+          })
+          .filter(
+            ({ right, width }) => right > rootBounds.right + 1 && width > 0,
+          )
+          .slice(0, 12),
+      };
+    });
+    if (subjectWidth.scrollWidth > subjectWidth.clientWidth) {
+      console.info(
+        `[responsive-overflow] ${JSON.stringify(subjectWidth.overflowingElements)}`,
+      );
+    }
+    expect(subjectWidth.scrollWidth).toBeLessThanOrEqual(
+      subjectWidth.clientWidth,
+    );
+    const path = testInfo.outputPath(`${evidenceName}-${name}.png`);
+    await subject.screenshot({
+      path,
+      animations: "disabled",
+      style: "#mainHeader { visibility: hidden !important; }",
+    });
+    await testInfo.attach(`${evidenceName}-${name}`, {
+      path,
+      contentType: "image/png",
+    });
+  }
+
+  if (originalViewport) {
+    await page.setViewportSize(originalViewport);
+    await subject.scrollIntoViewIfNeeded();
+  }
+}
+
 test.describe("microbiology order entry on the supported workflow", () => {
   test("persists culture details and changes the bench protocol on the routed case", async ({
     page,
-  }) => {
+  }, testInfo) => {
     test.setTimeout(120_000);
     const seeded = await seedOrderCatalog(page);
     const labNumber = await startSupportedOrder(page, seeded);
+    const department = page.getByLabel("Department / Ward / Unit");
+    await expect(department).toBeDisabled();
+    await expect(department).toHaveValue("");
+    await expect(department.locator("option:checked")).toHaveText(
+      "Select facility first...",
+    );
     await selectTest(page, cultureTestName);
     await expect(
       page.getByTestId("microbiology-order-entry-section"),
     ).toContainText("Bacteriology");
-    await fillMicrobiologyDetails(page);
+    const displayedAdmissionDate = await fillMicrobiologyDetails(page);
+    await attachResponsiveEvidence(
+      page,
+      testInfo,
+      page.getByTestId("microbiology-order-entry-section"),
+      "microbiology-order-entry",
+    );
     await saveEntryAndOpenCollect(page);
 
     await reloadThroughBarcode(page, labNumber);
@@ -133,7 +232,7 @@ test.describe("microbiology order entry on the supported workflow", () => {
     ).toHaveValue("Blood Culture Standard");
     await expect(page.getByLabel("Patient Origin")).toHaveValue("INPATIENT");
     await expect(page.getByLabel("Date of admission")).toHaveValue(
-      "08/03/2026",
+      displayedAdmissionDate,
     );
     await expect(
       page.getByRole("spinbutton", { name: "Number of Sets" }),
@@ -147,10 +246,34 @@ test.describe("microbiology order entry on the supported workflow", () => {
     await expect(
       page.getByLabel("Notify clinician immediately for a positive culture"),
     ).toHaveCount(0);
+    const admissionDate = page.getByLabel("Date of admission");
+    await expect(admissionDate).toBeDisabled();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await expect(admissionDate).toBeEnabled();
 
     await page.getByTestId("order-step-collect").click();
     await expect(page).toHaveURL(/\/order\/clinical\/collect$/i);
-    await collectAndRoute(page);
+    const collectionDate = page
+      .getByTestId("sample-collection-card-0")
+      .getByLabel("Collection Date", { exact: false });
+    await fillConfiguredDate(collectionDate, "2026-01-01");
+    await expect(
+      page.getByText("Collection date cannot be before date of admission."),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Save & Next" }),
+    ).toBeDisabled();
+
+    const displayedCollectionDate = await collectAndRoute(page);
+    await reloadThroughBarcode(page, labNumber);
+    await expect(
+      page.getByText(`Collection date: ${displayedCollectionDate}`),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Collected 10 days after admission - hospital-origin for surveillance.",
+      ),
+    ).toBeVisible();
 
     await page.goto(
       `/Microbiology/worklist?q=${encodeURIComponent(labNumber)}`,
@@ -181,6 +304,12 @@ test.describe("microbiology order entry on the supported workflow", () => {
       .getByRole("button", { name: "Change protocol" })
       .click();
     await expect(page).toHaveURL(/section=setup.*action=change-protocol/);
+    await attachResponsiveEvidence(
+      page,
+      testInfo,
+      protocolPanel,
+      "microbiology-protocol",
+    );
 
     const protocol = protocolPanel.getByRole("combobox", {
       name: "Culture protocol",

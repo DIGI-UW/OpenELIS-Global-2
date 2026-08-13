@@ -24,6 +24,7 @@ import {
   buildSubmissionMicrobiologyOrderDetail,
   buildSubmissionSampleOrderItems,
 } from "./orderDataUtils";
+import { formatIsoDateForBackend, normalizeDateForState } from "./dateUtils";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -143,31 +144,6 @@ const getCurrentTime = () => {
   return `${hours}:${minutes}`;
 };
 
-const convertIsoToBackendDate = (isoDate, isDayFirst = false) => {
-  if (!isoDate) return "";
-  if (isoDate.includes("/")) return isoDate;
-  const parts = isoDate.split("-");
-  if (parts.length === 3) {
-    return isDayFirst
-      ? `${parts[2]}/${parts[1]}/${parts[0]}`
-      : `${parts[1]}/${parts[2]}/${parts[0]}`;
-  }
-  return isoDate;
-};
-
-const convertBackendDateToIso = (backendDate, isDayFirst = false) => {
-  if (!backendDate) return "";
-  if (backendDate.includes("-")) return backendDate;
-  const parts = backendDate.split("/");
-  if (parts.length === 3) {
-    const [first, second, year] = parts;
-    const month = isDayFirst ? second : first;
-    const day = isDayFirst ? first : second;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  }
-  return backendDate;
-};
-
 /**
  * Flatten sampleXML manifest fields to top-level so manifest inputs are pre-populated.
  * Used after both loadOrder and saveOrder to normalise the samples array.
@@ -175,15 +151,19 @@ const convertBackendDateToIso = (backendDate, isDayFirst = false) => {
 const flattenSampleManifestFields = (
   samplesList,
   envFields = {},
-  isDayFirst = false,
+  dateLocale = "en-US",
 ) =>
   samplesList.map((s) => {
     const xml = s.sampleXML || {};
     return {
       ...s,
-      collectionDate: convertBackendDateToIso(
+      collectionDate: normalizeDateForState(
         s.collectionDate || xml.collectionDate || "",
-        isDayFirst,
+        dateLocale,
+      ),
+      receivedDate: normalizeDateForState(
+        s.receivedDate || xml.receivedDate || "",
+        dateLocale,
       ),
       collectionTime: s.collectionTime || xml.collectionTime || "",
       container: s.container || xml.container || "",
@@ -226,8 +206,9 @@ const getInitialOrderData = (workflowType = "clinical") => {
 };
 
 export const OrderProvider = ({ children, workflowType = "clinical" }) => {
-  const { configurationProperties } = useContext(ConfigurationContext);
-  const isDayFirst = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
+  const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
   const location = useLocation();
 
   const [orderId, setOrderId] = useState(null);
@@ -305,104 +286,107 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
    * Used when user scans a barcode or enters a lab number.
    * Loads in read-only mode by default (user must click Edit to modify).
    */
-  const loadOrder = useCallback(async (searchLabNumber, readOnly = true) => {
-    setIsLoading(true);
-    setError(null);
+  const loadOrder = useCallback(
+    async (searchLabNumber, readOnly = true) => {
+      setIsLoading(true);
+      setError(null);
 
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/order/search?labNumber=${encodeURIComponent(searchLabNumber)}`,
-        (response) => {
-          setIsLoading(false);
+      return new Promise((resolve, reject) => {
+        getFromOpenElisServer(
+          `/rest/order/search?labNumber=${encodeURIComponent(searchLabNumber)}`,
+          (response) => {
+            setIsLoading(false);
 
-          if (response && response.labNumber) {
-            setOrderId(response.id);
-            setLabNumber(response.labNumber);
+            if (response && response.labNumber) {
+              setOrderId(response.id);
+              setLabNumber(response.labNumber);
 
-            const loadedOrderData = buildLoadedOrderData(
-              response,
-              orderDataRef.current,
-            );
-
-            setOrderDataState(loadedOrderData);
-
-            // Load sample type requests if no sample_items exist (decoupled workflow)
-            // This handles Step 1 edit where samples are stored as requests, not items
-            const hasSampleItems =
-              response.samples &&
-              response.samples.length > 0 &&
-              response.samples.some((s) => s.sampleItemId);
-
-            const loadedEnvFields =
-              loadedOrderData?.sampleOrderItems?.environmentalFields || {};
-            const injectVectorFields = (samplesList) =>
-              flattenSampleManifestFields(
-                samplesList,
-                loadedEnvFields,
-                isDayFirst,
+              const loadedOrderData = buildLoadedOrderData(
+                response,
+                orderDataRef.current,
               );
 
-            setIsReadOnly(readOnly);
-            setIsEditMode(false);
-            setIsDirty(false);
-            setSaveStatus(SaveStatus.SAVED);
+              setOrderDataState(loadedOrderData);
 
-            setStepProgress(
-              response.stepProgress || {
-                enter: false,
-                collect: false,
-                label: false,
-                qa: false,
-              },
-            );
+              // Load sample type requests if no sample_items exist (decoupled workflow)
+              // This handles Step 1 edit where samples are stored as requests, not items
+              const hasSampleItems =
+                response.samples &&
+                response.samples.length > 0 &&
+                response.samples.some((s) => s.sampleItemId);
 
-            // Load storageSkipped from backend response
-            const savedStorageSkipped = response.storageSkipped === true;
-            setStorageSkippedState(savedStorageSkipped);
+              const loadedEnvFields =
+                loadedOrderData?.sampleOrderItems?.environmentalFields || {};
+              const injectVectorFields = (samplesList) =>
+                flattenSampleManifestFields(
+                  samplesList,
+                  loadedEnvFields,
+                  dateLocale,
+                );
 
-            setError(null);
-            lastSavedDataRef.current = JSON.stringify({
-              orderData: loadedOrderData,
-              samples: response.samples,
-            });
+              setIsReadOnly(readOnly);
+              setIsEditMode(false);
+              setIsDirty(false);
+              setSaveStatus(SaveStatus.SAVED);
 
-            if (!hasSampleItems && response.id) {
-              // Load sample type requests and resolve only after samples are set,
-              // so callers that await loadOrder() see the full samples state.
-              getRequestsBySample(response.id)
-                .then((requests) => {
-                  if (requests && requests.length > 0) {
-                    setSamplesState(
-                      injectVectorFields(convertRequestsToSamples(requests)),
-                    );
-                  } else {
+              setStepProgress(
+                response.stepProgress || {
+                  enter: false,
+                  collect: false,
+                  label: false,
+                  qa: false,
+                },
+              );
+
+              // Load storageSkipped from backend response
+              const savedStorageSkipped = response.storageSkipped === true;
+              setStorageSkippedState(savedStorageSkipped);
+
+              setError(null);
+              lastSavedDataRef.current = JSON.stringify({
+                orderData: loadedOrderData,
+                samples: response.samples,
+              });
+
+              if (!hasSampleItems && response.id) {
+                // Load sample type requests and resolve only after samples are set,
+                // so callers that await loadOrder() see the full samples state.
+                getRequestsBySample(response.id)
+                  .then((requests) => {
+                    if (requests && requests.length > 0) {
+                      setSamplesState(
+                        injectVectorFields(convertRequestsToSamples(requests)),
+                      );
+                    } else {
+                      setSamplesState(
+                        injectVectorFields(response.samples || [sampleObject]),
+                      );
+                    }
+                    resolve(response);
+                  })
+                  .catch(() => {
                     setSamplesState(
                       injectVectorFields(response.samples || [sampleObject]),
                     );
-                  }
-                  resolve(response);
-                })
-                .catch(() => {
-                  setSamplesState(
-                    injectVectorFields(response.samples || [sampleObject]),
-                  );
-                  resolve(response);
-                });
+                    resolve(response);
+                  });
+              } else {
+                setSamplesState(
+                  injectVectorFields(response.samples || [sampleObject]),
+                );
+                resolve(response);
+              }
             } else {
-              setSamplesState(
-                injectVectorFields(response.samples || [sampleObject]),
-              );
-              resolve(response);
+              const errorMsg = "Order not found";
+              setError(errorMsg);
+              reject(new Error(errorMsg));
             }
-          } else {
-            const errorMsg = "Order not found";
-            setError(errorMsg);
-            reject(new Error(errorMsg));
-          }
-        },
-      );
-    });
-  }, []);
+          },
+        );
+      });
+    },
+    [dateLocale],
+  );
 
   /**
    * Convert samples array to XML format expected by backend
@@ -421,8 +405,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         return "";
       }
 
-      const orderRequiredBy = convertBackendDateToIso(
+      const orderRequiredBy = normalizeDateForState(
         orderData?.sampleOrderItems?.requiredBy || "",
+        dateLocale,
       );
       let sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
       sampleXmlString += `<samples requiredBy='${orderRequiredBy}'>`;
@@ -442,9 +427,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
               : "";
 
           const sampleXMLData = sampleItem.sampleXML || {};
-          const collectionDate = convertIsoToBackendDate(
+          const collectionDate = formatIsoDateForBackend(
             sampleItem.collectionDate || sampleXMLData.collectionDate || "",
-            isDayFirst,
+            dateLocale,
           );
           const collectionTime =
             sampleItem.collectionTime || sampleXMLData.collectionTime || "";
@@ -459,9 +444,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           const rejected = sampleItem.sampleRejected ? "true" : "false";
           const rejectReasonId = sampleItem.rejectionReason || "";
 
-          const receivedDate = convertIsoToBackendDate(
+          const receivedDate = formatIsoDateForBackend(
             sampleItem.receivedDate || sampleXMLData.receivedDate || "",
-            isDayFirst,
+            dateLocale,
           );
           const receivedTime =
             sampleItem.receivedTime || sampleXMLData.receivedTime || "";
@@ -527,7 +512,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       sampleXmlString += "</samples>";
       return sampleXmlString;
     },
-    [isDayFirst],
+    [dateLocale, orderData?.sampleOrderItems?.requiredBy],
   );
 
   /**
@@ -704,7 +689,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                         flattenSampleManifestFields(
                           response.samples,
                           envFields,
-                          isDayFirst,
+                          dateLocale,
                         ),
                       );
                     } else if (response.id) {
@@ -715,7 +700,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                               flattenSampleManifestFields(
                                 convertRequestsToSamples(requests),
                                 envFields,
-                                isDayFirst,
+                                dateLocale,
                               ),
                             );
                           } else if (
@@ -726,7 +711,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                               flattenSampleManifestFields(
                                 response.samples,
                                 envFields,
-                                isDayFirst,
+                                dateLocale,
                               ),
                             );
                           }
@@ -737,7 +722,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                               flattenSampleManifestFields(
                                 response.samples,
                                 envFields,
-                                isDayFirst,
+                                dateLocale,
                               ),
                             );
                           }
@@ -786,6 +771,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       isEditMode,
       buildSampleXML,
       buildReferralItems,
+      dateLocale,
     ],
   );
 
@@ -958,6 +944,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                           flattenSampleManifestFields(
                             response.samples,
                             envFields,
+                            dateLocale,
                           ),
                         );
                       }
@@ -1012,7 +999,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         );
       });
     },
-    [orderId, orderData, samples, isReadOnly, isEditMode],
+    [orderId, orderData, samples, isReadOnly, isEditMode, dateLocale],
   );
 
   /**

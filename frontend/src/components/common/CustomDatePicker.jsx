@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useState, useContext } from "react";
 import { DatePicker, DatePickerInput } from "@carbon/react";
 import { format } from "date-fns";
 import { useIntl } from "react-intl";
@@ -37,6 +37,7 @@ const CustomDatePicker = (props) => {
     // place.
     if (inputValue === "") {
       setCurrentDate("");
+      props.onChange("");
       return;
     }
 
@@ -56,18 +57,13 @@ const CustomDatePicker = (props) => {
     }
     if (fullDateRegex.test(inputValue)) {
       setCurrentDate(inputValue);
+      props.onChange(inputValue);
     }
   }
 
-  useEffect(() => {
-    props.onChange(currentDate);
-  }, [currentDate]);
-
-  useEffect(() => {
-    if (props.updateStateValue) {
-      setCurrentDate(props.value);
-    }
-  }, [props.value]);
+  const displayedDate = props.updateStateValue
+    ? props.value || ""
+    : currentDate;
 
   return (
     <>
@@ -80,8 +76,10 @@ const CustomDatePicker = (props) => {
         }
         className={props.className}
         datePickerType="single"
-        value={currentDate}
+        value={displayedDate}
         onChange={(e) => handleDatePickerChange(e)}
+        invalid={props.invalid}
+        invalidText={props.invalidText}
         maxDate={
           props.disallowFutureDate
             ? format(
@@ -120,8 +118,9 @@ const CustomDatePicker = (props) => {
           helperText={props.helperText}
           invalid={props.invalid}
           invalidText={props.invalidText}
+          aria-invalid={props.invalid || undefined}
           disabled={props.disabled}
-          onChange={handleInputChange}
+          onInput={handleInputChange}
         />
       </DatePicker>
     </>

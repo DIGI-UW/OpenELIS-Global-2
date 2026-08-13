@@ -8,10 +8,15 @@ import {
   Tag,
   TextArea,
 } from "@carbon/react";
-import { format, isValid, parse, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { useIntl } from "react-intl";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
+import {
+  daysBetweenIsoDates,
+  formatIsoDateForBackend,
+  formatPickerDateForIso,
+} from "../order/dateUtils";
 import "./MicrobiologyOrderDetailFields.scss";
 
 export const emptyMicrobiologyOrderDetail = {
@@ -23,27 +28,8 @@ export const emptyMicrobiologyOrderDetail = {
   antibioticExposure: false,
 };
 
-const pickerPattern = (dateLocale) =>
-  dateLocale === "fr-FR" ? "dd/MM/yyyy" : "MM/dd/yyyy";
-
-export const formatAdmissionDateForPicker = (isoDate, dateLocale) => {
-  if (!isoDate) {
-    return "";
-  }
-  const parsed = parseISO(isoDate);
-  return isValid(parsed) ? format(parsed, pickerPattern(dateLocale)) : "";
-};
-
-export const formatAdmissionDateForApi = (pickerDate, dateLocale) => {
-  if (!pickerDate) {
-    return "";
-  }
-  const pattern = pickerPattern(dateLocale);
-  const parsed = parse(pickerDate, pattern, new Date());
-  return isValid(parsed) && format(parsed, pattern) === pickerDate
-    ? format(parsed, "yyyy-MM-dd")
-    : "";
-};
+export const formatAdmissionDateForPicker = formatIsoDateForBackend;
+export const formatAdmissionDateForApi = formatPickerDateForIso;
 
 const MicrobiologyOrderDetailFields = ({
   fields,
@@ -53,6 +39,7 @@ const MicrobiologyOrderDetailFields = ({
   idPrefix = "microbiology-order-detail",
   isReadOnly = false,
   showCultureMethod = true,
+  collectionDate = "",
 }) => {
   const intl = useIntl();
   const { configurationProperties = {} } =
@@ -75,6 +62,10 @@ const MicrobiologyOrderDetailFields = ({
   const admissionDateIsFuture =
     Boolean(fields.admissionDate) &&
     fields.admissionDate > format(new Date(), "yyyy-MM-dd");
+  const daysAfterAdmission = daysBetweenIsoDates(
+    fields.admissionDate,
+    collectionDate,
+  );
 
   return (
     <div className="microbiology-order-detail-fields">
@@ -141,31 +132,58 @@ const MicrobiologyOrderDetailFields = ({
           />
         ))}
       </Select>
-      <CustomDatePicker
-        id={`${idPrefix}-admission-date`}
-        labelText={intl.formatMessage({
-          id: "microbiology.orderDetail.admissionDate",
-        })}
-        helperText={intl.formatMessage({
-          id: isOutpatient
-            ? "microbiology.orderDetail.admissionDateOutpatient"
-            : "microbiology.orderDetail.admissionDateHelper",
-        })}
-        value={formatAdmissionDateForPicker(fields.admissionDate, dateLocale)}
-        updateStateValue
-        disallowFutureDate
-        invalid={admissionDateIsFuture}
-        invalidText={intl.formatMessage({
-          id: "microbiology.orderDetail.admissionDateFuture",
-        })}
-        onChange={(value) =>
-          onChange(
-            "admissionDate",
-            formatAdmissionDateForApi(value, dateLocale),
-          )
-        }
-        disabled={isReadOnly || isOutpatient}
-      />
+      <div className="microbiology-order-detail-fields__admission-date">
+        <CustomDatePicker
+          id={`${idPrefix}-admission-date`}
+          labelText={intl.formatMessage({
+            id: "microbiology.orderDetail.admissionDate",
+          })}
+          helperText={intl.formatMessage({
+            id: isOutpatient
+              ? "microbiology.orderDetail.admissionDateOutpatient"
+              : "microbiology.orderDetail.admissionDateHelper",
+          })}
+          value={formatAdmissionDateForPicker(fields.admissionDate, dateLocale)}
+          updateStateValue
+          disallowFutureDate
+          invalid={admissionDateIsFuture}
+          invalidText={intl.formatMessage({
+            id: "microbiology.orderDetail.admissionDateFuture",
+          })}
+          onChange={(value) =>
+            onChange(
+              "admissionDate",
+              formatAdmissionDateForApi(value, dateLocale),
+            )
+          }
+          disabled={isReadOnly || isOutpatient}
+        />
+        {collectionDate && (
+          <div className="microbiology-order-detail-fields__collection-context">
+            <p>
+              {intl.formatMessage(
+                { id: "microbiology.orderDetail.collectionDateContext" },
+                {
+                  date: formatIsoDateForBackend(collectionDate, dateLocale),
+                },
+              )}
+            </p>
+            {daysAfterAdmission !== null && daysAfterAdmission >= 0 && (
+              <p>
+                {intl.formatMessage(
+                  {
+                    id:
+                      daysAfterAdmission > 2
+                        ? "microbiology.orderDetail.collectionTimingHospital"
+                        : "microbiology.orderDetail.collectionTimingCommunity",
+                  },
+                  { days: daysAfterAdmission },
+                )}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
       <NumberInput
         id={`${idPrefix}-number-of-sets`}
         label={intl.formatMessage({
