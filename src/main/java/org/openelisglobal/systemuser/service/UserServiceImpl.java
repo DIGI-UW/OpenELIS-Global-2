@@ -140,6 +140,12 @@ public class UserServiceImpl implements UserService {
 
     private void updateUserRoles(List<String> selectedRoles, SystemUser systemUser, String loggedOnUserId,
             Boolean isLabRole) {
+        // A user may be assigned only lab-unit roles (no global role), in which case
+        // the caller passes a null global-roles list; treat it as empty rather than
+        // NPE (regression from the Integer role-id migration — develop guarded this).
+        if (selectedRoles == null) {
+            selectedRoles = new ArrayList<>();
+        }
         List<Integer> currentUserRoles = userRoleService.getRoleIdsForUser(systemUser.getId());
         List<UserRole> deletedUserRoles = new ArrayList<>();
         if (isLabRole) {
