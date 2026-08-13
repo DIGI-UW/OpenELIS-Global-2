@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+resolve_harness_playwright_project() {
+  local mode="$1"
+  local requested_project="${2:-}"
+
+  if [[ -n "$requested_project" ]]; then
+    validate_harness_playwright_project "$requested_project"
+    return
+  fi
+  if [[ "$mode" == "video" ]]; then
+    echo "harness-demo-video"
+  else
+    echo "harness-foundational"
+  fi
+}
+
+validate_harness_playwright_project() {
+  local project="$1"
+  case "$project" in
+    harness-foundational|harness-demo|harness-demo-video)
+      echo "$project"
+      ;;
+    *)
+      echo "ERROR: unsupported project '$project' (expected harness-foundational, harness-demo, or harness-demo-video)" >&2
+      return 2
+      ;;
+  esac
+}
+
+assert_harness_project_has_specs() {
+  local repo_root="$1"
+  local project="$2"
+  local spec_dir
+
+  case "$project" in
+    harness-foundational)
+      spec_dir="$repo_root/frontend/playwright/tests/foundational/harness"
+      ;;
+    harness-demo|harness-demo-video)
+      spec_dir="$repo_root/frontend/playwright/tests/demo/harness"
+      ;;
+    *)
+      validate_harness_playwright_project "$project" >/dev/null
+      return
+      ;;
+  esac
+
+  if ! find "$spec_dir" -maxdepth 1 -type f -name '*.spec.ts' -print -quit 2>/dev/null | grep -q .; then
+    if [[ "$project" == "harness-foundational" ]]; then
+      echo "ERROR: project '$project' has no analyzer foundational specs" >&2
+    else
+      echo "ERROR: project '$project' has no analyzer demo specs" >&2
+    fi
+    return 2
+  fi
+}

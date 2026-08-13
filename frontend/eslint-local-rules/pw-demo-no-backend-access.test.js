@@ -158,6 +158,11 @@ describe("pw-demo-no-backend-access", () => {
       "forcedAction",
     ],
     [
+      "forced aliased control",
+      "const saveButton = page.getByRole('button'); await saveButton.first().click({ force: true })",
+      "forcedAction",
+    ],
+    [
       "computed local import",
       "await import(`../../../helpers/${helperName}`)",
       "unresolvedLocalImport",
@@ -191,6 +196,7 @@ describe("pw-demo-no-backend-access", () => {
       "const { request: requestId } = payload; requestId.post('/not-playwright')",
     ],
     ["domain force option", "await settings.configure({ force: true })"],
+    ["domain click force option", "await buttonModel.click({ force: true })"],
     ["unrelated context route", "router.context().route('/analyzers')"],
     [
       "same alias name in another scope",

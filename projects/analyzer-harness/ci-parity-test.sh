@@ -25,6 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 FRONTEND_DIR="$REPO_ROOT/frontend"
 source "$SCRIPT_DIR/compose-stack.sh"
+source "$SCRIPT_DIR/playwright-project-policy.sh"
 CI_COMPOSE_FILES=($(compose_args_ci))
 FIXTURE_SCRIPT="$REPO_ROOT/src/test/resources/load-test-fixtures.sh"
 SEED_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-analyzers.sh"
@@ -74,7 +75,7 @@ while [[ $# -gt 0 ]]; do
     --project)
       PLAYWRIGHT_PROJECT="${2:-}"
       if [[ -z "$PLAYWRIGHT_PROJECT" ]]; then
-        echo "ERROR: --project requires value harness-demo|harness-demo-video" >&2
+        echo "ERROR: --project requires a harness Playwright project" >&2
         exit 2
       fi
       shift 2
@@ -440,18 +441,8 @@ if [[ "$PRECHECK_ONLY" == true ]]; then
   exit 0
 fi
 
-if [[ -z "$PLAYWRIGHT_PROJECT" ]]; then
-  if [[ "$MODE" == "video" ]]; then
-    PLAYWRIGHT_PROJECT="harness-demo-video"
-  else
-    PLAYWRIGHT_PROJECT="harness-demo"
-  fi
-fi
-
-if [[ "$PLAYWRIGHT_PROJECT" != "harness-demo" && "$PLAYWRIGHT_PROJECT" != "harness-demo-video" ]]; then
-  echo "ERROR: unsupported project '$PLAYWRIGHT_PROJECT' (expected harness-demo or harness-demo-video)" >&2
-  exit 2
-fi
+PLAYWRIGHT_PROJECT="$(resolve_harness_playwright_project "$MODE" "$PLAYWRIGHT_PROJECT")"
+assert_harness_project_has_specs "$REPO_ROOT" "$PLAYWRIGHT_PROJECT"
 
 if [[ "$PLAYWRIGHT_PROJECT" == "harness-demo-video" && -n "$SHARD" ]]; then
   echo "ERROR: sharding is unsupported in harness-demo-video mode" >&2

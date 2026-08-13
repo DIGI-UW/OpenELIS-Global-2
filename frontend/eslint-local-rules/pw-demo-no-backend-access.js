@@ -122,6 +122,37 @@ export default {
       "requestfinished",
       "response",
     ]);
+    const locatorActionsWithForce = new Set([
+      "check",
+      "click",
+      "dblclick",
+      "dragTo",
+      "fill",
+      "hover",
+      "selectOption",
+      "setChecked",
+      "tap",
+      "uncheck",
+    ]);
+    const locatorFactories = new Set([
+      "frameLocator",
+      "getByAltText",
+      "getByLabel",
+      "getByPlaceholder",
+      "getByRole",
+      "getByTestId",
+      "getByText",
+      "getByTitle",
+      "locator",
+    ]);
+    const locatorRefinements = new Set([
+      "and",
+      "filter",
+      "first",
+      "last",
+      "nth",
+      "or",
+    ]);
 
     function findVariable(identifier) {
       let scope = sourceCode.getScope(identifier);
@@ -231,6 +262,38 @@ export default {
 
     function isNetworkOwner(node) {
       return isPageClient(node) || isBrowserContext(node);
+    }
+
+    function isLocator(node, visited = new Set()) {
+      const expression = unwrapExpression(node);
+      if (!expression) return false;
+      if (
+        expression.type === "CallExpression" &&
+        expression.callee.type === "MemberExpression"
+      ) {
+        const method = getStaticPropertyName(expression.callee);
+        if (
+          locatorFactories.has(method) &&
+          (isPageClient(expression.callee.object) ||
+            isLocator(expression.callee.object, visited))
+        ) {
+          return true;
+        }
+        if (
+          locatorRefinements.has(method) &&
+          isLocator(expression.callee.object, visited)
+        ) {
+          return true;
+        }
+      }
+      if (expression.type !== "Identifier") return false;
+
+      const variable = findVariable(expression);
+      if (!variable || visited.has(variable)) return false;
+      visited.add(variable);
+      return variableInitializers(variable).some((initializer) =>
+        isLocator(initializer, visited),
+      );
     }
 
     function isDirectRequestAccess(node) {
@@ -426,7 +489,11 @@ export default {
         const methodName = getStaticPropertyName(callee);
         if (!methodName) return;
 
-        if (usesForceOption(node)) {
+        if (
+          locatorActionsWithForce.has(methodName) &&
+          (isPageClient(callee.object) || isLocator(callee.object)) &&
+          usesForceOption(node)
+        ) {
           context.report({ node, messageId: "forcedAction" });
           return;
         }
