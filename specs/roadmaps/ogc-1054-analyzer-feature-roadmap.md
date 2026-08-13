@@ -485,7 +485,7 @@ silently route around.
 | `ISSUE-R0-002` | Validation | `RESOLVED` | The original command block retained `frontend` as its working directory; commands now run in repository-rooted subshells.                                                  |
 | `ISSUE-R0-003` | Validation | `RESOLVED` | The final Playwright story is absent on the R0 base; OE-M4 owns its creation and earlier checkpoint records must mark that full-story gate `LATER`.                        |
 | `ISSUE-R0-004` | Provenance | `RESOLVED` | A commit cannot name its own SHA; committed records name implementation/evidence commits and CI records the final immutable PR-head SHA.                                   |
-| `ISSUE-R0-005` | Provenance | `OPEN`     | PR #3792 carries an earlier divergent blob at this path; after OE-F0 opens, retitle and close #3792 with links to OE-R0/OE-F0 and retain its branch only as history.       |
+| `ISSUE-R0-005` | Provenance | `RESOLVED` | PR #3792 was retitled and closed as historical after OE-F0 #4053 opened; it links OE-R0/OE-F0 and its branch remains immutable history.                                    |
 | `ISSUE-R0-006` | Provenance | `RESOLVED` | Code audit found #3792-only behavior described as current. R0 now distinguishes current-code facts from historical provenance and enforces one descendant roadmap lineage. |
 | `AMB-F0-001`   | Scope      | `RESOLVED` | The F0 salvage manifest classifies every considered #3792 behavior group before production reimplementation and prohibits commit-level cherry-picks.                       |
 | `ISSUE-F0-001` | Test scope | `RESOLVED` | Three analyzer transport/setup specs used backend helpers while labeled as demo evidence; F0 reclassified all three as foundational and retained 13 integration cases.     |

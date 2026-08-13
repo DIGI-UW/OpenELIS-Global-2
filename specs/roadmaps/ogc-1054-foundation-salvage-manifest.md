@@ -81,7 +81,7 @@ only.
 | `F0-B17` | RBAC is enforced for analyzer administration endpoints                                                                                  | `632979648`, `2934037e4`, `6229292c2`                                                                               | Current controller security tests already cover the existing analyzer surface                                                                    | `PROVIDED_BY_DEVELOP`: retain baseline tests; each later endpoint adds its own allowed/denied tests                                                                  | Security gate; F0 and later    |
 | `F0-B18` | Carbon/localization/screenshot polish from the superseded flow                                                                          | `7ce95f561`, `48b231242`, `b56105ecf`                                                                               | Some reusable presentation ideas exist, but the old screens do not satisfy current product QA                                                    | `REIMPLEMENT_WITH_TDD`: apply current Carbon patterns at the owning milestone and compare new screenshots to current functional mocks                                | MVP-011/022; M1-M4             |
 | `F0-B19` | July local/demo videos and completion claims establish MVP acceptance                                                                   | `bf371fed1`, `02b172002`, `2c840a55b`, `15044cff6`, `4344821bc`, `a12798df8`, `94585fded`                           | Evidence targets an obsolete app SHA and a narrower story                                                                                        | `DROP_INCOMPATIBLE`: retain as git history only; G0 requires exact-RC remote UAT and a newly inspected MP4                                                           | MVP-024; G0                    |
-| `F0-B20` | The #3792 roadmap/spec version remains authoritative                                                                                    | `d985e6ce7` and earlier roadmap/spec commits                                                                        | OE-R0 PR #4049 carries the sole current roadmap; the historical branch has a divergent blob                                                      | `DROP_INCOMPATIBLE`: after F0 opens, retitle and close #3792 while preserving its branch                                                                             | R0/F0 provenance               |
+| `F0-B20` | The #3792 roadmap/spec version remains authoritative                                                                                    | `d985e6ce7` and earlier roadmap/spec commits                                                                        | OE-R0 PR #4049 carries the sole current roadmap; the historical branch has a divergent blob                                                      | `DROP_INCOMPATIBLE`: #3792 is closed and labeled historical; preserve its branch only as provenance                                                                  | R0/F0 provenance               |
 
 ## Historical Commit Coverage
 
@@ -259,11 +259,11 @@ fixture. Therefore empty companion PRs would provide no testable behavior and
 are prohibited by the roadmap. Exact pointers are recorded so a reviewer can
 reproduce that decision.
 
-| Repository      | Exact F0 pointer                                                    | OGC-1054 PR now                                      | F0 disposition                             | First required companion             |
-| --------------- | ------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------ | ------------------------------------ |
-| OpenELIS        | OE-F0 branch after OE-R0 `53e720c05aa1f6abee16a173bd76a3a4d0135568` | OE-R0 #4049; OE-F0 pending publish; historical #3792 | `CHANGE`                                   | Current repository                   |
-| Analyzer Bridge | `12a338992eaf791a63159b7e5016f75369722dbf`                          | None                                                 | `NO_CHANGE`: no F0 runtime contract change | BR-E0 before OE-E0                   |
-| Analyzer mock   | `d063356e5a8f82ca6a44cf809be1874a7d704f8e`                          | None                                                 | `NO_CHANGE`: no F0 fixture change          | MOCK-M4 after BR-M4 and before OE-M4 |
+| Repository      | Exact F0 pointer                                                    | OGC-1054 PR now                                   | F0 disposition                             | First required companion             |
+| --------------- | ------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------ | ------------------------------------ |
+| OpenELIS        | OE-F0 branch after OE-R0 `53e720c05aa1f6abee16a173bd76a3a4d0135568` | OE-R0 #4049; OE-F0 #4053; closed historical #3792 | `CHANGE`                                   | Current repository                   |
+| Analyzer Bridge | `12a338992eaf791a63159b7e5016f75369722dbf`                          | None                                              | `NO_CHANGE`: no F0 runtime contract change | BR-E0 before OE-E0                   |
+| Analyzer mock   | `d063356e5a8f82ca6a44cf809be1874a7d704f8e`                          | None                                              | `NO_CHANGE`: no F0 fixture change          | MOCK-M4 after BR-M4 and before OE-M4 |
 
 The global train is invalid if OE-E0 opens without its BR-E0 producer contract,
 or if OE-M4 opens before both BR-M4 and MOCK-M4 are accepted and pinned. A
@@ -328,8 +328,8 @@ contracts, remote execution, UAT, and MP4 evidence remain explicitly outside F0.
    action checks.
 5. F0 creates no empty Bridge or mock PR. The exact `NO_CHANGE` pointers are
    evidence only for F0, not waivers for later contract checkpoints.
-6. The old branch remains immutable provenance until its PR is closed as
-   superseded after the F0 PR opens.
+6. Historical PR #3792 is closed as superseded and its branch remains immutable
+   provenance.
 
 ## Issues and Ambiguities
 
