@@ -18,7 +18,7 @@ import org.testcontainers.utility.MountableFile;
 public class MicrobiologyR1ProgramCodeLengthLiquibaseRollbackTest {
 
     @Test
-    public void programCodeLengthRollsBackAndReappliesOnStandaloneDatabase() throws Exception {
+    public void rollbackPreservesLongProgramCodesAndCompatibleColumnWidth() throws Exception {
         try (PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:14.4")) {
             postgres.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
                     "/docker-entrypoint-initdb.d");
@@ -37,14 +37,17 @@ public class MicrobiologyR1ProgramCodeLengthLiquibaseRollbackTest {
                 Liquibase fullChangelog = new Liquibase("liquibase/base-changelog.xml", resources, database);
                 fullChangelog.update(new Contexts("test"));
                 assertEquals(20, programCodeLength(connection));
+                insertMicrobiologyProgram(connection);
 
                 Liquibase codeLengthChangelog = new Liquibase(
                         "liquibase/microbiology-r1-program-code-length-rollback.xml", resources, database);
                 codeLengthChangelog.rollback(1, "test");
-                assertEquals(10, programCodeLength(connection));
+                assertEquals(20, programCodeLength(connection));
+                assertEquals(1, microbiologyProgramCount(connection));
 
                 codeLengthChangelog.update(new Contexts("test"));
                 assertEquals(20, programCodeLength(connection));
+                assertEquals(1, microbiologyProgramCount(connection));
             }
         }
     }
@@ -52,6 +55,24 @@ public class MicrobiologyR1ProgramCodeLengthLiquibaseRollbackTest {
     private int programCodeLength(Connection connection) throws Exception {
         String sql = "SELECT character_maximum_length FROM information_schema.columns "
                 + "WHERE table_schema = 'clinlims' AND table_name = 'program' AND column_name = 'code'";
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+                ResultSet result = statement.executeQuery()) {
+            result.next();
+            return result.getInt(1);
+        }
+    }
+
+    private void insertMicrobiologyProgram(Connection connection) throws Exception {
+        String sql = "INSERT INTO clinlims.program (id, code, name, lastupdated) "
+                + "VALUES (nextval('clinlims.program_seq'), 'MICROBIOLOGY', 'Microbiology', CURRENT_TIMESTAMP)";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.executeUpdate();
+        }
+        connection.commit();
+    }
+
+    private int microbiologyProgramCount(Connection connection) throws Exception {
+        String sql = "SELECT COUNT(*) FROM clinlims.program WHERE code = 'MICROBIOLOGY'";
         try (PreparedStatement statement = connection.prepareStatement(sql);
                 ResultSet result = statement.executeQuery()) {
             result.next();

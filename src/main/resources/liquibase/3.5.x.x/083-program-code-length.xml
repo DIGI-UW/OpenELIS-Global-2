@@ -13,11 +13,7 @@
       newDataType="varchar(20)"/>
 
     <rollback>
-      <modifyDataType
-        schemaName="clinlims"
-        tableName="program"
-        columnName="code"
-        newDataType="varchar(10)"/>
+      <!-- Keep the backward-compatible width so deployed program codes are never truncated. -->
     </rollback>
   </changeSet>
 
