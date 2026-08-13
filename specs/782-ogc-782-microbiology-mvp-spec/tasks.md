@@ -636,8 +636,15 @@ and M-04 section 4.9a. R2 is one official stacked PR based directly on #4004.
   The component-scoped evidence covers the source desktop width and registered
   mobile width, has no feature-level horizontal overflow, and records the
   separate pre-existing global mobile-header issue without hiding it.
-- [ ] T303 [R2] Run pinned `tools/code-qa` meaningful coverage, spec/code
-  alignment, simplicity, and evidence checks on the R2 diff.
+- [x] T303 [R2] Run pinned `tools/code-qa` meaningful coverage, spec/code
+  alignment, simplicity, and evidence checks on the R2 diff. The review found
+  one real bypass: admission/collection chronology existed only in the browser.
+  A JUnit 4 inversion run failed on the old service behavior, and the final
+  routing suite passes 16/16 with the invariant enforced before case creation.
+  The stale order-detail data-model description was reconciled; the remaining
+  R2 implementation is lean and uses no direct fixture SQL, forced browser
+  actions, or arbitrary waits. Full findings are recorded in
+  `evidence/code-qa-r2-2026-08-13.md`.
 - [ ] T304 [R2] Publish separate focused M-03 and M-04 Grist stories at the new
   baseline, remove stale controls, verify routes/controls against the deployed
   SHA, and keep historical regression stories outside the focused delta run.

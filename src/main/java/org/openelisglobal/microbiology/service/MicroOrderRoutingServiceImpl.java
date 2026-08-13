@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -79,7 +80,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
                     .map(Analysis::getTest).filter(java.util.Objects::nonNull).toList());
         }
 
-        validateOrderDetail(effectiveOrderDetail);
+        validateOrderDetail(effectiveOrderDetail, sampleItem);
         Map<MicroWorkflowType, RoutingConfiguration> configurationsByWorkflow = new LinkedHashMap<>();
         for (Map.Entry<MicroWorkflowType, List<Test>> entry : testsByWorkflow.entrySet()) {
             MicroWorkflowType workflowType = entry.getKey();
@@ -134,7 +135,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         }
     }
 
-    private void validateOrderDetail(MicroCaseOrderDetailRequestForm orderDetail) {
+    private void validateOrderDetail(MicroCaseOrderDetailRequestForm orderDetail, SampleItem sampleItem) {
         if (orderDetail == null) {
             return;
         }
@@ -143,6 +144,15 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         }
         if (orderDetail.clinicalHistory != null && orderDetail.clinicalHistory.length() > 1000) {
             throw new IllegalArgumentException("Clinical history must be 1000 characters or fewer");
+        }
+        if (orderDetail.admissionDate != null && !orderDetail.admissionDate.isBlank()
+                && !"OUTPATIENT".equalsIgnoreCase(orderDetail.patientOrigin)
+                && sampleItem.getCollectionDate() != null) {
+            LocalDate admissionDate = LocalDate.parse(orderDetail.admissionDate);
+            LocalDate collectionDate = sampleItem.getCollectionDate().toLocalDateTime().toLocalDate();
+            if (collectionDate.isBefore(admissionDate)) {
+                throw new IllegalArgumentException("Collection date cannot be before admission date");
+            }
         }
     }
 
