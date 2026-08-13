@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import {
+  MICROBIOLOGY_ALTERNATE_CULTURE_METHOD_NAME as alternateCultureMethodName,
   clickMicrobiologyOrderTest as clickTestToggle,
   MICROBIOLOGY_CULTURE_METHOD_NAME as cultureMethodName,
   MICROBIOLOGY_CULTURE_TEST_NAME as cultureTestName,
@@ -65,6 +66,14 @@ async function saveEntryAndOpenCollect(page: Page) {
 }
 
 async function collectAndRoute(page: Page) {
+  const collectionCard = page.getByTestId("sample-collection-card-0");
+  const localeNeutralPastDate = "01/01/2026";
+  for (const label of ["Collection Date", "Received Date"]) {
+    const dateInput = collectionCard.getByLabel(label, { exact: false });
+    await dateInput.fill(localeNeutralPastDate);
+    await dateInput.press("Tab");
+    await expect(dateInput).toHaveValue(localeNeutralPastDate);
+  }
   const saveAndNext = page.getByRole("button", { name: "Save & Next" });
   await expect(saveAndNext).toBeEnabled({ timeout: LONG_TIMEOUT });
   await saveAndNext.click();
@@ -99,7 +108,7 @@ async function reloadThroughBarcode(page: Page, labNumber: string) {
 }
 
 test.describe("microbiology order entry on the supported workflow", () => {
-  test("persists culture details across collect reload and creates one case", async ({
+  test("persists culture details and changes the bench protocol on the routed case", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -151,6 +160,51 @@ test.describe("microbiology order entry on the supported workflow", () => {
     await expect(rows).toHaveCount(1, { timeout: LONG_TIMEOUT });
     await expect(rows).toContainText(labNumber);
     await expect(rows).toContainText("Bacteriology");
+
+    await rows.getByRole("link", { name: labNumber, exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Microbiology case" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(page).toHaveURL(/\/Microbiology\/cases\/[^?]+\?.*q=/);
+
+    await expect(page).toHaveURL(/section=setup/);
+    await expect(
+      page.getByRole("button", { name: "Inoculation", exact: true }),
+    ).toHaveAttribute("aria-expanded", "true");
+    const protocolPanel = page.locator(
+      'section[aria-labelledby="microbiology-case-protocol-title"]',
+    );
+    await expect(
+      protocolPanel.getByText(cultureMethodName, { exact: true }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await protocolPanel
+      .getByRole("button", { name: "Change protocol" })
+      .click();
+    await expect(page).toHaveURL(/section=setup.*action=change-protocol/);
+
+    const protocol = protocolPanel.getByRole("combobox", {
+      name: "Culture protocol",
+    });
+    await protocol.selectOption({ label: alternateCultureMethodName });
+    const saveProtocol = protocolPanel.getByRole("button", {
+      name: "Save protocol",
+    });
+    await expect(saveProtocol).toBeDisabled();
+    await protocolPanel
+      .getByRole("textbox", { name: "Reason for protocol change" })
+      .fill("Bench review requires the alternate protocol");
+    await expect(saveProtocol).toBeEnabled();
+    await saveProtocol.click();
+
+    await expect(page).toHaveURL(/section=setup(?!.*action=)/);
+    await expect(
+      protocolPanel.getByText(alternateCultureMethodName, { exact: true }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await page.getByRole("button", { name: "Timeline", exact: true }).click();
+    await expect(page).toHaveURL(/section=timeline/);
+    await expect(
+      page.getByText(/Bench review requires the alternate protocol/),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 
   test("keeps a non-culture order out of the microbiology worklist", async ({

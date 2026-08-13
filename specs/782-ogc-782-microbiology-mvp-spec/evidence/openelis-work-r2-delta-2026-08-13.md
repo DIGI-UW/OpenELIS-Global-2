@@ -136,6 +136,36 @@ M-03 and M-04 behavior. Technical names in that source remain non-binding.
 - M-04 adds no schema and therefore no migration. Spotless, Prettier, and
   `git diff --check` pass.
 
-M-03 and M-04 component/service validation is complete. Registered Playwright
-implementation and execution, screenshots, code-qa, Grist publication,
-deployment, and human UAT remain open under T301-T306.
+## M-03/M-04 Playwright Checkpoint
+
+- The existing registered `core-app` order-entry spec now continues from a
+  routed culture order into its case, verifies canonical worklist/query state,
+  opens the protocol action through Carbon-accessible roles, requires a reason,
+  changes the Method, and confirms the audit note in Timeline.
+- The property-gated R1 scenario creates one alternate active Method, a
+  non-default Test-Method link, and a Bacteriology culture setup through the
+  existing service layer. It uses generated application IDs and adds no SQL,
+  DAO bypass, fixed primary key, endpoint, or migration.
+- `MicrobiologyUatScenarioServiceTest` passes 8/8. The focused Playwright run
+  passes authentication and the one changed journey in 9.7 seconds. It uses no
+  fixed waits or forced actions.
+- The browser run caught and resolved two test-fixture issues before acceptance:
+  the first synthetic Method name exceeded the existing 20-character database
+  constraint, and a click raced the already-open Carbon accordion. The final
+  flow uses the valid short label and asserts canonical `section=setup` plus
+  `aria-expanded=true` before interacting.
+
+### Flagged External Defect
+
+The shared generic-order serializer in `OrderContext.jsx` hardcodes
+`MM/dd/yyyy`, while a fresh repository database configures
+`DEFAULT_DATE_LOCALE=fr-FR`. Collection therefore rejects dates such as
+`08/13/2026` before microbiology routing. R2 does not widen into a shared order
+date refactor; its Playwright fixture enters the locale-neutral past date
+`01/01/2026` through the visible Carbon Collection and Received date inputs.
+The serializer should be corrected independently to honor deployment date
+configuration.
+
+M-03 and M-04 component, service, and focused browser validation is complete.
+Screenshots, code-qa, Grist publication, deployment, and human UAT remain open
+under T302-T306.
