@@ -19,8 +19,33 @@ export const buildLoadedOrderData = (response) => ({
     ...SampleOrderFormValues.sampleOrderItems,
     ...(response.sampleOrderItems || {}),
     labNo: response.labNumber,
+    microbiologyProgramId:
+      response.sampleOrderItems?.programCode?.toUpperCase() === "MICROBIOLOGY"
+        ? response.sampleOrderItems?.programId
+        : undefined,
   },
 });
+
+export const isMicrobiologyOrderReady = (orderData, samples) => {
+  const hasCultureWorkflow = samples.some((sample) =>
+    (sample.tests || []).some((test) => test.cultureWorkflowType),
+  );
+  const sampleOrderItems = orderData?.sampleOrderItems || {};
+  const microbiologyProgramSelected =
+    Boolean(sampleOrderItems.microbiologyProgramId) &&
+    String(sampleOrderItems.programId || "") ===
+      String(sampleOrderItems.microbiologyProgramId);
+
+  if (!hasCultureWorkflow && !microbiologyProgramSelected) {
+    return true;
+  }
+
+  return (
+    String(sampleOrderItems.programId || "") ===
+      String(sampleOrderItems.microbiologyProgramId || "") &&
+    Boolean(orderData?.microbiologyOrderDetail?.cultureMethodId)
+  );
+};
 
 export const buildSubmissionSampleOrderItems = (sampleOrderItems = {}) => {
   const serializableItems = { ...sampleOrderItems };
@@ -29,6 +54,7 @@ export const buildSubmissionSampleOrderItems = (sampleOrderItems = {}) => {
     "vlProgramFields",
     "paymentStatus",
     "program",
+    "programCode",
     "microbiologyProgramId",
     "microbiologyPreviousProgramId",
   ].forEach((field) => delete serializableItems[field]);

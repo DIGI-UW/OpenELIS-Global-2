@@ -125,6 +125,7 @@ const ProgramSection = ({
             "",
           programId: microbiologyProgram.id,
           microbiologyProgramId: microbiologyProgram.id,
+          programCode: microbiologyProgram.code,
           questionnaire: null,
           additionalQuestions: null,
         },
@@ -218,6 +219,7 @@ const ProgramSection = ({
         sampleOrderItems: {
           ...prev.sampleOrderItems,
           programId: selectedItem.id,
+          programCode: selectedItem.code,
           microbiologyProgramId:
             selectedItem.code?.toUpperCase() === "MICROBIOLOGY"
               ? selectedItem.id
@@ -245,6 +247,7 @@ const ProgramSection = ({
         sampleOrderItems: {
           ...prev.sampleOrderItems,
           programId: "",
+          programCode: undefined,
           questionnaire: null,
           additionalQuestions: null,
           microbiologyProgramId: undefined,
