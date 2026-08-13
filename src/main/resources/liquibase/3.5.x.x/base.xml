@@ -206,10 +206,12 @@
        (renumbered from 051 on rebase: develop claimed 051-075) -->
   <include relativeToChangelogFile="true" file="076-nce-trigger-source.xml"/>
 
-  <!-- OGC-707: CAPA Register due date on nce_action_log -->
-  <include relativeToChangelogFile="true" file="052-nce-action-log-due-date.xml"/>
+  <!-- OGC-707: CAPA Register due date on nce_action_log
+       (renumbered from 052 on rebase: develop claimed 051-075) -->
+  <include relativeToChangelogFile="true" file="077-nce-action-log-due-date.xml"/>
 
-  <!-- C.1 / OGC-704: per-test TEa for Westgard sigma metrics -->
-  <include relativeToChangelogFile="true" file="053-add-test-tea-column.xml"/>
+  <!-- C.1 / OGC-704: per-test TEa for Westgard sigma metrics
+       (renumbered from 053 on rebase: develop claimed 051-075) -->
+  <include relativeToChangelogFile="true" file="078-add-test-tea-column.xml"/>
 
 </databaseChangeLog>
