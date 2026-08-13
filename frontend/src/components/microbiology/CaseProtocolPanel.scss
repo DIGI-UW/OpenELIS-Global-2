@@ -1,0 +1,48 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+
+.microbiology-case-protocol {
+  border-inline-start: 0.25rem solid var(--cds-border-interactive);
+  padding: spacing.$spacing-05;
+}
+
+.microbiology-case-protocol__header,
+.microbiology-case-protocol__name-row,
+.microbiology-case-protocol__actions {
+  align-items: flex-start;
+  display: flex;
+  gap: spacing.$spacing-04;
+  justify-content: space-between;
+}
+
+.microbiology-case-protocol__header h3,
+.microbiology-case-protocol__name {
+  @include type.type-style("heading-compact-02");
+
+  margin: 0;
+}
+
+.microbiology-case-protocol__helper,
+.microbiology-case-protocol__summary p:not(.microbiology-case-protocol__name) {
+  @include type.type-style("body-compact-01");
+
+  color: var(--cds-text-secondary);
+  margin: spacing.$spacing-02 0 0;
+}
+
+.microbiology-case-protocol__summary,
+.microbiology-case-protocol__form {
+  background: var(--cds-layer-02);
+  padding: spacing.$spacing-05;
+}
+
+.microbiology-case-protocol__actions {
+  justify-content: flex-start;
+}
+
+@media (max-width: 42rem) {
+  .microbiology-case-protocol__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

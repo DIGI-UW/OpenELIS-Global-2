@@ -164,6 +164,29 @@ export const changeCaseWorkflow = (caseId, payload) =>
     );
   });
 
+export const getCaseProtocolOptions = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/protocol/options`,
+      resolve,
+    );
+  });
+
+export const changeCaseProtocol = (caseId, payload) =>
+  new Promise((resolve) => {
+    putToOpenElisServerFullResponse(
+      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/protocol`,
+      JSON.stringify(payload),
+      (response) => {
+        if (!response) {
+          resolve({ status: 0 });
+          return;
+        }
+        response.json().then(resolve);
+      },
+    );
+  });
+
 export const getAstRunsForIsolate = (isolateId) =>
   new Promise((resolve) => {
     getFromOpenElisServer(
@@ -496,6 +519,8 @@ const MicrobiologyService = {
   getCultureMethods,
   getPatientOrigins,
   changeCaseWorkflow,
+  getCaseProtocolOptions,
+  changeCaseProtocol,
   getAstRunsForIsolate,
   getAnalyzers,
   startAstRun,

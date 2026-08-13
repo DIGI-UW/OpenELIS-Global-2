@@ -92,6 +92,50 @@ M-03 and M-04 behavior. Technical names in that source remain non-binding.
 - Legacy order-level critical-notification data remains readable in historical
   rows but is absent from new request/response and UI contracts.
 
-M-03 component and service validation is complete. Deployed Playwright
-execution, screenshots, M-04 protocol correction, Grist publication, and human
-UAT remain open under T297-T306.
+## M-04 TDD Checkpoint
+
+### Red Evidence
+
+- Backend tests initially could not compile because no dedicated protocol
+  service, controller, request/option forms, or case-activity type existed.
+- The first option-compiler implementation lost a historical incumbent Method
+  ID when its reference record was missing; a focused failing test fixed that
+  edge at the service boundary.
+- An authority re-check found that optional recipe metadata had accidentally
+  become an eligibility gate. A focused failing test now proves every active
+  Method linked to an ordered test in the current workflow remains selectable
+  while missing recipe prose degrades cleanly.
+- Carbon interaction tests initially found no standalone Set/Change protocol
+  action or canonical URL actions. They then exposed a real accessible-name
+  mismatch between the visible Culture protocol label and its Select control.
+- The containing case-view suite exposed stale service mocks and an unstable
+  test-only focus interaction before the aggregate checkpoint was accepted.
+- A transport-failure test proved `{status: 0}` was initially treated as a
+  successful save; the panel now remains open and reports the failure without
+  changing local case state.
+
+### Green Evidence
+
+- 60 combined JUnit 4 tests pass across M-03/M-04 routing, order detail,
+  request binding, response mapping, protocol choice compilation, audit actor,
+  final mutation lock, worklist timing, ORM boot, and Liquibase
+  update/rollback/reapply.
+- 61 combined Vitest/RTL tests pass across nine order-entry, route, protocol,
+  inoculation, and case-workbench files. The tests use accessible Carbon roles
+  and condition-based assertions with no arbitrary waits or forced actions.
+- The dedicated protocol action changes only the case Method. It retains the
+  workflow, stage, report links, existing clinical records, and original
+  inoculation timestamp; the existing worklist projection therefore recomputes
+  timing from the new Method without resetting the incubation clock.
+- Active choices come only from Methods linked to an ordered test in the
+  current workflow. An inactive or missing incumbent remains visible but cannot
+  be reselected.
+- The action is addressable as `section=setup&action=set-protocol` or
+  `section=setup&action=change-protocol`; closing it clears only the action and
+  retains worklist query context.
+- M-04 adds no schema and therefore no migration. Spotless, Prettier, and
+  `git diff --check` pass.
+
+M-03 and M-04 component/service validation is complete. Registered Playwright
+implementation and execution, screenshots, code-qa, Grist publication,
+deployment, and human UAT remain open under T301-T306.
