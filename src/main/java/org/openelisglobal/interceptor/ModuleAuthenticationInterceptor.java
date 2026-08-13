@@ -104,13 +104,15 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             sysModsByUrl = filterParamMatches(request, sysModsByUrl);
         }
         if (sysModsByUrl.isEmpty() && REQUIRE_MODULE) {
-            // REST endpoints with no SystemModuleUrl entry are denied by default.
-            // Access control for REST endpoints is handled by @PreAuthorize annotations
-            // using privilege authorities (PRIV_*) loaded at login. An unregistered
-            // REST path reaching here means it has no module mapping — deny it so
-            // that @PreAuthorize is the sole gate (closes the auto-allow gap).
+            // REST endpoints with no SystemModuleUrl entry are allowed PAST this
+            // interceptor for any authenticated user; their authorization is then
+            // enforced by the service-layer @PreAuthorize (PRIV_*) gates. This
+            // interceptor runs BEFORE method security, so returning false here would
+            // deny outright — breaking every non-admin on unmapped infrastructure
+            // endpoints (menu, configuration-properties, home-dashboard/metrics,
+            // user-test-sections). Defer to @PreAuthorize instead of denying.
             if (isRestFullPath(path)) {
-                return false;
+                return true;
             }
             LogEvent.logWarn("ModuleAuthenticationInterceptor", "hasPermissionForUrl()",
                     "This page has no modules assigned to it");
