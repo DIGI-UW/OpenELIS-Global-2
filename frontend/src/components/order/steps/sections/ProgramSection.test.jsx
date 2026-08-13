@@ -103,6 +103,55 @@ describe("ProgramSection microbiology derivation", () => {
     );
   });
 
+  it("clears the previous Program questionnaire when culture derives Microbiology", async () => {
+    const previousProgramOrderData = {
+      ...orderData,
+      sampleOrderItems: {
+        programId: "1",
+        questionnaire: { id: "routine-questionnaire" },
+        additionalQuestions: {
+          resourceType: "QuestionnaireResponse",
+          questionnaire: "Questionnaire/routine-questionnaire",
+        },
+      },
+    };
+    const setOrderData = vi.fn();
+
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ProgramSection
+          orderData={previousProgramOrderData}
+          setOrderData={setOrderData}
+          samples={cultureSamples}
+          isReadOnly={false}
+        />
+      </IntlProvider>,
+    );
+
+    await screen.findByRole("heading", {
+      name: "Microbiology Program Details",
+    });
+    const deriveMicrobiology = setOrderData.mock.calls
+      .map(([value]) => value)
+      .filter((value) => typeof value === "function")
+      .find(
+        (value) =>
+          value(previousProgramOrderData).sampleOrderItems?.programId === "8",
+      );
+
+    expect(deriveMicrobiology).toBeDefined();
+    expect(
+      deriveMicrobiology(previousProgramOrderData).sampleOrderItems,
+    ).toEqual(
+      expect.objectContaining({
+        programId: "8",
+        microbiologyProgramId: "8",
+        questionnaire: null,
+        additionalQuestions: null,
+      }),
+    );
+  });
+
   it("shows a named configuration error when the Program is unavailable", async () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url === "/rest/user-programs") {

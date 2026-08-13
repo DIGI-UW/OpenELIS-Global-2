@@ -126,13 +126,17 @@ const ProgramSection = ({
             "",
           programId: microbiologyProgram.id,
           microbiologyProgramId: microbiologyProgram.id,
+          questionnaire: null,
+          additionalQuestions: null,
         },
       }));
+      setQuestionnaire(null);
     }
   }, [
     hasCultureWorkflow,
     microbiologyProgram,
     orderData?.sampleOrderItems?.programId,
+    orderData?.sampleOrderItems?.microbiologyProgramId,
     setOrderData,
   ]);
 
