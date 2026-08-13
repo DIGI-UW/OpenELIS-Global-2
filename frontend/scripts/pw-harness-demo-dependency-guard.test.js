@@ -79,6 +79,82 @@ describe("harness demo dependency guard", () => {
     ]);
   });
 
+  test("follows no-expression template and CommonJS imports", () => {
+    const frontendRoot = createFrontend({
+      "playwright/tests/demo/harness/story.spec.ts": [
+        "await import(`../../../helpers/dynamic`);",
+        "require('../../../helpers/commonjs');",
+      ].join("\n"),
+      "playwright/helpers/dynamic.ts":
+        "export async function push(page) { await page.request.post('/dynamic'); }",
+      "playwright/helpers/commonjs.ts":
+        "export async function push(page) { await page.request.post('/commonjs'); }",
+    });
+
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([
+      expect.objectContaining({
+        dependencyPath: "playwright/helpers/commonjs.ts",
+        messageId: "backendRequest",
+      }),
+      expect.objectContaining({
+        dependencyPath: "playwright/helpers/dynamic.ts",
+        messageId: "backendRequest",
+      }),
+    ]);
+  });
+
+  test("rejects backend access in the demo spec itself", () => {
+    const frontendRoot = createFrontend({
+      "playwright/tests/demo/harness/story.spec.ts":
+        "await page.request.post('/simulate');",
+    });
+
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([
+      expect.objectContaining({
+        dependencyPath: "playwright/tests/demo/harness/story.spec.ts",
+        messageId: "backendRequest",
+        specPath: "playwright/tests/demo/harness/story.spec.ts",
+      }),
+    ]);
+  });
+
+  test("allows runner diagnostics but rejects backend access in test-base", () => {
+    const frontendRoot = createFrontend({
+      "playwright/tests/demo/harness/story.spec.ts":
+        "import { test } from '../../../helpers/test-base'; test('story', async ({ page }) => page.goto('/'));",
+      "playwright/helpers/test-base.ts": [
+        "page.on('console', logConsole);",
+        "page.on('response', logServerError);",
+        "await page.request.post('/simulate');",
+      ].join("\n"),
+    });
+
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([
+      expect.objectContaining({
+        dependencyPath: "playwright/helpers/test-base.ts",
+        messageId: "backendRequest",
+      }),
+    ]);
+  });
+
+  test("rejects arbitrary waits and forced actions in supported helpers", () => {
+    const frontendRoot = createFrontend({
+      "playwright/tests/demo/harness/story.spec.ts":
+        "import { drive } from '../../../helpers/drive'; await drive(page);",
+      "playwright/helpers/drive.mjs": [
+        "export async function drive(page) {",
+        "  await page.waitForTimeout(1000);",
+        "  await page.getByRole('button').click({ force: true });",
+        "}",
+      ].join("\n"),
+    });
+
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([
+      expect.objectContaining({ messageId: "arbitraryWait" }),
+      expect.objectContaining({ messageId: "forcedAction" }),
+    ]);
+  });
+
   test("allows visible UI helpers and ignores type-only imports", () => {
     const frontendRoot = createFrontend({
       "playwright/tests/demo/harness/story.spec.ts": [

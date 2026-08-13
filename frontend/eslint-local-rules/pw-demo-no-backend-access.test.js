@@ -1,4 +1,5 @@
 import { Linter } from "eslint";
+import tsParser from "@typescript-eslint/parser";
 import { describe, expect, test } from "vitest";
 import rule from "./pw-demo-no-backend-access.js";
 
@@ -10,6 +11,7 @@ const verify = (code) => {
     {
       languageOptions: {
         ecmaVersion: "latest",
+        parser: tsParser,
         sourceType: "module",
         parserOptions: { ecmaFeatures: { jsx: true } },
       },
@@ -72,6 +74,11 @@ describe("pw-demo-no-backend-access", () => {
       "const { post } = page.request; await post('/rest/analyzer')",
       "backendRequest",
     ],
+    [
+      "cast request client",
+      "const api = page.request as APIRequestContext; await api.post('/rest/analyzer')",
+      "backendRequestAccess",
+    ],
     ["browser fetch", "await fetch('/rest/analyzer')", "backendFetch"],
     [
       "evaluate fetch",
@@ -114,6 +121,27 @@ describe("pw-demo-no-backend-access", () => {
       "const appPage = page; await appPage.route('**/rest/**', route => route.continue())",
       "networkStub",
     ],
+    [
+      "aliased context network stub",
+      "const ctx = page.context(); await ctx.route('**/rest/**', route => route.continue())",
+      "networkStub",
+    ],
+    [
+      "aliased browser fetch",
+      "const backendFetch = fetch; await backendFetch('/rest/analyzer')",
+      "backendFetch",
+    ],
+    [
+      "aliased backend poll",
+      "const poll = expect.poll; await poll(async () => backendState())",
+      "backendPoll",
+    ],
+    ["arbitrary timeout", "await page.waitForTimeout(1000)", "arbitraryWait"],
+    [
+      "forced control",
+      "await page.getByRole('button').click({ force: true })",
+      "forcedAction",
+    ],
   ])("rejects %s", (_name, code, messageId) => {
     expect(verify(code)).toEqual(
       expect.arrayContaining([
@@ -141,6 +169,11 @@ describe("pw-demo-no-backend-access", () => {
     [
       "unrelated request property",
       "const { request: requestId } = payload; requestId.post('/not-playwright')",
+    ],
+    ["unrelated context route", "router.context().route('/analyzers')"],
+    [
+      "same alias name in another scope",
+      "function fixture({ request: api }) { return 'unused'; } function domain(api) { api.post('/not-playwright'); }",
     ],
   ])("allows %s", (_name, code) => {
     expect(verify(code)).toEqual([]);
