@@ -125,6 +125,21 @@ appears in the worklist with the correct workflow context.
 8. **Given** microbiology order details are visible, **When** the user reviews
    them, **Then** Date of Admission is optional and no critical-notification
    preference control appears.
+9. **Given** a referring facility has departments or wards, **When** the user
+   completes the standard Requester section, **Then** they can select the
+   applicable department or ward and the selection remains with the order.
+   This standard requester field is not an additional microbiology-specific
+   field.
+10. **Given** Date of Admission is present, **When** a specimen Collection Date
+    would be earlier than admission, **Then** the user sees a correctable inline
+    error and cannot save or continue until the dates are chronologically
+    possible.
+11. **Given** the deployment's configured date locale and a date whose day is
+    greater than 12, **When** the user saves and reloads the order, **Then** the
+    admission and collection dates remain unchanged.
+12. **Given** a saved order is reopened, **When** the user reviews its sample
+    collection, **Then** the recorded collection timing is visible and
+    read-only until the user deliberately chooses Edit.
 
 ---
 
