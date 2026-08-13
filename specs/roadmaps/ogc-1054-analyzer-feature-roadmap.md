@@ -223,7 +223,7 @@ Baseline reviewed on 2026-08-13:
   which is historical and not a current acceptance build;
 - the canonical analyzer review host is `analyzers.openelis-global.org`.
 
-### Present on OE-R0
+### Present on OE-F0
 
 - Standalone analyzer list, create/edit, type, field-mapping, QC-rule, and
   control-lot routes. There is no current inline Instrument/Verify/Connect
@@ -233,17 +233,20 @@ Baseline reviewed on 2026-08-13:
 - Existing local analyzer mappings, pending-code infrastructure, Bridge desired
   registration, and operational QC entities (`AnalyzerQcRule`, `QCControlLot`,
   `QCResult`, and Westgard).
-- Legacy OpenELIS protocol-reader/import paths. R0 does not treat them as the
+- Legacy OpenELIS protocol-reader/import paths. F0 does not treat them as the
   target runtime; E0-M4 own migration and removal under the fixed Bridge
   boundary.
+- Static direct and dependency-aware guards for analyzer `harness-demo`
+  stories, plus 13 transport/setup cases honestly classified as foundational
+  integration coverage.
 
-### Historical #3792 provenance, not present on OE-R0
+### Historical #3792 provenance, not present on OE-F0
 
 The frozen #3792 branch contains iterations of an inline setup shell,
 URL-backed guided state, catalog-bound result-option work, verification
 metadata, readiness blockers, and deterministic registration payload changes.
 Those behaviors are inputs to the F0 salvage manifest only. They are not current
-OE-R0 implementation, are not cherry-picked, and do not satisfy any product
+OE-F0 implementation, are not cherry-picked, and do not satisfy any product
 acceptance criterion until reimplemented and accepted at the owning checkpoint.
 
 ### Partial or absent product behavior
@@ -332,7 +335,7 @@ only. They supply no implementation instructions.
 | [OGC-1056](https://uwdigi.atlassian.net/browse/OGC-1056) mapping          | Complete test/result/QC-code editor and safe save scope                   | Legacy standalone mapping/pending paths; accepted catalog-bound editor absent    | M2                  |
 | [OGC-1057](https://uwdigi.atlassian.net/browse/OGC-1057) guided setup     | Inline instrument, verify, connect, and readable review workflow          | Standalone routes only; current activation does not implement full readiness     | M3                  |
 | [OGC-1058](https://uwdigi.atlassian.net/browse/OGC-1058) traffic learning | Hold, alert, resolve, and reconcile unknown traffic                       | Pending/error infrastructure exists; production hold/alert/reconciliation absent | M4 and R1           |
-| PR #3792 QC/config extension                                              | Historical behavior provenance only                                       | Frozen divergent branch; F0 must classify each considered behavior before reuse  | F0 classification   |
+| PR #3792 QC/config extension                                              | Historical behavior provenance only                                       | Frozen divergent branch; every considered behavior is classified in F0           | F0 classification   |
 
 Current Jira status was rechecked on 2026-08-13: OGC-1054 and OGC-1055 through
 OGC-1058 are `Ready`; the separate multi-component story OGC-1136 is `Backlog`.
@@ -351,7 +354,7 @@ ownership from a product artifact.
 | AC-3       | Instrument/type selection is searchable.                                                    | Partial standalone selectors; no accepted integrated type search.  | M3      |
 | AC-4       | A not-listed instrument can start creation of a reusable site type.                         | Absent.                                                            | M1 + M3 |
 | AC-5       | Verify shows every profile test, normalized identity, and match state.                      | Absent; create-time bootstrap does not retain/display every row.   | M2 + M3 |
-| AC-6       | Human mapping confirmation is mandatory and auditable.                                      | Absent on OE-R0.                                                   | M2 + M3 |
+| AC-6       | Human mapping confirmation is mandatory and auditable.                                      | Absent on OE-F0.                                                   | M2 + M3 |
 | AC-7       | QC identification codes are reviewed and confirmed during Verify.                           | Absent; operational QC is a different capability.                  | M2 + M3 |
 | AC-8       | A non-match can map to an existing Test, detour to Test Catalog, or be explicitly excluded. | Partial legacy pending-code resolver; no complete source-row flow. | M2      |
 | AC-9       | One unresolved test does not hide or block independent mapping work.                        | Absent; unmatched bootstrap rows are not retained visibly.         | M2      |
@@ -485,7 +488,8 @@ silently route around.
 | `ISSUE-R0-005` | Provenance | `OPEN`     | PR #3792 carries an earlier divergent blob at this path; after OE-F0 opens, retitle and close #3792 with links to OE-R0/OE-F0 and retain its branch only as history.       |
 | `ISSUE-R0-006` | Provenance | `RESOLVED` | Code audit found #3792-only behavior described as current. R0 now distinguishes current-code facts from historical provenance and enforces one descendant roadmap lineage. |
 | `AMB-F0-001`   | Scope      | `RESOLVED` | The F0 salvage manifest classifies every considered #3792 behavior group before production reimplementation and prohibits commit-level cherry-picks.                       |
-| `ISSUE-F0-001` | Test scope | `OPEN`     | The current ASTM harness spec directly calls the simulator while labeled as demo evidence; F0 reclassifies it as foundational and preserves the integration coverage.      |
+| `ISSUE-F0-001` | Test scope | `RESOLVED` | Three analyzer transport/setup specs used backend helpers while labeled as demo evidence; F0 reclassified all three as foundational and retained 13 integration cases.     |
+| `ISSUE-F0-002` | Validation | `OPEN`     | Repo-wide `npm run typecheck` has 1,589 baseline TypeScript errors and none name the three changed analyzer specs; targeted Playwright compilation passes. Fix before G0.  |
 | `AMB-E0-001`   | Contract   | `OPEN`     | Portable profile/site-binding persistence and migration semantics require a current-code ADR plus failing producer/consumer tests before code.                             |
 | `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.      |
 | `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                            |
@@ -497,18 +501,18 @@ the checkpoint that discovers or resolves it; IDs are never reused.
 
 ### Status ledger
 
-| Order | Checkpoint                | Status on 2026-08-13 | Next transition                      |
-| ----- | ------------------------- | -------------------- | ------------------------------------ |
-| 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge          |
-| 1     | F0 foundation salvage     | `IN_PROGRESS`        | Red guard test at `da3e65ebc`        |
-| 2     | E0 contract and migration | `NOT_STARTED`        | F0 accepted; BR-E0 opened            |
-| 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted                |
-| 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted                |
-| 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                          |
-| 6     | M4 safe traffic           | `NOT_STARTED`        | M3, BR-M4, and MOCK-M4 accepted      |
-| 7     | G0 deployed acceptance    | `NOT_STARTED`        | M4 accepted and exact RC SHA pushed  |
-| 8     | R1 full feature           | `NOT_STARTED`        | G0 accepted                          |
-| 9     | R2 operational rollout    | `NOT_STARTED`        | R1 accepted                          |
+| Order | Checkpoint                | Status on 2026-08-13 | Next transition                     |
+| ----- | ------------------------- | -------------------- | ----------------------------------- |
+| 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge         |
+| 1     | F0 foundation salvage     | `IN_PROGRESS`        | Final validation/evidence review    |
+| 2     | E0 contract and migration | `NOT_STARTED`        | F0 accepted; BR-E0 opened           |
+| 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted               |
+| 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted               |
+| 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                         |
+| 6     | M4 safe traffic           | `NOT_STARTED`        | M3, BR-M4, and MOCK-M4 accepted     |
+| 7     | G0 deployed acceptance    | `NOT_STARTED`        | M4 accepted and exact RC SHA pushed |
+| 8     | R1 full feature           | `NOT_STARTED`        | G0 accepted                         |
+| 9     | R2 operational rollout    | `NOT_STARTED`        | R1 accepted                         |
 
 `ACCEPTED` means the checkpoint exit gate, assigned acceptance criteria, CI,
 review threads, and evidence are complete. A failed required test or UAT step

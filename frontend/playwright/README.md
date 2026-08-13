@@ -123,9 +123,9 @@ Banned in demo specs and demo-facing helpers:
 - Network interception or stubbing
 - Filesystem or server-state polling to decide success
 
-The guard follows runtime local imports from harness demo specs, so moving a
-prohibited operation into a helper does not make the story UI-only. Runner-level
-diagnostics remain separate from demo-facing behavior helpers.
+The analyzer guard follows runtime local imports from harness demo specs, so
+moving a prohibited operation into a helper does not make the story UI-only.
+Runner-level diagnostics remain separate from demo-facing behavior helpers.
 
 If a behavior needs backend consistency checks, config persistence checks, or
 bridge/file-watcher proof, move it to backend integration tests or CI health
@@ -190,10 +190,10 @@ npm run pw:test:harness-demo
 npm run pw:test:core-foundational
 npm run pw:test:harness-foundational
 npm run pw:test:harness-manual-only
-npm run pw:test:demo # alias → harness-demo (analyzer story tests)
+npm run pw:test:demo # alias → harness-demo (empty until an accepted story lands)
 
 # Run specific test file
-npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
+npm run pw:test -- --project=harness-foundational playwright/tests/foundational/harness/analyzer-file-results.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui
@@ -215,10 +215,11 @@ cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:core-demo
 ```
 
-**Harness demos** (file import / ASTM stories — full harness):
+**Harness demos** (accepted analyzer stories — full harness):
 
 ```bash
 cd frontend
+# OGC-1054 adds its first accepted analyzer story at M4.
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
 ```
 

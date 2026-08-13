@@ -109,7 +109,9 @@ Do not put these in demo specs or demo-facing helpers:
 - network interception or stubbing
 - filesystem or server-state polling to decide pass/fail
 
-These restrictions apply transitively to runtime local imports from demo specs.
+For analyzer `harness-demo` stories, these restrictions apply transitively to
+runtime local imports. Direct ESLint enforcement still applies to every demo
+spec; broader core-demo helper cleanup is outside OGC-1054 F0.
 If a test needs backend persistence checks, bridge/simulator proof, seeded-data
 validation, or file-processing contracts, move that test to the appropriate
 foundational harness project.
