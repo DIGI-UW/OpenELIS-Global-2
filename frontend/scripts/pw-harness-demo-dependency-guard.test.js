@@ -63,6 +63,22 @@ describe("harness demo dependency guard", () => {
     ]);
   });
 
+  test("follows dynamic local imports", () => {
+    const frontendRoot = createFrontend({
+      "playwright/tests/demo/harness/story.spec.ts":
+        "const { push } = await import('../../../helpers/push'); await push(page);",
+      "playwright/helpers/push.ts":
+        "export async function push(page) { await page.request.post('/simulate'); }",
+    });
+
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([
+      expect.objectContaining({
+        dependencyPath: "playwright/helpers/push.ts",
+        messageId: "backendRequest",
+      }),
+    ]);
+  });
+
   test("allows visible UI helpers and ignores type-only imports", () => {
     const frontendRoot = createFrontend({
       "playwright/tests/demo/harness/story.spec.ts": [

@@ -5,7 +5,7 @@
  * waits for success tag → closes modal. Works for all protocols (the modal is
  * protocol-agnostic).
  *
- * Extracted from astm-genexpert-results.spec.ts for reuse across all demo flows.
+ * Shared by analyzer harness integration scenarios.
  */
 
 import { expect, Locator, Page } from "@playwright/test";
