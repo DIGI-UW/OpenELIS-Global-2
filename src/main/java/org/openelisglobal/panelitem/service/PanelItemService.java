@@ -62,5 +62,6 @@ public interface PanelItemService extends BaseObjectService<PanelItem, String> {
      * the same field the test-side Panels section edits: one model, two views);
      * member tests not in the map are removed.
      */
+    @PreAuthorize("hasAuthority('PRIV_PANEL_MANAGE')")
     void setMembershipsForPanel(Panel panel, Map<String, Integer> positionByTestId, String sysUserId);
 }

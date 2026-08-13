@@ -114,6 +114,7 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * This is the single selection behind both Results Entry and Validation, so the
      * two screens cannot show different ranges for the same result.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient);
 
     /**
@@ -123,5 +124,6 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * {@code componentId} wins when set; otherwise the component is derived from
      * the result.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient, String componentId);
 }
