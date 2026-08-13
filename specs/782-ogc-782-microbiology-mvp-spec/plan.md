@@ -9,7 +9,7 @@ Implement the microbiology MVP as a milestone-based OpenELIS module that routes
 culture-capable ordered tests into a microbiology case, supports routine
 bacteriology bench work, records isolates and manual AST, gates preliminary and
 final release, logs critical communications, and prepares finalized data for
-WHONET readiness. OpenELIS Work at `a1f720d7b3b0` is the product authority for
+WHONET readiness. OpenELIS Work at `bf51582766ea` is the product authority for
 visible workflow and acceptance behavior. Its table, service, route, schema,
 and component suggestions remain non-binding engineering input.
 
@@ -91,10 +91,12 @@ create sibling workflows on one specimen. The complete guided-workflow
 crosswalk is recorded in
 `evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
 
-R1 stores Antibiotic Exposure and Critical Notify as booleans, enforces the
-source bounds of 1-10 sets and 1000 Clinical History characters, and resolves
-the default culture protocol through the existing default `TestMethod`. Patient
-Origin uses one active six-value deployment vocabulary with stable application
+R2 removes the obsolete order-entry Critical Notify choice, keeps Antibiotic
+Exposure as a boolean, enforces the source bounds of 1-10 sets and 1000 Clinical
+History characters, and displays the default culture protocol read-only through
+the existing default `TestMethod`. A missing default no longer blocks the
+order. Patient Origin uses one active six-value deployment vocabulary with
+stable application
 and WHONET codes. An optional explicit Organization-to-origin mapping supplies
 the requesting-location default; unmapped locations remain blank because the
 source does not define a derivation rule. The source's table/FK language is
@@ -102,6 +104,15 @@ non-binding implementation input, while its separate Phase 1A read-only admin
 list remains an explicit R1 task. Macro-enabled Clinical History is a consumer dependency
 on the separate Macro Library stack, not a reason to duplicate that runtime in
 microbiology.
+
+R2 stores the optional Date of Admission with the existing microbiology order
+context because that service already owns the other M-03 values and supplies
+the case and WHONET projections. This is an engineering decision, not a product
+schema requirement. A nullable date column and its rollback are the only new
+schema work in R2. Protocol correction is a separate authenticated case action:
+it updates only the case's Method reference, requires a reason, writes immutable
+activity history, preserves existing clinical work, and uses the existing final
+release lock. Workflow reclassification remains a separate action.
 
 For R1 M-05, the repository has no authoritative Antibiotic-to-Test mapping.
 The engineering contract therefore retains one immutable ordered-drug snapshot

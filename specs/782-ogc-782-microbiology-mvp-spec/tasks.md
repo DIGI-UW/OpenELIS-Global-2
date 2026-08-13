@@ -439,14 +439,14 @@ from Piotr's human UAT ruling.
 **Base**: `feat/782-ogc-782-microbiology-m10-whonet-export` at
 `08b5b3888af4ba9f1c506fc555138218e0d043a4`
 
-**Goal**: Restore the authoritative M-03 Program/order-entry behavior on the
+**Historical R1 goal (superseded for changed controls by Phase 15)**: Restore the authoritative M-03 Program/order-entry behavior on the
 supported Add Order workflow, correct downstream completion claims, and prove
 the same behavior through implementation, automated evidence, visual review,
 and a separate Grist UAT story.
 
 **Independent Test**: Starting from configured Add Order navigation, a reviewer
 selects a culture-capable test, sees Program become Microbiology, confirms the
-required/defaulted Culture Method and complete details controls, saves, and
+then-current required/defaulted Culture Method and complete details controls, saves, and
 opens exactly one resulting case containing those details.
 
 ### Authority And Tests First
@@ -454,7 +454,7 @@ opens exactly one resulting case containing those details.
 - [x] T208 [R1] Create `feat/782-ogc-782-microbiology-r1-authoritative-alignment` from the verified M10 head in an isolated worktree.
 - [x] T209 [R1] Pin OpenELIS Work revision `a1f720d7b3b01db63387361495f4aa6589105003` and add the 17-step source-to-code-to-UAT crosswalk in `evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
 - [x] T210 [P] [R1] Add failing selector/state tests proving modern order selection retains culture workflow and Method metadata for direct and panel-selected tests (`38b177f7e`).
-- [x] T211 [P] [R1] Add React interaction tests using Carbon-accessible roles for Program derivation, required/defaulted Culture Method, Patient Origin selection, bounded Number of Sets, Clinical History, Antibiotic Exposure checkbox, Critical Notify checkbox, discard confirmation, and manual Program fallback (`38b177f7e`, `1136be1a6`).
+- [x] T211 [P] [R1] Add React interaction tests using Carbon-accessible roles for the R1 contract: Program derivation, required/defaulted Culture Method, Patient Origin selection, bounded Number of Sets, Clinical History, Antibiotic Exposure checkbox, Critical Notify checkbox, discard confirmation, and manual Program fallback (`38b177f7e`, `1136be1a6`). The protocol and Critical Notify expectations are superseded by T291-T295.
 - [ ] T212 [P] [R1] Add failing service/controller integration coverage proving the supported order save persists details atomically, creates one case, and returns the details through case compilation without SQL fixtures or fixed primary keys. Commit `919cf7258` provides service-created catalog/sample/analysis fixtures, JSON binding coverage, and transaction-level routing/detail/idempotency integration. The current R1 draft adds Sample-owned draft persistence, order-search projection coverage, rollback/ORM evidence, and routing consumption after reload; a complete `SamplePatientEntryService.persistData` or REST save-path integration test remains open.
 - [x] T213 [P] [R1] Replace the legacy-route order-entry Playwright shortcut with a `core-app` journey through `/order/enter`; cover durable culture details and one-case routing, non-culture exclusion, removal confirmation, and bacteriology/TB sibling cases without arbitrary waits. The final state-simplified and selector-hardened repository-wrapped run passed all five tests (setup plus four stories) in 18.7 seconds on 2026-08-06.
 
@@ -462,7 +462,7 @@ opens exactly one resulting case containing those details.
 
 - [x] T214 [R1] Preserve complete workflow/Method metadata in the modern `SampleTestSection` selected-test model for direct and panel selections (`38b177f7e`).
 - [x] T215 [R1] Derive the visible Microbiology Program from selected test workflows through shared order state and surface a named configuration error when the Program cannot be resolved by stable identity (`38b177f7e`).
-- [x] T216 [R1] Integrate reusable Carbon microbiology detail controls into the supported Program/order flow with required/defaulted Method and the product-safe control semantics in FR-002 (`38b177f7e`).
+- [x] T216 [R1] Integrate reusable Carbon microbiology detail controls into the supported Program/order flow with the then-current required/defaulted Method contract (`38b177f7e`). Its editable/required behavior is superseded by T291-T295.
 - [x] T217 [R1] Confirm before discarding entered microbiology details when the final culture test is removed or a manual Program change would leave the culture workflow (`38b177f7e` plus the current R1 order-flow slice). Focused Carbon interaction tests and the registered discard Playwright story pass.
 - [x] T218 [R1] Submit modern order details through the existing service-layer order-save path and prove idempotent case/detail persistence. `919cf7258` provides typed values, source bounds, default `TestMethod` resolution, and service-created routing/idempotency coverage. The current R1 slice adds a Sample-owned draft across `/order/enter` to `/order/collect`, order-search projection, routing consumption, Program-change protection, and a passing real-browser save-to-worklist journey that observes exactly one case. The additional direct `SamplePatientEntryService.persistData` Java integration test remains explicitly tracked by T212; it is test-layer debt, not missing runtime behavior.
 - [x] T219 [R1] Make the legacy compatibility flow retain the same complete selected-test metadata and consume the shared detail controls without creating a second implementation (`38b177f7e`).
@@ -558,6 +558,65 @@ opens exactly one resulting case containing those details.
 - [ ] T273 [Human UAT] Piotr completes required per-story Pass/Fail/N/A and notes against the exact deployed revisions; automation cannot complete this task.
 - [ ] T274 [Macro split] Create a separate Macro Library feature/spec/PR/UAT stack and review deployment; add microbiology consumer integration only after that base is available.
 
+## Phase 15: R2 M-03/M-04 Authority Delta
+
+**Authority**: `DIGI-UW/openelis-work@bf51582766ea`, specifically M-03 v2.2
+and M-04 section 4.9a. R2 is one official stacked PR based directly on #4004.
+
+### Artifact And Contract Sync
+
+- [x] T291 [R2] Pin the product spec and implementation plan to `bf51582766ea`,
+  replace the stale editable/required protocol and Critical Notify claims, add
+  optional Date of Admission, and define the separate bench protocol action.
+- [x] T292 [R2] Record source-to-repo drift, technical decisions, and unresolved
+  product ambiguity in `evidence/openelis-work-r2-delta-2026-08-13.md`.
+
+### M-03 Order Entry TDD
+
+- [ ] T293 [P] [R2] Add failing JUnit 4 service/ORM/migration tests for nullable
+  Date of Admission persistence and rollback, locale-independent round-trip,
+  optional missing protocol, and removal of order-level notification input.
+- [ ] T294 [P] [R2] Add failing Carbon interaction tests proving protocol is
+  read-only with an explicit unset state, Date of Admission is optional and
+  disabled only for Outpatient, and no critical-notification control renders.
+- [ ] T295 [R2] Implement the smallest service-owned model and order-entry UI
+  changes needed to satisfy T293-T294. Add one Liquibase migration only for the
+  nullable date field; do not migrate routes, fixtures, or tests.
+- [ ] T296 [R2] Run the focused backend and frontend M-03 checkpoints, formatting,
+  ORM validation, migration update/rollback/reapply, and `git diff --check`.
+
+### M-04 Protocol Action TDD
+
+- [ ] T297 [P] [R2] Add failing JUnit 4 service/controller tests for active
+  current-workflow Method choices, required reason, authenticated actor,
+  previous/new/time audit, final lock, unchanged workflow, and preservation of
+  existing inoculation/isolate/AST data.
+- [ ] T298 [P] [R2] Add failing Carbon interaction tests for the Inoculation
+  protocol summary, amber unset state, inline Set/Change expansion, required
+  reason, successful focus/status behavior, and no reclassification warning.
+- [ ] T299 [R2] Implement a dedicated protocol-only service/controller action
+  and reusable Carbon inline panel; keep Change Workflow behavior separate.
+- [ ] T300 [R2] Run focused M-04 backend/frontend checkpoints plus the aggregate
+  M-03/M-04 regression set before commit.
+
+### End-To-End, Visual, UAT, And Delivery
+
+- [ ] T301 [R2] Add one registered Playwright `core-app` journey through order
+  entry to case Inoculation protocol change using service-created fixtures,
+  Carbon-accessible interactions, readiness assertions, and no arbitrary waits.
+- [ ] T302 [R2] Capture stable desktop and mobile M-03/M-04 screenshots and
+  compare them to the pinned mocks, recording only intentional differences.
+- [ ] T303 [R2] Run pinned `tools/code-qa` meaningful coverage, spec/code
+  alignment, simplicity, and evidence checks on the R2 diff.
+- [ ] T304 [R2] Publish separate focused M-03 and M-04 Grist stories at the new
+  baseline, remove stale controls, verify routes/controls against the deployed
+  SHA, and keep historical regression stories outside the focused delta run.
+- [ ] T305 [R2] Push and open the official stacked R2 PR with #4004's branch as
+  its GitHub base; update both PR descriptions with exact head/base/evidence.
+- [ ] T306 [R2] Deploy the exact R2 head to AMR, verify `target.json`, run the
+  focused automated preflight, and hand the matching stories to Piotr for human
+  Pass/Fail/N/A acceptance.
+
 ## Dependencies & Execution Order
 
 - M1 blocks all later milestones.
@@ -577,6 +636,9 @@ opens exactly one resulting case containing those details.
 - R1 depends on the M10 follow-on head. Its implementation gate depends on the
   pinned product behavior, and its final acceptance depends on matching
   Playwright, visual, deployed, and human UAT evidence.
+- R2 depends directly on the corrected R1/#4004 head. M-03 tests and model work
+  precede the M-04 action; focused Playwright, visual evidence, UAT publication,
+  and deployment follow only after both slices pass their aggregate checkpoint.
 
 ## Parallel Opportunities
 

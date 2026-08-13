@@ -2,8 +2,8 @@
 
 **Feature Branch**: `spec/782-ogc-782-microbiology-mvp-spec`
 **Created**: 2026-06-27
-**Status**: Authoritative-alignment remediation in progress; implementation is
-partial and combined human UAT remains pending
+**Status**: R1 stabilization complete locally; R2 authoritative M-03/M-04
+alignment in progress; exact-head deployment and human UAT remain pending
 **Input**: User description: "Create a microbiology-specific feature spec that
 distills the important product behavior from the authoritative OpenELIS Work
 specs and mocks; reference the proper files; make the behavior crystal clear
@@ -14,14 +14,14 @@ technical implementation details."
 
 This feature spec is the product-facing distillation for planning. OpenELIS
 Work at
-[`a1f720d7b3b0`](https://github.com/DIGI-UW/openelis-work/commit/a1f720d7b3b01db63387361495f4aa6589105003)
+[`bf51582766ea`](https://github.com/DIGI-UW/openelis-work/commit/bf51582766eaf4048dcf83a4810a3cd32a975ad5)
 is the pinned product authority for this remediation. Table names, service
 names, schemas, and component or route suggestions inside those artifacts are
 not binding technical requirements.
 
 - Confluence narrative: [Microbiology Module - Workflow Walk-through](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256)
 - Public design bundle:
-  [openelis-work/designs/microbiology](https://github.com/DIGI-UW/openelis-work/tree/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology)
+  [openelis-work/designs/microbiology](https://github.com/DIGI-UW/openelis-work/tree/bf51582766eaf4048dcf83a4810a3cd32a975ad5/designs/microbiology)
 - M-00 parent:
   [m-00-micro-module-parent.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-00-micro-module-parent.md)
 - M-01 reference data:
@@ -31,10 +31,10 @@ not binding technical requirements.
   [m-02-breakpoint-catalog.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-02-breakpoint-catalog.md),
   [Breakpoint Catalog visual mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-02-breakpoint-catalog.html)
 - M-03 order entry hook:
-  [m-03-order-entry-micro-hook.md](https://github.com/DIGI-UW/openelis-work/blob/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology/m-03-order-entry-micro-hook.md),
-  [Step 1 visual mock](https://github.com/DIGI-UW/openelis-work/blob/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology/m-03-order-entry-step1.html)
+  [m-03-order-entry-micro-hook.md](https://github.com/DIGI-UW/openelis-work/blob/bf51582766eaf4048dcf83a4810a3cd32a975ad5/designs/microbiology/m-03-order-entry-micro-hook.md),
+  [Step 1 visual mock](https://github.com/DIGI-UW/openelis-work/blob/bf51582766eaf4048dcf83a4810a3cd32a975ad5/designs/microbiology/m-03-order-entry-step1.html)
 - M-04 case workbench:
-  [m-04-case-workbench-core.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-04-case-workbench-core.md)
+  [m-04-case-workbench-core.md](https://github.com/DIGI-UW/openelis-work/blob/bf51582766eaf4048dcf83a4810a3cd32a975ad5/designs/microbiology/m-04-case-workbench-core.md)
 - M-05 AST entry and interpretation:
   [m-05-ast-entry-and-interpretation.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-05-ast-entry-and-interpretation.md)
 - M-07 worklist:
@@ -118,6 +118,15 @@ appears in the worklist with the correct workflow context.
 5. **Given** a qualifying order has been saved, **When** the resulting case is
    opened, **Then** the selected culture setup and order details are present
    and repeated saves have not created a duplicate case.
+6. **Given** a culture-capable test has a default protocol, **When** its order
+   details appear, **Then** the protocol is derived and displayed read-only;
+   no order-entry user can override it.
+7. **Given** no default protocol resolves, **When** the user continues the
+   order, **Then** the order and case are still created and the bench is told
+   that a protocol remains to be set.
+8. **Given** microbiology order details are visible, **When** the user reviews
+   them, **Then** Date of Admission is optional and no critical-notification
+   preference control appears.
 
 ---
 
@@ -157,6 +166,13 @@ confirming the case shows the next required action.
    records the organism, identification method, confidence, and clinical
    significance, **Then** the case marks the isolate identified and supports AST
    setup for it.
+7. **Given** the case has no protocol or the resolved protocol is unsuitable,
+   **When** a technologist sets or changes it from the Inoculation section with
+   a reason, **Then** the workflow classification and existing culture, isolate,
+   and AST work remain unchanged and the history records who changed what and
+   when.
+8. **Given** the case is final, **When** a technologist tries to change its
+   protocol, **Then** the action is blocked and the amendment path is required.
 
 ---
 
@@ -329,16 +345,25 @@ or missing mapping for export.
 
 - **FR-001**: The system MUST provide a reliable way for ordered tests to start
   the appropriate microbiology workflow without relying on clerk memory.
-- **FR-002**: In the supported Add Order workflow, users MUST be able to confirm
-  or change the required default Culture Method, select Patient Origin from the
-  deployment's configured choices, enter a bounded/defaulted Number of Sets,
-  record multi-line Clinical History, mark Antibiotic Exposure, and mark
-  Critical Notify. Patient Origin SHOULD default from the requesting location
-  when that mapping is available. Clinical History MUST offer managed clinical
-  macros when the separately owned Macro Library is enabled. Antibiotic
-  Exposure and Critical Notify are binary choices, not free-text fields. The
-  system MUST confirm before discarding entered details when culture routing is
-  removed.
+- **FR-002**: In the supported Add Order workflow, the system MUST derive and
+  display Culture Protocol read-only from the ordered test. A missing default
+  MUST NOT block order or case creation. Users MUST be able to select Patient
+  Origin from the deployment's configured choices, optionally record Date of
+  Admission, enter a bounded/defaulted Number of Sets, record multi-line
+  Clinical History, and mark Antibiotic Exposure. No critical-notification
+  preference appears in order entry; notification policy remains in the
+  existing catalog and critical-result workflow. Date of Admission MUST remain
+  visible but disabled for Outpatient, MUST round-trip without deriving a
+  stored surveillance classification, and MUST remain optional. Patient Origin
+  SHOULD default from the requesting location when that mapping is available.
+  Clinical History MUST offer managed clinical macros when the separately owned
+  Macro Library is enabled. The system MUST confirm before discarding entered
+  details when culture routing is removed.
+- **FR-002A**: A technologist MUST be able to set a missing protocol or change
+  the current protocol inline from the case's Inoculation section. The action
+  MUST require a reason, retain previous and new values with authenticated actor
+  and time, preserve existing inoculations, isolates, AST work, and workflow
+  classification, and be blocked after final release.
 - **FR-003**: The system MUST distinguish sibling bacteriology and TB workflow
   records for the same physical specimen without duplicate accessioning. This
   MVP does not provide the operational TB laboratory workflow.
