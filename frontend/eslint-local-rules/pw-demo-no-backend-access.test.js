@@ -190,6 +190,7 @@ describe("pw-demo-no-backend-access", () => {
       "unrelated request property",
       "const { request: requestId } = payload; requestId.post('/not-playwright')",
     ],
+    ["domain force option", "await settings.configure({ force: true })"],
     ["unrelated context route", "router.context().route('/analyzers')"],
     [
       "same alias name in another scope",
