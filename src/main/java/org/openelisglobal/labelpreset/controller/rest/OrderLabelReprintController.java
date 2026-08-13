@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,19 +35,25 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  *
  * <p>
- * Security: authorization lives on the service interface (S011c). This is the
- * {@code order.read} surface (FRS §8; tasks.md T169) — User Story 5 has a
- * laboratory <em>technician</em> (not an admin) reprint a saved order's labels,
- * so {@link OrderLabelReprintService} is gated with {@code PRIV_ORDER_VIEW}.
- * Gating it at an admin privilege would 403 every reception/technician user and
- * break the M6 reprint + post-save dialog for everyone but admins — a
- * regression versus the legacy {@code /LabelMakerServlet} path.
+ * Security: {@code isAuthenticated()}. This is the {@code order.read} surface
+ * (FRS §8; tasks.md T169) — User Story 5 has a laboratory <em>technician</em>
+ * (not an admin) reprint a saved order's labels. The order-save controller it
+ * pairs with ({@code SamplePatientEntryRestController}) carries no method-level
+ * role gate at all; order entry is gated only by the authenticated
+ * {@code /rest} /{@code /api} filter chain. Using {@code hasRole('ADMIN')} here
+ * (as the admin CRUD controllers correctly do) would 403 every
+ * reception/technician user and break the M6 reprint + post-save dialog for
+ * everyone but admins — a regression versus the legacy
+ * {@code /LabelMakerServlet} path, which any authenticated user can reach.
+ * {@code isAuthenticated()} matches that existing order-entry gate without
+ * inventing a new role requirement.
  *
  * <p>
  * No {@code @Transactional} on the controller — the read-only transaction and
  * all LAZY resolution live in the service.
  */
 @RestController
+@PreAuthorize("isAuthenticated()")
 public class OrderLabelReprintController {
 
     @Autowired
