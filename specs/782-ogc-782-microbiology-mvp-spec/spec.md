@@ -2,8 +2,9 @@
 
 **Feature Branch**: `spec/782-ogc-782-microbiology-mvp-spec`
 **Created**: 2026-06-27
-**Status**: R1 stabilization complete locally; R2 authoritative M-03/M-04
-alignment in progress; exact-head deployment and human UAT remain pending
+**Status**: R1 stabilization and R2 authoritative M-03/M-04 alignment are
+implemented; R2 automated and deployed verification pass; human UAT remains
+pending
 **Input**: User description: "Create a microbiology-specific feature spec that
 distills the important product behavior from the authoritative OpenELIS Work
 specs and mocks; reference the proper files; make the behavior crystal clear
