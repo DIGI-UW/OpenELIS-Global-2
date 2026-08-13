@@ -7,7 +7,10 @@ import rule from "../eslint-local-rules/pw-demo-no-backend-access.js";
 
 const DEMO_ROOT = "playwright/tests/demo/harness";
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"];
-const INFRASTRUCTURE_FILES = new Set(["playwright/helpers/test-base.ts"]);
+const RUNNER_DIAGNOSTIC_MESSAGE_IDS = new Set([
+  "consoleListener",
+  "networkListener",
+]);
 const RULE_ID = "local/pw-demo-no-backend-access";
 
 function collectFiles(directory, predicate, files = []) {
@@ -50,11 +53,17 @@ function runtimeImportSources(source, filePath) {
 
   function visit(node) {
     if (!node || typeof node !== "object") return;
+    if (node.type === "ImportExpression") {
+      const sourceValue = getStaticString(node.source);
+      if (sourceValue) imports.push(sourceValue);
+    }
     if (
-      node.type === "ImportExpression" &&
-      typeof node.source?.value === "string"
+      node.type === "CallExpression" &&
+      node.callee.type === "Identifier" &&
+      node.callee.name === "require"
     ) {
-      imports.push(node.source.value);
+      const sourceValue = getStaticString(node.arguments[0]);
+      if (sourceValue) imports.push(sourceValue);
     }
     for (const [key, value] of Object.entries(node)) {
       if (["loc", "parent", "range", "tokens"].includes(key)) continue;
@@ -74,6 +83,20 @@ function runtimeImportSources(source, filePath) {
     visit(node);
   }
   return imports;
+}
+
+function getStaticString(node) {
+  if (node?.type === "Literal" && typeof node.value === "string") {
+    return node.value;
+  }
+  if (
+    node?.type === "TemplateLiteral" &&
+    node.expressions.length === 0 &&
+    node.quasis.length === 1
+  ) {
+    return node.quasis[0].value.cooked;
+  }
+  return null;
 }
 
 function resolveLocalImport(importerPath, source, frontendRoot) {
@@ -135,15 +158,8 @@ export function findHarnessDemoDependencyViolations({
 
   for (const specPath of specs) {
     const specRelativePath = relativeToFrontend(absoluteFrontendRoot, specPath);
-    const visited = new Set([specPath]);
-    const pending = runtimeImportSources(
-      fs.readFileSync(specPath, "utf8"),
-      specPath,
-    )
-      .map((source) =>
-        resolveLocalImport(specPath, source, absoluteFrontendRoot),
-      )
-      .filter(Boolean);
+    const visited = new Set();
+    const pending = [specPath];
 
     while (pending.length > 0) {
       const dependencyPath = pending.shift();
@@ -155,21 +171,24 @@ export function findHarnessDemoDependencyViolations({
         dependencyPath,
       );
       const source = fs.readFileSync(dependencyPath, "utf8");
-      if (!INFRASTRUCTURE_FILES.has(dependencyRelativePath)) {
-        for (const message of lintBackendAccess(
-          source,
-          dependencyRelativePath,
-        )) {
-          if (message.ruleId !== RULE_ID) continue;
-          violations.push({
-            column: message.column,
-            dependencyPath: dependencyRelativePath,
-            line: message.line,
-            message: message.message,
-            messageId: message.messageId,
-            specPath: specRelativePath,
-          });
+      const isRunnerInfrastructure =
+        dependencyRelativePath === "playwright/helpers/test-base.ts";
+      for (const message of lintBackendAccess(source, dependencyRelativePath)) {
+        if (message.ruleId !== RULE_ID) continue;
+        if (
+          isRunnerInfrastructure &&
+          RUNNER_DIAGNOSTIC_MESSAGE_IDS.has(message.messageId)
+        ) {
+          continue;
         }
+        violations.push({
+          column: message.column,
+          dependencyPath: dependencyRelativePath,
+          line: message.line,
+          message: message.message,
+          messageId: message.messageId,
+          specPath: specRelativePath,
+        });
       }
 
       for (const importSource of runtimeImportSources(source, dependencyPath)) {

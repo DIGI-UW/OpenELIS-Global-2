@@ -102,6 +102,11 @@ describe("pw-demo-no-backend-access", () => {
       "networkListener",
     ],
     [
+      "context response event listener",
+      "const ctx = page.context(); ctx.on('response', response => inspect(response))",
+      "networkListener",
+    ],
+    [
       "poll synchronization",
       "await expect.poll(async () => getBackendState()).toBe('ready')",
       "backendPoll",
@@ -127,6 +132,16 @@ describe("pw-demo-no-backend-access", () => {
       "networkStub",
     ],
     [
+      "assigned page alias network stub",
+      "let appPage; appPage = page; await appPage.route('**/rest/**', route => route.continue())",
+      "networkStub",
+    ],
+    [
+      "assigned context alias network stub",
+      "let ctx; ctx = page.context(); await ctx.route('**/rest/**', route => route.continue())",
+      "networkStub",
+    ],
+    [
       "aliased browser fetch",
       "const backendFetch = fetch; await backendFetch('/rest/analyzer')",
       "backendFetch",
@@ -141,6 +156,11 @@ describe("pw-demo-no-backend-access", () => {
       "forced control",
       "await page.getByRole('button').click({ force: true })",
       "forcedAction",
+    ],
+    [
+      "computed local import",
+      "await import(`../../../helpers/${helperName}`)",
+      "unresolvedLocalImport",
     ],
   ])("rejects %s", (_name, code, messageId) => {
     expect(verify(code)).toEqual(

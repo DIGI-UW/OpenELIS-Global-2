@@ -137,6 +137,21 @@ describe("harness demo dependency guard", () => {
     ]);
   });
 
+  test("allows runner diagnostics in test-base when no story logic is hidden", () => {
+    const frontendRoot = createFrontend({
+      "playwright/tests/demo/harness/story.spec.ts":
+        "import { test } from '../../../helpers/test-base'; test('story', async ({ page }) => page.goto('/'));",
+      "playwright/helpers/test-base.ts": [
+        "page.on('console', logConsole);",
+        "page.on('pageerror', logPageError);",
+        "page.on('response', logServerError);",
+        "page.on('requestfailed', logNetworkError);",
+      ].join("\n"),
+    });
+
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([]);
+  });
+
   test("rejects arbitrary waits and forced actions in supported helpers", () => {
     const frontendRoot = createFrontend({
       "playwright/tests/demo/harness/story.spec.ts":
