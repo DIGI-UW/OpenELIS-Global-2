@@ -658,9 +658,18 @@ and M-04 section 4.9a. R2 is one official stacked PR based directly on #4004.
   its GitHub base; update both PR descriptions with exact head/base/evidence.
   PR #4051 is the single R2 PR and is based directly on #4004's branch; its
   implementation head includes the cross-step completion at `1b256aa4c`.
-- [ ] T306 [R2] Deploy the exact R2 head to AMR, verify `target.json`, run the
+- [x] T306 [R2] Deploy the exact R2 head to AMR, verify `target.json`, run the
   focused automated preflight, and hand the matching stories to Piotr for human
-  Pass/Fail/N/A acceptance.
+  Pass/Fail/N/A acceptance. Deployment
+  `20260813T223055Z-6ed0e8138c9a` published implementation SHA
+  `6ed0e8138c9ad27c323237e5cdb6697e6c4e5530`; target health and smoke passed,
+  `/` and `/Microbiology/worklist` return HTTP 200, and both app containers are
+  healthy/running. The property-gated service fixture seeded primary case
+  `a65d620c-c96b-4627-9d69-9c00ba310551` plus its sibling without SQL. The
+  deployed authenticated M-03/M-04 Playwright journey passed 2/2 in 20.5
+  seconds. A live browser check selected `AMR-S01` (five steps) and `AMR-S28`
+  (two steps), each bound to the deployed branch/SHA. Human marks remain
+  intentionally pending.
 - [x] T307 [R2] Close the standard-order context gaps exposed by the final M-03
   browser pass: reuse Department/Ward in Requester, keep ISO date-only React
   state with configured transport formatting, reject collection before
