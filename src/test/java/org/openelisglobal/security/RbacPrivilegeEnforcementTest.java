@@ -64,18 +64,18 @@ public class RbacPrivilegeEnforcementTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void privilegedUser_canCallPreAuthorizeProtectedMethod() {
-        authenticateAs("rbac_priv_user");
+        authenticateWithRealPrivileges("rbac_priv_user");
         Patient patient = patientService.getData("901");
         assertNotNull("Privileged user must be able to retrieve a patient", patient);
     }
 
     @Test(expected = AccessDeniedException.class)
     public void unprivilegedUser_isBlockedByPreAuthorize() {
-        authenticateAs("rbac_nopriv_user");
+        authenticateWithRealPrivileges("rbac_nopriv_user");
         patientService.getData("99999999");
     }
 
-    private void authenticateAs(String username) {
+    private void authenticateWithRealPrivileges(String username) {
         UserDetails details = userDetailsService.loadUserByUsername(username);
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities()));

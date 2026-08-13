@@ -165,7 +165,6 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @GetMapping(value = "analysis/{analysisId}/history", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<Map<String, Object>> getAnalysisHistory(@PathVariable String analysisId,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize,
             @RequestParam(required = false) String componentId) {
@@ -210,7 +209,6 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @GetMapping(value = "test/{testId}/interpretations", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<List<Map<String, Object>>> getTestInterpretations(@PathVariable String testId) {
         List<Map<String, Object>> buckets = new ArrayList<>();
         for (TestResultComponent component : testResultComponentService.getActiveComponentsByTestId(testId)) {
@@ -237,7 +235,6 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @GetMapping(value = "test/{testId}/reagents", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<List<Map<String, Object>>> getTestReagentLinks(@PathVariable String testId) {
         List<Map<String, Object>> reagents = new ArrayList<>();
         for (TestReagentLink link : testReagentLinkService.getByTestId(testId)) {
