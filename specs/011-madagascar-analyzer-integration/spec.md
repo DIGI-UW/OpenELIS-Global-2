@@ -3,8 +3,9 @@
 **Feature Branch**: `spec/011-madagascar-analyzer-integration`  
 **Created**: 2026-01-22  
 **Updated**: 2026-08-13 (Bridge ownership alignment)
-**Status**: **In Progress** — MVP code shipped across HL7/ASTM/FILE; site
-validation + post-MVP work open.  
+**Status**: **In Progress** — protocol-specific foundations exist across
+HL7/ASTM/FILE; the full OGC-1054 analyzer MVP, site validation, and rollout
+remain open.
 **Extends**: Feature 004-astm-analyzer-mapping
 
 ## Architecture Status Amendment (2026-08-13)
@@ -542,7 +543,6 @@ the simulated messages.
   port assignment.
 
   **Identification precedence (deterministic)**:
-
   1. **Protocol-native identity**:
      - HL7: MSH sender fields (MSH-3/MSH-4)
      - ASTM: H-segment identity fields (sender / instrument ID)
@@ -569,7 +569,6 @@ the simulated messages.
   priorities (P1 first, then P1-M, then P2):
 
   **P1 - High Priority (Romain's List - High)**:
-
   1. Cepheid GeneXpert (ASTM/HL7)
   2. Horiba ABX Micros 60 (ASTM over RS232)
   3. Thermo Fisher QuantStudio 7 Flex (File-based)
@@ -651,7 +650,6 @@ Ordered by implementation priority (Romain's deployment list):
   acknowledged, results received, expired.
 
   **Acknowledgment semantics (by protocol)**:
-
   - HL7: `ACKNOWLEDGED` means OpenELIS received a valid HL7 ACK for the exported
     ORM^O01 message (or vendor middleware ACK if middleware is used).
   - ASTM: `ACKNOWLEDGED` is supported only when the analyzer/bridge provides an
@@ -725,7 +723,6 @@ Ordered by implementation priority (Romain's deployment list):
 
 - **CR-003**: Backend MUST follow 5-layer architecture
   (Valueholder→DAO→Service→Controller→Form).
-
   - New entities (InstrumentMetadata, MaintenanceEvent, ModuleStatus) MUST use
     JPA/Hibernate annotations.
   - Integration with the core Analyzer entity (now JPA-annotated after the

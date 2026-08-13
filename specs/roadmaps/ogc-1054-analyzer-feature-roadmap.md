@@ -204,38 +204,47 @@ them as patient results until clinically bound.
 
 Baseline reviewed on 2026-08-13:
 
-- OpenELIS `develop` at `f7d9c5a99cc7e35fa1ea1a4a040f4549772a489b`;
+- OpenELIS `develop` at `25d9d7a506e3db4839a0f8f972f43e92158e3511`;
 - PR #3792 branch `codex/ogc-1054-analyzer-qc-mvp` at
   `d985e6ce727b555c414b7db1129b3b1eeaf664cc`;
 - PR #3792 is open, non-draft, conflicting, review-required, 43 commits ahead
-  and 28 commits behind `develop`, with 191 changed files;
+  and 29 commits behind `develop`, with 191 changed files;
 - Bridge pinned by OpenELIS at
   `12a338992eaf791a63159b7e5016f75369722dbf` and Bridge `develop` observed at
   `53b6acbf2a3fedef0ddd9f582cb9cbdf86a59dd0`;
 - analyzer mock pinned by OpenELIS at
-  `d063356e5a8f82ca6a44cf809be1874a7d704f8e`;
-- review tooling `main` at `21bf251`, which already supplies stable step keys,
+  `d063356e5a8f82ca6a44cf809be1874a7d704f8e`, with mock `main` observed at
+  `573308f6bc994ba585cb1cedb8f932b79ce6b215`;
+- review tooling `main` at
+  `21bf2515a2b4de3aad6dde8b61b17d3c74b3f772`, which already supplies stable step keys,
   deterministic checklist revisions, refresh/stale-answer behavior, exact-SHA
   targeted analyzer deployment, and verified target metadata;
 - July demo application at `2c840a55b03b238a2ad00c987181504c2bef6ef6`,
   which is historical and not a current acceptance build;
 - the canonical analyzer review host is `analyzers.openelis-global.org`.
 
-### Implemented foundation
+### Present on OE-R0
 
-- Generic ASTM, HL7, FILE, and FHIR analyzer paths and Bridge registration.
-- Bridge-owned FILE watching and Bridge-perspective connection probes.
-- A shipped-profile catalog and exact-once create-time profile bootstrap.
-- URL-addressable Instrument, Verify, Connect, and Review surfaces.
-- Carbon page headers, breadcrumbs, tables, notifications, and URL-backed
-  search/filter state on touched analyzer pages.
-- Local Test mappings and catalog-bound qualitative Result Option selection.
-- Pending-code/value resolver services and UI when pending data already exists.
-- Verification fingerprints, verifier/time, audit events, readiness blockers,
-  and activation gating.
-- Operational analyzer QC rules/control lots and deterministic Bridge payload
-  collections.
-- A UI-only Playwright foundation story and historical July UAT/MP4.
+- Standalone analyzer list, create/edit, type, field-mapping, QC-rule, and
+  control-lot routes. There is no current inline Instrument/Verify/Connect
+  story.
+- Transitional OpenELIS filesystem profile assets and create-time bootstrap
+  behavior. They are migration inputs, not the target profile authority.
+- Existing local analyzer mappings, pending-code infrastructure, Bridge desired
+  registration, and operational QC entities (`AnalyzerQcRule`, `QCControlLot`,
+  `QCResult`, and Westgard).
+- Legacy OpenELIS protocol-reader/import paths. R0 does not treat them as the
+  target runtime; E0-M4 own migration and removal under the fixed Bridge
+  boundary.
+
+### Historical #3792 provenance, not present on OE-R0
+
+The frozen #3792 branch contains iterations of an inline setup shell,
+URL-backed guided state, catalog-bound result-option work, verification
+metadata, readiness blockers, and deterministic registration payload changes.
+Those behaviors are inputs to the F0 salvage manifest only. They are not current
+OE-R0 implementation, are not cherry-picked, and do not satisfy any product
+acceptance criterion until reimplemented and accepted at the owning checkpoint.
 
 ### Partial or absent product behavior
 
@@ -255,6 +264,19 @@ Baseline reviewed on 2026-08-13:
   profile, and review-tooling revisions.
 
 Therefore neither PR #3792 nor the July deployment is the OGC-1054 MVP.
+
+The baseline claims above are grounded in current OpenELIS route definitions,
+analyzer forms/valueholders, profile-loading code, status-transition services,
+and tests. `openelis-work` contributes only the functional and visual outcomes
+crosswalked below; it does not supply these implementation conclusions.
+
+| Current-code claim                       | Reproducible code evidence                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Setup remains separate routed pages      | [`frontend/src/App.jsx`](../../frontend/src/App.jsx) and [`AnalyzersList.tsx`](../../frontend/src/components/analyzers/AnalyzersList/AnalyzersList.tsx) route Add, Edit, Mappings, QC Rules, and Control Lots separately.                                                                                                                  |
+| Qualitative binding is not catalog-safe  | [`QualitativeResultMapping.java`](../../src/main/java/org/openelisglobal/analyzer/valueholder/QualitativeResultMapping.java) and [`QualitativeResultMappingForm.java`](../../src/main/java/org/openelisglobal/analyzer/form/QualitativeResultMappingForm.java) persist free-text `openelisCode`.                                           |
+| Activation is not complete MVP readiness | [`AnalyzerStatusTransitionServiceImpl.java`](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerStatusTransitionServiceImpl.java) checks current status and at least one active QC rule, not current mapping verification plus profile-applicable QC readiness.                                                               |
+| OpenELIS still loads bootstrap profiles  | [`AnalyzerRestController.java`](../../src/main/java/org/openelisglobal/analyzer/controller/AnalyzerRestController.java) reads filesystem profiles and applies `defaultConfigId` at create time. E0 owns migration away from profile authority in core OpenELIS.                                                                            |
+| Operational QC foundation exists         | [`AnalyzerQcRule.java`](../../src/main/java/org/openelisglobal/analyzer/valueholder/AnalyzerQcRule.java), [`QCControlLot.java`](../../src/main/java/org/openelisglobal/qc/valueholder/QCControlLot.java), and [`QCResult.java`](../../src/main/java/org/openelisglobal/qc/valueholder/QCResult.java) are the retained operational QC path. |
 
 ## Scope
 
@@ -304,13 +326,13 @@ After MVP acceptance, complete:
 The `openelis-work` references in this table supply functional and visual intent
 only. They supply no implementation instructions.
 
-| Product slice                                                             | Functional/visual reference                                                     | Current code state                                          | Delivery checkpoint |
-| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------- |
-| [OGC-1055](https://uwdigi.atlassian.net/browse/OGC-1055) Analyzer Types   | Reuse, create/fork, completeness, usage, lifecycle, and list presentation       | Mostly absent; shipped-file catalog only                    | M1                  |
-| [OGC-1056](https://uwdigi.atlassian.net/browse/OGC-1056) mapping          | Complete test/result/QC-code editor and safe save scope                         | Partial; result-option safety is strong, full editor absent | M2                  |
-| [OGC-1057](https://uwdigi.atlassian.net/browse/OGC-1057) guided setup     | Inline instrument, verify, connect, and readable review workflow                | Partial; route shell and QC readiness exist                 | M3                  |
-| [OGC-1058](https://uwdigi.atlassian.net/browse/OGC-1058) traffic learning | Hold, alert, resolve, and reconcile unknown traffic                             | Resolver is partial; production capture/hold/alert absent   | M4 and R1           |
-| PR #3792 QC/config extension                                              | Catalog-bound values, operational QC, verification, readiness, URL/Carbon shell | Implemented foundation, not integrated product acceptance   | F0 reuse            |
+| Product slice                                                             | Functional/visual reference                                               | Current code state                                                               | Delivery checkpoint |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------- |
+| [OGC-1055](https://uwdigi.atlassian.net/browse/OGC-1055) Analyzer Types   | Reuse, create/fork, completeness, usage, lifecycle, and list presentation | Transitional shipped-profile/type page; site lifecycle absent                    | M1                  |
+| [OGC-1056](https://uwdigi.atlassian.net/browse/OGC-1056) mapping          | Complete test/result/QC-code editor and safe save scope                   | Legacy standalone mapping/pending paths; accepted catalog-bound editor absent    | M2                  |
+| [OGC-1057](https://uwdigi.atlassian.net/browse/OGC-1057) guided setup     | Inline instrument, verify, connect, and readable review workflow          | Standalone routes only; current activation does not implement full readiness     | M3                  |
+| [OGC-1058](https://uwdigi.atlassian.net/browse/OGC-1058) traffic learning | Hold, alert, resolve, and reconcile unknown traffic                       | Pending/error infrastructure exists; production hold/alert/reconciliation absent | M4 and R1           |
+| PR #3792 QC/config extension                                              | Historical behavior provenance only                                       | Frozen divergent branch; F0 must classify each considered behavior before reuse  | F0 classification   |
 
 Current Jira status was rechecked on 2026-08-13: OGC-1054 and OGC-1055 through
 OGC-1058 are `Ready`; the separate multi-component story OGC-1136 is `Backlog`.
@@ -322,31 +344,31 @@ This table paraphrases the current product acceptance behavior without carrying
 over any proposed data model, endpoint, route, class, annotation, or repository
 ownership from a product artifact.
 
-| Product AC | Functional outcome                                                                          | Current branch                                                      | Target       |
-| ---------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------ |
-| AC-1       | Add Analyzer starts inline while the analyzer list remains available.                       | Implemented entry; later steps leave the inline surface.            | M3           |
-| AC-2       | Instrument, Verify, and Connect form one progressive, understandable setup story.           | Partial routed shell.                                               | M3           |
-| AC-3       | Instrument/type selection is searchable.                                                    | Search exists in the separate catalog; setup uses a fixed dropdown. | M3           |
-| AC-4       | A not-listed instrument can start creation of a reusable site type.                         | Absent.                                                             | M1 + M3      |
-| AC-5       | Verify shows every profile test, normalized identity, and match state.                      | Partial; unmatched bootstrap rows can disappear.                    | M2 + M3      |
-| AC-6       | Human mapping confirmation is mandatory and auditable.                                      | Partial whole-setup fingerprint.                                    | M2 + M3      |
-| AC-7       | QC identification codes are reviewed and confirmed during Verify.                           | Absent; operational QC is a different capability.                   | M2 + M3      |
-| AC-8       | A non-match can map to an existing Test, detour to Test Catalog, or be explicitly excluded. | Partial pending-code resolver.                                      | M2           |
-| AC-9       | One unresolved test does not hide or block independent mapping work.                        | Partial; skipped bootstrap rows are not visible.                    | M2           |
-| AC-10      | Results only is the safe default; Two-way appears only when supported and probed.           | Absent; initiator mode is exposed instead.                          | M3           |
-| AC-11      | Every test mapping can be added, edited, removed, or repointed.                             | Absent for profile-applied rows.                                    | M2           |
-| AC-12      | A qualitative result can target only an option belonging to its mapped Test.                | Implemented foundation.                                             | Retain in M2 |
-| AC-13      | Saving shared changes requires explicit new-type or update-shared scope.                    | Absent.                                                             | M2           |
-| AC-14      | A fork has a unique name and visible lineage.                                               | Absent.                                                             | M1 + M2      |
-| AC-15      | Unknown traffic is held and visibly flags the analyzer/type and Alerts.                     | Partial resolver; production hold/alert path absent.                | M4           |
-| AC-16      | Analyzer Types shows completeness/usage and the required search/filter states.              | Partial shipped-file counts/filtering.                              | M1           |
-| AC-17      | Types can be deactivated/reactivated without deleting history.                              | Absent.                                                             | M1           |
-| AC-18      | ASTM, HL7, and FILE share one complete editor with only protocol labels varying.            | Partial protocol-neutral review components.                         | M2           |
-| AC-19      | Normal lab setup contains no developer-only fields.                                         | Implemented on the guided shell; retain and extend.                 | M3           |
-| AC-20      | All visible copy is localized.                                                              | Partial; raw status/fallback strings remain.                        | M1-M4        |
-| AC-21      | Setup can request a live result and reconcile what was received.                            | Absent.                                                             | R1           |
-| AC-22      | Unknown data is never lost; resolution changes future matching behavior.                    | Absent end to end.                                                  | M4           |
-| AC-23      | Live traffic can populate a newly created blank type.                                       | Absent.                                                             | R1           |
+| Product AC | Functional outcome                                                                          | Current branch                                                     | Target  |
+| ---------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------- |
+| AC-1       | Add Analyzer starts inline while the analyzer list remains available.                       | Absent; `/analyzers/new` is a standalone route.                    | M3      |
+| AC-2       | Instrument, Verify, and Connect form one progressive, understandable setup story.           | Absent; current setup concerns are separate routes.                | M3      |
+| AC-3       | Instrument/type selection is searchable.                                                    | Partial standalone selectors; no accepted integrated type search.  | M3      |
+| AC-4       | A not-listed instrument can start creation of a reusable site type.                         | Absent.                                                            | M1 + M3 |
+| AC-5       | Verify shows every profile test, normalized identity, and match state.                      | Absent; create-time bootstrap does not retain/display every row.   | M2 + M3 |
+| AC-6       | Human mapping confirmation is mandatory and auditable.                                      | Absent on OE-R0.                                                   | M2 + M3 |
+| AC-7       | QC identification codes are reviewed and confirmed during Verify.                           | Absent; operational QC is a different capability.                  | M2 + M3 |
+| AC-8       | A non-match can map to an existing Test, detour to Test Catalog, or be explicitly excluded. | Partial legacy pending-code resolver; no complete source-row flow. | M2      |
+| AC-9       | One unresolved test does not hide or block independent mapping work.                        | Absent; unmatched bootstrap rows are not retained visibly.         | M2      |
+| AC-10      | Results only is the safe default; Two-way appears only when supported and probed.           | Absent; initiator mode is exposed instead.                         | M3      |
+| AC-11      | Every test mapping can be added, edited, removed, or repointed.                             | Absent for profile-applied rows.                                   | M2      |
+| AC-12      | A qualitative result can target only an option belonging to its mapped Test.                | Absent; current mapping stores free-text `openelisCode`.           | M2      |
+| AC-13      | Saving shared changes requires explicit new-type or update-shared scope.                    | Absent.                                                            | M2      |
+| AC-14      | A fork has a unique name and visible lineage.                                               | Absent.                                                            | M1 + M2 |
+| AC-15      | Unknown traffic is held and visibly flags the analyzer/type and Alerts.                     | Pending/error infrastructure only; hold/alert path absent.         | M4      |
+| AC-16      | Analyzer Types shows completeness/usage and the required search/filter states.              | Partial type/profile list; completeness and usage absent.          | M1      |
+| AC-17      | Types can be deactivated/reactivated without deleting history.                              | Absent.                                                            | M1      |
+| AC-18      | ASTM, HL7, and FILE share one complete editor with only protocol labels varying.            | Absent; current standalone editor is not the accepted workflow.    | M2      |
+| AC-19      | Normal lab setup contains no developer-only fields.                                         | Absent; current standalone form still exposes technical fields.    | M3      |
+| AC-20      | All visible copy is localized.                                                              | Partial; raw status/fallback strings remain.                       | M1-M4   |
+| AC-21      | Setup can request a live result and reconcile what was received.                            | Absent.                                                            | R1      |
+| AC-22      | Unknown data is never lost; resolution changes future matching behavior.                    | Absent end to end.                                                 | M4      |
+| AC-23      | Live traffic can populate a newly created blank type.                                       | Absent.                                                            | R1      |
 
 ### OGC-1057 QA finding disposition
 
@@ -357,20 +379,22 @@ and proposed technical remedies are not imported as engineering authority. The
 report contains no screenshot or video assets, so it does not replace the M3/G0
 visual comparison and evidence gates.
 
-| QA finding | Deterministic roadmap disposition                                                                                                                                         | Gate                                  |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| 1          | Every source row can be added, edited, removed, or repointed through complete active-Test catalog search.                                                                 | M2; MVP-005/006; `AN-MVP-003`         |
-| 2          | Applying or migrating a profile never drops, hides, collapses, or falsely marks an unmatched source row complete.                                                         | E0 + M2; MVP-005/006                  |
-| 3          | Changing an applicable result option enables save, persists, and survives reload; invalid and empty-option rows remain explicit.                                          | M2; MVP-007; `AN-MVP-004`             |
-| 4          | Test selection searches the complete active local catalog by name, code, or LOINC; no fixed legacy subset can satisfy acceptance.                                         | M2; MVP-006; `AN-MVP-003`             |
-| 5          | Source aliases and local LOINC cardinality are characterized; ambiguous candidates never auto-bind and source rows remain independently confirmable.                      | E0 + M2; `AMB-M2-001`                 |
-| 6          | Mapping/QC-identification confirmation is independent of operational QC readiness; each has its own visible completion and blocker state.                                 | M2 + M3; MVP-008/012/015/016          |
-| 7          | Instrument not listed creates a reusable site type through the Bridge-owned lifecycle without developer fields.                                                           | M1 + M3; MVP-003/010; `AN-MVP-002`    |
-| 8          | Method-dependent control-lot requirements are visible before submit and exact validation is actionable; valid save recomputes readiness.                                  | M3; MVP-015/022; `AN-MVP-009`         |
-| 9          | Deactivate/reactivate replaces hard delete, and no copy/clone action bypasses the explicit fork/update lifecycle.                                                         | M1 + M2; MVP-004/009                  |
-| Deferred   | Real mock-to-Bridge probes cover role-appropriate settings, success, failure, timeout, supported direction, and visible Results-only degradation.                         | BR-M2 + M3 + MOCK-M4; MVP-013/014/021 |
-| Preserve   | Inline setup, searchable selection, readable summaries, lab units, live blockers, catalog-safe result choices, and absence of developer fields remain regression-covered. | F0 + M1-M3; MVP-001/007/010/016/022   |
-| Withdrawn  | The report's withdrawn picker-search and direction-default observations add no defect requirement; later UI automation must use focused visible controls.                 | M3/G0; MVP-010/014/023                |
+| QA finding  | Deterministic roadmap disposition                                                                                                                                             | Gate                                  |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 1           | Every source row can be added, edited, removed, or repointed through complete active-Test catalog search.                                                                     | M2; MVP-005/006; `AN-MVP-003`         |
+| 2           | Applying or migrating a profile never drops, hides, collapses, or falsely marks an unmatched source row complete.                                                             | E0 + M2; MVP-005/006                  |
+| 3           | Changing an applicable result option enables save, persists, and survives reload; invalid and empty-option rows remain explicit.                                              | M2; MVP-007; `AN-MVP-004`             |
+| 4           | Test selection searches the complete active local catalog by name, code, or LOINC; no fixed legacy subset can satisfy acceptance.                                             | M2; MVP-006; `AN-MVP-003`             |
+| 5           | Source aliases and local LOINC cardinality are characterized; ambiguous candidates never auto-bind and source rows remain independently confirmable.                          | E0 + M2; `AMB-M2-001`                 |
+| 6           | Mapping/QC-identification confirmation is independent of operational QC readiness; each has its own visible completion and blocker state.                                     | M2 + M3; MVP-008/012/015/016          |
+| 7           | Instrument not listed creates a reusable site type through the Bridge-owned lifecycle without developer fields.                                                               | M1 + M3; MVP-003/010; `AN-MVP-002`    |
+| 8           | Method-dependent control-lot requirements are visible before submit and exact validation is actionable; valid save recomputes readiness.                                      | M3; MVP-015/022; `AN-MVP-009`         |
+| 9           | Type lifecycle uses deactivate/reactivate in M1; M2 removes Copy Mappings; M3 replaces analyzer-instance hard delete with audited deactivate/reactivate.                      | M1 + M2 + M3; MVP-004/009             |
+| Deferred    | Real mock-to-Bridge probes cover role-appropriate settings, success, failure, timeout, supported direction, and visible Results-only degradation.                             | BR-M2 + M3 + MOCK-M4; MVP-013/014/021 |
+| Untested    | Live capture/reconciliation and blank-type population are R1; M4 owns hold/alert/resolve and deterministic next-message behavior for unknown traffic.                         | M4 + R1; MVP-019/020 and rollout      |
+| Preserve    | Inline setup, searchable selection, readable summaries, lab units, live blockers, catalog-safe result choices, and absence of developer fields remain functional regressions. | M1-M3; MVP-001/007/010/016/022        |
+| Withdrawn   | The report's withdrawn picker-search and direction-default observations add no defect requirement; later UI automation must use focused visible controls.                     | M3/G0; MVP-010/014/023                |
+| Environment | G0 starts from a deterministic reset/fixture state; artifacts left by the 2026-08-12 review are preconditions to remove, not product history to hard-delete through the UI.   | G0 deployment preflight               |
 
 ## Execution Contract
 
@@ -391,6 +415,22 @@ An executor given the goal “execute this roadmap through deployed MVP” must:
 6. continue to the next stacked checkpoint without waiting for a product review;
 7. stop only for a permission/credential boundary, a required external review
    or merge, or evidence that contradicts this fixed architecture.
+
+### Roadmap provenance invariant
+
+This path has one active lineage. R0 establishes the authority; each later
+OpenELIS checkpoint may update status, evidence, and newly discovered issues
+only as a Git descendant of the canonical predecessor SHA. Before the
+predecessor merges, that SHA is its reviewed remote branch head. After merge, it
+is the commit that landed the predecessor on the target branch, including a
+squash or merge commit. Rebase the dependent branch onto the new canonical SHA
+when that identity changes. A sibling or historical branch may retain an older
+blob as provenance, but it is never an active roadmap and is never merged as a
+competing version. Before publishing or retargeting a checkpoint PR, prove the
+canonical SHA is an ancestor and compare this file against that SHA so every
+change is an intentional descendant update. Record both the canonical SHA and
+roadmap blob in the checkpoint acceptance record. PR #3792 remains immutable
+historical input and receives no roadmap edits.
 
 If a prerequisite PR has not merged, the next PR targets its branch. After the
 prerequisite merges, rebase the dependent branch on current `develop`/`main`,
@@ -436,37 +476,38 @@ silently route around.
 
 ### Current issue and ambiguity register
 
-| ID             | Kind       | Status     | Impact / next deterministic action                                                                                                                                    |
-| -------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ISSUE-R0-001` | Review     | `OPEN`     | OE-R0 is green but requires external approval and merge before it can become `ACCEPTED`; F0 may be prepared but cannot be accepted first.                             |
-| `ISSUE-R0-002` | Validation | `RESOLVED` | The original command block retained `frontend` as its working directory; commands now run in repository-rooted subshells.                                             |
-| `ISSUE-R0-003` | Validation | `RESOLVED` | The final Playwright story is absent on the R0 base; OE-M4 owns its creation and earlier checkpoint records must mark that full-story gate `LATER`.                   |
-| `ISSUE-R0-004` | Provenance | `RESOLVED` | A commit cannot name its own SHA; committed records name implementation/evidence commits and CI records the final immutable PR-head SHA.                              |
-| `ISSUE-R0-005` | Provenance | `OPEN`     | PR #3792 carries an earlier divergent blob at this path; after OE-F0 opens, retitle and close #3792 with links to OE-R0/OE-F0 and retain its branch only as history.  |
-| `AMB-F0-001`   | Scope      | `OPEN`     | Compatible behavior in #3792 is not assumed. F0 must classify every considered behavior in the salvage manifest before reimplementation.                              |
-| `AMB-E0-001`   | Contract   | `OPEN`     | Portable profile/site-binding persistence and migration semantics require a current-code ADR plus failing producer/consumer tests before code.                        |
-| `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile. |
-| `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                       |
-| `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect. |
-| `ISSUE-G0-001` | Operations | `OPEN`     | Exact-SHA deployment, Grist authoring, and report-download permissions require a G0 preflight; this does not substitute for earlier automated gates.                  |
+| ID             | Kind       | Status     | Impact / next deterministic action                                                                                                                                         |
+| -------------- | ---------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ISSUE-R0-001` | Review     | `OPEN`     | OE-R0 is green but requires external approval and merge before it can become `ACCEPTED`; F0 may be prepared but cannot be accepted first.                                  |
+| `ISSUE-R0-002` | Validation | `RESOLVED` | The original command block retained `frontend` as its working directory; commands now run in repository-rooted subshells.                                                  |
+| `ISSUE-R0-003` | Validation | `RESOLVED` | The final Playwright story is absent on the R0 base; OE-M4 owns its creation and earlier checkpoint records must mark that full-story gate `LATER`.                        |
+| `ISSUE-R0-004` | Provenance | `RESOLVED` | A commit cannot name its own SHA; committed records name implementation/evidence commits and CI records the final immutable PR-head SHA.                                   |
+| `ISSUE-R0-005` | Provenance | `OPEN`     | PR #3792 carries an earlier divergent blob at this path; after OE-F0 opens, retitle and close #3792 with links to OE-R0/OE-F0 and retain its branch only as history.       |
+| `ISSUE-R0-006` | Provenance | `RESOLVED` | Code audit found #3792-only behavior described as current. R0 now distinguishes current-code facts from historical provenance and enforces one descendant roadmap lineage. |
+| `AMB-F0-001`   | Scope      | `OPEN`     | Compatible behavior in #3792 is not assumed. F0 must classify every considered behavior in the salvage manifest before reimplementation.                                   |
+| `AMB-E0-001`   | Contract   | `OPEN`     | Portable profile/site-binding persistence and migration semantics require a current-code ADR plus failing producer/consumer tests before code.                             |
+| `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.      |
+| `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                            |
+| `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.      |
+| `ISSUE-G0-001` | Operations | `OPEN`     | Exact-SHA deployment, Grist authoring, and report-download permissions require a G0 preflight; this does not substitute for earlier automated gates.                       |
 
 Resolved rows remain in the table for provenance. New evidence updates a row in
 the checkpoint that discovers or resolves it; IDs are never reused.
 
 ### Status ledger
 
-| Order | Checkpoint                | Status on 2026-08-13 | Next transition                        |
-| ----- | ------------------------- | -------------------- | -------------------------------------- |
-| 0     | R0 roadmap                | `IN_PROGRESS`        | Clean roadmap PR opened from `develop` |
-| 1     | F0 foundation salvage     | `NOT_STARTED`        | R0 accepted                            |
-| 2     | E0 contract and migration | `NOT_STARTED`        | F0 accepted; BR-E0 opened              |
-| 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted                  |
-| 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted                  |
-| 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                            |
-| 6     | M4 safe traffic           | `NOT_STARTED`        | M3, BR-M4, and MOCK-M4 accepted        |
-| 7     | G0 deployed acceptance    | `NOT_STARTED`        | M4 accepted and exact RC SHA pushed    |
-| 8     | R1 full feature           | `NOT_STARTED`        | G0 accepted                            |
-| 9     | R2 operational rollout    | `NOT_STARTED`        | R1 accepted                            |
+| Order | Checkpoint                | Status on 2026-08-13 | Next transition                      |
+| ----- | ------------------------- | -------------------- | ------------------------------------ |
+| 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge          |
+| 1     | F0 foundation salvage     | `IN_PROGRESS`        | Local implementation/evidence review |
+| 2     | E0 contract and migration | `NOT_STARTED`        | F0 accepted; BR-E0 opened            |
+| 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted                |
+| 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted                |
+| 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                          |
+| 6     | M4 safe traffic           | `NOT_STARTED`        | M3, BR-M4, and MOCK-M4 accepted      |
+| 7     | G0 deployed acceptance    | `NOT_STARTED`        | M4 accepted and exact RC SHA pushed  |
+| 8     | R1 full feature           | `NOT_STARTED`        | G0 accepted                          |
+| 9     | R2 operational rollout    | `NOT_STARTED`        | R1 accepted                          |
 
 `ACCEPTED` means the checkpoint exit gate, assigned acceptance criteria, CI,
 review threads, and evidence are complete. A failed required test or UAT step
@@ -563,9 +604,10 @@ for OGC-1054 and names the exact next branch, OE-F0.
    `DROP_INCOMPATIBLE`. Do not cherry-pick a multi-purpose feature commit.
 4. A behavior is reimplemented only when a failing characterization test ties
    it to an MVP criterion and it obeys the fixed Bridge/OpenELIS boundary.
-5. Drop and guard against copied-profile authority, app-owned analyzer runtime,
-   duplicate mapping/pending editors, API-focused Playwright, stale evidence
-   claims, and any new legacy extension.
+5. Reject copied-profile authority, app-owned analyzer runtime, and duplicate
+   mapping/pending editors from F0 salvage, and assign their migration/removal
+   to the owning E0-M4 checkpoint. In F0, guard API-focused Playwright, stale
+   acceptance claims, and any new extension of a legacy path.
 6. Update and close #3792 as superseded after OE-F0 is open.
 
 **Exit:** OE-F0 is a small green replacement foundation; every retained behavior
@@ -748,32 +790,32 @@ and site validation.
 
 ## Deterministic MVP Acceptance Criteria
 
-| ID      | Criterion                                                                                                                                                                                | Primary proof                                   |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| MVP-001 | Analyzer Types lists shipped and site types with source, status, completeness, usage, and attention state.                                                                               | Service/integration + RTL + UI E2E              |
-| MVP-002 | Search and filters round-trip through the URL and restore identical visible state after reload/back/forward.                                                                             | RTL with router + UI E2E                        |
-| MVP-003 | A user can create a site type or fork a shared type; lineage, unique name, actor, and revision are durable.                                                                              | Bridge contract + OpenELIS integration + UI E2E |
-| MVP-004 | Deactivation prevents new use but preserves existing history; reactivation is audited; hard delete is unavailable.                                                                       | Service/integration + RTL                       |
-| MVP-005 | The editor displays every independent profile source row, including unmatched/aliased rows; local lookup never skips, collapses, or falsely completes one.                               | Contract + service + RTL                        |
-| MVP-006 | Test selection searches the complete active catalog by name/code/LOINC; only a unique candidate may be suggested, while unresolved/ignored choices remain independent per row.           | JUnit 4 + RTL + UI E2E                          |
-| MVP-007 | Every applicable qualitative row can select only an active Result Option owned by its Test; selection enables save, server-derived value/label persist, and reload restores the binding. | JUnit 4 + RTL + UI E2E                          |
-| MVP-008 | QC-identification codes are shown and confirmed separately from operational QC rules/lots.                                                                                               | Bridge/OpenELIS contract + RTL + UI E2E         |
-| MVP-009 | Saving a shared mapping requires explicit fork/update scope and names affected analyzers; no copy/clone action bypasses that lifecycle.                                                  | Service + RTL + UI E2E                          |
-| MVP-010 | Inline setup supports type selection, instrument-not-listed, name, readable lab units, Verify, Connect, and Review.                                                                      | RTL + UI E2E                                    |
-| MVP-011 | Every page has one semantic `h1`, linkable breadcrumbs, and canonical URL/query state.                                                                                                   | RTL + UI E2E                                    |
-| MVP-012 | Mapping/QC-identification confirmation records actor/time/revision/fingerprint and becomes stale only after relevant profile, binding, or identification change, not operational QC.     | JUnit 4 integration + audit assertion           |
-| MVP-013 | Bridge connection testing uses only role-applicable settings and returns visible success, failure, missing-configuration, and timeout evidence plus the endpoint to configure.           | Bridge test + RTL + UI E2E                      |
-| MVP-014 | Results only is the default; Two-way appears only when supported and a failed round-trip visibly degrades to Results only without blocking one-way setup.                                | Bridge contract + RTL + UI E2E                  |
-| MVP-015 | Operational QC uses existing QC entities only; applicable required fields and exact validation are visible, valid saves immediately recompute independent QC readiness.                  | JUnit 4 analyzer/QC + RTL + UI E2E              |
-| MVP-016 | Activation is rejected until profile/bindings are current, required QC is ready, and runtime registration is synchronized.                                                               | JUnit 4 + contract + UI E2E                     |
-| MVP-017 | Bridge registration/profile sync is versioned, idempotent, deterministic, and emits explicit empty collections.                                                                          | Cross-repo contract tests                       |
-| MVP-018 | A known patient result and QC result travel mock -> Bridge -> FHIR -> OpenELIS and become visible in the correct workflow.                                                               | Mock + Bridge + harness integration             |
-| MVP-019 | Unknown test/value traffic retains raw context, is held, creates visible attention/alert state, and is not clinically posted.                                                            | Contract + OpenELIS integration + UI E2E        |
-| MVP-020 | Resolving unknown traffic uses valid local catalog choices, is audited, and makes the next matching message deterministic.                                                               | Integration + UI E2E                            |
-| MVP-021 | ASTM, HL7, and FILE each have known, unknown, QC, and connection fixtures; FILE runtime watching occurs only in Bridge.                                                                  | Mock/Bridge suites + repository guard           |
-| MVP-022 | All user copy is localized; Carbon components/tokens are used; desktop/mobile layouts have no overlap or unreachable action.                                                             | RTL/a11y + inspected screenshots                |
-| MVP-023 | Playwright performs the complete visible story without `page.request`, API assertions, backend polling, forced controls, or arbitrary waits.                                             | Playwright guard + test audit                   |
-| MVP-024 | Evidence identifies OpenELIS, Bridge, mock, profile, and review-tooling SHAs/revisions plus deployment time, checklist revision, routes, mark times, screenshots, trace, and MP4.        | Build manifest + UAT report                     |
+| ID      | Criterion                                                                                                                                                                                                                                                             | Primary proof                                   |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| MVP-001 | Analyzer Types lists shipped and site types with source, status, completeness, usage, and attention state.                                                                                                                                                            | Service/integration + RTL + UI E2E              |
+| MVP-002 | Search and filters round-trip through the URL and restore identical visible state after reload/back/forward.                                                                                                                                                          | RTL with router + UI E2E                        |
+| MVP-003 | A user can create a site type or fork a shared type; lineage, unique name, actor, and revision are durable.                                                                                                                                                           | Bridge contract + OpenELIS integration + UI E2E |
+| MVP-004 | Deactivation prevents new use but preserves existing history; reactivation is audited; hard delete is unavailable.                                                                                                                                                    | Service/integration + RTL                       |
+| MVP-005 | The editor displays every independent profile source row, including unmatched/aliased rows; local lookup never skips, collapses, or falsely completes one.                                                                                                            | Contract + service + RTL                        |
+| MVP-006 | Test selection searches the complete active catalog by name/code/LOINC; only a unique candidate may be suggested, while unresolved/ignored choices remain independent per row.                                                                                        | JUnit 4 + RTL + UI E2E                          |
+| MVP-007 | Every applicable qualitative row can select only an active Result Option owned by its Test; selection enables save, server-derived value/label persist, and reload restores the binding.                                                                              | JUnit 4 + RTL + UI E2E                          |
+| MVP-008 | QC-identification codes are shown and confirmed separately from operational QC rules/lots.                                                                                                                                                                            | Bridge/OpenELIS contract + RTL + UI E2E         |
+| MVP-009 | Saving a shared mapping requires explicit fork/update scope and names affected analyzers; no copy/clone action bypasses that lifecycle.                                                                                                                               | Service + RTL + UI E2E                          |
+| MVP-010 | Inline setup supports type selection, instrument-not-listed, name, readable lab units, Verify, Connect, and Review; profile selection visibly confirms the loaded profile plus mapping/QC/result counts, and saved analyzer name/lab-unit assignments survive reload. | RTL + UI E2E                                    |
+| MVP-011 | Every page has one semantic `h1`, linkable breadcrumbs, and canonical URL/query state.                                                                                                                                                                                | RTL + UI E2E                                    |
+| MVP-012 | Mapping/QC-identification confirmation records actor/time/revision/fingerprint and becomes stale only after relevant profile, binding, or identification change, not operational QC.                                                                                  | JUnit 4 integration + audit assertion           |
+| MVP-013 | Bridge connection testing uses only role-applicable settings and returns visible success, failure, missing-configuration, and timeout evidence plus the endpoint to configure.                                                                                        | Bridge test + RTL + UI E2E                      |
+| MVP-014 | Results only is the default; Two-way appears only when supported and a failed round-trip visibly degrades to Results only without blocking one-way setup.                                                                                                             | Bridge contract + RTL + UI E2E                  |
+| MVP-015 | Operational QC uses existing QC entities only; applicable required fields and exact validation are visible, valid saves immediately recompute independent QC readiness.                                                                                               | JUnit 4 analyzer/QC + RTL + UI E2E              |
+| MVP-016 | Activation is rejected until profile/bindings are current, required QC is ready, and runtime registration is synchronized.                                                                                                                                            | JUnit 4 + contract + UI E2E                     |
+| MVP-017 | Bridge registration/profile sync is versioned, idempotent, deterministic, and emits explicit empty collections.                                                                                                                                                       | Cross-repo contract tests                       |
+| MVP-018 | A known patient result and QC result travel mock -> Bridge -> FHIR -> OpenELIS and become visible in the correct workflow.                                                                                                                                            | Mock + Bridge + harness integration             |
+| MVP-019 | Unknown test/value traffic retains raw context, is held, creates visible attention/alert state, and is not clinically posted.                                                                                                                                         | Contract + OpenELIS integration + UI E2E        |
+| MVP-020 | Resolving unknown traffic uses valid local catalog choices, is audited, and makes the next matching message deterministic.                                                                                                                                            | Integration + UI E2E                            |
+| MVP-021 | ASTM, HL7, and FILE each have known, unknown, QC, and connection fixtures; FILE runtime watching occurs only in Bridge.                                                                                                                                               | Mock/Bridge suites + repository guard           |
+| MVP-022 | All user copy is localized; Carbon components/tokens are used; desktop/mobile layouts have no overlap or unreachable action.                                                                                                                                          | RTL/a11y + inspected screenshots                |
+| MVP-023 | Playwright performs the complete visible story without `page.request`, API assertions, backend polling, forced controls, or arbitrary waits.                                                                                                                          | Playwright guard + test audit                   |
+| MVP-024 | Evidence identifies OpenELIS, Bridge, mock, profile, and review-tooling SHAs/revisions plus deployment time, checklist revision, routes, mark times, screenshots, trace, and MP4.                                                                                     | Build manifest + UAT report                     |
 
 ## Test Strategy
 
