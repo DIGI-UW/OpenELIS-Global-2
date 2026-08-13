@@ -16,7 +16,6 @@ import { Page, expect } from "@playwright/test";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { cleanupAnalyzerByName } from "./cleanup-analyzer";
-import type { DemoPresentation } from "./demo-presentation";
 import type { AnalyzerTestConfig } from "./analyzer-test-config";
 import { LONG_TIMEOUT } from "./timeouts";
 import { resolveDbContainer } from "./db-container";
@@ -127,7 +126,6 @@ async function waitForAnalyzerApiReady(page: Page): Promise<void> {
 export async function createAnalyzerFromProfile(
   page: Page,
   config: AnalyzerTestConfig,
-  presentation: DemoPresentation,
 ): Promise<string | null> {
   const list = new AnalyzerListPage(page);
   const form = new AnalyzerFormPage(page);
@@ -158,7 +156,6 @@ export async function createAnalyzerFromProfile(
 
   await list.goto();
   await list.expectLoaded();
-  await presentation.pause(500);
 
   await list.clickAdd();
   // A transient fetch failure on the lazy AnalyzerForm chunk renders the
@@ -176,12 +173,10 @@ export async function createAnalyzerFromProfile(
 
   // Select plugin type
   await form.selectPluginType(config.pluginType);
-  await presentation.pause(500);
 
   // Select profile (auto-fills fields)
   if (config.profileName) {
     await form.selectDefaultConfig(config.profileName);
-    await presentation.pause(500);
   }
 
   // Select analyzer type (may already be set by profile)
@@ -189,7 +184,6 @@ export async function createAnalyzerFromProfile(
 
   // Fill name
   await form.fillName(config.name);
-  await presentation.pause(500);
 
   // Fill IP and port for TCP analyzers
   if (config.protocol !== "FILE") {
@@ -200,7 +194,6 @@ export async function createAnalyzerFromProfile(
     if (config.port) {
       await form.fillPort(String(config.port));
     }
-    await presentation.pause(500);
   }
 
   // Fill required import directory for FILE analyzers. The UI intentionally
@@ -214,7 +207,6 @@ export async function createAnalyzerFromProfile(
           `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`
         : `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`;
     await form.fillImportDirectory(importDir);
-    await presentation.pause(500);
   }
 
   // Save
@@ -224,7 +216,6 @@ export async function createAnalyzerFromProfile(
 
   // Wait for modal to close
   await expect(form.modal).not.toBeVisible({ timeout: LONG_TIMEOUT });
-  await presentation.pause(1_000);
 
   return assignedIp;
 }

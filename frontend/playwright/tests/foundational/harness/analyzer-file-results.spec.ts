@@ -1,8 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../../../helpers/test-base";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
-import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import type { DemoPresentation } from "../../../helpers/demo-presentation";
 import {
   findAnalyzerRow,
   goToAnalyzerDashboard,
@@ -41,8 +39,6 @@ type FileImportHarnessScenario = {
   readonly importDirSafeName: string;
   /** Mock server template name (maps to templates/{name}.json). */
   readonly mockTemplate: string;
-  readonly presentationTitle: string;
-  readonly presentationSubtitle: string;
   /**
    * Admin-declared test code for upload path (production parity). Set for
    * analyzers whose fixture files have no per-row test-code column —
@@ -64,17 +60,11 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     analyzerName: "QuantStudio 7",
     importDirSafeName: "quantstudio-7",
     mockTemplate: "quantstudio7",
-    presentationTitle: "QuantStudio 7 File Import",
-    presentationSubtitle:
-      "Exercise file transport, staged results, and acceptance.",
   },
   {
     analyzerName: "QuantStudio 5",
     importDirSafeName: "quantstudio-5",
     mockTemplate: "quantstudio5",
-    presentationTitle: "QuantStudio 5 File Import",
-    presentationSubtitle:
-      "Exercise file transport, staged results, and acceptance.",
   },
 ];
 
@@ -97,7 +87,6 @@ function fileImportTimeoutMs(): number {
 
 async function verifyImportedResults(
   page: Page,
-  presentation: DemoPresentation,
   scenario: FileImportHarnessScenario,
   expectedResults: ReadonlyArray<MockFileResult>,
 ) {
@@ -125,8 +114,6 @@ async function verifyImportedResults(
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     await expectResultVisible(resultsRegion, expected.result);
   }
-
-  await presentation.pause(2_000);
 }
 
 for (const scenario of FILE_IMPORT_SCENARIOS) {
@@ -136,25 +123,10 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
     test("import and accept results from a watched folder", async ({
       page,
     }, testInfo) => {
-      const presentation = createDemoPresentation(page, testInfo);
-
-      await presentation.title(
-        scenario.presentationTitle,
-        scenario.presentationSubtitle,
-      );
-
       await goToAnalyzerDashboard(page, testInfo);
 
-      await presentation.step(
-        1,
-        "Find the pre-configured analyzer for this lane",
-      );
       await findAnalyzerRow(page, scenario.analyzerName, testInfo);
 
-      await presentation.step(
-        2,
-        "Mock server drops a fixture file into the watched folder",
-      );
       const mockResponse = await dropFixtureViaMock(page, {
         mockTemplate: scenario.mockTemplate,
         analyzerName: scenario.analyzerName,
@@ -164,27 +136,9 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
       });
       const expectedResults = mockResponse.metadata.results;
 
-      await presentation.pause(1_000);
+      await verifyImportedResults(page, scenario, expectedResults);
 
-      await presentation.step(3, "Review the imported results");
-      await verifyImportedResults(
-        page,
-        presentation,
-        scenario,
-        expectedResults,
-      );
-
-      await acceptAndVerifyResults(
-        page,
-        presentation,
-        3,
-        expectedResults[0].sampleId,
-      );
-
-      await presentation.title(
-        "Story Complete",
-        "The file transport integration completed.",
-      );
+      await acceptAndVerifyResults(page, expectedResults[0].sampleId);
     });
   });
 }
