@@ -1,9 +1,9 @@
 package org.openelisglobal.microbiology;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,10 +76,10 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
         orderDetail.cultureMethodId = methodId;
         orderDetail.patientOrigin = "EMERGENCY";
+        orderDetail.admissionDate = "2026-08-03";
         orderDetail.numberOfSets = 2;
         orderDetail.clinicalHistory = "Fever and hypotension";
         orderDetail.antibioticExposure = true;
-        orderDetail.criticalNotificationPreference = false;
 
         List<MicroCase> first = routingService.routeAnalysesForSampleItem(persistedItem, List.of(persistedAnalysis),
                 fixtures.defaultUserId(), orderDetail);
@@ -91,14 +91,14 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals(1, caseService.getSiblingCases(persistedItem.getId()).size());
         MicroCaseOrderDetail persisted = orderDetailService.getOrderDetail(first.get(0).getId());
         assertEquals(Integer.valueOf(2), persisted.getNumberOfSets());
+        assertEquals(LocalDate.of(2026, 8, 3), persisted.getAdmissionDate());
         assertTrue(persisted.getAntibioticExposure());
-        assertFalse(persisted.getCriticalNotificationPreference());
 
         MicroCaseDetailForm compiled = caseService.getCaseDetail(first.get(0).getId());
         assertEquals("EMERGENCY", compiled.orderDetail.patientOrigin);
+        assertEquals("2026-08-03", compiled.orderDetail.admissionDate);
         assertEquals("Fever and hypotension", compiled.orderDetail.clinicalHistory);
         assertTrue(compiled.orderDetail.antibioticExposure);
-        assertFalse(compiled.orderDetail.criticalNotificationPreference);
     }
 
     @Test
@@ -110,15 +110,16 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
         orderDetail.cultureMethodId = methodId;
         orderDetail.patientOrigin = "INPATIENT";
+        orderDetail.admissionDate = "2026-08-13";
         orderDetail.numberOfSets = 3;
         orderDetail.clinicalHistory = "Persistent fever after antibiotics";
         orderDetail.antibioticExposure = true;
-        orderDetail.criticalNotificationPreference = true;
         orderDetailService.saveOrderDraft(persistedItem.getSample(), orderDetail, fixtures.defaultUserId());
 
         MicroCaseOrderDetailRequestForm reloaded = orderDetailService.getOrderDraft(persistedItem.getSample().getId());
         assertEquals(methodId, reloaded.cultureMethodId);
         assertEquals("Persistent fever after antibiotics", reloaded.clinicalHistory);
+        assertEquals("2026-08-13", reloaded.admissionDate);
 
         List<MicroCase> routed = routingService.routeAnalysesForSampleItem(persistedItem, List.of(persistedAnalysis),
                 fixtures.defaultUserId(), null);
@@ -126,9 +127,9 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals(1, routed.size());
         MicroCaseOrderDetail caseDetail = orderDetailService.getOrderDetail(routed.get(0).getId());
         assertEquals("INPATIENT", caseDetail.getPatientOrigin());
+        assertEquals(LocalDate.of(2026, 8, 13), caseDetail.getAdmissionDate());
         assertEquals(Integer.valueOf(3), caseDetail.getNumberOfSets());
         assertTrue(caseDetail.getAntibioticExposure());
-        assertTrue(caseDetail.getCriticalNotificationPreference());
     }
 
     private Analysis analysis(org.openelisglobal.test.valueholder.Test test) {

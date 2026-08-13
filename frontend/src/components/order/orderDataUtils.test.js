@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLoadedOrderData,
+  buildSubmissionMicrobiologyOrderDetail,
   buildSubmissionSampleOrderItems,
   isMicrobiologyOrderReady,
 } from "./orderDataUtils";
@@ -14,6 +15,7 @@ describe("buildLoadedOrderData", () => {
       microbiologyOrderDetail: {
         cultureMethodId: "17",
         patientOrigin: "INPATIENT",
+        admissionDate: "2026-08-03",
         numberOfSets: 2,
         clinicalHistory: "Persistent fever",
         antibioticExposure: true,
@@ -26,10 +28,10 @@ describe("buildLoadedOrderData", () => {
     expect(loaded.microbiologyOrderDetail).toEqual({
       cultureMethodId: "17",
       patientOrigin: "INPATIENT",
+      admissionDate: "2026-08-03",
       numberOfSets: 2,
       clinicalHistory: "Persistent fever",
       antibioticExposure: true,
-      criticalNotificationPreference: false,
     });
   });
 
@@ -39,10 +41,10 @@ describe("buildLoadedOrderData", () => {
     expect(loaded.microbiologyOrderDetail).toEqual({
       cultureMethodId: "",
       patientOrigin: "",
+      admissionDate: "",
       numberOfSets: "",
       clinicalHistory: "",
       antibioticExposure: false,
-      criticalNotificationPreference: null,
     });
   });
 
@@ -60,7 +62,7 @@ describe("buildLoadedOrderData", () => {
 });
 
 describe("isMicrobiologyOrderReady", () => {
-  it("requires a culture method for a loaded manual Microbiology order", () => {
+  it("allows a loaded manual Microbiology order without a default protocol", () => {
     const loaded = buildLoadedOrderData({
       labNumber: "20260806-004",
       sampleOrderItems: {
@@ -69,19 +71,35 @@ describe("isMicrobiologyOrderReady", () => {
       },
     });
 
-    expect(isMicrobiologyOrderReady(loaded, [])).toBe(false);
+    expect(isMicrobiologyOrderReady(loaded, [])).toBe(true);
+  });
+});
+
+describe("buildSubmissionMicrobiologyOrderDetail", () => {
+  it("keeps an inpatient date and removes the retired notification preference", () => {
     expect(
-      isMicrobiologyOrderReady(
-        {
-          ...loaded,
-          microbiologyOrderDetail: {
-            ...loaded.microbiologyOrderDetail,
-            cultureMethodId: "17",
-          },
-        },
-        [],
-      ),
-    ).toBe(true);
+      buildSubmissionMicrobiologyOrderDetail({
+        patientOrigin: "INPATIENT",
+        admissionDate: "2026-08-03",
+        criticalNotificationPreference: true,
+      }),
+    ).toEqual({
+      patientOrigin: "INPATIENT",
+      admissionDate: "2026-08-03",
+    });
+  });
+
+  it("omits an admission date for an outpatient without erasing form state", () => {
+    const detail = {
+      patientOrigin: "OUTPATIENT",
+      admissionDate: "2026-08-03",
+    };
+
+    expect(buildSubmissionMicrobiologyOrderDetail(detail)).toEqual({
+      patientOrigin: "OUTPATIENT",
+      admissionDate: null,
+    });
+    expect(detail.admissionDate).toBe("2026-08-03");
   });
 });
 

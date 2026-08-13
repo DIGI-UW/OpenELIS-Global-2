@@ -573,17 +573,29 @@ and M-04 section 4.9a. R2 is one official stacked PR based directly on #4004.
 
 ### M-03 Order Entry TDD
 
-- [ ] T293 [P] [R2] Add failing JUnit 4 service/ORM/migration tests for nullable
+- [x] T293 [P] [R2] Add failing JUnit 4 service/ORM/migration tests for nullable
   Date of Admission persistence and rollback, locale-independent round-trip,
-  optional missing protocol, and removal of order-level notification input.
-- [ ] T294 [P] [R2] Add failing Carbon interaction tests proving protocol is
+  optional missing protocol, and removal of order-level notification input. The
+  red phase covered missing persistence/mapping, rollback, malformed transport,
+  Outpatient clearing, server-derived protocol, optional routing without a
+  default Method, ignored legacy notification input, and real protocol-summary
+  metadata at the order-entry response boundary.
+- [x] T294 [P] [R2] Add failing Carbon interaction tests proving protocol is
   read-only with an explicit unset state, Date of Admission is optional and
   disabled only for Outpatient, and no critical-notification control renders.
-- [ ] T295 [R2] Implement the smallest service-owned model and order-entry UI
+  The focused tests also prove locale display/ISO transport and rendering of
+  available media, incubation, and atmosphere metadata.
+- [x] T295 [R2] Implement the smallest service-owned model and order-entry UI
   changes needed to satisfy T293-T294. Add one Liquibase migration only for the
-  nullable date field; do not migrate routes, fixtures, or tests.
-- [ ] T296 [R2] Run the focused backend and frontend M-03 checkpoints, formatting,
+  nullable date field; do not migrate routes, fixtures, or tests. Order routing
+  now derives the default Method and permits an explicit unset state; the
+  existing response carries available culture-setup metadata without a new
+  endpoint or storage model.
+- [x] T296 [R2] Run the focused backend and frontend M-03 checkpoints, formatting,
   ORM validation, migration update/rollback/reapply, and `git diff --check`.
+  Evidence: 37 backend tests and 28 frontend tests pass; the updated Playwright
+  specs register in desktop/mobile projects and lint cleanly. Full browser
+  execution remains T301 and is not claimed here.
 
 ### M-04 Protocol Action TDD
 

@@ -93,6 +93,20 @@ const CaseInfoSummary = ({
           <StructuredListCell>
             <strong>
               {intl.formatMessage({
+                id: "microbiology.orderDetail.admissionDate",
+              })}
+            </strong>
+          </StructuredListCell>
+          <StructuredListCell>
+            {detail.admissionDate
+              ? intl.formatDate(new Date(`${detail.admissionDate}T00:00:00`))
+              : display(null)}
+          </StructuredListCell>
+        </StructuredListRow>
+        <StructuredListRow>
+          <StructuredListCell>
+            <strong>
+              {intl.formatMessage({
                 id: "microbiology.case.accessionNumber",
               })}
             </strong>
@@ -145,20 +159,6 @@ const CaseInfoSummary = ({
             {detail.antibioticExposure == null
               ? display(null)
               : booleanDisplay(detail.antibioticExposure)}
-          </StructuredListCell>
-        </StructuredListRow>
-        <StructuredListRow>
-          <StructuredListCell>
-            <strong>
-              {intl.formatMessage({
-                id: "microbiology.orderDetail.criticalNotificationPreference",
-              })}
-            </strong>
-          </StructuredListCell>
-          <StructuredListCell>
-            {detail.criticalNotificationPreference == null
-              ? display(null)
-              : booleanDisplay(detail.criticalNotificationPreference)}
           </StructuredListCell>
         </StructuredListRow>
       </StructuredListBody>

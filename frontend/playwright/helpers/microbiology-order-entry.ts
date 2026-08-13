@@ -14,6 +14,7 @@ export type MicrobiologyOrderCatalog = SeededMicrobiologyCase & {
 };
 
 export const MICROBIOLOGY_CULTURE_TEST_NAME = "UAT microbiology culture";
+export const MICROBIOLOGY_CULTURE_METHOD_NAME = "UAT micro culture";
 export const MICROBIOLOGY_TB_CULTURE_TEST_NAME = "UAT microbiology TB culture";
 export const MICROBIOLOGY_NON_CULTURE_TEST_NAME =
   "UAT routine non-culture test";

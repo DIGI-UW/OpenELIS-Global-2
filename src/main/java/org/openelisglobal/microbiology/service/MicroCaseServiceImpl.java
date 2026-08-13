@@ -256,10 +256,10 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         MicroCaseOrderDetailForm form = new MicroCaseOrderDetailForm();
         form.caseId = orderDetail.getCaseId();
         form.patientOrigin = orderDetail.getPatientOrigin();
+        form.admissionDate = orderDetail.getAdmissionDate() == null ? null : orderDetail.getAdmissionDate().toString();
         form.numberOfSets = orderDetail.getNumberOfSets();
         form.clinicalHistory = orderDetail.getClinicalHistory();
         form.antibioticExposure = orderDetail.getAntibioticExposure();
-        form.criticalNotificationPreference = orderDetail.getCriticalNotificationPreference();
         return form;
     }
 

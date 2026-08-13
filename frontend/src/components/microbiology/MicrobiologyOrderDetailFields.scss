@@ -1,0 +1,88 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+
+.microbiology-order-entry {
+  border: 1px solid var(--cds-border-subtle-01);
+  padding: spacing.$spacing-05;
+}
+
+.microbiology-order-entry__header {
+  align-items: flex-start;
+  display: flex;
+  gap: spacing.$spacing-05;
+  justify-content: space-between;
+  margin-block-end: spacing.$spacing-05;
+
+  h3 {
+    @include type.type-style("heading-03");
+
+    margin: 0;
+  }
+}
+
+.microbiology-order-entry__hint {
+  @include type.type-style("body-compact-01");
+
+  color: var(--cds-text-secondary);
+  margin: spacing.$spacing-02 0 0;
+}
+
+.microbiology-order-entry > .cds--inline-notification {
+  margin-block-end: spacing.$spacing-05;
+  max-inline-size: none;
+}
+
+.microbiology-order-detail-fields {
+  display: grid;
+  gap: spacing.$spacing-05;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.microbiology-order-detail-fields__protocol,
+.microbiology-order-detail-fields__wide {
+  grid-column: 1 / -1;
+}
+
+.microbiology-order-detail-fields__protocol {
+  border-inline-start: 0.25rem solid var(--cds-border-interactive);
+  background: var(--cds-layer-02);
+  padding: spacing.$spacing-05;
+}
+
+.microbiology-order-detail-fields__label-row {
+  align-items: center;
+  display: flex;
+  gap: spacing.$spacing-03;
+  justify-content: space-between;
+}
+
+.microbiology-order-detail-fields__protocol-name {
+  @include type.type-style("heading-compact-02");
+
+  margin: spacing.$spacing-03 0 0;
+}
+
+.microbiology-order-detail-fields__protocol-summary {
+  @include type.type-style("body-compact-01");
+
+  color: var(--cds-text-secondary);
+  margin: spacing.$spacing-02 0 0;
+}
+
+.microbiology-order-detail-fields__helper {
+  @include type.type-style("helper-text-01");
+
+  color: var(--cds-text-helper);
+  margin: spacing.$spacing-03 0 0;
+}
+
+@media (max-width: 42rem) {
+  .microbiology-order-entry__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .microbiology-order-detail-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

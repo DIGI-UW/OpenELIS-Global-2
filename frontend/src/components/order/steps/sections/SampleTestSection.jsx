@@ -174,10 +174,10 @@ const SampleTestSection = ({
       microbiologyOrderDetail: {
         cultureMethodId: "",
         patientOrigin: "",
+        admissionDate: "",
         numberOfSets: "",
         clinicalHistory: "",
         antibioticExposure: false,
-        criticalNotificationPreference: null,
       },
       sampleOrderItems: {
         ...previous.sampleOrderItems,

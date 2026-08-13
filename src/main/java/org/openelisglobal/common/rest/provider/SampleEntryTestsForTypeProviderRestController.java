@@ -17,6 +17,9 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
+import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -51,11 +54,13 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     private final RoleService roleService;
     private final ProgramService programService;
     private final TestMethodService testMethodService;
+    private final MicrobiologyReferenceService microbiologyReferenceService;
 
     public SampleEntryTestsForTypeProviderRestController(PanelService panelService,
             TestSectionService testSectionService, TypeOfSamplePanelService samplePanelService,
             PanelItemService panelItemService, TypeOfSampleService typeOfSampleService, UserService userService,
-            RoleService roleService, ProgramService programService, TestMethodService testMethodService) {
+            RoleService roleService, ProgramService programService, TestMethodService testMethodService,
+            MicrobiologyReferenceService microbiologyReferenceService) {
         this.panelService = panelService;
         this.testSectionService = testSectionService;
         this.samplePanelService = samplePanelService;
@@ -65,6 +70,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         this.roleService = roleService;
         this.programService = programService;
         this.testMethodService = testMethodService;
+        this.microbiologyReferenceService = microbiologyReferenceService;
     }
 
     @GetMapping(value = "sample-type-tests", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -144,11 +150,19 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         String userTestSectionId = testSectionService.getTestSectionByName("user").getId();
         ArrayList<TestMap> testsMapList = new ArrayList<>();
         for (Test test : tests) {
-            List<TestMethodDto> methods = testMethodService.getLinkedMethodDtos(test.getId());
+            List<OrderEntryMethod> methods = testMethodService.getLinkedMethodDtos(test.getId()).stream()
+                    .map(method -> toOrderEntryMethod(method, test.getCultureWorkflowType())).toList();
             testsMapList.add(new TestMap(test.getId(), localizedTestName(test),
                     userTestSectionId.equals(test.getTestSection().getId()), test.getCultureWorkflowType(), methods));
         }
         return testsMapList;
+    }
+
+    private OrderEntryMethod toOrderEntryMethod(TestMethodDto method, String workflowType) {
+        MicroCultureSetup setup = workflowType == null || workflowType.isBlank() ? null
+                : microbiologyReferenceService.getActiveCultureSetupForMethod(method.methodId,
+                        MicroWorkflowType.valueOf(workflowType));
+        return new OrderEntryMethod(method, setup);
     }
 
     private ArrayList<PanelTestMap> addPanels(List<PanelTestMap> panelMap) {
@@ -313,10 +327,10 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         String cultureWorkflowType;
 
-        List<TestMethodDto> methods;
+        List<OrderEntryMethod> methods;
 
         public TestMap(String id, String name, boolean userBenchChoice, String cultureWorkflowType,
-                List<TestMethodDto> methods) {
+                List<OrderEntryMethod> methods) {
             this.id = id;
             this.name = name;
             this.userBenchChoice = userBenchChoice;
@@ -356,8 +370,34 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             this.cultureWorkflowType = cultureWorkflowType;
         }
 
-        public List<TestMethodDto> getMethods() {
+        public List<OrderEntryMethod> getMethods() {
             return methods;
+        }
+    }
+
+    public static class OrderEntryMethod {
+        public String id;
+        public String methodId;
+        public String methodName;
+        public String methodCode;
+        public boolean isDefault;
+        public String effectiveDate;
+        public String mediaDefaults;
+        public String incubationDefaults;
+        public String atmosphereDefaults;
+
+        OrderEntryMethod(TestMethodDto method, MicroCultureSetup setup) {
+            id = method.id;
+            methodId = method.methodId;
+            methodName = method.methodName;
+            methodCode = method.methodCode;
+            isDefault = method.isDefault;
+            effectiveDate = method.effectiveDate;
+            if (setup != null) {
+                mediaDefaults = setup.getMediaDefaults();
+                incubationDefaults = setup.getIncubationDefaults();
+                atmosphereDefaults = setup.getAtmosphereDefaults();
+            }
         }
     }
 

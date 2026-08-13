@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,23 +53,26 @@ public class MicroCaseOrderDetailServiceTest {
     public void saveOrderDetailCreatesRecordWhenNoneExists() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
+        microCase.setCultureMethodId("configured-method");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(null);
         MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.cultureMethodId = "submitted-method";
         request.patientOrigin = "INPATIENT";
+        request.admissionDate = "2026-08-03";
         request.numberOfSets = 2;
         request.clinicalHistory = "Fever, suspected sepsis";
         request.antibioticExposure = true;
-        request.criticalNotificationPreference = true;
 
         MicroCaseOrderDetail saved = service.saveOrderDetail("case-1", request, "1");
 
         assertEquals("case-1", saved.getCaseId());
+        assertEquals("configured-method", saved.getCultureMethodId());
         assertEquals("INPATIENT", saved.getPatientOrigin());
+        assertEquals(LocalDate.of(2026, 8, 3), saved.getAdmissionDate());
         assertEquals(Integer.valueOf(2), saved.getNumberOfSets());
         assertEquals("Fever, suspected sepsis", saved.getClinicalHistory());
         assertEquals(Boolean.TRUE, saved.getAntibioticExposure());
-        assertEquals(Boolean.TRUE, saved.getCriticalNotificationPreference());
         assertNotNull(saved.getCreatedAt());
         verify(orderDetailDAO).insert(saved);
         verify(orderDetailDAO, never()).update(any(MicroCaseOrderDetail.class));
@@ -89,6 +93,7 @@ public class MicroCaseOrderDetailServiceTest {
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(existing);
         MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
         request.patientOrigin = "INPATIENT";
+        request.admissionDate = "2026-08-03";
         request.numberOfSets = 3;
 
         MicroCaseOrderDetail saved = service.saveOrderDetail("case-1", request, "2");
@@ -122,18 +127,18 @@ public class MicroCaseOrderDetailServiceTest {
         MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
         request.cultureMethodId = "17";
         request.patientOrigin = "INPATIENT";
+        request.admissionDate = "2026-08-03";
         request.numberOfSets = 2;
         request.clinicalHistory = "Persistent fever";
         request.antibioticExposure = true;
-        request.criticalNotificationPreference = false;
 
         MicroCaseOrderDetail saved = service.saveOrderDraft(sample, request, "7");
 
         assertNull(saved.getCaseId());
         assertEquals("99", saved.getSampleId());
         assertEquals("17", saved.getCultureMethodId());
+        assertEquals(LocalDate.of(2026, 8, 3), saved.getAdmissionDate());
         assertEquals(Boolean.TRUE, saved.getAntibioticExposure());
-        assertEquals(Boolean.FALSE, saved.getCriticalNotificationPreference());
         verify(orderDetailDAO).insert(saved);
         verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
     }
@@ -144,20 +149,46 @@ public class MicroCaseOrderDetailServiceTest {
         detail.setSampleId("99");
         detail.setCultureMethodId("17");
         detail.setPatientOrigin("INPATIENT");
+        detail.setAdmissionDate(LocalDate.of(2026, 8, 13));
         detail.setNumberOfSets(3);
         detail.setClinicalHistory("Sepsis query");
         detail.setAntibioticExposure(false);
-        detail.setCriticalNotificationPreference(true);
         when(orderDetailDAO.getDraftBySampleId("99")).thenReturn(detail);
 
         MicroCaseOrderDetailRequestForm reloaded = service.getOrderDraft("99");
 
         assertEquals("17", reloaded.cultureMethodId);
         assertEquals("INPATIENT", reloaded.patientOrigin);
+        assertEquals("2026-08-13", reloaded.admissionDate);
         assertEquals(Integer.valueOf(3), reloaded.numberOfSets);
         assertEquals("Sepsis query", reloaded.clinicalHistory);
         assertEquals(Boolean.FALSE, reloaded.antibioticExposure);
-        assertEquals(Boolean.TRUE, reloaded.criticalNotificationPreference);
+    }
+
+    @Test
+    public void saveOrderDraftClearsAdmissionDateForOutpatientContext() {
+        when(orderDetailDAO.getDraftBySampleId("99")).thenReturn(null);
+        Sample sample = new Sample();
+        sample.setId("99");
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.patientOrigin = "OUTPATIENT";
+        request.admissionDate = "2026-08-03";
+
+        MicroCaseOrderDetail saved = service.saveOrderDraft(sample, request, "7");
+
+        assertNull(saved.getAdmissionDate());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void saveOrderDraftRejectsMalformedAdmissionDate() {
+        when(orderDetailDAO.getDraftBySampleId("99")).thenReturn(null);
+        Sample sample = new Sample();
+        sample.setId("99");
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.patientOrigin = "INPATIENT";
+        request.admissionDate = "2026-02-31";
+
+        service.saveOrderDraft(sample, request, "7");
     }
 
     @Test(expected = IllegalArgumentException.class)

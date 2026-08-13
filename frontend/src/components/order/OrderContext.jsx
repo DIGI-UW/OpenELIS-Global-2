@@ -19,6 +19,7 @@ import {
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import {
   buildLoadedOrderData,
+  buildSubmissionMicrobiologyOrderDetail,
   buildSubmissionSampleOrderItems,
 } from "./orderDataUtils";
 
@@ -484,6 +485,9 @@ export const OrderProvider = ({ children }) => {
         sampleOrderItems: buildSubmissionSampleOrderItems(
           orderData.sampleOrderItems,
         ),
+        microbiologyOrderDetail: buildSubmissionMicrobiologyOrderDetail(
+          orderData.microbiologyOrderDetail,
+        ),
         initialSampleConditionList: [],
         testSectionList: [],
       };
@@ -607,6 +611,9 @@ export const OrderProvider = ({ children }) => {
         orderEntryOnly: true, // Flag for backend to skip sample validation
         sampleOrderItems: buildSubmissionSampleOrderItems(
           orderData.sampleOrderItems,
+        ),
+        microbiologyOrderDetail: buildSubmissionMicrobiologyOrderDetail(
+          orderData.microbiologyOrderDetail,
         ),
         initialSampleConditionList: [],
         testSectionList: [],

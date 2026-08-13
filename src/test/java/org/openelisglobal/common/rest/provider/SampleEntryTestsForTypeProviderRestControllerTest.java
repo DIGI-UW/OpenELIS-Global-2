@@ -17,6 +17,9 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
+import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.program.service.ProgramService;
@@ -53,6 +56,8 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
     @Mock
     private TestMethodService testMethodService;
     @Mock
+    private MicrobiologyReferenceService microbiologyReferenceService;
+    @Mock
     private HttpServletRequest request;
 
     private SampleEntryTestsForTypeProviderRestController controller;
@@ -61,7 +66,7 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
     public void setUp() {
         controller = new SampleEntryTestsForTypeProviderRestController(panelService, testSectionService,
                 samplePanelService, panelItemService, typeOfSampleService, userService, roleService, programService,
-                testMethodService);
+                testMethodService, microbiologyReferenceService);
         HttpSession session = mock(HttpSession.class);
         UserSessionData userSessionData = new UserSessionData();
         userSessionData.setSytemUserId(17);
@@ -117,6 +122,12 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
         method.methodCode = "BCSTD";
         method.isDefault = true;
         when(testMethodService.getLinkedMethodDtos("42")).thenReturn(List.of(method));
+        MicroCultureSetup setup = new MicroCultureSetup();
+        setup.setMediaDefaults("BAP + CHOC");
+        setup.setIncubationDefaults("5 days at 35 C");
+        setup.setAtmosphereDefaults("aerobic + anaerobic");
+        when(microbiologyReferenceService.getActiveCultureSetupForMethod("7", MicroWorkflowType.BACTERIOLOGY))
+                .thenReturn(setup);
 
         SampleEntryTestsForTypeProviderRestController.SampleEntryTests result = controller.processRequest(request,
                 null);
@@ -125,5 +136,8 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
         assertEquals("BACTERIOLOGY", result.getTests().get(0).getCultureWorkflowType());
         assertEquals("7", result.getTests().get(0).getMethods().get(0).methodId);
         assertEquals("Blood Culture Standard", result.getTests().get(0).getMethods().get(0).methodName);
+        assertEquals("BAP + CHOC", result.getTests().get(0).getMethods().get(0).mediaDefaults);
+        assertEquals("5 days at 35 C", result.getTests().get(0).getMethods().get(0).incubationDefaults);
+        assertEquals("aerobic + anaerobic", result.getTests().get(0).getMethods().get(0).atmosphereDefaults);
     }
 }

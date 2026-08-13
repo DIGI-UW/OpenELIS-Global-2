@@ -20,10 +20,10 @@ import ProgramSection from "./ProgramSection";
 const orderData = {
   microbiologyOrderDetail: {
     patientOrigin: "",
+    admissionDate: "",
     numberOfSets: "",
     clinicalHistory: "",
     antibioticExposure: false,
-    criticalNotificationPreference: null,
     cultureMethodId: "",
   },
   sampleOrderItems: {},
@@ -251,9 +251,7 @@ describe("ProgramSection microbiology derivation", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Unassigned")).toBeInTheDocument();
-    expect(
-      screen.getByDisplayValue("Blood Culture Standard"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Blood Culture Standard")).toBeInTheDocument();
   });
 
   it("reflects a cleared canonical Program value after culture test removal", async () => {

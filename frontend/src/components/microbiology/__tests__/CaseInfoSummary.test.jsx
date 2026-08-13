@@ -14,9 +14,9 @@ describe("CaseInfoSummary", () => {
           orderDetail={{
             clinicalHistory: "Fever and suspected sepsis",
             patientOrigin: "INPATIENT",
+            admissionDate: "2026-08-03",
             numberOfSets: 2,
             antibioticExposure: true,
-            criticalNotificationPreference: false,
           }}
         />
       </IntlProvider>,
@@ -30,7 +30,7 @@ describe("CaseInfoSummary", () => {
     ).toBeTruthy();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();
-    expect(screen.getByText("No")).toBeInTheDocument();
+    expect(screen.getByText(/2026|8\/3/)).toBeInTheDocument();
     expect(screen.getByText(/UATMICRO001/)).toBeInTheDocument();
     expect(screen.getByText(/Medical ward 2/)).toBeInTheDocument();
   });

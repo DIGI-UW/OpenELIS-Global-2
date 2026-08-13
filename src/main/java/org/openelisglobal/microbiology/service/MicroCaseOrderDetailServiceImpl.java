@@ -1,5 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
+import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.util.Locale;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
@@ -13,11 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Captures the microbiology order-detail fields (FR-002: patient origin, number
- * of sets, clinical history, antibiotic exposure, critical notification
- * preference) against a case. One record per case; a repeat save updates the
- * existing record in place rather than creating history, since this data is
- * order context rather than a clinical timeline event.
+ * Captures the microbiology order-detail fields against a case. One record per
+ * case; a repeat save updates the existing record in place rather than creating
+ * history, since this data is order context rather than a clinical timeline
+ * event.
  */
 @Service
 public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailService {
@@ -40,7 +41,8 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
     public MicroCaseOrderDetail saveOrderDetail(String caseId, MicroCaseOrderDetailRequestForm request,
             String performedBy) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
-        caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Microbiology case not found"));
+        var microCase = caseDAO.get(caseId)
+                .orElseThrow(() -> new IllegalArgumentException("Microbiology case not found"));
 
         MicroCaseOrderDetail detail = orderDetailDAO.getByCaseId(caseId);
         boolean isNew = detail == null;
@@ -54,6 +56,7 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
             detail.setUpdatedBy(performedBy);
         }
         apply(detail, request);
+        detail.setCultureMethodId(microCase.getCultureMethodId());
 
         if (isNew) {
             orderDetailDAO.insert(detail);
@@ -110,10 +113,10 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
         MicroCaseOrderDetailRequestForm form = new MicroCaseOrderDetailRequestForm();
         form.cultureMethodId = detail.getCultureMethodId();
         form.patientOrigin = detail.getPatientOrigin();
+        form.admissionDate = detail.getAdmissionDate() == null ? null : detail.getAdmissionDate().toString();
         form.numberOfSets = detail.getNumberOfSets();
         form.clinicalHistory = detail.getClinicalHistory();
         form.antibioticExposure = detail.getAntibioticExposure();
-        form.criticalNotificationPreference = detail.getCriticalNotificationPreference();
         return form;
     }
 
@@ -126,10 +129,21 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
         }
         detail.setCultureMethodId(request.cultureMethodId);
         detail.setPatientOrigin(patientOrigin);
+        detail.setAdmissionDate(parseAdmissionDate(request.admissionDate, patientOrigin));
         detail.setNumberOfSets(request.numberOfSets);
         detail.setClinicalHistory(request.clinicalHistory);
         detail.setAntibioticExposure(request.antibioticExposure);
-        detail.setCriticalNotificationPreference(request.criticalNotificationPreference);
+    }
+
+    private LocalDate parseAdmissionDate(String value, String patientOrigin) {
+        if ("OUTPATIENT".equals(patientOrigin) || value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeException e) {
+            throw new IllegalArgumentException("Admission date must use yyyy-MM-dd", e);
+        }
     }
 
     private void recordActivity(String caseId, String performedBy) {

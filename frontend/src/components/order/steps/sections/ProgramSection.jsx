@@ -230,10 +230,10 @@ const ProgramSection = ({
               microbiologyOrderDetail: {
                 cultureMethodId: "",
                 patientOrigin: "",
+                admissionDate: "",
                 numberOfSets: "",
                 clinicalHistory: "",
                 antibioticExposure: false,
-                criticalNotificationPreference: null,
               },
             }
           : {}),
@@ -257,10 +257,10 @@ const ProgramSection = ({
               microbiologyOrderDetail: {
                 cultureMethodId: "",
                 patientOrigin: "",
+                admissionDate: "",
                 numberOfSets: "",
                 clinicalHistory: "",
                 antibioticExposure: false,
-                criticalNotificationPreference: null,
               },
             }
           : {}),
