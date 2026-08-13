@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildLoadedOrderData,
   buildSubmissionSampleOrderItems,
+  isMicrobiologyOrderReady,
 } from "./orderDataUtils";
 
 describe("buildLoadedOrderData", () => {
@@ -44,7 +45,6 @@ describe("buildLoadedOrderData", () => {
       criticalNotificationPreference: null,
     });
   });
-
   it("preserves loaded reference lists and environmental state", () => {
     const sampleTypes = [{ id: "1", value: "Blood" }];
     const loaded = buildLoadedOrderData(
@@ -73,6 +73,44 @@ describe("buildLoadedOrderData", () => {
       site: "updated",
     });
   });
+
+  it("restores the transient Microbiology marker from the canonical Program code", () => {
+    const loaded = buildLoadedOrderData({
+      labNumber: "20260806-003",
+      sampleOrderItems: {
+        programId: "8",
+        programCode: "MICROBIOLOGY",
+      },
+    });
+
+    expect(loaded.sampleOrderItems.microbiologyProgramId).toBe("8");
+  });
+});
+
+describe("isMicrobiologyOrderReady", () => {
+  it("requires a culture method for a loaded manual Microbiology order", () => {
+    const loaded = buildLoadedOrderData({
+      labNumber: "20260806-004",
+      sampleOrderItems: {
+        programId: "8",
+        programCode: "MICROBIOLOGY",
+      },
+    });
+
+    expect(isMicrobiologyOrderReady(loaded, [])).toBe(false);
+    expect(
+      isMicrobiologyOrderReady(
+        {
+          ...loaded,
+          microbiologyOrderDetail: {
+            ...loaded.microbiologyOrderDetail,
+            cultureMethodId: "17",
+          },
+        },
+        [],
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("buildSubmissionSampleOrderItems", () => {
@@ -82,6 +120,7 @@ describe("buildSubmissionSampleOrderItems", () => {
         labNo: "20260806-003",
         programId: "9",
         program: "Microbiology",
+        programCode: "MICROBIOLOGY",
         questionnaire: { id: "client-only" },
         microbiologyProgramId: "9",
         microbiologyPreviousProgramId: "1",
@@ -97,11 +136,14 @@ describe("buildSubmissionSampleOrderItems", () => {
     );
 
     const serialized = buildSubmissionSampleOrderItems({
+      programCode: "MICROBIOLOGY",
       microbiologyProgramId: "9",
       microbiologyPreviousProgramId: "1",
+      domain: "clinical",
     });
     expect(serialized).not.toHaveProperty("microbiologyProgramId");
     expect(serialized).not.toHaveProperty("microbiologyPreviousProgramId");
     expect(serialized).not.toHaveProperty("domain");
+    expect(serialized).not.toHaveProperty("programCode");
   });
 });

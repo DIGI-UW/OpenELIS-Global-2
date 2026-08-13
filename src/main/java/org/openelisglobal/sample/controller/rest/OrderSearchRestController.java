@@ -1101,8 +1101,7 @@ public class OrderSearchRestController extends BaseRestController {
                 ProgramSample programSample = programSampleService.getProgrammeSampleBySample(Integer.valueOf(sampleId),
                         programName);
                 if (programSample != null && programSample.getProgram() != null) {
-                    String programId = programSample.getProgram().getId();
-                    sampleOrderItems.put("programId", programId);
+                    addProgramSelection(sampleOrderItems, programSample.getProgram());
 
                     // Load questionnaire response if available
                     if (programSample.getQuestionnaireResponseUuid() != null) {
@@ -1123,7 +1122,7 @@ public class OrderSearchRestController extends BaseRestController {
                     List<Program> allPrograms = programService.getAll();
                     for (Program p : allPrograms) {
                         if (p.getProgramName() != null && p.getProgramName().equals(programName)) {
-                            sampleOrderItems.put("programId", p.getId());
+                            addProgramSelection(sampleOrderItems, p);
                             break;
                         }
                     }
@@ -1141,8 +1140,7 @@ public class OrderSearchRestController extends BaseRestController {
                 if (programSamples != null && !programSamples.isEmpty()) {
                     ProgramSample ps = programSamples.get(0);
                     if (ps.getProgram() != null) {
-                        sampleOrderItems.put("programId", ps.getProgram().getId());
-                        sampleOrderItems.put("program", ps.getProgram().getProgramName());
+                        addProgramSelection(sampleOrderItems, ps.getProgram());
 
                         // Load questionnaire response if available
                         if (ps.getQuestionnaireResponseUuid() != null) {
@@ -1228,6 +1226,12 @@ public class OrderSearchRestController extends BaseRestController {
         }
 
         return sampleOrderItems;
+    }
+
+    private void addProgramSelection(Map<String, Object> sampleOrderItems, Program program) {
+        sampleOrderItems.put("programId", program.getId());
+        sampleOrderItems.put("program", program.getProgramName());
+        sampleOrderItems.put("programCode", program.getCode());
     }
 
     /**

@@ -29,6 +29,7 @@ import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
+import { isMicrobiologyOrderReady } from "../orderDataUtils";
 import "../order-workflow.scss";
 
 /**
@@ -218,20 +219,7 @@ const OrderEnter = () => {
           );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
   const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
-  const hasCultureWorkflow = samples.some((sample) =>
-    (sample.tests || []).some((test) => test.cultureWorkflowType),
-  );
-  const microbiologyProgramSelected =
-    Boolean(orderData?.sampleOrderItems?.microbiologyProgramId) &&
-    String(orderData?.sampleOrderItems?.programId || "") ===
-      String(orderData.sampleOrderItems.microbiologyProgramId);
-  const routesToMicrobiology =
-    hasCultureWorkflow || microbiologyProgramSelected;
-  const microbiologyOrderReady =
-    !routesToMicrobiology ||
-    (String(orderData?.sampleOrderItems?.programId || "") ===
-      String(orderData?.sampleOrderItems?.microbiologyProgramId || "") &&
-      Boolean(orderData?.microbiologyOrderDetail?.cultureMethodId));
+  const microbiologyOrderReady = isMicrobiologyOrderReady(orderData, samples);
 
   // canProceed gates the Save / Save & Next buttons in the layout
   const canProceed =
