@@ -7,7 +7,7 @@
 validation + post-MVP work open.  
 **Extends**: Feature 004-astm-analyzer-mapping
 
-## Current Status (2026-04-20)
+## Architecture Status Amendment (2026-08-13)
 
 This spec is the umbrella for the **generic analyzer integration architecture**
 that underpins the Madagascar (and subsequent) analyzer deployments. The January
