@@ -52,6 +52,26 @@ describe("pw-demo-no-backend-access", () => {
       "await page['request']['delete']('/rest/analyzer')",
       "backendRequest",
     ],
+    [
+      "request client passed to a helper",
+      "await pushAnalyzerResult(page.request)",
+      "backendRequestAccess",
+    ],
+    [
+      "request fixture passed to a helper",
+      "test('demo', async ({ request }) => { await pushAnalyzerResult(request) })",
+      "backendRequestAccess",
+    ],
+    [
+      "renamed imported request client",
+      "import { request as api } from '@playwright/test'; await api.newContext()",
+      "backendRequest",
+    ],
+    [
+      "destructured request method",
+      "const { post } = page.request; await post('/rest/analyzer')",
+      "backendRequest",
+    ],
     ["browser fetch", "await fetch('/rest/analyzer')", "backendFetch"],
     [
       "evaluate fetch",
@@ -63,6 +83,16 @@ describe("pw-demo-no-backend-access", () => {
       "response synchronization",
       "await page.waitForResponse('/rest/analyzer')",
       "waitForResponse",
+    ],
+    [
+      "request synchronization",
+      "await page.waitForRequest('/rest/analyzer')",
+      "waitForRequest",
+    ],
+    [
+      "response event listener",
+      "page.on('response', response => inspect(response))",
+      "networkListener",
     ],
     [
       "poll synchronization",
@@ -77,6 +107,11 @@ describe("pw-demo-no-backend-access", () => {
     [
       "context network stub",
       "await context.route('**/rest/**', route => route.continue())",
+      "networkStub",
+    ],
+    [
+      "aliased page network stub",
+      "const appPage = page; await appPage.route('**/rest/**', route => route.continue())",
       "networkStub",
     ],
   ])("rejects %s", (_name, code, messageId) => {
@@ -102,6 +137,10 @@ describe("pw-demo-no-backend-access", () => {
     [
       "unrelated route helper",
       "router.route('/analyzers'); await expect(page.getByText('Analyzers')).toBeVisible();",
+    ],
+    [
+      "unrelated request property",
+      "const { request: requestId } = payload; requestId.post('/not-playwright')",
     ],
   ])("allows %s", (_name, code) => {
     expect(verify(code)).toEqual([]);
