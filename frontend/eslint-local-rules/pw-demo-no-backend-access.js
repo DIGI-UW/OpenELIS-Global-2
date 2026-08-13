@@ -1,18 +1,8 @@
 /**
  * ESLint rule: pw-demo-no-backend-access
  *
- * Demo specs validate *visible UI state*, not logs or backend calls.
- * They must not:
- *
- *   1. Listen to page 'console' or 'pageerror' events.
- *   2. Synchronize through responses or backend polling.
- *   3. Call request APIs or browser `fetch`.
- *   4. Stub network traffic.
- *
- * Activate via ESLint flat config with a `files` scoped to demo paths
- * (CORE_DEMO_TESTS / HARNESS_DEMO_TESTS — see playwright.config.ts).
- *
- * See .specify/guides/playwright-best-practices.md.
+ * Demo specs validate visible UI state. They cannot observe, call, poll, or
+ * replace backend traffic. See .specify/guides/playwright-best-practices.md.
  */
 
 function getStringLiteralValue(node) {
@@ -40,22 +30,30 @@ function getStaticPropertyName(node) {
 
 function unwrapExpression(node) {
   if (!node) return node;
-  if (node.type === "AwaitExpression" || node.type === "ChainExpression") {
+  if (
+    [
+      "AwaitExpression",
+      "ChainExpression",
+      "TSAsExpression",
+      "TSNonNullExpression",
+      "TSTypeAssertion",
+    ].includes(node.type)
+  ) {
     return unwrapExpression(node.argument || node.expression);
   }
   return node;
 }
 
-function isPlaywrightNetworkOwner(node) {
-  const expression = unwrapExpression(node);
-  if (!expression) return false;
-  if (expression.type === "Identifier") {
-    return ["browserContext", "context", "page"].includes(expression.name);
-  }
-  return (
-    expression.type === "CallExpression" &&
-    getStaticPropertyName(expression.callee) === "context"
-  );
+function isFunction(node) {
+  return [
+    "ArrowFunctionExpression",
+    "FunctionDeclaration",
+    "FunctionExpression",
+  ].includes(node?.type);
+}
+
+function isFunctionParameterPattern(pattern) {
+  return isFunction(pattern?.parent) && pattern.parent.params.includes(pattern);
 }
 
 export default {
@@ -63,33 +61,51 @@ export default {
     type: "problem",
     docs: {
       description:
-        "Demo specs must be UI-only: no console/pageerror listeners, " +
-        "no backend requests or polling, and no network stubs.",
+        "Demo specs must be UI-only: no network listeners, backend " +
+        "requests or polling, and no network stubs.",
     },
     schema: [],
     messages: {
       consoleListener:
         "Demo specs must not listen to '{{ event }}' events. Demos " +
         "validate visible UI state, not console chatter.",
+      networkListener:
+        "Demo specs must not listen to '{{ event }}' network events. " +
+        "Assert the resulting visible UI state.",
       waitForResponse:
         "Demo specs must not use `waitForResponse`. Synchronize via " +
+        "UI assertions (`toBeVisible`, `toHaveText`, `toHaveURL`).",
+      waitForRequest:
+        "Demo specs must not use `waitForRequest`. Synchronize via " +
         "UI assertions (`toBeVisible`, `toHaveText`, `toHaveURL`).",
       backendRequest:
         "Demo specs must not call a Playwright request API (`{{ method }}`). " +
         "Demos record the user's visible journey, not backend calls.",
+      backendRequestAccess:
+        "Demo specs must not pass or retain a Playwright request client. " +
+        "Drive the workflow through visible controls.",
       backendFetch:
         "Demo specs must not call browser `fetch`. Drive the workflow " +
         "through visible controls and assert visible outcomes.",
       backendPoll:
         "Demo specs must not use `expect.poll`. Synchronize through " +
         "Playwright's web-first visible UI assertions.",
+      arbitraryWait:
+        "Demo specs must not use `waitForTimeout`. Synchronize through " +
+        "Playwright's web-first visible UI assertions.",
+      forcedAction:
+        "Demo specs must not use `{ force: true }`. Interact with the " +
+        "visible, actionable control.",
+      unresolvedLocalImport:
+        "Demo specs must not load a computed local module. Use a static " +
+        "runtime import so the UI-only dependency guard can inspect it.",
       networkStub:
         "Demo specs must not stub or intercept network traffic. They must " +
         "exercise the deployed user workflow.",
     },
   },
   create(context) {
-    const requestAliases = new Set(["request"]);
+    const sourceCode = context.sourceCode;
     const requestMethods = new Set([
       "delete",
       "fetch",
@@ -100,57 +116,309 @@ export default {
       "post",
       "put",
     ]);
+    const networkEvents = new Set([
+      "request",
+      "requestfailed",
+      "requestfinished",
+      "response",
+    ]);
 
-    function isRequestClient(node) {
-      const expression = unwrapExpression(node);
-      if (!expression) return false;
-      if (expression.type === "Identifier") {
-        return requestAliases.has(expression.name);
+    function findVariable(identifier) {
+      let scope = sourceCode.getScope(identifier);
+      while (scope) {
+        const variable = scope.set.get(identifier.name);
+        if (variable) return variable;
+        scope = scope.upper;
       }
-      if (expression.type === "MemberExpression") {
-        return getStaticPropertyName(expression) === "request";
-      }
-      if (expression.type === "CallExpression") {
-        const method = getStaticPropertyName(expression.callee);
-        return (
-          method === "newContext" &&
-          expression.callee.type === "MemberExpression" &&
-          isRequestClient(expression.callee.object)
-        );
-      }
-      return false;
+      return null;
     }
 
-    function recordRequestAlias(target, source) {
-      if (target?.type === "Identifier" && isRequestClient(source)) {
-        requestAliases.add(target.name);
+    function fixtureKey(variable) {
+      for (const identifier of variable?.identifiers || []) {
+        const property = identifier.parent;
+        const pattern = property?.parent;
+        if (
+          property?.type === "Property" &&
+          pattern?.type === "ObjectPattern" &&
+          isFunctionParameterPattern(pattern)
+        ) {
+          return getStringLiteralValue(property.key) || property.key?.name;
+        }
       }
+      return null;
+    }
+
+    function importedPlaywrightName(variable) {
+      for (const definition of variable?.defs || []) {
+        if (
+          definition.type === "ImportBinding" &&
+          definition.parent?.source?.value === "@playwright/test"
+        ) {
+          return (
+            definition.node?.imported?.name || definition.node?.local?.name
+          );
+        }
+      }
+      return null;
+    }
+
+    function variableInitializers(variable) {
+      const declarationInitializers = (variable?.defs || [])
+        .filter(
+          (definition) =>
+            definition.type === "Variable" && definition.node?.init,
+        )
+        .map((definition) => definition.node.init);
+      const assignmentInitializers = (variable?.references || [])
+        .map((reference) => reference.writeExpr)
+        .filter(Boolean);
+      return [...declarationInitializers, ...assignmentInitializers];
+    }
+
+    function isPageClient(node, visited = new Set()) {
+      const expression = unwrapExpression(node);
+      if (!expression) return false;
+      if (expression.type !== "Identifier") return false;
+
+      const variable = findVariable(expression);
+      if (!variable) return expression.name === "page";
+      if (visited.has(variable)) return false;
+      visited.add(variable);
+
+      if (fixtureKey(variable) === "page") return true;
+      if (
+        expression.name === "page" &&
+        variable.defs.some((definition) => definition.type === "Parameter")
+      ) {
+        return true;
+      }
+      return variableInitializers(variable).some((initializer) =>
+        isPageClient(initializer, visited),
+      );
+    }
+
+    function isBrowserContext(node, visited = new Set()) {
+      const expression = unwrapExpression(node);
+      if (!expression) return false;
+      if (
+        expression.type === "CallExpression" &&
+        getStaticPropertyName(expression.callee) === "context" &&
+        expression.callee.type === "MemberExpression" &&
+        isPageClient(expression.callee.object)
+      ) {
+        return true;
+      }
+      if (expression.type !== "Identifier") return false;
+
+      const variable = findVariable(expression);
+      if (!variable) {
+        return ["browserContext", "context"].includes(expression.name);
+      }
+      if (visited.has(variable)) return false;
+      visited.add(variable);
+
+      if (fixtureKey(variable) === "context") return true;
+      if (
+        ["browserContext", "context"].includes(expression.name) &&
+        variable.defs.some((definition) => definition.type === "Parameter")
+      ) {
+        return true;
+      }
+      return variableInitializers(variable).some((initializer) =>
+        isBrowserContext(initializer, visited),
+      );
+    }
+
+    function isNetworkOwner(node) {
+      return isPageClient(node) || isBrowserContext(node);
+    }
+
+    function isDirectRequestAccess(node) {
+      return (
+        node?.type === "MemberExpression" &&
+        getStaticPropertyName(node) === "request" &&
+        isNetworkOwner(node.object)
+      );
+    }
+
+    function isRequestClient(node, visited = new Set()) {
+      const expression = unwrapExpression(node);
+      if (!expression) return false;
+      if (isDirectRequestAccess(expression)) return true;
+      if (
+        expression.type === "CallExpression" &&
+        expression.callee.type === "MemberExpression" &&
+        getStaticPropertyName(expression.callee) === "newContext" &&
+        isRequestClient(expression.callee.object, visited)
+      ) {
+        return true;
+      }
+      if (expression.type !== "Identifier") return false;
+
+      const variable = findVariable(expression);
+      if (!variable) return expression.name === "request";
+      if (visited.has(variable)) return false;
+      visited.add(variable);
+
+      if (fixtureKey(variable) === "request") return true;
+      if (importedPlaywrightName(variable) === "request") return true;
+      return variableInitializers(variable).some((initializer) =>
+        isRequestClient(initializer, visited),
+      );
+    }
+
+    function requestMethodAlias(identifier) {
+      const variable = findVariable(identifier);
+      for (const definition of variable?.defs || []) {
+        const declarator = definition.node;
+        if (
+          definition.type !== "Variable" ||
+          declarator?.id?.type !== "ObjectPattern" ||
+          !isRequestClient(declarator.init)
+        ) {
+          continue;
+        }
+        for (const property of declarator.id.properties) {
+          if (property.type !== "Property") continue;
+          const localName = property.value?.name;
+          const method =
+            getStringLiteralValue(property.key) || property.key?.name;
+          if (localName === identifier.name && requestMethods.has(method)) {
+            return method;
+          }
+        }
+      }
+      return null;
+    }
+
+    function isBrowserFetch(node, visited = new Set()) {
+      const expression = unwrapExpression(node);
+      if (!expression) return false;
+      if (
+        expression.type === "MemberExpression" &&
+        getStaticPropertyName(expression) === "fetch" &&
+        expression.object.type === "Identifier" &&
+        ["globalThis", "self", "window"].includes(expression.object.name)
+      ) {
+        return true;
+      }
+      if (expression.type !== "Identifier") return false;
+
+      const variable = findVariable(expression);
+      if (!variable) return expression.name === "fetch";
+      if (visited.has(variable)) return false;
+      visited.add(variable);
+      return variableInitializers(variable).some((initializer) =>
+        isBrowserFetch(initializer, visited),
+      );
+    }
+
+    function isExpectPoll(node, visited = new Set()) {
+      const expression = unwrapExpression(node);
+      if (!expression) return false;
+      if (
+        expression.type === "MemberExpression" &&
+        getStaticPropertyName(expression) === "poll" &&
+        expression.object.type === "Identifier" &&
+        expression.object.name === "expect"
+      ) {
+        return true;
+      }
+      if (expression.type !== "Identifier") return false;
+
+      const variable = findVariable(expression);
+      if (!variable || visited.has(variable)) return false;
+      visited.add(variable);
+      return variableInitializers(variable).some((initializer) =>
+        isExpectPoll(initializer, visited),
+      );
+    }
+
+    function usesForceOption(node) {
+      return node.arguments.some(
+        (argument) =>
+          argument.type === "ObjectExpression" &&
+          argument.properties.some(
+            (property) =>
+              property.type === "Property" &&
+              (getStringLiteralValue(property.key) || property.key?.name) ===
+                "force" &&
+              property.value.type === "Literal" &&
+              property.value.value === true,
+          ),
+      );
+    }
+
+    function isDefinitionIdentifier(node) {
+      const parent = node.parent;
+      if (!parent) return false;
+      if (
+        [
+          "ImportDefaultSpecifier",
+          "ImportNamespaceSpecifier",
+          "ImportSpecifier",
+        ].includes(parent.type)
+      ) {
+        return true;
+      }
+      if (parent.type === "VariableDeclarator" && parent.id === node)
+        return true;
+      if (parent.type === "AssignmentExpression" && parent.left === node) {
+        return true;
+      }
+      return (
+        parent.type === "Property" && parent.parent?.type === "ObjectPattern"
+      );
     }
 
     return {
-      Property(node) {
+      Identifier(node) {
         if (
-          node.parent?.type === "ObjectPattern" &&
-          getStringLiteralValue(node.key) === null &&
-          node.key?.type === "Identifier" &&
-          node.key.name === "request" &&
-          node.value?.type === "Identifier"
+          isDefinitionIdentifier(node) ||
+          (node.parent?.type === "MemberExpression" &&
+            (node.parent.object === node ||
+              (!node.parent.computed && node.parent.property === node)))
         ) {
-          requestAliases.add(node.value.name);
+          return;
+        }
+        if (isRequestClient(node)) {
+          context.report({ node, messageId: "backendRequestAccess" });
         }
       },
-      VariableDeclarator(node) {
-        recordRequestAlias(node.id, node.init);
-      },
-      AssignmentExpression(node) {
-        recordRequestAlias(node.left, node.right);
+      MemberExpression(node) {
+        if (!isDirectRequestAccess(node)) return;
+        const parent = node.parent;
+        const isCalledRequestMethod =
+          parent?.type === "MemberExpression" &&
+          parent.object === node &&
+          requestMethods.has(getStaticPropertyName(parent)) &&
+          parent.parent?.type === "CallExpression" &&
+          parent.parent.callee === parent;
+        if (!isCalledRequestMethod) {
+          context.report({ node, messageId: "backendRequestAccess" });
+        }
       },
       CallExpression(node) {
         const callee = node.callee;
         if (!callee) return;
 
-        if (callee.type === "Identifier" && callee.name === "fetch") {
-          context.report({ node, messageId: "backendFetch" });
+        if (callee.type === "Identifier") {
+          if (isBrowserFetch(callee)) {
+            context.report({ node, messageId: "backendFetch" });
+            return;
+          }
+          if (isExpectPoll(callee)) {
+            context.report({ node, messageId: "backendPoll" });
+            return;
+          }
+          const method = requestMethodAlias(callee);
+          if (method) {
+            context.report({
+              node,
+              messageId: "backendRequest",
+              data: { method },
+            });
+          }
           return;
         }
 
@@ -158,7 +426,12 @@ export default {
         const methodName = getStaticPropertyName(callee);
         if (!methodName) return;
 
-        if (methodName === "on") {
+        if (usesForceOption(node)) {
+          context.report({ node, messageId: "forcedAction" });
+          return;
+        }
+
+        if (methodName === "on" && isNetworkOwner(callee.object)) {
           const event = getStringLiteralValue(node.arguments[0]);
           if (event === "console" || event === "pageerror") {
             context.report({
@@ -168,34 +441,42 @@ export default {
             });
             return;
           }
+          if (networkEvents.has(event)) {
+            context.report({
+              node,
+              messageId: "networkListener",
+              data: { event },
+            });
+            return;
+          }
         }
 
-        if (methodName === "waitForResponse") {
+        if (methodName === "waitForResponse" && isPageClient(callee.object)) {
           context.report({ node, messageId: "waitForResponse" });
           return;
         }
+        if (methodName === "waitForRequest" && isPageClient(callee.object)) {
+          context.report({ node, messageId: "waitForRequest" });
+          return;
+        }
+        if (methodName === "waitForTimeout" && isPageClient(callee.object)) {
+          context.report({ node, messageId: "arbitraryWait" });
+          return;
+        }
 
-        if (
-          methodName === "fetch" &&
-          callee.object.type === "Identifier" &&
-          ["globalThis", "self", "window"].includes(callee.object.name)
-        ) {
+        if (isBrowserFetch(callee)) {
           context.report({ node, messageId: "backendFetch" });
           return;
         }
 
-        if (
-          methodName === "poll" &&
-          callee.object.type === "Identifier" &&
-          callee.object.name === "expect"
-        ) {
+        if (isExpectPoll(callee)) {
           context.report({ node, messageId: "backendPoll" });
           return;
         }
 
         if (
           ["route", "routeFromHAR"].includes(methodName) &&
-          isPlaywrightNetworkOwner(callee.object)
+          isNetworkOwner(callee.object)
         ) {
           context.report({ node, messageId: "networkStub" });
           return;
@@ -208,6 +489,10 @@ export default {
             data: { method: methodName },
           });
         }
+      },
+      ImportExpression(node) {
+        if (getStringLiteralValue(node.source) !== null) return;
+        context.report({ node, messageId: "unresolvedLocalImport" });
       },
     };
   },
