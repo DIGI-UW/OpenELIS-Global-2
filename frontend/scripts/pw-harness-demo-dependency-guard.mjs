@@ -38,6 +38,15 @@ function runtimeImportSources(source, filePath) {
   });
   const imports = [];
 
+  function recordRuntimeSource(sourceValue, node) {
+    if (!sourceValue) return;
+    imports.push({
+      column: (node?.loc?.start.column ?? 0) + 1,
+      line: node?.loc?.start.line ?? 1,
+      source: sourceValue,
+    });
+  }
+
   function addRuntimeSource(node) {
     if (!node?.source || typeof node.source.value !== "string") return;
     if (node.importKind === "type" || node.exportKind === "type") return;
@@ -48,14 +57,14 @@ function runtimeImportSources(source, filePath) {
     ) {
       return;
     }
-    imports.push(node.source.value);
+    recordRuntimeSource(node.source.value, node.source);
   }
 
   function visit(node) {
     if (!node || typeof node !== "object") return;
     if (node.type === "ImportExpression") {
       const sourceValue = getStaticString(node.source);
-      if (sourceValue) imports.push(sourceValue);
+      recordRuntimeSource(sourceValue, node.source);
     }
     if (
       node.type === "CallExpression" &&
@@ -63,7 +72,7 @@ function runtimeImportSources(source, filePath) {
       node.callee.name === "require"
     ) {
       const sourceValue = getStaticString(node.arguments[0]);
-      if (sourceValue) imports.push(sourceValue);
+      recordRuntimeSource(sourceValue, node.arguments[0]);
     }
     for (const [key, value] of Object.entries(node)) {
       if (["loc", "parent", "range", "tokens"].includes(key)) continue;
@@ -191,14 +200,28 @@ export function findHarnessDemoDependencyViolations({
         });
       }
 
-      for (const importSource of runtimeImportSources(source, dependencyPath)) {
+      for (const runtimeImport of runtimeImportSources(
+        source,
+        dependencyPath,
+      )) {
         const importedPath = resolveLocalImport(
           dependencyPath,
-          importSource,
+          runtimeImport.source,
           absoluteFrontendRoot,
         );
-        if (importedPath && !visited.has(importedPath))
+        if (importedPath && !visited.has(importedPath)) {
           pending.push(importedPath);
+        } else if (runtimeImport.source.startsWith(".")) {
+          violations.push({
+            column: runtimeImport.column,
+            dependencyPath: dependencyRelativePath,
+            line: runtimeImport.line,
+            message:
+              "Demo specs must use resolvable local runtime imports so the UI-only dependency guard can inspect them.",
+            messageId: "unresolvedLocalImport",
+            specPath: specRelativePath,
+          });
+        }
       }
     }
   }

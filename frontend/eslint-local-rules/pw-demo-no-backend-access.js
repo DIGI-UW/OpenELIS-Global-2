@@ -97,8 +97,8 @@ export default {
         "Demo specs must not use `{ force: true }`. Interact with the " +
         "visible, actionable control.",
       unresolvedLocalImport:
-        "Demo specs must not load a computed local module. Use a static " +
-        "runtime import so the UI-only dependency guard can inspect it.",
+        "Demo specs must use a resolvable static local runtime import so " +
+        "the UI-only dependency guard can inspect it.",
       networkStub:
         "Demo specs must not stub or intercept network traffic. They must " +
         "exercise the deployed user workflow.",
