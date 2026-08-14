@@ -479,49 +479,50 @@ silently route around.
 
 ### Current issue and ambiguity register
 
-| ID             | Kind       | Status     | Impact / next deterministic action                                                                                                                                         |
-| -------------- | ---------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ISSUE-R0-001` | Review     | `OPEN`     | OE-R0 is green but requires external approval and merge before it can become `ACCEPTED`; F0 may be prepared but cannot be accepted first.                                  |
-| `ISSUE-R0-002` | Validation | `RESOLVED` | The original command block retained `frontend` as its working directory; commands now run in repository-rooted subshells.                                                  |
-| `ISSUE-R0-003` | Validation | `RESOLVED` | The final Playwright story is absent on the R0 base; OE-M4 owns its creation and earlier checkpoint records must mark that full-story gate `LATER`.                        |
-| `ISSUE-R0-004` | Provenance | `RESOLVED` | A commit cannot name its own SHA; committed records name implementation/evidence commits and CI records the final immutable PR-head SHA.                                   |
-| `ISSUE-R0-005` | Provenance | `RESOLVED` | PR #3792 was retitled and closed as historical after OE-F0 #4053 opened; it links OE-R0/OE-F0 and its branch remains immutable history.                                    |
-| `ISSUE-R0-006` | Provenance | `RESOLVED` | Code audit found #3792-only behavior described as current. R0 now distinguishes current-code facts from historical provenance and enforces one descendant roadmap lineage. |
-| `AMB-F0-001`   | Scope      | `RESOLVED` | The F0 salvage manifest classifies every considered #3792 behavior group before production reimplementation and prohibits commit-level cherry-picks.                       |
-| `ISSUE-F0-001` | Test scope | `RESOLVED` | Three analyzer transport/setup specs used backend helpers while labeled as demo evidence; F0 reclassified all three as foundational and retained 13 integration cases.     |
-| `ISSUE-F0-002` | Validation | `OPEN`     | Repo-wide `npm run typecheck` has 1,589 baseline TypeScript errors and none name the three changed analyzer specs; targeted Playwright compilation passes. Fix before G0.  |
-| `AMB-E0-001`   | Contract   | `RESOLVED` | ADR-001 fixes Bridge profile/OpenELIS shared site-binding ownership, fingerprint grouping, explicit forks, one-writer cutovers, and rollback from current code/contracts.   |
-| `ISSUE-E0-001` | Runtime    | `OPEN`     | Isolated ASTM traffic exposed normalized coding/raw-map mismatch and contradictory zero mapping counts; BR-M4/OE-M2 own correction against v1 preserved-raw contracts.     |
-| `ISSUE-E0-002` | Harness    | `OPEN`     | Mock dynamic networks use global names/fixed 10.42 pools; MOCK-M4 must add tested per-stack namespace/pool configuration before two analyzer stacks run concurrently.       |
-| `ISSUE-E0-003` | Harness    | `RESOLVED` | Explicit fixture targets were validated after generation and reset rediscovered global containers; red/green tests now bind every operation to one validated DB_CONTAINER. |
-| `ISSUE-E0-004` | Test scope | `RESOLVED` | A controller behavior test borrowed a security filter from another test's scanned nested config; behavior and dedicated security-slice coverage are now independent.       |
-| `ISSUE-E0-005` | Test scope | `RESOLVED` | The unavailable-Docker regression exposed the runner's system Docker through its test PATH. The test now supplies only deterministic `dirname`/fixture stubs, so Docker is genuinely absent. |
-| `ISSUE-E0-006` | Contract   | `RESOLVED` | BR-M1 secures analyzer APIs but OE sent no service credentials. Red `5e633a9d0` and green `c34131393` make the shared OE Bridge client satisfy the accepted Basic-auth contract. |
-| `ISSUE-E0-007` | Security   | `OPEN`     | `BridgeHttpClient` still trusts every X.509 certificate despite the mounted shared truststore. Replace trust-all/disabled hostname verification with configured trust material and a TLS contract test before deployment acceptance. |
-| `ISSUE-M1-001` | Runtime    | `OPEN`     | Prepared BR-M1 FILE upload/list/handler paths traverse raw registry entries and can process an inactive analyzer. Add failing routing tests and one active-only registry API before publication. |
-| `ISSUE-M1-002` | Test scope | `OPEN`     | Prepared BR-M1 Spring tests start fixed-port ASTM listeners, producing `BindException` output and a force-killed Surefire fork despite passing assertions. Make listener lifecycle test-scoped and prove clean shutdown. |
-| `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.      |
-| `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                            |
-| `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.      |
-| `ISSUE-G0-001` | Operations | `OPEN`     | Live preflight on 2026-08-13 found historical OE `2c840a55b03b`, harness `f3deb02e`, and only eight `AN-QC-*` steps. G0 must deploy the exact RC with current review tooling and publish/verify all 15 `AN-MVP-*` steps. |
+| ID             | Kind       | Status     | Impact / next deterministic action                                                                                                                                                                                                                      |
+| -------------- | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ISSUE-R0-001` | Review     | `OPEN`     | OE-R0 is green but requires external approval and merge before it can become `ACCEPTED`; F0 may be prepared but cannot be accepted first.                                                                                                               |
+| `ISSUE-R0-002` | Validation | `RESOLVED` | The original command block retained `frontend` as its working directory; commands now run in repository-rooted subshells.                                                                                                                               |
+| `ISSUE-R0-003` | Validation | `RESOLVED` | The final Playwright story is absent on the R0 base; OE-M4 owns its creation and earlier checkpoint records must mark that full-story gate `LATER`.                                                                                                     |
+| `ISSUE-R0-004` | Provenance | `RESOLVED` | A commit cannot name its own SHA; committed records name implementation/evidence commits and CI records the final immutable PR-head SHA.                                                                                                                |
+| `ISSUE-R0-005` | Provenance | `RESOLVED` | PR #3792 was retitled and closed as historical after OE-F0 #4053 opened; it links OE-R0/OE-F0 and its branch remains immutable history.                                                                                                                 |
+| `ISSUE-R0-006` | Provenance | `RESOLVED` | Code audit found #3792-only behavior described as current. R0 now distinguishes current-code facts from historical provenance and enforces one descendant roadmap lineage.                                                                              |
+| `AMB-F0-001`   | Scope      | `RESOLVED` | The F0 salvage manifest classifies every considered #3792 behavior group before production reimplementation and prohibits commit-level cherry-picks.                                                                                                    |
+| `ISSUE-F0-001` | Test scope | `RESOLVED` | Three analyzer transport/setup specs used backend helpers while labeled as demo evidence; F0 reclassified all three as foundational and retained 13 integration cases.                                                                                  |
+| `ISSUE-F0-002` | Validation | `OPEN`     | Repo-wide `npm run typecheck` has 1,589 baseline TypeScript errors and none name the three changed analyzer specs; targeted Playwright compilation passes. Fix before G0.                                                                               |
+| `AMB-E0-001`   | Contract   | `RESOLVED` | ADR-001 fixes Bridge profile/OpenELIS shared site-binding ownership, fingerprint grouping, explicit forks, one-writer cutovers, and rollback from current code/contracts.                                                                               |
+| `ISSUE-E0-001` | Runtime    | `OPEN`     | Isolated ASTM traffic exposed normalized coding/raw-map mismatch and contradictory zero mapping counts; BR-M4/OE-M2 own correction against v1 preserved-raw contracts.                                                                                  |
+| `ISSUE-E0-002` | Harness    | `OPEN`     | Mock dynamic networks use global names/fixed 10.42 pools; MOCK-M4 must add tested per-stack namespace/pool configuration before two analyzer stacks run concurrently.                                                                                   |
+| `ISSUE-E0-003` | Harness    | `RESOLVED` | Explicit fixture targets were validated after generation and reset rediscovered global containers; red/green tests now bind every operation to one validated DB_CONTAINER.                                                                              |
+| `ISSUE-E0-004` | Test scope | `RESOLVED` | A controller behavior test borrowed a security filter from another test's scanned nested config; behavior and dedicated security-slice coverage are now independent.                                                                                    |
+| `ISSUE-E0-005` | Test scope | `RESOLVED` | The unavailable-Docker regression exposed the runner's system Docker through its test PATH. The test now supplies only deterministic `dirname`/fixture stubs, so Docker is genuinely absent.                                                            |
+| `ISSUE-E0-006` | Contract   | `RESOLVED` | BR-M1 secures analyzer APIs but OE sent no service credentials. Red `5e633a9d0` and green `c34131393` make the shared OE Bridge client satisfy the accepted Basic-auth contract.                                                                        |
+| `ISSUE-E0-007` | Security   | `RESOLVED` | Red `366aa2e8c` proved that `BridgeHttpClient` accepted an untrusted certificate; green `3e2e88325` now uses the configured truststore or JVM defaults, preserves hostname verification, and fails closed when configured trust material is unreadable. |
+| `ISSUE-E0-008` | Harness    | `OPEN`     | Focused UI Playwright stories pass against the isolated exact-WAR stack, but browser review still reports Vite HMR WebSocket failures and a recurring 404. Resolve or explicitly classify these before G0 console-clean acceptance.                     |
+| `ISSUE-M1-001` | Runtime    | `OPEN`     | Prepared BR-M1 FILE upload/list/handler paths traverse raw registry entries and can process an inactive analyzer. Add failing routing tests and one active-only registry API before publication.                                                        |
+| `ISSUE-M1-002` | Test scope | `OPEN`     | Prepared BR-M1 Spring tests start fixed-port ASTM listeners, producing `BindException` output and a force-killed Surefire fork despite passing assertions. Make listener lifecycle test-scoped and prove clean shutdown.                                |
+| `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.                                                                                   |
+| `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                                                                                                         |
+| `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.                                                                                   |
+| `ISSUE-G0-001` | Operations | `OPEN`     | Live preflight on 2026-08-13 found historical OE `2c840a55b03b`, harness `f3deb02e`, and only eight `AN-QC-*` steps. G0 must deploy the exact RC with current review tooling and publish/verify all 15 `AN-MVP-*` steps.                                |
 
 Resolved rows remain in the table for provenance. New evidence updates a row in
 the checkpoint that discovers or resolves it; IDs are never reused.
 
 ### Status ledger
 
-| Order | Checkpoint                | Status on 2026-08-13 | Next transition                     |
-| ----- | ------------------------- | -------------------- | ----------------------------------- |
-| 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge         |
-| 1     | F0 foundation salvage     | `IN_PROGRESS`        | Final validation/evidence review    |
-| 2     | E0 contract and migration | `IN_PROGRESS`        | OE-E0 PR/CI and prerequisite reviews  |
-| 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted               |
-| 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted               |
-| 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                         |
-| 6     | M4 safe traffic           | `NOT_STARTED`        | M3, BR-M4, and MOCK-M4 accepted     |
-| 7     | G0 deployed acceptance    | `NOT_STARTED`        | M4 accepted and exact RC SHA pushed |
-| 8     | R1 full feature           | `NOT_STARTED`        | G0 accepted                         |
-| 9     | R2 operational rollout    | `NOT_STARTED`        | R1 accepted                         |
+| Order | Checkpoint                | Status on 2026-08-13 | Next transition                      |
+| ----- | ------------------------- | -------------------- | ------------------------------------ |
+| 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge          |
+| 1     | F0 foundation salvage     | `IN_PROGRESS`        | Final validation/evidence review     |
+| 2     | E0 contract and migration | `IN_PROGRESS`        | OE-E0 PR/CI and prerequisite reviews |
+| 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted                |
+| 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted                |
+| 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                          |
+| 6     | M4 safe traffic           | `NOT_STARTED`        | M3, BR-M4, and MOCK-M4 accepted      |
+| 7     | G0 deployed acceptance    | `NOT_STARTED`        | M4 accepted and exact RC SHA pushed  |
+| 8     | R1 full feature           | `NOT_STARTED`        | G0 accepted                          |
+| 9     | R2 operational rollout    | `NOT_STARTED`        | R1 accepted                          |
 
 `ACCEPTED` means the checkpoint exit gate, assigned acceptance criteria, CI,
 review threads, and evidence are complete. A failed required test or UAT step
@@ -653,6 +654,8 @@ longer an open delivery candidate.
 **Exit:** OE-E0 and BR-E0 are green; approved ADR/contracts, migration
 fixture/report, rollback, and contract tests exist. No M1 production code starts
 against an unresolved boundary.
+
+**Evidence:** [E0 contract and migration checkpoint](./ogc-1054-e0-contract-migration-evidence.md).
 
 ### M1 - Bridge profile lifecycle and Analyzer Types (OGC-1055)
 
