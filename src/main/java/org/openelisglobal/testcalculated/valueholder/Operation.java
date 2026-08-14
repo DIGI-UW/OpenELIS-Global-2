@@ -55,6 +55,35 @@ public class Operation implements Comparable<Operation> {
     @Column(name = "sample_id")
     private Integer sampleId;
 
+    /**
+     * The result component this operand reads; null means the test's primary
+     * component. A test-level operand authored before components existed is
+     * migrated to the primary rather than left to match whichever component's
+     * result was written last.
+     */
+    @Column(name = "component_id")
+    private String componentId;
+
+    /** The specimen this operand reads; null means every specimen. */
+    @Column(name = "sample_type_id")
+    private Integer sampleTypeId;
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public Integer getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(Integer sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
+    }
+
     public Integer getId() {
         return id;
     }

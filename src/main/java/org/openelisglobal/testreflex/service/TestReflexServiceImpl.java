@@ -4,12 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -51,6 +54,8 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
     AnalyteService analyteService;
     @Autowired
     TestAnalyteService testAnalyteService;
+    @Autowired
+    private RuleResultScope ruleResultScope;
 
     static final String REFLEX_RESULT_GROUP = "30";
     static final String REFLEX_RESULT_TYPE = "R";
@@ -285,7 +290,23 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         if (results.isEmpty()) {
             results = List.of(createDefaultTestResult(triggerTest));
         }
-        if (testService.getResultType(triggerTest).equals("D")) {
+        // The condition names a component, and the component - not the parent
+        // test - owns the result type. A test whose primary component is coded
+        // and whose secondary is numeric has no single type, so asking the test
+        // hands a numeric condition the coded branch and it never fires.
+        String componentId = condition.getComponentId();
+        String resultType = ruleResultScope.resultTypeForComponent(triggerTest.getId(), componentId,
+                testService.getResultType(triggerTest));
+        if (!GenericValidator.isBlankOrNull(componentId)) {
+            List<TestResult> componentResults = results.stream().filter(res -> componentId.equals(res.getComponentId()))
+                    .collect(Collectors.toList());
+            if (!componentResults.isEmpty()) {
+                results = componentResults;
+            }
+        }
+        reflex.setComponentId(componentId);
+        reflex.setSampleTypeId(condition.getSampleId());
+        if (resultType.equals("D")) {
             Optional<TestResult> result = results.stream()
                     .filter(res -> Objects.equals(res.getValue(), condition.getValue())).findFirst();
             if (result.isPresent()) {
@@ -295,7 +316,7 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
             }
         } else {
             reflex.setTestResult(results.get(0));
-            if (testService.getResultType(triggerTest).equals("N")) {
+            if (resultType.equals("N")) {
                 Double value = Double.parseDouble(condition.getValue());
                 Double value2 = Double.parseDouble(condition.getValue2());
                 if (condition.getRelation().equals(NumericRelationOptions.BETWEEN)) {

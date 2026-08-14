@@ -61,6 +61,16 @@ public class TestReflex extends EnumValueItemImpl {
 
     private ReflexRuleOptions.NumericRelationOptions relation;
 
+    /**
+     * The result component whose value triggers this reflex; null means the test's
+     * primary component. Carried from the authoring condition so the executor can
+     * tell one component's result from another's.
+     */
+    private String componentId;
+
+    /** The specimen this reflex triggers on; null means every specimen. */
+    private String sampleTypeId;
+
     private String internalNote;
 
     private String externalNote;
@@ -281,5 +291,21 @@ public class TestReflex extends EnumValueItemImpl {
 
     public void setExternalNote(String externalNote) {
         this.externalNote = externalNote;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
     }
 }

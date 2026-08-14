@@ -29,6 +29,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -74,6 +75,7 @@ public class TestReflexUtil {
     private static TestResultService testResultService = SpringContext.getBean(TestResultService.class);
     private static AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
     private static TestReflexService testReflexService = SpringContext.getBean(TestReflexService.class);
+    private static RuleResultScope ruleResultScope = SpringContext.getBean(RuleResultScope.class);
     private static AnalyteService analyteService = SpringContext.getBean(AnalyteService.class);
     private static ScriptletService scriptletService = SpringContext.getBean(ScriptletService.class);
     private static NoteService noteService = SpringContext.getBean(NoteService.class);
@@ -337,7 +339,12 @@ public class TestReflexUtil {
         } else {
             reflexesForResult = reflexResolver.getTestReflexesForResult(reflexBean.getResult());
         }
+        // A reflex names a measurement, not a test. Without this the Ct Value
+        // rule is evaluated against the coded PCR Result saved beside it, and a
+        // rule authored for one specimen fires on every specimen the test runs
+        // on.
         reflexesForResult = reflexesForResult.stream()
+                .filter(e -> ruleResultScope.matches(reflexBean.getResult(), e.getComponentId(), e.getSampleTypeId()))
                 .filter(e -> isTestTriggeredByResult(e.getAddedTest(), reflexBean.getResult()))
                 .collect(Collectors.toList());
         return reflexesForResult;

@@ -10,6 +10,7 @@ import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.notification.service.sender.AsyncNotificationDispatcher;
 import org.openelisglobal.notification.valueholder.EmailNotification;
 import org.openelisglobal.notification.valueholder.RemoteNotification;
@@ -37,6 +38,9 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
 
     @Autowired
     private TestAlertRuleService alertRuleService;
+
+    @Autowired
+    private RuleResultScope ruleResultScope;
 
     @Autowired
     private AlertService alertService;
@@ -82,7 +86,16 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
             return;
         }
         for (TestAlertRule rule : rules) {
-            if (!Boolean.TRUE.equals(rule.getEnabled()) || !matches(rule, result, value, critical)) {
+            if (!Boolean.TRUE.equals(rule.getEnabled())) {
+                continue;
+            }
+            // The rule names a measurement, not a test: a rule about the numeric
+            // Ct Value must not be handed the coded PCR Result recorded beside
+            // it, nor the same component's result from another specimen.
+            if (!ruleResultScope.matches(result, rule.getComponentId(), rule.getSampleTypeId())) {
+                continue;
+            }
+            if (!matches(rule, result, value, critical)) {
                 continue;
             }
             String testName = test.getLocalizedName() != null ? test.getLocalizedName() : test.getName();
