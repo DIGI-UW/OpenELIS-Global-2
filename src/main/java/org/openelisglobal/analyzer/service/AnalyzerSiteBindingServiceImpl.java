@@ -36,6 +36,20 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
 
     @Override
     @Transactional
+    public AnalyzerSiteBindingSnapshot findOrCreate(AnalyzerSiteBindingDraft draft, String actor) {
+        String effectiveActor = requireActor(actor);
+        validate(draft);
+        String fingerprint = AnalyzerSiteBindingFingerprint.calculate(draft);
+        return revisionDAO
+                .findByProfileRevisionAndFingerprint(draft.bridgeProfileId(), draft.bridgeProfileRevision(),
+                        fingerprint)
+                .map(revision -> new AnalyzerSiteBindingSnapshot(revision.getSiteBinding(), revision,
+                        testDAO.findByRevisionId(revision.getId())))
+                .orElseGet(() -> create(draft, effectiveActor));
+    }
+
+    @Override
+    @Transactional
     public AnalyzerSiteBindingSnapshot create(AnalyzerSiteBindingDraft draft, String actor) {
         String effectiveActor = requireActor(actor);
         validate(draft);

@@ -9,5 +9,8 @@ public interface AnalyzerSiteBindingRevisionDAO extends BaseDAO<AnalyzerSiteBind
 
     Optional<AnalyzerSiteBindingRevision> findLatestByBindingId(String bindingId);
 
+    Optional<AnalyzerSiteBindingRevision> findByProfileRevisionAndFingerprint(String bridgeProfileId,
+            int bridgeProfileRevision, String fingerprint);
+
     List<AnalyzerSiteBindingRevision> findLatestByProfileIds(List<String> profileIds);
 }

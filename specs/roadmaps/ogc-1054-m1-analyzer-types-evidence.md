@@ -95,6 +95,18 @@ rows, choose a profile, create/reuse a complete site binding, switch an analyzer
 reference, or reject a legacy write. Those behaviors remain red-green-refactor
 work in the migration service checkpoint.
 
+## M1.5 Deterministic Imported-Binding Reuse
+
+| Stage | Evidence | Result |
+| ----- | -------- | ------ |
+| Reuse red | `AnalyzerSiteBindingServiceImplTest` and `AnalyzerSiteBindingLiquibaseTest` | No exact profile/revision/fingerprint lookup or database uniqueness guarantee existed, so identical complete migration snapshots could create duplicate binding revisions. |
+| Reuse green | Current binding-reuse checkpoint | Adds an exact DAO lookup, a transactional `findOrCreate` service path, row reconstruction for reused snapshots, and a unique `(bridge_profile_id, bridge_profile_revision, fingerprint)` constraint. |
+| Focused validation | Java 21 Maven run | 10 tests passed: immutable site-binding service and Liquibase contracts. |
+
+The unique constraint prevents duplicate authorities. A concurrent losing
+transaction fails rather than silently creating a second revision; migration
+remains serialized per analyzer and can safely retry from the exact lookup.
+
 ## Remaining M1 Scope
 
 - Implement the deterministic legacy inventory/migration and one-writer cutover

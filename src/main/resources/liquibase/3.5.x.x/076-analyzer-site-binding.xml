@@ -91,6 +91,9 @@
         <addUniqueConstraint schemaName="clinlims" tableName="analyzer_site_binding_revision"
             columnNames="site_binding_id, revision_number"
             constraintName="uq_analyzer_site_binding_revision_number"/>
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_site_binding_revision"
+            columnNames="bridge_profile_id, bridge_profile_revision, fingerprint"
+            constraintName="uq_analyzer_site_binding_revision_fingerprint"/>
 
         <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_revision_binding"
             baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_revision"

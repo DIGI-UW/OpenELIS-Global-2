@@ -44,6 +44,7 @@ public class AnalyzerSiteBindingLiquibaseTest {
 
         Set<String> uniqueConstraints = attributes(elements(migration, "addUniqueConstraint"), "constraintName");
         assertTrue(uniqueConstraints.contains("uq_analyzer_site_binding_revision_number"));
+        assertTrue(uniqueConstraints.contains("uq_analyzer_site_binding_revision_fingerprint"));
 
         Set<String> foreignKeys = attributes(elements(migration, "addForeignKeyConstraint"), "constraintName");
         assertTrue(foreignKeys.contains("fk_analyzer_site_binding_revision_binding"));

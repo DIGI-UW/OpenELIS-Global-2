@@ -35,6 +35,25 @@ public class AnalyzerSiteBindingRevisionDAOImpl extends BaseDAOImpl<AnalyzerSite
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<AnalyzerSiteBindingRevision> findByProfileRevisionAndFingerprint(String bridgeProfileId,
+            int bridgeProfileRevision, String fingerprint) {
+        if (bridgeProfileId == null || bridgeProfileId.isBlank() || bridgeProfileRevision < 1 || fingerprint == null
+                || fingerprint.isBlank()) {
+            return Optional.empty();
+        }
+        Query<AnalyzerSiteBindingRevision> query = entityManager.unwrap(Session.class)
+                .createQuery("SELECT revision FROM AnalyzerSiteBindingRevision revision JOIN FETCH revision.siteBinding"
+                        + " WHERE revision.bridgeProfileId = :profileId"
+                        + " AND revision.bridgeProfileRevision = :profileRevision"
+                        + " AND revision.fingerprint = :fingerprint", AnalyzerSiteBindingRevision.class);
+        query.setParameter("profileId", bridgeProfileId.trim());
+        query.setParameter("profileRevision", bridgeProfileRevision);
+        query.setParameter("fingerprint", fingerprint.trim());
+        return query.uniqueResultOptional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<AnalyzerSiteBindingRevision> findLatestByProfileIds(List<String> profileIds) {
         if (profileIds == null || profileIds.isEmpty()) {
             return List.of();

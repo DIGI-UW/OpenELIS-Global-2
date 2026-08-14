@@ -93,6 +93,35 @@ public class AnalyzerSiteBindingServiceImplTest {
     }
 
     @Test
+    public void findOrCreateReusesExactProfileRevisionFingerprintWithoutNewWrites() {
+        AnalyzerSiteBindingDraft draft = draft(
+                List.of(row("row-1", "WBC", List.of(), AnalyzerSiteBindingTest.MappingState.BOUND, "9701", null)));
+        String fingerprint = AnalyzerSiteBindingFingerprint.calculate(draft);
+        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
+        binding.setId("binding-1");
+        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        revision.setId("revision-1");
+        revision.setSiteBinding(binding);
+        revision.setBridgeProfileId(draft.bridgeProfileId());
+        revision.setBridgeProfileRevision(draft.bridgeProfileRevision());
+        revision.setFingerprint(fingerprint);
+        AnalyzerSiteBindingTest persistedRow = new AnalyzerSiteBindingTest();
+        when(revisionDAO.findByProfileRevisionAndFingerprint(draft.bridgeProfileId(), draft.bridgeProfileRevision(),
+                fingerprint)).thenReturn(Optional.of(revision));
+        when(testDAO.findByRevisionId("revision-1")).thenReturn(List.of(persistedRow));
+
+        AnalyzerSiteBindingSnapshot result = service.findOrCreate(draft, "42");
+
+        assertSame(binding, result.binding());
+        assertSame(revision, result.revision());
+        assertEquals(List.of(persistedRow), result.tests());
+        verify(bindingDAO, never()).insert(any());
+        verify(revisionDAO, never()).insert(any());
+        verify(testDAO, never()).insert(any());
+        verifyZeroInteractions(auditTrailService);
+    }
+
+    @Test
     public void revisingLocksAggregateAndAppendsWithoutMutatingPriorRevision() {
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setId("binding-1");
