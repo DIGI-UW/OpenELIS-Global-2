@@ -31,7 +31,6 @@ services:
     restart: always
     environment:
       CATALINA_OPTS: -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
-      JDK_JAVA_OPTIONS: -Djdk.internal.httpclient.disableHostnameVerification=true
     volumes:
       - key_trust-store-volume:/etc/openelis-global
       - lucene_index-vol:/var/lib/lucene_index
@@ -119,4 +118,3 @@ secrets:
     file: ./volume/properties/common.properties
   hapi_application.yaml:
     file: ./volume/properties/hapi_application.yaml
-

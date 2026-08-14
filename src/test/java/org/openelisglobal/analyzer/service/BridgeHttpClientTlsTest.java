@@ -22,6 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -30,8 +31,8 @@ import org.springframework.test.context.junit4.SpringRunner;
 public class BridgeHttpClientTlsTest {
 
     private static final char[] KEYSTORE_PASSWORD = "changeit".toCharArray();
-    private static final Path SELF_SIGNED_KEYSTORE = Path.of(
-            "tools/openelis-analyzer-bridge/src/test/resources/test-server.p12");
+    private static final Path SELF_SIGNED_KEYSTORE = Path
+            .of("tools/openelis-analyzer-bridge/src/test/resources/test-server.p12");
 
     @Autowired
     private BridgeHttpClient bridgeHttpClient;
@@ -46,8 +47,7 @@ public class BridgeHttpClientTlsTest {
             keyStore.load(input, KEYSTORE_PASSWORD);
         }
 
-        KeyManagerFactory keyManagerFactory = KeyManagerFactory
-                .getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
         keyManagerFactory.init(keyStore, KEYSTORE_PASSWORD);
         SSLContext serverContext = SSLContext.getInstance("TLS");
         serverContext.init(keyManagerFactory.getKeyManagers(), null, new SecureRandom());
@@ -78,6 +78,28 @@ public class BridgeHttpClientTlsTest {
         } catch (IOException exception) {
             assertNotNull(exception.getMessage());
             assertTrue("expected a TLS failure but got: " + exception, hasCause(exception, SSLException.class));
+        }
+    }
+
+    @Test
+    public void acceptsCertificateInsideConfiguredTruststore() throws Exception {
+        BridgeHttpClient trustedClient = new BridgeHttpClient(SELF_SIGNED_KEYSTORE.toUri().toString(),
+                String.valueOf(KEYSTORE_PASSWORD), "PKCS12", new DefaultResourceLoader());
+        String url = "https://localhost:" + server.getAddress().getPort() + "/actuator/health";
+
+        BridgeHttpClient.BridgeResponse response = trustedClient.get(url, Duration.ofSeconds(2));
+
+        assertTrue("configured truststore request failed with " + response.status, response.isSuccess());
+    }
+
+    @Test
+    public void failsConstructionWhenConfiguredTruststoreCannotBeLoaded() {
+        try {
+            new BridgeHttpClient("file:/definitely-missing/openelis-truststore.p12", "changeit", "PKCS12",
+                    new DefaultResourceLoader());
+            fail("Bridge client silently ignored an unreadable configured truststore");
+        } catch (IllegalStateException exception) {
+            assertTrue(exception.getMessage().contains("Unable to initialize Bridge TLS truststore"));
         }
     }
 

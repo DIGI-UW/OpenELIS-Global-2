@@ -1,16 +1,21 @@
 package org.openelisglobal.analyzer.service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Base64;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,15 +32,14 @@ import org.springframework.stereotype.Component;
  * "one path forgot the TLS config" bug impossible to reintroduce.
  *
  * <p>
- * The bridge presents a self-signed cert on the internal OE2↔bridge hop, so
- * this trusts all certificates. That is acceptable for that private hop only;
- * production hardening (a real truststore / pinned CA) belongs here, in this
- * one place, rather than in five.
+ * TLS uses the configured OpenELIS truststore and normal hostname verification.
+ * A configured truststore that cannot be loaded fails component construction;
+ * an absent truststore uses the JVM defaults. Neither path silently trusts an
+ * unknown Bridge certificate.
  */
 @Component
 public class BridgeHttpClient {
 
-    private static final Logger logger = LoggerFactory.getLogger(BridgeHttpClient.class);
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
 
     private final HttpClient httpClient;
@@ -46,29 +50,34 @@ public class BridgeHttpClient {
     @Value("${analyzer.bridge.password:}")
     private String password;
 
-    public BridgeHttpClient() {
-        this.httpClient = buildTrustAllClient();
+    public BridgeHttpClient(@Value("${server.ssl.trust-store:}") String trustStoreLocation,
+            @Value("${server.ssl.trust-store-password:}") String trustStorePassword,
+            @Value("${server.ssl.trust-store-type:PKCS12}") String trustStoreType, ResourceLoader resourceLoader) {
+        this.httpClient = buildClient(trustStoreLocation, trustStorePassword, trustStoreType, resourceLoader);
     }
 
-    private static HttpClient buildTrustAllClient() {
+    private static HttpClient buildClient(String trustStoreLocation, String trustStorePassword, String trustStoreType,
+            ResourceLoader resourceLoader) {
+        HttpClient.Builder builder = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT);
+        if (trustStoreLocation == null || trustStoreLocation.isBlank()) {
+            return builder.build();
+        }
+
         try {
-            javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
-            sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
-                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                    return new java.security.cert.X509Certificate[0];
-                }
-
-                public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
-                }
-
-                public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
-                }
-            } }, new java.security.SecureRandom());
-            return HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).sslContext(sslContext).build();
+            Resource trustStoreResource = resourceLoader.getResource(trustStoreLocation.trim());
+            KeyStore trustStore = KeyStore
+                    .getInstance(trustStoreType == null || trustStoreType.isBlank() ? "PKCS12" : trustStoreType);
+            try (InputStream input = trustStoreResource.getInputStream()) {
+                trustStore.load(input, trustStorePassword == null ? new char[0] : trustStorePassword.toCharArray());
+            }
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory
+                    .getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            trustManagerFactory.init(trustStore);
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, trustManagerFactory.getTrustManagers(), new SecureRandom());
+            return builder.sslContext(sslContext).build();
         } catch (Exception e) {
-            logger.warn("Bridge SSL context init failed; using default HttpClient (self-signed bridge calls will"
-                    + " fail PKIX): {}", e.getMessage());
-            return HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+            throw new IllegalStateException("Unable to initialize Bridge TLS truststore " + trustStoreLocation, e);
         }
     }
 
