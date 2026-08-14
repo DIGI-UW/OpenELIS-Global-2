@@ -455,11 +455,24 @@ function ReflexRule() {
       return;
     }
     setIsSubmitting(true);
-    console.debug(JSON.stringify(ruleList[index]));
-    postToOpenElisServer(
-      "/rest/reflexrule",
-      JSON.stringify(ruleList[index]),
-      (status) => handleSubmited(status, index),
+    // The picker shows the primary component for a condition that names none,
+    // but showing it is not choosing it - the rule has to carry the component
+    // it is displaying, or it saves against no component at all.
+    const rule = {
+      ...ruleList[index],
+      conditions: (ruleList[index].conditions || []).map(
+        (condition, condition_index) => ({
+          ...condition,
+          componentId:
+            condition.componentId ||
+            defaultComponentFor(index, condition_index) ||
+            null,
+        }),
+      ),
+    };
+    console.debug(JSON.stringify(rule));
+    postToOpenElisServer("/rest/reflexrule", JSON.stringify(rule), (status) =>
+      handleSubmited(status, index),
     );
   };
 

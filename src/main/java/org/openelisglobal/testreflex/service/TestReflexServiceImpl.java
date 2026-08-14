@@ -304,7 +304,8 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         // test - owns the result type. A test whose primary component is coded
         // and whose secondary is numeric has no single type, so asking the test
         // hands a numeric condition the coded branch and it never fires.
-        String componentId = condition.getComponentId();
+        String componentId = blankToNull(condition.getComponentId());
+        condition.setComponentId(componentId);
         String resultType = ruleResultScope.resultTypeForComponent(triggerTest.getId(), componentId,
                 testService.getResultType(triggerTest));
         if (!GenericValidator.isBlankOrNull(componentId)) {
@@ -315,7 +316,7 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
             }
         }
         reflex.setComponentId(componentId);
-        reflex.setSampleTypeId(condition.getSampleId());
+        reflex.setSampleTypeId(blankToNull(condition.getSampleId()));
         if (resultType.equals("D")) {
             Optional<TestResult> result = results.stream()
                     .filter(res -> Objects.equals(res.getValue(), condition.getValue())).findFirst();
@@ -356,6 +357,11 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         defaultResult.setSortOrder("0");
         defaultResult.setIsActive(true);
         return testResultService.save(defaultResult);
+    }
+
+    /** "" is what an unset picker posts; the column wants NULL. */
+    private static String blankToNull(String value) {
+        return GenericValidator.isBlankOrNull(value) ? null : value;
     }
 
     private boolean componentBelongsToTest(String componentId, String testId) {

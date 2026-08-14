@@ -69,6 +69,7 @@ public class CalculatedValueRestController {
     @PostMapping(value = "test-calculation", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public void saveReflexRule(HttpServletRequest request, @RequestBody Calculation calculation) {
+        normalizeBlankComponents(calculation);
         validateDestination(calculation);
         if (calculation.getId() != null) {
             if (testCalculationService.get(calculation.getId()) != null) {
@@ -86,6 +87,24 @@ public class CalculatedValueRestController {
      * primary instead would accept exactly the configuration this is meant to
      * catch.
      */
+    /**
+     * An unset component picker posts "", which Postgres reads as a key that does
+     * not exist rather than as no key at all, and the foreign key rejects it. Both
+     * the destination and every operand normalise to NULL.
+     */
+    private void normalizeBlankComponents(Calculation calculation) {
+        if (calculation.getComponentId() != null && calculation.getComponentId().isBlank()) {
+            calculation.setComponentId(null);
+        }
+        if (calculation.getOperations() != null) {
+            calculation.getOperations().forEach(operation -> {
+                if (operation.getComponentId() != null && operation.getComponentId().isBlank()) {
+                    operation.setComponentId(null);
+                }
+            });
+        }
+    }
+
     private void validateDestination(Calculation calculation) {
         String componentId = calculation.getComponentId();
         if (componentId == null || componentId.isBlank() || calculation.getTestId() == null) {

@@ -465,10 +465,31 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     try {
       // Code that might throw an error
       eval(mathematicalOperation);
-      console.log(JSON.stringify(calculationList[index]));
+      // Same as the reflex builder: the pickers display a default component,
+      // and the calculation has to carry the one it is displaying rather than
+      // save against none.
+      const calculation = {
+        ...calculationList[index],
+        componentId:
+          calculationList[index].componentId ||
+          destinationComponentsFor(index)[0]?.id ||
+          null,
+        operations: (calculationList[index].operations || []).map(
+          (operation: any, operationIndex: number) =>
+            operation.type === "TEST_RESULT"
+              ? {
+                  ...operation,
+                  componentId:
+                    operation.componentId ||
+                    operandComponentsFor(index, operationIndex)[0]?.id ||
+                    null,
+                }
+              : operation,
+        ),
+      };
       postToOpenElisServer(
         "/rest/test-calculation",
-        JSON.stringify(calculationList[index]),
+        JSON.stringify(calculation),
         (status) => handleCalculationSubmited(status, index),
       );
     } catch (error) {
