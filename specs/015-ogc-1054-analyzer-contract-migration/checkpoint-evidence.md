@@ -102,7 +102,14 @@ The broader regression also exposed two harness/test-isolation defects:
   produced a stopped-container error instead of the required missing-Docker
   failure. `ISSUE-E0-005` removes system binaries from that test process and
   supplies only deterministic `dirname` and fixture stubs. The focused
-  `FixtureDatabaseTargetingTest` now passes all three cases.
+  `FixtureDatabaseTargetingTest` now passes all three cases in green commit
+  `1c471d2e6`.
+- The cross-repository audit then found that the accepted v1 contract requires
+  HTTP Basic credentials on analyzer registration while `BridgeHttpClient` sent
+  no authorization header. Red `5e633a9d0` failed with a null captured header;
+  green `c34131393` centralizes optional service credentials in the one Bridge
+  client and supplies matching values to the analyzer harness. The focused
+  consumer test and resolved Compose configuration pass.
 
 ## Layer validation
 
@@ -110,6 +117,7 @@ The broader regression also exposed two harness/test-isolation defects:
 | --- | --- | --- |
 | OpenELIS persistence/current-state | `RUN` | Real PostgreSQL through `AnalyzerMigrationCharacterizationTest` |
 | Cross-repository contract | `RUN` | Bridge schemas/fixtures through `AnalyzerBridgeContractConsumerTest` |
+| Bridge service authentication | `RUN` | `BridgeHttpClientAuthenticationTest` captures the configured Basic header at a real local HTTP endpoint |
 | JSONB test support | `RUN` | `PostgresqlJsonbDataTypeFactoryTest` |
 | Bridge producer | `RUN` | Bridge PR #45: 610 passed, 3 serial-hardware skips |
 | Harness integration | `RUN` | Isolated OE/Bridge/mock; three visible connection and ASTM result cases passed |
@@ -162,6 +170,9 @@ the accepted v1 contract, and ADR-001. No implementation direction comes from
   before two analyzer-enabled stacks may run concurrently.
 - `ISSUE-E0-003`, `ISSUE-E0-004`, and `ISSUE-E0-005` are resolved by their
   committed red/green evidence and focused or broader package suites.
+- `ISSUE-E0-006` is resolved by the committed Basic-auth consumer red/green
+  pair. Prepared BR-M1 still cannot be published until inactive FILE routing
+  (`ISSUE-M1-001`) and fixed-port test lifecycle (`ISSUE-M1-002`) are corrected.
 - OE-R0 still requires review and has an unrelated E2E failure; OE-F0 and BR-E0
   are green/mergeable. OE-E0 cannot become accepted out of global order.
 
@@ -223,7 +234,9 @@ gate and Spotless passed again; the four focused fixture-target/Java-selection
 regressions also passed with zero failures. After CI run `31762346680` exposed
 `ISSUE-E0-005`, the three-case `FixtureDatabaseTargetingTest` and Spotless pass
 with the corrected deterministic test environment; the replacement PR CI run
-remains the checkpoint gate.
+remains the checkpoint gate. The Bridge-auth consumer test also passes after
+green `c34131393`, and the local analyzer harness Compose resolves with the
+matching OE/Bridge credentials.
 
 ## Code-QA disposition
 
@@ -237,6 +250,7 @@ remains the checkpoint gate.
 | Evidence | A passing Compose startup could be mistaken for product acceptance | Evidence records exact SHAs, ports, health, focused flows, inspected screenshots, console debt, and explicitly leaves UI/UAT/video to M4/G0 |
 | Review remediation | Explicit runtime targets could silently fall through when their owning tool was absent | Red `1db4bd0eb`, green `07167d360`; both fixture scripts fail closed and the Java wrapper honors a valid standard Java 21 installation |
 | CI determinism | The unavailable-Docker test retained system Docker on GitHub runners | `ISSUE-E0-005` limits the child process to deterministic test binaries; all three fixture-target cases and Spotless pass locally |
+| Cross-repository compatibility | Securing BR-M1 analyzer APIs would reject every current OE registration call | Red `5e633a9d0`, green `c34131393`; all OE-to-Bridge calls share one credential-aware client and the harness supplies the paired secrets |
 
 **Verdict:** lean for an engineering-boundary checkpoint. The custom JSONB
 DBUnit type, schema validator dependency, Java wrapper, and isolation override

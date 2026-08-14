@@ -496,6 +496,9 @@ silently route around.
 | `ISSUE-E0-003` | Harness    | `RESOLVED` | Explicit fixture targets were validated after generation and reset rediscovered global containers; red/green tests now bind every operation to one validated DB_CONTAINER. |
 | `ISSUE-E0-004` | Test scope | `RESOLVED` | A controller behavior test borrowed a security filter from another test's scanned nested config; behavior and dedicated security-slice coverage are now independent.       |
 | `ISSUE-E0-005` | Test scope | `RESOLVED` | The unavailable-Docker regression exposed the runner's system Docker through its test PATH. The test now supplies only deterministic `dirname`/fixture stubs, so Docker is genuinely absent. |
+| `ISSUE-E0-006` | Contract   | `RESOLVED` | BR-M1 secures analyzer APIs but OE sent no service credentials. Red `5e633a9d0` and green `c34131393` make the shared OE Bridge client satisfy the accepted Basic-auth contract. |
+| `ISSUE-M1-001` | Runtime    | `OPEN`     | Prepared BR-M1 FILE upload/list/handler paths traverse raw registry entries and can process an inactive analyzer. Add failing routing tests and one active-only registry API before publication. |
+| `ISSUE-M1-002` | Test scope | `OPEN`     | Prepared BR-M1 Spring tests start fixed-port ASTM listeners, producing `BindException` output and a force-killed Surefire fork despite passing assertions. Make listener lifecycle test-scoped and prove clean shutdown. |
 | `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.      |
 | `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                            |
 | `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.      |
@@ -522,6 +525,11 @@ the checkpoint that discovers or resolves it; IDs are never reused.
 `ACCEPTED` means the checkpoint exit gate, assigned acceptance criteria, CI,
 review threads, and evidence are complete. A failed required test or UAT step
 keeps the checkpoint `IN_PROGRESS`; it cannot be relabeled as a follow-up.
+
+BR-M1 is locally prepared at `5a8dca3` as permitted by the rule below, but it
+has no remote branch or PR and does not change M1's checkpoint status. It remains
+quarantined until `ISSUE-M1-001` and `ISSUE-M1-002` are green and every earlier
+item in the global acceptance order is accepted.
 
 ## Pull Request Train
 
