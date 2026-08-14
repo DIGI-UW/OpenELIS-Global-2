@@ -67,6 +67,31 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
                 .toList();
     }
 
+    @Override
+    public AnalyzerTypeCatalogSummary get(String profileId, Integer revision) {
+        return null;
+    }
+
+    @Override
+    public List<BridgeProfileCatalogEntry> history(String profileId) {
+        return List.of();
+    }
+
+    @Override
+    public AnalyzerTypeCatalogSummary fork(String profileId, AnalyzerProfileForkRequest request, String actor) {
+        return null;
+    }
+
+    @Override
+    public AnalyzerTypeCatalogSummary deactivate(String profileId, String actor) {
+        return null;
+    }
+
+    @Override
+    public AnalyzerTypeCatalogSummary reactivate(String profileId, String actor) {
+        return null;
+    }
+
     private static AnalyzerTypeCatalogSummary compose(BridgeProfileCatalogEntry entry,
             List<AnalyzerSiteBindingRevision> revisions, Map<String, List<AnalyzerSiteBindingTest>> rowsByRevision,
             Map<String, Long> analyzerCounts) {

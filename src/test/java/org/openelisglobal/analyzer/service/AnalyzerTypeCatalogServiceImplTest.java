@@ -3,9 +3,11 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Timestamp;
@@ -131,6 +133,83 @@ public class AnalyzerTypeCatalogServiceImplTest {
         assertEquals(List.of(AnalyzerTypeAttentionCode.PROFILE_REVISION_MISMATCH,
                 AnalyzerTypeAttentionCode.MISSING_TEST_ROWS, AnalyzerTypeAttentionCode.RESULT_VALUE_BINDING_REQUIRED),
                 summary.attentionCodes());
+    }
+
+    @Test
+    public void getsExplicitProfileRevisionWithCurrentSiteState() {
+        AnalyzerSiteBindingRevision revision = revision("binding-1", "revision-1", 4, 1);
+        when(profileCatalogClient.get("site.mock-hematology", 1)).thenReturn(profileEntry);
+        when(revisionDAO.findLatestByProfileIds(List.of("site.mock-hematology"))).thenReturn(List.of(revision));
+        when(testDAO.findByRevisionIds(List.of("revision-1")))
+                .thenReturn(List.of(row(revision, "wbc", AnalyzerSiteBindingTest.MappingState.BOUND),
+                        row(revision, "hiv-interpretation", AnalyzerSiteBindingTest.MappingState.IGNORED)));
+        when(analyzerDAO.countByBridgeProfileIds(List.of("site.mock-hematology")))
+                .thenReturn(Map.of("site.mock-hematology", 2L));
+
+        AnalyzerTypeCatalogSummary summary = service.get("site.mock-hematology", 1);
+
+        assertEquals("site.mock-hematology", summary.profileId());
+        assertEquals(1, summary.testMappings().bound());
+        assertEquals(1, summary.testMappings().ignored());
+        assertEquals(2L, summary.analyzerCount());
+    }
+
+    @Test
+    public void delegatesHistoryToBridgeAuthority() {
+        when(profileCatalogClient.history("site.mock-hematology")).thenReturn(List.of(profileEntry));
+
+        List<BridgeProfileCatalogEntry> history = service.history("site.mock-hematology");
+
+        assertEquals(List.of(profileEntry), history);
+    }
+
+    @Test
+    public void recomposesLifecycleChangesReturnedByBridge() {
+        BridgeProfileCatalogEntry inactive = withProfile("site.mock-hematology", "INACTIVE", null, null);
+        when(profileCatalogClient.deactivate("site.mock-hematology", "42")).thenReturn(inactive);
+        when(profileCatalogClient.reactivate("site.mock-hematology", "42")).thenReturn(profileEntry);
+        when(revisionDAO.findLatestByProfileIds(List.of("site.mock-hematology"))).thenReturn(List.of());
+        when(analyzerDAO.countByBridgeProfileIds(List.of("site.mock-hematology"))).thenReturn(Map.of());
+
+        AnalyzerTypeCatalogSummary deactivated = service.deactivate("site.mock-hematology", "42");
+        AnalyzerTypeCatalogSummary reactivated = service.reactivate("site.mock-hematology", "42");
+
+        assertEquals("INACTIVE", deactivated.status());
+        assertEquals("ACTIVE", reactivated.status());
+    }
+
+    @Test
+    public void forksBridgeProfileBeforeCreatingAnyLocalSiteBinding() {
+        AnalyzerProfileForkRequest request = new AnalyzerProfileForkRequest(1, "site.mock-hematology-1",
+                "Mock Hematology -1");
+        BridgeProfileCatalogEntry forked = withProfile("site.mock-hematology-1", "ACTIVE", "site.mock-hematology", 1);
+        when(profileCatalogClient.fork("site.mock-hematology", request, "42")).thenReturn(forked);
+        when(revisionDAO.findLatestByProfileIds(List.of("site.mock-hematology-1"))).thenReturn(List.of());
+        when(analyzerDAO.countByBridgeProfileIds(List.of("site.mock-hematology-1"))).thenReturn(Map.of());
+
+        AnalyzerTypeCatalogSummary summary = service.fork("site.mock-hematology", request, "42");
+
+        assertEquals("site.mock-hematology-1", summary.profileId());
+        assertEquals("site.mock-hematology", summary.parentProfileId());
+        assertEquals(Integer.valueOf(1), summary.parentRevision());
+        assertNull(summary.siteBinding());
+        assertEquals(AnalyzerTypeAttentionCode.SITE_BINDING_REQUIRED, summary.attentionCodes().get(0));
+        verify(profileCatalogClient).fork("site.mock-hematology", request, "42");
+    }
+
+    private BridgeProfileCatalogEntry withProfile(String profileId, String status, String parentProfileId,
+            Integer parentRevision) {
+        ObjectNode profile = profileEntry.profile().deepCopy();
+        profile.put("profileId", profileId);
+        profile.put("status", status);
+        if (parentProfileId == null) {
+            profile.remove("lineage");
+        } else {
+            ObjectNode lineage = profile.putObject("lineage");
+            lineage.put("parentProfileId", parentProfileId);
+            lineage.put("parentRevision", parentRevision);
+        }
+        return new BridgeProfileCatalogEntry(profile, profileEntry.audit(), profileEntry.fingerprint());
     }
 
     private static AnalyzerSiteBindingRevision revision(String bindingId, String revisionId, int revisionNumber,
