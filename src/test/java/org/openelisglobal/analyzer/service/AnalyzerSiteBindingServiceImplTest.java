@@ -55,7 +55,7 @@ public class AnalyzerSiteBindingServiceImplTest {
         assertEquals("site.mock-hematology", created.revision().getBridgeProfileId());
         assertEquals(3, created.revision().getBridgeProfileRevision().intValue());
         assertEquals("42", created.revision().getCreatedBy());
-        assertEquals("sha256:836016e624b68ae797172f7c86e49ba83149070333917853528f486ecfb2d1c6",
+        assertEquals("sha256:01e01759cbcc9bf7ebb4d43fcdefcc5cfbada3764892e8f33d99f055d6f23aa2",
                 created.revision().getFingerprint());
         assertEquals(List.of("row-1", "row-2"),
                 created.tests().stream().map(test -> test.getId().getSourceRowKey()).toList());
