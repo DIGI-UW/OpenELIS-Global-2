@@ -85,6 +85,7 @@ import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.userrole.service.UserRoleService;
@@ -656,7 +657,7 @@ public class OrderSearchRestController extends BaseRestController {
                 } else {
                     analyses = analysisService.getAnalysesBySampleItem(sampleItem);
                 }
-                List<Map<String, Object>> testsData = new ArrayList<>();
+                List<TestSelectionDTO> testsData = new ArrayList<>();
                 List<Map<String, Object>> panelsData = new ArrayList<>();
 
                 // panelId → testIds accumulator — built from PanelItem records so that
@@ -857,14 +858,8 @@ public class OrderSearchRestController extends BaseRestController {
         }
     }
 
-    Map<String, Object> buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
-        Map<String, Object> testData = new HashMap<>();
-        testData.put("id", test.getId());
-        testData.put("name", test.getLocalizedName());
-        testData.put("description", test.getDescription());
-        testData.put("cultureWorkflowType", test.getCultureWorkflowType());
-        testData.put("methods", testMethodService.getLinkedMethodDtos(test.getId()));
-        return testData;
+    TestSelectionDTO buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
+        return new TestSelectionDTO(test, testMethodService.getLinkedMethodDtos(test.getId()));
     }
 
     /**

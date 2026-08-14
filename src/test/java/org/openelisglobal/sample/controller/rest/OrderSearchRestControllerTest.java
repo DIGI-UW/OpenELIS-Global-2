@@ -14,6 +14,7 @@ import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -80,10 +81,10 @@ public class OrderSearchRestControllerTest {
         when(testMethodService.getLinkedMethodDtos("42")).thenReturn(List.of(defaultMethod));
         ReflectionTestUtils.setField(controller, "testMethodService", testMethodService);
 
-        Map<String, Object> selectedTest = controller.buildSelectedTestData(test);
+        TestSelectionDTO selectedTest = controller.buildSelectedTestData(test);
 
-        assertEquals("42", selectedTest.get("id"));
-        assertEquals("BACTERIOLOGY", selectedTest.get("cultureWorkflowType"));
-        assertSame(defaultMethod, ((List<?>) selectedTest.get("methods")).get(0));
+        assertEquals("42", selectedTest.getId());
+        assertEquals("BACTERIOLOGY", selectedTest.getCultureWorkflowType());
+        assertSame(defaultMethod, selectedTest.getMethods().get(0));
     }
 }
