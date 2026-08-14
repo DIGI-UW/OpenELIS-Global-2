@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -26,12 +25,10 @@ public class BridgeAnalyzerProfileCatalogClientTest {
             "v1", "fixtures", "profile-catalog-entry.json");
 
     private BridgeHttpClient bridgeHttpClient;
-    private ObjectMapper objectMapper;
 
     @Before
     public void setUp() {
         bridgeHttpClient = mock(BridgeHttpClient.class);
-        objectMapper = new ObjectMapper().findAndRegisterModules();
     }
 
     @Test
@@ -39,7 +36,7 @@ public class BridgeAnalyzerProfileCatalogClientTest {
         String responseBody = "[" + Files.readString(CATALOG_FIXTURE) + "]";
         when(bridgeHttpClient.get(anyString(), eq(READ_TIMEOUT)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(200, responseBody));
-        AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient, objectMapper,
+        AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient,
                 "https://bridge.test/");
 
         List<BridgeProfileCatalogEntry> entries = client
@@ -64,8 +61,7 @@ public class BridgeAnalyzerProfileCatalogClientTest {
 
     @Test
     public void failsClosedWhenBridgeIsNotConfigured() throws Exception {
-        AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient, objectMapper,
-                " ");
+        AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient, " ");
 
         AnalyzerProfileCatalogException exception = assertThrows(AnalyzerProfileCatalogException.class,
                 () -> client.list(AnalyzerProfileCatalogFilter.empty()));
@@ -78,7 +74,7 @@ public class BridgeAnalyzerProfileCatalogClientTest {
     public void rejectsNonSuccessfulBridgeResponses() throws Exception {
         when(bridgeHttpClient.get(anyString(), eq(READ_TIMEOUT)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(503, "unavailable"));
-        AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient, objectMapper,
+        AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient,
                 "https://bridge.test");
 
         AnalyzerProfileCatalogException exception = assertThrows(AnalyzerProfileCatalogException.class,
