@@ -499,8 +499,8 @@ silently route around.
 | `ISSUE-E0-006` | Contract   | `RESOLVED` | BR-M1 secures analyzer APIs but OE sent no service credentials. Red `5e633a9d0` and green `c34131393` make the shared OE Bridge client satisfy the accepted Basic-auth contract.                                                                        |
 | `ISSUE-E0-007` | Security   | `RESOLVED` | Red `366aa2e8c` proved that `BridgeHttpClient` accepted an untrusted certificate; green `3e2e88325` now uses the configured truststore or JVM defaults, preserves hostname verification, and fails closed when configured trust material is unreadable. |
 | `ISSUE-E0-008` | Harness    | `OPEN`     | Focused UI Playwright stories pass against the isolated exact-WAR stack, but browser review still reports Vite HMR WebSocket failures and a recurring 404. Resolve or explicitly classify these before G0 console-clean acceptance.                     |
-| `ISSUE-M1-001` | Runtime    | `OPEN`     | Prepared BR-M1 FILE upload/list/handler paths traverse raw registry entries and can process an inactive analyzer. Add failing routing tests and one active-only registry API before publication.                                                        |
-| `ISSUE-M1-002` | Test scope | `OPEN`     | Prepared BR-M1 Spring tests start fixed-port ASTM listeners, producing `BindException` output and a force-killed Surefire fork despite passing assertions. Make listener lifecycle test-scoped and prove clean shutdown.                                |
+| `ISSUE-M1-001` | Runtime    | `RESOLVED` | BR-M1 red `f9cd2f6` and green `b7001b1` add one active-only registry view and prove inactive FILE analyzers are neither discoverable nor routable while remaining available for desired-state reconciliation.                                           |
+| `ISSUE-M1-002` | Test scope | `RESOLVED` | BR-M1 red `468fde2` and green `c516d79` make ASTM listener activation configurable, disable it in shared test configuration, and prove default-on startup plus shutdown. The prior 34-second forced-fork run now completes in 3.8 seconds.              |
 | `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.                                                                                   |
 | `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                                                                                                         |
 | `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.                                                                                   |
@@ -673,6 +673,11 @@ against an unresolved boundary.
 **Exit:** MVP-001 through MVP-004, MVP-011, and applicable MVP-022 criteria pass;
 a type is reusable by multiple analyzers and no OpenELIS filesystem catalog or
 create-only copied snapshot remains authoritative.
+
+**Prepared Bridge evidence:** [BR-M1 PR #46](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/46)
+is non-draft and green locally at `c516d79`: 643 tests passed with zero failures
+or errors and three expected serial-environment skips. This does not accept M1;
+OE-M1 and predecessor gates remain required.
 
 ### M2 - Safe mapping editor (OGC-1056)
 
