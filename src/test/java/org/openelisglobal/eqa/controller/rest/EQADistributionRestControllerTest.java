@@ -3,6 +3,8 @@ package org.openelisglobal.eqa.controller.rest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -110,6 +112,66 @@ public class EQADistributionRestControllerTest {
         ResponseEntity<?> response = controller.createDistribution(request, body);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    public void testUpdateDistribution_Draft_UpdatesSameRow() {
+        EQADistribution draft = createDistribution(7L, "Round 1", EQADistributionStatus.DRAFT);
+        when(distributionService.get(7L)).thenReturn(draft);
+        EQAProgram program = new EQAProgram();
+        program.setId(2L);
+        program.setName("Other Program");
+        when(programService.get(2L)).thenReturn(program);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("distributionName", "Round 1 (revised)");
+        body.put("programId", 2);
+        body.put("deadline", "2026-09-30");
+        body.put("participantOrganizationIds", Arrays.asList(10L, 20L));
+
+        ResponseEntity<?> response = controller.updateDistribution(request, 7L, body);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(distributionService).update(draft);
+        assertEquals("Round 1 (revised)", draft.getDistributionName());
+        assertEquals(Timestamp.valueOf("2026-09-30 23:59:59"), draft.getDeadline());
+        assertEquals(Long.valueOf(7L), draft.getId());
+        Map<?, ?> result = (Map<?, ?>) response.getBody();
+        assertNotNull(result);
+        assertEquals(7L, result.get("id"));
+    }
+
+    @Test
+    public void testUpdateDistribution_NotDraft_ReturnsBadRequest() {
+        EQADistribution shipped = createDistribution(8L, "Round 2", EQADistributionStatus.SHIPPED);
+        when(distributionService.get(8L)).thenReturn(shipped);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("distributionName", "Round 2 (revised)");
+        body.put("programId", 1);
+        body.put("deadline", "2026-09-30");
+
+        ResponseEntity<?> response = controller.updateDistribution(request, 8L, body);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        verify(distributionService, never()).update(any(EQADistribution.class));
+    }
+
+    @Test
+    public void testUpdateDistribution_TooFewParticipants_ReturnsBadRequest() {
+        EQADistribution draft = createDistribution(7L, "Round 1", EQADistributionStatus.DRAFT);
+        when(distributionService.get(7L)).thenReturn(draft);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("distributionName", "Round 1");
+        body.put("programId", 1);
+        body.put("deadline", "2026-09-30");
+        body.put("participantOrganizationIds", Collections.singletonList(10L));
+
+        ResponseEntity<?> response = controller.updateDistribution(request, 7L, body);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        verify(distributionService, never()).update(any(EQADistribution.class));
     }
 
     @Test

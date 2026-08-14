@@ -23,7 +23,7 @@ import {
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, formatDateOnly } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
 const breadcrumbs = [
@@ -212,7 +212,7 @@ const EQADistributionDashboard = () => {
       <Button
         kind="primary"
         size="sm"
-        onClick={() => history.push(`/EQADistribution/create?id=${row.id}`)}
+        onClick={() => history.push(`/qa/eqa/distribution/create?id=${row.id}`)}
       >
         {intl.formatMessage({ id: "eqa.distribution.action.continue" })}
       </Button>
@@ -450,14 +450,8 @@ const EQADistributionDashboard = () => {
                             );
                           }
                           if (cell.info.header === "deadline") {
-                            const date = rawRow?.deadline
-                              ? new Date(rawRow.deadline).toLocaleDateString()
-                              : "";
-                            const shipped = rawRow?.shippedDate
-                              ? new Date(
-                                  rawRow.shippedDate,
-                                ).toLocaleDateString()
-                              : "";
+                            const date = formatDateOnly(rawRow?.deadline);
+                            const shipped = formatDateOnly(rawRow?.shippedDate);
                             return (
                               <TableCell key={cell.id}>
                                 <div>{date}</div>

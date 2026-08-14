@@ -154,6 +154,56 @@ public class EQADistributionRestController extends ControllerUtills {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping(value = "/distributions/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    // @PreAuthorize("hasRole('EQA Coordinator')")
+    public ResponseEntity<?> updateDistribution(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        EQADistribution distribution;
+        try {
+            distribution = distributionService.get(id);
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (distribution.getStatus() != EQADistributionStatus.DRAFT) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Only draft distributions can be edited"));
+        }
+
+        try {
+            String name = (String) body.get("distributionName");
+            Number programId = (Number) body.get("programId");
+            String deadlineStr = (String) body.get("deadline");
+            List<?> participantIds = (List<?>) body.get("participantOrganizationIds");
+
+            if (name == null || programId == null || deadlineStr == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "distributionName, programId, and deadline are required"));
+            }
+
+            if (participantIds != null && participantIds.size() < 2) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "At least 2 participant organizations are required"));
+            }
+
+            EQAProgram program;
+            try {
+                program = programService.get(programId.longValue());
+            } catch (ObjectNotFoundException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Program not found: " + programId));
+            }
+
+            distribution.setDistributionName(name);
+            distribution.setEqaProgram(program);
+            distribution.setDeadline(Timestamp.valueOf(deadlineStr + " 23:59:59"));
+            distribution.setSysUserId(getSysUserId(request));
+            distributionService.update(distribution);
+
+            return getDistribution(id);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PutMapping(value = "/distributions/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
     // @PreAuthorize("hasRole('EQA Coordinator')")
     public ResponseEntity<?> advanceStatus(@PathVariable Long id) {
