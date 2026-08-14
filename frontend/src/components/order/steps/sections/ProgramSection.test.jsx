@@ -97,10 +97,43 @@ describe("ProgramSection microbiology derivation", () => {
         "Microbiology is derived from the selected culture test.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("Blood Culture Standard"),
+    ).toBeInTheDocument();
     expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
       "/rest/program/8/questionnaire",
       expect.any(Function),
     );
+  });
+
+  it("restores the derived Program and protocol from reloaded test metadata", async () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ProgramSection
+          orderData={{
+            ...orderData,
+            microbiologyOrderDetail: {
+              ...orderData.microbiologyOrderDetail,
+              cultureMethodId: "7",
+            },
+            sampleOrderItems: {
+              programId: "8",
+              programCode: "MICROBIOLOGY",
+              microbiologyProgramId: "8",
+            },
+          }}
+          setOrderData={vi.fn()}
+          samples={cultureSamples}
+          isReadOnly
+        />
+      </IntlProvider>,
+    );
+
+    expect(
+      await screen.findByRole("combobox", { name: "Program" }),
+    ).toHaveValue("Microbiology");
+    expect(screen.getByRole("combobox", { name: "Program" })).toBeDisabled();
+    expect(screen.getByDisplayValue("Blood Culture Standard")).toBeDisabled();
   });
 
   it("clears the previous Program questionnaire when culture derives Microbiology", async () => {

@@ -66,6 +66,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -147,6 +148,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private SampleQaChecklistService sampleQaChecklistService;
+
+    @Autowired
+    private TestMethodService testMethodService;
 
     @Autowired(required = false)
     private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
@@ -452,11 +456,7 @@ public class OrderSearchRestController extends BaseRestController {
 
                 for (Analysis analysis : analyses) {
                     if (analysis.getTest() != null) {
-                        Map<String, Object> testData = new HashMap<>();
-                        testData.put("id", analysis.getTest().getId());
-                        testData.put("name", analysis.getTest().getLocalizedName());
-                        testData.put("description", analysis.getTest().getDescription());
-                        testsData.add(testData);
+                        testsData.add(buildSelectedTestData(analysis.getTest()));
                     }
                     // Try to get panel - may be null if test wasn't added via panel
                     try {
@@ -564,6 +564,16 @@ public class OrderSearchRestController extends BaseRestController {
         if (microbiologyOrderDetail != null) {
             response.put("microbiologyOrderDetail", microbiologyOrderDetail);
         }
+    }
+
+    Map<String, Object> buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
+        Map<String, Object> testData = new HashMap<>();
+        testData.put("id", test.getId());
+        testData.put("name", test.getLocalizedName());
+        testData.put("description", test.getDescription());
+        testData.put("cultureWorkflowType", test.getCultureWorkflowType());
+        testData.put("methods", testMethodService.getLinkedMethodDtos(test.getId()));
+        return testData;
     }
 
     /**

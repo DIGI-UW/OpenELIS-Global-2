@@ -99,6 +99,15 @@ test.describe("microbiology order entry on the supported workflow", () => {
     await saveEntryAndOpenCollect(page);
 
     await reloadThroughBarcode(page, labNumber);
+    await expect(page.getByRole("combobox", { name: "Program" })).toHaveValue(
+      "Microbiology",
+    );
+    await expect(
+      page.getByRole("combobox", { name: "Program" }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("combobox", { name: "Culture Method" }),
+    ).toHaveValue("Blood Culture Standard");
     await expect(page.getByLabel("Patient Origin")).toHaveValue("INPATIENT");
     await expect(
       page.getByRole("spinbutton", { name: "Number of Sets" }),
