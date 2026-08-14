@@ -188,6 +188,10 @@ public class AnalyzerMigrationCharacterizationTest extends BaseWebContextSensiti
         assertTrue(adr.contains("Bridge-owned portable profile"));
         assertTrue(adr.contains("OpenELIS-owned site binding"));
         assertTrue(adr.contains("shared, revisioned site-binding aggregate"));
+        assertTrue(adr.contains("Lab-facing Analyzer Type identity"));
+        assertTrue(adr.contains("Bridge `profileId`"));
+        assertTrue(adr.contains("administrator must select the Bridge profile and"));
+        assertTrue(adr.contains("write endpoints reject all writes after the OE-M1 writer cutover"));
         assertFalse("per-analyzer legacy mappings cannot remain the reusable binding authority",
                 adr.contains("existing `analyzer_test_map` is evolved in place"));
         assertTrue(adr.contains("No dual write"));

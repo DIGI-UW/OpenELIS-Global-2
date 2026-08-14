@@ -56,6 +56,24 @@ and optional component foreign keys remain OpenELIS-owned. Distinct source rows
 are preserved even when they share a raw alias, normalized coding, or local
 Test.
 
+### Lab-facing Analyzer Type identity
+
+The lab-facing Analyzer Type identity is the Bridge `profileId`; the current
+Bridge revision is explicit response data and a historical revision is selected
+with the canonical `revision` query parameter. The v1 profile contract makes
+`profileId` URL-safe. OpenELIS site-binding aggregate and revision IDs are
+durable internal configuration identities, not alternate public type IDs.
+
+An unused shipped profile appears as a catalog candidate without a local
+binding. The first local mapping save creates its site-binding aggregate. One
+Bridge profile identity has one current OpenELIS site-binding aggregate at a
+site. Revising mappings appends an immutable local binding revision. Forking a
+shared mapping first forks the Bridge profile through the Bridge lifecycle
+contract, then creates a new local binding aggregate for that new `profileId`;
+the operation fails closed if either side cannot be completed. This preserves
+one linkable type identity without moving local Test or Result Option ownership
+into Bridge.
+
 An analyzer instance references the selected Bridge profile revision and one
 site-binding revision. Multiple analyzer instances may reference the same
 revision; changing a shared mapping creates a new revision and requires the
@@ -71,6 +89,18 @@ one shared imported site-binding revision. Divergent snapshots become explicit
 site forks. Missing or ambiguous profile/source-row identity remains unresolved
 and blocks activation. The per-analyzer map is not mutated into the target
 authority.
+
+Legacy migration is explicit and transactional per analyzer. When no durable
+profile identity exists, the administrator must select the Bridge profile and
+revision; OpenELIS never infers it from a filename, copied JSON, generic plugin
+type, display name, or first candidate. Only one exact source-row code/alias
+match can migrate automatically. Missing or multiple matches and unmatched
+legacy rows are persisted as blocking anomalies that retain the legacy source
+key and target identity. The original legacy rows remain read-only evidence.
+Once all blocking anomalies for that analyzer are resolved, OpenELIS creates the
+binding revision and switches the analyzer reference atomically. Legacy mapping
+write endpoints reject all writes after the OE-M1 writer cutover; there is no
+per-analyzer or release-level dual write.
 
 OE-M2 adds catalog-backed result-value rows to the site-binding revision, keyed
 by site-binding revision, source-row key, and raw value. Their target is an
