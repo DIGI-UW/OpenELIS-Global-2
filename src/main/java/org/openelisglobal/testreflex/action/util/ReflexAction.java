@@ -20,6 +20,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -126,12 +127,17 @@ public abstract class ReflexAction {
      * Only an unambiguous answer is acted on. A test configured for several
      * specimens that the order holds several of gives no single answer, and the
      * triggering specimen stays the safer choice over guessing between them. Where
-     * the order holds none of them nothing can be done either - a specimen that was
-     * never collected cannot be conjured.
+     * the order holds none of them the triggering specimen stands. A rule that
+     * names its specimen outright does not reach that reasoning at all: the named
+     * one is added to the order and used.
      */
     private SampleItem sampleItemForGeneratedTest(Test test, Analysis currentAnalysis) {
         if (test == null || currentAnalysis == null || currentAnalysis.getSampleItem() == null) {
             return null;
+        }
+        if (reflex != null && !GenericValidator.isBlankOrNull(reflex.getSampleTypeId())) {
+            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
+                    currentAnalysis.getSampleItem().getSample(), reflex.getSampleTypeId(), result.getSysUserId());
         }
         List<TypeOfSample> configured = SpringContext.getBean(TypeOfSampleService.class)
                 .getTypeOfSampleForTest(test.getId());

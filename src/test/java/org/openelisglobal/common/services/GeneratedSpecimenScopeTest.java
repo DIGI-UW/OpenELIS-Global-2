@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -20,6 +22,8 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 /**
  * Where a generated result belongs.
@@ -46,6 +50,12 @@ public class GeneratedSpecimenScopeTest {
 
     @Mock
     private TestResultComponentService testResultComponentService;
+
+    @Mock
+    private TypeOfSampleService typeOfSampleService;
+
+    @Mock
+    private org.openelisglobal.common.services.IStatusService statusService;
 
     @InjectMocks
     private RuleResultScope scope;
@@ -117,5 +127,44 @@ public class GeneratedSpecimenScopeTest {
 
         assertEquals(items.get(0), scope.sampleItemForTarget(sample, "26"));
         assertNull("another type of the same order is not a match", scope.sampleItemForTarget(sample, "30"));
+    }
+
+    /**
+     * The rule names the specimen, so the order gets it.
+     *
+     * <p>
+     * A calculation configured to report AAA on DBS ran on an order holding only
+     * Dry Tube and Respiratory Swab, and the result was filed against the
+     * Respiratory Swab that triggered it. The configured specimen is the lab's
+     * instruction about where the result belongs, so the order is given one rather
+     * than the instruction being quietly dropped.
+     */
+    @Test
+    public void addsTheConfiguredSpecimenWhenTheOrderLacksIt() {
+        orderHolds(item("si-1", "30"));
+        TypeOfSample dbs = new TypeOfSample();
+        dbs.setId("26");
+        when(typeOfSampleService.get("26")).thenReturn(dbs);
+
+        SampleItem created = scope.resolveOrCreateSampleItemForTarget(sample, "26", "1");
+
+        assertEquals("the generated test reports on the specimen the rule named", dbs, created.getTypeOfSample());
+        assertEquals(sample, created.getSample());
+        verify(sampleItemService).insert(created);
+    }
+
+    @Test
+    public void doesNotDuplicateASpecimenTheOrderAlreadyHolds() {
+        SampleItem dbs = item("si-7", "26");
+        orderHolds(item("si-1", "30"), dbs);
+
+        assertEquals(dbs, scope.resolveOrCreateSampleItemForTarget(sample, "26", "1"));
+        verify(sampleItemService, never()).insert(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    public void addsNothingWhenTheRuleNamesNoSpecimen() {
+        assertNull(scope.resolveOrCreateSampleItemForTarget(sample, null, "1"));
+        verify(sampleItemService, never()).insert(org.mockito.ArgumentMatchers.any());
     }
 }

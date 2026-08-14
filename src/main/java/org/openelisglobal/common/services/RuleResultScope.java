@@ -8,6 +8,8 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,12 @@ public class RuleResultScope {
 
     @Autowired
     private TestResultComponentService testResultComponentService;
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Autowired
     private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
@@ -143,6 +151,44 @@ public class RuleResultScope {
             }
         }
         return null;
+    }
+
+    /**
+     * The specimen a generated test is reported on, added to the order when it is
+     * not already there.
+     *
+     * <p>
+     * A rule names the specimen its result belongs to, and that naming is the lab's
+     * instruction: a calculation configured to report AAA on DBS reports on DBS.
+     * Reporting it on whichever specimen happened to trigger the rule attributes
+     * the result to a specimen it did not come from.
+     *
+     * <p>
+     * The order will often not hold the configured specimen yet — the generated
+     * test is the reason to have it — so it is added to the order rather than the
+     * instruction being dropped. It is added in the Entered state, so it reads as a
+     * specimen the order now expects rather than one already in hand.
+     */
+    @Transactional
+    public SampleItem resolveOrCreateSampleItemForTarget(Sample sample, String targetSampleTypeId, String sysUserId) {
+        SampleItem existing = sampleItemForTarget(sample, targetSampleTypeId);
+        if (existing != null || sample == null || GenericValidator.isBlankOrNull(targetSampleTypeId)) {
+            return existing;
+        }
+        TypeOfSample typeOfSample = typeOfSampleService.get(targetSampleTypeId);
+        if (typeOfSample == null) {
+            return null;
+        }
+        List<SampleItem> items = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        SampleItem item = new SampleItem();
+        item.setSample(sample);
+        item.setTypeOfSample(typeOfSample);
+        item.setSortOrder(String.valueOf((items == null ? 0 : items.size()) + 1));
+        item.setStatusId(statusService.getStatusID(StatusService.SampleStatus.Entered));
+        item.setSysUserId(sysUserId);
+        item.setCollectionDate(sample.getCollectionDate());
+        sampleItemService.insert(item);
+        return item;
     }
 
     /**

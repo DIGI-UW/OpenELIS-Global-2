@@ -512,13 +512,13 @@ public class TestCalculatedUtil {
         generatedAnalysis.setParentAnalysis(currentAnalysis);
         generatedAnalysis.setParentResult(result);
         // The calculation names the specimen its result belongs on; the
-        // triggering result's specimen only decided that it should run. Where
-        // the order holds that specimen the generated analysis goes there, and
-        // where it does not the existing behaviour stands rather than a
-        // collection being invented.
-        SampleItem targetItem = ruleResultScope.sampleItemForTarget(
+        // triggering result's specimen only decided that it should run. The
+        // order is given that specimen when it does not already hold one, so a
+        // calculation configured to report on DBS reports on DBS rather than on
+        // whatever happened to feed it.
+        SampleItem targetItem = ruleResultScope.resolveOrCreateSampleItemForTarget(
                 currentAnalysis.getSampleItem() == null ? null : currentAnalysis.getSampleItem().getSample(),
-                targetSampleTypeId);
+                targetSampleTypeId, systemUserId);
         if (targetItem != null) {
             generatedAnalysis.setSampleItem(targetItem);
             generatedAnalysis.setSampleTypeName(
