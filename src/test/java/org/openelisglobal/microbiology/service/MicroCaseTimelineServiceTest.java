@@ -24,6 +24,8 @@ import org.openelisglobal.note.service.NoteObject;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroCaseTimelineServiceTest {
@@ -34,12 +36,15 @@ public class MicroCaseTimelineServiceTest {
     private MicroCaseActivityDAO activityDAO;
     @Mock
     private NoteService noteService;
+    @Mock
+    private SystemUserService systemUserService;
 
     private MicroCaseTimelineService service;
 
     @Before
     public void setUp() {
-        service = new MicroCaseTimelineServiceImpl(caseDAO, activityDAO, noteService, "sample-item-table");
+        service = new MicroCaseTimelineServiceImpl(caseDAO, activityDAO, noteService, systemUserService,
+                "sample-item-table");
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         microCase.setSampleItemId("sample-item-1");
@@ -66,18 +71,25 @@ public class MicroCaseTimelineServiceTest {
         activity.setCaseId("case-1");
         activity.setActivityType(MicroCaseActivityType.INOCULATION_RECORDED.name());
         activity.setOccurredAt(new Timestamp(1000L));
+        activity.setPerformedBy("42");
         Note currentCase = note("note-1", "Current case", "MICROBIOLOGY_CASE:case-1", 2000L);
         Note siblingCase = note("note-2", "Sibling case", "MICROBIOLOGY_CASE:case-2", 3000L);
+        SystemUser user = new SystemUser();
+        user.setFirstName("Olivia");
+        user.setLastName("Mendez");
         when(activityDAO.getByCaseId("case-1")).thenReturn(List.of(activity));
         when(noteService.getNotesChronologicallyByRefIdAndRefTableAndType("sample-item-1", "sample-item-table",
                 List.of(Note.INTERNAL))).thenReturn(List.of(currentCase, siblingCase));
+        when(systemUserService.getUserById("42")).thenReturn(user);
 
         List<MicroCaseActivityForm> timeline = service.getTimeline("case-1");
 
         assertEquals(2, timeline.size());
         assertEquals(MicroCaseActivityType.INOCULATION_RECORDED.name(), timeline.get(0).activityType);
+        assertEquals("Olivia Mendez", timeline.get(0).performedByDisplay);
         assertEquals(MicroCaseActivityType.MANUAL_NOTE.name(), timeline.get(1).activityType);
         assertEquals("Current case", timeline.get(1).note);
+        assertEquals("Olivia Mendez", timeline.get(1).performedByDisplay);
     }
 
     private Note note(String id, String text, String subject, long occurredAt) {

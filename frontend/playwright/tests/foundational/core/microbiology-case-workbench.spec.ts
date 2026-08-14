@@ -121,6 +121,12 @@ test.describe("Microbiology case workbench", () => {
       .fill("Colonies visible at 18 hours");
     await page.getByRole("button", { name: "Save note" }).click();
     await expect(timeline.getByText("Manual", { exact: true })).toBeVisible();
+    await expect(
+      timeline.getByText("Performed by Open ELIS", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      timeline.getByText("Performed by 1", { exact: true }),
+    ).toHaveCount(0);
 
     await caseView
       .getByRole("button", { name: "Inoculation", exact: true })
