@@ -306,6 +306,14 @@ function ReflexRule() {
   };
 
   /**
+   * The dictionary options fetched for a condition's test, or undefined before
+   * they have arrived. An existing rule renders once before its result lists
+   * load, so this is a real state and not a defensive guard.
+   */
+  const dictionaryResultsFor = (index, item_index) =>
+    testResultList[index]?.[item_index]?.["list"];
+
+  /**
    * The type the condition editor works against: the chosen component's, not
    * the test's. A numeric condition under a coded primary was being offered
    * the dictionary editor and could never match.
@@ -849,13 +857,15 @@ function ReflexRule() {
                                       >
                                         <SelectItem text="" value="" />
                                         <>
-                                          {testResultList[index][
-                                            condition_index
-                                          ]["list"] && (
+                                          {dictionaryResultsFor(
+                                            index,
+                                            condition_index,
+                                          ) && (
                                             <>
-                                              {testResultList[index][
-                                                condition_index
-                                              ]["list"].map(
+                                              {dictionaryResultsFor(
+                                                index,
+                                                condition_index,
+                                              ).map(
                                                 (
                                                   result,
                                                   condition_value_index,
@@ -876,9 +886,10 @@ function ReflexRule() {
                                         <TextInput
                                           name="value"
                                           type={
-                                            testResultList[index][
-                                              condition_index
-                                            ]["type"] === "N"
+                                            conditionResultType(
+                                              index,
+                                              condition_index,
+                                            ) === "N"
                                               ? "number"
                                               : "text"
                                           }
@@ -889,9 +900,10 @@ function ReflexRule() {
                                             "_value"
                                           }
                                           labelText={
-                                            testResultList[index][
-                                              condition_index
-                                            ]["type"] === "N" ? (
+                                            conditionResultType(
+                                              index,
+                                              condition_index,
+                                            ) === "N" ? (
                                               <FormattedMessage id="rulebuilder.label.numericValue" />
                                             ) : (
                                               <FormattedMessage id="rulebuilder.label.textValue" />
@@ -907,9 +919,10 @@ function ReflexRule() {
                                             );
                                             addTextInPutError(
                                               condition.value,
-                                              testResultList[index][
-                                                condition_index
-                                              ]["type"],
+                                              conditionResultType(
+                                                index,
+                                                condition_index,
+                                              ),
                                               "condition-value_" +
                                                 index +
                                                 "_" +
@@ -918,9 +931,10 @@ function ReflexRule() {
                                           }}
                                           invalid={validateTextInPut(
                                             condition.value,
-                                            testResultList[index][
-                                              condition_index
-                                            ]["type"],
+                                            conditionResultType(
+                                              index,
+                                              condition_index,
+                                            ),
                                           )}
                                           invalidText={
                                             <FormattedMessage id="rulebuilder.error.invalidNumeric" />
@@ -959,61 +973,63 @@ function ReflexRule() {
                                 )}
                               </Column>
                               <Column lg={2} sm={4}>
-                                {testResultList[index] &&
-                                  testResultList[index][condition_index] &&
-                                  testResultList[index][condition_index][
-                                    "type"
-                                  ] && (
-                                    <>
-                                      {testResultList[index][condition_index][
-                                        "type"
-                                      ] === "N" &&
-                                        condition.relation === "BETWEEN" && (
-                                          <TextInput
-                                            name="value2"
-                                            type="text"
-                                            id={
-                                              index +
-                                              "_" +
-                                              condition_index +
-                                              "_value"
-                                            }
-                                            labelText={
-                                              <FormattedMessage id="rulebuilder.label.numericValue2" />
-                                            }
-                                            value={condition.value2}
-                                            onChange={(e) => {
-                                              handleRuleFieldItemChange(
-                                                e,
+                                {conditionResultType(
+                                  index,
+                                  condition_index,
+                                ) && (
+                                  <>
+                                    {conditionResultType(
+                                      index,
+                                      condition_index,
+                                    ) === "N" &&
+                                      condition.relation === "BETWEEN" && (
+                                        <TextInput
+                                          name="value2"
+                                          type="text"
+                                          id={
+                                            index +
+                                            "_" +
+                                            condition_index +
+                                            "_value"
+                                          }
+                                          labelText={
+                                            <FormattedMessage id="rulebuilder.label.numericValue2" />
+                                          }
+                                          value={condition.value2}
+                                          onChange={(e) => {
+                                            handleRuleFieldItemChange(
+                                              e,
+                                              index,
+                                              condition_index,
+                                              FIELD.conditions,
+                                            );
+                                            addTextInPutError(
+                                              condition.value2,
+                                              conditionResultType(
                                                 index,
                                                 condition_index,
-                                                FIELD.conditions,
-                                              );
-                                              addTextInPutError(
-                                                condition.value2,
-                                                testResultList[index][
-                                                  condition_index
-                                                ]["type"],
-                                                "condition-value2_" +
-                                                  index +
-                                                  "_" +
-                                                  condition_index,
-                                              );
-                                            }}
-                                            invalid={validateTextInPut(
-                                              condition.value2,
-                                              testResultList[index][
-                                                condition_index
-                                              ]["type"],
-                                            )}
-                                            invalidText={
-                                              <FormattedMessage id="rulebuilder.error.invalidNumeric" />
-                                            }
-                                            required
-                                          />
-                                        )}
-                                    </>
-                                  )}
+                                              ),
+                                              "condition-value2_" +
+                                                index +
+                                                "_" +
+                                                condition_index,
+                                            );
+                                          }}
+                                          invalid={validateTextInPut(
+                                            condition.value2,
+                                            conditionResultType(
+                                              index,
+                                              condition_index,
+                                            ),
+                                          )}
+                                          invalidText={
+                                            <FormattedMessage id="rulebuilder.error.invalidNumeric" />
+                                          }
+                                          required
+                                        />
+                                      )}
+                                  </>
+                                )}
                               </Column>
                               <Column lg={1} sm={4}>
                                 {rule.conditions.length !== 1 && (
