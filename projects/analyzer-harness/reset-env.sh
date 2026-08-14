@@ -144,7 +144,7 @@ mkdir -p "$HARNESS_PLUGIN_DIR"
 if ! find "$REPO_ROOT/plugins/analyzers" -type f -path "*/target/*.jar" \
     ! -name "*sources.jar" ! -name "*javadoc.jar" | grep -q .; then
     echo -e "  ${YELLOW}→ No built plugin jars found; building plugins first${NC}"
-    mvn clean install -DskipTests -Dmaven.test.skip=true -f "$REPO_ROOT/plugins/pom.xml"
+    "$REPO_ROOT/scripts/run-java21" mvn clean install -DskipTests -Dmaven.test.skip=true -f "$REPO_ROOT/plugins/pom.xml"
 fi
 
 rm -rf "$HARNESS_PLUGIN_DIR"/*

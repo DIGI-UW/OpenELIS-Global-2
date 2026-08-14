@@ -85,7 +85,7 @@ _ensure_generic_plugins() {
     if [ "$force" = "true" ] || ! ls $jar_pattern 1>/dev/null 2>&1; then
       if [ -f "$src_dir/pom.xml" ]; then
         echo "  Building $plugin_name..."
-        (cd "$src_dir" && mvn package -DskipTests -q) || {
+        (cd "$src_dir" && "$REPO_ROOT/scripts/run-java21" mvn package -DskipTests -q) || {
           echo -e "  ${RED}FAIL: $plugin_name build failed${NC}"
           continue
         }

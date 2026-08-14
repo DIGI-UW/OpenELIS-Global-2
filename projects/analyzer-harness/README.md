@@ -49,6 +49,53 @@ local-only overrides layered on top:
 These files must not drift behaviorally from the authoritative CI harness path
 for critical analyzer flows.
 
+### Run beside another local stack
+
+Add the isolated override and a distinct Compose project name. This preserves
+the normal harness services while replacing global container names, host ports,
+and network subnets:
+
+```bash
+docker compose -p ogc1054 \
+  -f projects/analyzer-harness/docker-compose.dev.yml \
+  -f projects/analyzer-harness/docker-compose.base.yml \
+  -f projects/analyzer-harness/docker-compose.analyzer-test.yml \
+  -f projects/analyzer-harness/docker-compose.isolated.yml \
+  up -d
+```
+
+The defaults expose the isolated UI at `https://localhost:29443`, Bridge at
+`https://localhost:28452`, analyzer mock API at `http://localhost:28085`, and
+PostgreSQL at `localhost:25432`. Every value in `docker-compose.isolated.yml`
+can be overridden with its named `HARNESS_*` environment variable. Use the
+matching Compose arguments for `ps`, `logs`, or `down`; never use
+`--remove-orphans` across different project names.
+
+The current analyzer mock still creates globally named `mock-analyzer-*`
+networks with fixed `10.42.x.0/24` pools. Therefore this layer is proven for an
+analyzer-enabled stack beside a core OpenELIS stack. Running two
+analyzer-enabled stacks concurrently additionally requires the mock network
+namespace/pool work assigned to MOCK-M4; do not let two mock instances adopt
+each other's dynamic networks.
+
+When loading fixtures into a parallel stack, select the database explicitly:
+
+```bash
+DB_CONTAINER=ogc1054-database \
+  ./src/test/resources/load-test-fixtures.sh --profile=harness
+```
+
+Foundational analyzer transport tests can target the isolated hosts without
+changing their normal defaults:
+
+```bash
+cd frontend
+BASE_URL=https://localhost:29443 \
+MOCK_SIMULATOR_URL=http://localhost:28085 \
+  npm run pw:test -- --project=harness-foundational \
+  playwright/tests/foundational/harness/analyzer-astm-results.spec.ts
+```
+
 ## Build and start from scratch
 
 ```bash
@@ -93,7 +140,7 @@ classes):
 
 ```bash
 # From repo root
-mvn clean install -DskipTests -Dmaven.test.skip=true
+scripts/run-java21 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # From harness directory — force-recreate clears the Tomcat WAR cache
 cd projects/analyzer-harness

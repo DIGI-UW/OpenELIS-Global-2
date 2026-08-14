@@ -17,7 +17,7 @@ import {
   LONG_TIMEOUT,
 } from "../../../helpers/timeouts";
 
-const SIMULATOR_URL = "http://localhost:8085";
+const SIMULATOR_URL = process.env.MOCK_SIMULATOR_URL || "http://localhost:8085";
 // Use the bridge IP on the dedicated GeneXpert mock subnet so the simulator
 // source IP is the registered GeneXpert mock IP (10.42.20.10).
 const BRIDGE_DESTINATION = "tcp://10.42.20.2:12001";

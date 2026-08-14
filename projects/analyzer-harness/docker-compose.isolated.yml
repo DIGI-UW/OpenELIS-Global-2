@@ -1,0 +1,65 @@
+# Optional final layer for running a branch-local analyzer harness alongside
+# another OpenELIS stack. Compose-managed names, ports, and networks are unique.
+services:
+  certs:
+    container_name: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-certs
+
+  db.openelis.org:
+    container_name: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-database
+    ports: !override
+      - "${HARNESS_DB_PORT:-25432}:5432"
+
+  oe.openelis.org:
+    container_name: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-webapp
+    ports: !override
+      - "${HARNESS_OE_HTTP_PORT:-29081}:8080"
+      - "${HARNESS_OE_HTTPS_PORT:-29444}:8443"
+    networks: !override
+      default: {}
+      analyzer-net:
+        aliases:
+          - oe.openelis.org
+
+  fhir.openelis.org:
+    container_name: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-fhir
+    ports: !override
+      - "${HARNESS_FHIR_HTTP_PORT:-29082}:8080"
+      - "${HARNESS_FHIR_HTTPS_PORT:-29445}:8443"
+
+  frontend.openelis.org:
+    container_name: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-frontend
+
+  proxy:
+    container_name: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-proxy
+    ports: !override
+      - "${HARNESS_PROXY_HTTP_PORT:-29080}:80"
+      - "${HARNESS_PROXY_HTTPS_PORT:-29443}:443"
+
+  astm-simulator:
+    container_name: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-analyzer-mock
+    ports: !override
+      - "${HARNESS_MOCK_ASTM_PORT:-25050}:9600"
+      - "${HARNESS_MOCK_HTTP_PORT:-28085}:8080"
+      - "${HARNESS_MOCK_HL7_PORT:-25380}:5380"
+    environment:
+      BRIDGE_CONTAINER_NAME: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-bridge
+      MOCK_CONTAINER_NAME: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-analyzer-mock
+    networks: !override
+      analyzer-net: {}
+
+  openelis-analyzer-bridge:
+    container_name: ${HARNESS_CONTAINER_PREFIX:-ogc1054}-bridge
+    ports: !override
+      - "${HARNESS_BRIDGE_HTTPS_PORT:-28452}:8443"
+      - "${HARNESS_BRIDGE_ASTM_PORT:-22000}:12001"
+      - "${HARNESS_BRIDGE_MLLP_PORT:-22575}:2575"
+
+networks:
+  default:
+    ipam: !override
+      config:
+        - subnet: ${HARNESS_CORE_SUBNET:-172.30.54.0/24}
+  analyzer-net:
+    ipam: !override
+      config:
+        - subnet: ${HARNESS_ANALYZER_SUBNET:-172.30.55.0/24}

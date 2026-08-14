@@ -34,7 +34,7 @@ import type {
   PushResult,
 } from "../../../helpers/analyzer-test-config";
 
-const SIMULATOR_URL = "http://localhost:8085";
+const SIMULATOR_URL = process.env.MOCK_SIMULATOR_URL || "http://localhost:8085";
 const RESULTS_TIMEOUT = 90_000;
 
 // ── Analyzer Configurations ──────────────────────────────────────

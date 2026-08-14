@@ -53,7 +53,7 @@ echo ""
 if [ "$SKIP_WAR" != true ]; then
   echo "[1/2] Building OpenELIS WAR (repo root)..."
   cd "$REPO_ROOT"
-  mvn clean install -DskipTests -Dmaven.test.skip=true -q
+  "$REPO_ROOT/scripts/run-java21" mvn clean install -DskipTests -Dmaven.test.skip=true -q
   if [ ! -f "target/OpenELIS-Global.war" ]; then
     echo "ERROR: WAR not produced at target/OpenELIS-Global.war" >&2
     exit 1
