@@ -216,9 +216,15 @@ test.describe("microbiology order entry on the supported workflow", () => {
     await expect(
       page.getByRole("combobox", { name: "Program" }),
     ).toBeDisabled();
+    const reloadedDetails = page.getByTestId(
+      "microbiology-order-entry-section",
+    );
     await expect(
-      page.getByRole("combobox", { name: "Culture Method" }),
-    ).toHaveValue("Blood Culture Standard");
+      reloadedDetails.getByText(cultureMethodName, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reloadedDetails.getByRole("combobox", { name: "Culture Protocol" }),
+    ).toHaveCount(0);
     await expect(page.getByLabel("Patient Origin")).toHaveValue("INPATIENT");
     await expect(page.getByLabel("Date of admission")).toHaveValue(
       displayedAdmissionDate,

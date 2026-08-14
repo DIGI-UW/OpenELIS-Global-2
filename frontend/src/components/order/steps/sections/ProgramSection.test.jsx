@@ -98,7 +98,7 @@ describe("ProgramSection microbiology derivation", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByDisplayValue("Blood Culture Standard"),
+      screen.getByText("Blood Culture Standard", { exact: true }),
     ).toBeInTheDocument();
     expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
       "/rest/program/8/questionnaire",
@@ -133,7 +133,12 @@ describe("ProgramSection microbiology derivation", () => {
       await screen.findByRole("combobox", { name: "Program" }),
     ).toHaveValue("Microbiology");
     expect(screen.getByRole("combobox", { name: "Program" })).toBeDisabled();
-    expect(screen.getByDisplayValue("Blood Culture Standard")).toBeDisabled();
+    expect(
+      screen.getByText("Blood Culture Standard", { exact: true }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", { name: "Culture Protocol" }),
+    ).not.toBeInTheDocument();
   });
 
   it("clears the previous Program questionnaire when culture derives Microbiology", async () => {
