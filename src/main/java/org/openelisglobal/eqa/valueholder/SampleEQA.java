@@ -54,6 +54,16 @@ public class SampleEQA extends BaseObject<Long> {
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private EQADistribution eqaDistribution;
 
+    /**
+     * V2 cycle/round routing (FR-V2.1-03). Optional per gate G2 — orders without a
+     * cycle surface in the "Uncycled EQA orders" bucket rather than vanishing.
+     */
+    @Column(name = "cycle_id")
+    private Long cycleId;
+
+    @Column(name = "round_id")
+    private Long roundId;
+
     @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
 

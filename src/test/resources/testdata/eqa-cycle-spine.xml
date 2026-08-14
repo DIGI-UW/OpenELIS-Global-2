@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- OGC-609 [EQA V2.1 / T-08] — catalog rows for the cycle-spine tests.
+    Eight analyte/test pairs covering the six ePT-validated domains of AC-V2.1-23
+    (COVID-19 and TB each need two, qualitative and quantitative/molecular).
+    Nothing domain-specific lives in the EQA schema — these are ordinary test-catalog
+    entries, which is exactly what the six-domain coverage test asserts. -->
+<dataset>
+
+    <analyte id="9801" analyte_id="9801"
+        name="HIV serology (rapid)" is_active="Y" external_id="EQA9801"
+        local_abbrev="HIVSER" lastupdated="2026-01-01 12:00:00" />
+    <analyte id="9802" analyte_id="9802" name="HIV viral load"
+        is_active="Y" external_id="EQA9802" local_abbrev="HIVVL"
+        lastupdated="2026-01-01 12:00:00" />
+    <analyte id="9803" analyte_id="9803"
+        name="Early infant diagnosis" is_active="Y" external_id="EQA9803"
+        local_abbrev="EID" lastupdated="2026-01-01 12:00:00" />
+    <analyte id="9804" analyte_id="9804" name="HIV recency"
+        is_active="Y" external_id="EQA9804" local_abbrev="HIVREC"
+        lastupdated="2026-01-01 12:00:00" />
+    <analyte id="9805" analyte_id="9805" name="COVID-19 antigen"
+        is_active="Y" external_id="EQA9805" local_abbrev="COVQL"
+        lastupdated="2026-01-01 12:00:00" />
+    <analyte id="9806" analyte_id="9806" name="COVID-19 RT-PCR Ct"
+        is_active="Y" external_id="EQA9806" local_abbrev="COVQN"
+        lastupdated="2026-01-01 12:00:00" />
+    <analyte id="9807" analyte_id="9807" name="TB microscopy grade"
+        is_active="Y" external_id="EQA9807" local_abbrev="TBMIC"
+        lastupdated="2026-01-01 12:00:00" />
+    <analyte id="9808" analyte_id="9808"
+        name="TB molecular (Xpert)" is_active="Y" external_id="EQA9808"
+        local_abbrev="TBMOL" lastupdated="2026-01-01 12:00:00" />
+
+    <test id="9701" description="HIV serology (rapid)" loinc="75622-1"
+        reporting_description="HIV serology, rapid" sticker_req_flag="N"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="EQAHIVSER" sort_order="2147483646"
+        name="HIV serology (rapid)" orderable="true" guid="eqa-spine-9701"
+        antimicrobial_resistance="false" />
+
+    <test id="9702" description="HIV viral load" loinc="25836-8"
+        reporting_description="HIV-1 RNA, quantitative" sticker_req_flag="N"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="EQAHIVVL" sort_order="2147483646" name="HIV viral load"
+        orderable="true" guid="eqa-spine-9702"
+        antimicrobial_resistance="false" />
+
+    <test id="9703" description="Early infant diagnosis"
+        loinc="70241-5" reporting_description="HIV-1 DNA, qualitative"
+        sticker_req_flag="N" is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="EQAEID" sort_order="2147483646"
+        name="Early infant diagnosis" orderable="true" guid="eqa-spine-9703"
+        antimicrobial_resistance="false" />
+
+    <test id="9704" description="HIV recency" loinc="89365-1"
+        reporting_description="HIV recency assay" sticker_req_flag="N"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="EQAHIVREC" sort_order="2147483646" name="HIV recency"
+        orderable="true" guid="eqa-spine-9704"
+        antimicrobial_resistance="false" />
+
+    <test id="9705" description="COVID-19 antigen" loinc="94558-4"
+        reporting_description="SARS-CoV-2 antigen" sticker_req_flag="N"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="EQACOVQL" sort_order="2147483646" name="COVID-19 antigen"
+        orderable="true" guid="eqa-spine-9705"
+        antimicrobial_resistance="false" />
+
+    <test id="9706" description="COVID-19 RT-PCR" loinc="94500-6"
+        reporting_description="SARS-CoV-2 RNA, Ct value" sticker_req_flag="N"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="EQACOVQN" sort_order="2147483646" name="COVID-19 RT-PCR"
+        orderable="true" guid="eqa-spine-9706"
+        antimicrobial_resistance="false" />
+
+    <test id="9707" description="TB microscopy" loinc="11545-1"
+        reporting_description="AFB smear, semi-quantitative"
+        sticker_req_flag="N" is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="EQATBMIC" sort_order="2147483646" name="TB microscopy"
+        orderable="true" guid="eqa-spine-9707"
+        antimicrobial_resistance="false" />
+
+    <test id="9708" description="TB molecular (Xpert)" loinc="79380-2"
+        reporting_description="M. tuberculosis DNA, qualitative"
+        sticker_req_flag="N" is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="EQATBMOL" sort_order="2147483646"
+        name="TB molecular (Xpert)" orderable="true" guid="eqa-spine-9708"
+        antimicrobial_resistance="false" />
+
+</dataset>

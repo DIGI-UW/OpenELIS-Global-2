@@ -177,6 +177,12 @@
         <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
         <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
 
+        <!-- EQA V2 cycle spine (OGC-609) -->
+        <class>org.openelisglobal.eqa.valueholder.EQACycle</class>
+        <class>org.openelisglobal.eqa.valueholder.EQARound</class>
+        <class>org.openelisglobal.eqa.valueholder.EQACycleStateTransition</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAParticipantResult</class>
+
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
         <class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>
