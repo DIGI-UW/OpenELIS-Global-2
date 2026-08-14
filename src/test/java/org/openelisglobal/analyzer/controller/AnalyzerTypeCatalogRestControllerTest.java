@@ -1,10 +1,12 @@
 package org.openelisglobal.analyzer.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -21,6 +23,9 @@ import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogSummary;
 import org.openelisglobal.analyzer.service.AnalyzerTypeMappingProgress;
 import org.openelisglobal.analyzer.service.AnalyzerTypeSiteBindingSummary;
 import org.openelisglobal.analyzer.service.BridgeProfileAudit;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -61,6 +66,59 @@ public class AnalyzerTypeCatalogRestControllerTest {
 
         mockMvc.perform(get("/rest/analyzer/types")).andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.error").value("Analyzer Bridge profile catalog returned HTTP 503"));
+    }
+
+    @Test
+    public void getsVersionAddressedDetailAndBridgeHistory() throws Exception {
+        when(catalogService.get("shipped.mock-hematology", 3)).thenReturn(summary());
+        when(catalogService.history("shipped.mock-hematology"))
+                .thenReturn(List.of(new org.openelisglobal.analyzer.service.BridgeProfileCatalogEntry(
+                        new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode()
+                                .put("profileId", "shipped.mock-hematology").put("revision", 3),
+                        new BridgeProfileAudit("ACTIVATED", "bridge-user", Instant.parse("2026-08-14T02:00:00Z")),
+                        "sha256:bridge")));
+
+        mockMvc.perform(get("/rest/analyzer/types/shipped.mock-hematology").param("revision", "3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profileId").value("shipped.mock-hematology"));
+        mockMvc.perform(get("/rest/analyzer/types/shipped.mock-hematology/history")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].profile.profileId").value("shipped.mock-hematology"))
+                .andExpect(jsonPath("$[0].audit.action").value("ACTIVATED"));
+    }
+
+    @Test
+    public void forksProfileWithLoggedInActor() throws Exception {
+        org.openelisglobal.analyzer.service.AnalyzerProfileForkRequest request = new org.openelisglobal.analyzer.service.AnalyzerProfileForkRequest(
+                3, "site.mock-hematology-1", "Mock Hematology -1");
+        when(catalogService.fork(eq("shipped.mock-hematology"), eq(request), eq("42"))).thenReturn(summary());
+
+        mockMvc.perform(post("/rest/analyzer/types/shipped.mock-hematology/fork")
+                .requestAttr(IActionConstants.USER_SESSION_DATA, actor()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sourceRevision\":3,\"profileId\":\"site.mock-hematology-1\","
+                        + "\"displayName\":\"Mock Hematology -1\"}"))
+                .andExpect(status().isCreated());
+
+        verify(catalogService).fork("shipped.mock-hematology", request, "42");
+    }
+
+    @Test
+    public void deactivatesAndReactivatesProfileWithLoggedInActor() throws Exception {
+        when(catalogService.deactivate("shipped.mock-hematology", "42")).thenReturn(summary());
+        when(catalogService.reactivate("shipped.mock-hematology", "42")).thenReturn(summary());
+
+        mockMvc.perform(post("/rest/analyzer/types/shipped.mock-hematology/deactivate")
+                .requestAttr(IActionConstants.USER_SESSION_DATA, actor())).andExpect(status().isOk());
+        mockMvc.perform(post("/rest/analyzer/types/shipped.mock-hematology/reactivate")
+                .requestAttr(IActionConstants.USER_SESSION_DATA, actor())).andExpect(status().isOk());
+
+        verify(catalogService).deactivate("shipped.mock-hematology", "42");
+        verify(catalogService).reactivate("shipped.mock-hematology", "42");
+    }
+
+    private static UserSessionData actor() {
+        UserSessionData actor = new UserSessionData();
+        actor.setSytemUserId(42);
+        return actor;
     }
 
     private static AnalyzerTypeCatalogSummary summary() {
