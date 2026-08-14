@@ -85,8 +85,6 @@ function ReflexRule() {
     conditions: {},
     actions: {},
   }); //{field :{index :{field_index:[]}}}
-  // Components of each condition's test: {index: {condition_index: []}}
-  const [componentList, setComponentList] = useState({});
   const [counter, setCounter] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -268,33 +266,6 @@ function ReflexRule() {
     handleRuleFieldItemChange(e, index, itemIndex, field);
   };
 
-  /**
-   * The components of the selected test, so a condition on a multi-component
-   * test can say which measurement it tests. Without this a condition on the
-   * numeric Ct Value is evaluated against the coded PCR Result beside it.
-   */
-  const loadComponentsForTest = (testId, index, item_index) => {
-    if (!testId) {
-      return;
-    }
-    getFromOpenElisServer(
-      `/rest/test-catalog/tests/${testId}/sample-results`,
-      (res) => {
-        const list =
-          res && Array.isArray(res.components)
-            ? res.components.map((c) => ({
-                id: c.id,
-                value: c.label || c.code || c.id,
-              }))
-            : [];
-        setComponentList((prev) => ({
-          ...prev,
-          [index]: { ...(prev[index] || {}), [item_index]: list },
-        }));
-      },
-    );
-  };
-
   const handleTestSelected = (id, index, item_index, field) => {
     var testDetails = { resultList: [], resultType: "N" };
     if (sampleTestList[field]) {
@@ -302,9 +273,7 @@ function ReflexRule() {
         (test) => test.id == id,
       );
     }
-    if (field === FIELD.conditions) {
-      loadComponentsForTest(id, index, item_index);
-    }
+
     const results = { ...testResultList };
     if (!results[index]) {
       results[index] = {};
@@ -317,8 +286,40 @@ function ReflexRule() {
     setTestResultList(results);
   };
 
-  const componentsFor = (index, item_index) =>
-    (componentList[index] && componentList[index][item_index]) || [];
+  /**
+   * The components of a condition's test, read from the test the search
+   * already returned. Deriving it means an existing rule shows the component
+   * it is bound to on load, not only after the test is re-picked.
+   */
+  const componentsFor = (index, item_index) => {
+    const tests =
+      (sampleTestList[FIELD.conditions][index] &&
+        sampleTestList[FIELD.conditions][index][item_index]) ||
+      [];
+    const condition = ruleList[index]?.conditions?.[item_index];
+    const test = tests.find((t) => String(t.id) === String(condition?.testId));
+    return (test?.components || []).map((c) => ({
+      id: c.id,
+      value: c.value,
+      resultType: c.resultType || test?.resultType,
+    }));
+  };
+
+  /**
+   * The type the condition editor works against: the chosen component's, not
+   * the test's. A numeric condition under a coded primary was being offered
+   * the dictionary editor and could never match.
+   */
+  const conditionResultType = (index, item_index) => {
+    const condition = ruleList[index]?.conditions?.[item_index];
+    const component = componentsFor(index, item_index).find(
+      (c) => c.id === condition?.componentId,
+    );
+    if (component?.resultType) {
+      return component.resultType;
+    }
+    return testResultList[index]?.[item_index]?.type;
+  };
 
   const loadSampleTestList = (field, index, item_index, resulList) => {
     const results = { ...sampleTestList };
@@ -777,53 +778,50 @@ function ReflexRule() {
                                   required
                                 >
                                   <SelectItem text="" value="" />
-                                  {testResultList[index] &&
-                                    testResultList[index][condition_index] &&
-                                    testResultList[index][condition_index][
-                                      "type"
-                                    ] && (
-                                      <>
-                                        {testResultList[index][condition_index][
-                                          "type"
-                                        ] === "N" ? (
-                                          <>
-                                            {numericRelationOptions.map(
-                                              (relation, relation_index) => (
-                                                <SelectItem
-                                                  text={relation.label}
-                                                  value={relation.value}
-                                                  key={relation_index}
-                                                />
-                                              ),
-                                            )}
-                                          </>
-                                        ) : (
-                                          <>
-                                            {generalRelationOptions.map(
-                                              (relation, relation_index) => (
-                                                <SelectItem
-                                                  text={relation.label}
-                                                  value={relation.value}
-                                                  key={relation_index}
-                                                />
-                                              ),
-                                            )}
-                                          </>
-                                        )}
-                                      </>
-                                    )}
+                                  {conditionResultType(
+                                    index,
+                                    condition_index,
+                                  ) && (
+                                    <>
+                                      {conditionResultType(
+                                        index,
+                                        condition_index,
+                                      ) === "N" ? (
+                                        <>
+                                          {numericRelationOptions.map(
+                                            (relation, relation_index) => (
+                                              <SelectItem
+                                                text={relation.label}
+                                                value={relation.value}
+                                                key={relation_index}
+                                              />
+                                            ),
+                                          )}
+                                        </>
+                                      ) : (
+                                        <>
+                                          {generalRelationOptions.map(
+                                            (relation, relation_index) => (
+                                              <SelectItem
+                                                text={relation.label}
+                                                value={relation.value}
+                                                key={relation_index}
+                                              />
+                                            ),
+                                          )}
+                                        </>
+                                      )}
+                                    </>
+                                  )}
                                 </Select>
                               </Column>
                               <Column lg={3} sm={4}>
-                                {testResultList[index] &&
-                                testResultList[index][condition_index] &&
-                                testResultList[index][condition_index][
-                                  "type"
-                                ] ? (
+                                {conditionResultType(index, condition_index) ? (
                                   <>
-                                    {testResultList[index][condition_index][
-                                      "type"
-                                    ] === "D" ? (
+                                    {conditionResultType(
+                                      index,
+                                      condition_index,
+                                    ) === "D" ? (
                                       <Select
                                         value={condition.value}
                                         id={

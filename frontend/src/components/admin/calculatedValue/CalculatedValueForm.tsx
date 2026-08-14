@@ -93,8 +93,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   ]);
   const [sampleList, setSampleList] = useState([]);
   const [sampleTestList, setSampleTestList] = useState(TestListObj);
-  // Components of each operand's test: {index: {operationIndex: []}}
-  const [operandComponents, setOperandComponents] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -307,9 +305,12 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     }
     switch (field) {
       case "TEST_RESULT":
-        results[field][index][item_index] = resultList.filter(
-          (result) => result.resultType === "N",
-        );
+        // A test qualifies when any of its components reports a number. Asking
+        // the test itself returns its primary component's type, which hid
+        // every test whose numeric parts sit under a coded primary - COVID-19
+        // PCR reporting an interpretation beside two Ct values.
+        results[field][index][item_index] =
+          resultList.filter(hasNumericComponent);
         break;
       case "FINAL_RESULT":
         results[field][index] = resultList;
@@ -333,6 +334,18 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     setCalculationList(list);
   }
 
+  /** A test is usable here when any component of it reports a number. */
+  const hasNumericComponent = (test: any) =>
+    Array.isArray(test?.resultTypes) && test.resultTypes.length
+      ? test.resultTypes.includes("N")
+      : test?.resultType === "N";
+
+  /** Only the components that report a number may be chosen as the operand. */
+  const numericComponents = (test: any) =>
+    (test?.components || [])
+      .filter((c: any) => (c.resultType || test?.resultType) === "N")
+      .map((c: any) => ({ id: c.id, value: c.value }));
+
   function handleOperationTestSelection(
     id: number,
     index: number,
@@ -343,43 +356,24 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     // Changing the test invalidates the component chosen under the old one.
     list[index].operations[operationIndex].componentId = null;
     setCalculationList(list);
-    loadOperandComponents(id, index, operationIndex);
   }
 
   /**
-   * The components of the operand's test. A calculation reads one measurement,
-   * and on a multi-component test the test name does not name one — without
-   * this the engine takes whichever component's result was written last.
+   * The numeric components of the operand's test, read from the test the search
+   * already returned. Deriving it here means an existing calculation resolves
+   * its component on load too, rather than only after the user re-picks a test.
    */
-  function loadOperandComponents(
-    testId: any,
-    index: number,
-    operationIndex: number,
-  ) {
-    if (!testId) {
-      return;
-    }
-    getFromOpenElisServer(
-      `/rest/test-catalog/tests/${testId}/sample-results`,
-      (res: any) => {
-        const list =
-          res && Array.isArray(res.components)
-            ? res.components.map((c: any) => ({
-                id: c.id,
-                value: c.label || c.code || c.id,
-              }))
-            : [];
-        setOperandComponents((prev: any) => ({
-          ...prev,
-          [index]: { ...(prev[index] || {}), [operationIndex]: list },
-        }));
-      },
+  const operandComponentsFor = (index: number, operationIndex: number) => {
+    const tests =
+      (sampleTestList["TEST_RESULT"][index] &&
+        sampleTestList["TEST_RESULT"][index][operationIndex]) ||
+      [];
+    const operand = calculationList[index]?.operations?.[operationIndex];
+    const test = tests.find(
+      (t: any) => String(t.id) === String(operand?.value),
     );
-  }
-
-  const operandComponentsFor = (index: number, operationIndex: number) =>
-    (operandComponents[index] && operandComponents[index][operationIndex]) ||
-    [];
+    return numericComponents(test);
+  };
 
   const handleCalculationFieldChange = (e: any, index: number) => {
     const { name, value } = e.target;

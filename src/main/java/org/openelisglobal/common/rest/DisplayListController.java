@@ -55,6 +55,8 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -117,6 +119,9 @@ public class DisplayListController extends BaseRestController {
 
     @Autowired
     private TestResultService testResultService;
+
+    @Autowired
+    private TestResultComponentService testResultComponentService;
 
     @Autowired
     DictionaryService dictionaryService;
@@ -588,6 +593,11 @@ public class DisplayListController extends BaseRestController {
                 }
             });
             testDisplayBean.setResultList(resultList);
+            // A test can report several result types at once - a coded
+            // interpretation beside numeric Ct values - so the rule builders
+            // are told what each component reports rather than being left to
+            // read the primary's type as the whole test's.
+            testDisplayBean.setComponents(componentBeansFor(test, testDisplayBean.getResultType()));
             testItems.add(testDisplayBean);
 
             Collections.sort(testItems, new Comparator<TestDisplayBean>() {
@@ -600,6 +610,27 @@ public class DisplayListController extends BaseRestController {
         }
         return testItems;
 
+    }
+
+    /**
+     * The test's components with the result type each one reports. A component
+     * that declares none reports the test's own type, which is what a
+     * single-component test has always done; a test with no components at all
+     * yields an empty list and callers fall back to the test-level type.
+     */
+    private List<TestDisplayBean.ComponentBean> componentBeansFor(Test test, String testLevelType) {
+        List<TestDisplayBean.ComponentBean> beans = new ArrayList<>();
+        List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(test.getId());
+        if (components == null) {
+            return beans;
+        }
+        for (TestResultComponent component : components) {
+            String label = StringUtils.isNotBlank(component.getLabel()) ? component.getLabel() : component.getCode();
+            String type = StringUtils.isNotBlank(component.getResultType()) ? component.getResultType()
+                    : testLevelType;
+            beans.add(new TestDisplayBean.ComponentBean(component.getId(), label, type, component.getIsPrimary()));
+        }
+        return beans;
     }
 
     @GetMapping(value = "systemroles", produces = MediaType.APPLICATION_JSON_VALUE)
