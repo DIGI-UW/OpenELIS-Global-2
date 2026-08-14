@@ -677,8 +677,16 @@ const UnifiedResults: React.FC = () => {
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
+      // A reflex or calculation adds analyses to this order that the save
+      // response only names. Naming them in a toast and leaving the worklist
+      // as it was asks the user to refresh to see the work they just caused,
+      // so the rows are re-read when — and only when — some were generated:
+      // an unconditional reload would discard every other row's unsaved edit.
+      if (triggered.length) {
+        loadWorklist();
+      }
     },
-    [addNotification, intl, setNotificationVisible],
+    [addNotification, intl, setNotificationVisible, loadWorklist],
   );
 
   const handleSave = useCallback(

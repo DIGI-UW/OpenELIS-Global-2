@@ -96,6 +96,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired(required = false)
+    private org.openelisglobal.notifications.service.HeaderNotificationService headerNotificationService;
     @Autowired
     private TestSectionService testSectionService;
     @Autowired
@@ -320,6 +323,15 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             body.put("calculated", reflexAnalyses.stream().filter(e -> e.getResultCalculated())
                     .map(e -> analysisService.getOrderAccessionNumber(e)).collect(Collectors.toList()));
 
+            // A generated test outlives the page that generated it, so saying so
+            // has to outlive it too: the logbook page has always recorded these
+            // through the notification system, and a toast that disappears on
+            // navigation is not a record. Same service the alerts use.
+            notifyGenerated(currentUserId, reflexAnalyses.stream().filter(e -> !e.getResultCalculated()),
+                    "notification.reflex.created");
+            notifyGenerated(currentUserId, reflexAnalyses.stream().filter(e -> e.getResultCalculated()),
+                    "notification.calculated.created");
+
             try {
                 fhirTransformService.transformPersistResultsEntryFhirObjects(dataSet);
             } catch (FhirTransformationException | FhirPersistanceException e) {
@@ -415,6 +427,25 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      * open in Edit (null/blank = none) and the {@code visibleAnalysisIds} on their
      * screen. Returns analysisId → display name of the OTHER user editing it.
      */
+    /** Records generated tests under the header bell. */
+    private void notifyGenerated(String currentUser, Stream<Analysis> analyses, String messageKey) {
+        if (headerNotificationService == null) {
+            return;
+        }
+        List<String> accessions = analyses.map(e -> analysisService.getOrderAccessionNumber(e))
+                .collect(Collectors.toList());
+        if (accessions.isEmpty()) {
+            return;
+        }
+        try {
+            headerNotificationService.notifyUser(currentUser,
+                    MessageUtil.getMessage(messageKey) + " " + String.join(", ", accessions));
+        } catch (RuntimeException ex) {
+            // Recording the notification must never fail the save it describes.
+            LogEvent.logError(ex);
+        }
+    }
+
     @PostMapping(value = "presence", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     @PreAuthorize("hasRole('RESULTS')")
