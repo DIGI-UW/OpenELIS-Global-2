@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="076-01-create-analyzer-site-binding" author="digi-uw">
+        <preConditions onFail="HALT">
+            <not>
+                <tableExists schemaName="clinlims" tableName="analyzer_site_binding"/>
+            </not>
+            <not>
+                <tableExists schemaName="clinlims" tableName="analyzer_site_binding_revision"/>
+            </not>
+            <not>
+                <tableExists schemaName="clinlims" tableName="analyzer_site_binding_test"/>
+            </not>
+        </preConditions>
+
+        <createTable schemaName="clinlims" tableName="analyzer_site_binding">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_analyzer_site_binding"/>
+            </column>
+            <column name="created_by" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <createTable schemaName="clinlims" tableName="analyzer_site_binding_revision">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_analyzer_site_binding_revision"/>
+            </column>
+            <column name="site_binding_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revision_number" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bridge_profile_id" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bridge_profile_revision" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fingerprint" type="VARCHAR(71)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="supersedes_revision_id" type="VARCHAR(36)"/>
+            <column name="created_by" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <createTable schemaName="clinlims" tableName="analyzer_site_binding_test">
+            <column name="site_binding_revision_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_row_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="raw_analyzer_code" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="aliases_json" type="JSONB" defaultValue="[]">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_name" type="VARCHAR(255)"/>
+            <column name="result_type" type="VARCHAR(30)"/>
+            <column name="normalized_system" type="VARCHAR(255)"/>
+            <column name="normalized_code" type="VARCHAR(255)"/>
+            <column name="mapping_state" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="NUMERIC(10)"/>
+            <column name="component_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <addPrimaryKey schemaName="clinlims" tableName="analyzer_site_binding_test"
+            columnNames="site_binding_revision_id, source_row_key"
+            constraintName="pk_analyzer_site_binding_test"/>
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_site_binding_revision"
+            columnNames="site_binding_id, revision_number"
+            constraintName="uq_analyzer_site_binding_revision_number"/>
+
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_revision_binding"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_revision"
+            baseColumnNames="site_binding_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyzer_site_binding"
+            referencedColumnNames="id" onDelete="RESTRICT"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_revision_supersedes"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_revision"
+            baseColumnNames="supersedes_revision_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyzer_site_binding_revision"
+            referencedColumnNames="id" onDelete="RESTRICT"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_test_revision"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_test"
+            baseColumnNames="site_binding_revision_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyzer_site_binding_revision"
+            referencedColumnNames="id" onDelete="CASCADE"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_test_test"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_test"
+            baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test"
+            referencedColumnNames="id" onDelete="RESTRICT"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_test_component"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_test"
+            baseColumnNames="component_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component"
+            referencedColumnNames="id" onDelete="RESTRICT"/>
+
+        <createIndex schemaName="clinlims" tableName="analyzer_site_binding_revision"
+            indexName="idx_analyzer_site_binding_revision_profile">
+            <column name="bridge_profile_id"/>
+            <column name="bridge_profile_revision"/>
+            <column name="fingerprint"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="analyzer_site_binding_test"
+            indexName="idx_analyzer_site_binding_test_target">
+            <column name="test_id"/>
+            <column name="component_id"/>
+        </createIndex>
+
+        <sql>
+            ALTER TABLE clinlims.analyzer_site_binding_revision
+                ADD CONSTRAINT ck_analyzer_site_binding_revision_positive
+                CHECK (revision_number &gt; 0 AND bridge_profile_revision &gt; 0);
+            ALTER TABLE clinlims.analyzer_site_binding_revision
+                ADD CONSTRAINT ck_analyzer_site_binding_revision_fingerprint
+                CHECK (fingerprint ~ '^sha256:[0-9a-f]{64}$');
+            ALTER TABLE clinlims.analyzer_site_binding_test
+                ADD CONSTRAINT ck_analyzer_site_binding_test_state
+                CHECK (mapping_state IN ('BOUND', 'UNRESOLVED', 'IGNORED'));
+            ALTER TABLE clinlims.analyzer_site_binding_test
+                ADD CONSTRAINT ck_analyzer_site_binding_test_target
+                CHECK ((mapping_state = 'BOUND' AND test_id IS NOT NULL)
+                    OR (mapping_state IN ('UNRESOLVED', 'IGNORED') AND test_id IS NULL));
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="analyzer_site_binding_test"/>
+            <dropTable schemaName="clinlims" tableName="analyzer_site_binding_revision"/>
+            <dropTable schemaName="clinlims" tableName="analyzer_site_binding"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="076-02-link-analyzer-site-binding" author="digi-uw">
+        <preConditions onFail="HALT">
+            <tableExists schemaName="clinlims" tableName="analyzer"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="analyzer" columnName="bridge_profile_id"/>
+            </not>
+            <not>
+                <columnExists schemaName="clinlims" tableName="analyzer" columnName="bridge_profile_revision"/>
+            </not>
+            <not>
+                <columnExists schemaName="clinlims" tableName="analyzer" columnName="site_binding_revision_id"/>
+            </not>
+        </preConditions>
+
+        <addColumn schemaName="clinlims" tableName="analyzer">
+            <column name="bridge_profile_id" type="VARCHAR(128)"/>
+            <column name="bridge_profile_revision" type="INTEGER"/>
+            <column name="site_binding_revision_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_analyzer_revision"
+            baseTableSchemaName="clinlims" baseTableName="analyzer"
+            baseColumnNames="site_binding_revision_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyzer_site_binding_revision"
+            referencedColumnNames="id" onDelete="RESTRICT"/>
+        <createIndex schemaName="clinlims" tableName="analyzer" indexName="idx_analyzer_bridge_profile">
+            <column name="bridge_profile_id"/>
+            <column name="bridge_profile_revision"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="analyzer" indexName="idx_analyzer_site_binding_revision">
+            <column name="site_binding_revision_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.analyzer
+                ADD CONSTRAINT ck_analyzer_profile_binding_tuple
+                CHECK ((bridge_profile_id IS NULL
+                        AND bridge_profile_revision IS NULL
+                        AND site_binding_revision_id IS NULL)
+                    OR (bridge_profile_id IS NOT NULL
+                        AND bridge_profile_revision &gt; 0
+                        AND site_binding_revision_id IS NOT NULL));
+        </sql>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="analyzer"
+                constraintName="fk_analyzer_site_binding_analyzer_revision"/>
+            <dropIndex schemaName="clinlims" tableName="analyzer" indexName="idx_analyzer_bridge_profile"/>
+            <dropIndex schemaName="clinlims" tableName="analyzer" indexName="idx_analyzer_site_binding_revision"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer" columnName="site_binding_revision_id"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer" columnName="bridge_profile_revision"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer" columnName="bridge_profile_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

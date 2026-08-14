@@ -202,4 +202,7 @@
   <!-- OGC-224: panel terminology mappings (LOINC backfilled from panel.loinc, the FHIR routing key) -->
   <include relativeToChangelogFile="true" file="075-panel-terminology-mapping.xml"/>
 
+  <!-- OGC-1054 M1: Bridge profile references and shared revisioned OpenELIS site bindings -->
+  <include relativeToChangelogFile="true" file="076-analyzer-site-binding.xml"/>
+
 </databaseChangeLog>
