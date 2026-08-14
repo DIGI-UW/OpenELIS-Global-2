@@ -91,4 +91,50 @@ describe("CaseInoculationPanel", () => {
       screen.getByRole("button", { name: "Add subculture" }),
     ).toHaveFocus();
   });
+
+  it("offers culture outcome actions only while the case is incubating", async () => {
+    const user = userEvent.setup();
+    const onCultureAction = vi.fn();
+    const { rerender } = renderPanel({
+      stage: "INCUBATING",
+      inoculations: [
+        {
+          id: "inoculation-1",
+          containerIdentifier: "BOTTLE-001",
+          media: "Blood culture bottle",
+        },
+      ],
+      onCultureAction,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark positive" }));
+    await user.click(screen.getByRole("button", { name: "Mark no growth" }));
+
+    expect(onCultureAction).toHaveBeenNthCalledWith(1, "mark-positive");
+    expect(onCultureAction).toHaveBeenNthCalledWith(2, "mark-no-growth");
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseInoculationPanel
+          stage="POSITIVE_SIGNAL"
+          inoculations={[
+            {
+              id: "inoculation-1",
+              containerIdentifier: "BOTTLE-001",
+              media: "Blood culture bottle",
+            },
+          ]}
+          onRecord={vi.fn().mockResolvedValue({})}
+          onCultureAction={onCultureAction}
+        />
+      </IntlProvider>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Mark positive" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Mark no growth" }),
+    ).not.toBeInTheDocument();
+  });
 });

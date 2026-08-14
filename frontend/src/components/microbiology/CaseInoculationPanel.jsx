@@ -28,6 +28,8 @@ const CaseInoculationPanel = ({
   reagentRequirements = [],
   reagentUsages = [],
   readOnly = false,
+  stage = "",
+  onCultureAction = () => undefined,
 }) => {
   const intl = useIntl();
   const [mode, setMode] = useState("");
@@ -230,6 +232,31 @@ const CaseInoculationPanel = ({
               </TableContainer>
             )}
           </DataTable>
+        )}
+
+        {stage === "INCUBATING" && inoculations.length > 0 && (
+          <div className="microbiology-inline-actions">
+            <Button
+              kind="ghost"
+              size="sm"
+              disabled={saving || readOnly}
+              onClick={() => onCultureAction("mark-positive")}
+            >
+              {intl.formatMessage({
+                id: "microbiology.worklist.markPositive",
+              })}
+            </Button>
+            <Button
+              kind="ghost"
+              size="sm"
+              disabled={saving || readOnly}
+              onClick={() => onCultureAction("mark-no-growth")}
+            >
+              {intl.formatMessage({
+                id: "microbiology.worklist.markNoGrowth",
+              })}
+            </Button>
+          </div>
         )}
 
         {mode && (

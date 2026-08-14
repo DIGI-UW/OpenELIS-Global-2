@@ -41,6 +41,8 @@ describe("CaseTimelinePanel", () => {
               id: "a1",
               activityType: "INOCULATION_RECORDED",
               note: "BOTTLE-001",
+              occurredAt: "2026-08-13T17:15:00Z",
+              performedByDisplay: "Olivia Mendez",
             },
             {
               id: "n1",
@@ -56,6 +58,10 @@ describe("CaseTimelinePanel", () => {
     expect(screen.queryByLabelText("Culture action")).not.toBeInTheDocument();
     expect(screen.getByText("Auto")).toBeInTheDocument();
     expect(screen.getByText("Manual")).toBeInTheDocument();
+    const actor = screen.getByText(/Olivia Mendez/);
+    const recordedAt = actor.closest("div").querySelector("time");
+    expect(recordedAt).not.toBeNull();
+    expect(recordedAt).toHaveAttribute("datetime", "2026-08-13T17:15:00Z");
     await user.click(screen.getByRole("button", { name: "Add note" }));
     await user.type(
       screen.getByLabelText("Note or observation"),
