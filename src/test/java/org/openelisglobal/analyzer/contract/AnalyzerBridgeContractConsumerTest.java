@@ -38,6 +38,9 @@ public class AnalyzerBridgeContractConsumerTest {
                 Files.isDirectory(CONTRACT_ROOT));
 
         assertConforms("portable-profile.schema.json", "portable-profile.json");
+        assertConforms("profile-catalog-entry.schema.json", "profile-catalog-entry.json");
+        assertTrue(validationMessages("portable-profile.schema.json",
+                fixture("profile-catalog-entry.json").path("profile")).isEmpty());
         assertConforms("registration-sync.schema.json", "registration-initial.json");
         assertConforms("registration-sync.schema.json", "registration-next.json");
         assertConforms("registration-sync-result.schema.json", "registration-result.json");
