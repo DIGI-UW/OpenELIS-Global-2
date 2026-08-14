@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -25,15 +27,17 @@ public class BridgeAnalyzerProfileCatalogClientTest {
             "v1", "fixtures", "profile-catalog-entry.json");
 
     private BridgeHttpClient bridgeHttpClient;
+    private String catalogEntryJson;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         bridgeHttpClient = mock(BridgeHttpClient.class);
+        catalogEntryJson = Files.readString(CATALOG_FIXTURE);
     }
 
     @Test
     public void listsVersionedProfilesUsingBridgeFilters() throws Exception {
-        String responseBody = "[" + Files.readString(CATALOG_FIXTURE) + "]";
+        String responseBody = "[" + catalogEntryJson + "]";
         when(bridgeHttpClient.get(anyString(), eq(READ_TIMEOUT)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(200, responseBody));
         AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient,
@@ -81,5 +85,63 @@ public class BridgeAnalyzerProfileCatalogClientTest {
                 () -> client.list(AnalyzerProfileCatalogFilter.empty()));
 
         assertEquals("Analyzer Bridge profile catalog returned HTTP 503", exception.getMessage());
+    }
+
+    @Test
+    public void getsVersionedProfileAndHistory() throws Exception {
+        when(bridgeHttpClient.get("https://bridge.test/api/profiles/site.mock-hematology?revision=1", READ_TIMEOUT))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalogEntryJson));
+        when(bridgeHttpClient.get("https://bridge.test/api/profiles/site.mock-hematology/history", READ_TIMEOUT))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, "[" + catalogEntryJson + "]"));
+        AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient,
+                "https://bridge.test");
+
+        BridgeProfileCatalogEntry entry = client.get("site.mock-hematology", 1);
+        List<BridgeProfileCatalogEntry> history = client.history("site.mock-hematology");
+
+        assertEquals("site.mock-hematology", entry.profile().path("profileId").asText());
+        assertEquals(1, history.size());
+        assertEquals(1, history.get(0).profile().path("revision").asInt());
+    }
+
+    @Test
+    public void sendsActorForDeactivateAndReactivate() throws Exception {
+        when(bridgeHttpClient.post(anyString(), anyString(), eq(READ_TIMEOUT)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalogEntryJson));
+        AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient,
+                "https://bridge.test");
+
+        client.deactivate("site.mock-hematology", "42");
+        client.reactivate("site.mock-hematology", "42");
+
+        ArgumentCaptor<String> endpoint = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(bridgeHttpClient, org.mockito.Mockito.times(2)).post(endpoint.capture(), body.capture(), eq(READ_TIMEOUT));
+        assertEquals(List.of("https://bridge.test/api/profiles/site.mock-hematology/deactivate",
+                "https://bridge.test/api/profiles/site.mock-hematology/reactivate"), endpoint.getAllValues());
+        ObjectMapper objectMapper = new ObjectMapper();
+        for (String requestBody : body.getAllValues()) {
+            assertEquals("42", objectMapper.readTree(requestBody).path("actor").asText());
+        }
+    }
+
+    @Test
+    public void forksFromExplicitRevisionWithNewPublicIdentity() throws Exception {
+        when(bridgeHttpClient.post(anyString(), anyString(), eq(READ_TIMEOUT)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(201, catalogEntryJson));
+        AnalyzerProfileCatalogClient client = new BridgeAnalyzerProfileCatalogClient(bridgeHttpClient,
+                "https://bridge.test");
+
+        client.fork("site.mock-hematology",
+                new AnalyzerProfileForkRequest(1, "site.mock-hematology-1", "Mock Hematology -1"), "42");
+
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(bridgeHttpClient).post(eq("https://bridge.test/api/profiles/site.mock-hematology/fork"),
+                body.capture(), eq(READ_TIMEOUT));
+        JsonNode request = new ObjectMapper().readTree(body.getValue());
+        assertEquals("42", request.path("actor").asText());
+        assertEquals(1, request.path("sourceRevision").asInt());
+        assertEquals("site.mock-hematology-1", request.path("profileId").asText());
+        assertEquals("Mock Hematology -1", request.path("displayName").asText());
     }
 }

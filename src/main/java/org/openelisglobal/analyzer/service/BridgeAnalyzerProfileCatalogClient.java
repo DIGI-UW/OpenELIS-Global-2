@@ -60,6 +60,31 @@ public class BridgeAnalyzerProfileCatalogClient implements AnalyzerProfileCatalo
         }
     }
 
+    @Override
+    public BridgeProfileCatalogEntry get(String profileId, Integer revision) {
+        return null;
+    }
+
+    @Override
+    public List<BridgeProfileCatalogEntry> history(String profileId) {
+        return List.of();
+    }
+
+    @Override
+    public BridgeProfileCatalogEntry fork(String profileId, AnalyzerProfileForkRequest request, String actor) {
+        return null;
+    }
+
+    @Override
+    public BridgeProfileCatalogEntry deactivate(String profileId, String actor) {
+        return null;
+    }
+
+    @Override
+    public BridgeProfileCatalogEntry reactivate(String profileId, String actor) {
+        return null;
+    }
+
     private static void addQueryParameter(UriComponentsBuilder endpoint, String name, String value) {
         if (value != null && !value.isBlank()) {
             endpoint.queryParam(name, value.trim());
