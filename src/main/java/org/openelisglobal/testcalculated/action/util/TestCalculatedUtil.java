@@ -422,8 +422,21 @@ public class TestCalculatedUtil {
         if (!operation.getValue().equals(result.getTestResult().getTest().getId())) {
             return false;
         }
-        String sampleTypeId = operation.getSampleTypeId() == null ? null : operation.getSampleTypeId().toString();
-        return ruleResultScope.matches(result, operation.getComponentId(), sampleTypeId);
+        return ruleResultScope.matches(result, operation.getComponentId(), operandSampleTypeId(operation));
+    }
+
+    /**
+     * The specimen an operand reads. The builder has always stored it in sampleId -
+     * it is the picker the user chooses the test from - so that is the configured
+     * value; sample_type_id was added alongside it and is never written by the
+     * form. Reading only the latter meant every operand was unscoped and a result
+     * from any specimen of the test fed the calculation.
+     */
+    private String operandSampleTypeId(Operation operation) {
+        if (operation.getSampleTypeId() != null) {
+            return operation.getSampleTypeId().toString();
+        }
+        return operation.getSampleId() == null ? null : operation.getSampleId().toString();
     }
 
     private void addNumericOperation(Operation operation, ResultCalculation resultCalculation, StringBuffer function,
