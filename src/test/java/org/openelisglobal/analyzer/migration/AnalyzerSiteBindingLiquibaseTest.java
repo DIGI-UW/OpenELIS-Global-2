@@ -63,6 +63,19 @@ public class AnalyzerSiteBindingLiquibaseTest {
         assertTrue("each changeset must define rollback", elements(migration, "rollback").size() >= 2);
     }
 
+    @Test
+    public void bindingRevisionIsRegisteredForDurableAuditEvents() throws Exception {
+        Document migration = parse(MIGRATION);
+
+        boolean registered = elements(migration, "insert").stream()
+                .filter(element -> "reference_tables".equals(element.getAttribute("tableName")))
+                .flatMap(element -> childColumns(element).stream())
+                .anyMatch(column -> "name".equals(column.getAttribute("name"))
+                        && "analyzer_site_binding_revision".equals(column.getAttribute("value")));
+
+        assertTrue("site-binding revisions must be registered with the existing audit trail", registered);
+    }
+
     private static Document parse(Path path) throws Exception {
         assertTrue("missing changelog " + path, Files.isRegularFile(path));
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -79,15 +92,19 @@ public class AnalyzerSiteBindingLiquibaseTest {
     }
 
     private static Set<String> childColumnNames(Element parent) {
-        Set<String> names = new HashSet<>();
+        return attributes(childColumns(parent), "name");
+    }
+
+    private static Set<Element> childColumns(Element parent) {
+        Set<Element> columns = new HashSet<>();
         NodeList children = parent.getChildNodes();
         for (int index = 0; index < children.getLength(); index++) {
             Node child = children.item(index);
             if (child instanceof Element element && "column".equals(element.getTagName())) {
-                names.add(element.getAttribute("name"));
+                columns.add(element);
             }
         }
-        return names;
+        return columns;
     }
 
     private static Set<Element> elements(Document document, String tagName) {
