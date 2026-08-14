@@ -16,7 +16,8 @@
     "analyzerTestMap": {
       "state": "PER_ANALYZER_MIGRATION_INPUT",
       "store": "analyzer_test_map",
-      "target": "REVISIONED_SITE_BINDING_ROWS"
+      "target": "REVISIONED_SITE_BINDING_ROWS",
+      "migrationStrategy": "GROUP_IDENTICAL_BY_FINGERPRINT_PRESERVE_DIVERGENCE_AS_FORKS"
     },
     "qualitativeValues": {
       "state": "LEGACY_UNBOUND",
@@ -43,6 +44,53 @@
     "siteBindingWriter": "OE-M1",
     "normalizedTrafficWriter": "BR-M4"
   },
+  "phases": {
+    "beforeCutover": "READ_LEGACY_WRITE_LEGACY",
+    "afterCutover": "READ_TARGET_WRITE_TARGET",
+    "prohibited": "DUAL_WRITE"
+  },
+  "anomalies": [
+    {
+      "code": "PROFILE_REF_MISSING",
+      "condition": "An existing analyzer cannot be matched to exactly one Bridge profile revision",
+      "action": "Preserve the analyzer and copied configuration, leave the profile reference unresolved, and block activation"
+    },
+    {
+      "code": "PROFILE_SOURCE_ROW_MISSING",
+      "condition": "A legacy analyzer test code has no sourceRowKey in the selected profile revision",
+      "action": "Preserve the legacy row as unresolved migration evidence and do not infer a source row"
+    },
+    {
+      "code": "DISTINCT_SOURCE_ROWS_SHARE_NORMALIZED_IDENTITY",
+      "condition": "Two source rows or aliases resolve to the same normalized code or local Test",
+      "action": "Preserve each source row independently and require an explicit binding for each row"
+    },
+    {
+      "code": "LOCAL_TEST_NOT_UNIQUE",
+      "condition": "A normalized code resolves to zero or multiple active local Tests",
+      "action": "Leave the site binding unresolved; automatic binding is allowed only for exactly one active Test"
+    },
+    {
+      "code": "LOCAL_TEST_INACTIVE_OR_MISSING",
+      "condition": "A legacy analyzer_test_map row points to an inactive or missing local Test",
+      "action": "Retain the source row and legacy target for audit, but do not create an active site binding"
+    },
+    {
+      "code": "RESULT_OPTION_UNBOUND",
+      "condition": "A qualitative_result_mapping stores free text without one active Result Option owned by the bound Test",
+      "action": "Classify the value as LEGACY_UNBOUND and require catalog-backed resolution"
+    },
+    {
+      "code": "RESULT_OPTION_WRONG_TEST_OR_INACTIVE",
+      "condition": "A candidate Result Option is inactive or belongs to a different local Test",
+      "action": "Reject the binding and keep the source value unresolved"
+    },
+    {
+      "code": "RAW_INGRESS_STILL_ACTIVE",
+      "condition": "A legacy ASTM, HL7, or direct import route receives traffic after the BR-M4 normalized-traffic cutover",
+      "action": "Reject the legacy write, retain diagnostics, and require Bridge-to-FHIR delivery"
+    }
+  ],
   "rollback": {
     "databaseAction": "RESTORE_PRE_CUTOVER_BACKUP",
     "bridgeAction": "RESTORE_PRE_CUTOVER_BRIDGE_RELEASE",

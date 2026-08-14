@@ -490,7 +490,8 @@ silently route around.
 | `AMB-F0-001`   | Scope      | `RESOLVED` | The F0 salvage manifest classifies every considered #3792 behavior group before production reimplementation and prohibits commit-level cherry-picks.                       |
 | `ISSUE-F0-001` | Test scope | `RESOLVED` | Three analyzer transport/setup specs used backend helpers while labeled as demo evidence; F0 reclassified all three as foundational and retained 13 integration cases.     |
 | `ISSUE-F0-002` | Validation | `OPEN`     | Repo-wide `npm run typecheck` has 1,589 baseline TypeScript errors and none name the three changed analyzer specs; targeted Playwright compilation passes. Fix before G0.  |
-| `AMB-E0-001`   | Contract   | `OPEN`     | Portable profile/site-binding persistence and migration semantics require a current-code ADR plus failing producer/consumer tests before code.                             |
+| `AMB-E0-001`   | Contract   | `RESOLVED` | ADR-001 fixes Bridge profile/OpenELIS shared site-binding ownership, fingerprint grouping, explicit forks, one-writer cutovers, and rollback from current code/contracts.   |
+| `ISSUE-E0-001` | Runtime    | `OPEN`     | Isolated ASTM traffic exposed normalized coding/raw-map mismatch and contradictory zero mapping counts; BR-M4/OE-M2 own correction against v1 preserved-raw contracts.     |
 | `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.      |
 | `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                            |
 | `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.      |
@@ -505,7 +506,7 @@ the checkpoint that discovers or resolves it; IDs are never reused.
 | ----- | ------------------------- | -------------------- | ----------------------------------- |
 | 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge         |
 | 1     | F0 foundation salvage     | `IN_PROGRESS`        | Final validation/evidence review    |
-| 2     | E0 contract and migration | `NOT_STARTED`        | F0 accepted; BR-E0 opened           |
+| 2     | E0 contract and migration | `IN_PROGRESS`        | OE-E0 PR/CI and prerequisite reviews |
 | 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted               |
 | 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted               |
 | 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                         |
