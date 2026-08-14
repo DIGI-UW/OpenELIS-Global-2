@@ -5,9 +5,12 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -36,6 +39,12 @@ public class BridgeHttpClient {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
 
     private final HttpClient httpClient;
+
+    @Value("${analyzer.bridge.username:}")
+    private String username;
+
+    @Value("${analyzer.bridge.password:}")
+    private String password;
 
     public BridgeHttpClient() {
         this.httpClient = buildTrustAllClient();
@@ -103,6 +112,11 @@ public class BridgeHttpClient {
      */
     public BridgeResponse send(String method, String url, String jsonBody, Duration readTimeout) throws IOException {
         HttpRequest.Builder builder = HttpRequest.newBuilder().uri(URI.create(url)).timeout(readTimeout);
+        if (username != null && !username.isBlank() && password != null && !password.isBlank()) {
+            String token = Base64.getEncoder()
+                    .encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
+            builder.header("Authorization", "Basic " + token);
+        }
         HttpRequest.BodyPublisher publisher;
         if (jsonBody == null) {
             publisher = HttpRequest.BodyPublishers.noBody();
