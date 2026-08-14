@@ -86,6 +86,16 @@ public class Analyzer extends BaseObject<String> {
     @JoinColumn(name = "analyzer_type_id")
     private AnalyzerType analyzerType;
 
+    @Column(name = "bridge_profile_id", length = 128)
+    private String bridgeProfileId;
+
+    @Column(name = "bridge_profile_revision")
+    private Integer bridgeProfileRevision;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "site_binding_revision_id")
+    private AnalyzerSiteBindingRevision siteBindingRevision;
+
     // --- Configuration fields (merged from analyzer_configuration) ---
 
     @Column(name = "ip_address", length = 15)
@@ -233,6 +243,30 @@ public class Analyzer extends BaseObject<String> {
 
     public void setAnalyzerType(AnalyzerType analyzerType) {
         this.analyzerType = analyzerType;
+    }
+
+    public String getBridgeProfileId() {
+        return bridgeProfileId;
+    }
+
+    public void setBridgeProfileId(String bridgeProfileId) {
+        this.bridgeProfileId = bridgeProfileId;
+    }
+
+    public Integer getBridgeProfileRevision() {
+        return bridgeProfileRevision;
+    }
+
+    public void setBridgeProfileRevision(Integer bridgeProfileRevision) {
+        this.bridgeProfileRevision = bridgeProfileRevision;
+    }
+
+    public AnalyzerSiteBindingRevision getSiteBindingRevision() {
+        return siteBindingRevision;
+    }
+
+    public void setSiteBindingRevision(AnalyzerSiteBindingRevision siteBindingRevision) {
+        this.siteBindingRevision = siteBindingRevision;
     }
 
     // --- Configuration field accessors (merged from analyzer_configuration) ---
