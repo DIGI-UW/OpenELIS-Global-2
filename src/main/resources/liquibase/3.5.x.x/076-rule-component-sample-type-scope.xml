@@ -22,8 +22,8 @@
     calculated and reflex rules, which is where an unqualified test-level rule
     belongs once components exist: a single-component test resolves to its only
     component, and a multi-component test stops depending on whichever
-    component's result happened to be written last. Alerts are deliberately
-    left unscoped - see 077.
+    component's result happened to be written last. Alert rules are backfilled
+    the same way, in 079.
     -->
 
     <changeSet id="rule-scope-001-calculation-operation" author="mozzy">

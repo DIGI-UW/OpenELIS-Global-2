@@ -8,18 +8,10 @@
     <!--
     OGC-949 follow-up - test alert rules scope to a component and a specimen.
 
-    Unlike calculated and reflex rules, existing alert rules are NOT backfilled
-    to the primary component. An alert rule has always been evaluated against
-    every result of its test, so an ABNORMAL or CRITICAL rule on a
-    multi-component test is today a rule about any of its components. Pinning
-    those rows to the primary component would silently stop them firing on the
-    others - a narrowing of live alerting, which is the one direction an alert
-    must never move without being asked for.
-
-    So existing rules stay unscoped (NULL = every component, every specimen),
-    which is precisely their current behaviour, and newly authored rules can
-    name a component and a specimen. A lab that wants an existing rule narrowed
-    edits it; nothing about alerting changes underneath them.
+    This changeset only adds the columns. Existing rows are resolved to their
+    test's primary component in 079, alongside calculated and reflex rules -
+    a trigger is authored against a particular measurement and does not
+    transfer to another component.
     -->
 
     <changeSet id="alert-scope-001-component-and-sample-type" author="mozzy">
