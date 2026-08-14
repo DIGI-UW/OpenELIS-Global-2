@@ -7992,5 +7992,6 @@
   "label.testCatalog.alerts.col.scope": "Applies to",
   "label.testCatalog.alerts.scope.wholeTest": "Whole test",
   "rulebuilder.label.selectComponent": "Select Component",
-  "testcalculation.label.selectComponent": "Select Component"
+  "testcalculation.label.selectComponent": "Select Component",
+  "testcalculation.label.finalComponent": "Result Component"
 }

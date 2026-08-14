@@ -331,6 +331,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   function handleTestSelection(id: number, index: number) {
     const list = [...calculationList];
     list[index].testId = id;
+    // A new resulting test invalidates the component chosen under the old one.
+    list[index].componentId = null;
     setCalculationList(list);
   }
 
@@ -363,6 +365,15 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
    * already returned. Deriving it here means an existing calculation resolves
    * its component on load too, rather than only after the user re-picks a test.
    */
+  const destinationComponentsFor = (index: number) => {
+    const tests = sampleTestList["FINAL_RESULT"][index] || [];
+    const calculation = calculationList[index];
+    const test = tests.find(
+      (t: any) => String(t.id) === String(calculation?.testId),
+    );
+    return numericComponents(test);
+  };
+
   const operandComponentsFor = (index: number, operationIndex: number) => {
     const tests =
       (sampleTestList["TEST_RESULT"][index] &&
@@ -1083,7 +1094,42 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 }
                               ></AutoComplete>
                             </Column>
-                            <Column lg={4}>
+                            <Column lg={3}>
+                              <Select
+                                id={index + "_finalcomponent"}
+                                name="componentId"
+                                labelText={
+                                  <FormattedMessage id="testcalculation.label.finalComponent" />
+                                }
+                                value={
+                                  calculation.componentId ||
+                                  destinationComponentsFor(index)[0]?.id ||
+                                  ""
+                                }
+                                disabled={
+                                  destinationComponentsFor(index).length === 0
+                                }
+                                onChange={(e) =>
+                                  handleCalculationFieldChange(e, index)
+                                }
+                                required
+                              >
+                                {!calculation.componentId &&
+                                  !destinationComponentsFor(index).length && (
+                                    <SelectItem text="" value="" />
+                                  )}
+                                {destinationComponentsFor(index).map(
+                                  (component: any, c_index: number) => (
+                                    <SelectItem
+                                      text={component.value}
+                                      value={component.id}
+                                      key={c_index}
+                                    />
+                                  ),
+                                )}
+                              </Select>
+                            </Column>
+                            <Column lg={3}>
                               {sampleTestList["FINAL_RESULT"][index] && (
                                 <>
                                   {getResultInputByResultType(

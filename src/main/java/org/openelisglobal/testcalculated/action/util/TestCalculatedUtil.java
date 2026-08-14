@@ -371,9 +371,19 @@ public class TestCalculatedUtil {
         noteService.saveAll(notes);
     }
 
+    /**
+     * The test_result row the calculated value is written through, and with it the
+     * component the value lands on. Without a destination component this took
+     * whichever row sorted last, so on a multi-component test the value went
+     * wherever that fell rather than where the lab configured it.
+     */
     private TestResult getTestResultForCalculation(Calculation calculation) {
         Test test = testService.get(calculation.getTestId().toString());
-        String resultType = testService.getResultType(test);
+        String destinationComponentId = calculation.getComponentId() == null
+                ? ruleResultScope.primaryComponentId(test.getId())
+                : calculation.getComponentId();
+        String resultType = ruleResultScope.resultTypeForComponent(test.getId(), destinationComponentId,
+                testService.getResultType(test));
         if ("D".equals(resultType)) {
             TestResult testResult;
             testResult = testResultService.getTestResultsByTestAndDictonaryResult(test.getId(),
@@ -381,10 +391,16 @@ public class TestCalculatedUtil {
             return testResult;
         } else {
             List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(test.getId());
-            // we are assuming there is only one testResult for a numeric
-            // type result
+            if (destinationComponentId != null) {
+                for (TestResult testResult : testResultList) {
+                    if (destinationComponentId.equals(testResult.getComponentId())) {
+                        return testResult;
+                    }
+                }
+            }
+            // No row carries the component - a test configured before
+            // components, whose rows all belong to the primary.
             if (!testResultList.isEmpty()) {
-                // get the latest modified test result
                 return testResultList.get(testResultList.size() - 1);
             }
         }
