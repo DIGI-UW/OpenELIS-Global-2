@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -113,6 +114,19 @@ public class AnalyzerTypeCatalogRestControllerTest {
 
         verify(catalogService).deactivate("shipped.mock-hematology", "42");
         verify(catalogService).reactivate("shipped.mock-hematology", "42");
+    }
+
+    @Test
+    public void exportsTheVersionAddressedPortableProfile() throws Exception {
+        when(catalogService.exportProfile("shipped.mock-hematology", 3))
+                .thenReturn(new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode()
+                        .put("profileId", "shipped.mock-hematology").put("revision", 3));
+
+        mockMvc.perform(get("/rest/analyzer/types/shipped.mock-hematology/export").param("revision", "3"))
+                .andExpect(status().isOk()).andExpect(header().string("Content-Disposition",
+                        "attachment; filename=shipped.mock-hematology-revision-3.json"))
+                .andExpect(jsonPath("$.profileId").value("shipped.mock-hematology"))
+                .andExpect(jsonPath("$.revision").value(3));
     }
 
     private static UserSessionData actor() {

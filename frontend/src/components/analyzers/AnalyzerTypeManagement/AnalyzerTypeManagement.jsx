@@ -1,200 +1,276 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  Column,
   DataTable,
-  TableContainer,
+  Grid,
+  InlineNotification,
+  Link as CarbonLink,
+  Loading,
+  OverflowMenu,
+  OverflowMenuItem,
+  Search,
+  Section,
+  Select,
+  SelectItem,
   Table,
-  TableHead,
-  TableRow,
-  TableHeader,
   TableBody,
   TableCell,
-  Button,
-  Tag,
-  Grid,
-  Column,
-  Search,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  TextInput,
-  Dropdown,
-  Checkbox,
-  InlineNotification,
-  Loading,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableToolbar,
+  TableToolbarContent,
+  Toggle,
 } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
+import { Link, useHistory, useLocation } from "react-router-dom";
+import config from "../../../config.json";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  AnalyzerTypeMappingProgress,
+  AnalyzerTypeSourceTag,
+  AnalyzerTypeStatusTag,
+  isMappingComplete,
+  mappingProgress,
+  profileMetadata,
+} from "./AnalyzerTypePresentation";
+import "./AnalyzerTypeManagement.scss";
+
+const SEARCH_DEBOUNCE_MS = 250;
+
+const SOURCE_OPTIONS = ["", "SITE", "SHIPPED"];
+const PROTOCOL_OPTIONS = ["", "ASTM", "HL7", "FILE"];
+const MAPPING_STATUS_OPTIONS = ["", "INCOMPLETE", "COMPLETE"];
 
 const AnalyzerTypeManagement = () => {
   const intl = useIntl();
+  const history = useHistory();
+  const location = useLocation();
+  const initialParams = useMemo(
+    () => new URLSearchParams(location.search),
+    // Query state is initialized once. Subsequent changes are owned here and
+    // mirrored back to the route in canonical order.
+    [],
+  );
 
-  const [analyzerTypes, setAnalyzerTypes] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [notification, setNotification] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const emptyForm = {
-    name: "",
-    description: "",
-    protocol: "ASTM",
-    pluginClassName: "",
-    identifierPattern: "",
-    isGenericPlugin: false,
-    isActive: true,
-  };
-  const [formData, setFormData] = useState({ ...emptyForm });
-  const [formErrors, setFormErrors] = useState({});
-
-  const protocolOptions = [
-    { id: "ASTM", text: "ASTM" },
-    { id: "HL7", text: "HL7" },
-    { id: "FILE", text: "FILE" },
-  ];
-
-  const loadAnalyzerTypes = useCallback(() => {
-    setLoading(true);
-    getFromOpenElisServer("/rest/analyzer-types", (data) => {
-      const list = Array.isArray(data) ? data : [];
-      setAnalyzerTypes(list);
-      setLoading(false);
-    });
-  }, []);
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState(initialParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(
+    initialParams.get("q") || "",
+  );
+  const [source, setSource] = useState(initialParams.get("source") || "");
+  const [protocol, setProtocol] = useState(initialParams.get("protocol") || "");
+  const [mappingStatus, setMappingStatus] = useState(
+    initialParams.get("mappingStatus") || "",
+  );
+  const [showInactive, setShowInactive] = useState(
+    initialParams.get("showInactive") === "true",
+  );
 
   useEffect(() => {
-    loadAnalyzerTypes();
-  }, [loadAnalyzerTypes]);
-
-  const filteredTypes = analyzerTypes.filter((type) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      (type.name && type.name.toLowerCase().includes(term)) ||
-      (type.description && type.description.toLowerCase().includes(term)) ||
-      (type.protocol && type.protocol.toLowerCase().includes(term))
+    const timer = setTimeout(
+      () => setDebouncedSearch(search.trim()),
+      SEARCH_DEBOUNCE_MS,
     );
-  });
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    const routeParams = new URLSearchParams();
+    const apiParams = new URLSearchParams();
+
+    if (debouncedSearch) {
+      routeParams.set("q", debouncedSearch);
+      apiParams.set("q", debouncedSearch);
+    }
+    if (source) {
+      routeParams.set("source", source);
+      apiParams.set("source", source);
+    }
+    if (protocol) {
+      routeParams.set("protocol", protocol);
+      apiParams.set("protocol", protocol);
+    }
+    if (mappingStatus) routeParams.set("mappingStatus", mappingStatus);
+    if (showInactive) routeParams.set("showInactive", "true");
+    if (!showInactive) apiParams.set("status", "ACTIVE");
+
+    history.replace({
+      pathname: location.pathname,
+      search: routeParams.toString(),
+    });
+
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    getFromOpenElisServer(
+      `/rest/analyzer/types?${apiParams.toString()}`,
+      (response) => {
+        setLoading(false);
+        if (Array.isArray(response)) {
+          setProfiles(response);
+          return;
+        }
+        setProfiles([]);
+        setError(
+          response?.error ||
+            intl.formatMessage({ id: "analyzerType.error.loadDetail" }),
+        );
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
+  }, [
+    debouncedSearch,
+    history,
+    intl,
+    location.pathname,
+    mappingStatus,
+    protocol,
+    showInactive,
+    source,
+  ]);
+
+  const visibleProfiles = useMemo(() => {
+    if (!mappingStatus) return profiles;
+    const expectedComplete = mappingStatus === "COMPLETE";
+    return profiles.filter(
+      (profile) => isMappingComplete(profile) === expectedComplete,
+    );
+  }, [mappingStatus, profiles]);
 
   const headers = [
     {
-      key: "name",
-      header: intl.formatMessage({ id: "analyzerType.column.name" }),
-    },
-    {
-      key: "description",
-      header: intl.formatMessage({ id: "analyzerType.column.description" }),
+      key: "analyzerType",
+      header: intl.formatMessage({ id: "analyzerType.column.analyzerType" }),
     },
     {
       key: "protocol",
       header: intl.formatMessage({ id: "analyzerType.column.protocol" }),
     },
     {
-      key: "pluginClassName",
-      header: intl.formatMessage({ id: "analyzerType.column.pluginClass" }),
+      key: "tests",
+      header: intl.formatMessage({ id: "analyzerType.column.testsMapped" }),
     },
     {
-      key: "identifierPattern",
-      header: intl.formatMessage({
-        id: "analyzerType.column.identifierPattern",
-      }),
+      key: "results",
+      header: intl.formatMessage({ id: "analyzerType.column.resultsMapped" }),
     },
     {
-      key: "isGenericPlugin",
-      header: intl.formatMessage({ id: "analyzerType.column.genericPlugin" }),
+      key: "usedBy",
+      header: intl.formatMessage({ id: "analyzerType.column.usedBy" }),
     },
     {
-      key: "pluginLoaded",
-      header: intl.formatMessage({ id: "analyzerType.column.pluginLoaded" }),
-    },
-    {
-      key: "instanceCount",
-      header: intl.formatMessage({ id: "analyzerType.column.instances" }),
-    },
-    {
-      key: "isActive",
+      key: "status",
       header: intl.formatMessage({ id: "analyzerType.column.status" }),
+    },
+    {
+      key: "actions",
+      header: intl.formatMessage({ id: "analyzerType.column.actions" }),
     },
   ];
 
-  const rows = filteredTypes.map((type) => ({
-    id: String(type.id),
-    name: type.name || "",
-    description: type.description || "",
-    protocol: type.protocol || "",
-    pluginClassName: type.pluginClassName || "",
-    identifierPattern: type.identifierPattern || "",
-    isGenericPlugin: type.isGenericPlugin ? "Yes" : "No",
-    pluginLoaded: type.pluginLoaded ? "Yes" : "No",
-    instanceCount: type.instanceCount != null ? type.instanceCount : 0,
-    isActive: type.isActive ? "Active" : "Inactive",
+  const rows = visibleProfiles.map((profile) => ({
+    id: profile.profileId,
+    analyzerType: profile.displayName,
+    protocol: profile.protocol,
+    tests: mappingProgress(profile.testMappings),
+    results: mappingProgress(profile.resultValueMappings),
+    usedBy: intl.formatMessage(
+      { id: "analyzerType.usedBy" },
+      { count: profile.analyzerCount || 0 },
+    ),
+    status: profile.status,
+    actions: "",
+    profile,
   }));
 
-  const validateForm = () => {
-    const errors = {};
-    if (!formData.name || !formData.name.trim()) {
-      errors.name = intl.formatMessage({
-        id: "analyzerType.error.nameRequired",
-      });
+  const renderCell = (row, cell) => {
+    const profile = row.profile;
+    if (cell.info.header === "analyzerType") {
+      return (
+        <div className="analyzer-type-name">
+          <CarbonLink
+            as={Link}
+            to={`/analyzers/types/${encodeURIComponent(
+              profile.profileId,
+            )}?revision=${profile.revision}`}
+          >
+            {profile.displayName}
+          </CarbonLink>
+          <span className="analyzer-type-meta">{profileMetadata(profile)}</span>
+          <AnalyzerTypeSourceTag source={profile.source} />
+        </div>
+      );
     }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleCreate = () => {
-    if (!validateForm()) return;
-
-    setSubmitting(true);
-    const payload = JSON.stringify({
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      protocol: formData.protocol,
-      pluginClassName: formData.pluginClassName.trim() || null,
-      identifierPattern: formData.identifierPattern.trim() || null,
-      isGenericPlugin: formData.isGenericPlugin,
-      isActive: formData.isActive,
-    });
-
-    postToOpenElisServerJsonResponse(
-      "/rest/analyzer-types",
-      payload,
-      (response) => {
-        setSubmitting(false);
-        if (response && response.error) {
-          setNotification({
-            kind: "error",
-            title: intl.formatMessage({
-              id: "analyzerType.notification.createError",
-            }),
-            subtitle: response.error,
-          });
-        } else {
-          setNotification({
-            kind: "success",
-            title: intl.formatMessage({
-              id: "analyzerType.notification.createSuccess",
-            }),
-            subtitle: "",
-          });
-          setModalOpen(false);
-          setFormData({ ...emptyForm });
-          setFormErrors({});
-          loadAnalyzerTypes();
-        }
-      },
-    );
-  };
-
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setFormData({ ...emptyForm });
-    setFormErrors({});
+    if (cell.info.header === "tests") {
+      return <AnalyzerTypeMappingProgress mapping={profile.testMappings} />;
+    }
+    if (cell.info.header === "results") {
+      return (
+        <AnalyzerTypeMappingProgress mapping={profile.resultValueMappings} />
+      );
+    }
+    if (cell.info.header === "status") {
+      return <AnalyzerTypeStatusTag status={profile.status} />;
+    }
+    if (cell.info.header === "actions") {
+      const profileRoute = `/analyzers/types/${encodeURIComponent(
+        profile.profileId,
+      )}?revision=${profile.revision}`;
+      return (
+        <OverflowMenu
+          aria-label={intl.formatMessage(
+            { id: "analyzerType.action.menu" },
+            { name: profile.displayName },
+          )}
+          iconDescription={intl.formatMessage(
+            { id: "analyzerType.action.menu" },
+            { name: profile.displayName },
+          )}
+          flipped
+          size="sm"
+        >
+          <OverflowMenuItem
+            itemText={intl.formatMessage({ id: "analyzerType.action.review" })}
+            onClick={() => history.push(profileRoute)}
+          />
+          <OverflowMenuItem
+            itemText={intl.formatMessage({
+              id: "analyzerType.action.forkShort",
+            })}
+            onClick={() => history.push(`${profileRoute}&action=fork`)}
+          />
+          <OverflowMenuItem
+            itemText={intl.formatMessage({ id: "analyzerType.action.export" })}
+            href={`${config.serverBaseUrl}/rest/analyzer/types/${encodeURIComponent(
+              profile.profileId,
+            )}/export?revision=${profile.revision}`}
+          />
+          <OverflowMenuItem
+            itemText={intl.formatMessage({
+              id:
+                profile.status === "ACTIVE"
+                  ? "analyzerType.action.deactivate"
+                  : "analyzerType.action.reactivate",
+            })}
+            isDelete={profile.status === "ACTIVE"}
+            onClick={() =>
+              history.push(
+                `${profileRoute}&action=${
+                  profile.status === "ACTIVE" ? "deactivate" : "reactivate"
+                }`,
+              )
+            }
+          />
+        </OverflowMenu>
+      );
+    }
+    return cell.value;
   };
 
   return (
@@ -202,219 +278,190 @@ const AnalyzerTypeManagement = () => {
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },
-          { label: "analyzer.page.hierarchy.root", link: "" },
-          { label: "analyzerType.page.title", link: "" },
+          { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+          {
+            label: "analyzerType.page.title",
+            link: "/analyzers/types",
+            isCurrentPage: true,
+          },
         ]}
       />
-      <Grid fullWidth>
+      <Grid fullWidth className="analyzer-type-catalog">
         <Column lg={16} md={8} sm={4}>
-          <h2>
-            <FormattedMessage id="analyzerType.page.title" />
-          </h2>
-
-          {notification && (
-            <InlineNotification
-              kind={notification.kind}
-              title={notification.title}
-              subtitle={notification.subtitle}
-              onCloseButtonClick={() => setNotification(null)}
-              style={{ marginBottom: "1rem" }}
-            />
-          )}
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "1rem",
-            }}
-          >
-            <Search
-              size="lg"
-              placeholder={intl.formatMessage({
-                id: "analyzerType.search.placeholder",
-              })}
-              labelText=""
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ maxWidth: "400px" }}
-            />
-            <Button renderIcon={Add} onClick={() => setModalOpen(true)}>
-              <FormattedMessage id="analyzerType.button.create" />
-            </Button>
-          </div>
-
-          {loading ? (
-            <Loading withOverlay={false} />
-          ) : (
-            <DataTable rows={rows} headers={headers}>
+          <Section>
+            <h1 className="analyzer-type-heading">
+              {intl.formatMessage({ id: "analyzerType.page.title" })}
+            </h1>
+            <DataTable rows={rows} headers={headers} size="md">
               {({
-                rows,
-                headers,
-                getTableProps,
+                rows: tableRows,
+                headers: tableHeaders,
                 getHeaderProps,
                 getRowProps,
+                getTableProps,
               }) => (
                 <TableContainer>
-                  <Table {...getTableProps()}>
-                    <TableHead>
-                      <TableRow>
-                        {headers.map((header) => (
-                          <TableHeader
-                            key={header.key}
-                            {...getHeaderProps({ header })}
-                          >
-                            {header.header}
-                          </TableHeader>
+                  <TableToolbar>
+                    <TableToolbarContent className="analyzer-type-toolbar">
+                      <Search
+                        id="analyzer-type-search"
+                        labelText={intl.formatMessage({
+                          id: "analyzerType.search.label",
+                        })}
+                        placeholder={intl.formatMessage({
+                          id: "analyzerType.search.placeholder",
+                        })}
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                      />
+                      <Select
+                        id="analyzer-type-source"
+                        labelText={intl.formatMessage({
+                          id: "analyzerType.filter.created",
+                        })}
+                        value={source}
+                        onChange={(event) => setSource(event.target.value)}
+                      >
+                        {SOURCE_OPTIONS.map((option) => (
+                          <SelectItem
+                            key={option || "ALL"}
+                            value={option}
+                            text={intl.formatMessage({
+                              id: `analyzerType.filter.source.${
+                                option ? option.toLowerCase() : "all"
+                              }`,
+                            })}
+                          />
                         ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {rows.map((row) => (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
-                          {row.cells.map((cell) => (
-                            <TableCell key={cell.id}>
-                              {cell.info.header === "isActive" ? (
-                                <Tag
-                                  type={
-                                    cell.value === "Active" ? "green" : "red"
-                                  }
-                                >
-                                  {cell.value}
-                                </Tag>
-                              ) : cell.info.header === "pluginLoaded" ? (
-                                <Tag
-                                  type={cell.value === "Yes" ? "green" : "gray"}
-                                >
-                                  {cell.value}
-                                </Tag>
-                              ) : (
-                                cell.value
-                              )}
-                            </TableCell>
+                      </Select>
+                      <Select
+                        id="analyzer-type-protocol"
+                        labelText={intl.formatMessage({
+                          id: "analyzerType.filter.protocol",
+                        })}
+                        value={protocol}
+                        onChange={(event) => setProtocol(event.target.value)}
+                      >
+                        {PROTOCOL_OPTIONS.map((option) => (
+                          <SelectItem
+                            key={option || "ALL"}
+                            value={option}
+                            text={
+                              option ||
+                              intl.formatMessage({
+                                id: "analyzerType.filter.protocol.all",
+                              })
+                            }
+                          />
+                        ))}
+                      </Select>
+                      <Select
+                        id="analyzer-type-mapping-status"
+                        labelText={intl.formatMessage({
+                          id: "analyzerType.filter.mappingStatus",
+                        })}
+                        value={mappingStatus}
+                        onChange={(event) =>
+                          setMappingStatus(event.target.value)
+                        }
+                      >
+                        {MAPPING_STATUS_OPTIONS.map((option) => (
+                          <SelectItem
+                            key={option || "ALL"}
+                            value={option}
+                            text={intl.formatMessage({
+                              id: `analyzerType.filter.mappingStatus.${
+                                option ? option.toLowerCase() : "all"
+                              }`,
+                            })}
+                          />
+                        ))}
+                      </Select>
+                      <Toggle
+                        id="analyzer-type-show-inactive"
+                        labelText={intl.formatMessage({
+                          id: "analyzerType.filter.showInactive",
+                        })}
+                        labelA={intl.formatMessage({
+                          id: "analyzerType.filter.showInactive.off",
+                        })}
+                        labelB={intl.formatMessage({
+                          id: "analyzerType.filter.showInactive.on",
+                        })}
+                        toggled={showInactive}
+                        onToggle={setShowInactive}
+                        size="sm"
+                      />
+                    </TableToolbarContent>
+                  </TableToolbar>
+
+                  {error && (
+                    <InlineNotification
+                      kind="error"
+                      lowContrast
+                      hideCloseButton
+                      title={intl.formatMessage({
+                        id: "analyzerType.error.loadTitle",
+                      })}
+                      subtitle={error}
+                    />
+                  )}
+
+                  {loading ? (
+                    <div className="analyzer-type-loading">
+                      <Loading withOverlay={false} small />
+                    </div>
+                  ) : !error && rows.length === 0 ? (
+                    <InlineNotification
+                      kind="info"
+                      lowContrast
+                      hideCloseButton
+                      title={intl.formatMessage({
+                        id: "analyzerType.empty.title",
+                      })}
+                      subtitle={intl.formatMessage({
+                        id: "analyzerType.empty.detail",
+                      })}
+                    />
+                  ) : !error ? (
+                    <Table {...getTableProps()}>
+                      <TableHead>
+                        <TableRow>
+                          {tableHeaders.map((header) => (
+                            <TableHeader
+                              key={header.key}
+                              {...getHeaderProps({ header })}
+                            >
+                              {header.header}
+                            </TableHeader>
                           ))}
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHead>
+                      <TableBody>
+                        {tableRows.map((tableRow) => {
+                          const row = rows.find(
+                            (candidate) => candidate.id === tableRow.id,
+                          );
+                          return (
+                            <TableRow
+                              key={tableRow.id}
+                              {...getRowProps({ row: tableRow })}
+                            >
+                              {tableRow.cells.map((cell) => (
+                                <TableCell key={cell.id}>
+                                  {renderCell(row, cell)}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  ) : null}
                 </TableContainer>
               )}
             </DataTable>
-          )}
-
-          <ComposedModal open={modalOpen} onClose={handleCloseModal}>
-            <ModalHeader
-              title={intl.formatMessage({
-                id: "analyzerType.modal.createTitle",
-              })}
-            />
-            <ModalBody>
-              <TextInput
-                id="analyzerType-name"
-                labelText={intl.formatMessage({
-                  id: "analyzerType.field.name",
-                })}
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                invalid={!!formErrors.name}
-                invalidText={formErrors.name}
-                style={{ marginBottom: "1rem" }}
-              />
-              <TextInput
-                id="analyzerType-description"
-                labelText={intl.formatMessage({
-                  id: "analyzerType.field.description",
-                })}
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                style={{ marginBottom: "1rem" }}
-              />
-              <Dropdown
-                id="analyzerType-protocol"
-                titleText={intl.formatMessage({
-                  id: "analyzerType.field.protocol",
-                })}
-                label={intl.formatMessage({
-                  id: "analyzerType.field.selectProtocol",
-                })}
-                items={protocolOptions}
-                itemToString={(item) => (item ? item.text : "")}
-                selectedItem={protocolOptions.find(
-                  (p) => p.id === formData.protocol,
-                )}
-                onChange={({ selectedItem }) =>
-                  setFormData({ ...formData, protocol: selectedItem.id })
-                }
-                style={{ marginBottom: "1rem" }}
-              />
-              <TextInput
-                id="analyzerType-pluginClassName"
-                labelText={intl.formatMessage({
-                  id: "analyzerType.field.pluginClassName",
-                })}
-                value={formData.pluginClassName}
-                onChange={(e) =>
-                  setFormData({ ...formData, pluginClassName: e.target.value })
-                }
-                style={{ marginBottom: "1rem" }}
-              />
-              <TextInput
-                id="analyzerType-identifierPattern"
-                labelText={intl.formatMessage({
-                  id: "analyzerType.field.identifierPattern",
-                })}
-                value={formData.identifierPattern}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    identifierPattern: e.target.value,
-                  })
-                }
-                helperText={intl.formatMessage({
-                  id: "analyzerType.field.identifierPatternHelper",
-                })}
-                style={{ marginBottom: "1rem" }}
-              />
-              <Checkbox
-                id="analyzerType-isGenericPlugin"
-                labelText={intl.formatMessage({
-                  id: "analyzerType.field.isGenericPlugin",
-                })}
-                checked={formData.isGenericPlugin}
-                onChange={(_, { checked }) =>
-                  setFormData({ ...formData, isGenericPlugin: checked })
-                }
-                style={{ marginBottom: "1rem" }}
-              />
-              <Checkbox
-                id="analyzerType-isActive"
-                labelText={intl.formatMessage({
-                  id: "analyzerType.field.isActive",
-                })}
-                checked={formData.isActive}
-                onChange={(_, { checked }) =>
-                  setFormData({ ...formData, isActive: checked })
-                }
-              />
-            </ModalBody>
-            <ModalFooter
-              primaryButtonText={
-                submitting
-                  ? intl.formatMessage({ id: "analyzerType.button.creating" })
-                  : intl.formatMessage({ id: "analyzerType.button.create" })
-              }
-              secondaryButtonText={intl.formatMessage({
-                id: "analyzerType.button.cancel",
-              })}
-              onRequestSubmit={handleCreate}
-              primaryButtonDisabled={submitting}
-            />
-          </ComposedModal>
+          </Section>
         </Column>
       </Grid>
     </>

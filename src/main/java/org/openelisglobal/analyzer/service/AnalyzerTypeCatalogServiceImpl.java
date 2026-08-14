@@ -52,6 +52,11 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     }
 
     @Override
+    public JsonNode exportProfile(String profileId, Integer revision) {
+        return profileCatalogClient.get(profileId, revision).profile();
+    }
+
+    @Override
     public AnalyzerTypeCatalogSummary fork(String profileId, AnalyzerProfileForkRequest request, String actor) {
         return composeOne(profileCatalogClient.fork(profileId, request, actor));
     }

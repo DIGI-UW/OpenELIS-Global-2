@@ -164,6 +164,15 @@ public class AnalyzerTypeCatalogServiceImplTest {
     }
 
     @Test
+    public void exportsTheExactBridgeOwnedProfileRevision() {
+        when(profileCatalogClient.get("site.mock-hematology", 1)).thenReturn(profileEntry);
+
+        assertEquals(profileEntry.profile(), service.exportProfile("site.mock-hematology", 1));
+
+        verify(profileCatalogClient).get("site.mock-hematology", 1);
+    }
+
+    @Test
     public void recomposesLifecycleChangesReturnedByBridge() {
         BridgeProfileCatalogEntry inactive = withProfile("site.mock-hematology", "INACTIVE", null, null);
         when(profileCatalogClient.deactivate("site.mock-hematology", "42")).thenReturn(inactive);

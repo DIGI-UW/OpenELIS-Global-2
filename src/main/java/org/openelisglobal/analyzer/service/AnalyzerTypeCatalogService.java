@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 
 public interface AnalyzerTypeCatalogService {
@@ -9,6 +10,8 @@ public interface AnalyzerTypeCatalogService {
     AnalyzerTypeCatalogSummary get(String profileId, Integer revision);
 
     List<BridgeProfileCatalogEntry> history(String profileId);
+
+    JsonNode exportProfile(String profileId, Integer revision);
 
     AnalyzerTypeCatalogSummary fork(String profileId, AnalyzerProfileForkRequest request, String actor);
 

@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogSummary;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogEntry;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -49,6 +51,16 @@ public class AnalyzerTypeCatalogRestController extends BaseRestController {
     @GetMapping("/{profileId}/history")
     public List<BridgeProfileCatalogEntry> history(@PathVariable String profileId) {
         return catalogService.history(profileId);
+    }
+
+    @GetMapping("/{profileId}/export")
+    public ResponseEntity<JsonNode> export(@PathVariable String profileId,
+            @RequestParam(required = false) Integer revision) {
+        String revisionLabel = revision == null ? "current" : revision.toString();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=" + profileId + "-revision-" + revisionLabel + ".json")
+                .body(catalogService.exportProfile(profileId, revision));
     }
 
     @PostMapping("/{profileId}/fork")
