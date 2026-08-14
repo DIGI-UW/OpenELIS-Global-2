@@ -13,6 +13,9 @@
  */
 package org.openelisglobal.testreflex.action.util;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -21,12 +24,16 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.scriptlet.service.ScriptletService;
 import org.openelisglobal.scriptlet.valueholder.Scriptlet;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 public abstract class ReflexAction {
 
@@ -92,10 +99,62 @@ public abstract class ReflexAction {
                     .setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
             generatedAnalysis.setParentAnalysis(currentAnalysis);
             generatedAnalysis.setParentResult(result);
-            generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
+            // The triggering result decides only that the reflex runs. Where
+            // it lands is the generated test's own business: the test is
+            // configured for the specimens it can be run on, so the order's
+            // sample item of one of those types is the one it belongs to.
+            // Without this the reflexed test took the triggering specimen and a
+            // rule producing a result on another specimen never could.
+            SampleItem targetItem = sampleItemForGeneratedTest(test, currentAnalysis);
+            if (targetItem != null) {
+                generatedAnalysis.setSampleItem(targetItem);
+                generatedAnalysis.setSampleTypeName(
+                        targetItem.getTypeOfSample() == null ? null : targetItem.getTypeOfSample().getLocalizedName());
+            } else {
+                generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
+                generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
+            }
             generatedAnalysis.setTestSection(currentAnalysis.getTestSection());
-            generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
         }
+    }
+
+    /**
+     * The specimen the reflexed test belongs on: the order's sample item whose type
+     * the generated test is configured for.
+     *
+     * <p>
+     * Only an unambiguous answer is acted on. A test configured for several
+     * specimens that the order holds several of gives no single answer, and the
+     * triggering specimen stays the safer choice over guessing between them. Where
+     * the order holds none of them nothing can be done either - a specimen that was
+     * never collected cannot be conjured.
+     */
+    private SampleItem sampleItemForGeneratedTest(Test test, Analysis currentAnalysis) {
+        if (test == null || currentAnalysis == null || currentAnalysis.getSampleItem() == null) {
+            return null;
+        }
+        List<TypeOfSample> configured = SpringContext.getBean(TypeOfSampleService.class)
+                .getTypeOfSampleForTest(test.getId());
+        if (configured == null || configured.isEmpty()) {
+            return null;
+        }
+        Set<String> allowed = new HashSet<>();
+        configured.forEach(type -> allowed.add(type.getId()));
+        List<SampleItem> items = SpringContext.getBean(SampleItemService.class)
+                .getSampleItemsBySampleId(currentAnalysis.getSampleItem().getSample().getId());
+        if (items == null) {
+            return null;
+        }
+        SampleItem match = null;
+        for (SampleItem item : items) {
+            if (allowed.contains(item.getTypeOfSampleId())) {
+                if (match != null) {
+                    return null;
+                }
+                match = item;
+            }
+        }
+        return match;
     }
 
     /*
