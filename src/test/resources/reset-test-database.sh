@@ -33,6 +33,10 @@ fi
 # Determine execution method: Docker or direct psql
 USE_DOCKER=false
 DB_CONTAINER="${DB_CONTAINER:-}"
+if [ -n "$DB_CONTAINER" ] && ! command -v docker &> /dev/null; then
+    echo "ERROR: Explicit DB_CONTAINER '$DB_CONTAINER' requires Docker, but the Docker CLI is unavailable."
+    exit 1
+fi
 if command -v docker &> /dev/null; then
     if [ -n "$DB_CONTAINER" ]; then
         DB_CONTAINER_RUNNING=$(docker inspect --format '{{.State.Running}}' "$DB_CONTAINER" 2>/dev/null || true)
