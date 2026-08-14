@@ -608,6 +608,19 @@
   font-size: 0.75rem;
 }
 
+/* OGC-1025 (R6) — bench control capture */
+.unifiedQcCapture {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0.5rem 0;
+}
+
+.unifiedQcCaptureWarning {
+  color: #8e6a00;
+  font-size: 0.75rem;
+}
+
 .unifiedAvatar--photo {
   padding: 0;
   overflow: hidden;

@@ -2,6 +2,7 @@ package org.openelisglobal.qc.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.ControllerUtills;
@@ -34,10 +35,14 @@ import org.springframework.web.bind.annotation.RestController;
  * locked to another entity's fields is a trap for the next reader.
  *
  * <p>
- * Gated from day one, following {@code QCExportRestController} — the only other
- * gated endpoints on this surface. The rest of {@code /rest/qc/*} is
- * authenticated but otherwise open; that is a real finding, but retro-gating
- * live analyzer traffic does not belong in this story.
+ * Gated from day one. OGC-1025 moved the gate from {@code qa.view.qc} (a QC
+ * <em>viewing</em> permission) to the RESULTS role: this is a results-entry
+ * write, recorded by the bench tech alongside patient results, so it takes the
+ * same authority as the rest of results entry
+ * ({@code ResultEntryRestController}). A QC-view-only user gets 403. The rest
+ * of {@code /rest/qc/*} is authenticated but otherwise open; that is a real
+ * finding, but retro-gating live analyzer traffic does not belong in this
+ * story.
  */
 @RestController
 @RequestMapping("/rest/qc/results")
@@ -57,7 +62,7 @@ public class BenchQCResultRestController extends BaseRestController {
      * lot, rather than letting the database constraint surface as a 500.
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.view.qc') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize("hasRole('RESULTS') or hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<?> record(@Valid @RequestBody BenchQCCaptureForm capture, HttpServletRequest request) {
 
         int sysUserId;
@@ -65,7 +70,7 @@ public class BenchQCResultRestController extends BaseRestController {
             sysUserId = Integer.parseInt(ControllerUtills.getSysUserId(request));
         } catch (NumberFormatException | NullPointerException e) {
             LogEvent.logError(this.getClass().getName(), "record", "no resolvable session user for QC capture");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No session user");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "No session user"));
         }
 
         try {
@@ -73,7 +78,11 @@ public class BenchQCResultRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn(this.getClass().getName(), "record", "rejected QC capture: " + e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
+            // JSON-object body: the capture form's fetch helper parses every
+            // response as JSON and shows `message` to the tech verbatim.
+            // Map.of would NPE on a null message and turn a 400 into a 500.
+            String message = e.getMessage() == null ? "Invalid control result" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
         }
     }
 }
