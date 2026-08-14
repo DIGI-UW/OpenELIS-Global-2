@@ -476,10 +476,12 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     operation: OperationModel,
   ) {
     switch (type) {
-      case "TEST_RESULT":
+      case "TEST_RESULT": {
+        const showsComponent =
+          operandComponentsFor(index, operationIndex).length > 1;
         return (
           <>
-            <Column lg={5} md={2} sm={1}>
+            <Column lg={showsComponent ? 4 : 5} md={2} sm={1}>
               <Select
                 data-cy="add-sample"
                 id={index + "_" + operationIndex + "_sample"}
@@ -508,7 +510,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 ))}
               </Select>
             </Column>
-            {operandComponentsFor(index, operationIndex).length > 1 && (
+            {showsComponent && (
               <Column lg={3} md={2} sm={1}>
                 <Select
                   id={index + "_" + operationIndex + "_component"}
@@ -534,7 +536,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 </Select>
               </Column>
             )}
-            <Column lg={5} md={2} sm={1}>
+            <Column lg={showsComponent ? 3 : 5} md={2} sm={1}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}
                 label={
@@ -554,6 +556,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
             </Column>
           </>
         );
+      }
       case "MATH_FUNCTION":
         return (
           <>

@@ -302,6 +302,7 @@ function ReflexRule() {
       id: c.id,
       value: c.value,
       resultType: c.resultType || test?.resultType,
+      primary: c.primary,
     }));
   };
 
@@ -318,10 +319,22 @@ function ReflexRule() {
    * the test's. A numeric condition under a coded primary was being offered
    * the dictionary editor and could never match.
    */
+  /**
+   * The component a condition should show when it names none yet: its test's
+   * primary. Legacy rules arrive without one and must not appear unset.
+   */
+  const defaultComponentFor = (index, item_index) => {
+    const list = componentsFor(index, item_index);
+    const primary = list.find((c) => c.primary);
+    return (primary || list[0])?.id;
+  };
+
   const conditionResultType = (index, item_index) => {
     const condition = ruleList[index]?.conditions?.[item_index];
+    const effectiveId =
+      condition?.componentId || defaultComponentFor(index, item_index);
     const component = componentsFor(index, item_index).find(
-      (c) => c.id === condition?.componentId,
+      (c) => c.id === effectiveId,
     );
     if (component?.resultType) {
       return component.resultType;
@@ -651,47 +664,48 @@ function ReflexRule() {
                               &nbsp;{" "}
                             </Column>
                           </Grid>
-                          {rule.conditions.map((condition, condition_index) => (
-                            <Grid key={index + "_" + condition_index}>
-                              <Column lg={3} sm={4}>
-                                <Select
-                                  data-cy="addSample"
-                                  id={index + "_" + condition_index + "_sample"}
-                                  name="sampleId"
-                                  labelText={
-                                    <FormattedMessage id="rulebuilder.label.selectSample" />
-                                  }
-                                  value={condition.sampleId}
-                                  onChange={(e) => {
-                                    handleRuleFieldItemChange(
-                                      e,
-                                      index,
-                                      condition_index,
-                                      FIELD.conditions,
-                                    );
-                                    handleSampleSelected(
-                                      e,
-                                      index,
-                                      condition_index,
-                                      FIELD.conditions,
-                                    );
-                                  }}
-                                  required
-                                >
-                                  <SelectItem text="" value="" />
-                                  {sampleList.map((sample, sample_index) => (
-                                    <SelectItem
-                                      text={sample.value}
-                                      value={sample.id}
-                                      key={sample_index}
-                                    />
-                                  ))}
-                                </Select>
-                              </Column>
+                          {rule.conditions.map((condition, condition_index) => {
+                            return (
+                              <Grid key={index + "_" + condition_index}>
+                                <Column lg={2} md={2} sm={4}>
+                                  <Select
+                                    data-cy="addSample"
+                                    id={
+                                      index + "_" + condition_index + "_sample"
+                                    }
+                                    name="sampleId"
+                                    labelText={
+                                      <FormattedMessage id="rulebuilder.label.selectSample" />
+                                    }
+                                    value={condition.sampleId}
+                                    onChange={(e) => {
+                                      handleRuleFieldItemChange(
+                                        e,
+                                        index,
+                                        condition_index,
+                                        FIELD.conditions,
+                                      );
+                                      handleSampleSelected(
+                                        e,
+                                        index,
+                                        condition_index,
+                                        FIELD.conditions,
+                                      );
+                                    }}
+                                    required
+                                  >
+                                    <SelectItem text="" value="" />
+                                    {sampleList.map((sample, sample_index) => (
+                                      <SelectItem
+                                        text={sample.value}
+                                        value={sample.id}
+                                        key={sample_index}
+                                      />
+                                    ))}
+                                  </Select>
+                                </Column>
 
-                              {componentsFor(index, condition_index).length >
-                                1 && (
-                                <Column lg={3} sm={4}>
+                                <Column lg={3} md={1} sm={4}>
                                   <Select
                                     id={
                                       index +
@@ -703,7 +717,14 @@ function ReflexRule() {
                                     labelText={
                                       <FormattedMessage id="rulebuilder.label.selectComponent" />
                                     }
-                                    value={condition.componentId || ""}
+                                    value={
+                                      condition.componentId ||
+                                      defaultComponentFor(
+                                        index,
+                                        condition_index,
+                                      ) ||
+                                      ""
+                                    }
                                     onChange={(e) =>
                                       handleRuleFieldItemChange(
                                         e,
@@ -712,8 +733,13 @@ function ReflexRule() {
                                         FIELD.conditions,
                                       )
                                     }
+                                    required
                                   >
-                                    <SelectItem text="" value="" />
+                                    {!condition.componentId &&
+                                      !defaultComponentFor(
+                                        index,
+                                        condition_index,
+                                      ) && <SelectItem text="" value="" />}
                                     {componentsFor(index, condition_index).map(
                                       (component, c_index) => (
                                         <SelectItem
@@ -725,123 +751,250 @@ function ReflexRule() {
                                     )}
                                   </Select>
                                 </Column>
-                              )}
 
-                              <Column lg={3} sm={4}>
-                                <AutoComplete
-                                  id={
-                                    index +
-                                    "_" +
-                                    condition_index +
-                                    "_conditionTestId"
-                                  }
-                                  value={condition.testId}
-                                  onSelect={(id) => {
-                                    handleAutoCompleteRuleFieldItemChange(
-                                      id,
-                                      "testId",
+                                <Column lg={4} md={1} sm={4}>
+                                  <AutoComplete
+                                    id={
+                                      index +
+                                      "_" +
+                                      condition_index +
+                                      "_conditionTestId"
+                                    }
+                                    value={condition.testId}
+                                    onSelect={(id) => {
+                                      handleAutoCompleteRuleFieldItemChange(
+                                        id,
+                                        "testId",
+                                        index,
+                                        condition_index,
+                                        FIELD.conditions,
+                                      );
+                                      handleTestSelected(
+                                        id,
+                                        index,
+                                        condition_index,
+                                        FIELD.conditions,
+                                      );
+                                    }}
+                                    name="testName"
+                                    label={
+                                      <FormattedMessage id="rulebuilder.label.searchTest" />
+                                    }
+                                    suggestions={
+                                      sampleTestList[FIELD.conditions][index]
+                                        ? sampleTestList[FIELD.conditions][
+                                            index
+                                          ][condition_index]
+                                        : []
+                                    }
+                                    required
+                                  />
+                                </Column>
+                                <Column lg={2} md={1} sm={4}>
+                                  <Select
+                                    value={condition.relation}
+                                    id={
+                                      index +
+                                      "_" +
+                                      condition_index +
+                                      "_relation"
+                                    }
+                                    name="relation"
+                                    labelText={
+                                      <FormattedMessage id="rulebuilder.label.relation" />
+                                    }
+                                    onChange={(e) =>
+                                      handleRuleFieldItemChange(
+                                        e,
+                                        index,
+                                        condition_index,
+                                        FIELD.conditions,
+                                      )
+                                    }
+                                    required
+                                  >
+                                    <SelectItem text="" value="" />
+                                    {conditionResultType(
                                       index,
                                       condition_index,
-                                      FIELD.conditions,
-                                    );
-                                    handleTestSelected(
-                                      id,
-                                      index,
-                                      condition_index,
-                                      FIELD.conditions,
-                                    );
-                                  }}
-                                  name="testName"
-                                  label={
-                                    <FormattedMessage id="rulebuilder.label.searchTest" />
-                                  }
-                                  suggestions={
-                                    sampleTestList[FIELD.conditions][index]
-                                      ? sampleTestList[FIELD.conditions][index][
-                                          condition_index
-                                        ]
-                                      : []
-                                  }
-                                  required
-                                />
-                              </Column>
-                              <Column lg={3} sm={4}>
-                                <Select
-                                  value={condition.relation}
-                                  id={
-                                    index + "_" + condition_index + "_relation"
-                                  }
-                                  name="relation"
-                                  labelText={
-                                    <FormattedMessage id="rulebuilder.label.relation" />
-                                  }
-                                  onChange={(e) =>
-                                    handleRuleFieldItemChange(
-                                      e,
-                                      index,
-                                      condition_index,
-                                      FIELD.conditions,
-                                    )
-                                  }
-                                  required
-                                >
-                                  <SelectItem text="" value="" />
+                                    ) && (
+                                      <>
+                                        {conditionResultType(
+                                          index,
+                                          condition_index,
+                                        ) === "N" ? (
+                                          <>
+                                            {numericRelationOptions.map(
+                                              (relation, relation_index) => (
+                                                <SelectItem
+                                                  text={relation.label}
+                                                  value={relation.value}
+                                                  key={relation_index}
+                                                />
+                                              ),
+                                            )}
+                                          </>
+                                        ) : (
+                                          <>
+                                            {generalRelationOptions.map(
+                                              (relation, relation_index) => (
+                                                <SelectItem
+                                                  text={relation.label}
+                                                  value={relation.value}
+                                                  key={relation_index}
+                                                />
+                                              ),
+                                            )}
+                                          </>
+                                        )}
+                                      </>
+                                    )}
+                                  </Select>
+                                </Column>
+                                <Column lg={3} md={1} sm={4}>
                                   {conditionResultType(
                                     index,
                                     condition_index,
-                                  ) && (
+                                  ) ? (
                                     <>
                                       {conditionResultType(
                                         index,
                                         condition_index,
-                                      ) === "N" ? (
-                                        <>
-                                          {numericRelationOptions.map(
-                                            (relation, relation_index) => (
-                                              <SelectItem
-                                                text={relation.label}
-                                                value={relation.value}
-                                                key={relation_index}
-                                              />
-                                            ),
+                                      ) === "D" ? (
+                                        <Select
+                                          value={condition.value}
+                                          id={
+                                            index +
+                                            "_" +
+                                            condition_index +
+                                            "_value"
+                                          }
+                                          name="value"
+                                          labelText={
+                                            <FormattedMessage id="rulebuilder.label.dictValue" />
+                                          }
+                                          onChange={(e) =>
+                                            handleRuleFieldItemChange(
+                                              e,
+                                              index,
+                                              condition_index,
+                                              FIELD.conditions,
+                                            )
+                                          }
+                                          disabled={normalRangeSelected(
+                                            condition.relation,
                                           )}
-                                        </>
+                                          required
+                                        >
+                                          <SelectItem text="" value="" />
+                                          <>
+                                            {dictionaryResultsFor(
+                                              index,
+                                              condition_index,
+                                            ) && (
+                                              <>
+                                                {dictionaryResultsFor(
+                                                  index,
+                                                  condition_index,
+                                                ).map(
+                                                  (
+                                                    result,
+                                                    condition_value_index,
+                                                  ) => (
+                                                    <SelectItem
+                                                      text={result.value}
+                                                      value={result.id}
+                                                      key={
+                                                        condition_value_index
+                                                      }
+                                                    />
+                                                  ),
+                                                )}
+                                              </>
+                                            )}
+                                          </>
+                                        </Select>
                                       ) : (
                                         <>
-                                          {generalRelationOptions.map(
-                                            (relation, relation_index) => (
-                                              <SelectItem
-                                                text={relation.label}
-                                                value={relation.value}
-                                                key={relation_index}
-                                              />
-                                            ),
-                                          )}
+                                          <TextInput
+                                            name="value"
+                                            type={
+                                              conditionResultType(
+                                                index,
+                                                condition_index,
+                                              ) === "N"
+                                                ? "number"
+                                                : "text"
+                                            }
+                                            id={
+                                              index +
+                                              "_" +
+                                              condition_index +
+                                              "_value"
+                                            }
+                                            labelText={
+                                              conditionResultType(
+                                                index,
+                                                condition_index,
+                                              ) === "N" ? (
+                                                <FormattedMessage id="rulebuilder.label.numericValue" />
+                                              ) : (
+                                                <FormattedMessage id="rulebuilder.label.textValue" />
+                                              )
+                                            }
+                                            value={condition.value}
+                                            onChange={(e) => {
+                                              handleRuleFieldItemChange(
+                                                e,
+                                                index,
+                                                condition_index,
+                                                FIELD.conditions,
+                                              );
+                                              addTextInPutError(
+                                                condition.value,
+                                                conditionResultType(
+                                                  index,
+                                                  condition_index,
+                                                ),
+                                                "condition-value_" +
+                                                  index +
+                                                  "_" +
+                                                  condition_index,
+                                              );
+                                            }}
+                                            invalid={validateTextInPut(
+                                              condition.value,
+                                              conditionResultType(
+                                                index,
+                                                condition_index,
+                                              ),
+                                            )}
+                                            invalidText={
+                                              <FormattedMessage id="rulebuilder.error.invalidNumeric" />
+                                            }
+                                            disabled={normalRangeSelected(
+                                              condition.relation,
+                                            )}
+                                            required
+                                          />
                                         </>
                                       )}
                                     </>
-                                  )}
-                                </Select>
-                              </Column>
-                              <Column lg={3} sm={4}>
-                                {conditionResultType(index, condition_index) ? (
-                                  <>
-                                    {conditionResultType(
-                                      index,
-                                      condition_index,
-                                    ) === "D" ? (
-                                      <Select
-                                        value={condition.value}
+                                  ) : (
+                                    <>
+                                      <TextInput
+                                        name="value"
+                                        type="text"
                                         id={
                                           index +
                                           "_" +
                                           condition_index +
                                           "_value"
                                         }
-                                        name="value"
                                         labelText={
-                                          <FormattedMessage id="rulebuilder.label.dictValue" />
+                                          <FormattedMessage id="rulebuilder.label.numericValue" />
                                         }
+                                        value={condition.value}
                                         onChange={(e) =>
                                           handleRuleFieldItemChange(
                                             e,
@@ -850,244 +1003,133 @@ function ReflexRule() {
                                             FIELD.conditions,
                                           )
                                         }
-                                        disabled={normalRangeSelected(
-                                          condition.relation,
-                                        )}
                                         required
-                                      >
-                                        <SelectItem text="" value="" />
-                                        <>
-                                          {dictionaryResultsFor(
-                                            index,
-                                            condition_index,
-                                          ) && (
-                                            <>
-                                              {dictionaryResultsFor(
-                                                index,
-                                                condition_index,
-                                              ).map(
-                                                (
-                                                  result,
-                                                  condition_value_index,
-                                                ) => (
-                                                  <SelectItem
-                                                    text={result.value}
-                                                    value={result.id}
-                                                    key={condition_value_index}
-                                                  />
-                                                ),
-                                              )}
-                                            </>
-                                          )}
-                                        </>
-                                      </Select>
-                                    ) : (
+                                      />
+                                    </>
+                                  )}
+                                </Column>
+                                {condition.relation === "BETWEEN" && (
+                                  <Column lg={2} md={1} sm={4}>
+                                    {conditionResultType(
+                                      index,
+                                      condition_index,
+                                    ) && (
                                       <>
-                                        <TextInput
-                                          name="value"
-                                          type={
-                                            conditionResultType(
-                                              index,
-                                              condition_index,
-                                            ) === "N"
-                                              ? "number"
-                                              : "text"
-                                          }
-                                          id={
-                                            index +
-                                            "_" +
-                                            condition_index +
-                                            "_value"
-                                          }
-                                          labelText={
-                                            conditionResultType(
-                                              index,
-                                              condition_index,
-                                            ) === "N" ? (
-                                              <FormattedMessage id="rulebuilder.label.numericValue" />
-                                            ) : (
-                                              <FormattedMessage id="rulebuilder.label.textValue" />
-                                            )
-                                          }
-                                          value={condition.value}
-                                          onChange={(e) => {
-                                            handleRuleFieldItemChange(
-                                              e,
-                                              index,
-                                              condition_index,
-                                              FIELD.conditions,
-                                            );
-                                            addTextInPutError(
-                                              condition.value,
-                                              conditionResultType(
-                                                index,
-                                                condition_index,
-                                              ),
-                                              "condition-value_" +
+                                        {conditionResultType(
+                                          index,
+                                          condition_index,
+                                        ) === "N" &&
+                                          condition.relation === "BETWEEN" && (
+                                            <TextInput
+                                              name="value2"
+                                              type="text"
+                                              id={
                                                 index +
                                                 "_" +
-                                                condition_index,
-                                            );
-                                          }}
-                                          invalid={validateTextInPut(
-                                            condition.value,
-                                            conditionResultType(
-                                              index,
-                                              condition_index,
-                                            ),
+                                                condition_index +
+                                                "_value"
+                                              }
+                                              labelText={
+                                                <FormattedMessage id="rulebuilder.label.numericValue2" />
+                                              }
+                                              value={condition.value2}
+                                              onChange={(e) => {
+                                                handleRuleFieldItemChange(
+                                                  e,
+                                                  index,
+                                                  condition_index,
+                                                  FIELD.conditions,
+                                                );
+                                                addTextInPutError(
+                                                  condition.value2,
+                                                  conditionResultType(
+                                                    index,
+                                                    condition_index,
+                                                  ),
+                                                  "condition-value2_" +
+                                                    index +
+                                                    "_" +
+                                                    condition_index,
+                                                );
+                                              }}
+                                              invalid={validateTextInPut(
+                                                condition.value2,
+                                                conditionResultType(
+                                                  index,
+                                                  condition_index,
+                                                ),
+                                              )}
+                                              invalidText={
+                                                <FormattedMessage id="rulebuilder.error.invalidNumeric" />
+                                              }
+                                              required
+                                            />
                                           )}
-                                          invalidText={
-                                            <FormattedMessage id="rulebuilder.error.invalidNumeric" />
-                                          }
-                                          disabled={normalRangeSelected(
-                                            condition.relation,
-                                          )}
-                                          required
-                                        />
                                       </>
                                     )}
-                                  </>
-                                ) : (
-                                  <>
-                                    <TextInput
-                                      name="value"
-                                      type="text"
-                                      id={
-                                        index + "_" + condition_index + "_value"
+                                  </Column>
+                                )}
+                                <Column
+                                  lg={2}
+                                  md={1}
+                                  sm={4}
+                                  className="ruleRowActions"
+                                >
+                                  {rule.conditions.length !== 1 && (
+                                    <IconButton
+                                      label={
+                                        <FormattedMessage id="rulebuilder.label.removeCondition" />
                                       }
-                                      labelText={
-                                        <FormattedMessage id="rulebuilder.label.numericValue" />
-                                      }
-                                      value={condition.value}
-                                      onChange={(e) =>
-                                        handleRuleFieldItemChange(
-                                          e,
+                                      className="ruleFieldButton"
+                                      onClick={() =>
+                                        handleRuleFieldItemRemove(
                                           index,
                                           condition_index,
                                           FIELD.conditions,
                                         )
                                       }
-                                      required
-                                    />
-                                  </>
-                                )}
-                              </Column>
-                              <Column lg={2} sm={4}>
-                                {conditionResultType(
-                                  index,
-                                  condition_index,
-                                ) && (
-                                  <>
-                                    {conditionResultType(
-                                      index,
-                                      condition_index,
-                                    ) === "N" &&
-                                      condition.relation === "BETWEEN" && (
-                                        <TextInput
-                                          name="value2"
-                                          type="text"
-                                          id={
-                                            index +
-                                            "_" +
-                                            condition_index +
-                                            "_value"
-                                          }
-                                          labelText={
-                                            <FormattedMessage id="rulebuilder.label.numericValue2" />
-                                          }
-                                          value={condition.value2}
-                                          onChange={(e) => {
-                                            handleRuleFieldItemChange(
-                                              e,
-                                              index,
-                                              condition_index,
-                                              FIELD.conditions,
-                                            );
-                                            addTextInPutError(
-                                              condition.value2,
-                                              conditionResultType(
-                                                index,
-                                                condition_index,
-                                              ),
-                                              "condition-value2_" +
-                                                index +
-                                                "_" +
-                                                condition_index,
-                                            );
-                                          }}
-                                          invalid={validateTextInPut(
-                                            condition.value2,
-                                            conditionResultType(
-                                              index,
-                                              condition_index,
-                                            ),
-                                          )}
-                                          invalidText={
-                                            <FormattedMessage id="rulebuilder.error.invalidNumeric" />
-                                          }
-                                          required
-                                        />
-                                      )}
-                                  </>
-                                )}
-                              </Column>
-                              <Column lg={1} sm={4}>
-                                {rule.conditions.length !== 1 && (
-                                  <IconButton
-                                    label={
-                                      <FormattedMessage id="rulebuilder.label.removeCondition" />
-                                    }
-                                    className="ruleFieldButton"
-                                    onClick={() =>
-                                      handleRuleFieldItemRemove(
-                                        index,
-                                        condition_index,
-                                        FIELD.conditions,
-                                      )
-                                    }
-                                    kind="danger"
-                                    size="sm"
-                                  >
-                                    {" "}
-                                    <Subtract size={18} />
-                                  </IconButton>
-                                )}
-                              </Column>
-                              <Column lg={1} sm={4}>
-                                {rule.conditions.length - 1 ===
-                                  condition_index && (
-                                  <IconButton
-                                    label={
-                                      <FormattedMessage id="rulebuilder.label.addCondition" />
-                                    }
-                                    className="ruleFieldButton"
-                                    onClick={() =>
-                                      handleRuleFieldItemAdd(
-                                        index,
-                                        FIELD.conditions,
-                                        conditionsObj,
-                                      )
-                                    }
-                                    kind="tertiary"
-                                    size="sm"
-                                  >
-                                    {" "}
-                                    <Add size={18} />
-                                  </IconButton>
-                                )}
-                              </Column>
-                              <Column lg={16}>
-                                {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                                &nbsp;{" "}
-                              </Column>
-                              <Column lg={16}>
-                                {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                                &nbsp;{" "}
-                              </Column>
-                            </Grid>
-                          ))}
+                                      kind="danger"
+                                      size="sm"
+                                    >
+                                      {" "}
+                                      <Subtract size={18} />
+                                    </IconButton>
+                                  )}
+                                  {rule.conditions.length - 1 ===
+                                    condition_index && (
+                                    <IconButton
+                                      label={
+                                        <FormattedMessage id="rulebuilder.label.addCondition" />
+                                      }
+                                      className="ruleFieldButton"
+                                      onClick={() =>
+                                        handleRuleFieldItemAdd(
+                                          index,
+                                          FIELD.conditions,
+                                          conditionsObj,
+                                        )
+                                      }
+                                      kind="tertiary"
+                                      size="sm"
+                                    >
+                                      {" "}
+                                      <Add size={18} />
+                                    </IconButton>
+                                  )}
+                                </Column>
+                                <Column lg={16}>
+                                  {" "}
+                                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                                  &nbsp;{" "}
+                                </Column>
+                                <Column lg={16}>
+                                  {" "}
+                                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                                  &nbsp;{" "}
+                                </Column>
+                              </Grid>
+                            );
+                          })}
                         </div>
                         <div className="section">
                           <div className="inlineDiv">
