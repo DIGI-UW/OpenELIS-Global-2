@@ -528,12 +528,16 @@ the checkpoint that discovers or resolves it; IDs are never reused.
 review threads, and evidence are complete. A failed required test or UAT step
 keeps the checkpoint `IN_PROGRESS`; it cannot be relabeled as a follow-up.
 
-BR-M1 is prepared and pushed at `5d2664e` in
+BR-M1 is prepared and pushed at `42cb4bc` in
 [PR #46](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/46). Its 643-test
 local suite and GitHub `Run Tests` check are green, including the resolved
-`ISSUE-M1-001` and `ISSUE-M1-002` cases. OE-M1 remains at the OE-E0 head with no
-M1 production implementation. M1 is therefore `IN_PROGRESS`, not `ACCEPTED`,
-and remains gated by every earlier item in the global acceptance order.
+`ISSUE-M1-001` and `ISSUE-M1-002` cases. OE-M1 has begun but is not complete.
+Its Bridge catalog consumer and revisioned site-binding persistence foundation
+are implemented and tested in
+[PR #4056](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4056); migration,
+composition, lifecycle UI, and runtime evidence remain open. M1 is therefore
+`IN_PROGRESS`, not `ACCEPTED`, and remains gated by every earlier item in the
+global acceptance order.
 
 ## Pull Request Train
 
