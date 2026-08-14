@@ -65,7 +65,12 @@ test.describe("Microbiology case workbench", () => {
     await page.getByLabel("Media or bottle").fill("Blood culture bottle");
     await page.getByLabel("Incubation").fill("35 C for 24 hours");
     await page.getByLabel("Atmosphere").fill("Ambient");
-    await page.getByLabel(/UAT-MICRO-MEDIA-FEFO/).check();
+    const mediaLot = page.getByRole("radio", {
+      name: /UAT-MICRO-MEDIA-FEFO/,
+    });
+    await mediaLot.focus();
+    await page.keyboard.press("Space");
+    await expect(mediaLot).toBeChecked();
     await page.getByRole("button", { name: "Save media" }).click();
 
     await expect(caseHeader.getByTitle("Incubating")).toBeVisible({

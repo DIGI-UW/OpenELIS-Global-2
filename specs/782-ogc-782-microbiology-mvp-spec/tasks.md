@@ -715,9 +715,14 @@ culture-action entry points. The independent status ledger is
   exposes both Incubating outcomes in Inoculation, exposes Mark positive from
   the next-step banner, preserves canonical action state, and shows Timeline
   actor plus semantic time. No backend endpoint or migration was added.
-- [ ] T313 [M-04] Run the focused backend, component, route, and Playwright
+- [x] T313 [M-04] Run the focused backend, component, route, and Playwright
   checkpoints; update the ledger with exact counts and distinguish any
-  unrelated inherited test failure.
+  unrelated inherited test failure. The backend service/controller checkpoint
+  passes 20/20 on Java 21; the Carbon/route checkpoint passes 38/38; and the
+  exact local Playwright setup plus user journey passes 2/2 in 7.7 seconds.
+  The first browser run correctly failed on a generic `.check()` interaction
+  with Carbon's wrapped radio; the final test uses focus + Space, asserts the
+  selected state, and contains no forced action or arbitrary wait.
 - [ ] T314 [M-04] Commit and push the coherent slice, deploy its exact SHA to
   AMR, verify target metadata, and execute the exact registered journey against
   the deployment.
