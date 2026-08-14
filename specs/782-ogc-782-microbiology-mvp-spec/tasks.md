@@ -649,33 +649,40 @@ and M-04 section 4.9a. R2 is one official stacked PR based directly on #4004.
   baseline, remove stale controls, verify routes/controls against the deployed
   SHA, and keep historical regression stories outside the focused delta run.
   The live `amr` checklist at revision
-  `4083b219ccb746ce8a88e6b835f8cfccff4c4ef2f388518beda13dee2d5e4087`
-  contains 23 stories and 71 steps. `AMR-S01` v3.0 covers R2 M-03 with four
-  required steps and one optional configured-subunit step; `AMR-S28` v1.0
+  `a91f518f034a3595c9ddad070a9aaee450d229d034770899c7ceb6139dc0d173`
+  contains 23 stories and 71 steps. `AMR-S01` v4.0 revision `384c45086925`
+  covers R2 M-03 with five required, UX-specific steps; `AMR-S28` v1.0
   independently covers the two required M-04 protocol actions. Grist reports no
   story or step problems, and the public endpoint serves HTTP 200.
 - [x] T305 [R2] Push and open the official stacked R2 PR with #4004's branch as
   its GitHub base; update both PR descriptions with exact head/base/evidence.
-  PR #4051 is the single R2 PR and is based directly on #4004's branch; its
-  implementation head includes the cross-step completion at `1b256aa4c`.
+  PR #4051 is the single R2 PR and is based directly on #4004's branch. Its
+  deployment-bearing implementation commit `8da391a5041a` includes R1 contract
+  commit `b563bf293` and the complete reload path.
 - [x] T306 [R2] Deploy the exact R2 head to AMR, verify `target.json`, run the
   focused automated preflight, and hand the matching stories to Piotr for human
-  Pass/Fail/N/A acceptance. Deployment
-  `20260813T223055Z-6ed0e8138c9a` published implementation SHA
-  `6ed0e8138c9ad27c323237e5cdb6697e6c4e5530`; target health and smoke passed,
+  Pass/Fail/N/A acceptance. Latest deployment
+  `20260814T041514Z-8da391a5041a` publishes implementation SHA
+  `8da391a5041a4bbf47693251173350fb65dc55d7`; target health and smoke passed,
   `/` and `/Microbiology/worklist` return HTTP 200, and both app containers are
-  healthy/running. The property-gated service fixture seeded primary case
-  `a65d620c-c96b-4627-9d69-9c00ba310551` plus its sibling without SQL. The
-  deployed authenticated M-03/M-04 Playwright journey passed 2/2 in 20.5
-  seconds. A live browser check selected `AMR-S01` (five steps) and `AMR-S28`
-  (two steps), each bound to the deployed branch/SHA. Human marks remain
-  intentionally pending.
+  healthy/running. The property-gated service fixture seeded its primary case
+  plus its sibling without SQL. The latest deployed
+  authenticated M-03 reload/protocol journey passed setup plus the user journey
+  2/2 in 28.6 seconds. Live UAT exposes `AMR-S01` v4.0 (five required steps)
+  and `AMR-S28` v1.0 (two required steps), each bound to PR #4051. Human marks
+  remain intentionally pending.
 - [x] T307 [R2] Close the standard-order context gaps exposed by the final M-03
   browser pass: reuse Department/Ward in Requester, keep ISO date-only React
   state with configured transport formatting, reject collection before
   admission, preserve read-only collection state until explicit Edit, and add
   focused RTL plus Playwright evidence. No schema change or direct fixture
   seeding is introduced.
+- [x] T308 [R2] Repair the pending-order reload contract exposed by exact-sha
+  deployment. Pending and collected selections now reuse one complete test DTO
+  carrying workflow and linked Method metadata; focused Java contracts pass
+  2/2, the frontend converter passes 2/2, and the exact deployed journey passes.
+  Three unrelated create-request tests still expose an inherited isolated
+  audit-user fixture defect and are recorded separately from M-03 acceptance.
 
 ## Dependencies & Execution Order
 
