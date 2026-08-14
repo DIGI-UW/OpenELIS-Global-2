@@ -40,6 +40,7 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.service.ReferralTypeService;
 import org.openelisglobal.referral.valueholder.ReferralType;
+import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.action.util.ResultsPaging;
