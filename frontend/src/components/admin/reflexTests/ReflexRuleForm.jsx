@@ -705,6 +705,45 @@ function ReflexRule() {
                                   </Select>
                                 </Column>
 
+                                <Column lg={4} md={1} sm={4}>
+                                  <AutoComplete
+                                    id={
+                                      index +
+                                      "_" +
+                                      condition_index +
+                                      "_conditionTestId"
+                                    }
+                                    value={condition.testId}
+                                    onSelect={(id) => {
+                                      handleAutoCompleteRuleFieldItemChange(
+                                        id,
+                                        "testId",
+                                        index,
+                                        condition_index,
+                                        FIELD.conditions,
+                                      );
+                                      handleTestSelected(
+                                        id,
+                                        index,
+                                        condition_index,
+                                        FIELD.conditions,
+                                      );
+                                    }}
+                                    name="testName"
+                                    label={
+                                      <FormattedMessage id="rulebuilder.label.searchTest" />
+                                    }
+                                    suggestions={
+                                      sampleTestList[FIELD.conditions][index]
+                                        ? sampleTestList[FIELD.conditions][
+                                            index
+                                          ][condition_index]
+                                        : []
+                                    }
+                                    required
+                                  />
+                                </Column>
+
                                 <Column lg={3} md={1} sm={4}>
                                   <Select
                                     id={
@@ -750,45 +789,6 @@ function ReflexRule() {
                                       ),
                                     )}
                                   </Select>
-                                </Column>
-
-                                <Column lg={4} md={1} sm={4}>
-                                  <AutoComplete
-                                    id={
-                                      index +
-                                      "_" +
-                                      condition_index +
-                                      "_conditionTestId"
-                                    }
-                                    value={condition.testId}
-                                    onSelect={(id) => {
-                                      handleAutoCompleteRuleFieldItemChange(
-                                        id,
-                                        "testId",
-                                        index,
-                                        condition_index,
-                                        FIELD.conditions,
-                                      );
-                                      handleTestSelected(
-                                        id,
-                                        index,
-                                        condition_index,
-                                        FIELD.conditions,
-                                      );
-                                    }}
-                                    name="testName"
-                                    label={
-                                      <FormattedMessage id="rulebuilder.label.searchTest" />
-                                    }
-                                    suggestions={
-                                      sampleTestList[FIELD.conditions][index]
-                                        ? sampleTestList[FIELD.conditions][
-                                            index
-                                          ][condition_index]
-                                        : []
-                                    }
-                                    required
-                                  />
                                 </Column>
                                 <Column lg={2} md={1} sm={4}>
                                   <Select

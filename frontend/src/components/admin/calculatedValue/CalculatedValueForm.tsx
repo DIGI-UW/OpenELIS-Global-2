@@ -477,11 +477,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   ) {
     switch (type) {
       case "TEST_RESULT": {
-        const showsComponent =
-          operandComponentsFor(index, operationIndex).length > 1;
         return (
           <>
-            <Column lg={showsComponent ? 4 : 5} md={2} sm={1}>
+            <Column lg={4} md={2} sm={1}>
               <Select
                 data-cy="add-sample"
                 id={index + "_" + operationIndex + "_sample"}
@@ -510,33 +508,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 ))}
               </Select>
             </Column>
-            {showsComponent && (
-              <Column lg={3} md={2} sm={1}>
-                <Select
-                  id={index + "_" + operationIndex + "_component"}
-                  name="componentId"
-                  labelText={
-                    <FormattedMessage id="testcalculation.label.selectComponent" />
-                  }
-                  value={operation.componentId || ""}
-                  onChange={(e) =>
-                    handleOperationFieldChange(e, index, operationIndex)
-                  }
-                >
-                  <SelectItem text="" value="" />
-                  {operandComponentsFor(index, operationIndex).map(
-                    (component: any, c_index: number) => (
-                      <SelectItem
-                        text={component.value}
-                        value={component.id}
-                        key={c_index}
-                      />
-                    ),
-                  )}
-                </Select>
-              </Column>
-            )}
-            <Column lg={showsComponent ? 3 : 5} md={2} sm={1}>
+            <Column lg={3} md={2} sm={1}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}
                 label={
@@ -553,6 +525,37 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                     : []
                 }
               ></AutoComplete>
+            </Column>
+            <Column lg={3} md={2} sm={1}>
+              <Select
+                id={index + "_" + operationIndex + "_component"}
+                name="componentId"
+                labelText={
+                  <FormattedMessage id="testcalculation.label.selectComponent" />
+                }
+                value={
+                  operation.componentId ||
+                  operandComponentsFor(index, operationIndex)[0]?.id ||
+                  ""
+                }
+                disabled={
+                  operandComponentsFor(index, operationIndex).length === 0
+                }
+                onChange={(e) =>
+                  handleOperationFieldChange(e, index, operationIndex)
+                }
+              >
+                <SelectItem text="" value="" />
+                {operandComponentsFor(index, operationIndex).map(
+                  (component: any, c_index: number) => (
+                    <SelectItem
+                      text={component.value}
+                      value={component.id}
+                      key={c_index}
+                    />
+                  ),
+                )}
+              </Select>
             </Column>
           </>
         );
