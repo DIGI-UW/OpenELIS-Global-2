@@ -123,6 +123,9 @@
         <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
         <!-- All analyzer entities use JPA annotations -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
         <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
