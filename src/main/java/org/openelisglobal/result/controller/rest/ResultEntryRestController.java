@@ -327,9 +327,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             // has to outlive it too: the logbook page has always recorded these
             // through the notification system, and a toast that disappears on
             // navigation is not a record. Same service the alerts use.
-            notifyGenerated(currentUserId, reflexAnalyses.stream().filter(e -> !e.getResultCalculated()),
+            notifyGenerated(getSysUserId(request), reflexAnalyses.stream().filter(e -> !e.getResultCalculated()),
                     "notification.reflex.created");
-            notifyGenerated(currentUserId, reflexAnalyses.stream().filter(e -> e.getResultCalculated()),
+            notifyGenerated(getSysUserId(request), reflexAnalyses.stream().filter(e -> e.getResultCalculated()),
                     "notification.calculated.created");
 
             try {
