@@ -7,7 +7,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroOrderRoutingService;
@@ -59,12 +58,8 @@ public class MicroOrderRoutingIdempotencyTest extends BaseWebContextSensitiveTes
     }
 
     private Analysis analysis(String workflowType, String methodId) {
-        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
-        test.setId("test-" + workflowType + "-" + methodId);
-        test.setCultureWorkflowType(workflowType);
-        Method method = new Method();
-        method.setId(methodId);
-        test.setMethod(method);
+        org.openelisglobal.test.valueholder.Test test = fixtures.createCatalogCultureTest(methodId,
+                MicroWorkflowType.valueOf(workflowType));
         Analysis analysis = new Analysis();
         analysis.setTest(test);
         return analysis;

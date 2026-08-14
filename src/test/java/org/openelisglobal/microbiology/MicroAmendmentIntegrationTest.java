@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioForm;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioRequestForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
@@ -22,7 +23,6 @@ import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.openelisglobal.microbiology.service.MicroReportVersionService;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
 import org.openelisglobal.microbiology.service.MicrobiologyUatScenarioService;
-import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -32,6 +32,7 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersionType;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
@@ -43,6 +44,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MicrobiologyUatScenarioService scenarioService;
+
+    @Autowired
+    private MicrobiologyTestFixtures fixtures;
 
     @Autowired
     private MicrobiologyReferenceService referenceService;
@@ -86,7 +90,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
             assertEquals("AMENDMENT_ALREADY_OPEN", expected.getMessage());
         }
 
-        isolateService.updateIdentification(fixture.isolateId(), fixture.organismId(), "Klebsiella pneumoniae",
+        MicroOrganism correctedOrganism = fixtures.createOrganism("Klebsiella pneumoniae", "Enterobacterales",
+                fixture.panelId());
+        isolateService.updateIdentification(fixture.isolateId(), correctedOrganism.getId(), "Klebsiella pneumoniae",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
                 new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
         reportReleaseService.releaseAmended(fixture.caseId(), fixture.userId());
@@ -103,10 +109,12 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         assertTrue(reportVersionService.getSourcesForCase(fixture.caseId()).size() >= 2);
 
         List<MicroIsolateIdentificationEvent> history = identificationHistoryService.getHistory(fixture.isolateId());
-        assertEquals(1, history.size());
-        assertEquals("Escherichia coli", history.get(0).getPreviousOrganismText());
-        assertEquals("Klebsiella pneumoniae", history.get(0).getNewOrganismText());
-        assertEquals("Confirmatory identification corrected the organism", history.get(0).getReason());
+        assertEquals(2, history.size());
+        MicroIsolateIdentificationEvent amendedIdentification = history.stream()
+                .filter(event -> "Confirmatory identification corrected the organism".equals(event.getReason()))
+                .findFirst().orElseThrow();
+        assertEquals("Escherichia coli", amendedIdentification.getPreviousOrganismText());
+        assertEquals("Klebsiella pneumoniae", amendedIdentification.getNewOrganismText());
 
         MicroCase relocked = caseService.getCase(fixture.caseId());
         assertEquals(MicroCaseStage.FINAL_RELEASED.name(), relocked.getStage());
@@ -137,7 +145,8 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     private FinalCase createFinalCase() {
-        String userId = fixturesUserId();
+        fixtures.ensureRequiredWorkflowStatuses();
+        String userId = fixtures.defaultUserId();
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
         request.scenario = "MVP";
         request.scenarioKey = "amendment-integration-" + UUID.randomUUID();
@@ -152,20 +161,14 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
                 .filter(panel -> "Gram negative AST panel (UAT)".equals(panel.getName())).findFirst().orElseThrow()
                 .getId();
         String standardId = breakpointService.getActiveStandard("CLSI", "2026").getId();
-        MicroAntibiotic antibiotic = referenceService.getActiveAntibiotics().stream()
-                .filter(candidate -> "CIPUAT".equals(candidate.getWhonetCode())).findFirst().orElseThrow();
         MicroAstRun run = astService.startRun(isolate.getId(), panelId, standardId, userId);
-        astService.recordReading(run.getId(), antibiotic.getId(), MicroAstMethod.MIC, new BigDecimal("4"), userId);
+        astService.getPanelAntibiotics(panelId).forEach(ordered -> astService.recordReading(run.getId(),
+                ordered.getAntibioticId(), MicroAstMethod.MIC, new BigDecimal("4"), userId));
         astService.reviewRun(run.getId(), userId);
         reportReleaseService.releaseFinal(scenario.caseId, userId);
-        return new FinalCase(scenario.caseId, isolate.getId(), scenario.organismId, userId);
+        return new FinalCase(scenario.caseId, isolate.getId(), scenario.organismId, panelId, userId);
     }
 
-    private String fixturesUserId() {
-        return webApplicationContext.getBean(org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.class)
-                .defaultUserId();
-    }
-
-    private record FinalCase(String caseId, String isolateId, String organismId, String userId) {
+    private record FinalCase(String caseId, String isolateId, String organismId, String panelId, String userId) {
     }
 }

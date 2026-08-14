@@ -66,7 +66,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         identify(isolate);
 
         MicroAstRun defaultRun = astService.startRun(isolate.getId(), referenceData.panel().getId(),
-                fixtures.defaultUserId());
+                referenceData.standard().getId(), fixtures.defaultUserId());
         MicroAstReading defaultReading = astService.recordReading(defaultRun.getId(),
                 referenceData.antibiotic().getId(), MicroAstMethod.MIC, new BigDecimal("4"), fixtures.defaultUserId());
 
@@ -89,7 +89,8 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
                 fixtures.defaultUserId());
         identify(isolate);
 
-        MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(), fixtures.defaultUserId());
+        MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(),
+                referenceData.standard().getId(), fixtures.defaultUserId());
         MicroAstReading reading = astService.recordReading(run.getId(), referenceData.antibiotic().getId(),
                 MicroAstMethod.MIC, new BigDecimal("4"), fixtures.defaultUserId());
         MicroAstReading overridden = astService.overrideReading(reading.getId(), MicroAstInterpretation.RESISTANT,
@@ -111,7 +112,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
                 fixtures.defaultUserId());
         identify(isolate);
         MicroAstRun original = astService.startRun(isolate.getId(), referenceData.panel().getId(),
-                fixtures.defaultUserId());
+                referenceData.standard().getId(), fixtures.defaultUserId());
         astService.recordReading(original.getId(), referenceData.antibiotic().getId(), MicroAstMethod.MIC,
                 new BigDecimal("4"), fixtures.defaultUserId());
         original = astService.reviewRun(original.getId(), fixtures.defaultUserId());

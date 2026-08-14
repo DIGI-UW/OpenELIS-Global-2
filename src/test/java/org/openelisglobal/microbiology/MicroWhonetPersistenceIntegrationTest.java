@@ -25,9 +25,7 @@ import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.openelisglobal.microbiology.service.MicroWhonetDatasetService;
-import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
 import org.openelisglobal.microbiology.service.MicrobiologyUatScenarioService;
-import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -62,9 +60,6 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
     private MicroWhonetDatasetService datasetService;
 
     @Autowired
-    private MicrobiologyReferenceService referenceService;
-
-    @Autowired
     private MicroCaseDAO caseDAO;
 
     @Autowired
@@ -90,13 +85,10 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         isolateService.updateIdentification(isolate.getId(), scenario.organismId, "Reference organism (integration)",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
                 "MALDI_TOF", new BigDecimal("99.5"), performedBy);
-        MicroAntibiotic exportAntibiotic = referenceService.getActiveAntibiotics().stream()
-                .filter(candidate -> "CIPUAT".equals(candidate.getWhonetCode())).findFirst()
-                .orElseThrow(() -> new IllegalStateException("M4 export antibiotic was not provisioned"));
         MicroAstRun run = astService.startRun(isolate.getId(), scenario.astPanelId, scenario.activeBreakpointStandardId,
                 performedBy);
-        astService.recordReading(run.getId(), exportAntibiotic.getId(), MicroAstMethod.MIC, new BigDecimal("4"),
-                performedBy);
+        astService.getPanelAntibiotics(scenario.astPanelId).forEach(ordered -> astService.recordReading(run.getId(),
+                ordered.getAntibioticId(), MicroAstMethod.MIC, new BigDecimal("4"), performedBy));
         astService.reviewRun(run.getId(), performedBy);
         MicroCase released = reportReleaseService.releaseFinal(scenario.caseId, performedBy);
 
