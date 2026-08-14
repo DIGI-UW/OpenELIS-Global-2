@@ -24,18 +24,19 @@ You can find more information on how to set up OpenELIS at our
 
 ### CI Status
 
-[![01 - Backend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml)
+All badges report the status of the latest **merge to `develop`** (`event=push`),
+not per-PR runs.
+
+[![01 - Backend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml?query=branch%3Adevelop+event%3Apush)
 ![Coverage](https://raw.githubusercontent.com/DIGI-UW/OpenELIS-Global-2/refs/heads/gh-pages/badges/jacoco.svg)
 
-[![02 - Frontend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml)
+[![02 - Frontend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml?query=branch%3Adevelop+event%3Apush)
 
-[![03 - Playwright Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml)
+[![03 - E2E Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml?query=branch%3Adevelop+event%3Apush)
 
-[![04 - Cypress Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml)
+[![Dev Images - Backend](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-dev-backend-images.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-dev-backend-images.yml?query=branch%3Adevelop+event%3Apush)
 
-[![E2E Wrapper Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml)
-
-[![Installer Packaging Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
+[![Dev Images - Frontend](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-dev-frontend-images.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-dev-frontend-images.yml?query=branch%3Adevelop+event%3Apush)
 
 ### CI Architecture
 
