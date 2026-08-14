@@ -43,6 +43,7 @@ function ReflexRule() {
   const conditionsObj = {
     id: null,
     sampleId: "",
+    componentId: "",
     testName: "",
     testId: "",
     relation: "",
@@ -84,6 +85,8 @@ function ReflexRule() {
     conditions: {},
     actions: {},
   }); //{field :{index :{field_index:[]}}}
+  // Components of each condition's test: {index: {condition_index: []}}
+  const [componentList, setComponentList] = useState({});
   const [counter, setCounter] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -265,12 +268,42 @@ function ReflexRule() {
     handleRuleFieldItemChange(e, index, itemIndex, field);
   };
 
+  /**
+   * The components of the selected test, so a condition on a multi-component
+   * test can say which measurement it tests. Without this a condition on the
+   * numeric Ct Value is evaluated against the coded PCR Result beside it.
+   */
+  const loadComponentsForTest = (testId, index, item_index) => {
+    if (!testId) {
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${testId}/sample-results`,
+      (res) => {
+        const list =
+          res && Array.isArray(res.components)
+            ? res.components.map((c) => ({
+                id: c.id,
+                value: c.label || c.code || c.id,
+              }))
+            : [];
+        setComponentList((prev) => ({
+          ...prev,
+          [index]: { ...(prev[index] || {}), [item_index]: list },
+        }));
+      },
+    );
+  };
+
   const handleTestSelected = (id, index, item_index, field) => {
     var testDetails = { resultList: [], resultType: "N" };
     if (sampleTestList[field]) {
       testDetails = sampleTestList[field][index][item_index].find(
         (test) => test.id == id,
       );
+    }
+    if (field === FIELD.conditions) {
+      loadComponentsForTest(id, index, item_index);
     }
     const results = { ...testResultList };
     if (!results[index]) {
@@ -283,6 +316,9 @@ function ReflexRule() {
     results[index][item_index]["type"] = testDetails.resultType;
     setTestResultList(results);
   };
+
+  const componentsFor = (index, item_index) =>
+    (componentList[index] && componentList[index][item_index]) || [];
 
   const loadSampleTestList = (field, index, item_index, resulList) => {
     const results = { ...sampleTestList };
@@ -643,6 +679,44 @@ function ReflexRule() {
                                   ))}
                                 </Select>
                               </Column>
+
+                              {componentsFor(index, condition_index).length >
+                                1 && (
+                                <Column lg={3} sm={4}>
+                                  <Select
+                                    id={
+                                      index +
+                                      "_" +
+                                      condition_index +
+                                      "_component"
+                                    }
+                                    name="componentId"
+                                    labelText={
+                                      <FormattedMessage id="rulebuilder.label.selectComponent" />
+                                    }
+                                    value={condition.componentId || ""}
+                                    onChange={(e) =>
+                                      handleRuleFieldItemChange(
+                                        e,
+                                        index,
+                                        condition_index,
+                                        FIELD.conditions,
+                                      )
+                                    }
+                                  >
+                                    <SelectItem text="" value="" />
+                                    {componentsFor(index, condition_index).map(
+                                      (component, c_index) => (
+                                        <SelectItem
+                                          text={component.value}
+                                          value={component.id}
+                                          key={c_index}
+                                        />
+                                      ),
+                                    )}
+                                  </Select>
+                                </Column>
+                              )}
 
                               <Column lg={3} sm={4}>
                                 <AutoComplete

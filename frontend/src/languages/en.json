@@ -7990,5 +7990,7 @@
   "label.testCatalog.alerts.scope.anyComponent": "Any component",
   "label.testCatalog.alerts.scope.anySampleType": "Any sample type",
   "label.testCatalog.alerts.col.scope": "Applies to",
-  "label.testCatalog.alerts.scope.wholeTest": "Whole test"
+  "label.testCatalog.alerts.scope.wholeTest": "Whole test",
+  "rulebuilder.label.selectComponent": "Select Component",
+  "testcalculation.label.selectComponent": "Select Component"
 }

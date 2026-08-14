@@ -93,6 +93,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   ]);
   const [sampleList, setSampleList] = useState([]);
   const [sampleTestList, setSampleTestList] = useState(TestListObj);
+  // Components of each operand's test: {index: {operationIndex: []}}
+  const [operandComponents, setOperandComponents] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -201,6 +203,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
         id: null,
         order: null,
         type: "TEST_RESULT",
+        componentId: null,
         value: null,
         sampleId: null,
       },
@@ -337,8 +340,46 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   ) {
     const list = [...calculationList];
     list[index].operations[operationIndex].value = id;
+    // Changing the test invalidates the component chosen under the old one.
+    list[index].operations[operationIndex].componentId = null;
     setCalculationList(list);
+    loadOperandComponents(id, index, operationIndex);
   }
+
+  /**
+   * The components of the operand's test. A calculation reads one measurement,
+   * and on a multi-component test the test name does not name one — without
+   * this the engine takes whichever component's result was written last.
+   */
+  function loadOperandComponents(
+    testId: any,
+    index: number,
+    operationIndex: number,
+  ) {
+    if (!testId) {
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${testId}/sample-results`,
+      (res: any) => {
+        const list =
+          res && Array.isArray(res.components)
+            ? res.components.map((c: any) => ({
+                id: c.id,
+                value: c.label || c.code || c.id,
+              }))
+            : [];
+        setOperandComponents((prev: any) => ({
+          ...prev,
+          [index]: { ...(prev[index] || {}), [operationIndex]: list },
+        }));
+      },
+    );
+  }
+
+  const operandComponentsFor = (index: number, operationIndex: number) =>
+    (operandComponents[index] && operandComponents[index][operationIndex]) ||
+    [];
 
   const handleCalculationFieldChange = (e: any, index: number) => {
     const { name, value } = e.target;
@@ -473,6 +514,32 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 ))}
               </Select>
             </Column>
+            {operandComponentsFor(index, operationIndex).length > 1 && (
+              <Column lg={3} md={2} sm={1}>
+                <Select
+                  id={index + "_" + operationIndex + "_component"}
+                  name="componentId"
+                  labelText={
+                    <FormattedMessage id="testcalculation.label.selectComponent" />
+                  }
+                  value={operation.componentId || ""}
+                  onChange={(e) =>
+                    handleOperationFieldChange(e, index, operationIndex)
+                  }
+                >
+                  <SelectItem text="" value="" />
+                  {operandComponentsFor(index, operationIndex).map(
+                    (component: any, c_index: number) => (
+                      <SelectItem
+                        text={component.value}
+                        value={component.id}
+                        key={c_index}
+                      />
+                    ),
+                  )}
+                </Select>
+              </Column>
+            )}
             <Column lg={5} md={2} sm={1}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}

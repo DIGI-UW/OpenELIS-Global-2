@@ -11,6 +11,7 @@ import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -56,6 +57,8 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
     TestAnalyteService testAnalyteService;
     @Autowired
     private RuleResultScope ruleResultScope;
+    @Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
 
     static final String REFLEX_RESULT_GROUP = "30";
     static final String REFLEX_RESULT_TYPE = "R";
@@ -256,6 +259,13 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         }
 
         for (ReflexRuleCondition condition : rule.getConditions()) {
+            // A condition may only name a component of the test it triggers on;
+            // anything else can never match a result and would save as a rule
+            // that looks configured and silently never fires.
+            if (!componentBelongsToTest(condition.getComponentId(), condition.getTestId())) {
+                throw new LIMSRuntimeException("Reflex condition names a component that is not on test "
+                        + condition.getTestId() + ": " + condition.getComponentId());
+            }
             if (testAndSampleMatches(condition.getTestId(), condition.getSampleId())) {
                 TestAnalyte testAnalyte = null;
                 Test triggerTest = null;
@@ -346,6 +356,17 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         defaultResult.setSortOrder("0");
         defaultResult.setIsActive(true);
         return testResultService.save(defaultResult);
+    }
+
+    private boolean componentBelongsToTest(String componentId, String testId) {
+        if (GenericValidator.isBlankOrNull(componentId)) {
+            return true;
+        }
+        if (GenericValidator.isBlankOrNull(testId)) {
+            return false;
+        }
+        return testResultComponentService.getActiveComponentsByTestId(testId).stream()
+                .anyMatch(c -> componentId.equals(c.getId()));
     }
 
     private Boolean testAndSampleMatches(String testId, String sampleTypeId) {
