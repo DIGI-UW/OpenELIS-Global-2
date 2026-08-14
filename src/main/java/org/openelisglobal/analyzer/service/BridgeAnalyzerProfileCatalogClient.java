@@ -16,13 +16,12 @@ public class BridgeAnalyzerProfileCatalogClient implements AnalyzerProfileCatalo
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
     private final BridgeHttpClient bridgeHttpClient;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     private final String bridgeBaseUrl;
 
-    public BridgeAnalyzerProfileCatalogClient(BridgeHttpClient bridgeHttpClient, ObjectMapper objectMapper,
+    public BridgeAnalyzerProfileCatalogClient(BridgeHttpClient bridgeHttpClient,
             @Value("${analyzer.bridge.url:}") String bridgeBaseUrl) {
         this.bridgeHttpClient = bridgeHttpClient;
-        this.objectMapper = objectMapper;
         this.bridgeBaseUrl = bridgeBaseUrl == null ? "" : bridgeBaseUrl.trim();
     }
 
