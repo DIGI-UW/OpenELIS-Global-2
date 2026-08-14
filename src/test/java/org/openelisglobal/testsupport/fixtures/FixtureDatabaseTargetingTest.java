@@ -94,11 +94,34 @@ public class FixtureDatabaseTargetingTest {
         assertFalse("reset must never touch a discovered fallback: " + calls, calls.contains("wrong-database"));
     }
 
+    @Test
+    public void explicitContainerFailsClosedWhenDockerIsUnavailable() throws Exception {
+        TestEnvironment environment = testEnvironment(null, """
+                #!/bin/sh
+                printf 'python %s\n' "$*" >> "$CALL_LOG"
+                exit 0
+                """);
+
+        ProcessResult loadResult = environment.runWithIsolatedPath("src/test/resources/load-test-fixtures.sh",
+                Map.of("DB_CONTAINER", "ogc1054-database"), "--profile=harness", "--no-verify");
+        ProcessResult resetResult = environment.runWithIsolatedPath("src/test/resources/reset-test-database.sh",
+                Map.of("DB_CONTAINER", "ogc1054-database"), "--force");
+
+        assertNotEquals("fixture load must not fall back from an explicit container", 0, loadResult.exitCode());
+        assertNotEquals("fixture reset must not fall back from an explicit container", 0, resetResult.exitCode());
+        assertTrue(loadResult.output(), loadResult.output().contains("requires Docker"));
+        assertTrue(resetResult.output(), resetResult.output().contains("requires Docker"));
+        assertFalse("fixture generation must not run after Docker validation fails",
+                Files.exists(environment.callLog()));
+    }
+
     private TestEnvironment testEnvironment(String dockerScript, String pythonScript) throws IOException {
         Path root = Files.createTempDirectory("fixture-database-targeting-");
         temporaryDirectories.add(root);
         Path binaryDirectory = Files.createDirectory(root.resolve("bin"));
-        writeExecutable(binaryDirectory.resolve("docker"), dockerScript);
+        if (dockerScript != null) {
+            writeExecutable(binaryDirectory.resolve("docker"), dockerScript);
+        }
         if (pythonScript != null) {
             writeExecutable(binaryDirectory.resolve("python3"), pythonScript);
         }
@@ -120,6 +143,24 @@ public class FixtureDatabaseTargetingTest {
 
             ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true);
             builder.environment().put("PATH", binaryDirectory + ":" + System.getenv("PATH"));
+            builder.environment().put("CALL_LOG", callLog.toString());
+            builder.environment().putAll(environment);
+
+            Process process = builder.start();
+            assertTrue("fixture command timed out", process.waitFor(10, TimeUnit.SECONDS));
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            return new ProcessResult(process.exitValue(), output);
+        }
+
+        private ProcessResult runWithIsolatedPath(String script, Map<String, String> environment, String... arguments)
+                throws Exception {
+            List<String> command = new ArrayList<>();
+            command.add("/bin/bash");
+            command.add(Path.of(script).toAbsolutePath().toString());
+            command.addAll(List.of(arguments));
+
+            ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true);
+            builder.environment().put("PATH", binaryDirectory + ":/usr/bin:/bin");
             builder.environment().put("CALL_LOG", callLog.toString());
             builder.environment().putAll(environment);
 
