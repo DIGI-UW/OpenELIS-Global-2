@@ -48,9 +48,9 @@ gates.
 | Service refactor | OE-M1 `6e8f30b11` | Canonical inputs are normalized and sorted before hashing; the pinned digest is independently reproducible and ignores input/alias order while detecting target changes. |
 
 The target service does not write or mutate `analyzer_test_map` or copied plugin
-JSON. Writer cutover, legacy inventory, deterministic anomaly reporting, and
-application composition remain unimplemented and therefore cannot be claimed
-from this persistence and service foundation.
+JSON. Writer cutover, legacy inventory, and deterministic anomaly reporting
+remain separate M1 work and cannot be claimed from this persistence and service
+foundation.
 
 ## Current Validation
 
@@ -106,6 +106,21 @@ work in the migration service checkpoint.
 The unique constraint prevents duplicate authorities. A concurrent losing
 transaction fails rather than silently creating a second revision; migration
 remains serialized per analyzer and can safely retry from the exact lookup.
+
+## M1.6 Durable Migration-Anomaly Lifecycle
+
+| Stage | Evidence | Result |
+| ----- | -------- | ------ |
+| Service red | `AnalyzerProfileMigrationAnomalyServiceImplTest` | Compile failed because no anomaly DAO, draft, or lifecycle service existed. |
+| Service green/refactor | Current anomaly-lifecycle checkpoint | Adds deterministic evidence keys and ordering, preserves unchanged findings, rejects duplicate evidence, and transactionally inserts/resolves findings with durable audit history. |
+| PostgreSQL red | `AnalyzerProfileMigrationAnomalyDAOIntegrationTest` | Real insertion failed because Liquibase declared `legacy_test_id` numeric while the entity supplied an unconverted Java `String`; the ORM-only validator had not exercised the database type contract. |
+| PostgreSQL green | Current anomaly-lifecycle checkpoint | Uses the repository's numeric-string Hibernate type, proves OPEN-only deterministic reads, and proves the migration lock query against the actual Liquibase schema. |
+| Focused validation | Java 21 Maven run | 6 tests passed: 5 service cases and 1 real Spring/PostgreSQL DAO integration case. |
+
+This closes the anomaly lifecycle primitive, not the migration orchestrator. The
+next checkpoint must inventory every legacy row, match only one exact Bridge
+source code/alias, persist all blockers, and switch the analyzer association only
+when the complete binding can be created atomically.
 
 ## Remaining M1 Scope
 

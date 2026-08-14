@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
@@ -48,7 +49,8 @@ public class AnalyzerProfileMigrationAnomaly extends BaseObject<String> {
     @Column(name = "legacy_source_key", length = 255, updatable = false)
     private String legacySourceKey;
 
-    @Column(name = "legacy_test_id", updatable = false)
+    @Column(name = "legacy_test_id", precision = 10, scale = 0, updatable = false)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String legacyTestId;
 
     @Column(name = "detail", length = 1000, nullable = false, updatable = false)
