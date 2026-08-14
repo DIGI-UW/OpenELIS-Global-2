@@ -150,12 +150,6 @@ public class MicrobiologyTestFixtures {
     public ReferenceData createReferenceData(String methodId) {
         String suffix = uniqueSuffix();
 
-        MicroOrganism organism = new MicroOrganism();
-        organism.setDisplayName("Escherichia coli " + suffix);
-        organism.setWhonetCode("ECO" + suffix);
-        organism.setOrganismGroup("Enterobacterales");
-        configurationService.createOrganism(organism);
-
         MicroAntibiotic antibiotic = new MicroAntibiotic();
         antibiotic.setDisplayName("Ampicillin " + suffix);
         antibiotic.setWhonetCode("AMP" + suffix);
@@ -167,6 +161,13 @@ public class MicrobiologyTestFixtures {
         panel.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
         panel.setOrganismGroup("Enterobacterales");
         configurationService.createAstPanel(panel);
+
+        MicroOrganism organism = new MicroOrganism();
+        organism.setDisplayName("Escherichia coli " + suffix);
+        organism.setWhonetCode("ECO" + suffix);
+        organism.setOrganismGroup("Enterobacterales");
+        organism.setDefaultAstPanelId(panel.getId());
+        configurationService.createOrganism(organism);
 
         MicroAstPanelAntibiotic panelAntibiotic = new MicroAstPanelAntibiotic();
         panelAntibiotic.setPanelId(panel.getId());
@@ -201,6 +202,15 @@ public class MicrobiologyTestFixtures {
                 referenceData.antibiotic().getId(), new BigDecimal("2.0000"), new BigDecimal("8.0000"));
         configurationService.createBreakpointRule(rule);
         return new AlternativeBreakpointData(standard, rule);
+    }
+
+    public MicroOrganism createOrganism(String displayName, String organismGroup, String defaultAstPanelId) {
+        MicroOrganism organism = new MicroOrganism();
+        organism.setDisplayName(displayName);
+        organism.setWhonetCode("ORG" + uniqueSuffix());
+        organism.setOrganismGroup(organismGroup);
+        organism.setDefaultAstPanelId(defaultAstPanelId);
+        return configurationService.createOrganism(organism);
     }
 
     public MicroCultureSetup createTbCultureSetup(String methodId) {
