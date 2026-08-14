@@ -85,6 +85,7 @@ import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
@@ -209,6 +210,9 @@ public class OrderSearchRestController extends BaseRestController {
      * "true" leaves the list unscoped.
      */
     private static final String RESTRICT_RECENT_ORDERS_PROPERTY = "restrictRecentOrdersByTestSection";
+
+    @Autowired
+    private TestMethodService testMethodService;
 
     @Autowired(required = false)
     private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
@@ -663,11 +667,7 @@ public class OrderSearchRestController extends BaseRestController {
                     if (analysis.getTest() == null) {
                         continue;
                     }
-                    Map<String, Object> testData = new HashMap<>();
-                    testData.put("id", analysis.getTest().getId());
-                    testData.put("name", analysis.getTest().getLocalizedName());
-                    testData.put("description", analysis.getTest().getDescription());
-                    testsData.add(testData);
+                    testsData.add(buildSelectedTestData(analysis.getTest()));
 
                     try {
                         List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(analysis.getTest().getId());
@@ -855,6 +855,16 @@ public class OrderSearchRestController extends BaseRestController {
         if (microbiologyOrderDetail != null) {
             response.put("microbiologyOrderDetail", microbiologyOrderDetail);
         }
+    }
+
+    Map<String, Object> buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
+        Map<String, Object> testData = new HashMap<>();
+        testData.put("id", test.getId());
+        testData.put("name", test.getLocalizedName());
+        testData.put("description", test.getDescription());
+        testData.put("cultureWorkflowType", test.getCultureWorkflowType());
+        testData.put("methods", testMethodService.getLinkedMethodDtos(test.getId()));
+        return testData;
     }
 
     /**
