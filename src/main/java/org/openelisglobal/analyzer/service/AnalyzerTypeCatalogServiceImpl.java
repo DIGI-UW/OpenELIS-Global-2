@@ -38,7 +38,39 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     @Override
     public List<AnalyzerTypeCatalogSummary> list(AnalyzerProfileCatalogFilter filter) {
         AnalyzerProfileCatalogFilter effectiveFilter = filter == null ? AnalyzerProfileCatalogFilter.empty() : filter;
-        List<BridgeProfileCatalogEntry> profiles = profileCatalogClient.list(effectiveFilter);
+        return composeAll(profileCatalogClient.list(effectiveFilter));
+    }
+
+    @Override
+    public AnalyzerTypeCatalogSummary get(String profileId, Integer revision) {
+        return composeOne(profileCatalogClient.get(profileId, revision));
+    }
+
+    @Override
+    public List<BridgeProfileCatalogEntry> history(String profileId) {
+        return List.copyOf(profileCatalogClient.history(profileId));
+    }
+
+    @Override
+    public AnalyzerTypeCatalogSummary fork(String profileId, AnalyzerProfileForkRequest request, String actor) {
+        return composeOne(profileCatalogClient.fork(profileId, request, actor));
+    }
+
+    @Override
+    public AnalyzerTypeCatalogSummary deactivate(String profileId, String actor) {
+        return composeOne(profileCatalogClient.deactivate(profileId, actor));
+    }
+
+    @Override
+    public AnalyzerTypeCatalogSummary reactivate(String profileId, String actor) {
+        return composeOne(profileCatalogClient.reactivate(profileId, actor));
+    }
+
+    private AnalyzerTypeCatalogSummary composeOne(BridgeProfileCatalogEntry profile) {
+        return composeAll(List.of(profile)).getFirst();
+    }
+
+    private List<AnalyzerTypeCatalogSummary> composeAll(List<BridgeProfileCatalogEntry> profiles) {
         if (profiles.isEmpty()) {
             return List.of();
         }
@@ -65,31 +97,6 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
                                 Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
                         .thenComparing(AnalyzerTypeCatalogSummary::profileId))
                 .toList();
-    }
-
-    @Override
-    public AnalyzerTypeCatalogSummary get(String profileId, Integer revision) {
-        return null;
-    }
-
-    @Override
-    public List<BridgeProfileCatalogEntry> history(String profileId) {
-        return List.of();
-    }
-
-    @Override
-    public AnalyzerTypeCatalogSummary fork(String profileId, AnalyzerProfileForkRequest request, String actor) {
-        return null;
-    }
-
-    @Override
-    public AnalyzerTypeCatalogSummary deactivate(String profileId, String actor) {
-        return null;
-    }
-
-    @Override
-    public AnalyzerTypeCatalogSummary reactivate(String profileId, String actor) {
-        return null;
     }
 
     private static AnalyzerTypeCatalogSummary compose(BridgeProfileCatalogEntry entry,
