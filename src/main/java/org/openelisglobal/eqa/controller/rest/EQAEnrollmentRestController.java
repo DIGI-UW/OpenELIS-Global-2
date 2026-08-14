@@ -47,13 +47,20 @@ public class EQAEnrollmentRestController extends ControllerUtills {
     public ResponseEntity<?> createEnrollments(HttpServletRequest request, @PathVariable Long programId,
             @RequestBody Map<String, Object> body) {
         try {
-            @SuppressWarnings("unchecked")
-            List<Number> orgIds = (List<Number>) body.get("organizationIds");
-            if (orgIds == null || orgIds.isEmpty()) {
+            Object rawIds = body.get("organizationIds");
+            if (!(rawIds instanceof List) || ((List<?>) rawIds).isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "organizationIds list is required"));
             }
 
-            List<Long> organizationIds = orgIds.stream().map(Number::longValue).collect(Collectors.toList());
+            List<Long> organizationIds;
+            try {
+                // ids arrive as JSON numbers or as strings depending on the caller - accept
+                // both
+                organizationIds = ((List<?>) rawIds).stream().map(id -> Long.valueOf(String.valueOf(id)))
+                        .collect(Collectors.toList());
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "organizationIds must be numeric"));
+            }
             String sysUserId = getSysUserId(request);
 
             List<EQAProgramEnrollment> enrolled = enrollmentService.bulkEnroll(programId, organizationIds, sysUserId);

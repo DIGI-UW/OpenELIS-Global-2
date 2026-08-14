@@ -1,9 +1,16 @@
 import React, { useState } from "react";
-import { Modal, TextInput, TextArea, Toggle } from "@carbon/react";
+import {
+  Modal,
+  TextInput,
+  TextArea,
+  Toggle,
+  InlineNotification,
+} from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
-  postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  postToOpenElisServerFullResponse,
+  putToOpenElisServerFullResponse,
+  resolveApiErrorMessage,
 } from "../../utils/Utils";
 
 const ProgramForm = ({ program, onClose }) => {
@@ -16,6 +23,19 @@ const ProgramForm = ({ program, onClose }) => {
   const [isActive, setIsActive] = useState(program?.isActive !== false);
   const [nameError, setNameError] = useState("");
   const [providerError, setProviderError] = useState("");
+  const [saveError, setSaveError] = useState("");
+
+  // keep the modal open and show why the server refused, instead of closing as if saved
+  const handleResponse = (response) => {
+    if (response && response.ok) {
+      if (onClose) onClose();
+      return;
+    }
+    Promise.resolve(response ? response.json().catch(() => null) : null).then(
+      (body) =>
+        setSaveError(resolveApiErrorMessage(intl, body, "error.save.failed")),
+    );
+  };
 
   const handleSubmit = () => {
     let valid = true;
@@ -39,23 +59,18 @@ const ProgramForm = ({ program, onClose }) => {
       description,
     };
 
+    setSaveError("");
     if (isEditing) {
-      putToOpenElisServer(
+      putToOpenElisServerFullResponse(
         `/rest/eqa/programs/${program.id}`,
         JSON.stringify({ ...payload, isActive }),
-        () => {
-          if (onClose) onClose();
-        },
+        handleResponse,
       );
     } else {
-      postToOpenElisServerJsonResponse(
+      postToOpenElisServerFullResponse(
         "/rest/eqa/programs",
         JSON.stringify(payload),
-        (response) => {
-          if (response && !response.error) {
-            if (onClose) onClose();
-          }
-        },
+        handleResponse,
       );
     }
   };
@@ -78,6 +93,13 @@ const ProgramForm = ({ program, onClose }) => {
       onSecondarySubmit={onClose}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {saveError && (
+          <InlineNotification
+            kind="error"
+            title={saveError}
+            onCloseButtonClick={() => setSaveError("")}
+          />
+        )}
         <TextInput
           id="program-name"
           labelText={intl.formatMessage({ id: "eqa.program.name" })}
