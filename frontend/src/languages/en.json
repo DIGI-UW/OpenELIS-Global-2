@@ -7982,5 +7982,13 @@
   "common.user": "User",
   "common.value": "Value",
   "common.view": "View",
-  "common.warning": "Warning"
+  "common.warning": "Warning",
+  "label.testCatalog.alerts.field.component": "Result component",
+  "label.testCatalog.alerts.field.componentHelp": "Which result this alert watches. Leave unset to watch every component of this test.",
+  "label.testCatalog.alerts.field.sampleType": "Sample type",
+  "label.testCatalog.alerts.field.sampleTypeHelp": "Which specimen this alert watches. Leave unset to watch every sample type this test runs on.",
+  "label.testCatalog.alerts.scope.anyComponent": "Any component",
+  "label.testCatalog.alerts.scope.anySampleType": "Any sample type",
+  "label.testCatalog.alerts.col.scope": "Applies to",
+  "label.testCatalog.alerts.scope.wholeTest": "Whole test"
 }

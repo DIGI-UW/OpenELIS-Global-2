@@ -203,5 +203,6 @@
   <include relativeToChangelogFile="true" file="075-panel-terminology-mapping.xml"/>
   <include relativeToChangelogFile="true" file="076-rule-component-sample-type-scope.xml"/>
   <include relativeToChangelogFile="true" file="077-alert-rule-component-scope.xml"/>
+  <include relativeToChangelogFile="true" file="078-calculation-operand-result-map.xml"/>
 
 </databaseChangeLog>

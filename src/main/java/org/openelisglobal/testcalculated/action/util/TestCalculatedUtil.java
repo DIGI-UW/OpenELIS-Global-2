@@ -15,6 +15,7 @@ import org.jfree.util.Log;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.note.service.NoteService;
@@ -58,6 +59,8 @@ public class TestCalculatedUtil {
 
     private ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
 
+    private RuleResultScope ruleResultScope = SpringContext.getBean(RuleResultScope.class);
+
     private String CALCULATION_SUBJECT = "Calculated Result Note";
 
     public List<Analysis> addNewTestsToDBForCalculatedTests(List<ResultSet> resultSetList, String sysUserId)
@@ -81,12 +84,9 @@ public class TestCalculatedUtil {
                 if (resultCalculations.isEmpty()) {
                     Boolean createResultCalculation = false;
                     for (Operation oper : calculation.getOperations()) {
-                        if (oper.getType().equals(Operation.OperationType.TEST_RESULT)) {
-                            if (Integer.valueOf(oper.getValue())
-                                    .equals(Integer.valueOf(resultSet.result.getTestResult().getTest().getId()))) {
-                                createResultCalculation = true;
-                                break;
-                            }
+                        if (operandReads(oper, resultSet.result)) {
+                            createResultCalculation = true;
+                            break;
                         }
                     }
                     if (createResultCalculation) {
@@ -102,26 +102,31 @@ public class TestCalculatedUtil {
                         });
                         calc.setTest(tests);
                         Map<Integer, Integer> map = new HashMap<>();
-                        tests.forEach(test -> {
-                            map.put(Integer.valueOf(test.getId()), null);
+                        // One slot per operand, not per test: two components of
+                        // the same test are two operands and two measurements.
+                        calculation.getOperations().forEach(oper -> {
+                            if (oper.getType().equals(Operation.OperationType.TEST_RESULT)) {
+                                map.put(oper.getId(), null);
+                            }
                         });
-                        // insert innitial result value
-                        if (resultSet.result.getTestResult().getTest().getId() != null
-                                && resultSet.result.getId() != null) {
-                            map.put(Integer.valueOf(resultSet.result.getTestResult().getTest().getId()),
-                                    Integer.valueOf(resultSet.result.getId()));
+                        for (Operation oper : calculation.getOperations()) {
+                            if (operandReads(oper, resultSet.result) && resultSet.result.getId() != null) {
+                                map.put(oper.getId(), Integer.valueOf(resultSet.result.getId()));
+                            }
                         }
-                        calc.setTestResultMap(map);
+                        calc.setOperandResultMap(map);
                         resultcalculationService.insert(calc);
                     }
 
                 } else {
                     for (ResultCalculation resultCalculation : resultCalculations) {
-                        if (resultSet.result.getTestResult().getTest().getId() != null
-                                && resultSet.result.getId() != null) {
-                            resultCalculation.getTestResultMap().put(
-                                    Integer.valueOf(resultSet.result.getTestResult().getTest().getId()),
-                                    Integer.valueOf(resultSet.result.getId()));
+                        if (resultSet.result.getId() != null) {
+                            for (Operation oper : resultCalculation.getCalculation().getOperations()) {
+                                if (operandReads(oper, resultSet.result)) {
+                                    resultCalculation.getOperandResultMap().put(oper.getId(),
+                                            Integer.valueOf(resultSet.result.getId()));
+                                }
+                            }
                         }
 
                         resultcalculationService.update(resultCalculation);
@@ -145,7 +150,7 @@ public class TestCalculatedUtil {
             if (!resultCalculations.isEmpty()) {
                 for (ResultCalculation resultCalculation : resultCalculations) {
                     Boolean isMissingParams = false;
-                    for (Map.Entry<Integer, Integer> entry : resultCalculation.getTestResultMap().entrySet()) {
+                    for (Map.Entry<Integer, Integer> entry : resultCalculation.getOperandResultMap().entrySet()) {
                         if (entry.getValue() == null) {
                             isMissingParams = true;
                             break;
@@ -243,7 +248,7 @@ public class TestCalculatedUtil {
         String resultType = testService.getResultType(test);
         Analysis analysis = null;
         if (test != null) {
-            if (resultCalculation.getTestResultMap().containsKey(Integer.valueOf(test.getId()))) {
+            if (resultCalculation.getOperandResultMap().containsValue(null)) {
                 if (Boolean.valueOf(value)) {
                     if (StringUtils.isNotBlank(calculation.getNote())) {
                         Note note = noteService.createSavableNote(resultSet.result.getAnalysis(), NoteType.EXTERNAL,
@@ -387,18 +392,41 @@ public class TestCalculatedUtil {
         return null;
     }
 
+    /**
+     * Whether this operand reads the given result: the operand names a test, a
+     * specimen and a component, and all three have to be the result's. Matching on
+     * the test alone is what let a calculation configured for Ct Value pick up the
+     * coded PCR Result recorded beside it.
+     */
+    private boolean operandReads(Operation operation, Result result) {
+        if (operation == null || !operation.getType().equals(Operation.OperationType.TEST_RESULT) || result == null
+                || result.getTestResult() == null || result.getTestResult().getTest() == null) {
+            return false;
+        }
+        if (!operation.getValue().equals(result.getTestResult().getTest().getId())) {
+            return false;
+        }
+        String sampleTypeId = operation.getSampleTypeId() == null ? null : operation.getSampleTypeId().toString();
+        return ruleResultScope.matches(result, operation.getComponentId(), sampleTypeId);
+    }
+
     private void addNumericOperation(Operation operation, ResultCalculation resultCalculation, StringBuffer function,
             String inputType) {
         Test test = testService.getActiveTestById(Integer.valueOf(operation.getValue()));
         if (test != null) {
-            Integer resultId = resultCalculation.getTestResultMap().get(Integer.valueOf(test.getId()));
+            Integer resultId = resultCalculation.getOperandResultMap().get(operation.getId());
             Result result = null;
             if (resultId != null) {
                 result = resultService.get(resultId.toString());
             }
 
             if (result != null) {
-                if (testService.getResultType(result.getTestResult().getTest()).equals("N")) {
+                // The component owns the result type; a multi-component test
+                // has none of its own, and asking it would reject a numeric
+                // component sitting under a coded primary.
+                if (ruleResultScope.resultTypeForComponent(result.getTestResult().getTest().getId(),
+                        ruleResultScope.componentIdOf(result),
+                        testService.getResultType(result.getTestResult().getTest())).equals("N")) {
                     switch (inputType) {
                     case Operation.TEST_RESULT:
                         function.append(result.getValue()).append(" ");
