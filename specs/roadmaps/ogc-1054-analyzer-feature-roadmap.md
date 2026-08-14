@@ -516,7 +516,7 @@ the checkpoint that discovers or resolves it; IDs are never reused.
 | 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge          |
 | 1     | F0 foundation salvage     | `IN_PROGRESS`        | Final validation/evidence review     |
 | 2     | E0 contract and migration | `IN_PROGRESS`        | OE-E0 PR/CI and prerequisite reviews |
-| 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted                |
+| 3     | M1 Analyzer Types         | `IN_PROGRESS`        | OE-M1 TDD and predecessor acceptance |
 | 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted                |
 | 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                          |
 | 6     | M4 safe traffic           | `NOT_STARTED`        | M3, BR-M4, and MOCK-M4 accepted      |
@@ -528,10 +528,12 @@ the checkpoint that discovers or resolves it; IDs are never reused.
 review threads, and evidence are complete. A failed required test or UAT step
 keeps the checkpoint `IN_PROGRESS`; it cannot be relabeled as a follow-up.
 
-BR-M1 is locally prepared at `5a8dca3` as permitted by the rule below, but it
-has no remote branch or PR and does not change M1's checkpoint status. It remains
-quarantined until `ISSUE-M1-001` and `ISSUE-M1-002` are green and every earlier
-item in the global acceptance order is accepted.
+BR-M1 is prepared and pushed at `5d2664e` in
+[PR #46](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/46). Its 643-test
+local suite and GitHub `Run Tests` check are green, including the resolved
+`ISSUE-M1-001` and `ISSUE-M1-002` cases. OE-M1 remains at the OE-E0 head with no
+M1 production implementation. M1 is therefore `IN_PROGRESS`, not `ACCEPTED`,
+and remains gated by every earlier item in the global acceptance order.
 
 ## Pull Request Train
 
@@ -675,9 +677,10 @@ a type is reusable by multiple analyzers and no OpenELIS filesystem catalog or
 create-only copied snapshot remains authoritative.
 
 **Prepared Bridge evidence:** [BR-M1 PR #46](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/46)
-is non-draft and green locally at `c516d79`: 643 tests passed with zero failures
-or errors and three expected serial-environment skips. This does not accept M1;
-OE-M1 and predecessor gates remain required.
+is non-draft at `5d2664e`. Its local suite passed 643 tests with zero failures or
+errors and three expected serial-environment skips; its GitHub `Run Tests` check
+also passed after BR-E0 `e17b021` enabled CI for stacked pull-request bases. This
+does not accept M1; OE-M1 and predecessor gates remain required.
 
 ### M2 - Safe mapping editor (OGC-1056)
 

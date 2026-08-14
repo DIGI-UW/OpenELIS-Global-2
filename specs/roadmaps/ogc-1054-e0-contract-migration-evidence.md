@@ -1,10 +1,10 @@
 # OGC-1054 E0 Contract and Migration Evidence
 
-**Recorded:** 2026-08-13  
-**OpenELIS branch:** `codex/ogc-1054-e0-contract-migration`  
-**OpenELIS tested head:** `3e2e88325`  
-**Bridge contract baseline:** BR-E0 PR #45, `5ce6d3842`  
-**Checkpoint status:** `IN_PROGRESS`
+- **Recorded:** 2026-08-13
+- **OpenELIS branch:** `codex/ogc-1054-e0-contract-migration`
+- **OpenELIS tested head:** `0f56562f8`
+- **Bridge contract baseline:** BR-E0 PR #45, `e17b021`
+- **Checkpoint status:** `IN_PROGRESS`
 
 This is checkpoint evidence, not MVP or deployed-UAT acceptance. E0 remains
 subject to its prerequisite reviews, PR CI, and the remaining migration and
@@ -26,6 +26,8 @@ contract exit criteria in the authoritative roadmap.
 | Compose contracts          | Dev, base, analyzer-test, and isolated Compose layers                              | All rendered successfully with `config --quiet`.                                                                             |
 | Exact artifact build       | Java 21 Maven package with tests already validated separately                      | `target/OpenELIS-Global.war` built successfully; SHA-256 `61205f9ccddef141c4d93705b6dc126826b3bd6b0002c4f7e9375a71a200caff`. |
 | UI cross-component smoke   | `harness-foundational`: ASTM result review/acceptance and analyzer connection test | 3 tests passed in 15.6 seconds.                                                                                              |
+| OpenELIS PR CI             | PR #4055 backend and frontend workflows                                             | All seven reported jobs passed at `0f56562f8`.                                                                              |
+| Bridge stacked PR CI       | BR-M1 PR #46 `Run Tests / test`                                                     | Passed in 1 minute 8 seconds at `5d2664e` after BR-E0 `e17b021` removed the base-branch restriction.                        |
 
 ## Isolated Runtime Evidence
 
