@@ -677,10 +677,13 @@ a type is reusable by multiple analyzers and no OpenELIS filesystem catalog or
 create-only copied snapshot remains authoritative.
 
 **Prepared Bridge evidence:** [BR-M1 PR #46](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/46)
-is non-draft at `5d2664e`. Its local suite passed 643 tests with zero failures or
-errors and three expected serial-environment skips; its GitHub `Run Tests` check
-also passed after BR-E0 `e17b021` enabled CI for stacked pull-request bases. This
-does not accept M1; OE-M1 and predecessor gates remain required.
+is non-draft and green at `42cb4bc`. Its local suite passed 643 tests with zero
+failures or errors and three expected serial-environment skips; its GitHub
+`Run Tests` check also passed after BR-E0 `e17b021` enabled CI for stacked
+pull-request bases. This does not accept M1; OE-M1 and predecessor gates remain
+required.
+
+**OpenELIS implementation evidence:** [M1 Analyzer Types checkpoint](./ogc-1054-m1-analyzer-types-evidence.md).
 
 ### M2 - Safe mapping editor (OGC-1056)
 
