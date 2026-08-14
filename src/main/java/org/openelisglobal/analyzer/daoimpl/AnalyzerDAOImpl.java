@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.analyzer.daoimpl;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -149,6 +150,24 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
     @Override
     @Transactional(readOnly = true)
     public Map<String, Long> countByBridgeProfileIds(List<String> profileIds) {
-        return Map.of();
+        if (profileIds == null || profileIds.isEmpty()) {
+            return Map.of();
+        }
+        List<String> effectiveProfileIds = profileIds.stream().filter(id -> id != null && !id.isBlank()).distinct()
+                .toList();
+        if (effectiveProfileIds.isEmpty()) {
+            return Map.of();
+        }
+        Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(
+                "SELECT revision.bridgeProfileId, COUNT(analyzer.id) FROM Analyzer analyzer"
+                        + " JOIN analyzer.siteBindingRevision revision"
+                        + " WHERE revision.bridgeProfileId IN (:profileIds) GROUP BY revision.bridgeProfileId",
+                Object[].class);
+        query.setParameterList("profileIds", effectiveProfileIds);
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (Object[] row : query.getResultList()) {
+            counts.put((String) row[0], (Long) row[1]);
+        }
+        return Map.copyOf(counts);
     }
 }

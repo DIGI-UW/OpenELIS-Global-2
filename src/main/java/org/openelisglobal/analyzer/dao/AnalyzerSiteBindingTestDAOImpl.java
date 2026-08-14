@@ -35,6 +35,19 @@ public class AnalyzerSiteBindingTestDAOImpl extends BaseDAOImpl<AnalyzerSiteBind
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerSiteBindingTest> findByRevisionIds(List<String> revisionIds) {
-        return List.of();
+        if (revisionIds == null || revisionIds.isEmpty()) {
+            return List.of();
+        }
+        List<String> effectiveRevisionIds = revisionIds.stream().filter(id -> id != null && !id.isBlank()).distinct()
+                .toList();
+        if (effectiveRevisionIds.isEmpty()) {
+            return List.of();
+        }
+        Query<AnalyzerSiteBindingTest> query = entityManager.unwrap(Session.class).createQuery(
+                "SELECT row FROM AnalyzerSiteBindingTest row JOIN FETCH row.siteBindingRevision revision"
+                        + " WHERE revision.id IN (:revisionIds) ORDER BY revision.id, row.id.sourceRowKey",
+                AnalyzerSiteBindingTest.class);
+        query.setParameterList("revisionIds", effectiveRevisionIds);
+        return query.getResultList();
     }
 }
