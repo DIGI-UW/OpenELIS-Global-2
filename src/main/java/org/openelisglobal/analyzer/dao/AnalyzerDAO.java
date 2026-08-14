@@ -14,6 +14,7 @@
 package org.openelisglobal.analyzer.dao;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -35,4 +36,6 @@ public interface AnalyzerDAO extends BaseDAO<Analyzer, String> {
     Optional<Analyzer> findByIpAddressAndPort(String ipAddress, Integer port);
 
     Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId);
+
+    Map<String, Long> countByBridgeProfileIds(List<String> profileIds);
 }

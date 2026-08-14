@@ -14,6 +14,7 @@
 package org.openelisglobal.analyzer.daoimpl;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -143,5 +144,11 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
         query.setParameter("sourceId", discoveredSourceId);
         Analyzer result = query.uniqueResult();
         return Optional.ofNullable(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByBridgeProfileIds(List<String> profileIds) {
+        return Map.of();
     }
 }

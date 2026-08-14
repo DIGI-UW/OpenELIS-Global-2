@@ -8,4 +8,6 @@ import org.openelisglobal.common.dao.BaseDAO;
 public interface AnalyzerSiteBindingTestDAO extends BaseDAO<AnalyzerSiteBindingTest, AnalyzerSiteBindingTestPK> {
 
     List<AnalyzerSiteBindingTest> findByRevisionId(String revisionId);
+
+    List<AnalyzerSiteBindingTest> findByRevisionIds(List<String> revisionIds);
 }

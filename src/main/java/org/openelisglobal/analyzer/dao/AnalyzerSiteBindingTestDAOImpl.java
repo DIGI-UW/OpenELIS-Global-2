@@ -31,4 +31,10 @@ public class AnalyzerSiteBindingTestDAOImpl extends BaseDAOImpl<AnalyzerSiteBind
         query.setParameter("revisionId", revisionId.trim());
         return query.getResultList();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerSiteBindingTest> findByRevisionIds(List<String> revisionIds) {
+        return List.of();
+    }
 }
