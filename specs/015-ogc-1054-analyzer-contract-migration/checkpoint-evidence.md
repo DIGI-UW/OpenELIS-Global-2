@@ -86,6 +86,15 @@ The broader regression also exposed two harness/test-isolation defects:
   another test's nested configuration. `b72aadfb6` leaves 401/403/admin
   coverage in the dedicated security slice and makes the five controller
   behavior tests independent of cross-test configuration pollution.
+- PR review found that an explicit `DB_CONTAINER` still fell through to direct
+  PostgreSQL when the Docker CLI was absent. Red `1db4bd0eb` reproduced that
+  unsafe branch in both fixture scripts; green `07167d360` makes an explicit
+  container an unconditional Docker contract before generation, reset, or load.
+- The same review found that `scripts/run-java21` rejected a valid Java 21 from
+  ordinary `JAVA_HOME` unless the exact SDKMAN candidate also existed. The red
+  commit reproduces that with an isolated fake Java home; the green commit uses
+  explicit override, existing Java 21, Java 21 on `PATH`, then the repository's
+  SDKMAN selection, with a final version check.
 
 ## Layer validation
 
@@ -201,7 +210,9 @@ Observed: 869 tests ran with zero failures, errors, or skips. The first run foun
 five shared-context errors in `AnalyzerPluginConfigRestControllerTest`; after
 `b72aadfb6`, the same command passed. Spotless, frontend Prettier, frontend lint,
 Playwright bucket/dependency guards, shell syntax, Java 21 selection, and
-resolved Compose validation also pass.
+resolved Compose validation also pass. After PR review remediation, the 869-test
+gate and Spotless passed again; the four focused fixture-target/Java-selection
+regressions also passed with zero failures.
 
 ## Code-QA disposition
 
@@ -213,6 +224,7 @@ resolved Compose validation also pass.
 | Simplicity/legacy | E0 could have introduced target tables, dual writes, or an OE file watcher | E0 adds no product persistence/runtime path; it records one-writer cutovers and keeps Bridge as FILE/runtime owner |
 | Cross-repository | OE consumer claims could drift from Bridge | Bridge PR #45 is pinned at `5ce6d38`; schemas and canonical fixtures execute in OE tests |
 | Evidence | A passing Compose startup could be mistaken for product acceptance | Evidence records exact SHAs, ports, health, focused flows, inspected screenshots, console debt, and explicitly leaves UI/UAT/video to M4/G0 |
+| Review remediation | Explicit runtime targets could silently fall through when their owning tool was absent | Red `1db4bd0eb`, green `07167d360`; both fixture scripts fail closed and the Java wrapper honors a valid standard Java 21 installation |
 
 **Verdict:** lean for an engineering-boundary checkpoint. The custom JSONB
 DBUnit type, schema validator dependency, Java wrapper, and isolation override
