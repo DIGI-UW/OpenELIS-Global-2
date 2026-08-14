@@ -29,10 +29,17 @@ const CaseInoculationPanel = ({
   reagentUsages = [],
   readOnly = false,
   stage = "",
+  action = "",
+  onInoculationAction = () => undefined,
   onCultureAction = () => undefined,
 }) => {
   const intl = useIntl();
-  const [mode, setMode] = useState("");
+  const mode =
+    action === "start-inoculation"
+      ? "primary"
+      : action === "add-subculture"
+        ? "subculture"
+        : "";
   const [sourceInoculationId, setSourceInoculationId] = useState("");
   const [containerIdentifier, setContainerIdentifier] = useState("");
   const [media, setMedia] = useState("");
@@ -92,12 +99,14 @@ const CaseInoculationPanel = ({
   const openForm = (nextMode, triggerRef) => {
     clearForm();
     activeTriggerRef.current = triggerRef.current;
-    setMode(nextMode);
+    onInoculationAction(
+      nextMode === "subculture" ? "add-subculture" : "start-inoculation",
+    );
   };
 
   const closeForm = () => {
     clearForm();
-    setMode("");
+    onInoculationAction("");
   };
 
   useEffect(() => {

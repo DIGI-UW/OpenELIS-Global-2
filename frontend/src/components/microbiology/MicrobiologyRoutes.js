@@ -15,6 +15,8 @@ export const MICROBIOLOGY_CASE_SECTIONS = [
   "amendment",
 ];
 export const MICROBIOLOGY_CASE_ACTIONS = [
+  "start-inoculation",
+  "add-subculture",
   "log-critical",
   "report-nce",
   "mark-lost",

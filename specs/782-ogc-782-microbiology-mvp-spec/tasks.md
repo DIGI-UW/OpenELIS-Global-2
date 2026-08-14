@@ -448,10 +448,12 @@ culture-action entry points. The independent status ledger is
   behavior divergence.
 - [x] T310 [M-04] Add failing Carbon interaction tests for Incubating-only
   `Mark positive` / `Mark no growth` actions in Inoculation and a URL-backed
-  `Mark positive` next-step action. Retain the existing routed confirmation and
-  focus assertions. The red phase failed on both absent entry points and on the
-  missing Timeline actor. The focused green suite passes 38/38 across the case
-  view, Inoculation, Timeline, and canonical route parser.
+  `Mark positive` next-step action. The visual source pass also caught the
+  missing Received `Start inoculation` banner action; its red tests failed on
+  the absent button, unsupported route state, and component-only form state.
+  Retain the existing routed confirmation and focus assertions. The focused
+  green suite passes 40/40 across the case view, Inoculation, Timeline, and
+  canonical route parser.
 - [x] T311 [M-04] Add one focused registered `core-app` Playwright journey from
   the filtered worklist through primary inoculation with the eligible FEFO lot,
   subculture lineage, manual note, and positive-signal confirmation. Use only
@@ -461,14 +463,16 @@ culture-action entry points. The independent status ledger is
 - [x] T312 [M-04] Implement the missing case-page culture-action entry points by
   reusing the existing routed confirmation and stage state. Do not add a second
   transition service or duplicate the worklist command logic. The case now
-  exposes both Incubating outcomes in Inoculation, exposes Mark positive from
-  the next-step banner, preserves canonical action state, and shows Timeline
-  actor plus semantic time. No backend endpoint or migration was added.
+  exposes Start inoculation from the Received next-step banner, routes primary
+  and subculture forms through canonical action state, exposes both Incubating
+  outcomes in Inoculation, exposes Mark positive from the next-step banner, and
+  shows Timeline actor plus semantic time. No backend endpoint or migration was
+  added.
 - [x] T313 [M-04] Run the focused backend, component, route, and Playwright
   checkpoints; update the ledger with exact counts and distinguish any
   unrelated inherited test failure. The backend service/controller checkpoint
-  passes 20/20 on Java 21; the Carbon/route checkpoint passes 38/38; and the
-  exact local Playwright setup plus user journey passes 2/2 in 7.7 seconds.
+  passes 20/20 on Java 21; the Carbon/route checkpoint passes 40/40; and the
+  exact local Playwright setup plus user journey passes 2/2 in 7.9 seconds.
   The first browser run correctly failed on a generic `.check()` interaction
   with Carbon's wrapped radio; the final test uses focus + Space, asserts the
   selected state, and contains no forced action or arbitrary wait.

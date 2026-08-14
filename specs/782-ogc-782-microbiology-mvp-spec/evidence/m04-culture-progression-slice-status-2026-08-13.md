@@ -21,6 +21,7 @@ not evidence that a reviewer can complete the story from the worklist.
 | M04-CP-01 | From the Microbiology worklist, a reviewer can find the deployment-scoped accession and open its Bacteriology case while retaining worklist query state. | Yes | Yes | Yes | No | No | The focused `core-app` journey starts at the accession-filtered worklist, opens the exact row, and asserts the retained query plus focused Setup section. |
 | M04-CP-02 | A received case opens on Inoculation/Setup as the current step, never on Timeline or blindly at the top. | Yes | Yes | Yes | No | No | Current-step component coverage and the focused local browser journey pass against a fresh service-created case. |
 | M04-CP-03 | The Inoculation section offers inline `Start inoculation`; saving a primary bottle/plate records its identifier, media, incubation, atmosphere, and eligible reagent lot. | Yes | Yes | Yes | No | No | Service/component coverage plus the focused browser journey select `UAT-MICRO-MEDIA-FEFO` through a Carbon keyboard interaction and verify recorded lot usage. |
+| M04-CP-03A | The Received next-step banner offers `Start inoculation`; selecting either entry point opens the same inline form with canonical `section=setup&action=start-inoculation` state, and save/cancel clears only the action. | Yes | Yes | Yes | No | No | Route, case-view, panel, and exact browser coverage prove the URL-backed form lifecycle while retaining the worklist query. |
 | M04-CP-04 | Saving the first inoculation atomically advances `Received` to `Incubating` and creates an automatic Timeline event with the recorded values, actor, and time. | Yes | Yes | Yes | No | No | Service tests cover stage/event/actor/lot atomically; Timeline now renders actor and semantic time; component and browser coverage pass. |
 | M04-CP-05 | Once primary media exists, `Add subculture` is available inline and requires a parent; the resulting row visibly preserves parent lineage. | Yes | Yes | Yes | R2 | No | Service, component, and browser coverage exists. |
 | M04-CP-06 | Saving a subculture creates an automatic Timeline event; users do not manually recreate inoculation events in Timeline. | Yes | Yes | Yes | R2 | No | Timeline exposes only `Add note`; typed inoculation and subculture events are projected as Auto. |
@@ -35,9 +36,9 @@ not evidence that a reviewer can complete the story from the worklist.
 ## Local Validation
 
 - Backend: 20/20 focused JUnit 4 service/controller tests pass on Java 21.
-- Frontend: 38/38 focused Carbon interaction and route tests pass.
+- Frontend: 40/40 focused Carbon interaction and route tests pass.
 - Browser: Playwright setup plus the focused `core-app` user journey pass 2/2
-  in 7.7 seconds against the local R2 stack.
+  in 7.9 seconds against the local R2 stack.
 - Browser path: filtered worklist -> received case -> FEFO-backed primary
   inoculation -> subculture lineage -> automatic Timeline and manual note ->
   Mark positive confirmation -> Positive signal guidance.
@@ -45,10 +46,11 @@ not evidence that a reviewer can complete the story from the worklist.
 
 ## Drift And Interpretation
 
-1. **Missing case-page action entry points:** the source and mock place culture
-   actions in Inoculation and the next-step banner. The repository currently
-   places them only in the worklist overflow menu. This is the blocking defect
-   for this slice.
+1. **Resolved case-page action drift:** the source and mock place setup and
+   culture actions in Inoculation and the next-step banner. The case page now
+   exposes those entry points, and setup, subculture, positive, and no-growth
+   actions reuse canonical URL state rather than relying on component-only
+   state.
 2. **Timeline wording:** AC-M04-04 says there is no inoculation entry "in the
    Timeline" while the same criterion and mock require an automatic Timeline
    event. The consistent observable interpretation is that Timeline has no

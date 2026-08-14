@@ -60,7 +60,9 @@ test.describe("Microbiology case workbench", () => {
     const caseHeader = page.locator("header");
     await expect(caseHeader.getByTitle("Received")).toBeVisible();
 
-    await page.getByRole("button", { name: "Start inoculation" }).click();
+    const nextStep = page.getByTestId("microbiology-next-step");
+    await nextStep.getByRole("button", { name: "Start inoculation" }).click();
+    await expect(page).toHaveURL(/section=setup&action=start-inoculation$/);
     await page.getByLabel("Bottle or plate ID").fill("UAT-M04-PRIMARY-01");
     await page.getByLabel("Media or bottle").fill("Blood culture bottle");
     await page.getByLabel("Incubation").fill("35 C for 24 hours");
@@ -76,6 +78,7 @@ test.describe("Microbiology case workbench", () => {
     await expect(caseHeader.getByTitle("Incubating")).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
+    await expect(page).toHaveURL(/section=setup$/);
     await expect(
       page.getByRole("cell", { name: "UAT-M04-PRIMARY-01" }),
     ).toBeVisible();
@@ -85,12 +88,14 @@ test.describe("Microbiology case workbench", () => {
     await expect(lotHistory).toContainText("UAT-MICRO-MEDIA-FEFO");
 
     await page.getByRole("button", { name: "Add subculture" }).click();
+    await expect(page).toHaveURL(/section=setup&action=add-subculture$/);
     await page.getByLabel("Parent media").selectOption({
       label: "UAT-M04-PRIMARY-01 - Blood culture bottle",
     });
     await page.getByLabel("Bottle or plate ID").fill("UAT-M04-SUB-01");
     await page.getByLabel("Media or bottle").fill("MacConkey agar");
     await page.getByRole("button", { name: "Save media" }).click();
+    await expect(page).toHaveURL(/section=setup$/);
     await expect(
       page.getByRole("cell", { name: "UAT-M04-SUB-01" }),
     ).toBeVisible();

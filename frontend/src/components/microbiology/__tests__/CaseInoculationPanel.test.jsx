@@ -17,13 +17,25 @@ const renderPanel = (props = {}) =>
   );
 
 describe("CaseInoculationPanel", () => {
-  it("moves focus into primary setup and restores it after cancel", async () => {
+  it("routes primary setup, moves focus into it, and restores focus after cancel", async () => {
     const user = userEvent.setup();
-    renderPanel();
+    const onInoculationAction = vi.fn();
+    const { rerender } = renderPanel({ onInoculationAction });
 
     const trigger = screen.getByRole("button", { name: "Start inoculation" });
     trigger.focus();
     await user.keyboard("{Enter}");
+
+    expect(onInoculationAction).toHaveBeenCalledWith("start-inoculation");
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseInoculationPanel
+          action="start-inoculation"
+          onRecord={vi.fn().mockResolvedValue({})}
+          onInoculationAction={onInoculationAction}
+        />
+      </IntlProvider>,
+    );
 
     expect(screen.getByLabelText("Bottle or plate ID")).toHaveFocus();
     expect(screen.getByText("Inoculation form expanded")).toHaveAttribute(
@@ -31,12 +43,22 @@ describe("CaseInoculationPanel", () => {
       "status",
     );
     await user.keyboard("{Escape}");
+    expect(onInoculationAction).toHaveBeenLastCalledWith("");
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseInoculationPanel
+          onRecord={vi.fn().mockResolvedValue({})}
+          onInoculationAction={onInoculationAction}
+        />
+      </IntlProvider>,
+    );
     expect(trigger).toHaveFocus();
   });
 
   it("keeps subculture unavailable until parent media exists", async () => {
     const user = userEvent.setup();
-    renderPanel();
+    const onInoculationAction = vi.fn();
+    const { rerender } = renderPanel({ onInoculationAction });
 
     expect(
       screen.getByText("No media recorded yet. Start inoculation to begin."),
@@ -46,6 +68,16 @@ describe("CaseInoculationPanel", () => {
     ).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Start inoculation" }));
+    expect(onInoculationAction).toHaveBeenCalledWith("start-inoculation");
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseInoculationPanel
+          action="start-inoculation"
+          onRecord={vi.fn().mockResolvedValue({})}
+          onInoculationAction={onInoculationAction}
+        />
+      </IntlProvider>,
+    );
     expect(screen.getByLabelText("Bottle or plate ID")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save media" })).toBeDisabled();
   });
@@ -53,7 +85,8 @@ describe("CaseInoculationPanel", () => {
   it("records a subculture with its selected parent", async () => {
     const user = userEvent.setup();
     const onRecord = vi.fn().mockResolvedValue({});
-    renderPanel({
+    const onInoculationAction = vi.fn();
+    const panelProps = {
       inoculations: [
         {
           id: "inoculation-1",
@@ -63,9 +96,20 @@ describe("CaseInoculationPanel", () => {
         },
       ],
       onRecord,
-    });
+      onInoculationAction,
+    };
+    const { rerender } = renderPanel(panelProps);
 
-    await user.click(screen.getByRole("button", { name: "Add subculture" }));
+    const trigger = screen.getByRole("button", { name: "Add subculture" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(onInoculationAction).toHaveBeenCalledWith("add-subculture");
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseInoculationPanel {...panelProps} action="add-subculture" />
+      </IntlProvider>,
+    );
+
     expect(screen.getByLabelText("Parent media")).toHaveFocus();
     expect(screen.getByText("Subculture form expanded")).toHaveAttribute(
       "role",
@@ -87,6 +131,12 @@ describe("CaseInoculationPanel", () => {
       atmosphere: "",
       lotSelections: [],
     });
+    expect(onInoculationAction).toHaveBeenLastCalledWith("");
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseInoculationPanel {...panelProps} />
+      </IntlProvider>,
+    );
     expect(
       screen.getByRole("button", { name: "Add subculture" }),
     ).toHaveFocus();

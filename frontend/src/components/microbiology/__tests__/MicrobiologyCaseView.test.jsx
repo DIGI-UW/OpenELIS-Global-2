@@ -109,6 +109,30 @@ const getAccordionButton = (name) => {
 };
 
 describe("MicrobiologyCaseView", () => {
+  it("opens primary inoculation from the received next step with canonical URL state", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup",
+    );
+
+    const nextStep = await screen.findByTestId("microbiology-next-step");
+    await user.click(
+      within(nextStep).getByRole("button", { name: "Start inoculation" }),
+    );
+
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup&action=start-inoculation",
+    );
+    expect(screen.getByLabelText("Bottle or plate ID")).toHaveFocus();
+  });
+
   it("mounts only the canonical active accordion body", async () => {
     const service = {
       ...astServiceStubs,
@@ -388,7 +412,11 @@ describe("MicrobiologyCaseView", () => {
     expect(screen.getAllByText(/UATMICRO001/).length).toBeGreaterThan(0);
     expect(screen.getByText("Blood")).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: "Start inoculation" }));
+    await user.click(
+      within(screen.getByTestId("microbiology-next-step")).getByRole("button", {
+        name: "Start inoculation",
+      }),
+    );
     await user.type(screen.getByLabelText("Bottle or plate ID"), "BOTTLE-001");
     await user.type(
       screen.getByLabelText("Media or bottle"),
