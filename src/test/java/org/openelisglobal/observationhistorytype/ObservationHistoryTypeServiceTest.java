@@ -35,8 +35,11 @@ public class ObservationHistoryTypeServiceTest extends BaseWebContextSensitiveTe
 
     @Test
     public void getAll_shouldReturnAllObservationHistoryTypes() {
+        // 4 fixture rows + the SampleRecordStatus/PatientRecordStatus pair the
+        // dataset loader always restores (sample-status writes FK to them by
+        // cached id, so no fixture may leave them missing).
         List<ObservationHistoryType> observationHistoryTypes = observationHistoryTypeService.getAll();
-        assertTrue(observationHistoryTypes.size() == 4);
+        assertEquals(6, observationHistoryTypes.size());
     }
 
     @Test
@@ -98,6 +101,8 @@ public class ObservationHistoryTypeServiceTest extends BaseWebContextSensitiveTe
         ObservationHistoryType observationType = observationHistoryTypeService.get("3");
 
         observationHistoryTypeService.delete(observationType);
-        assertEquals(3, observationHistoryTypeService.getAll().size());
+        // One fewer than the 6 rows getAll_shouldReturnAllObservationHistoryTypes
+        // documents (4 fixture + 2 loader-restored).
+        assertEquals(5, observationHistoryTypeService.getAll().size());
     }
 }

@@ -114,6 +114,8 @@ interface ExpandedPanelProps {
   domain: ResultsDomain;
   editable: boolean;
   editing: boolean;
+  /** the worklist's lab unit — scopes OGC-1025 control capture (FR-C1). */
+  testSectionId?: string;
   /** analyzerId as loaded from the server — drives the provenance tag (FR-B2). */
   loadedAnalyzerId?: string;
   methods: IdValue[];
@@ -184,6 +186,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   domain,
   editable,
   editing,
+  testSectionId,
   loadedAnalyzerId,
   methods,
   analyzers,
@@ -647,6 +650,9 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         testId={row.testId as string | undefined}
         analysisId={row.analysisId as string | undefined}
         editable={editable}
+        resultType={row.resultType}
+        testSectionId={testSectionId}
+        unitOfMeasure={row.unitsOfMeasure}
         fromAnalyzerId={loadedAnalyzerId}
         analyzerName={
           analyzers.find((a) => a.id === loadedAnalyzerId)?.value as

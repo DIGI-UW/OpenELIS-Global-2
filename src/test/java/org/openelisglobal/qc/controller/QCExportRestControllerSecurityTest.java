@@ -25,6 +25,8 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.qc.service.QCChartDataService;
 import org.openelisglobal.qc.service.QCChartDataService.LotSection;
 import org.openelisglobal.qc.service.QCChartDataService.QCExportModel;
+import org.openelisglobal.qc.service.QCControlLotService;
+import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.service.SigmaMetrics;
 import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
@@ -32,6 +34,9 @@ import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCStatistics;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.service.TestService;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -61,6 +66,9 @@ public class QCExportRestControllerSecurityTest extends SecuritySliceMockMvcTest
 
     private static final String CSV_URL = "/rest/qc/export/csv?instrumentId=1&startDate=2026-06-01&endDate=2026-06-30";
     private static final String PDF_URL = "/rest/qc/export/pdf?instrumentId=1&startDate=2026-06-01&endDate=2026-06-30";
+    // OGC-1147: the bench register takes no instrumentId — a manual or RDT control
+    // has none.
+    private static final String BENCH_URL = "/rest/qc/export/bench/csv?startDate=2026-06-01&endDate=2026-06-30";
     // U+2083 U+209B = the "1₃ₛ" Westgard rule code (subscript 3, subscript s)
     private static final String RULE_1_3S = "1₃ₛ";
 
@@ -93,6 +101,45 @@ public class QCExportRestControllerSecurityTest extends SecuritySliceMockMvcTest
     @Test
     public void csv_globalAdminFallbackReturns200() throws Exception {
         mockMvc.perform(get(CSV_URL).with(user("admin").roles("GLOBAL_ADMIN"))).andExpect(status().isOk());
+    }
+
+    @Test
+    public void bench_withoutAuthenticationReturns401() throws Exception {
+        mockMvc.perform(get(BENCH_URL)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void bench_roleWithoutPermissionAuthorityReturns403() throws Exception {
+        mockMvc.perform(get(BENCH_URL).with(user("tech").roles("RECEPTION"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void bench_qaViewQcAuthorityReturns200() throws Exception {
+        mockMvc.perform(get(BENCH_URL).with(user("qc").authorities(new SimpleGrantedAuthority("qa.view.qc"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void bench_analyzerSourceReturns400() throws Exception {
+        // ASTM belongs to the instrument export; silently returning nothing would be
+        // worse than refusing.
+        mockMvc.perform(
+                get(BENCH_URL + "&source=ASTM").with(user("qc").authorities(new SimpleGrantedAuthority("qa.view.qc"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void bench_unknownSourceReturns400() throws Exception {
+        mockMvc.perform(get(BENCH_URL + "&source=WORKPLAN")
+                .with(user("qc").authorities(new SimpleGrantedAuthority("qa.view.qc"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void bench_reversedDateRangeReturns400() throws Exception {
+        mockMvc.perform(get("/rest/qc/export/bench/csv?startDate=2026-06-30&endDate=2026-06-01")
+                .with(user("qc").authorities(new SimpleGrantedAuthority("qa.view.qc"))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -269,6 +316,37 @@ public class QCExportRestControllerSecurityTest extends SecuritySliceMockMvcTest
             when(service.getExportModel(any(), any(), any(), any(), any(), anyInt()))
                     .thenReturn(new QCExportModel("Cobas 6000", List.of(), 0, 0, false));
             return service;
+        }
+
+        // OGC-1147 bench register collaborators. The controller is constructed by hand
+        // here, but @Autowired still runs on a manually-registered @Bean, so every
+        // field
+        // needs a candidate or the whole slice fails to start.
+        @Bean
+        QCResultService qcResultService() {
+            QCResultService service = mock(QCResultService.class);
+            when(service.findBenchResults(any(), any(), any(), anyInt())).thenReturn(List.of());
+            return service;
+        }
+
+        @Bean
+        QCControlLotService qcControlLotService() {
+            return mock(QCControlLotService.class);
+        }
+
+        @Bean
+        TestService testService() {
+            return mock(TestService.class);
+        }
+
+        @Bean
+        TestSectionService testSectionService() {
+            return mock(TestSectionService.class);
+        }
+
+        @Bean
+        SystemUserService systemUserService() {
+            return mock(SystemUserService.class);
         }
 
         @Bean

@@ -1,7 +1,6 @@
 package org.openelisglobal.reports.rejection;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -205,11 +204,15 @@ public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
     public void heatmap_groupsByRequesterOrgAndSection_nullLocationWhenNoRequester() {
         writeRejectionNote("2", "Hemolyzed specimen");
 
-        // No requesting site captured: every cell sits in the null-location
-        // bucket (the UI labels it, not the backend).
+        // No requesting site captured: the fixture's rejection sits in the
+        // null-location bucket (the UI labels it, not the backend). Asserted on
+        // that bucket only — the heatmap is a window-wide query, so cells from
+        // other suites' leftovers can legitimately coexist in the window and an
+        // allMatch over them is order-fragile.
         RejectionHeatmapResponse before = rejectionReportService.getHeatmap(WINDOW_FROM, START_MONTH_TO);
-        assertFalse(before.getCells().isEmpty());
-        assertTrue(before.getCells().stream().allMatch(cell -> cell.getLocation() == null));
+        long beforeNullRejected = before.getCells().stream().filter(cell -> cell.getLocation() == null)
+                .mapToLong(RejectionHeatmapResponse.Cell::getRejectedCount).sum();
+        assertTrue("analyses with no requester must land in the null-location bucket", beforeNullRejected >= 1);
 
         // Fixture rows carry explicit ids the sequence doesn't know about —
         // advance it past them so the insert doesn't collide.
@@ -241,16 +244,18 @@ public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, cell.getTotalCount());
         assertEquals(100.0, cell.getRatePercent(), 0.001);
 
-        // The other fixture analysis (different sample, no requester) stays in
-        // the null-location bucket, unrejected.
-        RejectionHeatmapResponse.Cell unknown = after.getCells().stream().filter(c -> c.getLocation() == null)
-                .findFirst().orElse(null);
-        assertNotNull(unknown);
-        assertEquals(0, unknown.getRejectedCount());
+        // The fixture's rejection moved from the null-location bucket to the
+        // Inpatient Ward cell — exactly one fewer null-located rejection than
+        // before. Relative rather than absolute, for the same window-wide reason
+        // as above.
+        long afterNullRejected = after.getCells().stream().filter(c -> c.getLocation() == null)
+                .mapToLong(RejectionHeatmapResponse.Cell::getRejectedCount).sum();
+        assertEquals(beforeNullRejected - 1, afterNullRejected);
 
         // The same join labels the detail rows.
         RejectionDetailResponse detail = rejectionReportService.getDetail(WINDOW_FROM, START_MONTH_TO, 0, 25);
-        assertEquals("Inpatient Ward", detail.getItems().get(0).getLocation());
+        assertTrue("the requester's organization labels its detail row",
+                detail.getItems().stream().anyMatch(i -> "Inpatient Ward".equals(i.getLocation())));
     }
 
     @Test
