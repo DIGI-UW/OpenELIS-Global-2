@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <test id="9701" name="E0 Unique Test"
+        description="E0 unique active LOINC candidate" loinc="1111-1"
+        guid="e0000000-0000-0000-0000-000000009701" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2026-08-13 12:00:00" />
+    <test id="9702" name="E0 Duplicate Test A"
+        description="E0 first duplicate active LOINC candidate" loinc="2222-2"
+        guid="e0000000-0000-0000-0000-000000009702" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2026-08-13 12:00:00" />
+    <test id="9703" name="E0 Duplicate Test B"
+        description="E0 second duplicate active LOINC candidate"
+        loinc="2222-2" guid="e0000000-0000-0000-0000-000000009703"
+        is_active="Y" is_reportable="Y" orderable="true"
+        lastupdated="2026-08-13 12:00:00" />
+    <test id="9704" name="E0 Inactive Test"
+        description="E0 inactive LOINC candidate" loinc="3333-3"
+        guid="e0000000-0000-0000-0000-000000009704" is_active="N"
+        is_reportable="Y" orderable="true" lastupdated="2026-08-13 12:00:00" />
+
+    <test_result id="9701" test_id="9701" result_group="1"
+        tst_rslt_type="DMC" value="9701" sort_order="1"
+        is_quantifiable="false" is_active="true" is_normal="true"
+        lastupdated="2026-08-13 12:00:00" />
+    <test_result id="9702" test_id="9701" result_group="1"
+        tst_rslt_type="DMC" value="9702" sort_order="2"
+        is_quantifiable="false" is_active="false" is_normal="false"
+        lastupdated="2026-08-13 12:00:00" />
+
+    <analyzer_type id="9701" name="E0 Legacy Type"
+        protocol="ASTM" plugin_class_name="oe.plugin.analyzer.GenericASTM"
+        is_active="true" is_generic_plugin="true" />
+    <analyzer id="9701" name="E0 Existing Analyzer"
+        machine_id="E0-EXISTING-1" analyzer_type="HEMATOLOGY"
+        analyzer_type_id="9701"
+        description="Existing analyzer migration input"
+        location="E0 Laboratory" is_active="true" has_setup_page="true"
+        test_unit_ids="9701,9702" status="SETUP"
+        last_updated="2026-08-13 12:00:00" />
+    <analyzer_plugin_config analyzer_id="9701"
+        config="{&quot;bootstrapMarker&quot;:&quot;legacy-copy&quot;,&quot;sourceAliases&quot;:[&quot;WBC#&quot;,&quot;WHITE_COUNT&quot;]}"
+        sys_user_id="1" last_updated="2026-08-13 12:00:00" />
+    <analyzer_test_map analyzer_id="9701"
+        analyzer_test_name="WBC" test_id="9701"
+        last_updated="2026-08-13 12:00:00" />
+    <analyzer_test_map analyzer_id="9701"
+        analyzer_test_name="WBC_ALIAS" test_id="9701"
+        last_updated="2026-08-13 12:00:00" />
+    <analyzer_field id="field-e0" analyzer_id="9701"
+        field_name="HIV interpretation" astm_ref="R|1|^^^HIV-INTERP"
+        field_type="QUALITATIVE" is_active="true" sys_user_id="1"
+        last_updated="2026-08-13 12:00:00" />
+    <qualitative_result_mapping id="value-e0"
+        analyzer_field_id="field-e0" analyzer_value="POS"
+        openelis_code="POSITIVE" is_default="false" sys_user_id="1"
+        last_updated="2026-08-13 12:00:00" />
+</dataset>

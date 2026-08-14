@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "checkpoint": "OE-E0",
+  "inputs": {
+    "defaultConfigId": {
+      "state": "TRANSIENT_CREATE_HINT",
+      "persisted": false,
+      "readUntil": "OE-M1_CUTOVER",
+      "target": "BRIDGE_PROFILE_REF"
+    },
+    "copiedPluginJson": {
+      "state": "READ_ONLY_MIGRATION_INPUT",
+      "store": "analyzer_plugin_config.config",
+      "target": "INSTANCE_OVERRIDES_ONLY"
+    },
+    "analyzerTestMap": {
+      "state": "PER_ANALYZER_MIGRATION_INPUT",
+      "store": "analyzer_test_map",
+      "target": "REVISIONED_SITE_BINDING_ROWS"
+    },
+    "qualitativeValues": {
+      "state": "LEGACY_UNBOUND",
+      "store": "qualitative_result_mapping.openelis_code",
+      "target": "SITE_RESULT_OPTION_BINDING"
+    },
+    "existingAnalyzers": {
+      "state": "PRESERVE_INSTANCE_IDENTITY",
+      "store": "analyzer",
+      "target": "ANALYZER_WITH_PROFILE_AND_SITE_BINDING_REVISION_REFS"
+    },
+    "rawIngress": {
+      "state": "DEPRECATED_READ_PATH",
+      "routes": ["/analyzer/astm", "/analyzer/hl7", "/importAnalyzer"],
+      "target": "/analyzer/fhir"
+    },
+    "catalogCoverage": {
+      "states": ["ZERO_ACTIVE", "ONE_ACTIVE", "MULTIPLE_ACTIVE", "INACTIVE_ONLY"],
+      "autoBindOnly": "ONE_ACTIVE"
+    }
+  },
+  "cutovers": {
+    "portableProfileWriter": "BR-M1",
+    "siteBindingWriter": "OE-M1",
+    "normalizedTrafficWriter": "BR-M4"
+  },
+  "rollback": {
+    "databaseAction": "RESTORE_PRE_CUTOVER_BACKUP",
+    "bridgeAction": "RESTORE_PRE_CUTOVER_BRIDGE_RELEASE",
+    "rule": "Never reverse-transform target writes into legacy stores"
+  }
+}
