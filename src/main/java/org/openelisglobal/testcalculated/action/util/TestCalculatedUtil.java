@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
@@ -144,8 +145,12 @@ public class TestCalculatedUtil {
             if (resultSet.result.getTestResult() == null) {
                 continue;
             } else {
-                resultCalculations = resultcalculationService.getResultCalculationByPatientAndTest(resultSet.patient,
-                        resultSet.result.getTestResult().getTest());
+                resultCalculations = resultcalculationService
+                        .getResultCalculationByPatientAndTest(resultSet.patient,
+                                resultSet.result.getTestResult().getTest())
+                        .stream()
+                        .filter(calc -> isTriggeredBy(ruleResultScope, calc.getCalculation(), resultSet.result))
+                        .collect(Collectors.toList());
             }
 
             if (!resultCalculations.isEmpty()) {
@@ -412,34 +417,45 @@ public class TestCalculatedUtil {
     }
 
     /**
+     * Whether the recorded result is one this calculation actually reads.
+     *
+     * <p>
+     * A calculation runs because one of its parameters was measured, and a
+     * parameter is a test AND a specimen AND a component. Asking only which test
+     * the calculation mentions is what let a COVID-19 PCR result recorded on Dry
+     * Tube re-run a calculation whose operand names the numeric Ct Value on
+     * Respiratory Swab: same test, different measurement entirely. The operands
+     * already know what they read, so the same question is asked of them here as
+     * when they are bound.
+     */
+    static boolean isTriggeredBy(RuleResultScope scope, Calculation calculation, Result result) {
+        if (calculation == null) {
+            return false;
+        }
+        for (Operation oper : calculation.getOperations()) {
+            if (operandReads(scope, oper, result)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Whether this operand reads the given result: the operand names a test, a
      * specimen and a component, and all three have to be the result's. Matching on
      * the test alone is what let a calculation configured for Ct Value pick up the
      * coded PCR Result recorded beside it.
      */
-    private boolean operandReads(Operation operation, Result result) {
-        if (operation == null || !operation.getType().equals(Operation.OperationType.TEST_RESULT) || result == null
-                || result.getTestResult() == null || result.getTestResult().getTest() == null) {
+    static boolean operandReads(RuleResultScope scope, Operation operation, Result result) {
+        if (operation == null || !Operation.OperationType.TEST_RESULT.equals(operation.getType())) {
             return false;
         }
-        if (!operation.getValue().equals(result.getTestResult().getTest().getId())) {
-            return false;
-        }
-        return ruleResultScope.matches(result, operation.getComponentId(), operandSampleTypeId(operation));
+        return scope.matchesTrigger(result, operation.getValue(), operation.getComponentId(),
+                operation.getScopedSampleTypeId());
     }
 
-    /**
-     * The specimen an operand reads. The builder has always stored it in sampleId -
-     * it is the picker the user chooses the test from - so that is the configured
-     * value; sample_type_id was added alongside it and is never written by the
-     * form. Reading only the latter meant every operand was unscoped and a result
-     * from any specimen of the test fed the calculation.
-     */
-    private String operandSampleTypeId(Operation operation) {
-        if (operation.getSampleTypeId() != null) {
-            return operation.getSampleTypeId().toString();
-        }
-        return operation.getSampleId() == null ? null : operation.getSampleId().toString();
+    private boolean operandReads(Operation operation, Result result) {
+        return operandReads(ruleResultScope, operation, result);
     }
 
     private void addNumericOperation(Operation operation, ResultCalculation resultCalculation, StringBuffer function,

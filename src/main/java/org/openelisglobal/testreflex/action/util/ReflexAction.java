@@ -100,12 +100,6 @@ public abstract class ReflexAction {
                     .setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
             generatedAnalysis.setParentAnalysis(currentAnalysis);
             generatedAnalysis.setParentResult(result);
-            // The triggering result decides only that the reflex runs. Where
-            // it lands is the generated test's own business: the test is
-            // configured for the specimens it can be run on, so the order's
-            // sample item of one of those types is the one it belongs to.
-            // Without this the reflexed test took the triggering specimen and a
-            // rule producing a result on another specimen never could.
             SampleItem targetItem = sampleItemForGeneratedTest(test, currentAnalysis);
             if (targetItem != null) {
                 generatedAnalysis.setSampleItem(targetItem);
@@ -120,25 +114,34 @@ public abstract class ReflexAction {
     }
 
     /**
-     * The specimen the reflexed test belongs on: the order's sample item whose type
-     * the generated test is configured for.
+     * The specimen the reflexed test is reported on.
      *
      * <p>
-     * Only an unambiguous answer is acted on. A test configured for several
-     * specimens that the order holds several of gives no single answer, and the
-     * triggering specimen stays the safer choice over guessing between them. Where
-     * the order holds none of them, and the test names exactly one, that one is
-     * added to the order: the generated test is the reason to have it.
+     * The rule says so. The builder collects a specimen alongside the test to add,
+     * and that pairing is the lab's instruction about where the generated result
+     * belongs: trigger on Respiratory Swab, report on DBS. The order is given that
+     * specimen when it does not already hold one, because the generated test is the
+     * reason to have it.
      *
      * <p>
-     * The specimen comes from the added test, never from the rule's own
-     * sample_type_id - that column scopes which result triggers the rule, and
-     * reading it here would report the generated test on the specimen that fired it
-     * rather than the one it belongs to.
+     * Read from add_sample_type_id and never from sample_type_id - the latter
+     * scopes which result triggers the rule, and reading it here would file the
+     * generated test against the specimen that fired it, which is the conflation
+     * the two columns exist to prevent.
+     *
+     * <p>
+     * Only where the rule names no target specimen is one inferred from the added
+     * test's own configuration, and then only when the answer is unambiguous: a
+     * test the order holds several eligible specimens for names no single one, and
+     * the triggering specimen stays the safer choice over guessing between them.
      */
     private SampleItem sampleItemForGeneratedTest(Test test, Analysis currentAnalysis) {
         if (test == null || currentAnalysis == null || currentAnalysis.getSampleItem() == null) {
             return null;
+        }
+        if (reflex != null && !GenericValidator.isBlankOrNull(reflex.getAddedSampleTypeId())) {
+            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
+                    currentAnalysis.getSampleItem().getSample(), reflex.getAddedSampleTypeId(), result.getSysUserId());
         }
         List<TypeOfSample> configured = SpringContext.getBean(TypeOfSampleService.class)
                 .getTypeOfSampleForTest(test.getId());

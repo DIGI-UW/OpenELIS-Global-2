@@ -347,6 +347,13 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         if (testAndSampleMatches(action.getReflexTestId(), action.getSampleId())) {
             Test reflexTest = testService.getTestById(action.getReflexTestId());
             reflex.setAddedTest(reflexTest);
+            // The action's specimen is where the generated test is reported,
+            // and it is the lab's instruction rather than something to work
+            // out: a rule reading Respiratory Swab and adding a test on DBS
+            // means DBS. It was validated here and then dropped, so the
+            // executor had only the trigger's specimen to go on and filed the
+            // generated test against whatever fired the rule.
+            reflex.setAddedSampleTypeId(blankToNull(action.getSampleId()));
         }
     }
 

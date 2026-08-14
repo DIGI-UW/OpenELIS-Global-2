@@ -207,5 +207,6 @@
   <include relativeToChangelogFile="true" file="079-alert-rule-primary-component-backfill.xml"/>
   <include relativeToChangelogFile="true" file="080-calculation-destination-component.xml"/>
   <include relativeToChangelogFile="true" file="081-reflex-sample-type-backfill.xml"/>
+  <include relativeToChangelogFile="true" file="082-reflex-target-sample-type.xml"/>
 
 </databaseChangeLog>

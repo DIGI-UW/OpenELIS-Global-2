@@ -344,7 +344,8 @@ public class TestReflexUtil {
         // rule authored for one specimen fires on every specimen the test runs
         // on.
         reflexesForResult = reflexesForResult.stream()
-                .filter(e -> ruleResultScope.matches(reflexBean.getResult(), e.getComponentId(), e.getSampleTypeId()))
+                .filter(e -> ruleResultScope.matchesTrigger(reflexBean.getResult(), e.getTestId(), e.getComponentId(),
+                        e.getSampleTypeId()))
                 .filter(e -> isTestTriggeredByResult(e.getAddedTest(), reflexBean.getResult()))
                 .collect(Collectors.toList());
         return reflexesForResult;

@@ -20,14 +20,6 @@ import org.openelisglobal.testcalculated.valueholder.Operation;
  */
 public class OperandSampleTypeScopeTest {
 
-    /** Mirrors the executor's resolution. */
-    private String operandSampleTypeId(Operation operation) {
-        if (operation.getSampleTypeId() != null) {
-            return operation.getSampleTypeId().toString();
-        }
-        return operation.getSampleId() == null ? null : operation.getSampleId().toString();
-    }
-
     private Operation operand(Integer sampleId, Integer sampleTypeId) {
         Operation operation = new Operation();
         operation.setType(Operation.OperationType.TEST_RESULT);
@@ -41,28 +33,25 @@ public class OperandSampleTypeScopeTest {
     public void readsTheSpecimenTheBuilderStored() {
         // Every operand configured before this fix looks like this: a specimen
         // in sampleId and nothing in sampleTypeId.
-        assertEquals("26", operandSampleTypeId(operand(26, null)));
-        assertEquals("1", operandSampleTypeId(operand(1, null)));
+        assertEquals("26", operand(26, null).getScopedSampleTypeId());
+        assertEquals("1", operand(1, null).getScopedSampleTypeId());
     }
 
     @Test
     public void prefersAnExplicitScopeWhenOneIsSet() {
-        assertEquals("30", operandSampleTypeId(operand(26, 30)));
+        assertEquals("30", operand(26, 30).getScopedSampleTypeId());
     }
 
     @Test
     public void staysUnscopedOnlyWhenNeitherIsSet() {
-        assertNull(operandSampleTypeId(operand(null, null)));
+        assertNull(operand(null, null).getScopedSampleTypeId());
     }
 
     @Test
     public void anOperandOnUrinesDoesNotResolveToDbs() {
         // The reported failure: same test, same component, different specimen.
         // Resolving to "1" is what lets the scope matcher reject a DBS result.
-        Operation urines = operand(1, null);
-
-        assertEquals("1", operandSampleTypeId(urines));
         assertEquals("the operand must not answer with another specimen of the same test", "1",
-                operandSampleTypeId(urines));
+                operand(1, null).getScopedSampleTypeId());
     }
 }

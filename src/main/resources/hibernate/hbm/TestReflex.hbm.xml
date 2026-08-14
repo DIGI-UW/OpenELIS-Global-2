@@ -62,6 +62,10 @@
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="sample_type_id" precision="10" scale="0" />
         </property>
+        <property name="addedSampleTypeId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="add_sample_type_id" precision="10" scale="0" />
+        </property>
         <property name="internalNote" type="java.lang.String">
             <column name="internal_note" length="50" />
         </property>

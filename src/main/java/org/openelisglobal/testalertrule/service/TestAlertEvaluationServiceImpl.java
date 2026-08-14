@@ -115,7 +115,7 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         case "ALL":
             return true;
         case "SPECIFIC_VALUE":
-            return rule.getTriggerValue() != null && rule.getTriggerValue().equals(value);
+            return valueMatches(rule.getTriggerValue(), value, result.getResultType());
         case "ABNORMAL":
             return resultService.isAbnormalDictionaryResult(result);
         case "CRITICAL":
@@ -123,6 +123,37 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         default:
             // COMPLIANCE_BREACH needs the S-01 compliance module (OGC-528) and
             // doesn't fire until that lands.
+            return false;
+        }
+    }
+
+    /**
+     * Whether the recorded value is the value the rule names.
+     *
+     * <p>
+     * A numeric result is stored to the test's significant digits, so 200 entered
+     * on a two-digit test is persisted as "200.00". A rule authored for 200 holds
+     * the string the user typed, and comparing the two as text says they differ.
+     *
+     * <p>
+     * This is why the rule appeared to work on a new result and not on an edited
+     * one: entering a value posts the characters typed, while editing one posts
+     * what the field was showing — the formatted value. Same measurement, same
+     * rule, two spellings of the number. A numeric rule is about the number.
+     */
+    private boolean valueMatches(String triggerValue, String value, String resultType) {
+        if (triggerValue == null || value == null) {
+            return false;
+        }
+        if (triggerValue.equals(value)) {
+            return true;
+        }
+        if (!"N".equals(resultType)) {
+            return false;
+        }
+        try {
+            return Double.compare(Double.parseDouble(triggerValue.trim()), Double.parseDouble(value.trim())) == 0;
+        } catch (NumberFormatException e) {
             return false;
         }
     }

@@ -71,6 +71,15 @@ public class TestReflex extends EnumValueItemImpl {
     /** The specimen this reflex triggers on; null means every specimen. */
     private String sampleTypeId;
 
+    /**
+     * The specimen the generated test is reported on, as named by the authoring
+     * action; null means the rule names none and the added test's own configuration
+     * decides. Distinct from {@link #sampleTypeId} on purpose: the result that
+     * fires a rule and the result a rule produces are two different measurements,
+     * and a rule reading Respiratory Swab may well report on DBS.
+     */
+    private String addedSampleTypeId;
+
     private String internalNote;
 
     private String externalNote;
@@ -307,5 +316,13 @@ public class TestReflex extends EnumValueItemImpl {
 
     public void setSampleTypeId(String sampleTypeId) {
         this.sampleTypeId = sampleTypeId;
+    }
+
+    public String getAddedSampleTypeId() {
+        return addedSampleTypeId;
+    }
+
+    public void setAddedSampleTypeId(String addedSampleTypeId) {
+        this.addedSampleTypeId = addedSampleTypeId;
     }
 }

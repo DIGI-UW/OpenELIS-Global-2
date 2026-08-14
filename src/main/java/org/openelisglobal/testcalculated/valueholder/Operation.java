@@ -84,6 +84,23 @@ public class Operation implements Comparable<Operation> {
         this.sampleTypeId = sampleTypeId;
     }
 
+    /**
+     * The specimen this operand reads, wherever the builder recorded it.
+     *
+     * <p>
+     * {@code sampleId} is the picker the user chooses the test from, and has held
+     * the operand's specimen since the editor was written. {@code sampleTypeId} was
+     * added beside it for the scoping work and is not written by the form, so
+     * reading only that saw NULL on every operand, treated each one as unscoped,
+     * and let a result from any specimen of the test feed the calculation.
+     */
+    public String getScopedSampleTypeId() {
+        if (sampleTypeId != null) {
+            return sampleTypeId.toString();
+        }
+        return sampleId == null ? null : sampleId.toString();
+    }
+
     public Integer getId() {
         return id;
     }

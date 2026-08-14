@@ -91,6 +91,56 @@ public class RuleResultScopeTest {
         assertTrue(scope.matches(result(CT, "30"), CT, "30"));
     }
 
+    /**
+     * The regression matrix every engine is held to.
+     *
+     * <p>
+     * A rule's trigger names a test AND a specimen AND a component, and all three
+     * have to be the recorded result's for the rule to run. Each row below is a
+     * measurement that differs from the rule on exactly one axis, and every one of
+     * them used to satisfy a rule that matched by test alone.
+     */
+    @Test
+    public void matchesTrigger_shouldRequireTestSpecimenAndComponentTogether() {
+        assertTrue("same test, same specimen, same component",
+                scope.matchesTrigger(result(CT, "30"), TEST_ID, CT, "30"));
+        assertFalse("same test, different specimen, same component",
+                scope.matchesTrigger(result(CT, "31"), TEST_ID, CT, "30"));
+        assertFalse("same test, same specimen, different component",
+                scope.matchesTrigger(result(PRIMARY, "30"), TEST_ID, CT, "30"));
+        assertFalse("different test", scope.matchesTrigger(otherTestResult(CT, "30"), TEST_ID, CT, "30"));
+    }
+
+    @Test
+    public void matchesTrigger_shouldNotInferAnAxisTheRuleStates() {
+        // The specimen of another result in the same save, or the one the test is
+        // configured for, is not this result's specimen. Only what the result
+        // itself carries counts.
+        Result onSaliva = result(CT, "31");
+
+        assertFalse(scope.matchesTrigger(onSaliva, TEST_ID, CT, "30"));
+        assertTrue("and it still matches the specimen it is actually on",
+                scope.matchesTrigger(onSaliva, TEST_ID, CT, "31"));
+    }
+
+    @Test
+    public void matchesTrigger_shouldTreatABlankAxisAsUnscoped() {
+        // A rule authored before either axis existed names neither, and has to
+        // keep running everywhere it ran before.
+        assertTrue(scope.matchesTrigger(result(PRIMARY, "30"), null, null, null));
+        assertTrue(scope.matchesTrigger(result(CT, "31"), "", "", ""));
+        assertTrue("a test-only rule is still a test-only rule",
+                scope.matchesTrigger(result(CT, "31"), TEST_ID, null, null));
+        assertFalse("but not on another test's result",
+                scope.matchesTrigger(otherTestResult(CT, "31"), TEST_ID, null, null));
+    }
+
+    @Test
+    public void matchesTrigger_shouldRejectAResultThatCarriesNoTest() {
+        assertFalse(scope.matchesTrigger(null, TEST_ID, CT, "30"));
+        assertFalse(scope.matchesTrigger(new Result(), TEST_ID, CT, "30"));
+    }
+
     @Test
     public void componentIdOf_shouldReadALegacyResultAsThePrimaryComponent() {
         // A result written before components carries no component on its
@@ -149,9 +199,21 @@ public class RuleResultScopeTest {
     }
 
     private Result result(String componentId, String sampleTypeId) {
+        return resultOfTest(covidTest, componentId, sampleTypeId);
+    }
+
+    /** The same measurement recorded under a different test entirely. */
+    private Result otherTestResult(String componentId, String sampleTypeId) {
+        org.openelisglobal.test.valueholder.Test other = mock(org.openelisglobal.test.valueholder.Test.class);
+        lenient().when(other.getId()).thenReturn("999");
+        return resultOfTest(other, componentId, sampleTypeId);
+    }
+
+    private Result resultOfTest(org.openelisglobal.test.valueholder.Test test, String componentId,
+            String sampleTypeId) {
         TestResult testResult = new TestResult();
         testResult.setComponentId(componentId);
-        testResult.setTest(covidTest);
+        testResult.setTest(test);
 
         SampleItem sampleItem = mock(SampleItem.class);
         lenient().when(sampleItem.getTypeOfSampleId()).thenReturn(sampleTypeId);

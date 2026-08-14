@@ -61,6 +61,34 @@ public class RuleResultScope {
         return matchesComponent(result, componentId) && matchesSampleType(result.getAnalysis(), sampleTypeId);
     }
 
+    /**
+     * True when {@code result} is the measurement a rule's trigger names, on all
+     * three axes at once.
+     *
+     * <p>
+     * Test, specimen and component together are what identify a measurement, and a
+     * trigger that holds only two of them is satisfied by results it was never
+     * about: the same test on another specimen, or another component of it. Every
+     * engine has to ask exactly this, so it is asked in one place.
+     *
+     * @param testId       the test the rule triggers on, or null for any
+     * @param componentId  the component the rule is about, or null for any
+     * @param sampleTypeId the specimen the rule is about, or null for any
+     */
+    @Transactional(readOnly = true)
+    public boolean matchesTrigger(Result result, String testId, String componentId, String sampleTypeId) {
+        if (result == null) {
+            return false;
+        }
+        if (!GenericValidator.isBlankOrNull(testId)) {
+            if (result.getTestResult() == null || result.getTestResult().getTest() == null
+                    || !testId.equals(result.getTestResult().getTest().getId())) {
+                return false;
+            }
+        }
+        return matches(result, componentId, sampleTypeId);
+    }
+
     /** True when the analysis was run on the specimen the rule names. */
     public boolean matchesSampleType(Analysis analysis, String sampleTypeId) {
         if (GenericValidator.isBlankOrNull(sampleTypeId)) {
