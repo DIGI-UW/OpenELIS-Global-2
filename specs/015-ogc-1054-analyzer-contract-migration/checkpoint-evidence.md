@@ -7,6 +7,7 @@
 ## Scope
 
 - Repository: `DIGI-UW/OpenELIS-Global-2`
+- PR: [#4055](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4055)
 - Branch: `codex/ogc-1054-e0-contract-migration`
 - Base: OE-F0 `7115ea696632f78ef1f28b61e7c5fa08a59bb4c2`
 - Base roadmap blob: `012a4934aea5862ce50b4c576302c07044ad15a3`
