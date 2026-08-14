@@ -127,17 +127,18 @@ public abstract class ReflexAction {
      * Only an unambiguous answer is acted on. A test configured for several
      * specimens that the order holds several of gives no single answer, and the
      * triggering specimen stays the safer choice over guessing between them. Where
-     * the order holds none of them the triggering specimen stands. A rule that
-     * names its specimen outright does not reach that reasoning at all: the named
-     * one is added to the order and used.
+     * the order holds none of them, and the test names exactly one, that one is
+     * added to the order: the generated test is the reason to have it.
+     *
+     * <p>
+     * The specimen comes from the added test, never from the rule's own
+     * sample_type_id - that column scopes which result triggers the rule, and
+     * reading it here would report the generated test on the specimen that fired it
+     * rather than the one it belongs to.
      */
     private SampleItem sampleItemForGeneratedTest(Test test, Analysis currentAnalysis) {
         if (test == null || currentAnalysis == null || currentAnalysis.getSampleItem() == null) {
             return null;
-        }
-        if (reflex != null && !GenericValidator.isBlankOrNull(reflex.getSampleTypeId())) {
-            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
-                    currentAnalysis.getSampleItem().getSample(), reflex.getSampleTypeId(), result.getSysUserId());
         }
         List<TypeOfSample> configured = SpringContext.getBean(TypeOfSampleService.class)
                 .getTypeOfSampleForTest(test.getId());
@@ -159,6 +160,10 @@ public abstract class ReflexAction {
                 }
                 match = item;
             }
+        }
+        if (match == null && configured.size() == 1) {
+            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
+                    currentAnalysis.getSampleItem().getSample(), configured.get(0).getId(), result.getSysUserId());
         }
         return match;
     }
