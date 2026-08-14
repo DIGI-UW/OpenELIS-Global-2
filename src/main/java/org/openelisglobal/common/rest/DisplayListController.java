@@ -55,9 +55,9 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
-import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -613,10 +613,10 @@ public class DisplayListController extends BaseRestController {
     }
 
     /**
-     * The test's components with the result type each one reports. A component
-     * that declares none reports the test's own type, which is what a
-     * single-component test has always done; a test with no components at all
-     * yields an empty list and callers fall back to the test-level type.
+     * The test's components with the result type each one reports. A component that
+     * declares none reports the test's own type, which is what a single-component
+     * test has always done; a test with no components at all yields an empty list
+     * and callers fall back to the test-level type.
      */
     private List<TestDisplayBean.ComponentBean> componentBeansFor(Test test, String testLevelType) {
         List<TestDisplayBean.ComponentBean> beans = new ArrayList<>();
@@ -626,8 +626,7 @@ public class DisplayListController extends BaseRestController {
         }
         for (TestResultComponent component : components) {
             String label = StringUtils.isNotBlank(component.getLabel()) ? component.getLabel() : component.getCode();
-            String type = StringUtils.isNotBlank(component.getResultType()) ? component.getResultType()
-                    : testLevelType;
+            String type = StringUtils.isNotBlank(component.getResultType()) ? component.getResultType() : testLevelType;
             beans.add(new TestDisplayBean.ComponentBean(component.getId(), label, type, component.getIsPrimary()));
         }
         return beans;

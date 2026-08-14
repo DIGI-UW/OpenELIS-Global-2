@@ -56,8 +56,7 @@ public class TestDisplayBeanTest {
     @Test
     public void numericPrimaryWithTextSecondary_satisfiesBoth() {
         TestDisplayBean bean = new TestDisplayBean("4", "Culture", "N");
-        bean.setComponents(
-                Arrays.asList(component("c1", "Count", "N", true), component("c2", "Notes", "A", false)));
+        bean.setComponents(Arrays.asList(component("c1", "Count", "N", true), component("c2", "Notes", "A", false)));
 
         assertTrue(bean.getResultTypes().contains("N"));
         assertTrue(bean.getResultTypes().contains("A"));
