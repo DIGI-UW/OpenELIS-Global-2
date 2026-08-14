@@ -502,7 +502,7 @@ silently route around.
 | `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.      |
 | `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                            |
 | `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.      |
-| `ISSUE-G0-001` | Operations | `OPEN`     | Exact-SHA deployment, Grist authoring, and report-download permissions require a G0 preflight; this does not substitute for earlier automated gates.                       |
+| `ISSUE-G0-001` | Operations | `OPEN`     | Live preflight on 2026-08-13 found historical OE `2c840a55b03b`, harness `f3deb02e`, and only eight `AN-QC-*` steps. G0 must deploy the exact RC with current review tooling and publish/verify all 15 `AN-MVP-*` steps. |
 
 Resolved rows remain in the table for provenance. New evidence updates a row in
 the checkpoint that discovers or resolves it; IDs are never reused.
