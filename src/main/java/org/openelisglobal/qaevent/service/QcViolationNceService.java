@@ -1,6 +1,7 @@
 package org.openelisglobal.qaevent.service;
 
 import org.openelisglobal.qaevent.valueholder.NcEvent;
+import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 
 /**
@@ -16,4 +17,12 @@ public interface QcViolationNceService {
      * unchanged.
      */
     NcEvent createNceForViolation(QCRuleViolation violation);
+
+    /**
+     * Create the NCE for a failed bench control that has no statistical violation
+     * behind it — an RDT Invalid control line (OGC-1147 D4/FR-C1). Scopes affected
+     * analyses by lab unit rather than analyzer, using the same capped window.
+     * Idempotent on the QC result.
+     */
+    NcEvent createNceForFailedControl(QCResult qcResult);
 }

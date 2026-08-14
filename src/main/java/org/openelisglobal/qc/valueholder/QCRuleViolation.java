@@ -38,8 +38,10 @@ public class QCRuleViolation extends BaseObject<String> {
     // instrumentId and testId reference Analyzer.id and Test.id (String,
     // bridged to NUMERIC via LIMSStringNumberUserType). Match that pattern
     // here — per PR #3112 (OGC-346).
-    @NotNull
-    @Column(name = "instrument_id", nullable = false)
+    // Nullable since OGC-1147: a MANUAL_FAIL violation is raised off a bench
+    // control,
+    // which has no analyzer. Analyzer-sourced violations still always populate it.
+    @Column(name = "instrument_id")
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String instrumentId;
 

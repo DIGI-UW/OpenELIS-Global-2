@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.dto.RuleConfigSummary;
@@ -24,11 +25,13 @@ import org.openelisglobal.qc.service.QCDashboardService;
 import org.openelisglobal.qc.service.QCStatisticsService;
 import org.openelisglobal.qc.service.WestgardRuleConfigService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.qc.valueholder.QCSource;
 import org.openelisglobal.qc.valueholder.QCStatistics;
 import org.openelisglobal.qc.valueholder.WestgardRuleConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -73,20 +76,39 @@ public class QCRestController extends BaseRestController {
     }
 
     /**
-     * Get active control lots for an instrument, optionally narrowed to a single
-     * test. GET /rest/qc/controlLots?instrumentId={instrumentId}[&testId={testId}]
+     * Get active control lots. GET
+     * /rest/qc/controlLots?[instrumentId={instrumentId}][&testId={testId}]
      *
      * <p>
-     * {@code testId} is optional: the control-chart detail page queries by
-     * instrument alone, while the dashboard's control-chart tab passes both.
+     * Both parameters are optional but at least one is required:
+     * <ul>
+     * <li>{@code instrumentId} alone — every active lot on that analyzer (the
+     * control-chart detail page).
+     * <li>both — active lots for that test on that analyzer (the dashboard's
+     * control-chart tab).
+     * <li>{@code testId} alone — active <em>bench</em> lots for that test, i.e. the
+     * ones with no analyzer, which is what a manual quantitative capture picks from
+     * (OGC-1147 FR-B3). Deliberately not "all lots for this test regardless of
+     * analyzer": a bench run cannot use an analyzer lot's limits.
+     * </ul>
      */
     @GetMapping("/controlLots")
     public ResponseEntity<List<QCControlLot>> getActiveControlLots(@RequestParam(required = false) String testId,
-            @RequestParam String instrumentId) {
+            @RequestParam(required = false) String instrumentId) {
+        boolean hasTest = StringUtils.isNotBlank(testId);
+        boolean hasInstrument = StringUtils.isNotBlank(instrumentId);
+        if (!hasTest && !hasInstrument) {
+            return ResponseEntity.badRequest().build();
+        }
         try {
-            List<QCControlLot> controlLots = (testId == null || testId.isBlank())
-                    ? controlLotService.getActiveControlLotsByInstrument(instrumentId)
-                    : controlLotService.getActiveControlLots(testId, instrumentId);
+            List<QCControlLot> controlLots;
+            if (!hasInstrument) {
+                controlLots = controlLotService.getActiveBenchControlLots(testId);
+            } else if (hasTest) {
+                controlLots = controlLotService.getActiveControlLots(testId, instrumentId);
+            } else {
+                controlLots = controlLotService.getActiveControlLotsByInstrument(instrumentId);
+            }
             return ResponseEntity.ok(controlLots);
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getActiveControlLots", e.getMessage());
@@ -476,6 +498,40 @@ public class QCRestController extends BaseRestController {
      * Get dashboard summary with aggregate violation counts. GET
      * /rest/qc/dashboard/summary?months=1
      */
+    /**
+     * Bench QC activity, grouped by lab unit and test.
+     * /rest/qc/dashboard/bench?months=1[&amp;source=MANUAL|RDT]
+     *
+     * <p>
+     * A separate listing rather than a source filter over
+     * {@code /dashboard/instruments}: that endpoint's rows <i>are</i> analyzers,
+     * and a manual or RDT control has none, so filtering it by source can only ever
+     * return an empty instrument list (OGC-1147 FR-D1).
+     */
+    @GetMapping("/dashboard/bench")
+    @PreAuthorize("hasAuthority('qa.view.qc') or hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<List<BenchQcSummaryRow>> getBenchQcSummary(
+            @RequestParam(value = "months", defaultValue = "1") int months,
+            @RequestParam(value = "source", required = false) String source) {
+        try {
+            QCSource parsed = null;
+            if (StringUtils.isNotBlank(source) && !"ALL".equalsIgnoreCase(source)) {
+                parsed = QCSource.valueOf(source.toUpperCase());
+                if (!parsed.isBenchEntered()) {
+                    // ASTM belongs to the instrument tiles, not this listing.
+                    return ResponseEntity.badRequest().build();
+                }
+            }
+            Timestamp[] range = computeDateRange(months);
+            return ResponseEntity.ok(dashboardService.getBenchQcSummary(range[0], range[1], parsed));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "getBenchQcSummary", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping("/dashboard/summary")
     public ResponseEntity<QCDashboardSummary> getDashboardSummary(
             @RequestParam(value = "months", defaultValue = "1") int months) {

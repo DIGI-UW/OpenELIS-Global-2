@@ -39,6 +39,7 @@ import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.qc.service.QcHoldService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.reports.service.DocumentTrackService;
 import org.openelisglobal.reports.service.DocumentTypeService;
@@ -374,6 +375,12 @@ public class ResultValidationController extends BaseResultValidationController {
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
+        // FR-C3/C4: this legacy endpoint finalizes analyses exactly like the REST
+        // save, so it must honour the same QC hold — otherwise it is a sidestep
+        // around the block the lab opted into.
+        Set<String> blocked = SpringContext.getBean(QcHoldService.class).analysisIdsBlockedFromRelease(
+                analysisItems.stream().map(AnalysisItem::getAnalysisId).filter(java.util.Objects::nonNull).toList());
+
         List<String> analysisIdList = new ArrayList<>();
 
         for (AnalysisItem analysisItem : analysisItems) {
@@ -384,7 +391,10 @@ public class ResultValidationController extends BaseResultValidationController {
 
                 if (!analysisIdList.contains(analysis.getId())) {
 
-                    if (analysisItem.getIsAccepted()) {
+                    if (analysisItem.getIsAccepted() && blocked.contains(analysis.getId())) {
+                        LogEvent.logWarn(this.getClass().getName(), "createUpdateList",
+                                "Release of analysis " + analysis.getId() + " withheld: open QC failure");
+                    } else if (analysisItem.getIsAccepted()) {
                         analysis.setStatusId(
                                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
                         analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));
