@@ -155,9 +155,32 @@ const CaseTimelinePanel = ({
                   </Tag>
                 </div>
                 {activity.note ? `: ${activity.note}` : ""}
-                {activity.occurredAt && (
+                {(activity.performedByDisplay ||
+                  activity.performedBy ||
+                  activity.occurredAt) && (
                   <div className="microbiology-list__meta">
-                    {activity.occurredAt}
+                    {(activity.performedByDisplay || activity.performedBy) && (
+                      <span>
+                        {intl.formatMessage(
+                          {
+                            id: "microbiology.case.timeline.performedBy",
+                          },
+                          {
+                            actor:
+                              activity.performedByDisplay ||
+                              activity.performedBy,
+                          },
+                        )}
+                      </span>
+                    )}
+                    {activity.occurredAt && (
+                      <time dateTime={activity.occurredAt}>
+                        {intl.formatDate(activity.occurredAt, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </time>
+                    )}
                   </div>
                 )}
               </li>

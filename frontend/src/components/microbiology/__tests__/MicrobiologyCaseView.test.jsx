@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -260,6 +260,53 @@ describe("MicrobiologyCaseView", () => {
     },
   );
 
+  it("opens the incubating next action from the case page with canonical URL state", async () => {
+    const user = userEvent.setup();
+    const incubatingCase = {
+      ...caseDetail,
+      stage: "INCUBATING",
+      activities: [
+        ...caseDetail.activities,
+        {
+          id: "a2",
+          activityType: "INOCULATION_RECORDED",
+          note: "BOTTLE-001 - Blood culture bottle",
+        },
+      ],
+    };
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(incubatingCase),
+      getCaseTimeline: vi.fn().mockResolvedValue(incubatingCase.activities),
+      getCaseInoculations: vi.fn().mockResolvedValue([
+        {
+          id: "inoculation-1",
+          containerIdentifier: "BOTTLE-001",
+          media: "Blood culture bottle",
+        },
+      ]),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup",
+    );
+
+    const nextStep = await screen.findByTestId("microbiology-next-step");
+    await user.click(
+      within(nextStep).getByRole("button", { name: "Mark positive" }),
+    );
+
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup&action=mark-positive",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Mark culture positive" }),
+    ).toBeInTheDocument();
+  });
+
   it("records primary inoculation with a service-managed timeline and lot", async () => {
     const user = userEvent.setup();
     const requirement = {
@@ -370,7 +417,7 @@ describe("MicrobiologyCaseView", () => {
     expect(await screen.findByText("BOTTLE-001")).toBeInTheDocument();
     expect(screen.getByText("Primary")).toBeInTheDocument();
     expect(
-      screen.getByText(/Inoculation recorded. Add significant growth/),
+      screen.getByText(/Incubating. Mark the case positive/),
     ).toBeInTheDocument();
   });
 

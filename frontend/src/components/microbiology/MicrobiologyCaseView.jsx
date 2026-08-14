@@ -184,6 +184,9 @@ const getNextStepMessageId = (caseDetail) => {
   if (caseDetail.stage === "NO_GROWTH_READY") {
     return "microbiology.next.release";
   }
+  if (caseDetail.stage === "INCUBATING") {
+    return "microbiology.next.incubating";
+  }
   if (caseDetail.stage === "POSITIVE_SIGNAL") {
     return "microbiology.next.subculturePositive";
   }
@@ -478,6 +481,16 @@ const MicrobiologyCaseView = ({
         ...routeState,
         section: "setup",
         action: "",
+      }),
+    );
+  };
+
+  const openCultureAction = (action) => {
+    history.push(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "setup",
+        action,
       }),
     );
   };
@@ -827,7 +840,10 @@ const MicrobiologyCaseView = ({
           </aside>
 
           <div className="microbiology-workbench__content">
-            <Layer className="microbiology-next-step">
+            <Layer
+              className="microbiology-next-step"
+              data-testid="microbiology-next-step"
+            >
               <div>
                 <p className="microbiology-workbench__eyebrow">
                   {intl.formatMessage({ id: "microbiology.next.title" })}
@@ -836,6 +852,17 @@ const MicrobiologyCaseView = ({
                   {intl.formatMessage({ id: getNextStepMessageId(caseDetail) })}
                 </p>
               </div>
+              {caseDetail.stage === "INCUBATING" &&
+                routeState.action !== "mark-positive" && (
+                  <Button
+                    size="sm"
+                    onClick={() => openCultureAction("mark-positive")}
+                  >
+                    {intl.formatMessage({
+                      id: "microbiology.worklist.markPositive",
+                    })}
+                  </Button>
+                )}
             </Layer>
 
             <Accordion>
@@ -947,6 +974,8 @@ const MicrobiologyCaseView = ({
                       <CaseInoculationPanel
                         inoculations={inoculations}
                         onRecord={recordInoculation}
+                        stage={caseDetail.stage}
+                        onCultureAction={openCultureAction}
                         saving={saving}
                         reagentRequirements={reagentOverview.requirements}
                         reagentUsages={reagentOverview.usages}

@@ -433,6 +433,48 @@ claims.
   and registered Playwright tests plus visual comparison and one
   `tools/code-qa` pass.
 
+## Phase 16: M-04 Culture Progression Closure
+
+The prior R1 tasks established the persistence and routed confirmation pieces,
+but they did not prove the authoritative reviewer path. In particular, T241,
+T242, and T275 did not detect that the case page lacked the mock's visible
+culture-action entry points. The independent status ledger is
+`evidence/m04-culture-progression-slice-status-2026-08-13.md`.
+
+- [x] T309 [M-04] Pin `DIGI-UW/openelis-work@bf51582766ea` and enumerate the
+  observable positive-culture behavior separately from code, automation,
+  deployment, and human acceptance. Record the missing case-page actions as
+  implementation drift and the no-growth final-report lifecycle as a separate
+  behavior divergence.
+- [x] T310 [M-04] Add failing Carbon interaction tests for Incubating-only
+  `Mark positive` / `Mark no growth` actions in Inoculation and a URL-backed
+  `Mark positive` next-step action. Retain the existing routed confirmation and
+  focus assertions. The red phase failed on both absent entry points and on the
+  missing Timeline actor. The focused green suite passes 38/38 across the case
+  view, Inoculation, Timeline, and canonical route parser.
+- [x] T311 [M-04] Add one focused registered `core-app` Playwright journey from
+  the filtered worklist through primary inoculation with the eligible FEFO lot,
+  subculture lineage, manual note, and positive-signal confirmation. Use only
+  service-created fixtures, Carbon roles/labels, readiness assertions, and no
+  arbitrary waits or forced actions. The journey is registered in `core-app`
+  and passes Playwright lint; exact browser execution remains T313/T314.
+- [x] T312 [M-04] Implement the missing case-page culture-action entry points by
+  reusing the existing routed confirmation and stage state. Do not add a second
+  transition service or duplicate the worklist command logic. The case now
+  exposes both Incubating outcomes in Inoculation, exposes Mark positive from
+  the next-step banner, preserves canonical action state, and shows Timeline
+  actor plus semantic time. No backend endpoint or migration was added.
+- [ ] T313 [M-04] Run the focused backend, component, route, and Playwright
+  checkpoints; update the ledger with exact counts and distinguish any
+  unrelated inherited test failure.
+- [ ] T314 [M-04] Commit and push the coherent slice, deploy its exact SHA to
+  AMR, verify target metadata, and execute the exact registered journey against
+  the deployment.
+- [ ] T315 [M-04] Rewrite and dry-run Grist story `AMR-S02` against the deployed
+  UI one step at a time. Publish the complete nav path, exact accession and
+  fresh-record rule, control labels, inputs, and expected outcomes. Human marks
+  remain pending until Piotr completes them.
+
 ## Dependencies & Execution Order
 
 - M1 blocks all later milestones.
