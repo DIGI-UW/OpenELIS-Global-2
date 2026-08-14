@@ -39,24 +39,28 @@ deployed-UAT evidence.
 | ORM green | OE-M1 `1d30d5e48` | Maps the aggregate and analyzer reference; the database-free SessionFactory validation passes. |
 | Integration red | PR #4056 backend CI and focused Spring context | The catalog client required an unpublished `ObjectMapper` bean; after that was isolated, the explicit persistence units lacked the new entities. |
 | Integration green | OE-M1 `6a0880ffe` and `5bee5c1dd` | The client follows the repository's context-safe mapper pattern, both persistence units register the aggregate, one real Spring context loads, and both Liquibase changesets execute against PostgreSQL. |
+| Audit red | OE-M1 `93489b296` | The accepted audit contract failed because `analyzer_site_binding_revision` was absent from the existing `reference_tables` registry. |
+| Audit green | OE-M1 `99d5b0ea9` | Registers immutable site-binding revisions for durable insert history with an idempotent changeset and explicit rollback. |
+| Service red | OE-M1 `10d5bdc37` | Service tests compile-failed because no immutable revision service, entity-specific DAOs, draft, snapshot, or deterministic fingerprint implementation existed. |
+| Service green | OE-M1 `6e8f30b11` | Adds transactional create/revise behavior, aggregate locking, source-row preservation, a versioned canonical SHA-256 fingerprint, validation-before-write, and one durable audit event per immutable revision. |
+| Service refactor | OE-M1 `6e8f30b11` | Canonical inputs are normalized and sorted before hashing; the pinned digest is independently reproducible and ignores input/alias order while detecting target changes. |
 
-The target tables do not write or mutate `analyzer_test_map` or copied plugin
+The target service does not write or mutate `analyzer_test_map` or copied plugin
 JSON. Writer cutover, legacy inventory, deterministic anomaly reporting, and
-service-level revision behavior remain unimplemented and therefore cannot be
-claimed from this persistence foundation.
+application composition remain unimplemented and therefore cannot be claimed
+from this persistence and service foundation.
 
 ## Current Validation
 
 | Gate | Result |
 | ---- | ------ |
-| Site-binding ORM + Liquibase + catalog/consumer regression | 12 passed |
-| Catalog client + real Spring context/PostgreSQL migration | 4 passed |
-| OpenELIS `mvn spotless:check` | Passed before the context fixes; rerun required at the next push gate |
+| Site-binding service + ORM + Liquibase + catalog/consumer + real Spring/PostgreSQL regression | 27 passed |
+| OpenELIS `mvn spotless:check` | Passed at OE-M1 `6e8f30b11` |
 
 ## Remaining M1 Scope
 
-- Implement transactional immutable-revision behavior and the deterministic
-  legacy inventory/migration from ADR-001.
+- Implement the deterministic legacy inventory/migration and one-writer cutover
+  from ADR-001.
 - Compose Bridge profile metadata with OpenELIS completeness, usage, and
   attention state.
 - Replace the lab-facing legacy plugin registry with the Carbon Analyzer Types
