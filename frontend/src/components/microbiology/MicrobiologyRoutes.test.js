@@ -187,6 +187,25 @@ describe("MicrobiologyRoutes", () => {
     });
   });
 
+  it("keeps inoculation form actions in canonical case state", () => {
+    const url = getMicrobiologyCaseUrl("case-1", {
+      q: "UATMICRO001",
+      sort: "newest",
+      section: "setup",
+      action: "start-inoculation",
+    });
+
+    expect(url).toBe(
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup&action=start-inoculation",
+    );
+    expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
+      q: "UATMICRO001",
+      sort: "newest",
+      section: "setup",
+      action: "start-inoculation",
+    });
+  });
+
   it("keeps the protocol-only bench action in canonical case state", () => {
     expect(
       getMicrobiologyCaseUrl("case-1", {

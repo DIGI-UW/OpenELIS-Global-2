@@ -486,7 +486,7 @@ const MicrobiologyCaseView = ({
   };
 
   const openCultureAction = (action) => {
-    history.push(
+    history[action ? "push" : "replace"](
       getMicrobiologyCaseUrl(caseId, {
         ...routeState,
         section: "setup",
@@ -546,6 +546,8 @@ const MicrobiologyCaseView = ({
     const actionOwnsFocus = [
       "report-nce",
       "mark-lost",
+      "start-inoculation",
+      "add-subculture",
       "mark-positive",
       "mark-no-growth",
     ].includes(routeState.action);
@@ -851,6 +853,17 @@ const MicrobiologyCaseView = ({
                   {intl.formatMessage({ id: getNextStepMessageId(caseDetail) })}
                 </p>
               </div>
+              {caseDetail.stage === "RECEIVED" &&
+                routeState.action !== "start-inoculation" && (
+                  <Button
+                    size="sm"
+                    onClick={() => openCultureAction("start-inoculation")}
+                  >
+                    {intl.formatMessage({
+                      id: "microbiology.inoculation.start",
+                    })}
+                  </Button>
+                )}
               {caseDetail.stage === "INCUBATING" &&
                 routeState.action !== "mark-positive" && (
                   <Button
@@ -974,6 +987,8 @@ const MicrobiologyCaseView = ({
                         inoculations={inoculations}
                         onRecord={recordInoculation}
                         stage={caseDetail.stage}
+                        action={routeState.action}
+                        onInoculationAction={openCultureAction}
                         onCultureAction={openCultureAction}
                         saving={saving}
                         reagentRequirements={reagentOverview.requirements}
