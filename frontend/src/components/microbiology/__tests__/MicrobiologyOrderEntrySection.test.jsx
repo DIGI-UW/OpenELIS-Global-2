@@ -204,6 +204,48 @@ describe("MicrobiologyOrderEntrySection", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("preserves the persisted protocol when the catalog default has changed", () => {
+    renderSection(
+      [
+        {
+          tests: [
+            {
+              id: "2",
+              name: "Blood culture",
+              cultureWorkflowType: "BACTERIOLOGY",
+              methods: [
+                {
+                  methodId: "7",
+                  methodName: "Current Catalog Default",
+                  isDefault: true,
+                },
+                {
+                  methodId: "8",
+                  methodName: "Protocol Ordered Earlier",
+                  isDefault: false,
+                },
+              ],
+            },
+          ],
+          sampleTypeName: "Blood",
+        },
+      ],
+      {
+        ...baseForm,
+        microbiologyOrderDetail: {
+          ...baseForm.microbiologyOrderDetail,
+          cultureMethodId: "8",
+        },
+      },
+      vi.fn(),
+    );
+
+    expect(screen.getByText("Protocol Ordered Earlier")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Current Catalog Default"),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps admission date visible and disables it only for outpatients", async () => {
     const user = userEvent.setup();
     let latestForm;

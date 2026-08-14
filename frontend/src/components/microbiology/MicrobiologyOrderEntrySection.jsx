@@ -73,7 +73,8 @@ const MicrobiologyOrderEntrySection = ({
   const fields = {
     ...existingFields,
     patientOrigin: existingFields.patientOrigin || defaultPatientOrigin || "",
-    cultureMethodId: defaultMethod?.methodId || "",
+    cultureMethodId:
+      existingFields.cultureMethodId || defaultMethod?.methodId || "",
     numberOfSets:
       existingFields.numberOfSets === "" ||
       existingFields.numberOfSets === null ||
