@@ -18,6 +18,10 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfileMigrationAnomaly;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CustomFieldType;
 import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
@@ -55,6 +59,10 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(AnalyzerResults.class); // Migrated in Phase 2B
         configuration.addAnnotatedClass(AnalyzerTestMapping.class); // Migrated in Phase 2C
         configuration.addAnnotatedClass(AnalyzerFieldMapping.class); // Migrated in Phase 3
+        configuration.addAnnotatedClass(AnalyzerSiteBinding.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingRevision.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingTest.class);
+        configuration.addAnnotatedClass(AnalyzerProfileMigrationAnomaly.class);
         // AnalyzerConfiguration removed: merged into Analyzer entity
         configuration.addAnnotatedClass(AnalyzerError.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
@@ -99,6 +107,14 @@ public class HibernateMappingValidationTest {
                 sessionFactory.getMetamodel().entity(AnalyzerTestMapping.class)); // Phase 2C
         assertNotNull("AnalyzerFieldMapping should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerFieldMapping.class));
+        assertNotNull("AnalyzerSiteBinding should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBinding.class));
+        assertNotNull("AnalyzerSiteBindingRevision should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingRevision.class));
+        assertNotNull("AnalyzerSiteBindingTest should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingTest.class));
+        assertNotNull("AnalyzerProfileMigrationAnomaly should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerProfileMigrationAnomaly.class));
         assertNotNull("QualitativeResultMapping should be registered",
                 sessionFactory.getMetamodel().entity(QualitativeResultMapping.class));
         assertNotNull("UnitMapping should be registered", sessionFactory.getMetamodel().entity(UnitMapping.class));

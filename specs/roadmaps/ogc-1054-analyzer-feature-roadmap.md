@@ -503,6 +503,10 @@ silently route around.
 | `ISSUE-M1-002` | Test scope | `RESOLVED` | BR-M1 red `468fde2` and green `c516d79` make ASTM listener activation configurable, disable it in shared test configuration, and prove default-on startup plus shutdown. The prior 34-second forced-fork run now completes in 3.8 seconds.              |
 | `AMB-M1-003`   | Migration  | `RESOLVED` | ADR-001 requires explicit administrator selection when legacy profile identity is absent, exact unique source-row matching, durable blocking anomalies, atomic per-analyzer reference switch, read-only legacy evidence, and no legacy mapping writes after OE-M1 cutover. No heuristic profile inference is permitted. |
 | `AMB-M1-004`   | Identity   | `RESOLVED` | ADR-001 fixes public Analyzer Type identity as the URL-safe Bridge `profileId`; Bridge revision is explicit/query-addressable and local binding IDs remain internal. A mapping fork pairs a Bridge profile fork with a new OpenELIS binding aggregate, preserving one public identity and repository ownership. |
+| `ISSUE-M1-005` | Test scope | `RESOLVED` | PR #4056 CI and the exact local regression proved that the pre-existing analyzer-wide ORM validator did not register the new site-binding aggregate. The migration-anomaly checkpoint extends that repository gate instead of relying only on a narrower new ORM test. |
+| `ISSUE-M1-006` | Product    | `OPEN`     | The current fork UI exposes a technical `Profile ID`, while the functional requirement requires a suggested next unique fork name and no developer identity field. BR-M1 must own deterministic profile identity generation; OE-M1 must submit only lab-facing input. |
+| `ISSUE-M1-007` | Security   | `OPEN`     | Analyzer Type routes are gated by frontend `ANALYSER_IMPORT` while the composed REST API requires `ROLE_ADMIN`. Align and prove one explicit permission contract before M1 runtime acceptance; do not infer equivalence from the default admin fixture. |
+| `ISSUE-M1-008` | Validation | `OPEN`     | Current list/detail RTL tests mock router hooks, so they prove emitted strings but not reload/back/forward restoration. Replace the routing seam with a real test router and add the focused visible M1 browser flow required by MVP-001 through MVP-004 and MVP-011. |
 | `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.                                                                                   |
 | `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                                                                                                         |
 | `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.                                                                                   |
@@ -536,10 +540,13 @@ local suite and GitHub `Run Tests` check are green, including the resolved
 `ISSUE-M1-001` and `ISSUE-M1-002` cases. OE-M1 has begun but is not complete.
 Its Bridge catalog consumer and revisioned site-binding persistence foundation
 are implemented and tested in
-[PR #4056](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4056); migration,
-composition, lifecycle UI, and runtime evidence remain open. M1 is therefore
-`IN_PROGRESS`, not `ACCEPTED`, and remains gated by every earlier item in the
-global acceptance order.
+[PR #4056](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4056). Local
+descendant commits also implement composition plus the Carbon list/detail and
+lifecycle UI, but they are not pushed, runtime-validated, or accepted. Legacy
+migration/cutover, lab-safe fork identity, permission alignment, real-router
+coverage, and runtime evidence remain open. M1 is therefore `IN_PROGRESS`, not
+`ACCEPTED`, and remains gated by every earlier item in the global acceptance
+order.
 
 ## Pull Request Train
 

@@ -126,6 +126,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerProfileMigrationAnomaly</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
         <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>

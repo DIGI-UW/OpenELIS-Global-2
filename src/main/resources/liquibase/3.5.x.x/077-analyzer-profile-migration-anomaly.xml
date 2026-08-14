@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="077-01-create-analyzer-profile-migration-anomaly" author="digi-uw">
+        <preConditions onFail="HALT">
+            <not>
+                <tableExists schemaName="clinlims" tableName="analyzer_profile_migration_anomaly"/>
+            </not>
+        </preConditions>
+
+        <createTable schemaName="clinlims" tableName="analyzer_profile_migration_anomaly">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true"
+                    primaryKeyName="pk_analyzer_profile_migration_anomaly"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="evidence_key" type="VARCHAR(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="legacy_source_key" type="VARCHAR(255)"/>
+            <column name="legacy_test_id" type="NUMERIC(10)"/>
+            <column name="detail" type="VARCHAR(1000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="detected_by" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="detected_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resolved_by" type="VARCHAR(50)"/>
+            <column name="resolved_at" type="TIMESTAMP"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_profile_migration_anomaly"
+            columnNames="analyzer_id, evidence_key"
+            constraintName="uq_analyzer_profile_migration_anomaly_evidence"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_profile_migration_anomaly_analyzer"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_profile_migration_anomaly"
+            baseColumnNames="analyzer_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyzer"
+            referencedColumnNames="id" onDelete="RESTRICT"/>
+        <createIndex schemaName="clinlims" tableName="analyzer_profile_migration_anomaly"
+            indexName="idx_analyzer_profile_migration_anomaly_open">
+            <column name="analyzer_id"/>
+            <column name="status"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.analyzer_profile_migration_anomaly
+                ADD CONSTRAINT ck_analyzer_profile_migration_anomaly_status
+                CHECK (status IN ('OPEN', 'RESOLVED'));
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="analyzer_profile_migration_anomaly"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="077-02-register-analyzer-profile-migration-anomaly-audit" author="digi-uw">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(name) = 'analyzer_profile_migration_anomaly'
+            </sqlCheck>
+        </preConditions>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="analyzer_profile_migration_anomaly"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'analyzer_profile_migration_anomaly'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

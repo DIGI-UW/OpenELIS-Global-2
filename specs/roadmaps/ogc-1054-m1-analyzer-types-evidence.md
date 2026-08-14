@@ -6,9 +6,11 @@
 - **Bridge tested head:** `42cb4bc`
 - **Checkpoint status:** `IN_PROGRESS`
 
-This record covers the M1 transport-contract and site-binding persistence
-foundation. It is not M1 acceptance, an Analyzer Types UI claim, or
-deployed-UAT evidence.
+This record covers the implemented M1 foundation and local descendant work. It
+is not M1 acceptance or deployed-UAT evidence. A behavior is listed as local
+implementation evidence only when the owning automated checkpoint passed; no
+local evidence substitutes for the remaining isolated runtime and browser
+gates.
 
 ## M1.1 Bridge Profile Catalog Consumer
 
@@ -57,15 +59,53 @@ from this persistence and service foundation.
 | Site-binding service + ORM + Liquibase + catalog/consumer + real Spring/PostgreSQL regression | 27 passed |
 | OpenELIS `mvn spotless:check` | Passed at OE-M1 `6e8f30b11` |
 
+## M1.3 Composed Catalog, Lifecycle, and Lab-Facing UI
+
+| Stage | Evidence | Result |
+| ----- | -------- | ------ |
+| Composition red/green | OE-M1 `070976b80` / `7b622e625` | Composes Bridge profile metadata with OpenELIS binding completeness, usage, and attention state without copying the portable profile into OpenELIS. |
+| Public API red/green | OE-M1 `71304b35b` / `581f3f848` | Adds list/detail composition at the lab-facing `/rest/analyzer/types` boundary. |
+| Lifecycle client/service/controller red/green | OE-M1 `6a62afe2d` through `b1d27c582` | Proxies history, export, fork, deactivate, and reactivate through the Bridge-owned lifecycle and preserves actor/revision/lineage. No delete route exists. |
+| Carbon list/detail | OE-M1 `fbfb7d6ec` | Replaces the developer registry surface with Carbon list/detail pages, semantic headings, linkable breadcrumbs, URL-backed list filters and detail tabs/actions, completeness, usage, attention, lineage, and audit history. |
+
+### UI and API Validation
+
+| Gate | Result |
+| ---- | ------ |
+| Focused catalog/lifecycle backend tests | 15 passed |
+| Focused list/detail Vitest/RTL tests | 9 passed |
+| Targeted Prettier and OpenELIS Spotless checks | Passed |
+
+This UI has not yet passed the M1 browser gate. The current RTL tests mock
+router hooks and therefore do not prove reload/back/forward restoration. The
+fork modal also exposes a technical `Profile ID`, contrary to the current
+functional requirement for a suggested unique lab-facing fork name. Those are
+open M1 defects, not accepted behavior.
+
+## M1.4 Durable Migration-Anomaly Foundation
+
+| Stage | Evidence | Result |
+| ----- | -------- | ------ |
+| Schema/ORM red | `AnalyzerProfileMigrationLiquibaseTest` plus the existing analyzer-wide `HibernateMappingValidationTest` | The anomaly entity/changelog did not exist, and the repository-wide ORM validator failed on the new site-binding association even though the narrower new ORM test passed. |
+| Schema/ORM green | Current migration checkpoint | Adds one durable anomaly table keyed by analyzer plus deterministic evidence key, audit registration, explicit rollback that preserves legacy evidence, entity registration in both persistence units, and registration in the existing analyzer-wide ORM gate. |
+| Focused validation | Java 21 Maven run | 7 tests passed: analyzer-wide ORM, focused site-binding ORM, and migration Liquibase contracts. |
+
+This checkpoint persists the evidence shape only. It does not inventory legacy
+rows, choose a profile, create/reuse a complete site binding, switch an analyzer
+reference, or reject a legacy write. Those behaviors remain red-green-refactor
+work in the migration service checkpoint.
+
 ## Remaining M1 Scope
 
 - Implement the deterministic legacy inventory/migration and one-writer cutover
   from ADR-001.
-- Compose Bridge profile metadata with OpenELIS completeness, usage, and
-  attention state.
-- Replace the lab-facing legacy plugin registry with the Carbon Analyzer Types
-  workflow, including URL-backed filters and linkable breadcrumbs.
-- Implement audited create/fork/deactivate/reactivate interactions through the
-  Bridge lifecycle API.
+- Move deterministic fork identity generation to BR-M1 and remove the technical
+  profile identifier from the OpenELIS lab-facing modal.
+- Align and test the Analyzer Type frontend/backend permission contract.
+- Replace mocked router hooks with real-router coverage for canonical URL,
+  reload, back, and forward behavior.
+- Reject legacy mapping writes after successful per-analyzer cutover without
+  removing read-only migration evidence.
 - Validate the complete M1 behavior in the isolated OpenELIS + BR-M1 stack with
-  desktop/mobile screenshot and console inspection.
+  a focused UI browser flow, desktop/mobile screenshots, and console
+  inspection.

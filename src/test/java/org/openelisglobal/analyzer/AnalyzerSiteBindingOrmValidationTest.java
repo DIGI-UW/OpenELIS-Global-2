@@ -11,6 +11,7 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.junit.Test;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfileMigrationAnomaly;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
@@ -27,6 +28,7 @@ public class AnalyzerSiteBindingOrmValidationTest {
         configuration.addAnnotatedClass(AnalyzerSiteBinding.class);
         configuration.addAnnotatedClass(AnalyzerSiteBindingRevision.class);
         configuration.addAnnotatedClass(AnalyzerSiteBindingTest.class);
+        configuration.addAnnotatedClass(AnalyzerProfileMigrationAnomaly.class);
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
         configuration.setProperty("hibernate.hbm2ddl.auto", "none");
 
@@ -35,6 +37,7 @@ public class AnalyzerSiteBindingOrmValidationTest {
             assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerSiteBinding.class));
             assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerSiteBindingRevision.class));
             assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerSiteBindingTest.class));
+            assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerProfileMigrationAnomaly.class));
 
             EntityType<Analyzer> analyzer = sessionFactory.getMetamodel().entity(Analyzer.class);
             assertEquals(String.class, analyzer.getAttribute("bridgeProfileId").getJavaType());
