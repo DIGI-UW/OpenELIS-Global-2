@@ -66,6 +66,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -451,7 +452,7 @@ public class OrderSearchRestController extends BaseRestController {
 
                 // Get tests from analysis records for this sample item
                 List<Analysis> analyses = analysisService.getAnalysesBySampleItem(sampleItem);
-                List<Map<String, Object>> testsData = new ArrayList<>();
+                List<TestSelectionDTO> testsData = new ArrayList<>();
                 List<Map<String, Object>> panelsData = new ArrayList<>();
 
                 for (Analysis analysis : analyses) {
@@ -566,14 +567,8 @@ public class OrderSearchRestController extends BaseRestController {
         }
     }
 
-    Map<String, Object> buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
-        Map<String, Object> testData = new HashMap<>();
-        testData.put("id", test.getId());
-        testData.put("name", test.getLocalizedName());
-        testData.put("description", test.getDescription());
-        testData.put("cultureWorkflowType", test.getCultureWorkflowType());
-        testData.put("methods", testMethodService.getLinkedMethodDtos(test.getId()));
-        return testData;
+    TestSelectionDTO buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
+        return new TestSelectionDTO(test, testMethodService.getLinkedMethodDtos(test.getId()));
     }
 
     /**

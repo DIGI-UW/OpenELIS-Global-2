@@ -2,6 +2,7 @@ package org.openelisglobal.sampletyperequest.controller;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -28,6 +29,8 @@ import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
 import org.openelisglobal.sampletyperequest.service.SampleTypeRequestService;
 import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
@@ -58,6 +61,9 @@ public class SampleTypeRequestRestControllerTest {
     private TestService testService;
 
     @Mock
+    private TestMethodService testMethodService;
+
+    @Mock
     private PanelService panelService;
 
     @Mock
@@ -76,6 +82,7 @@ public class SampleTypeRequestRestControllerTest {
         ReflectionTestUtils.setField(controller, "typeOfSampleService", typeOfSampleService);
         ReflectionTestUtils.setField(controller, "unitOfMeasureService", unitOfMeasureService);
         ReflectionTestUtils.setField(controller, "testService", testService);
+        ReflectionTestUtils.setField(controller, "testMethodService", testMethodService);
         ReflectionTestUtils.setField(controller, "panelService", panelService);
 
     }
@@ -153,6 +160,30 @@ public class SampleTypeRequestRestControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(0, response.getBody().size());
+    }
+
+    @Test
+    public void getPendingRequests_includesWorkflowAndMethodsNeededToRestoreSelection() {
+        SampleTypeRequest pending = buildRequest(11, "123", SampleTypeRequest.Status.REQUESTED);
+        pending.setRequestedTests("42");
+        org.openelisglobal.test.valueholder.Test cultureTest = org.mockito.Mockito
+                .mock(org.openelisglobal.test.valueholder.Test.class);
+        when(cultureTest.getId()).thenReturn("42");
+        when(cultureTest.getLocalizedName()).thenReturn("Blood culture");
+        when(cultureTest.getDescription()).thenReturn("Blood culture");
+        when(cultureTest.getCultureWorkflowType()).thenReturn("BACTERIOLOGY");
+        TestMethodDto method = new TestMethodDto();
+        method.methodId = "7";
+        method.methodName = "Blood Culture Standard";
+        method.isDefault = true;
+        when(sampleTypeRequestService.getPendingRequestsBySampleId("123")).thenReturn(List.of(pending));
+        when(testService.getTestById("42")).thenReturn(cultureTest);
+        when(testMethodService.getLinkedMethodDtos("42")).thenReturn(List.of(method));
+
+        SampleTypeRequestDTO dto = controller.getPendingRequests("123").getBody().get(0);
+
+        assertEquals("BACTERIOLOGY", dto.getRequestedTestDetails().get(0).getCultureWorkflowType());
+        assertSame(method, dto.getRequestedTestDetails().get(0).getMethods().get(0));
     }
 
     // ─── createRequest ────────────────────────────────────────────────────────

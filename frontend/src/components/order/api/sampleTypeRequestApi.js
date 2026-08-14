@@ -190,8 +190,12 @@ export const convertRequestsToSamples = (pendingRequests) => {
       request.requestedPanels,
       request.requestedPanelNames,
     ),
-    // Tests need to be objects with id and name properties for the UI
-    tests: zipIdsAndNames(request.requestedTests, request.requestedTestNames),
+    // Prefer the complete server projection so reloaded selections retain
+    // workflow and linked Method metadata. Keep the legacy shape as fallback.
+    tests:
+      request.requestedTestDetails?.length > 0
+        ? request.requestedTestDetails
+        : zipIdsAndNames(request.requestedTests, request.requestedTestNames),
     requestReferralEnabled: false,
     referralItems: [],
     quantity: request.requestedQuantity?.toString() || "1",
