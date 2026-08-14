@@ -206,4 +206,26 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="076-03-register-analyzer-site-binding-audit" author="digi-uw">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(name) = 'analyzer_site_binding_revision'
+            </sqlCheck>
+        </preConditions>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="analyzer_site_binding_revision"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'analyzer_site_binding_revision'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
