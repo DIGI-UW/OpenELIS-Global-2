@@ -156,6 +156,69 @@ public class CalculationTriggerScopeTest {
         assertFalse(TestCalculatedUtil.isTriggeredBy(scope, ctOnSwab(), null));
     }
 
+    /**
+     * A deactivated calculation calculates nothing.
+     *
+     * <p>
+     * Deactivating flips the flag and leaves everything else standing, including
+     * the result_calculation rows that bind a patient's results to the parameters.
+     * The recomputation pass reads those rows, and it read them without asking
+     * whether the calculation was still switched on — so a deactivated rule went on
+     * producing results for every patient it had already run for, which is every
+     * patient the switch was meant to stop it for.
+     */
+    @Test
+    public void aDeactivatedCalculationDoesNotRunOnAMatchingResult() {
+        Result matching = result(PCR_TEST, CT, SWAB);
+
+        assertTrue("switched on, it runs", TestCalculatedUtil.runsFor(scope, active(ctOnSwab()), matching));
+        assertFalse("switched off, the same result runs nothing",
+                TestCalculatedUtil.runsFor(scope, deactivated(ctOnSwab()), matching));
+    }
+
+    @Test
+    public void deactivatingThenReactivatingIsFollowedOnTheNextResult() {
+        Result matching = result(PCR_TEST, CT, SWAB);
+        Calculation calculation = active(ctOnSwab());
+
+        assertTrue(TestCalculatedUtil.runsFor(scope, calculation, matching));
+
+        calculation.setActive(false);
+        assertFalse("a rule switched off after it last ran stops",
+                TestCalculatedUtil.runsFor(scope, calculation, matching));
+
+        calculation.setActive(true);
+        assertTrue("and resumes when it is switched back on", TestCalculatedUtil.runsFor(scope, calculation, matching));
+    }
+
+    @Test
+    public void beingSwitchedOnIsNotEnoughOnItsOwn() {
+        // The state check is additional to the scope check, never a substitute:
+        // an active calculation still only runs on the measurement it names.
+        assertFalse(TestCalculatedUtil.runsFor(scope, active(ctOnSwab()), result(PCR_TEST, CT, DRY_TUBE)));
+        assertFalse(TestCalculatedUtil.runsFor(scope, active(ctOnSwab()), result(PCR_TEST, PRIMARY, SWAB)));
+        assertFalse(TestCalculatedUtil.runsFor(scope, active(ctOnSwab()), result(OTHER_TEST, CT, SWAB)));
+    }
+
+    @Test
+    public void aCalculationWithNoFlagSetIsTreatedAsOff() {
+        Calculation unset = ctOnSwab();
+        unset.setActive(null);
+
+        assertFalse(TestCalculatedUtil.runsFor(scope, unset, result(PCR_TEST, CT, SWAB)));
+        assertFalse(TestCalculatedUtil.runsFor(scope, null, result(PCR_TEST, CT, SWAB)));
+    }
+
+    private Calculation active(Calculation calculation) {
+        calculation.setActive(true);
+        return calculation;
+    }
+
+    private Calculation deactivated(Calculation calculation) {
+        calculation.setActive(false);
+        return calculation;
+    }
+
     private Calculation calculation(Operation... operations) {
         Calculation calculation = new Calculation();
         List<Operation> list = new ArrayList<>(Arrays.asList(operations));

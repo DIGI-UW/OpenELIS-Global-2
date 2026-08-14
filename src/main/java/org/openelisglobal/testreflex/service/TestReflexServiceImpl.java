@@ -400,4 +400,15 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
     public ReflexRule getReflexRuleByAnalyteId(String analyteId) {
         return reflexRuleDAO.getReflexRuleByAnalyteId(analyteId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isReflexRuleActive(TestReflex reflex) {
+        if (reflex == null || reflex.getTestAnalyte() == null || reflex.getTestAnalyte().getAnalyte() == null
+                || GenericValidator.isBlankOrNull(reflex.getTestAnalyte().getAnalyte().getId())) {
+            return true;
+        }
+        ReflexRule rule = reflexRuleDAO.getReflexRuleByAnalyteId(reflex.getTestAnalyte().getAnalyte().getId());
+        return rule == null || Boolean.TRUE.equals(rule.getActive());
+    }
 }

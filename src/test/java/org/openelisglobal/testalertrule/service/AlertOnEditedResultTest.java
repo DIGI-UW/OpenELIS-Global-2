@@ -213,6 +213,51 @@ public class AlertOnEditedResultTest {
         verify(headerNotificationService, never()).notifyUser(anyString(), anyString());
     }
 
+    /**
+     * The enabled flag is read on every result, so switching a rule off stops the
+     * next alert and switching it back on resumes it — no restart, no cache to
+     * clear.
+     */
+    @Test
+    public void disablingThenReenablingIsFollowedOnTheNextResult() {
+        TestAlertRule rule = new TestAlertRule();
+        rule.setName("Albu-demoA");
+        rule.setTestId(TEST_ID);
+        rule.setEnabled(true);
+        rule.setTriggerType("SPECIFIC_VALUE");
+        rule.setTriggerValue("200");
+        rule.setComponentId(PRIMARY);
+        rule.setSampleTypeId(DBS);
+        lenient().when(alertRuleService.getByTestId(TEST_ID)).thenReturn(Collections.singletonList(rule));
+
+        evaluation.evaluateAndDispatch(result(PRIMARY, DBS, "200.00"), USER);
+        verify(headerNotificationService, times(1)).notifyUser(eq(USER), contains("Albu-demoA"));
+
+        rule.setEnabled(false);
+        evaluation.evaluateAndDispatch(result(PRIMARY, DBS, "200.00"), USER);
+        verify(headerNotificationService, times(1)).notifyUser(eq(USER), contains("Albu-demoA"));
+
+        rule.setEnabled(true);
+        evaluation.evaluateAndDispatch(result(PRIMARY, DBS, "200.00"), USER);
+        verify(headerNotificationService, times(2)).notifyUser(eq(USER), contains("Albu-demoA"));
+    }
+
+    @Test
+    public void aRuleWithNoEnabledFlagSetIsTreatedAsOff() {
+        TestAlertRule rule = new TestAlertRule();
+        rule.setName("Unset");
+        rule.setTestId(TEST_ID);
+        rule.setEnabled(null);
+        rule.setTriggerType("ALL");
+        rule.setComponentId(PRIMARY);
+        rule.setSampleTypeId(DBS);
+        lenient().when(alertRuleService.getByTestId(TEST_ID)).thenReturn(Collections.singletonList(rule));
+
+        evaluation.evaluateAndDispatch(result(PRIMARY, DBS, "200.00"), USER);
+
+        verify(headerNotificationService, never()).notifyUser(anyString(), anyString());
+    }
+
     private TestResultComponent component(String id, boolean primary) {
         TestResultComponent component = new TestResultComponent();
         component.setId(id);

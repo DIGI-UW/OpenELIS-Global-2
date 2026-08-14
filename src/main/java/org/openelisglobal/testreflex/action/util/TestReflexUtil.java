@@ -560,6 +560,15 @@ public class TestReflexUtil {
             boolean addTest, boolean handleAction, String actionSelectionId, boolean failOnDuplicateTest,
             String sysUserId) {
 
+        // A deactivated rule generates nothing. Asked of the service at
+        // execution rather than inferred from the row existing: deactivating is
+        // meant to delete the rows and reactivating to write them back, but
+        // saving a rule rebuilds them whatever its state, so a deactivated rule
+        // can keep a full set of them.
+        if (!testReflexService.isReflexRuleActive(reflex)) {
+            return Optional.empty();
+        }
+
         if (addTest || handleAction) {
 
             ReflexAction reflexAction = reflexResolver.getReflexAction();

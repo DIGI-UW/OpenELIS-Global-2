@@ -77,7 +77,7 @@ public class TestCalculatedUtil {
             }
             List<Calculation> calculations = calculationService.getAll();
             for (Calculation calculation : calculations) {
-                if (!calculation.getActive()) {
+                if (!isActive(calculation)) {
                     continue;
                 }
                 List<ResultCalculation> resultCalculations = resultcalculationService
@@ -148,8 +148,7 @@ public class TestCalculatedUtil {
                 resultCalculations = resultcalculationService
                         .getResultCalculationByPatientAndTest(resultSet.patient,
                                 resultSet.result.getTestResult().getTest())
-                        .stream()
-                        .filter(calc -> isTriggeredBy(ruleResultScope, calc.getCalculation(), resultSet.result))
+                        .stream().filter(calc -> runsFor(ruleResultScope, calc.getCalculation(), resultSet.result))
                         .collect(Collectors.toList());
             }
 
@@ -428,6 +427,34 @@ public class TestCalculatedUtil {
      * already know what they read, so the same question is asked of them here as
      * when they are bound.
      */
+    /**
+     * Whether this calculation should run because of the recorded result: it is
+     * switched on, and the result is one of its parameters.
+     */
+    static boolean runsFor(RuleResultScope scope, Calculation calculation, Result result) {
+        return isActive(calculation) && isTriggeredBy(scope, calculation, result);
+    }
+
+    /**
+     * Whether the calculation is switched on right now.
+     *
+     * <p>
+     * Deactivating a calculation flips this flag and leaves everything else in
+     * place, including the result_calculation rows that bind a patient's results to
+     * its parameters. Those rows are what the recomputation pass reads, and it read
+     * them without asking, so a deactivated rule went on producing results from
+     * every later result of a test it mentions - the switch turned nothing off for
+     * any patient it had already run for.
+     *
+     * <p>
+     * Read at execution rather than trusted from the row's existence: the flag is
+     * the lab's current instruction, and it can change between the row being
+     * written and the next result arriving.
+     */
+    static boolean isActive(Calculation calculation) {
+        return calculation != null && Boolean.TRUE.equals(calculation.getActive());
+    }
+
     static boolean isTriggeredBy(RuleResultScope scope, Calculation calculation, Result result) {
         if (calculation == null) {
             return false;
