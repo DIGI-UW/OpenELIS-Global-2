@@ -119,6 +119,10 @@ public class FixtureDatabaseTargetingTest {
         Path root = Files.createTempDirectory("fixture-database-targeting-");
         temporaryDirectories.add(root);
         Path binaryDirectory = Files.createDirectory(root.resolve("bin"));
+        writeExecutable(binaryDirectory.resolve("dirname"), """
+                #!/bin/sh
+                exec /usr/bin/dirname "$@"
+                """);
         if (dockerScript != null) {
             writeExecutable(binaryDirectory.resolve("docker"), dockerScript);
         }
@@ -160,7 +164,7 @@ public class FixtureDatabaseTargetingTest {
             command.addAll(List.of(arguments));
 
             ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true);
-            builder.environment().put("PATH", binaryDirectory + ":/usr/bin:/bin");
+            builder.environment().put("PATH", binaryDirectory.toString());
             builder.environment().put("CALL_LOG", callLog.toString());
             builder.environment().putAll(environment);
 

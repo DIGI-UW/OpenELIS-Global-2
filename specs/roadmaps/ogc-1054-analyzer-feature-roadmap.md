@@ -495,6 +495,7 @@ silently route around.
 | `ISSUE-E0-002` | Harness    | `OPEN`     | Mock dynamic networks use global names/fixed 10.42 pools; MOCK-M4 must add tested per-stack namespace/pool configuration before two analyzer stacks run concurrently.       |
 | `ISSUE-E0-003` | Harness    | `RESOLVED` | Explicit fixture targets were validated after generation and reset rediscovered global containers; red/green tests now bind every operation to one validated DB_CONTAINER. |
 | `ISSUE-E0-004` | Test scope | `RESOLVED` | A controller behavior test borrowed a security filter from another test's scanned nested config; behavior and dedicated security-slice coverage are now independent.       |
+| `ISSUE-E0-005` | Test scope | `RESOLVED` | The unavailable-Docker regression exposed the runner's system Docker through its test PATH. The test now supplies only deterministic `dirname`/fixture stubs, so Docker is genuinely absent. |
 | `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.      |
 | `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                            |
 | `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.      |
@@ -509,7 +510,7 @@ the checkpoint that discovers or resolves it; IDs are never reused.
 | ----- | ------------------------- | -------------------- | ----------------------------------- |
 | 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge         |
 | 1     | F0 foundation salvage     | `IN_PROGRESS`        | Final validation/evidence review    |
-| 2     | E0 contract and migration | `IN_PROGRESS`        | OE-E0 PR/CI and prerequisite reviews |
+| 2     | E0 contract and migration | `IN_PROGRESS`        | OE-E0 PR/CI and prerequisite reviews  |
 | 3     | M1 Analyzer Types         | `NOT_STARTED`        | E0 and BR-M1 accepted               |
 | 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted               |
 | 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                         |

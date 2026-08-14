@@ -95,6 +95,14 @@ The broader regression also exposed two harness/test-isolation defects:
   commit reproduces that with an isolated fake Java home; the green commit uses
   explicit override, existing Java 21, Java 21 on `PATH`, then the repository's
   SDKMAN selection, with a final version check.
+- CI run
+  [31762346680](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/31762346680)
+  then exposed a defect in the unavailable-Docker test itself: its supposedly
+  isolated `PATH` retained `/usr/bin`, so the GitHub runner's real Docker client
+  produced a stopped-container error instead of the required missing-Docker
+  failure. `ISSUE-E0-005` removes system binaries from that test process and
+  supplies only deterministic `dirname` and fixture stubs. The focused
+  `FixtureDatabaseTargetingTest` now passes all three cases.
 
 ## Layer validation
 
@@ -152,8 +160,8 @@ the accepted v1 contract, and ADR-001. No implementation direction comes from
   are stack-scoped, while the mock's dynamic `mock-analyzer-*` networks and
   `10.42.x.0/24` pools are global. MOCK-M4 owns tested namespace/pool inputs
   before two analyzer-enabled stacks may run concurrently.
-- `ISSUE-E0-003` and `ISSUE-E0-004` are resolved by their committed red/green
-  evidence and the passing broader package suite.
+- `ISSUE-E0-003`, `ISSUE-E0-004`, and `ISSUE-E0-005` are resolved by their
+  committed red/green evidence and focused or broader package suites.
 - OE-R0 still requires review and has an unrelated E2E failure; OE-F0 and BR-E0
   are green/mergeable. OE-E0 cannot become accepted out of global order.
 
@@ -212,7 +220,10 @@ five shared-context errors in `AnalyzerPluginConfigRestControllerTest`; after
 Playwright bucket/dependency guards, shell syntax, Java 21 selection, and
 resolved Compose validation also pass. After PR review remediation, the 869-test
 gate and Spotless passed again; the four focused fixture-target/Java-selection
-regressions also passed with zero failures.
+regressions also passed with zero failures. After CI run `31762346680` exposed
+`ISSUE-E0-005`, the three-case `FixtureDatabaseTargetingTest` and Spotless pass
+with the corrected deterministic test environment; the replacement PR CI run
+remains the checkpoint gate.
 
 ## Code-QA disposition
 
@@ -225,6 +236,7 @@ regressions also passed with zero failures.
 | Cross-repository | OE consumer claims could drift from Bridge | Bridge PR #45 is pinned at `5ce6d38`; schemas and canonical fixtures execute in OE tests |
 | Evidence | A passing Compose startup could be mistaken for product acceptance | Evidence records exact SHAs, ports, health, focused flows, inspected screenshots, console debt, and explicitly leaves UI/UAT/video to M4/G0 |
 | Review remediation | Explicit runtime targets could silently fall through when their owning tool was absent | Red `1db4bd0eb`, green `07167d360`; both fixture scripts fail closed and the Java wrapper honors a valid standard Java 21 installation |
+| CI determinism | The unavailable-Docker test retained system Docker on GitHub runners | `ISSUE-E0-005` limits the child process to deterministic test binaries; all three fixture-target cases and Spotless pass locally |
 
 **Verdict:** lean for an engineering-boundary checkpoint. The custom JSONB
 DBUnit type, schema validator dependency, Java wrapper, and isolation override
