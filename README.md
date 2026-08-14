@@ -24,8 +24,8 @@ You can find more information on how to set up OpenELIS at our
 
 ### CI Status
 
-All badges report the status of the latest **merge to `develop`** (`event=push`),
-not per-PR runs.
+All badges report the status of the latest **merge to `develop`**
+(`event=push`), not per-PR runs.
 
 [![01 - Backend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml?query=branch%3Adevelop+event%3Apush)
 ![Coverage](https://raw.githubusercontent.com/DIGI-UW/OpenELIS-Global-2/refs/heads/gh-pages/badges/jacoco.svg)
