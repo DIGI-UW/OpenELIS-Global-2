@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-609 [EQA V2.1 / T-08] Schema spine 2 of 2: participant results, cycle
+    links on existing tables, scheme_type (FR-V2.1-03/05/06).
+
+    Same conventions as qa/015 (see its header comment).
+
+    result_value is VARCHAR, not DECIMAL: the six ePT-validated domains
+    (AC-V2.1-23) include qualitative ("Reactive"), categorical ("Recent") and
+    semi-quantitative ("3+") results alongside numeric ones. V1's
+    eqa_result.result_value DECIMAL(15,5) is exactly the limitation this
+    table removes.
+
+    submission_channel is pinned to FHIR | MANUAL here — the FRS never
+    enumerates it formally (only 'fhir' appears literally; 'manual' is implied
+    by FR-V2.2-06's fallback + manual_submission_reference).
+
+    FR-V2.1-03 names "eqa_order" as the order-grain link target; no such table
+    exists — sample_eqa is the real order-grain table (delivery plan §01 row 1).
+    -->
+
+    <changeSet author="openelisglobal" id="eqa-cycle-004-create-eqa-participant-result">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="eqa_participant_result" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Per-analyte participant result within a round (FR-V2.1-05)</comment>
+        <createSequence sequenceName="eqa_participant_result_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="eqa_participant_result">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_eqa_participant_result"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_eqa_participant_result_fhir_uuid"/>
+            </column>
+            <column name="cycle_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="round_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lab_enrollment_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyte_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- NULL for the MANUAL channel: a result keyed in from a paper
+                 form has no standard analysis row behind it. -->
+            <column name="analysis_id" type="numeric(10,0)"/>
+            <column name="result_value" type="VARCHAR(255)"/>
+            <column name="result_unit" type="VARCHAR(50)"/>
+            <column name="assigned_analyst_id" type="numeric(10,0)"/>
+            <column name="entered_by" type="numeric(10,0)"/>
+            <column name="entered_at" type="TIMESTAMP"/>
+            <column name="submission_status" type="VARCHAR(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="submitted_at" type="TIMESTAMP"/>
+            <column name="submission_channel" type="VARCHAR(10)"/>
+            <column name="manual_submission_reference" type="VARCHAR(255)"/>
+            <!-- Link to V1 scoring row once the provider scores (nullable). -->
+            <column name="eqa_result_id" type="numeric(10,0)"/>
+            <column name="score_received_at" type="TIMESTAMP"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint
+            schemaName="clinlims" tableName="eqa_participant_result"
+            columnNames="round_id, lab_enrollment_id, analyte_id"
+            constraintName="uq_eqa_participant_result_round_lab_analyte"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_result_eqa_cycle"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_result" baseColumnNames="cycle_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_cycle" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_result_eqa_round"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_result" baseColumnNames="round_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_round" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_result_lab_enrollment"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_result" baseColumnNames="lab_enrollment_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_lab_program_enrollment" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_result_analyte"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_result" baseColumnNames="analyte_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyte" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_result_analysis"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_result" baseColumnNames="analysis_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analysis" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_result_assigned_analyst"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_result" baseColumnNames="assigned_analyst_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_result_entered_by"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_result" baseColumnNames="entered_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_result_eqa_result"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_result" baseColumnNames="eqa_result_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_result" referencedColumnNames="id"/>
+
+        <sql>
+            ALTER TABLE clinlims.eqa_participant_result
+            ADD CONSTRAINT eqa_participant_result_status_chk
+            CHECK (submission_status IN ('DRAFT', 'VALIDATED_PARTIAL', 'SUBMITTED', 'SCORED', 'MISSED_DEADLINE'))
+        </sql>
+
+        <sql>
+            ALTER TABLE clinlims.eqa_participant_result
+            ADD CONSTRAINT eqa_participant_result_channel_chk
+            CHECK (submission_channel IN ('FHIR', 'MANUAL'))
+        </sql>
+
+        <!-- My Cycles list + submission tracking (FRS §V2.1 non-functional). -->
+        <createIndex schemaName="clinlims" tableName="eqa_participant_result"
+            indexName="idx_eqa_participant_result_cycle_lab_status">
+            <column name="cycle_id"/>
+            <column name="lab_enrollment_id"/>
+            <column name="submission_status"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="eqa_participant_result"/>
+            <dropSequence sequenceName="eqa_participant_result_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="eqa-cycle-005-alter-eqa-distribution">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="eqa_distribution" columnName="cycle_id" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Nullable cycle/round links on V1 distributions; V1 rows stay NULL (FR-V2.1-03)</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_distribution">
+            <column name="cycle_id" type="numeric(10,0)"/>
+            <column name="round_id" type="numeric(10,0)"/>
+        </addColumn>
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_distribution_eqa_cycle"
+            baseTableSchemaName="clinlims" baseTableName="eqa_distribution" baseColumnNames="cycle_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_cycle" referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_distribution_eqa_round"
+            baseTableSchemaName="clinlims" baseTableName="eqa_distribution" baseColumnNames="round_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_round" referencedColumnNames="id"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="eqa_distribution"
+                constraintName="fk_eqa_distribution_eqa_round"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="eqa_distribution"
+                constraintName="fk_eqa_distribution_eqa_cycle"/>
+            <dropColumn schemaName="clinlims" tableName="eqa_distribution" columnName="round_id"/>
+            <dropColumn schemaName="clinlims" tableName="eqa_distribution" columnName="cycle_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="eqa-cycle-006-alter-sample-eqa">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="sample_eqa" columnName="cycle_id" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Nullable cycle/round links on EQA orders; optional per gate G2 (FR-V2.1-03)</comment>
+        <addColumn schemaName="clinlims" tableName="sample_eqa">
+            <column name="cycle_id" type="numeric(10,0)"/>
+            <column name="round_id" type="numeric(10,0)"/>
+        </addColumn>
+        <addForeignKeyConstraint
+            constraintName="fk_sample_eqa_eqa_cycle"
+            baseTableSchemaName="clinlims" baseTableName="sample_eqa" baseColumnNames="cycle_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_cycle" referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            constraintName="fk_sample_eqa_eqa_round"
+            baseTableSchemaName="clinlims" baseTableName="sample_eqa" baseColumnNames="round_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_round" referencedColumnNames="id"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="sample_eqa"
+                constraintName="fk_sample_eqa_eqa_round"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="sample_eqa"
+                constraintName="fk_sample_eqa_eqa_cycle"/>
+            <dropColumn schemaName="clinlims" tableName="sample_eqa" columnName="round_id"/>
+            <dropColumn schemaName="clinlims" tableName="sample_eqa" columnName="cycle_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="eqa-cycle-007-eqa-program-scheme-type">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="eqa_program" columnName="scheme_type" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Polymorphic scheme type; V1 rows backfill to INTERNATIONAL_PT via the default (FR-V2.1-06, gate G1)</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_program">
+            <column name="scheme_type" type="VARCHAR(30)" defaultValue="INTERNATIONAL_PT">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.eqa_program
+            ADD CONSTRAINT eqa_program_scheme_type_chk
+            CHECK (scheme_type IN ('INTERNATIONAL_PT', 'REGIONAL_PT', 'INTER_LAB_SPLIT', 'IN_HOUSE'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.eqa_program DROP CONSTRAINT eqa_program_scheme_type_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="eqa_program" columnName="scheme_type"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

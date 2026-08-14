@@ -14,7 +14,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
+import jakarta.persistence.UniqueConstraint;
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.UUID;
 import lombok.Getter;
@@ -22,15 +23,22 @@ import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
+/**
+ * One run of a scheme (FR-V2.1-01). "Scheme" is the domain word for an
+ * {@link EQAProgram} row (gate G1 kept the V1 table/class). The single status
+ * column serves both the participant and provider state machines — see
+ * {@link EQACycleStatus}.
+ */
 @Getter
 @Setter
 @Entity
-@Table(name = "eqa_distribution")
-public class EQADistribution extends BaseObject<Long> {
+@Table(name = "eqa_cycle", uniqueConstraints = @UniqueConstraint(name = "uq_eqa_cycle_scheme_number", columnNames = {
+        "scheme_id", "cycle_number" }))
+public class EQACycle extends BaseObject<Long> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "eqa_distribution_generator")
-    @SequenceGenerator(name = "eqa_distribution_generator", sequenceName = "eqa_distribution_seq", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "eqa_cycle_generator")
+    @SequenceGenerator(name = "eqa_cycle_generator", sequenceName = "eqa_cycle_seq", allocationSize = 1)
     @Column(name = "id")
     private Long id;
 
@@ -38,37 +46,39 @@ public class EQADistribution extends BaseObject<Long> {
     private UUID fhirUuid;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "eqa_program_id", nullable = false)
+    @JoinColumn(name = "scheme_id", nullable = false)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-    private EQAProgram eqaProgram;
+    private EQAProgram scheme;
 
-    @Column(name = "distribution_name", nullable = false, length = 255)
-    private String distributionName;
+    @Column(name = "cycle_number", nullable = false)
+    private Integer cycleNumber;
 
-    @Column(name = "distribution_date", nullable = false)
-    private Timestamp distributionDate;
+    @Column(name = "cycle_name", length = 255)
+    private String cycleName;
 
-    @Column(name = "deadline", nullable = false)
-    private Timestamp deadline;
+    @Column(name = "planned_start_date")
+    private Date plannedStartDate;
+
+    @Column(name = "planned_end_date")
+    private Date plannedEndDate;
+
+    @Column(name = "actual_start_date")
+    private Date actualStartDate;
+
+    @Column(name = "actual_end_date")
+    private Date actualEndDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private EQADistributionStatus status = EQADistributionStatus.DRAFT;
+    @Column(name = "status", nullable = false, length = 30)
+    private EQACycleStatus status = EQACycleStatus.PLANNED;
+
+    @Column(name = "created_at", nullable = false)
+    private Timestamp createdAt;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "created_by", nullable = false)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private SystemUser createdBy;
-
-    @Column(name = "target_value", precision = 15, scale = 5)
-    private BigDecimal targetValue;
-
-    /** V2 cycle/round link (FR-V2.1-03); NULL on V1 distributions. */
-    @Column(name = "cycle_id")
-    private Long cycleId;
-
-    @Column(name = "round_id")
-    private Long roundId;
 
     @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
@@ -87,6 +97,9 @@ public class EQADistribution extends BaseObject<Long> {
     public void prePersist() {
         if (fhirUuid == null) {
             fhirUuid = UUID.randomUUID();
+        }
+        if (createdAt == null) {
+            createdAt = new Timestamp(System.currentTimeMillis());
         }
     }
 }
