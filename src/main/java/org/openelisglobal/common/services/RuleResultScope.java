@@ -4,6 +4,8 @@ import java.util.List;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,9 @@ public class RuleResultScope {
 
     @Autowired
     private TestResultComponentService testResultComponentService;
+
+    @Autowired
+    private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
 
     /**
      * True when {@code result} is the measurement the rule names.
@@ -104,6 +109,40 @@ public class RuleResultScope {
             }
         }
         return components.get(0).getId();
+    }
+
+    /**
+     * The specimen a generated test belongs on: the sample item of the order that
+     * is of the type the rule configured.
+     *
+     * <p>
+     * A generated analysis hangs off a sample item, and both engines attached it to
+     * the triggering result's - so a reflex or calculation configured to produce a
+     * result on one specimen produced it on whichever specimen happened to trigger
+     * it. The order already holds its collected specimens, so the right one is
+     * found among them rather than invented.
+     *
+     * <p>
+     * Returns null when the order has no specimen of that type, which leaves the
+     * caller to keep doing what it does today: a specimen that was never collected
+     * cannot be conjured, and silently creating one would claim a collection that
+     * did not happen.
+     */
+    @Transactional(readOnly = true)
+    public SampleItem sampleItemForTarget(Sample sample, String targetSampleTypeId) {
+        if (sample == null || GenericValidator.isBlankOrNull(targetSampleTypeId)) {
+            return null;
+        }
+        List<SampleItem> items = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        if (items == null) {
+            return null;
+        }
+        for (SampleItem item : items) {
+            if (targetSampleTypeId.equals(item.getTypeOfSampleId())) {
+                return item;
+            }
+        }
+        return null;
     }
 
     /**

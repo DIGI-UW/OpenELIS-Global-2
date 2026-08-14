@@ -537,7 +537,12 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             // OGC-763: evaluate per-test alert rules on the newly entered results and
             // dispatch matches to the header bell + SMS/Email senders.
             if (testAlertEvaluationService != null) {
-                actionDataSet.getNewResults().forEach(rs -> {
+                // An edited value is as alertable as a first one - a result
+                // corrected into the critical range has to raise the alert the
+                // original value did not.
+                List<ResultSet> alertable = new ArrayList<>(actionDataSet.getNewResults());
+                alertable.addAll(actionDataSet.getModifiedResults());
+                alertable.forEach(rs -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(rs.result, currentUser);
                     } catch (RuntimeException ex) {

@@ -26,6 +26,7 @@ import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -308,12 +309,14 @@ public class TestCalculatedUtil {
             }
             if (resultCalculation.getResult() != null) {
                 analysis = createCalculatedAnalysis(resultCalculation.getResult().getAnalysis(), test, resultSet.result,
-                        value, calculation.getName(), systemUserId, resultCalculated, calculation.getNote());
+                        value, calculation.getName(), systemUserId, resultCalculated, calculation.getNote(),
+                        calculation.getSampleId() == null ? null : calculation.getSampleId().toString());
                 result.setAnalysis(analysis);
                 resultService.update(result);
             } else {
                 analysis = createCalculatedAnalysis(null, test, resultSet.result, value, calculation.getName(),
-                        systemUserId, resultCalculated, calculation.getNote());
+                        systemUserId, resultCalculated, calculation.getNote(),
+                        calculation.getSampleId() == null ? null : calculation.getSampleId().toString());
                 result.setAnalysis(analysis);
                 resultService.insert(result);
             }
@@ -485,7 +488,8 @@ public class TestCalculatedUtil {
     }
 
     private Analysis createCalculatedAnalysis(Analysis existingAnalysis, Test test, Result result, String value,
-            String calculationName, String systemUserId, Boolean resultCalculated, String externalNote) {
+            String calculationName, String systemUserId, Boolean resultCalculated, String externalNote,
+            String targetSampleTypeId) {
         Analysis currentAnalysis = result.getAnalysis();
         Analysis generatedAnalysis = null;
         if (existingAnalysis != null) {
@@ -507,9 +511,23 @@ public class TestCalculatedUtil {
         }
         generatedAnalysis.setParentAnalysis(currentAnalysis);
         generatedAnalysis.setParentResult(result);
-        generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
+        // The calculation names the specimen its result belongs on; the
+        // triggering result's specimen only decided that it should run. Where
+        // the order holds that specimen the generated analysis goes there, and
+        // where it does not the existing behaviour stands rather than a
+        // collection being invented.
+        SampleItem targetItem = ruleResultScope.sampleItemForTarget(
+                currentAnalysis.getSampleItem() == null ? null : currentAnalysis.getSampleItem().getSample(),
+                targetSampleTypeId);
+        if (targetItem != null) {
+            generatedAnalysis.setSampleItem(targetItem);
+            generatedAnalysis.setSampleTypeName(
+                    targetItem.getTypeOfSample() == null ? null : targetItem.getTypeOfSample().getLocalizedName());
+        } else {
+            generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
+            generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
+        }
         generatedAnalysis.setTestSection(currentAnalysis.getTestSection());
-        generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
         generatedAnalysis.setSysUserId(systemUserId);
         generatedAnalysis.setResultCalculated(resultCalculated);
         if (existingAnalysis != null) {
