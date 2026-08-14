@@ -173,8 +173,10 @@ the accepted v1 contract, and ADR-001. No implementation direction comes from
 - `ISSUE-E0-006` is resolved by the committed Basic-auth consumer red/green
   pair. Prepared BR-M1 still cannot be published until inactive FILE routing
   (`ISSUE-M1-001`) and fixed-port test lifecycle (`ISSUE-M1-002`) are corrected.
-- OE-R0 still requires review and has an unrelated E2E failure; OE-F0 and BR-E0
-  are green/mergeable. OE-E0 cannot become accepted out of global order.
+- OE-R0 still requires review/merge, but E2E workflow run
+  [31742713488](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/31742713488)
+  passed on attempt 2. OE-F0 and BR-E0 are also green/mergeable. OE-E0 cannot
+  become accepted out of global order.
 
 ## Isolated runtime record
 
@@ -236,7 +238,9 @@ regressions also passed with zero failures. After CI run `31762346680` exposed
 with the corrected deterministic test environment; the replacement PR CI run
 remains the checkpoint gate. The Bridge-auth consumer test also passes after
 green `c34131393`, and the local analyzer harness Compose resolves with the
-matching OE/Bridge credentials.
+matching OE/Bridge credentials. The resulting analyzer/analyzer-import/QC
+package gate ran 870 tests with zero failures, errors, or skips, followed by a
+passing Spotless check.
 
 ## Code-QA disposition
 
