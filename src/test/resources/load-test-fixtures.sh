@@ -114,6 +114,46 @@ if [ ! -f "$XML_TO_SQL_SCRIPT" ]; then
     exit 1
 fi
 
+# Select and validate the database before generating, resetting, or loading
+# fixture data. DB_CONTAINER is the authoritative target when explicitly set.
+USE_DOCKER=false
+DB_CONTAINER="${DB_CONTAINER:-}"
+if command -v docker &> /dev/null; then
+    if [ -n "$DB_CONTAINER" ]; then
+        DB_CONTAINER_RUNNING=$(docker inspect --format '{{.State.Running}}' "$DB_CONTAINER" 2>/dev/null || true)
+        if [ "$DB_CONTAINER_RUNNING" != "true" ]; then
+            echo "ERROR: Explicit DB_CONTAINER '$DB_CONTAINER' is not running."
+            exit 1
+        fi
+    else
+        DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    fi
+    if [ -n "$DB_CONTAINER" ]; then
+        USE_DOCKER=true
+        echo "Using Docker container: $DB_CONTAINER"
+    fi
+fi
+
+# Set up psql connection parameters (used when USE_DOCKER=false)
+if [ "$USE_DOCKER" = false ]; then
+    if ! command -v psql &> /dev/null; then
+        echo "ERROR: psql not found. Please install PostgreSQL client."
+        echo "Alternatively, ensure Docker is running (openelisglobal-database or analyzer-harness DB container)."
+        exit 1
+    fi
+
+    DB_USER="${DB_USER:-clinlims}"
+    DB_NAME="${DB_NAME:-clinlims}"
+    DB_HOST="${DB_HOST:-localhost}"
+    DB_PORT="${DB_PORT:-5432}"
+    DB_PASSWORD="${DB_PASSWORD:-${PGPASSWORD:-clinlims}}"
+
+    echo "Using direct psql connection"
+    echo "Database: $DB_NAME@$DB_HOST:$DB_PORT"
+    echo "User: $DB_USER"
+fi
+echo ""
+
 # Generate SQL from DBUnit XML (on-demand, never committed)
 echo "Generating SQL from DBUnit XML..."
 python3 "$XML_TO_SQL_SCRIPT" "$STORAGE_XML" "$STORAGE_SQL" \
@@ -132,7 +172,9 @@ if [ "$RESET" = true ]; then
         exit 1
     fi
     echo "Resetting test database..."
-    bash "$RESET_SCRIPT" --force
+    DB_CONTAINER="$DB_CONTAINER" DB_USER="${DB_USER:-}" DB_NAME="${DB_NAME:-}" \
+        DB_HOST="${DB_HOST:-}" DB_PORT="${DB_PORT:-}" \
+        bash "$RESET_SCRIPT" --force
     echo ""
 fi
 
@@ -474,37 +516,6 @@ verify_fixtures() {
         echo "WARNING: Expected 3 test patients, found $PATIENT_COUNT"
     fi
 }
-
-# Determine execution method: Docker or direct psql
-USE_DOCKER=false
-DB_CONTAINER=""
-if command -v docker &> /dev/null; then
-    DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
-    if [ -n "$DB_CONTAINER" ]; then
-        USE_DOCKER=true
-        echo "Using Docker container: $DB_CONTAINER"
-    fi
-fi
-
-# Set up psql connection parameters (used when USE_DOCKER=false)
-if [ "$USE_DOCKER" = false ]; then
-    if ! command -v psql &> /dev/null; then
-        echo "ERROR: psql not found. Please install PostgreSQL client."
-        echo "Alternatively, ensure Docker is running (openelisglobal-database or analyzer-harness DB container)."
-        exit 1
-    fi
-
-    DB_USER="${DB_USER:-clinlims}"
-    DB_NAME="${DB_NAME:-clinlims}"
-    DB_HOST="${DB_HOST:-localhost}"
-    DB_PORT="${DB_PORT:-5432}"
-    DB_PASSWORD="${DB_PASSWORD:-${PGPASSWORD:-clinlims}}"
-
-    echo "Using direct psql connection"
-    echo "Database: $DB_NAME@$DB_HOST:$DB_PORT"
-    echo "User: $DB_USER"
-fi
-echo ""
 
 # Check dependencies before loading
 if [ "$USE_DOCKER" = true ]; then

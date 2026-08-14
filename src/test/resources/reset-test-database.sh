@@ -3,7 +3,7 @@
 # Reset Test Database for OpenELIS Global
 # Resets test data ranges only (preserves production data)
 # Supports both Docker and direct psql connections
-# Usage: ./reset-test-database.sh [--force]
+# Usage: DB_CONTAINER=<container> ./reset-test-database.sh [--force]
 
 set -e
 
@@ -32,9 +32,17 @@ fi
 
 # Determine execution method: Docker or direct psql
 USE_DOCKER=false
-DB_CONTAINER=""
+DB_CONTAINER="${DB_CONTAINER:-}"
 if command -v docker &> /dev/null; then
-    DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    if [ -n "$DB_CONTAINER" ]; then
+        DB_CONTAINER_RUNNING=$(docker inspect --format '{{.State.Running}}' "$DB_CONTAINER" 2>/dev/null || true)
+        if [ "$DB_CONTAINER_RUNNING" != "true" ]; then
+            echo "ERROR: Explicit DB_CONTAINER '$DB_CONTAINER' is not running."
+            exit 1
+        fi
+    else
+        DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    fi
     if [ -n "$DB_CONTAINER" ]; then
         USE_DOCKER=true
         echo "Using Docker container: $DB_CONTAINER"
