@@ -130,8 +130,12 @@ const renderPage = async (rows = [worklistRow()]) => {
   return utils;
 };
 
-const resultField = () =>
-  document.querySelector('input[type="number"]') as HTMLInputElement;
+const resultFields = () =>
+  Array.from(
+    document.querySelectorAll('input[id^="unifiedResultValue-"]'),
+  ) as HTMLInputElement[];
+
+const resultField = () => resultFields()[0];
 
 describe("OGC-1179 — unified Results worklist", () => {
   beforeEach(() => {
@@ -299,5 +303,70 @@ describe("OGC-1179 — unified Results worklist", () => {
       (c: any[]) => String(c[0]).startsWith("/rest/LogbookResults"),
     ).length;
     expect(loadsAfter).toBeGreaterThan(loadsBefore);
+  });
+});
+
+/**
+ * A multi-component analysis renders one row per component sharing an
+ * analysisId (FR-A′1). The save response carries analysis-level facts — the
+ * version token and the status — which every row of that analysis must adopt,
+ * and row-level facts, which only the saved row may. A sibling being edited at
+ * the same time must come through untouched.
+ */
+describe("OGC-1179 — a save and its sibling component rows", () => {
+  const componentRow = (componentId: string, value: string) => ({
+    id: `r-${componentId}`,
+    analysisId: "60",
+    testResultComponentId: componentId,
+    accessionNumber: "DEV0126000000000032",
+    testName: `COVID-19 PCR — ${componentId}`,
+    resultType: "N",
+    resultValue: value,
+    rawResultValue: value,
+    significantDigits: 2,
+    analysisStatusId: "4",
+    analysisLastupdated: "1700000000000",
+  });
+
+  beforeEach(() => {
+    cleanup();
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+    window.localStorage.clear();
+  });
+
+  it("leaves a sibling's unsaved edit alone while adopting the analysis status", async () => {
+    await renderPage([componentRow("n2", "10"), componentRow("e", "20")]);
+
+    const field = (componentId: string) =>
+      document.getElementById(
+        `unifiedResultValue-60-${componentId}`,
+      ) as HTMLInputElement;
+
+    // the technician opens both components and types into each
+    screen.getAllByRole("button", { name: /Edit/i }).forEach((b) => {
+      fireEvent.click(b);
+    });
+    fireEvent.change(field("n2"), { target: { value: "11" } });
+    fireEvent.change(field("e"), { target: { value: "21" } });
+
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: any) =>
+        callback({
+          resultId: "71",
+          analysisStatusId: "15",
+          analysisLastupdated: "1700000009999",
+          resultValue: "11.00",
+          rawResultValue: "11",
+        }),
+    );
+
+    // and saves only the first
+    fireEvent.click(screen.getAllByTestId("save-button")[0]);
+
+    // the sibling kept exactly what was typed into it
+    expect(field("e").value).toBe("21");
+    // and the analysis-level status reached both rows
+    expect(screen.getAllByText("Accepted by technician").length).toBe(2);
   });
 });
