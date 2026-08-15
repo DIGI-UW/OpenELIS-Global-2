@@ -158,6 +158,41 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 analysisService.get("2").getLastupdated());
     }
 
+    /**
+     * OGC-1179 #1/#4 — what a saved row is told about itself.
+     *
+     * <p>
+     * The row stays on screen after saving, so it has to learn three things the
+     * save decided: the id its result was persisted under, the status the analysis
+     * moved to, and the value as persisted — in both the form it is reported in and
+     * the form it is stored in. Without the status the Status column and the filter
+     * counts above it go on describing the worklist as it was loaded; without the
+     * stored value a second edit of the same row, with no reload between, edits
+     * what the row held before.
+     */
+    @Test
+    public void save_echoesStatusAndBothFormsOfTheValue() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.resultId").value("3"))
+                .andExpect(jsonPath("$.rawResultValue").value("90.0")).andExpect(jsonPath("$.resultValue").exists())
+                .andExpect(jsonPath("$.analysisStatusId").value(analysisService.getStatusId(analysisService.get("1"))));
+    }
+
+    /**
+     * The stored value is echoed exactly, not as reported. A test that reports to
+     * no decimal places renders 90.5 as "90" — a row that adopted that would save
+     * it back over the stored value on its next edit.
+     */
+    @Test
+    public void save_echoesTheStoredValueUnrounded() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.5", currentToken("1"))).session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.rawResultValue").value("90.5"));
+
+        assertEquals("and the database holds it unrounded too", "90.5", resultService.get("3").getValue());
+    }
+
     @Test
     public void save_withStaleToken_isRejected409_andWritesNothing() throws Exception {
         String staleToken = String.valueOf(analysisService.get("1").getLastupdated().getTime() - 60_000L);

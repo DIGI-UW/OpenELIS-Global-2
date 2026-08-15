@@ -145,6 +145,22 @@ public class TestResultItem implements ResultItem, Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String resultValue;
 
+    /**
+     * The value exactly as stored, where {@link #resultValue} is the value as
+     * reported.
+     *
+     * <p>
+     * The two differ whenever reporting formats: a numeric result on a test
+     * configured for no decimal places reports 23.7 as "23", and an alphanumeric
+     * one reports only the part before its first bracket. An editor repopulated
+     * from the reported value and saved back writes the reported form over the
+     * stored one — a silent truncation of the patient's result, recorded in the
+     * audit trail as the technician's own edit (OGC-1179). An editor needs the
+     * value it is about to overwrite.
+     */
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    private String rawResultValue;
+
     private String remarks;
 
     @ValidName(nameType = NameType.FULL_NAME)
@@ -722,6 +738,14 @@ public class TestResultItem implements ResultItem, Serializable {
         } catch (Exception e) {
             return "--";
         }
+    }
+
+    public String getRawResultValue() {
+        return rawResultValue;
+    }
+
+    public void setRawResultValue(String rawResultValue) {
+        this.rawResultValue = rawResultValue;
     }
 
     public String getShadowResultValue() {

@@ -26,6 +26,7 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -370,12 +371,28 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         if (persisted != null && persisted.getLastupdated() != null) {
             body.put("analysisLastupdated", String.valueOf(persisted.getLastupdated().getTime()));
         }
+        // The save is what moved the analysis on, so the row that caused it should
+        // not have to be told by a page reload: without this the Status column and
+        // the filter counts above it go on describing the worklist as it was, and
+        // the "Not started" filter keeps offering rows that have just been
+        // resulted (OGC-1179).
+        if (persisted != null) {
+            body.put("analysisStatusId", analysisService.getStatusId(persisted));
+        }
         // The persisted result's id — the client's row must adopt it, or a row
         // saved from the blank placeholder state keeps a null resultId and every
         // subsequent save INSERTS another result (duplicate component rows).
+        //
+        // Its value is echoed in both forms for the same reason the loader sends
+        // both: the row displays what is reported and edits what is stored, and a
+        // row that stayed on screen after saving would otherwise keep editing the
+        // value it held before.
         Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).map(rs -> rs.result)
-                .filter(r -> r != null && r.getId() != null).findFirst()
-                .ifPresent(r -> body.put("resultId", r.getId()));
+                .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
+                    body.put("resultId", r.getId());
+                    body.put("rawResultValue", StringUtil.blankIfNull(r.getValue()));
+                    body.put("resultValue", resultService.getResultValue(r, false));
+                });
         return ResponseEntity.ok(body);
     }
 

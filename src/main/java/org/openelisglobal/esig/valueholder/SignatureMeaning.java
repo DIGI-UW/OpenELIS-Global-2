@@ -13,6 +13,18 @@ public enum SignatureMeaning {
     AUTHORED,
 
     /**
+     * Technologist signed upon revising a result they or a colleague had already
+     * saved. Indicates the signer changed data that existed, not that they
+     * originated it.
+     *
+     * <p>
+     * §11.50 requires each signature to say what is being attested to, and
+     * authorship and revision are not the same attestation — a record showing a
+     * correction signed as authored misstates who first produced the value.
+     */
+    MODIFIED,
+
+    /**
      * Supervisor validated and released the results. Results become available on
      * reports and can be sent to EMR.
      */
