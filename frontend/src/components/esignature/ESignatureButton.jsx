@@ -72,6 +72,11 @@ const ESignatureButton = ({
           id: "esig.button.saveAndSign",
           defaultMessage: "Save",
         });
+      case SignatureMeaning.MODIFIED:
+        return intl.formatMessage({
+          id: "esig.button.saveModification",
+          defaultMessage: "Save",
+        });
       case SignatureMeaning.VALIDATED_AND_RELEASED:
         return intl.formatMessage({
           id: "esig.button.validate",
