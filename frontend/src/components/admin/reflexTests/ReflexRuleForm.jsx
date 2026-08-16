@@ -359,23 +359,37 @@ function ReflexRule() {
   };
 
   /**
+   * Whether the condition is still waiting for the user to name a component.
+   *
+   * <p>Only a test that reports more than one thing leaves the question open.
+   * Where a test has a single component there is nothing to choose between -
+   * resolving it is not a guess, it is the only answer - so the editor carries
+   * on as it always has rather than demanding a pick that says nothing.
+   */
+  const awaitingComponentChoice = (index, item_index) => {
+    const condition = ruleList[index]?.conditions?.[item_index];
+    return (
+      Boolean(condition?.componentPending) &&
+      componentsFor(index, item_index).length > 1
+    );
+  };
+
+  /**
    * The component a condition reads, or undefined while the user has yet to
-   * choose one. A test carries components that report different things, so
-   * until one is named there is no result type to render against.
+   * choose between the several its test reports.
    */
   const selectedComponentFor = (index, item_index) => {
-    const condition = ruleList[index]?.conditions?.[item_index];
-    if (condition?.componentPending) {
+    if (awaitingComponentChoice(index, item_index)) {
       return undefined;
     }
+    const condition = ruleList[index]?.conditions?.[item_index];
     const effectiveId =
       condition?.componentId || defaultComponentFor(index, item_index);
     return componentsFor(index, item_index).find((c) => c.id === effectiveId);
   };
 
   const conditionResultType = (index, item_index) => {
-    const condition = ruleList[index]?.conditions?.[item_index];
-    if (condition?.componentPending) {
+    if (awaitingComponentChoice(index, item_index)) {
       return undefined;
     }
     const component = selectedComponentFor(index, item_index);

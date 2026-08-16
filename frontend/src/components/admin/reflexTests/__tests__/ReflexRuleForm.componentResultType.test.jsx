@@ -55,6 +55,18 @@ const EXAMPLE_TEST = {
   ],
 };
 
+/** One component, one result type: nothing for the user to disambiguate. */
+const SINGLE_COMPONENT_TEST = {
+  id: "2",
+  value: "Single Test",
+  resultType: "N",
+  resultTypes: ["N"],
+  resultList: [],
+  components: [
+    { id: "only", value: "Only Component", resultType: "N", primary: true },
+  ],
+};
+
 const SAVED_RULE = {
   id: 1,
   ruleName: "Example Rule",
@@ -101,11 +113,11 @@ vi.mock("../../../utils/Utils", () => ({
       return;
     }
     if (url.startsWith("/rest/test-display-beans-map")) {
-      callback({ 1: [EXAMPLE_TEST] });
+      callback({ 1: [EXAMPLE_TEST, SINGLE_COMPONENT_TEST] });
       return;
     }
     if (url.startsWith("/rest/test-display-beans")) {
-      callback([EXAMPLE_TEST]);
+      callback([EXAMPLE_TEST, SINGLE_COMPONENT_TEST]);
       return;
     }
     callback([]);
@@ -133,8 +145,24 @@ vi.mock("../../../common/PageBreadCrumb", () => ({
   default: () => null,
 }));
 
+// A stand-in that can actually pick a test, so a test change drives the real
+// handler rather than being simulated.
 vi.mock("../../../common/AutoComplete", () => ({
-  default: () => <input data-testid="autocomplete-mock" />,
+  default: ({ id, onSelect, suggestions }) => (
+    <>
+      <input data-testid="autocomplete-mock" id={id} readOnly value="" />
+      {(suggestions || []).map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          data-testid={`pick-${id}-${s.id}`}
+          onClick={() => onSelect(s.id)}
+        >
+          {s.value}
+        </button>
+      ))}
+    </>
+  ),
 }));
 
 import ReflexRule from "../ReflexRuleForm";
@@ -252,5 +280,48 @@ describe("reflex condition is described by its component", () => {
       Object.keys(saved.conditions[0]),
       "componentPending describes the editor, not the rule",
     ).not.toContain("componentPending");
+  });
+
+  test("changing to a multi-component test defers the editor until a component is named", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await flush();
+
+    await user.click(
+      document.querySelector('[data-testid="pick-0_0_conditionTestId-1"]'),
+    );
+    await flush();
+
+    expect(
+      componentPicker().value,
+      "three components report different things — the choice is the user's",
+    ).toBe("");
+    expect(
+      valuePicker()?.tagName,
+      "and no coded options are offered against a type nobody chose",
+    ).not.toBe("SELECT");
+    expect(
+      document.getElementById("0_0_relation").options.length,
+      "nor are the relations that only a known type can justify",
+    ).toBe(1);
+  });
+
+  test("changing to a single-component test needs no choice made about it", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await flush();
+
+    await user.click(
+      document.querySelector('[data-testid="pick-0_0_conditionTestId-2"]'),
+    );
+    await flush();
+
+    // Nothing to disambiguate, so resolving it is not a guess — the editor
+    // carries on as it always has for a single-component test.
+    expect(componentPicker().value).toBe("only");
+    expect(
+      valuePicker(),
+      "a numeric condition is typed, so the editor is an input",
+    ).not.toBeNull();
   });
 });

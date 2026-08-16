@@ -413,10 +413,12 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
    */
   const finalComponentFor = (index: number): TestComponent | undefined => {
     const calculation = calculationList[index];
-    if (calculation?.componentPending) {
+    const components = destinationComponentsFor(index);
+    // Only a test that reports more than one thing leaves the question open.
+    // Where there is a single component, resolving it is not a guess.
+    if (calculation?.componentPending && components.length > 1) {
       return undefined;
     }
-    const components = destinationComponentsFor(index);
     return calculation?.componentId
       ? components.find((c) => String(c.id) === String(calculation.componentId))
       : components.find((c) => c.primary) || components[0];
