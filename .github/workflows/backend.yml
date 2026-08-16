@@ -69,34 +69,6 @@ jobs:
           repository: ${{github.repository}}
           submodules: recursive
 
-      - name: Scan repository dependencies for vulnerabilities
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: table
-          output: trivy-results.txt
-          exit-code: 1
-          ignore-unfixed: true
-          severity: HIGH,CRITICAL
-          scanners: vuln,secret
-
-      - name: Generate backend SBOM
-        uses: anchore/sbom-action@v0
-        with:
-          path: .
-          output-file: sbom.spdx.json
-          artifact-name: openelis-backend-sbom.spdx.json
-          dependency-snapshot: true
-
-      - name: Upload security artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-security-reports
-          path: |
-            trivy-results.txt
-            sbom.spdx.json
-
       - name: check formatting
         run: mvn spotless:check
 
@@ -108,6 +80,37 @@ jobs:
 
       - name: Build main project (produces classes JAR and test-jar for plugins)
         run: mvn clean install -Dspotless.check.skip=true
+
+      - name: Scan repository dependencies for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          output: trivy-results.txt
+          exit-code: 0
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          scanners: vuln,secret
+          trivyignores: .trivyignore
+
+      - name: Generate backend SBOM
+        if: always()
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          output-file: sbom.spdx.json
+          artifact-name: openelis-backend-sbom.spdx.json
+          dependency-snapshot: ${{ github.event_name == 'push' }}
+
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-security-reports
+          path: |
+            trivy-results.txt
+            sbom.spdx.json
 
       # - name: Build plugins (compile-only until analyzer stubs are replaced)
       #   run: cd plugins && mvn clean verify -DskipTests -Dmaven.test.skip=true

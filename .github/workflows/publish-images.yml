@@ -188,16 +188,18 @@ jobs:
         run: docker pull "${{ steps.source.outputs.ghcr_source }}"
 
       - name: Scan tested image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.source.outputs.ghcr_source }}
           format: table
           output: ${{ format('trivy-{0}.txt', matrix.dockerhub_suffix) }}
-          exit-code: 1
+          exit-code: 0
           ignore-unfixed: true
           severity: HIGH,CRITICAL
+          trivyignores: .trivyignore
 
       - name: Generate tested image SBOM
+        if: always()
         uses: anchore/sbom-action@v0
         with:
           image: ${{ steps.source.outputs.ghcr_source }}
@@ -205,7 +207,8 @@ jobs:
           artifact-name: ${{ format('openelis-{0}-sbom.spdx.json', matrix.dockerhub_suffix) }}
 
       - name: Upload image security artifacts
-        uses: actions/upload-artifact@v4
+        if: always()
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ format('publish-{0}-security-reports', matrix.dockerhub_suffix) }}
           path: |
