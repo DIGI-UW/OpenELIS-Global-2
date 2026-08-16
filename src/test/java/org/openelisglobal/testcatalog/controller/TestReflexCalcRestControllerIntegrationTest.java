@@ -6,7 +6,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Map;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
@@ -40,9 +39,11 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
     private static final int OPERATION_ID = 954317;
     private static final long ANALYTE_ID = 954318L;
     private static final long TEST_ANALYTE_ID = 954319L;
-    /** Any specimen the instance already has; its name is what must appear. */
-    private String specimenId;
-    private String specimenName;
+    private static final long SPECIMEN_ID = 954320L;
+    private static final long LOCALIZATION_ID = 954321L;
+    private static final long LOCALIZATION_VALUE_ID = 954322L;
+    /** The specimen these rules name; this is the name that must appear. */
+    private static final String SPECIMEN_NAME = "ReflexCalcIT Swab";
 
     @Autowired
     private ReflexCalcViewService reflexCalcViewService;
@@ -68,10 +69,7 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 TEST_ID, "ReflexCalcIT", "ReflexCalcIT desc", UUID.randomUUID().toString());
 
-        Map<String, Object> specimen = jdbc
-                .queryForList("SELECT id, description FROM clinlims.type_of_sample ORDER BY id LIMIT 1").get(0);
-        specimenId = String.valueOf(specimen.get("id"));
-        specimenName = String.valueOf(specimen.get("description"));
+        seedSpecimen();
 
         jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated)"
                 + " VALUES (?, ?, 'Y', NOW())", DICT_ID, DICT_ENTRY);
@@ -87,6 +85,26 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
     }
 
     /**
+     * A specimen of this fixture's own. Borrowing whichever one the instance
+     * happens to hold makes the test depend on ambient data: run inside the full
+     * suite, after a dataset that empties type_of_sample, there is none to borrow.
+     *
+     * <p>
+     * A specimen is named through a localization, which holds its per-locale values
+     * in a table of its own, so all three rows are needed for the name to resolve.
+     */
+    private void seedSpecimen() {
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())",
+                LOCALIZATION_ID, SPECIMEN_NAME);
+        jdbc.update("INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)"
+                + " VALUES (?, ?, 'en', ?, NOW())", LOCALIZATION_VALUE_ID, LOCALIZATION_ID, SPECIMEN_NAME);
+        jdbc.update(
+                "INSERT INTO clinlims.type_of_sample (id, description, domain, is_active, sort_order,"
+                        + " name_localization_id, lastupdated) VALUES (?, ?, 'H', true, 1, ?, NOW())",
+                SPECIMEN_ID, SPECIMEN_NAME, LOCALIZATION_ID);
+    }
+
+    /**
      * A rule whose name and whose internal note differ, so the two cannot be
      * confused.
      */
@@ -99,14 +117,14 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
                 "INSERT INTO clinlims.test_reflex (id, test_id, tst_rslt_id, add_test_id, relation,"
                         + " component_id, add_sample_type_id, internal_note, test_analyte_id, lastupdated)"
                         + " VALUES (?, ?, ?, ?, 'EQUALS', ?, CAST(? AS NUMERIC), ?, ?, NOW())",
-                TEST_REFLEX_ID, TEST_ID, TEST_RESULT_ID, TEST_ID, COMPONENT_ID, specimenId, internalNote,
-                TEST_ANALYTE_ID);
+                TEST_REFLEX_ID, TEST_ID, TEST_RESULT_ID, TEST_ID, COMPONENT_ID, String.valueOf(SPECIMEN_ID),
+                internalNote, TEST_ANALYTE_ID);
         jdbc.update("INSERT INTO clinlims.reflex_rule (id, rule_name, overall, active) VALUES (?, ?, 'ANY', true)",
                 REFLEX_RULE_ID, ruleName);
         jdbc.update(
                 "INSERT INTO clinlims.reflex_rule_action (id, reflex_test_name, reflex_test_id, sample_id,"
                         + " internal_note, reflex_rule_id, test_reflex_id) VALUES (?, '', ?, ?, ?, ?, ?)",
-                REFLEX_ACTION_ID, String.valueOf(TEST_ID), specimenId, internalNote, REFLEX_RULE_ID,
+                REFLEX_ACTION_ID, String.valueOf(TEST_ID), String.valueOf(SPECIMEN_ID), internalNote, REFLEX_RULE_ID,
                 (int) TEST_REFLEX_ID);
     }
 
@@ -114,11 +132,11 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
     private void seedCalculation() {
         jdbc.update("INSERT INTO clinlims.calculation (id, name, sample_id, test_id, result, toggled, active,"
                 + " component_id, last_updated) VALUES (?, 'ReflexCalcIT Calc', CAST(? AS INTEGER), ?, '', true, true,"
-                + " ?, NOW())", CALCULATION_ID, specimenId, (int) TEST_ID, COMPONENT_ID);
+                + " ?, NOW())", CALCULATION_ID, String.valueOf(SPECIMEN_ID), (int) TEST_ID, COMPONENT_ID);
         jdbc.update(
                 "INSERT INTO clinlims.calculation_operation (id, type, sample_id, operation_order, value,"
                         + " calculation_id, component_id) VALUES (?, 'TEST_RESULT', CAST(? AS INTEGER), 0, ?, ?, ?)",
-                OPERATION_ID, specimenId, String.valueOf(TEST_ID), CALCULATION_ID, COMPONENT_ID);
+                OPERATION_ID, String.valueOf(SPECIMEN_ID), String.valueOf(TEST_ID), CALCULATION_ID, COMPONENT_ID);
     }
 
     @After
@@ -138,6 +156,9 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
         jdbc.update("DELETE FROM clinlims.test_result_component WHERE id = ?", COMPONENT_ID);
         jdbc.update("DELETE FROM clinlims.dictionary WHERE id = ?", DICT_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id = ?", SPECIMEN_ID);
+        jdbc.update("DELETE FROM clinlims.localization_value WHERE id = ?", LOCALIZATION_VALUE_ID);
+        jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", LOCALIZATION_ID);
     }
 
     @Test
@@ -202,7 +223,7 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
 
         String generated = controller.get(String.valueOf(TEST_ID)).reflexRules.get(0).reflexTests;
 
-        assertTrue("names the target specimen: " + generated, generated.contains(specimenName));
+        assertTrue("names the target specimen: " + generated, generated.contains(SPECIMEN_NAME));
     }
 
     /**
@@ -217,7 +238,7 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
         String formula = controller.get(String.valueOf(TEST_ID)).calculatedBy.get(0).formula;
 
         assertTrue("names the test: " + formula, formula.contains("ReflexCalcIT"));
-        assertTrue("names the specimen: " + formula, formula.contains(specimenName));
+        assertTrue("names the specimen: " + formula, formula.contains(SPECIMEN_NAME));
         assertTrue("names the component: " + formula, formula.contains(COMPONENT_LABEL));
         assertFalse("and does not read as arithmetic on a test id: " + formula,
                 formula.startsWith(String.valueOf(TEST_ID)));
@@ -231,7 +252,7 @@ public class TestReflexCalcRestControllerIntegrationTest extends BaseWebContextS
         String output = controller.get(String.valueOf(TEST_ID)).calculatedBy.get(0).outputTest;
 
         assertTrue("names the test: " + output, output.contains("ReflexCalcIT"));
-        assertTrue("names the specimen: " + output, output.contains(specimenName));
+        assertTrue("names the specimen: " + output, output.contains(SPECIMEN_NAME));
         assertTrue("names the component: " + output, output.contains(COMPONENT_LABEL));
     }
 
