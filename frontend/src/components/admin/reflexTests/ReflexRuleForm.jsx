@@ -733,7 +733,10 @@ function ReflexRule() {
                                   <Select
                                     data-cy="addSample"
                                     id={
-                                      index + "_" + condition_index + "_sample"
+                                      index +
+                                      "_" +
+                                      condition_index +
+                                      "_conditionSample"
                                     }
                                     name="sampleId"
                                     labelText={
@@ -1203,7 +1206,9 @@ function ReflexRule() {
                               <Column lg={3} sm={4}>
                                 <Select
                                   data-cy="selectSample"
-                                  id={index + "_" + action_index + "_sample"}
+                                  id={
+                                    index + "_" + action_index + "_reflexSample"
+                                  }
                                   name="sampleId"
                                   labelText={
                                     <FormattedMessage id="rulebuilder.label.selectSample" />
