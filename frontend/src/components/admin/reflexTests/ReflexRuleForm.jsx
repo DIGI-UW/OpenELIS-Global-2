@@ -246,6 +246,12 @@ function ReflexRule() {
     const { name, value } = e.target;
     const list = [...ruleList];
     list[index][field][itemIndex][name] = value;
+    if (name === "componentId") {
+      // The new component reports its own type and offers its own options, so a
+      // value picked from the previous one no longer means anything here.
+      list[index][field][itemIndex].value = "0";
+      list[index][field][itemIndex].componentPending = false;
+    }
     setRuleList(list);
   };
 
@@ -284,6 +290,17 @@ function ReflexRule() {
     results[index][item_index]["list"] = testDetails.resultList;
     results[index][item_index]["type"] = testDetails.resultType;
     setTestResultList(results);
+
+    // A new test invalidates the component chosen under the old one, and with
+    // it the type and the options that were read off that component.
+    const rules = [...ruleList];
+    const condition = rules[index]?.[field]?.[item_index];
+    if (condition) {
+      condition.componentId = "";
+      condition.value = "0";
+      condition.componentPending = true;
+      setRuleList(rules);
+    }
   };
 
   /**
@@ -302,17 +319,29 @@ function ReflexRule() {
       id: c.id,
       value: c.value,
       resultType: c.resultType || test?.resultType,
+      resultList: c.resultList || [],
       primary: c.primary,
     }));
   };
 
   /**
-   * The dictionary options fetched for a condition's test, or undefined before
-   * they have arrived. An existing rule renders once before its result lists
-   * load, so this is a real state and not a defensive guard.
+   * The options the chosen component offers, falling back to the ones fetched
+   * for its test.
+   *
+   * <p>The test-level list is every component's merged together, so it offers
+   * the whole test's vocabulary whichever component a condition names - two
+   * coded components with different option sets read identically there. The
+   * fallback still matters: a test whose components carry no options of their
+   * own reports through the test, which is what a single-component test has
+   * always done, and an existing rule renders once before its lists arrive.
    */
-  const dictionaryResultsFor = (index, item_index) =>
-    testResultList[index]?.[item_index]?.["list"];
+  const dictionaryResultsFor = (index, item_index) => {
+    const component = selectedComponentFor(index, item_index);
+    if (component?.resultList?.length) {
+      return component.resultList;
+    }
+    return testResultList[index]?.[item_index]?.["list"];
+  };
 
   /**
    * The type the condition editor works against: the chosen component's, not
@@ -329,13 +358,27 @@ function ReflexRule() {
     return (primary || list[0])?.id;
   };
 
-  const conditionResultType = (index, item_index) => {
+  /**
+   * The component a condition reads, or undefined while the user has yet to
+   * choose one. A test carries components that report different things, so
+   * until one is named there is no result type to render against.
+   */
+  const selectedComponentFor = (index, item_index) => {
     const condition = ruleList[index]?.conditions?.[item_index];
+    if (condition?.componentPending) {
+      return undefined;
+    }
     const effectiveId =
       condition?.componentId || defaultComponentFor(index, item_index);
-    const component = componentsFor(index, item_index).find(
-      (c) => c.id === effectiveId,
-    );
+    return componentsFor(index, item_index).find((c) => c.id === effectiveId);
+  };
+
+  const conditionResultType = (index, item_index) => {
+    const condition = ruleList[index]?.conditions?.[item_index];
+    if (condition?.componentPending) {
+      return undefined;
+    }
+    const component = selectedComponentFor(index, item_index);
     if (component?.resultType) {
       return component.resultType;
     }
@@ -461,13 +504,19 @@ function ReflexRule() {
     const rule = {
       ...ruleList[index],
       conditions: (ruleList[index].conditions || []).map(
-        (condition, condition_index) => ({
-          ...condition,
-          componentId:
-            condition.componentId ||
-            defaultComponentFor(index, condition_index) ||
-            null,
-        }),
+        (condition, condition_index) => {
+          // componentPending only says whether this condition is waiting on a
+          // choice; it describes the editor, not the rule.
+          const saved = { ...condition };
+          delete saved.componentPending;
+          return {
+            ...saved,
+            componentId:
+              condition.componentId ||
+              selectedComponentFor(index, condition_index)?.id ||
+              null,
+          };
+        },
       ),
     };
     console.debug(JSON.stringify(rule));
@@ -770,12 +819,10 @@ function ReflexRule() {
                                       <FormattedMessage id="rulebuilder.label.selectComponent" />
                                     }
                                     value={
-                                      condition.componentId ||
-                                      defaultComponentFor(
+                                      selectedComponentFor(
                                         index,
                                         condition_index,
-                                      ) ||
-                                      ""
+                                      )?.id || ""
                                     }
                                     onChange={(e) =>
                                       handleRuleFieldItemChange(
@@ -787,11 +834,10 @@ function ReflexRule() {
                                     }
                                     required
                                   >
-                                    {!condition.componentId &&
-                                      !defaultComponentFor(
-                                        index,
-                                        condition_index,
-                                      ) && <SelectItem text="" value="" />}
+                                    {!selectedComponentFor(
+                                      index,
+                                      condition_index,
+                                    ) && <SelectItem text="" value="" />}
                                     {componentsFor(index, condition_index).map(
                                       (component, c_index) => (
                                         <SelectItem

@@ -2,6 +2,7 @@ package org.openelisglobal.common.rest.provider.bean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import org.junit.Test;
 import org.openelisglobal.common.rest.provider.bean.TestDisplayBean.ComponentBean;
+import org.openelisglobal.common.util.IdValuePair;
 
 /**
  * A test does not have one result type any more — its components do, and they
@@ -91,6 +93,33 @@ public class TestDisplayBeanTest {
 
         assertTrue(bean.getResultTypes().contains("N"));
         assertTrue(bean.getComponents().isEmpty());
+    }
+
+    /**
+     * Two coded components of one test can offer entirely different values. The
+     * test-level list is both of them merged, so a builder reading it offers values
+     * the component a rule names can never hold.
+     */
+    @Test
+    public void eachCodedComponentCarriesItsOwnOptions() {
+        ComponentBean b = new ComponentBean("comp-b", "Component B", "D", false,
+                Arrays.asList(new IdValuePair("x", "X"), new IdValuePair("y", "Y")));
+        ComponentBean c = new ComponentBean("comp-c", "Component C", "D", false,
+                Arrays.asList(new IdValuePair("w", "W"), new IdValuePair("z", "Z")));
+
+        assertEquals(Arrays.asList("X", "Y"), b.getResultList().stream().map(IdValuePair::getValue).toList());
+        assertEquals(Arrays.asList("W", "Z"), c.getResultList().stream().map(IdValuePair::getValue).toList());
+    }
+
+    /** A component that offers none answers with an empty list, never null. */
+    @Test
+    public void aComponentWithNoOptionsIsEmptyRatherThanAbsent() {
+        assertNotNull(component("c1", "Glucose", "N", true).getResultList());
+        assertTrue(component("c1", "Glucose", "N", true).getResultList().isEmpty());
+
+        ComponentBean coded = new ComponentBean("c2", "Interpretation", "D", true, null);
+        assertNotNull(coded.getResultList());
+        assertTrue(coded.getResultList().isEmpty());
     }
 
     @Test
