@@ -582,13 +582,19 @@ public class DisplayListController extends BaseRestController {
             TestDisplayBean testDisplayBean = new TestDisplayBean(test.getId(),
                     TestServiceImpl.getLocalizedTestNameWithType(test), testService.getResultType(test));
             List<IdValuePair> resultList = new ArrayList<>();
+            Map<String, List<IdValuePair>> optionsByComponent = new HashMap<>();
             List<TestResult> results = testResultService.getActiveTestResultsByTest(test.getId());
             results.forEach(result -> {
                 String type = result.getTestResultType();
                 if (result.getValue() != null && ("D".equals(type) || "M".equals(type) || "C".equals(type))) {
                     Dictionary dict = dictionaryService.getDictionaryById(result.getValue());
                     if (dict != null) {
-                        resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                        IdValuePair option = new IdValuePair(dict.getId(), dict.getLocalizedName());
+                        resultList.add(option);
+                        if (StringUtils.isNotBlank(result.getComponentId())) {
+                            optionsByComponent.computeIfAbsent(result.getComponentId(), k -> new ArrayList<>())
+                                    .add(option);
+                        }
                     }
                 }
             });
@@ -597,7 +603,7 @@ public class DisplayListController extends BaseRestController {
             // interpretation beside numeric Ct values - so the rule builders
             // are told what each component reports rather than being left to
             // read the primary's type as the whole test's.
-            testDisplayBean.setComponents(componentBeansFor(test, testDisplayBean.getResultType()));
+            testDisplayBean.setComponents(componentBeansFor(test, testDisplayBean.getResultType(), optionsByComponent));
             testItems.add(testDisplayBean);
 
             Collections.sort(testItems, new Comparator<TestDisplayBean>() {
@@ -617,8 +623,14 @@ public class DisplayListController extends BaseRestController {
      * declares none reports the test's own type, which is what a single-component
      * test has always done; a test with no components at all yields an empty list
      * and callers fall back to the test-level type.
+     *
+     * <p>
+     * Each carries the coded values configured against it. The test-level list is
+     * every component's merged together, which cannot say which options belong to
+     * the component a rule actually names.
      */
-    private List<TestDisplayBean.ComponentBean> componentBeansFor(Test test, String testLevelType) {
+    private List<TestDisplayBean.ComponentBean> componentBeansFor(Test test, String testLevelType,
+            Map<String, List<IdValuePair>> optionsByComponent) {
         List<TestDisplayBean.ComponentBean> beans = new ArrayList<>();
         List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(test.getId());
         if (components == null) {
@@ -627,7 +639,8 @@ public class DisplayListController extends BaseRestController {
         for (TestResultComponent component : components) {
             String label = StringUtils.isNotBlank(component.getLabel()) ? component.getLabel() : component.getCode();
             String type = StringUtils.isNotBlank(component.getResultType()) ? component.getResultType() : testLevelType;
-            beans.add(new TestDisplayBean.ComponentBean(component.getId(), label, type, component.getIsPrimary()));
+            beans.add(new TestDisplayBean.ComponentBean(component.getId(), label, type, component.getIsPrimary(),
+                    optionsByComponent.get(component.getId())));
         }
         return beans;
     }

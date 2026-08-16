@@ -124,6 +124,16 @@ interface StatusOption {
   value: string;
 }
 
+/**
+ * The worklist load's response. An error body arrives through the same
+ * callback as a good one, so the shape has to admit both (OGC-1170).
+ */
+interface WorklistResponse {
+  testResult?: WorklistRow[];
+  status?: number;
+  error?: string;
+}
+
 interface SaveResponse {
   status?: number;
   error?: string;
@@ -163,6 +173,7 @@ const UnifiedResults: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<boolean>(false);
   // ---- R2 (OGC-1021) panel state ----
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [methods, setMethods] = useState<IdValue[]>([]);
@@ -240,7 +251,23 @@ const UnifiedResults: React.FC = () => {
   }, []);
 
   const applyLoadedRows = useCallback(
-    (results: { testResult?: WorklistRow[] }) => {
+    (results: WorklistResponse | undefined) => {
+      // A worklist that failed to load and a worklist with nothing in it look
+      // the same once the rows are empty, and the page said nothing either
+      // way: a technician was shown an empty queue with no sign the request
+      // had failed, while the work sat there undone (OGC-1170).
+      //
+      // getFromOpenElisServer hands the callback whatever JSON came back,
+      // error bodies included, so the response is checked the same way the
+      // save path on this page checks its own.
+      if (!results || (results.status && results.status >= 400)) {
+        setLoadError(true);
+        setRows([]);
+        setRowStates({});
+        setLoading(false);
+        return;
+      }
+      setLoadError(false);
       const loaded = (results?.testResult || []).filter((r) => r.analysisId);
       setRows(loaded);
       const states: Record<string, RowEditState> = {};
@@ -985,6 +1012,32 @@ const UnifiedResults: React.FC = () => {
               </Tag>
             ))}
         </Column>
+
+        {loadError && (
+          <Column lg={16} md={8} sm={4}>
+            {/* An empty table is how "nothing to do here" looks, so a load
+                that failed has to say so itself — otherwise the two are the
+                same picture and the work goes undone (OGC-1170). Same
+                surface the stale-save rejection uses. */}
+            <ActionableNotification
+              kind="error"
+              inline
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "error.results.loadFailed" })}
+              subtitle={intl.formatMessage({
+                id: "error.results.loadFailed.detail",
+              })}
+              actionButtonLabel={intl.formatMessage({
+                id: "label.results.retry",
+              })}
+              onActionButtonClick={() => loadWorklist()}
+              statusIconDescription={intl.formatMessage({
+                id: "notification.title",
+              })}
+            />
+          </Column>
+        )}
 
         <Column lg={16} md={8} sm={4}>
           <TableContainer>

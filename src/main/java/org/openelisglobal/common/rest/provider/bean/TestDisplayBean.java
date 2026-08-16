@@ -38,12 +38,24 @@ public class TestDisplayBean extends IdValuePair {
         }
     }
 
-    /** One component of the test, with the result type it actually reports. */
+    /**
+     * One component of the test, with the result type it actually reports and the
+     * coded values it offers.
+     *
+     * <p>
+     * The test-level {@code resultList} is every component's options merged into
+     * one, so a builder reading it offers the whole test's vocabulary whichever
+     * component is chosen — two components with disjoint option sets are
+     * indistinguishable there, and the merged list repeats values that more than
+     * one component shares. A component's own options are the only thing that
+     * answers "what may this measurement be set to".
+     */
     public static class ComponentBean {
         private String id;
         private String value;
         private String resultType;
         private boolean primary;
+        private List<IdValuePair> resultList = new ArrayList<>();
 
         public ComponentBean() {
         }
@@ -53,6 +65,20 @@ public class TestDisplayBean extends IdValuePair {
             this.value = value;
             this.resultType = resultType;
             this.primary = primary;
+        }
+
+        public ComponentBean(String id, String value, String resultType, boolean primary,
+                List<IdValuePair> resultList) {
+            this(id, value, resultType, primary);
+            setResultList(resultList);
+        }
+
+        public List<IdValuePair> getResultList() {
+            return resultList;
+        }
+
+        public void setResultList(List<IdValuePair> resultList) {
+            this.resultList = resultList == null ? new ArrayList<>() : resultList;
         }
 
         public String getId() {
