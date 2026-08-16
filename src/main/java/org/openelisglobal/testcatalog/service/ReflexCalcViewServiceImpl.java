@@ -1,11 +1,15 @@
 package org.openelisglobal.testcatalog.service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testcalculated.service.TestCalculationService;
 import org.openelisglobal.testcalculated.valueholder.Calculation;
 import org.openelisglobal.testcalculated.valueholder.Operation;
+import org.openelisglobal.testreflex.action.bean.ReflexRule;
+import org.openelisglobal.testreflex.action.bean.ReflexRuleAction;
 import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
 import org.openelisglobal.testresult.valueholder.TestResult;
@@ -30,9 +34,11 @@ public class ReflexCalcViewServiceImpl implements ReflexCalcViewService {
     public ReflexCalcView getForTest(String testId) {
         ReflexCalcView view = new ReflexCalcView();
 
+        Map<String, Integer> ruleIdByTestReflexId = ruleIdByTestReflexId();
         for (TestReflex reflex : testReflexService.getTestReflexsByTestId(testId)) {
             ReflexRow row = new ReflexRow();
             row.id = reflex.getId();
+            row.ruleId = ruleIdByTestReflexId.get(reflex.getId());
             Test added = reflex.getAddedTest();
             row.reflexTests = added != null ? added.getLocalizedName() : null;
             row.triggerCondition = describeTrigger(reflex);
@@ -54,6 +60,26 @@ public class ReflexCalcViewServiceImpl implements ReflexCalcViewService {
             }
         }
         return view;
+    }
+
+    /**
+     * test_reflex id → the Reflex Rules record that created it. A rule's actions
+     * record the test_reflex row each one produced, which is the only link between
+     * the legacy reflex table and the rules screen.
+     */
+    private Map<String, Integer> ruleIdByTestReflexId() {
+        Map<String, Integer> byTestReflexId = new HashMap<>();
+        for (ReflexRule rule : testReflexService.getAllReflexRules()) {
+            if (rule.getId() == null || rule.getActions() == null) {
+                continue;
+            }
+            for (ReflexRuleAction action : rule.getActions()) {
+                if (action.getTestReflexId() != null) {
+                    byTestReflexId.put(String.valueOf(action.getTestReflexId()), rule.getId());
+                }
+            }
+        }
+        return byTestReflexId;
     }
 
     private String describeTrigger(TestReflex reflex) {

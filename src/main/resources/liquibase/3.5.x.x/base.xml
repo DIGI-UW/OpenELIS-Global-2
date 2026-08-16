@@ -177,4 +177,36 @@
   <include relativeToChangelogFile="true" file="066-sample-type-domain-enum-migration.xml"/>
   <include relativeToChangelogFile="true" file="067-sample-type-disposal-instructions.xml"/>
 
+  <!-- OGC-1142 FR-83 follow-up: dictionary-variant TEST_RESULT rows written with raw
+      free-text values instead of dictionary ids broke every getDictionaryById consumer -->
+  <include relativeToChangelogFile="true" file="068-repair-free-text-dictionary-options.xml"/>
+
+  <!-- Sample Entry Config: requesterRequired toggle for Search Requester + First/Last Name -->
+  <include relativeToChangelogFile="true" file="069-requester-required-config.xml"/>
+
+  <!-- OGC-1022 (R3): CRITICAL_RESULT alert type for critical-value acknowledgment -->
+  <include relativeToChangelogFile="true" file="070-critical-result-alert-type.xml"/>
+
+  <!-- OGC-811 (Results Entry v3): order attachments scoped to analysis / result component -->
+  <include relativeToChangelogFile="true" file="071-order-attachment-result-scope.xml"/>
+
+  <!-- OGC-811: legacy analysis result files become component-scoped order attachments -->
+  <include relativeToChangelogFile="true" file="072-migrate-result-files-to-order-attachments.xml"/>
+
+  <!-- OGC-811: notes authored on a component row are scoped to that component -->
+  <include relativeToChangelogFile="true" file="073-note-component-scope.xml"/>
+
+  <!-- OGC-224: panels carry a domain (backfilled CLINICAL); membership is domain-guarded -->
+  <include relativeToChangelogFile="true" file="074-panel-domain.xml"/>
+
+  <!-- OGC-224: panel terminology mappings (LOINC backfilled from panel.loinc, the FHIR routing key) -->
+  <include relativeToChangelogFile="true" file="075-panel-terminology-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="076-rule-component-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="077-alert-rule-component-scope.xml"/>
+  <include relativeToChangelogFile="true" file="078-calculation-operand-result-map.xml"/>
+  <include relativeToChangelogFile="true" file="079-alert-rule-primary-component-backfill.xml"/>
+  <include relativeToChangelogFile="true" file="080-calculation-destination-component.xml"/>
+  <include relativeToChangelogFile="true" file="081-reflex-sample-type-backfill.xml"/>
+  <include relativeToChangelogFile="true" file="082-reflex-target-sample-type.xml"/>
+
 </databaseChangeLog>

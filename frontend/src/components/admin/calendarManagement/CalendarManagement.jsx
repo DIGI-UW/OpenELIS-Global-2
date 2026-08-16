@@ -207,13 +207,10 @@ function CalendarManagement() {
   }));
 
   const breadcrumb = [
-    { label: intl.formatMessage({ id: "home.label" }), link: "/" },
+    { label: "home.label", link: "/" },
+    { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
     {
-      label: intl.formatMessage({ id: "breadcrums.admin.managment" }),
-      link: "/MasterListsPage",
-    },
-    {
-      label: intl.formatMessage({ id: "calendar.management.title" }),
+      label: "calendar.management.title",
       link: "/MasterListsPage/calendarManagement",
     },
   ];

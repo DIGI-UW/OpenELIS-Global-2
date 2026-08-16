@@ -71,7 +71,6 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.statusofsample.util.StatusRules;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
@@ -441,16 +440,39 @@ public class ResultsValidationUtility {
             Result result, String accessionNumber, String notes) {
 
         List<TestResult> testResults = getPossibleResultsForTest(test);
+        // Results Entry narrows these to the row's own component so the significant
+        // digits (and hence the rendered range) come from that component; do the same
+        // here or the two screens print the same range to different precision.
+        String rowComponentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (rowComponentId != null) {
+            List<TestResult> componentRows = new ArrayList<>();
+            for (TestResult testResult : testResults) {
+                if (rowComponentId.equals(testResult.getComponentId())) {
+                    componentRows.add(testResult);
+                }
+            }
+            if (!componentRows.isEmpty()) {
+                testResults = componentRows;
+            }
+        }
 
-        String displayTestName = TestServiceImpl.getLocalizedTestNameWithType(test);
+        // The same display name Results Entry shows, so a row reads identically on
+        // both screens — including naming the specimen the row is actually for.
+        String displayTestName = analysisService.getTestDisplayName(analysis);
         displayTestName = appendComponentLabel(displayTestName, result, test);
-        // displayTestName = augmentTestNameWithRange(displayTestName, result);
 
-        // OGC-1145 Phase 2: the analysis's specimen selects a scoped limit
-        // over the shared set when the test carries per-sample-type overrides.
-        ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(
-                test.getId(), currentPatient,
-                analysis.getSampleItem() != null ? analysis.getSampleItem().getTypeOfSampleId() : null);
+        // Results Entry chooses the range for the sample's patient; this screen used to
+        // leave the patient null, so an age- or sex-specific band never matched and the
+        // row showed a different range from the one the technician entered against.
+        currentPatient = analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null ? null
+                : sampleService.getPatient(analysis.getSampleItem().getSample());
+
+        // The same range selection Results Entry uses: the component's own range on a
+        // multi-component test, else the test-level one, both chosen for the patient
+        // and scoped to this specimen.
+        ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForResult(analysis,
+                result, currentPatient);
         ResultValidationItem testItem = new ResultValidationItem();
 
         testItem.setAccessionNumber(accessionNumber);

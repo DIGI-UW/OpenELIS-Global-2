@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 follow-up - test alert rules scope to a component and a specimen.
+
+    This changeset only adds the columns. Existing rows are resolved to their
+    test's primary component in 079, alongside calculated and reflex rules -
+    a trigger is authored against a particular measurement and does not
+    transfer to another component.
+    -->
+
+    <changeSet id="alert-scope-001-component-and-sample-type" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="test_alert_rule"/>
+                <tableExists schemaName="clinlims" tableName="test_result_component"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="test_alert_rule" columnName="component_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Scope an alert rule to a result component and a specimen</comment>
+        <addColumn schemaName="clinlims" tableName="test_alert_rule">
+            <column name="component_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sample_type_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_alert_rule"
+            baseColumnNames="component_id" constraintName="fk_test_alert_rule_component"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_alert_rule"
+            baseColumnNames="sample_type_id" constraintName="fk_test_alert_rule_sample_type"
+            referencedTableSchemaName="clinlims" referencedTableName="type_of_sample"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+        <createIndex schemaName="clinlims" tableName="test_alert_rule" indexName="idx_test_alert_rule_component">
+            <column name="component_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

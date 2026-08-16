@@ -274,3 +274,124 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
     ]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Result Reporting sample headings — a sample is named by the specimen the user
+// chose on it, not only by the position of the box it sits in. "Sample 2" says
+// nothing about what is in it; on an order carrying three specimens the reader
+// has to scroll back up and count to find out.
+// ---------------------------------------------------------------------------
+describe("AddOrder — Result Reporting sample headings", () => {
+  const SAMPLE_TYPES = [
+    { id: "3", value: "Sputum" },
+    { id: "5", value: "Serum" },
+    { id: "7", value: "Plasma" },
+  ];
+
+  const wireSampleTypes = (types = SAMPLE_TYPES) => {
+    utilsMock.getFromOpenElisServer.mockImplementation((endPoint, callback) => {
+      if (endPoint === "/rest/user-sample-types") {
+        callback(types);
+      }
+    });
+  };
+
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+    wireSampleTypes();
+    wireAggregationResponse(labelRequestFixture());
+  });
+
+  const heading = (text) =>
+    screen
+      .getAllByRole("heading", { level: 4 })
+      .find((node) => node.textContent.replace(/\s+/g, " ").trim() === text);
+
+  test("names each sample by the specimen type selected on it", () => {
+    renderAddOrder();
+
+    expect(heading("Sample 1: Sputum")).toBeInTheDocument();
+    expect(heading("Sample 2: Serum")).toBeInTheDocument();
+  });
+
+  test("supports any number of samples", () => {
+    renderAddOrder({
+      samples: [
+        ...samplesFixture(),
+        {
+          index: 3,
+          sampleTypeId: "7",
+          tests: [{ id: "3", name: "LFT" }],
+          panels: [],
+          referralItems: [],
+          sampleXML: {},
+        },
+      ],
+    });
+
+    expect(heading("Sample 1: Sputum")).toBeInTheDocument();
+    expect(heading("Sample 2: Serum")).toBeInTheDocument();
+    expect(heading("Sample 3: Plasma")).toBeInTheDocument();
+  });
+
+  test("follows the picker when the selected specimen changes", () => {
+    const { rerender } = renderAddOrder();
+    expect(heading("Sample 1: Sputum")).toBeInTheDocument();
+
+    const reselected = samplesFixture();
+    reselected[0].sampleTypeId = "7";
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <AddOrder
+          orderFormValues={baseOrderFormValues()}
+          setOrderFormValues={vi.fn()}
+          samples={reselected}
+          error={() => null}
+          isModifyOrder={false}
+          changed={{}}
+          setChanged={vi.fn()}
+          stagedAttachments={[]}
+          setStagedAttachments={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(heading("Sample 1: Plasma")).toBeInTheDocument();
+    expect(heading("Sample 1: Sputum")).toBeUndefined();
+  });
+
+  test("keeps the plain numbering when no specimen is selected yet", () => {
+    renderAddOrder({
+      samples: [
+        {
+          index: 1,
+          sampleTypeId: "",
+          tests: [{ id: "1", name: "CBC" }],
+          panels: [],
+          referralItems: [],
+          sampleXML: {},
+        },
+      ],
+    });
+
+    expect(heading("Sample 1")).toBeInTheDocument();
+  });
+
+  test("does not invent a name for a specimen the list does not carry", () => {
+    renderAddOrder({
+      samples: [
+        {
+          index: 1,
+          sampleTypeId: "999",
+          tests: [{ id: "1", name: "CBC" }],
+          panels: [],
+          referralItems: [],
+          sampleXML: {},
+        },
+      ],
+    });
+
+    expect(heading("Sample 1")).toBeInTheDocument();
+  });
+});

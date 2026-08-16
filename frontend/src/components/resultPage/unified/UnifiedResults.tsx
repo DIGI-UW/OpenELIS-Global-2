@@ -6,8 +6,6 @@ import React, {
   useState,
 } from "react";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
   Button,
   Column,
   DatePicker,
@@ -34,7 +32,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
@@ -60,6 +58,23 @@ import {
   normalizeDomain,
 } from "./domainIntl";
 import { usePresence } from "./usePresence";
+import ExpandedPanel, {
+  DilutionDraft,
+  IdValue,
+  NoteDraft,
+  PanelRow,
+  RejectDraft,
+} from "./ExpandedPanel";
+import { ReferralDraft } from "./ReferralAction";
+import { NceDisposition, dispositionRequests } from "./nceDisposition";
+import { SectionLayout, loadSectionLayout } from "./sectionLayout";
+import { FlagChip, accentClass } from "./flags";
+import Avatar from "./Avatar";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import PageBreadCrumb from "../../common/PageBreadCrumb";
+import config from "../../../config.json";
+import "./unified-results.scss";
 
 /**
  * OGC-1020 (R1 of OGC-811) — unified /Results worklist.
@@ -73,13 +88,18 @@ import { usePresence } from "./usePresence";
  * Unit (FR-M1–M4).
  */
 
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "sidenav.label.results", link: "/Results" },
+];
+
 interface LabUnit {
   id: string;
   value: string;
   domain?: string;
 }
 
-interface WorklistRow extends ResultCellRow {
+interface WorklistRow extends ResultCellRow, PanelRow {
   accessionNumber?: string;
   sequenceNumber?: string;
   testName?: string;
@@ -90,6 +110,10 @@ interface WorklistRow extends ResultCellRow {
   analysisStatusId?: string;
   analysisLastupdated?: string;
   testResultComponentId?: string;
+  testMethod?: string;
+  analyzerId?: string;
+  /** analysis-level non-conformity flag, computed server-side (QAService). */
+  nonconforming?: boolean;
   [key: string]: unknown;
 }
 
@@ -104,6 +128,8 @@ interface SaveResponse {
   modifiedBy?: string;
   modifiedAt?: string;
   analysisLastupdated?: string;
+  /** persisted result id — the saved row adopts it so re-saves UPDATE */
+  resultId?: string;
   reflex?: string[];
   calculated?: string[];
 }
@@ -130,6 +156,44 @@ const UnifiedResults: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
   const [loading, setLoading] = useState<boolean>(false);
+  // ---- R2 (OGC-1021) panel state ----
+  const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
+  const [methods, setMethods] = useState<IdValue[]>([]);
+  const [analyzers, setAnalyzers] = useState<IdValue[]>([]);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, NoteDraft>>({});
+  const [dilutionDrafts, setDilutionDrafts] = useState<
+    Record<string, DilutionDraft>
+  >({});
+  // analyzerId as loaded — the provenance snapshot for FR-B2
+  const [loadedAnalyzers, setLoadedAnalyzers] = useState<
+    Record<string, string>
+  >({});
+  const [sectionLayout, setSectionLayout] = useState<SectionLayout>(() =>
+    loadSectionLayout(),
+  );
+  // ---- R4 (OGC-1023) NCE / referral / rejection state ----
+  const { configurationProperties } = useContext(ConfigurationContext) as {
+    configurationProperties?: Record<string, string>;
+  };
+  const allowResultRejection =
+    configurationProperties?.allowResultRejection === "true";
+  const [nceOpenKey, setNceOpenKey] = useState<string | null>(null);
+  const [referralOrganizations, setReferralOrganizations] = useState<IdValue[]>(
+    [],
+  );
+  const [referralReasons, setReferralReasons] = useState<IdValue[]>([]);
+  const [rejectReasons, setRejectReasons] = useState<IdValue[]>([]);
+  const [referralDrafts, setReferralDrafts] = useState<
+    Record<string, ReferralDraft>
+  >({});
+  const [rejectDrafts, setRejectDrafts] = useState<Record<string, RejectDraft>>(
+    {},
+  );
+  const [interpretationDrafts, setInterpretationDrafts] = useState<
+    Record<string, string>
+  >({});
+  const [nceDisposition, setNceDisposition] = useState<NceDisposition>("NONE");
+  const [nceRejectReasonId, setNceRejectReasonId] = useState<string>("");
 
   const domain: ResultsDomain = useMemo(() => {
     const unit = labUnits.find((u) => u.id === selectedLabUnit);
@@ -144,6 +208,27 @@ const UnifiedResults: React.FC = () => {
       "/rest/analysis-status-types",
       (list: StatusOption[]) =>
         setStatusOptions((list || []).filter((s) => s.id !== "0")),
+    );
+    // R2 (FR-B1): Method and Analyzer are separate fields with their own lists
+    getFromOpenElisServer("/rest/displayList/METHODS", (list: IdValue[]) =>
+      setMethods(list || []),
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/ANALYZER_LIST",
+      (list: IdValue[]) => setAnalyzers(list || []),
+    );
+    // R4 (FR-F2/E3): referral target + reason lists, rejection reasons
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      (list: IdValue[]) => setReferralOrganizations(list || []),
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_REASONS",
+      (list: IdValue[]) => setReferralReasons(list || []),
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/REJECTION_REASONS",
+      (list: IdValue[]) => setRejectReasons(list || []),
     );
   }, []);
 
@@ -164,6 +249,20 @@ const UnifiedResults: React.FC = () => {
         );
       }
       setRowStates(states);
+      const loadedByKey: Record<string, string> = {};
+      for (const row of loaded) {
+        if (row.analyzerId) {
+          loadedByKey[worklistRowKey(row)] = row.analyzerId;
+        }
+      }
+      setLoadedAnalyzers(loadedByKey);
+      setNoteDrafts({});
+      setDilutionDrafts({});
+      setReferralDrafts({});
+      setRejectDrafts({});
+      setInterpretationDrafts({});
+      setNceOpenKey(null);
+      setExpandedRowKey(null);
       setStaleInfo({});
       setEditingAnalysisId(null);
       setPage(1);
@@ -318,6 +417,165 @@ const UnifiedResults: React.FC = () => {
     [],
   );
 
+  // R2 (FR-B1): method/analyzer edits are part of the analysis record — they
+  // participate in the same edit-state machine as the value itself
+  const handleFieldChange = useCallback(
+    (
+      target: WorklistRow,
+      field: "testMethod" | "analyzerId",
+      value: string,
+    ) => {
+      const key = worklistRowKey(target);
+      setRows((current) =>
+        current.map((row) =>
+          worklistRowKey(row) === key ? { ...row, [field]: value } : row,
+        ),
+      );
+      setRowStates((current) => ({
+        ...current,
+        [key]: nextRowState(current[key] || "EMPTY", {
+          type: "VALUE_CHANGED",
+        }),
+      }));
+      setEditingAnalysisId(target.analysisId);
+    },
+    [],
+  );
+
+  // R4: a referral or rejection is part of the analysis record — setting a
+  // draft dirties the row so it goes through the same Save (e-signature)
+  const markRowDirty = useCallback((target: WorklistRow) => {
+    const key = worklistRowKey(target);
+    setRowStates((current) => ({
+      ...current,
+      [key]: nextRowState(current[key] || "EMPTY", { type: "VALUE_CHANGED" }),
+    }));
+    setEditingAnalysisId(target.analysisId);
+  }, []);
+
+  const handleReferralDraftChange = useCallback(
+    (target: WorklistRow, draft: ReferralDraft | null) => {
+      const key = worklistRowKey(target);
+      setReferralDrafts((current) => {
+        const next = { ...current };
+        if (draft) {
+          next[key] = draft;
+        } else {
+          delete next[key];
+        }
+        return next;
+      });
+      if (draft) {
+        markRowDirty(target);
+      }
+    },
+    [markRowDirty],
+  );
+
+  const handleRejectDraftChange = useCallback(
+    (target: WorklistRow, draft: RejectDraft | null) => {
+      const key = worklistRowKey(target);
+      setRejectDrafts((current) => {
+        const next = { ...current };
+        if (draft) {
+          next[key] = draft;
+        } else {
+          delete next[key];
+        }
+        return next;
+      });
+      if (draft) {
+        markRowDirty(target);
+      }
+    },
+    [markRowDirty],
+  );
+
+  const handleInterpretationDraftChange = useCallback(
+    (target: WorklistRow, draft: string | null) => {
+      const key = worklistRowKey(target);
+      setInterpretationDrafts((current) => {
+        const next = { ...current };
+        if (draft !== null) {
+          next[key] = draft;
+        } else {
+          delete next[key];
+        }
+        return next;
+      });
+      if (draft !== null) {
+        markRowDirty(target);
+      }
+    },
+    [markRowDirty],
+  );
+
+  // FR-E3: the disposition chosen alongside an NCE applies once the NCE is
+  // filed. Cancel/Retest call their shipped endpoints; Reject arms the legacy
+  // rejection on the row so the e-signature Save applies it (FR-A4).
+  const handleNceApplyDisposition = useCallback(
+    (target: WorklistRow, disposition: NceDisposition, reasonId: string) => {
+      // the NCE itself is filed by this point (this runs on submit success);
+      // surface the analysis-level flag immediately — a full reload recomputes
+      // it server-side (QAService)
+      setRows((current) =>
+        current.map((row) =>
+          row.analysisId === target.analysisId
+            ? { ...row, nonconforming: true }
+            : row,
+        ),
+      );
+      if (disposition === "REJECT") {
+        if (reasonId) {
+          handleRejectDraftChange(target, { rejectReasonId: reasonId });
+          addNotification({
+            kind: NotificationKinds.info,
+            title: intl.formatMessage({ id: "label.results.nce.report" }),
+            message: intl.formatMessage({
+              id: "label.results.nce.disposition.rejectArmed",
+            }),
+          });
+          setNotificationVisible(true);
+        }
+        return;
+      }
+      const requests = dispositionRequests(disposition, target);
+      if (requests.length === 0) {
+        return;
+      }
+      const runNext = (index: number) => {
+        if (index >= requests.length) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "label.results.nce.report" }),
+            message: intl.formatMessage({
+              id:
+                disposition === "CANCEL"
+                  ? "label.results.nce.disposition.cancelled"
+                  : "label.results.nce.disposition.retested",
+            }),
+          });
+          setNotificationVisible(true);
+          loadWorklist();
+          return;
+        }
+        postToOpenElisServerJsonResponse(
+          requests[index].url,
+          JSON.stringify(requests[index].body),
+          () => runNext(index + 1),
+        );
+      };
+      runNext(0);
+    },
+    [
+      handleRejectDraftChange,
+      addNotification,
+      setNotificationVisible,
+      intl,
+      loadWorklist,
+    ],
+  );
+
   const handleEdit = useCallback((target: WorklistRow) => {
     const key = worklistRowKey(target);
     setRowStates((current) => ({
@@ -368,15 +626,30 @@ const UnifiedResults: React.FC = () => {
           type: "SAVE_SUCCEEDED",
         }),
       }));
-      if (response.analysisLastupdated) {
+      if (response.analysisLastupdated || response.resultId) {
         // the version token is per ANALYSIS — refresh it on every component
-        // row of this analysis so a sibling save isn't falsely rejected
+        // row of this analysis so a sibling save isn't falsely rejected.
+        // The SAVED row must also adopt the persisted resultId: a row saved
+        // from the blank placeholder state would otherwise keep resultId null
+        // and every later save would INSERT a duplicate result for the
+        // component instead of updating it.
         setRows((current) =>
-          current.map((row) =>
-            row.analysisId === target.analysisId
+          current.map((row) => {
+            if (row.analysisId !== target.analysisId) {
+              return row;
+            }
+            const updated = response.analysisLastupdated
               ? { ...row, analysisLastupdated: response.analysisLastupdated }
-              : row,
-          ),
+              : { ...row };
+            if (
+              response.resultId &&
+              worklistRowKey(row) === key &&
+              !updated.resultId
+            ) {
+              updated.resultId = response.resultId;
+            }
+            return updated;
+          }),
         );
       }
       setStaleInfo((current) => {
@@ -404,8 +677,16 @@ const UnifiedResults: React.FC = () => {
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
+      // A reflex or calculation adds analyses to this order that the save
+      // response only names. Naming them in a toast and leaving the worklist
+      // as it was asks the user to refresh to see the work they just caused,
+      // so the rows are re-read when — and only when — some were generated:
+      // an unconditional reload would discard every other row's unsaved edit.
+      if (triggered.length) {
+        loadWorklist();
+      }
     },
-    [addNotification, intl, setNotificationVisible],
+    [addNotification, intl, setNotificationVisible, loadWorklist],
   );
 
   const handleSave = useCallback(
@@ -414,45 +695,162 @@ const UnifiedResults: React.FC = () => {
       // the page. Untouched rows cannot be re-submitted or defaulted.
       const item: Record<string, unknown> = { ...row, isModified: true };
       delete item.result;
+      delete item.analysisNotes;
+      // attachments live in order_attachment now (OGC-811); round-tripping
+      // the legacy inline resultFile would clone a result_file row per save
+      delete item.resultFile;
       // TestResultItem serializes reportable as "Y"/"N" but deserializes it
       // as boolean — same normalization the legacy page applies before POST
       item.reportable = item.reportable !== "N";
+      const key = worklistRowKey(row);
+      // R2 (FR-J1/J2): the dual-axis note — visibility chosen, context auto-set
+      // from the edit-state machine (Modification when editing a saved result)
+      const noteDraft = noteDrafts[key];
+      if (noteDraft && noteDraft.text.trim()) {
+        item.note = noteDraft.text.trim();
+        item.noteVisibility = noteDraft.visibility;
+        item.noteContext =
+          rowStates[key] === "EDITING" ? "MODIFICATION" : "ENTRY";
+      }
+      // R2 (FR-D5): dilution provenance — the reported value is already in
+      // resultValue; factor + measured value ride along for the audit note
+      const dilution = dilutionDrafts[key];
+      if (dilution && dilution.factor.trim()) {
+        item.dilutionFactor = dilution.factor.trim();
+        item.measuredValue = dilution.measuredValue.trim();
+      }
+      // R4 (FR-F2/F3): the referral rides the row's save — legacy
+      // handleReferrals path; the referred test is this row's own test (no
+      // test-to-perform field per FRS)
+      const referral = referralDrafts[key];
+      if (
+        referral &&
+        referral.referredInstituteId &&
+        referral.referralReasonId
+      ) {
+        item.refer = true;
+        item.referredOut = true;
+        item.referralItem = {
+          referralReasonId: referral.referralReasonId,
+          referredInstituteId: referral.referredInstituteId,
+          referredSendDate: referral.referredSendDate,
+          referredTestId: row.testId,
+        };
+      }
+      // R4 (FR-E3): reject disposition — legacy shadowRejected mechanics
+      // (clears the value, writes the rejection-reason note, TechnicalRejected)
+      const reject = rejectDrafts[key];
+      if (reject && reject.rejectReasonId) {
+        item.rejected = true;
+        item.shadowRejected = true;
+        item.rejectReasonId = reject.rejectReasonId;
+      }
+      // R7 (FR-G1): interpretation rides the save as a report-visible note
+      const interpretation = interpretationDrafts[key];
+      if (interpretation && interpretation.trim()) {
+        item.interpretation = interpretation.trim();
+      }
       postToOpenElisServerJsonResponse(
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify({ testResult: item }),
-        (response: SaveResponse | undefined) =>
-          handleSaveResponse(row, response),
+        (response: SaveResponse | undefined) => {
+          handleSaveResponse(row, response);
+          if (response && (!response.status || response.status < 400)) {
+            setNoteDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+            setDilutionDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+            setReferralDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+            setRejectDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+            setInterpretationDrafts((current) => {
+              const next = { ...current };
+              delete next[key];
+              return next;
+            });
+          }
+        },
       );
     },
-    [handleSaveResponse],
+    [
+      handleSaveResponse,
+      noteDrafts,
+      dilutionDrafts,
+      referralDrafts,
+      rejectDrafts,
+      interpretationDrafts,
+      rowStates,
+    ],
   );
 
-  const subjectCell = (row: WorklistRow): string => {
+  // Gallery parity: accession leads (mono accent), identity as a sub-line, a
+  // patient initials avatar on clinical rows (FR-M2/M3: no patient identity
+  // outside CLINICAL — sample context replaces it)
+  const subjectCell = (row: WorklistRow): React.ReactNode => {
     const accession = row.accessionNumber || "";
-    if (domain === "CLINICAL") {
-      const patient = row.patientInfo || row.patientName || "";
-      return patient ? `${accession} · ${patient}` : accession;
-    }
-    // FR-M2/M3: no patient identity outside CLINICAL; sample context instead
-    return row.sampleType ? `${accession} · ${row.sampleType}` : accession;
+    const subline =
+      domain === "CLINICAL"
+        ? [row.patientName, row.patientInfo].filter(Boolean).join(" · ")
+        : row.sampleType || "";
+    return (
+      <div className="unifiedSubjectCell">
+        {domain === "CLINICAL" && (
+          <Avatar name={row.patientName} id={row.patientId as string} />
+        )}
+        <div>
+          <div className="unifiedAccession">{accession}</div>
+          {subline && <div className="unifiedSubjectSub">{subline}</div>}
+          {/* the old Results page's non-conformity indicator, reproduced
+              under the sample/patient identity — analysis-level, shared by
+              every component row */}
+          {row.nonconforming && (
+            <picture>
+              <img
+                src={config.serverBaseUrl + "/images/nonconforming.gif"}
+                alt="nonconforming"
+                width="20"
+                height="15"
+                data-testid={`nonconforming-${worklistRowKey(row)}`}
+              />
+            </picture>
+          )}
+        </div>
+      </div>
+    );
   };
 
   const statusName = (statusId?: string): string =>
     statusOptions.find((s) => s.id === statusId)?.value || statusId || "";
 
+  /** Carbon tag color per status name — never conveys status by color alone. */
+  const statusTagType = (statusId?: string): string => {
+    const name = statusName(statusId).toLowerCase();
+    if (name.includes("final")) return "green";
+    if (name.includes("reject") || name.includes("cancel")) return "red";
+    if (name.includes("acceptance")) return "teal";
+    if (name.includes("not tested") || name.includes("pending")) return "gray";
+    return "cool-gray";
+  };
+
   return (
     <>
       <AlertDialog />
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth className="unifiedResultsPage">
         <Column lg={16} md={8} sm={4}>
-          <Breadcrumb>
-            <BreadcrumbItem href="/">
-              <FormattedMessage id="home.label" />
-            </BreadcrumbItem>
-            <BreadcrumbItem href="/WorkplanByTest">
-              <FormattedMessage id="sidenav.label.workplan" />
-            </BreadcrumbItem>
-          </Breadcrumb>
           <Section>
             <Heading>
               <FormattedMessage id="sidenav.label.results" />
@@ -562,11 +960,21 @@ const UnifiedResults: React.FC = () => {
             <Table size="lg">
               <TableHead>
                 <TableRow>
+                  <TableHeader className="unifiedExpandHeader" />
                   <TableHeader>
                     {formatDomainMessage(intl, "label.results.subject", domain)}
                   </TableHeader>
                   <TableHeader>
                     <FormattedMessage id="label.results.test" />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage id="label.results.method" />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage id="label.results.analyzer" />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage id="label.results.sample" />
                   </TableHeader>
                   <TableHeader>
                     {formatDomainMessage(intl, "label.results.range", domain)}
@@ -576,6 +984,9 @@ const UnifiedResults: React.FC = () => {
                   </TableHeader>
                   <TableHeader>
                     <FormattedMessage id="label.results.status" />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage id="label.results.flag" />
                   </TableHeader>
                   <TableHeader>
                     <FormattedMessage id="label.results.actions" />
@@ -588,9 +999,28 @@ const UnifiedResults: React.FC = () => {
                   const state = rowStates[key] || "EMPTY";
                   const stale = staleInfo[key];
                   const reviewer = presence[row.analysisId];
+                  const isExpanded = expandedRowKey === key;
                   return (
                     <React.Fragment key={key}>
                       <TableRow>
+                        <TableCell className="unifiedExpandCell">
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            aria-expanded={isExpanded}
+                            aria-label={intl.formatMessage({
+                              id: isExpanded
+                                ? "label.results.collapseRow"
+                                : "label.results.expandRow",
+                            })}
+                            className="unifiedExpandButton"
+                            onClick={() =>
+                              setExpandedRowKey(isExpanded ? null : key)
+                            }
+                          >
+                            {isExpanded ? "▼" : "▶"}
+                          </Button>
+                        </TableCell>
                         <TableCell>
                           {subjectCell(row)}
                           {reviewer && (
@@ -602,22 +1032,62 @@ const UnifiedResults: React.FC = () => {
                             </Tag>
                           )}
                         </TableCell>
-                        <TableCell>{row.testName}</TableCell>
+                        <TableCell className="unifiedTestCell">
+                          {row.testName}
+                        </TableCell>
+                        <TableCell className="unifiedResultsSmallCell">
+                          {methods.find((m) => m.id === row.testMethod)
+                            ?.value ||
+                            row.testMethod ||
+                            "—"}
+                          {loadedAnalyzers[key] && (
+                            <Tag
+                              type="cool-gray"
+                              size="sm"
+                              className="unifiedProvenance"
+                            >
+                              <FormattedMessage id="label.results.fromAnalyzer" />
+                            </Tag>
+                          )}
+                        </TableCell>
+                        <TableCell className="unifiedResultsSmallCell">
+                          {analyzers.find((a) => a.id === row.analyzerId)
+                            ?.value ||
+                            row.analyzerId ||
+                            "—"}
+                        </TableCell>
+                        <TableCell className="unifiedResultsSmallCell">
+                          {row.sampleType || "—"}
+                        </TableCell>
                         <TableCell>
                           {row.normalRange}{" "}
                           {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
                         </TableCell>
-                        <TableCell>
-                          <PolymorphicResultCell
-                            row={row}
-                            editable={isRowEditable(state)}
-                            onValueChange={(field, value) =>
-                              handleValueChange(row, field, value)
-                            }
-                          />
+                        <TableCell className="unifiedResultsValueCell">
+                          <span className={accentClass(row.resultFlag)}>
+                            <PolymorphicResultCell
+                              row={row}
+                              editable={isRowEditable(state)}
+                              onValueChange={(field, value) =>
+                                handleValueChange(row, field, value)
+                              }
+                            />
+                          </span>
                         </TableCell>
                         <TableCell>
-                          {statusName(row.analysisStatusId)}
+                          {statusName(row.analysisStatusId) ? (
+                            <Tag
+                              size="sm"
+                              type={statusTagType(row.analysisStatusId)}
+                            >
+                              {statusName(row.analysisStatusId)}
+                            </Tag>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <FlagChip flag={row.resultFlag} />
                         </TableCell>
                         <TableCell>
                           {showEdit(state) && (
@@ -645,9 +1115,118 @@ const UnifiedResults: React.FC = () => {
                           )}
                         </TableCell>
                       </TableRow>
+                      {isExpanded && (
+                        <TableRow className="unifiedExpandedRow">
+                          <TableCell colSpan={11}>
+                            <ExpandedPanel
+                              row={row}
+                              domain={domain}
+                              editable={isRowEditable(state)}
+                              editing={state === "EDITING"}
+                              loadedAnalyzerId={loadedAnalyzers[key]}
+                              methods={methods}
+                              analyzers={analyzers}
+                              noteDraft={
+                                noteDrafts[key] || {
+                                  text: "",
+                                  visibility: "I",
+                                }
+                              }
+                              dilutionDraft={
+                                dilutionDrafts[key] || {
+                                  measuredValue: "",
+                                  factor: "",
+                                }
+                              }
+                              sectionLayout={sectionLayout}
+                              onSectionLayoutChange={setSectionLayout}
+                              onFieldChange={(field, value) =>
+                                handleFieldChange(row, field, value)
+                              }
+                              onValueChange={(field, value) =>
+                                handleValueChange(row, field, value)
+                              }
+                              onNoteDraftChange={(draft) =>
+                                setNoteDrafts((current) => ({
+                                  ...current,
+                                  [key]: draft,
+                                }))
+                              }
+                              onDilutionDraftChange={(draft) =>
+                                setDilutionDrafts((current) => ({
+                                  ...current,
+                                  [key]: draft,
+                                }))
+                              }
+                              allowResultRejection={allowResultRejection}
+                              nceOpen={nceOpenKey === key}
+                              onNceOpenChange={(open) => {
+                                setNceOpenKey(open ? key : null);
+                                setNceDisposition("NONE");
+                                setNceRejectReasonId("");
+                              }}
+                              referralOrganizations={referralOrganizations}
+                              referralReasons={referralReasons}
+                              referralDraft={referralDrafts[key] || null}
+                              onReferralDraftChange={(draft) =>
+                                handleReferralDraftChange(row, draft)
+                              }
+                              rejectReasons={rejectReasons}
+                              rejectDraft={rejectDrafts[key] || null}
+                              onRejectDraftChange={(draft) =>
+                                handleRejectDraftChange(row, draft)
+                              }
+                              interpretationDraft={
+                                interpretationDrafts[key] ?? null
+                              }
+                              onInterpretationDraftChange={(draft) =>
+                                handleInterpretationDraftChange(row, draft)
+                              }
+                              nceDisposition={nceDisposition}
+                              onNceDispositionChange={setNceDisposition}
+                              nceRejectReasonId={nceRejectReasonId}
+                              onNceRejectReasonChange={setNceRejectReasonId}
+                              onNceApplyDisposition={(disposition, reasonId) =>
+                                handleNceApplyDisposition(
+                                  row,
+                                  disposition,
+                                  reasonId,
+                                )
+                              }
+                              actions={
+                                <>
+                                  {showEdit(state) && (
+                                    <Button
+                                      kind="tertiary"
+                                      size="sm"
+                                      onClick={() => handleEdit(row)}
+                                    >
+                                      <FormattedMessage id="label.results.edit" />
+                                    </Button>
+                                  )}
+                                  {showSave(state) && (
+                                    <ESignatureButton
+                                      meaning={SignatureMeaning.AUTHORED}
+                                      context={`${intl.formatMessage({
+                                        id: "label.results.save",
+                                      })} ${row.accessionNumber} - ${row.testName}`}
+                                      recordType="RESULT"
+                                      recordId={row.analysisId}
+                                      onSign={() => handleSave(row)}
+                                      size="sm"
+                                    >
+                                      <FormattedMessage id="label.results.save" />
+                                    </ESignatureButton>
+                                  )}
+                                </>
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
                       {stale && (
                         <TableRow>
-                          <TableCell colSpan={6}>
+                          <TableCell colSpan={11}>
                             <InlineNotification
                               kind="error"
                               hideCloseButton

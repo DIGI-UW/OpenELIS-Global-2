@@ -1,5 +1,6 @@
 package org.openelisglobal.eqa.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,7 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/rest")
 @PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
-public class EQAAlertRestController {
+public class EQAAlertRestController extends ControllerUtills {
 
     @Autowired
     private AlertService alertService;
@@ -90,9 +92,16 @@ public class EQAAlertRestController {
         return ResponseEntity.ok(summary);
     }
 
-    @PutMapping(value = "/alerts/{id}/acknowledge", produces = MediaType.APPLICATION_JSON_VALUE)
+    /**
+     * Dashboard acknowledge: acknowledges and, when a comment is supplied, resolves
+     * in one step. Lives under /alerts/dashboard so it can't collide with
+     * AlertRestController's generic ack-only PUT /alerts/{id}/acknowledge — the two
+     * previously shared a path and Spring's pick depended on the Accept header
+     * (OGC-1022).
+     */
+    @PutMapping(value = "/alerts/dashboard/{id}/acknowledge", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> acknowledgeAlert(@PathVariable Long id,
-            @RequestBody(required = false) Map<String, String> body) {
+            @RequestBody(required = false) Map<String, String> body, HttpServletRequest request) {
 
         Alert target;
         try {
@@ -105,19 +114,22 @@ public class EQAAlertRestController {
             return ResponseEntity.notFound().build();
         }
 
-        if (target.getSeverity() == AlertSeverity.CRITICAL) {
-            if (body == null || body.get("comment") == null || body.get("comment").trim().isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Resolution comment is required for critical alerts"));
-            }
+        // the dashboard sends the text under "notes"; older callers used "comment"
+        String comment = body != null ? (body.get("comment") != null ? body.get("comment") : body.get("notes")) : null;
+
+        if (target.getSeverity() == AlertSeverity.CRITICAL && (comment == null || comment.trim().isEmpty())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Resolution comment is required for critical alerts"));
         }
 
-        String comment = body != null ? body.get("comment") : null;
+        // acknowledgeAlert/resolveAlert resolve the user by id and NPE on null —
+        // the acknowledging user comes from the session, as in AlertRestController
+        Integer userId = Integer.valueOf(getSysUserId(request));
         if (target.getStatus() == AlertStatus.OPEN) {
-            alertService.acknowledgeAlert(id, null);
+            alertService.acknowledgeAlert(id, userId);
         }
         if (comment != null && !comment.trim().isEmpty()) {
-            alertService.resolveAlert(id, null, comment);
+            alertService.resolveAlert(id, userId, comment);
         }
 
         return ResponseEntity.ok(Map.of("status", "acknowledged"));

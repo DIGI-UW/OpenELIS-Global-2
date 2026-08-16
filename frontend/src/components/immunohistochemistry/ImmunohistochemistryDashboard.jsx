@@ -281,7 +281,13 @@ function ImmunohistochemistryDashboard() {
     };
   }, [filters]);
 
-  let breadcrumbs = [{ label: "home.label", link: "/" }];
+  let breadcrumbs = [
+    { label: "home.label", link: "/" },
+    {
+      label: "immunohistochemistry.label.dashboard",
+      link: "/ImmunohistochemistryDashboard",
+    },
+  ];
 
   return (
     <>

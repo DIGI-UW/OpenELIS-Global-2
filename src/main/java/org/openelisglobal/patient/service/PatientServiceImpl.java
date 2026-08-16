@@ -19,6 +19,7 @@ import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.gender.service.GenderService;
 import org.openelisglobal.gender.valueholder.Gender;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
+import org.openelisglobal.patient.action.bean.PatientIdDocumentInfo;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.util.PatientUtil;
@@ -94,6 +95,10 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
 
     @Autowired
     private PatientContactService patientContactService;
+    @Autowired
+    private PatientPhotoService patientPhotoService;
+    @Autowired
+    private PatientIdDocumentService patientIdDocumentService;
 
     @PostConstruct
     public void initializeGlobalVariables() {
@@ -602,6 +607,22 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     public List<String> getPatientIdentityBySampleStatusIdAndProject(List<Integer> inclusiveStatusIdList,
             String study) {
         return getBaseObjectDAO().getPatientIdentityBySampleStatusIdAndProject(inclusiveStatusIdList, study);
+    }
+
+    @Override
+    @Transactional
+    public void persistPatientDataWithAttachments(PatientManagementInfo patientInfo, Patient patient,
+            String sysUserId) {
+        persistPatientData(patientInfo, patient, sysUserId);
+        patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto(), sysUserId);
+        if (patientInfo.getIdDocuments() != null) {
+            for (PatientIdDocumentInfo document : patientInfo.getIdDocuments()) {
+                if (document.getId() == null && document.getData() != null) {
+                    patientIdDocumentService.saveDocument(patient.getId(), document.getData(), document.getCategory(),
+                            document.getDescription(), sysUserId);
+                }
+            }
+        }
     }
 
     @Override

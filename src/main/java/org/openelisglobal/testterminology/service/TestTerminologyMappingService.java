@@ -37,4 +37,16 @@ public interface TestTerminologyMappingService extends BaseObjectService<TestTer
      * specimen-scoped mapping exists (or no specimen is given).
      */
     List<TestTerminologyMapping> getActiveMappingsForCode(String source, String code, String sampleTypeId);
+
+    /**
+     * Test ids carrying at least one active mapping for {@code source}, in any
+     * scope — whole test, a component, or one specimen. One query, so a catalog
+     * listing can decorate every row without a per-test lookup.
+     */
+    java.util.Set<String> getTestIdsWithActiveSource(String source);
+
+    /**
+     * Whether this test has any active mapping for {@code source}, in any scope.
+     */
+    boolean hasActiveMappingForSource(String testId, String source);
 }

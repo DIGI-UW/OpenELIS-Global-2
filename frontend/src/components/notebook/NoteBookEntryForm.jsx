@@ -58,6 +58,7 @@ const NoteBookEntryForm = () => {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
+    { label: "notebook.label.entry", link: "" },
   ];
 
   const MODES = Object.freeze({

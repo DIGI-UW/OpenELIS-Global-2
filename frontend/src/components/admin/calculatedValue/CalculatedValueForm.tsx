@@ -102,7 +102,17 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   useEffect(() => {
     getFromOpenElisServer("/rest/displayList/SAMPLE_TYPE_ACTIVE", fetchSamples);
-    getFromOpenElisServer("/rest/test-calculations", loadCalculationList);
+    // A link from the Test Editor names one calculation, so fetch just that one
+    // instead of the whole collection.
+    const selectedCalculationId = new URLSearchParams(
+      window.location.search,
+    ).get("id");
+    getFromOpenElisServer(
+      selectedCalculationId
+        ? `/rest/test-calculations?id=${encodeURIComponent(selectedCalculationId)}`
+        : "/rest/test-calculations",
+      loadCalculationList,
+    );
     getFromOpenElisServer("/rest/math-functions", loadMathFunctions);
 
     return () => {
@@ -191,6 +201,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
         id: null,
         order: null,
         type: "TEST_RESULT",
+        componentId: null,
         value: null,
         sampleId: null,
       },
@@ -294,9 +305,12 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     }
     switch (field) {
       case "TEST_RESULT":
-        results[field][index][item_index] = resultList.filter(
-          (result) => result.resultType === "N",
-        );
+        // A test qualifies when any of its components reports a number. Asking
+        // the test itself returns its primary component's type, which hid
+        // every test whose numeric parts sit under a coded primary - COVID-19
+        // PCR reporting an interpretation beside two Ct values.
+        results[field][index][item_index] =
+          resultList.filter(hasNumericComponent);
         break;
       case "FINAL_RESULT":
         results[field][index] = resultList;
@@ -317,8 +331,22 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   function handleTestSelection(id: number, index: number) {
     const list = [...calculationList];
     list[index].testId = id;
+    // A new resulting test invalidates the component chosen under the old one.
+    list[index].componentId = null;
     setCalculationList(list);
   }
+
+  /** A test is usable here when any component of it reports a number. */
+  const hasNumericComponent = (test: any) =>
+    Array.isArray(test?.resultTypes) && test.resultTypes.length
+      ? test.resultTypes.includes("N")
+      : test?.resultType === "N";
+
+  /** Only the components that report a number may be chosen as the operand. */
+  const numericComponents = (test: any) =>
+    (test?.components || [])
+      .filter((c: any) => (c.resultType || test?.resultType) === "N")
+      .map((c: any) => ({ id: c.id, value: c.value }));
 
   function handleOperationTestSelection(
     id: number,
@@ -327,8 +355,36 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   ) {
     const list = [...calculationList];
     list[index].operations[operationIndex].value = id;
+    // Changing the test invalidates the component chosen under the old one.
+    list[index].operations[operationIndex].componentId = null;
     setCalculationList(list);
   }
+
+  /**
+   * The numeric components of the operand's test, read from the test the search
+   * already returned. Deriving it here means an existing calculation resolves
+   * its component on load too, rather than only after the user re-picks a test.
+   */
+  const destinationComponentsFor = (index: number) => {
+    const tests = sampleTestList["FINAL_RESULT"][index] || [];
+    const calculation = calculationList[index];
+    const test = tests.find(
+      (t: any) => String(t.id) === String(calculation?.testId),
+    );
+    return numericComponents(test);
+  };
+
+  const operandComponentsFor = (index: number, operationIndex: number) => {
+    const tests =
+      (sampleTestList["TEST_RESULT"][index] &&
+        sampleTestList["TEST_RESULT"][index][operationIndex]) ||
+      [];
+    const operand = calculationList[index]?.operations?.[operationIndex];
+    const test = tests.find(
+      (t: any) => String(t.id) === String(operand?.value),
+    );
+    return numericComponents(test);
+  };
 
   const handleCalculationFieldChange = (e: any, index: number) => {
     const { name, value } = e.target;
@@ -409,10 +465,31 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     try {
       // Code that might throw an error
       eval(mathematicalOperation);
-      console.log(JSON.stringify(calculationList[index]));
+      // Same as the reflex builder: the pickers display a default component,
+      // and the calculation has to carry the one it is displaying rather than
+      // save against none.
+      const calculation = {
+        ...calculationList[index],
+        componentId:
+          calculationList[index].componentId ||
+          destinationComponentsFor(index)[0]?.id ||
+          null,
+        operations: (calculationList[index].operations || []).map(
+          (operation: any, operationIndex: number) =>
+            operation.type === "TEST_RESULT"
+              ? {
+                  ...operation,
+                  componentId:
+                    operation.componentId ||
+                    operandComponentsFor(index, operationIndex)[0]?.id ||
+                    null,
+                }
+              : operation,
+        ),
+      };
       postToOpenElisServer(
         "/rest/test-calculation",
-        JSON.stringify(calculationList[index]),
+        JSON.stringify(calculation),
         (status) => handleCalculationSubmited(status, index),
       );
     } catch (error) {
@@ -431,10 +508,10 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     operation: OperationModel,
   ) {
     switch (type) {
-      case "TEST_RESULT":
+      case "TEST_RESULT": {
         return (
           <>
-            <Column lg={5} md={2} sm={1}>
+            <Column lg={4} md={2} sm={1}>
               <Select
                 data-cy="add-sample"
                 id={index + "_" + operationIndex + "_sample"}
@@ -463,7 +540,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 ))}
               </Select>
             </Column>
-            <Column lg={5} md={2} sm={1}>
+            <Column lg={3} md={2} sm={1}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}
                 label={
@@ -481,8 +558,40 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 }
               ></AutoComplete>
             </Column>
+            <Column lg={3} md={2} sm={1}>
+              <Select
+                id={index + "_" + operationIndex + "_component"}
+                name="componentId"
+                labelText={
+                  <FormattedMessage id="testcalculation.label.selectComponent" />
+                }
+                value={
+                  operation.componentId ||
+                  operandComponentsFor(index, operationIndex)[0]?.id ||
+                  ""
+                }
+                disabled={
+                  operandComponentsFor(index, operationIndex).length === 0
+                }
+                onChange={(e) =>
+                  handleOperationFieldChange(e, index, operationIndex)
+                }
+              >
+                <SelectItem text="" value="" />
+                {operandComponentsFor(index, operationIndex).map(
+                  (component: any, c_index: number) => (
+                    <SelectItem
+                      text={component.value}
+                      value={component.id}
+                      key={c_index}
+                    />
+                  ),
+                )}
+              </Select>
+            </Column>
           </>
         );
+      }
       case "MATH_FUNCTION":
         return (
           <>
@@ -953,7 +1062,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 <FormattedMessage id="testcalculation.label.finalresult" />
                               </h6>
                             </Column>
-                            <Column lg={4}>
+                            <Column lg={3} md={2} sm={4}>
                               <Select
                                 data-cy="calc-sample"
                                 id={index + "_sample"}
@@ -987,7 +1096,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 ))}
                               </Select>
                             </Column>
-                            <Column lg={4}>
+                            <Column lg={4} md={2} sm={4}>
                               <AutoComplete
                                 id={index + "_finalresult"}
                                 class="inputText"
@@ -1006,7 +1115,42 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 }
                               ></AutoComplete>
                             </Column>
-                            <Column lg={4}>
+                            <Column lg={3} md={2} sm={4}>
+                              <Select
+                                id={index + "_finalcomponent"}
+                                name="componentId"
+                                labelText={
+                                  <FormattedMessage id="testcalculation.label.finalComponent" />
+                                }
+                                value={
+                                  calculation.componentId ||
+                                  destinationComponentsFor(index)[0]?.id ||
+                                  ""
+                                }
+                                disabled={
+                                  destinationComponentsFor(index).length === 0
+                                }
+                                onChange={(e) =>
+                                  handleCalculationFieldChange(e, index)
+                                }
+                                required
+                              >
+                                {!calculation.componentId &&
+                                  !destinationComponentsFor(index).length && (
+                                    <SelectItem text="" value="" />
+                                  )}
+                                {destinationComponentsFor(index).map(
+                                  (component: any, c_index: number) => (
+                                    <SelectItem
+                                      text={component.value}
+                                      value={component.id}
+                                      key={c_index}
+                                    />
+                                  ),
+                                )}
+                              </Select>
+                            </Column>
+                            <Column lg={3} md={1} sm={4}>
                               {sampleTestList["FINAL_RESULT"][index] && (
                                 <>
                                   {getResultInputByResultType(
@@ -1021,7 +1165,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 </>
                               )}
                             </Column>
-                            <Column lg={4}>
+                            <Column lg={3} md={1} sm={4}>
                               <TextArea
                                 name="note"
                                 id={index + "_note"}

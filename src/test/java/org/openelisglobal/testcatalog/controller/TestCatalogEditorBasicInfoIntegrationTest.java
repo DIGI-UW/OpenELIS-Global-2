@@ -222,9 +222,31 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         BasicInfo on = new BasicInfo();
         on.active = true;
         ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), on, authedRequest());
-        assertEquals(200, resp.getStatusCode().value());
+        // The request is refused rather than answered 200 and dropped: a caller that
+        // asked for activation and got a success it did not receive has no way to
+        // notice the flag never moved.
+        assertEquals(409, resp.getStatusCode().value());
         assertTrue("basic-info must not bypass the activation coverage gate",
                 !testService.getTestById(String.valueOf(TEST_ID)).isActive());
+    }
+
+    /**
+     * Re-sending active=true for a test that is already active is not a change, so
+     * a client round-tripping the whole form must still be accepted.
+     */
+    @org.junit.Test
+    public void basicInfo_acceptsActiveTrueWhenTheTestIsAlreadyActive() {
+        BasicInfo on = new BasicInfo();
+        on.active = true;
+        on.description = "still active";
+        assertTrue(testService.getTestById(String.valueOf(TEST_ID)).isActive());
+
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), on, authedRequest());
+
+        assertEquals(200, resp.getStatusCode().value());
+        Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        assertTrue(reloaded.isActive());
+        assertEquals("still active", reloaded.getDescription());
     }
 
     @org.junit.Test
