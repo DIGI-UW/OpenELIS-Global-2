@@ -121,6 +121,15 @@ class DevStackContractTest(unittest.TestCase):
             ),
         )
 
+    def test_submodule_bootstrap_repairs_empty_checkouts_without_forcing_dirty_ones(self):
+        repair_mode = self.dev_stack.submodule_repair_mode
+
+        self.assertEqual(repair_mode("expected", "actual", " D file", False), "force")
+        self.assertEqual(repair_mode("expected", "actual", "", True), "checkout")
+        self.assertIsNone(repair_mode("expected", "expected", "", True))
+        with self.assertRaisesRegex(RuntimeError, "local changes"):
+            repair_mode("expected", "actual", " M file", True)
+
     def test_frontend_build_override_is_deterministic(self):
         context = self.dev_stack.make_context(REPO_ROOT)
 
