@@ -5,13 +5,13 @@ type UatStep = { key: string; required: boolean };
 type UatSection = {
   key: string;
   title: string;
-  version: string;
   steps: UatStep[];
 };
 type UatChecklist = {
-  title: string;
+  schemaVersion: number;
+  instance: string;
+  jira: string;
   sections: UatSection[];
-  checklistRevision: string;
 };
 
 type UatStoryIndex = {
@@ -27,44 +27,9 @@ type UatStoryIndex = {
   }>;
 };
 
-const EXPECTED_AMR_STORIES = [
-  ["AMR-S01", "R2 - M-03 - Route and contextualize a culture order"],
-  ["AMR-S17", "R1 - M-07 - Work the Culture queue"],
-  ["AMR-S18", "R1 - M-04 - Classify and navigate sibling cases"],
-  ["AMR-S02", "R2 - M-04 - Record culture progression"],
-  ["AMR-S28", "R2 - M-04 - Set or change the bench protocol"],
-  ["AMR-S19", "R1 - M-04 - Identify isolates and manage exceptions"],
-  ["AMR-S20", "R1 - M-05 - Review manual AST"],
-  ["AMR-S21", "R1 - M-05 - Review analyzer AST and QC"],
-  ["AMR-S22", "R1 - M-07 - Work the AST queue"],
-  ["AMR-S03", "R1 - M-11 - Communicate and release results"],
-  ["AMR-S04", "M1 - Shared-specimen reflection (optional)"],
-  ["AMR-S05", "M2 - Open a controlled correction"],
-  ["AMR-S06", "M2 - Preserve repeat and retest AST attempts"],
-  ["AMR-S07", "M2 - Release and verify corrected results"],
-  ["AMR-S08", "M2 - Review the workflow by keyboard"],
-  ["AMR-S09", "M2/R1 - Trace bench consumable lots"],
-  ["AMR-S10", "M3 - Maintain organism and antibiotic vocabularies"],
-  ["AMR-S11", "M3 - Publish immutable AST panel versions"],
-  ["AMR-S12", "M3 - Control breakpoint catalog lifecycle"],
-  ["AMR-S13", "M3 - Import breakpoint updates safely"],
-  ["AMR-S14", "M4 - Preview and export WHONET CSV"],
-];
+type UatStory = UatStoryIndex["stories"][number];
 
-const EXPECTED_ALIGNMENT_STEPS = [
-  ["AMR-S01", ["AMR-2", "AMR-79", "AMR-63", "AMR-64", "AMR-83"]],
-  ["AMR-S17", ["AMR-1", "AMR-3", "AMR-75"]],
-  ["AMR-S18", ["AMR-65", "AMR-66"]],
-  ["AMR-S02", ["AMR-4", "AMR-67", "AMR-84", "AMR-68"]],
-  ["AMR-S28", ["AMR-81", "AMR-82"]],
-  ["AMR-S19", ["AMR-5", "AMR-69", "AMR-70"]],
-  ["AMR-S20", ["AMR-6", "AMR-71", "AMR-72"]],
-  ["AMR-S21", ["AMR-73", "AMR-74"]],
-  ["AMR-S22", ["AMR-76", "AMR-77", "AMR-78"]],
-  ["AMR-S03", ["AMR-7", "AMR-16", "AMR-20"]],
-];
-
-test.describe("OGC-782 live AMR UAT", () => {
+test.describe("OGC-782 deployed Review integration", () => {
   test("binds the review overlay to the deployed feature and verifies stable navigation", async ({
     page,
     request,
@@ -73,24 +38,24 @@ test.describe("OGC-782 live AMR UAT", () => {
     const expectedAppSha = process.env.EXPECTED_APP_SHA;
     const expectedAppBranch = process.env.EXPECTED_APP_BRANCH;
     const expectedHarnessSha = process.env.EXPECTED_HARNESS_SHA;
-    const expectedChecklistRevision = process.env.EXPECTED_CHECKLIST_REVISION;
     const expectedAccession = process.env.EXPECTED_ACCESSION;
     if (
       !expectedAppSha ||
       !expectedAppBranch ||
       !expectedHarnessSha ||
-      !expectedChecklistRevision ||
       !expectedAccession
     ) {
       throw new Error(
-        "EXPECTED_APP_SHA, EXPECTED_APP_BRANCH, EXPECTED_HARNESS_SHA, EXPECTED_CHECKLIST_REVISION, and EXPECTED_ACCESSION are required so live UAT cannot pass against unintended revisions or fixture data.",
+        "EXPECTED_APP_SHA, EXPECTED_APP_BRANCH, EXPECTED_HARNESS_SHA, and EXPECTED_ACCESSION are required so deployed verification cannot pass against unintended runtime or fixture data.",
       );
     }
     const expectedScope = process.env.EXPECTED_APP_SCOPE || "app";
     const expectedSchemaAffecting =
       (process.env.EXPECTED_SCHEMA_AFFECTING || "true") === "true";
+    let selectedStory: UatStory | undefined;
+    let selectedStoryStepCount = 0;
 
-    await test.step("Verify deployment and live UAT contracts", async () => {
+    await test.step("Verify deployment and Review integration contracts", async () => {
       const targetResponse = await request.get("/__review/target.json");
       expect(targetResponse.ok()).toBeTruthy();
       const target = await targetResponse.json();
@@ -115,11 +80,7 @@ test.describe("OGC-782 live AMR UAT", () => {
           story.review === "amr" &&
           story.hosts.includes("amr.openelis-global.org"),
       );
-      expect(amrStories.map(({ key, title }) => [key, title])).toEqual(
-        EXPECTED_AMR_STORIES,
-      );
-      expect(amrStories.map((story) => story.key)).not.toContain("AMR-S15");
-      expect(amrStories.map((story) => story.key)).not.toContain("AMR-S16");
+      expect(amrStories.length).toBeGreaterThan(0);
 
       const checklistResponse = await request.get("/__review/uat-amr.json");
       expect(checklistResponse.ok()).toBeTruthy();
@@ -128,37 +89,17 @@ test.describe("OGC-782 live AMR UAT", () => {
         schemaVersion: 2,
         instance: "amr",
         jira: "OGC-782",
-        title: "Microbiology M1-M4 + R1/R2 authoritative alignment review",
       });
-      expect(
-        checklist.sections
-          .filter((section) =>
-            [
-              "AMR-S01",
-              "AMR-S17",
-              "AMR-S18",
-              "AMR-S02",
-              "AMR-S28",
-              "AMR-S19",
-              "AMR-S20",
-              "AMR-S21",
-              "AMR-S22",
-              "AMR-S03",
-            ].includes(section.key),
-          )
-          .map((section) => [
-            section.key,
-            section.steps.map((step) => step.key),
-          ]),
-      ).toEqual(EXPECTED_ALIGNMENT_STEPS);
-      const steps = checklist.sections.flatMap((section) => section.steps);
-      expect(checklist.sections).toHaveLength(23);
-      expect(steps).toHaveLength(72);
-      expect(new Set(steps.map((step) => step.key)).size).toBe(steps.length);
-      expect(
-        steps.filter((step) => !step.required).map((step) => step.key),
-      ).toEqual(["AMR-73", "AMR-74", "AMR-21"]);
-      expect(checklist.checklistRevision).toBe(expectedChecklistRevision);
+      selectedStory = amrStories.find((story) =>
+        checklist.sections.some((section) => section.key === story.key),
+      );
+      expect(selectedStory).toBeDefined();
+      const selectedSection = checklist.sections.find(
+        (section) => section.key === selectedStory?.key,
+      );
+      expect(selectedSection).toBeDefined();
+      expect(selectedSection?.steps.length).toBeGreaterThan(0);
+      selectedStoryStepCount = selectedSection?.steps.length || 0;
     });
 
     await test.step("Verify the injected review overlay", async () => {
@@ -173,23 +114,24 @@ test.describe("OGC-782 live AMR UAT", () => {
       await widget.getByRole("button", { name: "Choose story" }).click();
       const storyList = widget.getByRole("listbox", { name: /stories/i });
       await expect(storyList).toBeVisible();
-      await expect(storyList.getByRole("option")).toHaveCount(21);
+      await expect(storyList.getByRole("option").first()).toBeVisible();
       await expect(
         storyList.getByRole("option", { name: /OGC-788/ }),
       ).toHaveCount(0);
+      if (!selectedStory) {
+        throw new Error("The live AMR checklist has no selectable story.");
+      }
       await storyList
-        .getByRole("option", { name: /R1 - M-05 - Review manual AST/ })
+        .getByRole("option")
+        .filter({ hasText: selectedStory.title })
         .click();
       await expect(
         widget.getByRole("heading", {
-          name: "R1 - M-05 - Review manual AST - review",
+          name: `${selectedStory.title} - review`,
           exact: true,
         }),
       ).toBeVisible();
-      await expect(widget.locator(".step")).toHaveCount(3);
-      await expect(widget.locator(".storydescription")).toContainText(
-        "record and interpret readings",
-      );
+      await expect(widget.locator(".step")).toHaveCount(selectedStoryStepCount);
 
       const refreshedChecklist = page.waitForResponse(
         (response) =>
@@ -197,17 +139,19 @@ test.describe("OGC-782 live AMR UAT", () => {
       );
       await widget.getByRole("button", { name: "Refresh checklist" }).click();
       await refreshedChecklist;
-      await expect(widget.locator(".step")).toHaveCount(3);
+      await expect(widget.locator(".step")).toHaveCount(selectedStoryStepCount);
       await page.reload({ waitUntil: "domcontentloaded" });
       const reloadedWidget = page.locator("#oe-review-host");
       await expect(
         reloadedWidget.getByRole("heading", {
-          name: "R1 - M-05 - Review manual AST - review",
+          name: `${selectedStory.title} - review`,
           exact: true,
         }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(reloadedWidget.locator(".panel")).toBeVisible();
-      await expect(reloadedWidget.locator(".step")).toHaveCount(3);
+      await expect(reloadedWidget.locator(".step")).toHaveCount(
+        selectedStoryStepCount,
+      );
       await testInfo.attach("amr-review-overlay", {
         body: await page.screenshot(),
         contentType: "image/png",

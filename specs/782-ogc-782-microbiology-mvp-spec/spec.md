@@ -2,27 +2,31 @@
 
 **Feature Branch**: `spec/782-ogc-782-microbiology-mvp-spec`
 **Created**: 2026-06-27
-**Status**: R1 stabilization and R2 authoritative M-03/M-04 alignment are
-implemented; R2 automated and deployed verification pass; human UAT remains
-pending
+**Lifecycle**: Active
 **Input**: User description: "Create a microbiology-specific feature spec that
-distills the important product behavior from the authoritative OpenELIS Work
-specs and mocks; reference the proper files; make the behavior crystal clear
+distills the important product behavior from the OpenELIS Work specs and mocks;
+reference the proper files; make the behavior crystal clear
 for planning and implementation without letting product artifacts mandate
 technical implementation details."
 
-## Source References
+## Authority And References
 
-This feature spec is the product-facing distillation for planning. OpenELIS
-Work at
-[`bf51582766ea`](https://github.com/DIGI-UW/openelis-work/commit/bf51582766eaf4048dcf83a4810a3cd32a975ad5)
-is the pinned product authority for this remediation. Table names, service
-names, schemas, and component or route suggestions inside those artifacts are
-not binding technical requirements.
+The durable authority chain is:
 
-- Confluence narrative: [Microbiology Module - Workflow Walk-through](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256)
+1. Repository-owned feature and engineering specifications in this directory.
+2. [`tasks.md`](./tasks.md), the single execution roadmap and only delivery
+   status document for OGC-782.
+3. OpenELIS Work for functional requirements, workflows, mocks, and visual
+   intent only.
+
+OpenELIS Work does not define implementation architecture or delivery status.
+Its table names, service names, schemas, routes, and component suggestions are
+non-binding. When its functional intent changes, this specification is
+reconciled before implementation proceeds; repository files do not copy source
+commits, checklist revisions, or other short-lived metadata.
+
 - Public design bundle:
-  [openelis-work/designs/microbiology](https://github.com/DIGI-UW/openelis-work/tree/bf51582766eaf4048dcf83a4810a3cd32a975ad5/designs/microbiology)
+  [openelis-work/designs/microbiology](https://github.com/DIGI-UW/openelis-work/tree/main/designs/microbiology)
 - M-00 parent:
   [m-00-micro-module-parent.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-00-micro-module-parent.md)
 - M-01 reference data:
@@ -32,10 +36,11 @@ not binding technical requirements.
   [m-02-breakpoint-catalog.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-02-breakpoint-catalog.md),
   [Breakpoint Catalog visual mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-02-breakpoint-catalog.html)
 - M-03 order entry hook:
-  [m-03-order-entry-micro-hook.md](https://github.com/DIGI-UW/openelis-work/blob/bf51582766eaf4048dcf83a4810a3cd32a975ad5/designs/microbiology/m-03-order-entry-micro-hook.md),
-  [Step 1 visual mock](https://github.com/DIGI-UW/openelis-work/blob/bf51582766eaf4048dcf83a4810a3cd32a975ad5/designs/microbiology/m-03-order-entry-step1.html)
+  [m-03-order-entry-micro-hook.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-03-order-entry-micro-hook.md),
+  [Step 1 visual mock](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-03-order-entry-step1.html)
 - M-04 case workbench:
-  [m-04-case-workbench-core.md](https://github.com/DIGI-UW/openelis-work/blob/bf51582766eaf4048dcf83a4810a3cd32a975ad5/designs/microbiology/m-04-case-workbench-core.md)
+  [m-04-case-workbench-core.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-04-case-workbench-core.md),
+  [interactive prototype](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-04-case-workbench-prototype.html)
 - M-05 AST entry and interpretation:
   [m-05-ast-entry-and-interpretation.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-05-ast-entry-and-interpretation.md)
 - M-07 worklist:
@@ -52,31 +57,27 @@ not binding technical requirements.
   [m-nfr-non-functional-requirements.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-nfr-non-functional-requirements.md)
 - Local engineering crosswalk:
   `specs/roadmaps/analyzer-microbiology-engineering-crosswalk.md`
-- Local product cleanup list:
-  `specs/roadmaps/microbiology-spec-health-cleanup-list.md`
-- Authoritative alignment and complete guided-workflow crosswalk:
-  `evidence/openelis-work-authoritative-alignment-2026-08-05.md`
 
 ## Interpretation Rules for Planning
 
 - This spec defines product behavior and acceptance expectations.
-- Detailed M-\* source files and visual mocks are authoritative for actors,
-  workflow order, information shown or captured, control meaning,
+- Detailed M-\* source files and visual mocks provide the source intent for
+  actors, workflow order, information shown or captured, control meaning,
   requiredness, defaults, state transitions, and observable acceptance
-  behavior.
+  behavior. This specification records the behavior adopted by the product.
 - Planning and tasks may choose table names, service boundaries, API shapes,
   routes, migrations, and reuse points, but those choices should not be treated
   as Casey-owned product requirements.
 - Mockups do not prescribe schema, API, route names, or component structure.
-  They do prescribe visible workflow intent unless a deviation is explicitly
-  ruled and recorded.
+  They guide visible workflow intent; any discrepancy is reconciled into this
+  specification before implementation.
 
 ## MVP Scope Ruling
 
-This feature keeps `782` as its traceability number. PR #3789 is the initial
-routine-bacteriology implementation slice across M-03, M-04, M-05, M-07, and
-M-11 outcomes; it is not the complete microbiology module. Follow-on branches
-remain unaccepted until their own evidence and human UAT gates pass.
+This feature keeps `782` as its traceability number. The first product boundary
+is a complete routine-bacteriology path across M-03, M-04, M-05, M-07, and
+M-11 outcomes; it is not the complete microbiology module. Delivery state and
+the ordered follow-on slices live only in `tasks.md`.
 
 The merge-blocking MVP is routine bacteriology order routing and order details,
 case work, isolate identification, manual AST, worklist navigation, critical
@@ -189,6 +190,13 @@ confirming the case shows the next required action.
    when.
 8. **Given** the case is final, **When** a technologist tries to change its
    protocol, **Then** the action is blocked and the amendment path is required.
+9. **Given** incubation is complete with no observed growth, **When** a
+   technologist records no growth, **Then** the system audits the bench outcome,
+   makes the case ready for review, and does not publish a patient result.
+10. **Given** no growth has been recorded, **When** an authorized reviewer
+    separately reviews and releases the final negative report, **Then** the
+    patient result is published and the case is locked against further bench
+    mutation.
 
 ---
 
@@ -298,7 +306,9 @@ requirements for microbiology.
 
 **Independent Test**: Can be tested by logging a critical communication,
 releasing a preliminary report from an eligible case, and confirming final
-release is blocked until readiness requirements are met.
+release is blocked until readiness requirements are met. The no-growth path is
+tested by proving the bench outcome and final negative release are separate
+actions.
 
 **Acceptance Scenarios**:
 
@@ -311,6 +321,11 @@ release is blocked until readiness requirements are met.
 3. **Given** final release is attempted, **When** required isolate, AST, review,
    or critical follow-up work is incomplete, **Then** the system blocks final
    release and explains what remains.
+4. **Given** a technologist records no growth after incubation, **When** the
+   case becomes ready for review, **Then** no patient result has been released.
+5. **Given** that no-growth outcome is ready for review, **When** an authorized
+   reviewer releases the final negative report, **Then** the report is visible
+   in the patient result path and the finalized case is locked.
 
 ---
 
@@ -386,8 +401,11 @@ or missing mapping for export.
 - **FR-004**: Users MUST be able to open a microbiology case and understand the
   current workflow, specimen context, stage, next action, and prior activity.
 - **FR-005**: Users MUST be able to record culture setup, incubation progress,
-  positive or growth observations, no-growth finalization, and specimen-loss or
-  rejection events.
+  positive or growth observations, a no-growth bench outcome, and specimen-loss
+  or rejection events. Recording no growth MUST be audited, MUST make the case
+  ready for review, and MUST NOT publish a patient result. An authorized
+  reviewer MUST separately release the final negative report; that release
+  publishes the result and locks the case.
 - **FR-006**: Users MUST be able to record preliminary isolate work-up from Gram
   stain and colony morphology, then identify the organism with method,
   confidence, and clinical significance while clearly distinguishing pending
@@ -425,7 +443,8 @@ or missing mapping for export.
 - **FR-015**: Users MUST be able to release preliminary reports when reportable
   culture observations or isolate work-up are available, including Gram stain
   and colony morphology before organism identification, and final reports only
-  when readiness checks pass.
+  when readiness checks pass. A recorded no-growth outcome is reportable only
+  through the separate authorized final-negative review and release action.
 - **FR-016**: Users MUST be able to report a nonconformance from the case with
   the specimen context already identified, choose whether to flag or reject
   affected work, and use a dedicated Mark Lost action that records the event,
@@ -476,69 +495,30 @@ or missing mapping for export.
   made after connectivity is lost MUST not be silently discarded, and a user
   MUST be able to resolve a conflict explicitly after reconnection.
 - **FR-030**: Automated accessibility and performance evidence MUST identify
-  the exact application revision and realistic data volume tested. Automated
-  scans do not replace deployed review or human acceptance.
+  the environment, realistic data volume, and measurement boundary used.
+  Automated scans do not replace deployed review or human acceptance.
 - **FR-031**: Only users authorized for microbiology bench work may view or
   change case data. Final release and amendment actions require a
   supervisor-capable user, and the identity recorded for any action MUST come
   from the signed-in session rather than submitted form data.
 
-### Historical Initial-MVP Deferrals And Current Status
+### Scope Boundaries
 
-These outcomes remain valid module goals but are not acceptance criteria for
-PR #3789:
+These outcomes remain valid module goals but are delivered through later
+roadmap slices rather than being implied by the routine-bacteriology boundary:
 
-- **V2-001**: Preserve versioned report history when a final case is amended or
-  reidentified. The initial MVP locked final cases; the follow-on clinical
-  completeness branch implemented a first amendment path, and R1 must close
-  the remaining authoritative amendment/re-identification drift.
-- **V2-002**: Link reagent/card lots and richer multi-row AST run metadata. The
-  follow-on clinical completeness branch implemented a first traceability
-  slice; R1 must close the remaining M-05/M-12 provenance and safety gaps.
-- **V2-003**: Complete WHONET interoperability beyond the first manual-export
-  slice, including authoritative wide-format/profile packaging, remaining
-  vocabulary mappings, scheduling, and delivery.
-- **V2-004**: Provide operational TB, expert-rule, antibiogram, and GLASS
-  workflows.
-- **V2-005**: Review analyzer-ingested AST results with mandatory human review
-  before final reporting. This is promoted into R1 because the authoritative
-  M-05 acceptance path includes analyzer and QC review states.
+- Versioned amendment and re-identification history.
+- Repeat/retest AST metadata and complete reagent/card-lot traceability.
+- Reference-data and mapping administration.
+- Complete WHONET packaging, scheduling, and delivery.
+- Analyzer-result review and QC workflow.
+- Expert rules, operational TB, antibiograms, and GLASS reporting.
+- Shared Macro Library integration; Macro authoring and administration remain a
+  separate product capability.
+- Accessibility, representative-volume performance, and shared offline/conflict
+  behavior qualification.
 
-Follow-up status: branch
-`feat/782-ogc-782-microbiology-m8-clinical-completeness` implements and
-qualifies V2-001 plus repeat/retest AST and policy-neutral reagent/card-lot
-traceability from V2-002. The required/optional/substitute policy remains open
-because existing Test Catalog roles cannot safely supply it. This status note
-does not change PR #3789's historical MVP acceptance boundary; none of the
-follow-up behavior is claimed as part of that milestone until its own branch is
-merged.
-
-Branch `feat/782-ogc-782-microbiology-m9-reference-mapping-admin` implements the
-M-01/M-02 administration slice: organism and antibiotic vocabularies, immutable
-AST panel versions, culture defaults on the existing Method vocabulary,
-breakpoint lifecycle, protected local corrections, and guarded CSV import. M1,
-M2, and M3 are deployed together for review, but remain an open PR stack and
-have not completed human UAT.
-
-Branch `feat/782-ogc-782-microbiology-m10-whonet-export` implements the first
-manual WHONET export slice: period and policy selection, used-set organism and
-antibiotic readiness, direct mapping repair, preview, audited CSV generation,
-canonical URL state, and desktop/mobile accessibility evidence. It is deployed
-inside the current combined review candidate but remains unaccepted until its
-own PR, exact-SHA checklist, and human UAT records are complete.
-
-The R1 remediation boundary includes the authoritative M-03, M-04, M-05, M-07,
-M-12, and applicable M-NFR behavior described in User Stories 8-12 and the
-source-alignment record. That promotion does not retroactively expand PR
-#3789's historical acceptance boundary.
-
-The delivered stack is not the full microbiology module. Authoritative
-wide-format WHONET/profile packaging, the remaining mapping vocabularies,
-scheduled delivery, expert rules, Macro Library runtime/administration,
-operational TB, antibiograms, GLASS reporting, catalog subscription, and the
-M-NFR outcomes not completed in R1 remain follow-up work. In particular,
-offline read continuity, queued bench edits, and conflict resolution are not
-implemented and cannot be inferred from online browser evidence.
+The scope and delivery state of each item are maintained only in `tasks.md`.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -739,10 +719,10 @@ place or silently losing work when connectivity is interrupted.
   the relevant worklist or case-section context.
 - **SC-011**: A keyboard-only user can complete the order-to-preliminary-report
   path with visible focus and announced inline-section changes.
-- **SC-012**: Exact-revision measurements record the application runtime,
-  environment, data volume, server time, browser-ready time, and interaction
-  time. Reviewers can distinguish a user-visible regression from harness,
-  development-runtime, hardware, or intentionally above-source stress cost.
+- **SC-012**: Performance measurements record the environment, data volume,
+  server time, browser-ready time, and interaction time so reviewers can
+  distinguish a user-visible regression from harness, runtime, or hardware
+  effects.
 - **SC-013**: A deployed connectivity-loss exercise proves the last-loaded
   worklist remains readable, offline state is visible, an interrupted bench
   edit survives reconnection, and a conflicting edit requires an explicit
@@ -750,30 +730,18 @@ place or silently losing work when connectivity is interrupted.
 - **SC-014**: An authenticated user without a microbiology bench role receives
   a forbidden response; a results-entry user cannot release a final report;
   and a submitted alternate actor identifier cannot change audit attribution.
+- **SC-015**: Recording no growth creates no patient result. A separate
+  authorized final-negative release publishes the result and leaves the case
+  locked.
 
-OpenELIS Work's M-NFR document includes numeric timing and fixture prescriptions
-that first appeared in the May 27, 2026 authored specification, not in the
-workflow mock. Those numbers are retained as engineering qualification inputs,
-not product acceptance requirements: "render," hardware, runtime mode, network,
-and representative deployment conditions must be defined before a threshold
-can be deterministic. The later M8 branch carries repeatable service-created
-API and browser measurements; those results do not alter PR #3789's historical
-MVP evidence.
+OpenELIS Work's M-NFR document includes numeric timing and fixture
+prescriptions. Those numbers are engineering qualification inputs, not product
+acceptance requirements: "render," hardware, runtime mode, network, and
+representative deployment conditions must be defined before a threshold can be
+deterministic.
 
-## Planning Notes
+## Engineering Boundary
 
-The following technical directions are currently favored by evidence, but they
-belong to planning and task generation rather than this product spec:
-
-- The ordered test should be the source of workflow routing.
-- Case identity should be anchored at the physical specimen plus workflow
-  level.
-- Culture setup should reuse existing method/configuration concepts where
-  appropriate.
-- AST should reuse existing result/reporting infrastructure where feasible.
-- WHONET should extend the existing export path where feasible.
-- Critical communication should reuse existing alert surfaces while preserving
-  a clinical call/read-back log.
-
-See `specs/roadmaps/analyzer-microbiology-engineering-crosswalk.md` for the
-current engineering interpretation and verification gates.
+Implementation architecture and technical decisions belong in
+[`plan.md`](./plan.md). Current execution status belongs only in
+[`tasks.md`](./tasks.md).

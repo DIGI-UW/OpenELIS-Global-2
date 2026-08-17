@@ -9,9 +9,10 @@ Implement the microbiology MVP as a milestone-based OpenELIS module that routes
 culture-capable ordered tests into a microbiology case, supports routine
 bacteriology bench work, records isolates and manual AST, gates preliminary and
 final release, logs critical communications, and prepares finalized data for
-WHONET readiness. OpenELIS Work at `bf51582766ea` is the product authority for
-visible workflow and acceptance behavior. Its table, service, route, schema,
-and component suggestions remain non-binding engineering input.
+WHONET readiness. Repository specifications define the product and engineering
+contract, `tasks.md` controls execution, and OpenELIS Work supplies functional
+workflow and visual intent only. Its table, service, route, schema, and
+component suggestions remain non-binding engineering input.
 
 The technical approach is to add a new `org.openelisglobal.microbiology`
 backend area for the case workflow while reusing existing OpenELIS anchors:
@@ -80,24 +81,20 @@ _GATE: Passed before Phase 0 research. Re-check after Phase 1 design._
       paths are reused only when they fit the target architecture; no parallel
       legacy exporter or duplicate alert dashboard is planned.
 
-## Clarification Result
+## Engineering Decisions
 
-The 2026-08-05 source-alignment audit supersedes the earlier claim that all
-material MVP ambiguity was resolved. Final-case amendment behavior remains
-outside the initial PR but is part of R1; operational TB remains a separate
-feature. The pinned detailed M-03 source resolves untyped-test fallback and
-mixed bacteriology/TB handling: use a configured default or `UNASSIGNED`, and
-create sibling workflows on one specimen. The complete guided-workflow
-crosswalk is recorded in
-`evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
+Final-case amendment behavior is a follow-on slice and operational TB remains
+a separate workflow. For untyped-test fallback and mixed bacteriology/TB
+handling, use a configured default or `UNASSIGNED`, and create sibling
+workflows on one specimen.
 
-R2 removes the obsolete order-entry Critical Notify choice, keeps Antibiotic
-Exposure as a boolean, enforces the source bounds of 1-10 sets and 1000 Clinical
-History characters, and displays the default culture protocol read-only through
-the existing default `TestMethod`. A missing default no longer blocks the
-order. Patient Origin uses one active six-value deployment vocabulary with
-stable application
-and WHONET codes. An optional explicit Organization-to-origin mapping supplies
+Order entry omits a microbiology-specific Critical Notify choice, keeps
+Antibiotic Exposure as a boolean, enforces the source bounds of 1-10 sets and
+1000 Clinical History characters, and displays the default culture protocol
+read-only through the existing default `TestMethod`. A missing default no longer
+blocks the order. Patient Origin uses one active six-value deployment vocabulary
+with stable application and WHONET codes. An optional explicit
+Organization-to-origin mapping supplies
 the requesting-location default; unmapped locations remain blank because the
 source does not define a derivation rule. The source's table/FK language is
 non-binding implementation input, while its separate Phase 1A read-only admin
@@ -105,7 +102,7 @@ list remains an explicit R1 task. Macro-enabled Clinical History is a consumer d
 on the separate Macro Library stack, not a reason to duplicate that runtime in
 microbiology.
 
-R2 stores the optional Date of Admission with the existing microbiology order
+Store the optional Date of Admission with the existing microbiology order
 context because that service already owns the other M-03 values and supplies
 the case and WHONET projections. This is an engineering decision, not a product
 schema requirement. A nullable date column and its rollback are the only new
@@ -113,6 +110,14 @@ schema work in R2. Protocol correction is a separate authenticated case action:
 it updates only the case's Method reference, requires a reason, writes immutable
 activity history, preserves existing clinical work, and uses the existing final
 release lock. Workflow reclassification remains a separate action.
+
+Treat **Record no growth** and **Release final negative** as separate commands.
+The first records an authenticated, audited bench outcome and makes the case
+review-ready without projecting a patient result. The second uses the existing
+authorized final-release path to publish the negative result and apply the
+final-case lock. Tests must first determine whether the current case and
+activity model can retain that distinction; add a Liquibase migration only if
+durable clinical state cannot otherwise be represented.
 
 The M-03 mock also depends on two shared Order Entry contracts that are not
 additional microbiology fields. R2 reuses the standard Requester
@@ -123,7 +128,7 @@ contract remains ISO, while the existing sample XML contract is serialized
 using `DEFAULT_DATE_LOCALE` and normalized back to ISO when loaded. The
 collection step rejects a collection date earlier than admission before
 submission, and a loaded collection remains read-only until an explicit Edit
-action. These are engineering decisions required to make the pinned M-03
+action. These are engineering decisions required to make the OpenELIS Work M-03
 behavior work through the supported order route, not new product fields.
 
 For R1 M-05, the repository has no authoritative Antibiotic-to-Test mapping.
@@ -134,12 +139,12 @@ This satisfies the source behavior without manufacturing parallel core
 analyses; later cascade-reporting rules may filter presentation but do not
 rewrite the historical tested set.
 
-The historical MVP boundary above remains unchanged. Follow-on stack branches
-now add clinical completeness (M2), reference/mapping administration (M3), and
-the explicitly scoped manual WHONET export in
-`../782-ogc-782-microbiology-m10-whonet-export/` (M4). M4 reuses the existing
-report service and long CSV contract; it does not make the deferred scheduling,
-delivery, wide-format, remaining-vocabulary, or standards-certification claims.
+Follow-on engineering specifications cover clinical completeness (M2),
+reference/mapping administration (M3), and the explicitly scoped manual WHONET
+export in `../782-ogc-782-microbiology-m10-whonet-export/` (M4). M4 reuses the
+existing report service and long CSV contract; it does not make the deferred
+scheduling, delivery, wide-format, remaining-vocabulary, or
+standards-certification claims.
 
 ## Milestone Plan
 
@@ -170,7 +175,7 @@ authoritative for eligibility, locked consumption, QC, quantity, and usage;
 Test Catalog remains authoritative for reagent links. The current catalog roles
 `PRIMARY` and `SECONDARY` do not mean required, optional, or substitute, so R1
 does not infer those policies or add a duplicate schema. Their enforcement is a
-named Test Catalog dependency. The implemented boundary covers visible QC and
+named Test Catalog dependency. The shared boundary covers visible QC and
 FEFO guidance, exact scanner-style lot entry, locked save-time revalidation,
 specific corrective messages, and retained usage provenance.
 
@@ -386,11 +391,11 @@ inside product requirements.
   scans at desktop/mobile sizes with direct keyboard, focus, announcement, and
   focus-return interactions. Human review remains a separate acceptance gate.
 - **Performance qualification**: Service-created source-scale fixtures record
-  server and browser timings separately on an exact revision. Numeric targets
-  copied from M-NFR are diagnostic engineering baselines. A miss is reported
-  with its environment and data-shape variance and becomes blocking only when
-  a representative deployed workflow is observably degraded or an engineering
-  baseline has been explicitly adopted.
+  server and browser timings separately in a reproducible environment. Numeric
+  targets copied from M-NFR are diagnostic engineering baselines. A miss is
+  reported with its environment and data-shape variance and becomes blocking
+  only when a representative deployed workflow is observably degraded or an
+  engineering baseline has been explicitly adopted.
 - **Connectivity qualification**: Once a shared offline pattern exists,
   browser tests disconnect after loading, prove readable last-loaded data,
   exercise replay after reconnection, and require explicit conflict handling.
