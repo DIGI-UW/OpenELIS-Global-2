@@ -9,9 +9,10 @@ Implement the microbiology MVP as a milestone-based OpenELIS module that routes
 culture-capable ordered tests into a microbiology case, supports routine
 bacteriology bench work, records isolates and manual AST, gates preliminary and
 final release, logs critical communications, and prepares finalized data for
-WHONET readiness. The current synchronized OpenELIS Work source is the product
-authority for visible workflow and acceptance behavior. Its table, service,
-route, schema, and component suggestions remain non-binding engineering input.
+WHONET readiness. Repository specifications define the product and engineering
+contract, `tasks.md` controls execution, and OpenELIS Work supplies functional
+workflow and visual intent only. Its table, service, route, schema, and
+component suggestions remain non-binding engineering input.
 
 The technical approach is to add a new `org.openelisglobal.microbiology`
 backend area for the case workflow while reusing existing OpenELIS anchors:
@@ -80,22 +81,20 @@ _GATE: Passed before Phase 0 research. Re-check after Phase 1 design._
       paths are reused only when they fit the target architecture; no parallel
       legacy exporter or duplicate alert dashboard is planned.
 
-## Clarification Result
+## Engineering Decisions
 
-The synchronized source-alignment review supersedes the earlier claim that all
-material MVP ambiguity was resolved. Final-case amendment behavior remains
-outside the initial PR but is part of R1; operational TB remains a separate
-feature. The synchronized detailed M-03 source resolves untyped-test fallback and
-mixed bacteriology/TB handling: use a configured default or `UNASSIGNED`, and
-create sibling workflows on one specimen.
+Final-case amendment behavior is a follow-on slice and operational TB remains
+a separate workflow. For untyped-test fallback and mixed bacteriology/TB
+handling, use a configured default or `UNASSIGNED`, and create sibling
+workflows on one specimen.
 
-R2 removes the obsolete order-entry Critical Notify choice, keeps Antibiotic
-Exposure as a boolean, enforces the source bounds of 1-10 sets and 1000 Clinical
-History characters, and displays the default culture protocol read-only through
-the existing default `TestMethod`. A missing default no longer blocks the
-order. Patient Origin uses one active six-value deployment vocabulary with
-stable application
-and WHONET codes. An optional explicit Organization-to-origin mapping supplies
+Order entry omits a microbiology-specific Critical Notify choice, keeps
+Antibiotic Exposure as a boolean, enforces the source bounds of 1-10 sets and
+1000 Clinical History characters, and displays the default culture protocol
+read-only through the existing default `TestMethod`. A missing default no longer
+blocks the order. Patient Origin uses one active six-value deployment vocabulary
+with stable application and WHONET codes. An optional explicit
+Organization-to-origin mapping supplies
 the requesting-location default; unmapped locations remain blank because the
 source does not define a derivation rule. The source's table/FK language is
 non-binding implementation input, while its separate Phase 1A read-only admin
@@ -103,7 +102,7 @@ list remains an explicit R1 task. Macro-enabled Clinical History is a consumer d
 on the separate Macro Library stack, not a reason to duplicate that runtime in
 microbiology.
 
-R2 stores the optional Date of Admission with the existing microbiology order
+Store the optional Date of Admission with the existing microbiology order
 context because that service already owns the other M-03 values and supplies
 the case and WHONET projections. This is an engineering decision, not a product
 schema requirement. A nullable date column and its rollback are the only new
@@ -111,6 +110,14 @@ schema work in R2. Protocol correction is a separate authenticated case action:
 it updates only the case's Method reference, requires a reason, writes immutable
 activity history, preserves existing clinical work, and uses the existing final
 release lock. Workflow reclassification remains a separate action.
+
+Treat **Record no growth** and **Release final negative** as separate commands.
+The first records an authenticated, audited bench outcome and makes the case
+review-ready without projecting a patient result. The second uses the existing
+authorized final-release path to publish the negative result and apply the
+final-case lock. Tests must first determine whether the current case and
+activity model can retain that distinction; add a Liquibase migration only if
+durable clinical state cannot otherwise be represented.
 
 The M-03 mock also depends on two shared Order Entry contracts that are not
 additional microbiology fields. R2 reuses the standard Requester
@@ -121,7 +128,7 @@ contract remains ISO, while the existing sample XML contract is serialized
 using `DEFAULT_DATE_LOCALE` and normalized back to ISO when loaded. The
 collection step rejects a collection date earlier than admission before
 submission, and a loaded collection remains read-only until an explicit Edit
-action. These are engineering decisions required to make the pinned M-03
+action. These are engineering decisions required to make the OpenELIS Work M-03
 behavior work through the supported order route, not new product fields.
 
 For R1 M-05, the repository has no authoritative Antibiotic-to-Test mapping.
@@ -132,12 +139,12 @@ This satisfies the source behavior without manufacturing parallel core
 analyses; later cascade-reporting rules may filter presentation but do not
 rewrite the historical tested set.
 
-The historical MVP boundary above remains unchanged. Follow-on stack branches
-now add clinical completeness (M2), reference/mapping administration (M3), and
-the explicitly scoped manual WHONET export in
-`../782-ogc-782-microbiology-m10-whonet-export/` (M4). M4 reuses the existing
-report service and long CSV contract; it does not make the deferred scheduling,
-delivery, wide-format, remaining-vocabulary, or standards-certification claims.
+Follow-on engineering specifications cover clinical completeness (M2),
+reference/mapping administration (M3), and the explicitly scoped manual WHONET
+export in `../782-ogc-782-microbiology-m10-whonet-export/` (M4). M4 reuses the
+existing report service and long CSV contract; it does not make the deferred
+scheduling, delivery, wide-format, remaining-vocabulary, or
+standards-certification claims.
 
 ## Milestone Plan
 
@@ -157,7 +164,7 @@ sequential stacked PR based on the preceding slice._
 | M5  | `m5-manual-ast`                     | Manual AST setup, immutable ordered-drug snapshot, laboratory technique with derived measurement type, readings, S/I/R interpretation, no-breakpoint handling, repeat/retest, review, and override audit | US3           | Ordered-set persistence/guard tests, technique/measurement derivation and breakpoint interpretation unit tests, AST persistence integration tests, frontend AST interaction tests      | M4                 |
 | M6  | `m6-worklists-critical`             | Shared microbiology worklist, due-action prioritization, sibling visibility, critical communication log, and operational alert surfacing                                                                 | US4, US5      | Worklist filter/sort tests, alert integration tests, critical communication audit tests, accessibility checks                                                                          | M5                 |
 | M7  | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2                                             | US5, US6      | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow                                                                               | M6                 |
-| R1  | `r1-authoritative-alignment`        | Repair implementation and artifact drift across M-03, M-04, M-05, M-07, M-12, and applicable M-NFR outcomes                                                                                              | US1, US8-US11 | Focused service/controller/component tests, registered configured-navigation Playwright, desktop/mobile source comparison, and source-scale/accessibility qualification                 | M10 follow-on head |
+| R1  | `r1-authoritative-alignment`        | Repair implementation and artifact drift across M-03, M-04, M-05, M-07, M-12, and applicable M-NFR outcomes; establish source-to-code-to-UAT traceability                                                | US1, US8-US11 | Focused service/controller/component tests, registered configured-navigation Playwright, desktop/mobile source comparison, source-scale/a11y qualification, and separate Grist stories | M10 follow-on head |
 
 R1 treats breakpoint provenance as a lifecycle invariant: a found generic
 standard rule is recorded as `STANDARD`, while `NONE` is reserved for an absent
@@ -171,7 +178,7 @@ authoritative for eligibility, locked consumption, QC, quantity, and usage;
 Test Catalog remains authoritative for reagent links. The current catalog roles
 `PRIMARY` and `SECONDARY` do not mean required, optional, or substitute, so R1
 does not infer those policies or add a duplicate schema. Their enforcement is a
-named Test Catalog dependency. The implemented boundary covers visible QC and
+named Test Catalog dependency. The shared boundary covers visible QC and
 FEFO guidance, exact scanner-style lot entry, locked save-time revalidation,
 specific corrective messages, and retained usage provenance.
 
@@ -335,12 +342,13 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   the worklist consumes the maximum day and first inoculation timestamp through
   bounded service projections. Missing values deliberately produce the source
   stage-label fallback.
-- Keep Macro Library as a separate cross-cutting feature stack. Microbiology
-  carries only a small consumer integration after the macro feature is
-  independently accepted.
+- Keep Macro Library as a separate cross-cutting feature stack and review
+  deployment. Microbiology carries only a small consumer integration after the
+  macro feature is independently accepted.
 - Validate each source acceptance slice with focused JUnit 4/service or
-  controller tests, Carbon interaction tests, registered Playwright, visual
-  comparison, and proportional accessibility/performance checks.
+  controller evidence, Carbon interaction tests, registered Playwright, visual
+  comparison, and a separate Grist story. Human UAT remains distinct from
+  automation.
 - Treat the M-NFR offline behavior as an application-wide state-management
   dependency. Do not add a microbiology-only cache, replay queue, or conflict
   resolver; T266 remains open until a reusable OpenELIS pattern is selected and
@@ -389,11 +397,11 @@ inside product requirements.
   scans at desktop/mobile sizes with direct keyboard, focus, announcement, and
   focus-return interactions. Human review remains a separate acceptance gate.
 - **Performance qualification**: Service-created source-scale fixtures record
-  server and browser timings separately on an exact revision. Numeric targets
-  copied from M-NFR are diagnostic engineering baselines. A miss is reported
-  with its environment and data-shape variance and becomes blocking only when
-  a representative deployed workflow is observably degraded or an engineering
-  baseline has been explicitly adopted.
+  server and browser timings separately in a reproducible environment. Numeric
+  targets copied from M-NFR are diagnostic engineering baselines. A miss is
+  reported with its environment and data-shape variance and becomes blocking
+  only when a representative deployed workflow is observably degraded or an
+  engineering baseline has been explicitly adopted.
 - **Connectivity qualification**: Once a shared offline pattern exists,
   browser tests disconnect after loading, prove readable last-loaded data,
   exercise replay after reconnection, and require explicit conflict handling.
@@ -423,6 +431,10 @@ inside product requirements.
   worklist return context.
 - Cover the navigation and URL behavior in the registered `core-app`
   Playwright project, not only through an interactive browser walkthrough.
+- Use the external OpenELIS UAT Review Harness for deployed human review.
+  Grist is the authoring source of truth for the `amr` checklist, the AMR
+  overlay reads `/__review/uat-amr.json` live, and no static checklist publish
+  step is required.
 
 ### Checkpoint Validations
 
