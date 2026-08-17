@@ -2,6 +2,8 @@ package org.openelisglobal.eqa.valueholder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -52,6 +54,15 @@ public class EQAProgram extends BaseObject<Long> {
 
     @Column(name = "frequency", length = 50)
     private String frequency;
+
+    /**
+     * Arrangement type (FR-V2.1-06, gate G1 alter-in-place). V1 rows default to
+     * INTERNATIONAL_PT. BR-004: provider required unless IN_HOUSE — enforced in
+     * EQAProgramServiceImpl.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scheme_type", nullable = false, length = 30)
+    private EQASchemeType schemeType = EQASchemeType.INTERNATIONAL_PT;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;

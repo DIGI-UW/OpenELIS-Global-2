@@ -67,4 +67,10 @@
 
   <!-- QA Phase D.2 — OGC-686: accreditation page menu row -->
   <include file="liquibase/qa/014-add-accreditation-menu.xml" />
+
+  <!-- EQA V2.1 T-08 — OGC-609: cycle/round/state-transition-audit spine -->
+  <include file="liquibase/qa/015-create-eqa-cycle-tables.xml" />
+
+  <!-- EQA V2.1 T-08 — OGC-609: participant results, cycle links, scheme_type -->
+  <include file="liquibase/qa/016-create-eqa-participant-result.xml" />
 </databaseChangeLog>
