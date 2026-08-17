@@ -99,34 +99,31 @@ host, and Grist respectively.
   workflow, AST provenance and review, shared Culture/AST worklist, reagent
   selection, and accessibility/security corrections.
 
-### Active Iteration
+### Completed Baseline
 
-- [*] **R2 baseline and no-growth acceptance closure (#4051)** - Finish the
-  order/bench alignment by proving the already implemented separation between
-  recording no growth and releasing the final negative report.
+- [x] **R2 baseline reconciliation (#4051)** - Establish one authoritative
+  roadmap, align the durable specifications and PR snapshot, and add the
+  approved no-growth review/release behavior to functional artifacts and live
+  UAT without changing application behavior.
 
-This iteration is finished when:
+This iteration is complete because:
 
 - The authority chain, repository spec, engineering plan, OpenELIS Work
   functional intent, roadmap, and PR snapshot agree.
 - Repository tracing confirms that recording no growth is audited and
   review-ready without publishing, while supervisor release projects the final
   negative and locks the case.
-- Focused service, Carbon, and registered `core-app` Playwright coverage
-  proves the complete no-growth path without arbitrary waits or forced actions.
 - One dedicated, reviewer-executable Grist story uses its own service-created
   fixture and is verified in the live AMR Review overlay.
-- The focused checks pass and the reconciliation is committed and pushed
-  with a clean worktree.
+- The reconciliation is committed and pushed with a clean worktree.
 
-Documentation or test-only changes are not deployment events. Runtime code
-changes only when the focused acceptance tests expose a real defect.
+This baseline does not change application behavior, deploy, or watch CI.
 
 Macro Library is a separate OGC-788 product stack, not another OGC-782
 iteration. Microbiology consumes approved clinical macros after that shared
 capability is available; it does not own macro authoring or administration.
 
-### Acceptance Criteria
+### Approved No-Growth Behavior
 
 1. On an incubating case, **Record no growth** records the authenticated actor,
    time, and bench outcome in the case history.
@@ -147,6 +144,10 @@ capability is available; it does not own macro authoring or administration.
 
 ### Phase 1A Closure
 
+- [ ] **No-growth deterministic acceptance proof** - Add focused service,
+  Carbon, and registered `core-app` Playwright coverage for the approved
+  no-growth path without arbitrary waits or forced actions. Change runtime code
+  only if this evidence exposes a real defect; do not deploy test-only changes.
 - [ ] **Accept the current stack** - Complete human UAT in Grist, remediate real
    findings in manageable slices, and merge the stack bottom-up.
 - [ ] **Supported order-save integration proof** - Add the missing direct
