@@ -456,7 +456,7 @@ def request_json(
         return error.code, parsed
 
 
-def wait_for_mock_analyzer(mock_url: str, name: str, timeout_seconds: float = 15) -> str:
+def wait_for_mock_analyzer(mock_url: str, name: str, timeout_seconds: float = 60) -> str:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
         try:
