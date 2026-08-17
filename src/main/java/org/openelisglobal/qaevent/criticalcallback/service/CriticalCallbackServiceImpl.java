@@ -47,8 +47,7 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
     /**
      * Callback target window, the pass line for the compliance numerator and the
      * "over target" failure reason. TJC NPSG.02.03.01 makes the lab define this
-     * timeframe rather than fixing 60 minutes. ponytail: property, not a qi_config
-     * column — no per-test-section callback policy to model yet.
+     * timeframe rather than fixing 60 minutes.
      */
     @Value("${org.openelisglobal.qi.callback.sla.minutes:60}")
     private int slaMinutes;
@@ -60,9 +59,10 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
      * load-bearing — unconfigured bounds persist as ±Infinity, and an all-Infinity
      * low bound would otherwise match every result.
      */
-    // ponytail: any-variant limit match (ignores gender/age discrimination — exact
-    // for the common one-default-limit-per-test config); add SQL demographic
-    // resolution if labs configure gender/age-specific criticals
+    // Caveat: matches any result_limits row for the test, ignoring gender/age
+    // variants. Exact when a test has one default limit (the common setup); if a
+    // lab configures gender- or age-specific criticals, this needs demographic
+    // resolution in SQL or the compliance numbers will be off.
     private static final String CRITICAL_FROM = " FROM analysis a JOIN result r ON r.analysis_id = a.id"
             + " JOIN result_limits rl ON rl.test_id = a.test_id"
             + " CROSS JOIN LATERAL (SELECT BTRIM(regexp_replace(r.value, '[<>]', '', 'g')) AS val) v";
@@ -152,9 +152,9 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
         }
 
         Session session = entityManager.unwrap(Session.class);
-        // ponytail: fetch-all + in-memory paging, same as the Amendment report;
-        // criticals are rare and the window is capped at 366 days. DISTINCT ON
-        // collapses result_limits variants; the lateral picks the latest attempt.
+        // Loads the whole window (criticals are rare, max 366 days) and pages in
+        // memory. DISTINCT ON collapses result_limits variants; the lateral picks
+        // the latest callback attempt.
         @SuppressWarnings("unchecked")
         List<Object[]> rows = session.createNativeQuery("SELECT DISTINCT ON (a.id) CAST(a.id AS varchar),"
                 + " s.accession_number, t.name, COALESCE(cc.result_value, r.value),"

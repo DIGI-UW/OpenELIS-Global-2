@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import java.sql.Timestamp;
 
 /**
- * OGC-1147 FR-D1 — one row of the QC dashboard's bench listing: the control
- * activity for a test in a lab unit over the selected window.
+ * OGC-1147 — one row of the QC dashboard's bench listing: the control activity
+ * for a test in a lab unit over the selected window.
  *
  * <p>
  * Grouped by lab unit and test rather than by analyzer, because that is how a

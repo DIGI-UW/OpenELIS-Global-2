@@ -417,7 +417,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
-        // FR-C3/C4: when the lab has opted into blocking, results covered by an open QC
+        // When the lab has opted into blocking, results covered by an open QC
         // failure cannot be released here. Re-resolved from the database rather than
         // trusted from the submitted rows — the hold is a safety control, and a client
         // could otherwise clear it by posting qcHold=false.
@@ -643,9 +643,9 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     }
 
     /**
-     * Annotate the rows covered by an open QC failure (OGC-1147 FR-C1). One batched
-     * query for the whole list. A failure here must not blank the validation page —
-     * the rows are still correct, they just lose the QC annotation for this load.
+     * Annotate the rows covered by an open QC failure (OGC-1147). One batched query
+     * for the whole list. A failure here must not blank the validation page — the
+     * rows are still correct, they just lose the QC annotation for this load.
      */
     private void markQcHolds(List<AnalysisItem> items) {
         if (items == null || items.isEmpty()) {

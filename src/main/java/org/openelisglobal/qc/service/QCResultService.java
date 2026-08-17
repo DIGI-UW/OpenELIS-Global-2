@@ -50,14 +50,14 @@ public interface QCResultService extends BaseObjectService<QCResult, String> {
 
     /**
      * Bench counterpart of {@link #findLatestAcceptedBefore}, keyed by lab unit
-     * because a manual or RDT control has no analyzer (OGC-1147 FR-C1). At most one
+     * because a manual or RDT control has no analyzer (OGC-1147). At most one
      * element.
      */
     List<QCResult> findLatestAcceptedBenchResultBefore(String testSectionId, String testId, Timestamp before);
 
     /**
      * Record a bench control run — an RDT control line or a manual quantitative
-     * control (OGC-1147, FR-A2/A3). The non-analyzer counterpart to
+     * control (OGC-1147). The non-analyzer counterpart to
      * {@link #createQCResult(String, String, String, String, BigDecimal, String, LocalDateTime)}:
      * no instrument, the real session user rather than the automation user, and a
      * qualitative outcome alongside (or instead of) a number.
@@ -65,10 +65,9 @@ public interface QCResultService extends BaseObjectService<QCResult, String> {
      * <p>
      * A manual quantitative run against a lot with statistics gets a z-score
      * exactly as an analyzer result does, so it plots on Levey-Jennings and is
-     * evaluated by the Westgard engine with no further wiring (FR-D2/D3). An RDT
-     * run has no number, therefore no z-score, therefore no rule evaluation — which
-     * is precisely the split decision D4 asks for, enforced by arithmetic rather
-     * than a branch.
+     * evaluated by the Westgard engine with no further wiring. An RDT run has no
+     * number, therefore no z-score, therefore no rule evaluation — exactly the
+     * intended split, enforced by arithmetic rather than a branch.
      *
      * @param capture   the control run as entered at the bench
      * @param sysUserId the acting technician's system user id — never the
@@ -82,7 +81,7 @@ public interface QCResultService extends BaseObjectService<QCResult, String> {
 
     /**
      * Flat list of bench control runs in a window for the accreditation export
-     * (OGC-1147 FR-D5). A null {@code source} covers MANUAL and RDT.
+     * (OGC-1147). A null {@code source} covers MANUAL and RDT.
      */
     List<QCResult> findBenchResults(Timestamp startDate, Timestamp endDate, QCSource source, int maxRows);
 }

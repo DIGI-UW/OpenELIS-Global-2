@@ -20,9 +20,9 @@ import org.openelisglobal.qc.valueholder.QCSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-1147 FR-C3 — the hold-or-warn policy, which is the difference between a
- * warning a technician can read and a control that actually stops a result
- * being released.
+ * OGC-1147 — the hold-or-warn policy, which is the difference between a warning
+ * a technician can read and a control that actually stops a result being
+ * released.
  *
  * <p>
  * Reuses {@code bench-qc-fail-signal.xml}: a failing manual control in lab unit

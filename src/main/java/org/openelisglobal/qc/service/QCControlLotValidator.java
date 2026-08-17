@@ -66,10 +66,9 @@ public class QCControlLotValidator {
     /**
      * A bench lot has no analyzer, so nothing accumulates runs on its behalf:
      * INITIAL_RUNS and ROLLING both wait for enough results to establish statistics
-     * from, which is the 20-run establishment protocol OGC-1147 decision D3
-     * rejected for manual methods. Configured either way the lot would sit in
-     * ESTABLISHMENT forever and silently never plot, so refuse it at configuration
-     * time instead.
+     * from — a 20-run establishment protocol that manual methods deliberately do
+     * not use (OGC-1147). Configured either way the lot would sit in ESTABLISHMENT
+     * forever and silently never plot, so refuse it at configuration time instead.
      */
     private void validateBenchLotUsesFixedTargets(QCControlLot lot) {
         if (StringUtils.isNotBlank(lot.getInstrumentId())) {

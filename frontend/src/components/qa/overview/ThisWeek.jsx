@@ -29,7 +29,7 @@ const Stat = ({ labelKey, value, sub, loading }) => {
 };
 
 /**
- * This-Week counters (OGC-694 WS-F). NCE numbers are client-side over the
+ * This-Week counters (OGC-694). NCE numbers are client-side over the
  * shared NCE fetch; QC/EQA/audit/e-sig come from the overview summary
  * endpoint; critical results from the callback compliance summary
  * (OGC-714/715).

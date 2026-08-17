@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- OGC-686 [QA-D.1] — minimal test catalog for accreditation enrollment
-    tests. Only what test_accreditation.test_id needs a real FK target for; no
-    analyzer, panel or result-mapping rows. -->
+<!-- OGC-686 — minimal test catalog for accreditation enrollment tests. Only
+    what test_accreditation.test_id needs a real FK target for; no analyzer,
+    panel or result-mapping rows. -->
 <dataset>
 
     <test id="9101" description="Glucose Test" loinc="2345-7"

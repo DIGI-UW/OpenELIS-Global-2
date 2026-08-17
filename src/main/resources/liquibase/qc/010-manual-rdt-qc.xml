@@ -8,25 +8,24 @@
     <!--
     OGC-1147 Manual & RDT QC persistence — source-typed QC results.
 
-    Build-time decision D1 (table strategy) resolves to option (a): qc_result is the
-    single store for all three sources. The FRS defaults to option (c), a hybrid over a
-    "shared QcRun table established by OGC-428" — that table has never existed in this
-    repository: no entity, no migration, and no commit in any branch's history ever
-    added one. Options (b) and (c) would therefore CREATE OGC-428's
+    Table strategy: qc_result is the single store for all three sources. The
+    considered alternative — a hybrid over a "shared QcRun table established by
+    OGC-428" — was rejected: that table has never existed in this repository (no
+    entity, no migration, and no commit in any branch's history ever added one),
+    so the hybrid would have had to CREATE OGC-428's
     schema from inside a story that declares instrument-level QC out of scope, so they
     are rejected. Extending qc_result keeps the Levey-Jennings chart, dashboard,
     export, rule engine and auto-NCE bridge working with no adapter layer, and reduces
     "all QC for this test today" to a WHERE clause instead of a cross-table union.
 
     D2: qualitative outcomes live in their own nullable column. No magic numbers in
-    result_value (FR-A3).
+    result_value.
 
-    D5 (migration posture) is amended from "strictly additive" to "no row rewrites, no
-    backfills". Honouring FR-A3 requires result_value to be nullable, which the literal
-    reading of D5 forbids — making D5 and D1(a) mutually exclusive as written.
-    dropNotNullConstraint is a catalog-only change in Postgres: existing rows stay
-    valid, nothing is rewritten, and the migration is still deployable mid-QA-release
-    without touching Phase B/C code paths. Precedent on this exact table: qc-009 in
+    Migration posture: no row rewrites, no backfills. RDT outcomes have no numeric
+    value, so result_value must become nullable; dropNotNullConstraint is a
+    catalog-only change in Postgres — existing rows stay valid, nothing is
+    rewritten, and the migration is deployable mid-release without touching any
+    existing code path. Precedent on this exact table: qc-009 in
     009-nullable-unit-of-measure.xml relaxed unit_of_measure for the same reason
     (qualitative results have no units).
 
@@ -52,28 +51,28 @@
             <!-- ASTM = analyzer-transmitted (every pre-existing row, via the default).
                  MANUAL = bench quantitative. RDT = qualitative control line.
                  OGC-427/428 add their own values with a CHECK amendment when they land;
-                 the WORKPLAN/QC_MODULE/ANALYZER_IMPORT/ANALYZER_LIST vocabulary quoted
-                 in the FRS is not in either of those tickets and is not seeded here. -->
+                 the once-proposed WORKPLAN/QC_MODULE/ANALYZER_IMPORT/ANALYZER_LIST
+                 vocabulary is not in either of those tickets and is not seeded here. -->
             <column name="source" type="VARCHAR(10)" defaultValue="ASTM">
                 <constraints nullable="false"/>
             </column>
             <!-- D2: VALID/INVALID for RDT control lines, PASS/FAIL for manual runs.
                  NULL for ASTM rows, which carry a number instead. -->
             <column name="qualitative_outcome" type="VARCHAR(10)"/>
-            <!-- FR-B2 snapshot. The effective target in force at capture, copied onto
+            <!-- Target snapshot: the effective target in force at capture, copied onto
                  the row so a later edit of a configured target (OGC-1148's
                  test_qc_target) can never rewrite QC history. Target CONFIGURATION is
                  out of scope here and belongs entirely to OGC-1148; only the snapshot
                  lives on the result. -->
             <column name="expected_value" type="NUMERIC(15,5)"/>
             <column name="uncertainty" type="NUMERIC(15,5)"/>
-            <!-- Lab unit. FR-C1 scopes the QC-fail signal by test AND lab unit, and no
+            <!-- Lab unit. The QC-fail signal is scoped by test AND lab unit, and no
                  QC table carries a test_section today — qc_result scopes by
                  (test_id, instrument_id) only, which a bench run cannot use because it
                  has no instrument. numeric(10) matches test_section.id. -->
             <column name="test_section_id" type="numeric(10)"/>
             <!-- Free-text kit/control designation for RDT runs, where the control is a
-                 cassette lot rather than a levelled control material (FR-A3). -->
+                 cassette lot rather than a levelled control material. -->
             <column name="control_label" type="VARCHAR(120)"/>
         </addColumn>
 
@@ -89,7 +88,7 @@
             <column name="source"/>
             <column name="run_date_time" descending="true"/>
         </createIndex>
-        <!-- FR-C1's affected-analysis window is keyed (test, lab unit, time). -->
+        <!-- The affected-analysis window is keyed (test, lab unit, time). -->
         <createIndex schemaName="clinlims" tableName="qc_result" indexName="idx_qc_result_test_section_date">
             <column name="test_section_id"/>
             <column name="test_id"/>
@@ -130,8 +129,8 @@
             ADD CONSTRAINT chk_qc_result_source
             CHECK (source IN ('ASTM', 'MANUAL', 'RDT'));
         </sql>
-        <!-- This is what makes FR-A3 structural rather than a code convention: it is
-             simultaneously what allows an RDT row to omit result_value and what stops a
+        <!-- This constraint makes the manual/RDT shape rule structural rather than a
+             code convention: it simultaneously allows an RDT row to omit result_value and stops a
              quantitative row from doing the same once the NOT NULL is dropped. Every
              existing reader of result_value assumes a value is present; this keeps that
              assumption true for the rows those readers can see. -->
@@ -162,7 +161,7 @@
              unaffected — a nullable FK column simply skips the check when NULL. -->
         <dropNotNullConstraint schemaName="clinlims" tableName="qc_result"
             columnName="instrument_id" columnDataType="NUMERIC(10,0)"/>
-        <!-- FR-A3: no synthetic numbers for qualitative outcomes. Guarded by
+        <!-- No synthetic numbers for qualitative outcomes. Guarded by
              chk_qc_result_source_shape above. -->
         <dropNotNullConstraint schemaName="clinlims" tableName="qc_result"
             columnName="result_value" columnDataType="numeric(15,5)"/>
@@ -184,16 +183,16 @@
         </rollback>
     </changeSet>
 
-    <!-- FR-B3 asks target configuration to adopt the existing Westgard control-lot
-         lifecycle rather than a parallel lot store. That is unbuildable as written while
+    <!-- Target configuration adopts the existing Westgard control-lot lifecycle
+         rather than a parallel lot store. That is impossible while
          qc_control_lot.instrument_id is NOT NULL with an FK to analyzer(id): a bench RDT
          kit lot has no instrument to point at, so today a manual control lot cannot be
-         created at all — which would force exactly the parallel store FR-B3 forbids. -->
+         created at all — which would force exactly the parallel store we want to avoid. -->
     <changeSet author="samuelmale" id="qc-024-relax-control-lot-analyzer">
         <preConditions onFail="MARK_RAN">
             <tableExists schemaName="clinlims" tableName="qc_control_lot"/>
         </preConditions>
-        <comment>Bench control lots have no analyzer (FR-B3)</comment>
+        <comment>Bench control lots have no analyzer</comment>
         <dropNotNullConstraint schemaName="clinlims" tableName="qc_control_lot"
             columnName="instrument_id" columnDataType="NUMERIC(10,0)"/>
         <rollback>
@@ -220,7 +219,7 @@
         </rollback>
     </changeSet>
 
-    <!-- FR-C3: hold-or-warn is a lab policy, not a hard-coded behaviour. Off by default,
+    <!-- Hold-or-warn is a lab policy, not a hard-coded behaviour. Off by default,
          so the signal starts as a visible warning on the validation row and a lab opts in
          to blocking release. A plain site flag rather than a qi_config indicator: the
          indicator table is CHECK-constrained to its enum and buys graded numeric
@@ -256,7 +255,7 @@
 
     <!-- DEFERRED: audit-trail registration for qc_result.
 
-         FR-A4 asks for QC results that are immutable post-save, with corrections linked
+         QC results are meant to be immutable post-save, with corrections linked
          by traceability. Immutability already holds by absence: there is no PUT endpoint,
          no service update method, and nothing anywhere in the codebase mutates a
          persisted qc_result. Unlike qc_control_lot — registered at

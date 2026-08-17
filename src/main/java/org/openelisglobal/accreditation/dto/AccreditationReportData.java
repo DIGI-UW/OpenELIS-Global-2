@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * OGC-686 FR-29/31/33 — what a patient report should print for accreditation.
+ * OGC-686 — what a patient report should print for accreditation.
  *
  * <p>
  * Resolved once per rendered report and consumed only by the Jasper parameter
@@ -38,7 +38,7 @@ public class AccreditationReportData {
 
     /**
      * The one-line accreditation statement, or null when no body qualifies — in
-     * which case the template prints nothing at all (FR-32).
+     * which case the template prints nothing at all.
      */
     public String getNotesLine() {
         return notesLine;

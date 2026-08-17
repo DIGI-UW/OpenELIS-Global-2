@@ -7,7 +7,7 @@ import Validation from "../Validation";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 
 /**
- * OGC-1147 FR-C1 — the QC-hold annotation on a validation row.
+ * OGC-1147 — the QC-hold annotation on a validation row.
  *
  * Copy-level assertions cover the words a technician reads; the mounted-component
  * test covers the DEF-1 regression — the reason sentence must actually render on

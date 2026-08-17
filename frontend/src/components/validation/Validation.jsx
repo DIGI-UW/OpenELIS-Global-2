@@ -326,7 +326,7 @@ const Validation = (props) => {
                 />
               </picture>
             )}
-            {/* OGC-1147 FR-C1: a control covering this result failed. A tag rather
+            {/* OGC-1147: a control covering this result failed. A tag rather
                 than another icon — the reason has to be readable, or a tech clears
                 the hold out of confusion and the safety argument evaporates.
                 DefinitionTooltip, not a title prop: Carbon's Tag swallows title

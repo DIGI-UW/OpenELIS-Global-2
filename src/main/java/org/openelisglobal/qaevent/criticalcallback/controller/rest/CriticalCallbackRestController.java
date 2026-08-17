@@ -33,8 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * OGC-714 [QA-C.4] — logs a manual critical-result callback (TJC NPSG.02.03.01
- * / CLSI GP47 read-back documentation).
+ * OGC-714 — logs a manual critical-result callback (TJC NPSG.02.03.01 / CLSI
+ * GP47 read-back documentation).
  *
  * <p>
  * One stack, write + read: the capture POST plus the compliance read endpoints

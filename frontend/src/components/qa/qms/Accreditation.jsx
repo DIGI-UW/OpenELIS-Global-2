@@ -38,13 +38,12 @@ import config from "../../../config.json";
 import "../qi/QIDashboard.css";
 
 /**
- * Test Accreditation (OGC-686, phase D.2) at /qa/qms/accreditation. One surface for
+ * Test Accreditation (OGC-686) at /qa/qms/accreditation. One surface for
  * accrediting bodies and per-test enrollment: reads on qa.view.qms, write controls
  * appear only with qa.manage.accreditation. Body status (ACTIVE/EXPIRING/EXPIRED/
  * INACTIVE) and the expiring window are computed by the backend so this page, the
  * report resolver and the inspector-readiness answer cannot drift apart.
- * ponytail: no server-side filter or pagination — the body list is a handful of rows
- * and enrollments are bounded by the test catalog; everything filters client-side.
+ * Filtering is client-side: the data is small (bodies + per-test enrollments).
  */
 
 const breadcrumbs = [
@@ -370,8 +369,8 @@ const Accreditation = () => {
                               hasIconOnly
                               renderIcon={TrashCan}
                               disabled={b.enrolledTestCount > 0}
-                              // FRS §6: say how many rows are in the way, the
-                              // same count the REST rejection reports.
+                              // Say how many enrollments block the delete —
+                              // the same count the REST rejection reports.
                               iconDescription={
                                 b.enrolledTestCount > 0
                                   ? intl.formatMessage(
@@ -528,7 +527,7 @@ const Accreditation = () => {
             </>
           )}
 
-          {/* D.5: ISO 15189 §7.7 — is every accredited test in a live EQA scheme?
+          {/* ISO 15189 §7.7 — is every accredited test in a live EQA scheme?
               Derived from data the lab already keeps in the EQA module, so there is
               nothing to maintain here and no way for the answer to go stale. */}
           <div className="qi-dashboard__controls">

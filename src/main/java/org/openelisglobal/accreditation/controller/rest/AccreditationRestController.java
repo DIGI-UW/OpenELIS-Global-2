@@ -50,9 +50,10 @@ import org.springframework.web.multipart.MultipartFile;
  * who own the data. Both accept {@code GLOBAL_ADMIN} as the standard fallback.
  *
  * <p>
- * The FRS's {@code TEST_CATALOG_MANAGE} is deliberately not used: it does not
- * exist in this codebase, and the {@code /admin} shell it assumed is
- * GLOBAL_ADMIN-only, which would lock out the QA Officer the feature is for.
+ * The spec's suggested {@code TEST_CATALOG_MANAGE} permission is deliberately
+ * not used: it does not exist in this codebase, and the {@code /admin} shell it
+ * assumed is GLOBAL_ADMIN-only, which would lock out the QA Officer the feature
+ * is for.
  *
  * <p>
  * Bad input is 400 throughout — the services throw
@@ -65,7 +66,9 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/rest/accreditation")
 public class AccreditationRestController extends BaseRestController {
 
-    /** FRS FR-7: raster only, ≤ 500 KB. SVG is excluded — see the note below. */
+    /**
+     * Logo uploads: raster only, ≤ 500 KB. SVG is excluded — see the note below.
+     */
     private static final long MAX_LOGO_BYTES = 500L * 1024L;
 
     private static final int MIN_LOGO_PIXELS = 64;
@@ -105,9 +108,9 @@ public class AccreditationRestController extends BaseRestController {
     }
 
     /**
-     * OGC-686 (QA-D.5): accredited scope vs. live EQA cover, per body. Read-only
-     * and derived — the inspector's ISO 15189 §7.7 question answered from data the
-     * lab already keeps.
+     * OGC-686: accredited scope vs. live EQA cover, per body. Read-only and derived
+     * — the inspector's ISO 15189 §7.7 question answered from data the lab already
+     * keeps.
      */
     @GetMapping(value = "/eqa-coverage", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")

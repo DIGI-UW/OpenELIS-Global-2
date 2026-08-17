@@ -49,7 +49,7 @@ function QIConfigEditor({ indicator, onClose }) {
   const intl = useIntl();
   const key = indicator.indicatorKey;
   const direction = indicator.direction;
-  // TAT thresholds are mean-TAT hours, rates are % (C.3 gap #3 decision).
+  // TAT thresholds are mean-TAT hours; rate indicators are percentages.
   const unit = unitFor(key);
   const withUnit = (labelId) =>
     unit

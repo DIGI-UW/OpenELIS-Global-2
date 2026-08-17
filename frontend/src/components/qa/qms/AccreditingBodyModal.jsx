@@ -38,7 +38,7 @@ const blankBody = () => ({
 });
 
 /**
- * Add/Edit Accrediting Body (OGC-686, D.2). The certificate carries one expiry for
+ * Add/Edit Accrediting Body (OGC-686). The certificate carries one expiry for
  * the whole scope, so expiry lives here and not on the individual test enrollments.
  * `code` is immutable once created — the backend rejects a change with a 400. The
  * logo is uploaded as a separate multipart call after the body exists, since the

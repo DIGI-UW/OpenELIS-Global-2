@@ -178,8 +178,8 @@ public class AnalysisItem implements Serializable {
     private boolean nonconforming = false;
 
     /**
-     * The QC-fail signal (OGC-1147 FR-C1): a control covering this analysis failed
-     * and the resulting non-conformity is still open. Distinct from
+     * The QC-fail signal (OGC-1147): a control covering this analysis failed and
+     * the resulting non-conformity is still open. Distinct from
      * {@link #nonconforming}, which is a sample-level QA event — this one is about
      * the run's quality control.
      */

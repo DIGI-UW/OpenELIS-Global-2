@@ -78,8 +78,8 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
         Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
         Session session = entityManager.unwrap(Session.class);
 
-        // ponytail: fetch-all + in-memory paging, same as the TAT report;
-        // amendments are rare and the window is capped at 366 days.
+        // Loads the whole window (amendments are rare, max 366 days) and pages in
+        // memory.
         @SuppressWarnings("unchecked")
         List<Object[]> noteRows = session
                 .createNativeQuery("SELECT CAST(a.id AS varchar), s.accession_number, t.name,"
@@ -311,9 +311,9 @@ public class AmendmentReportServiceImpl implements AmendmentReportService {
         return Long.valueOf(referenceTablesService.getReferenceTableByName("RESULT").getId());
     }
 
-    // ponytail: the corrected note stores the message resolved in the server
-    // locale at write time; a deployment that switches locale undercounts
-    // pre-switch notes. Revisit if multi-locale history matters.
+    // Caveat: corrected notes are stored in whatever server locale was active
+    // when they were written. If a deployment switches locale, notes from before
+    // the switch stop matching and the count drops.
     private String correctedNoteText() {
         return MessageUtil.getMessage("note.corrected.result");
     }

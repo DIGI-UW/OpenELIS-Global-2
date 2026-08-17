@@ -29,8 +29,8 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * OGC-714 [QA-C.4] — critical-callback capture endpoint, round-tripped against
- * a real DB. Covers create (201 + server-stamped loggedBy/loggedAt + derived
+ * OGC-714 — critical-callback capture endpoint, round-tripped against a real
+ * DB. Covers create (201 + server-stamped loggedBy/loggedAt + derived
  * analysisId + resultValue snapshot), the repeat-POST-is-a-new-attempt-row
  * contract, and the 400 validation guards (unknown/blank result, NON-CRITICAL
  * saved value, blank/oversized recipient, bad status).

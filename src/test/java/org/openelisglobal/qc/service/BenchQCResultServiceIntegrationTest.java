@@ -30,7 +30,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * The three claims that matter and cannot be checked any other way: a manual
  * quantitative control earns a z-score (so it plots on Levey-Jennings and
  * reaches the Westgard engine with no new wiring), an RDT control never does
- * (which is what makes decision D4's split arithmetic rather than a branch),
+ * (which is what makes the manual/RDT split arithmetic rather than a branch),
  * and the shipped analyzer path is untouched by widening its table (NFR-1).
  */
 public class BenchQCResultServiceIntegrationTest extends BaseWebContextSensitiveTest {
@@ -92,7 +92,7 @@ public class BenchQCResultServiceIntegrationTest extends BaseWebContextSensitive
         // what puts this point on the Levey-Jennings chart between the +1SD and +3SD
         // bands.
         assertEquals(0, new BigDecimal("2.0000").compareTo(saved.getZScore()));
-        // FR-B2: the target in force at capture is copied onto the row, so a later edit
+        // The target in force at capture is copied onto the row, so a later edit
         // of a
         // configured target cannot rewrite this run's history.
         assertEquals(0, LOT_MEAN.compareTo(saved.getExpectedValue()));
@@ -136,11 +136,11 @@ public class BenchQCResultServiceIntegrationTest extends BaseWebContextSensitive
 
         assertEquals(QCSource.RDT, saved.getSource());
         assertEquals(QCQualitativeOutcome.INVALID, saved.getQualitativeOutcome());
-        // FR-A3: no synthetic number stands in for a qualitative outcome.
+        // No synthetic number stands in for a qualitative outcome.
         assertNull(saved.getResultValue());
         // No number means no z-score, which is exactly what keeps RDT runs out of
         // Westgard
-        // rule evaluation without a single conditional (decision D4).
+        // rule evaluation without a single conditional.
         assertNull(saved.getZScore());
         assertNull(saved.getControlLotId());
         assertEquals("Determine HIV-1/2 · DET-2025-1102", saved.getControlLabel());
@@ -159,7 +159,7 @@ public class BenchQCResultServiceIntegrationTest extends BaseWebContextSensitive
 
         try {
             qcResultService.createBenchQCResult(capture, TECHNICIAN_USER_ID);
-            fail("expected an RDT control carrying a number to be refused (FR-A3)");
+            fail("expected an RDT control carrying a number to be refused");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage(), e.getMessage().contains("must not carry a measured value"));
         }
@@ -168,8 +168,8 @@ public class BenchQCResultServiceIntegrationTest extends BaseWebContextSensitive
     /**
      * Inversion test for the constraint itself. The service refuses this
      * combination, but the service is not the only thing that can write the table —
-     * this proves the database refuses it too, which is what makes FR-A3 structural
-     * rather than a convention.
+     * this proves the database refuses it too, which makes the shape rule
+     * structural rather than a convention.
      */
     @Test
     public void database_refusesQualitativeRowCarryingAValue() {
@@ -300,9 +300,8 @@ public class BenchQCResultServiceIntegrationTest extends BaseWebContextSensitive
 
     /**
      * An ACTIVE lot on the MANUFACTURER_FIXED strategy with statistics already
-     * present. That is decision D3 in practice: manual methods get their mean/SD
-     * from tech-entered or configured targets, not from a 20-run establishment
-     * protocol.
+     * present: manual methods get their mean/SD from tech-entered or configured
+     * targets, not from a 20-run establishment protocol.
      */
     private String seedActiveFixedValueLot() {
         String lotId = UUID.randomUUID().toString();

@@ -183,7 +183,7 @@
   width: 2.5rem;
 }
 
-/* Gallery parity — expand control matches the mockup's icon button */
+/* Expand control rendered as an icon button, matching the design */
 .unifiedExpandButton.cds--btn {
   min-height: 2rem;
   padding: 0.25rem 0.5rem;
@@ -608,7 +608,7 @@
   font-size: 0.75rem;
 }
 
-/* OGC-1025 (R6) — bench control capture */
+/* OGC-1025 — bench control capture */
 .unifiedQcCapture {
   display: flex;
   flex-direction: column;

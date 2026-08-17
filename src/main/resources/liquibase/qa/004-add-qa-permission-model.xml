@@ -5,7 +5,7 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- QA permission registry + QA Officer default role (QA v1 MVP, FRS §6).
+    <!-- QA permission registry + QA Officer default role.
 
          Permission keys are system_module rows named after the registry keys
          (qa.view.overview / qc / eqa / qi / qms, plus the reserved
@@ -230,7 +230,7 @@
         </rollback>
     </changeSet>
 
-    <!-- OGC-709 [QA-C.3]: qa.manage.qi shipped reserved-but-ungranted in qa-021.
+    <!-- OGC-709: qa.manage.qi shipped reserved-but-ungranted in qa-021.
          This grant activates it for QI Configuration management. Management is
          scoped no wider than its view permission: QA Officer + Global Admin only.
          A NEW changeSet (never edit qa-023/024 — that breaks their checksum). -->
@@ -258,11 +258,11 @@
         </rollback>
     </changeSet>
 
-    <!-- OGC-686 [QA-D.1]: Accreditation Status lives in the QMS pillar, so READS
+    <!-- OGC-686: Accreditation Status lives in the QMS pillar, so READS
          ride the existing qa.view.qms permission (no new view scope). Editing
          accrediting bodies and test enrollments is a distinct, narrower right, so
-         it gets its own module rather than reusing hasRole('ADMIN') — the FRS's
-         `TEST_CATALOG_MANAGE` does not exist anywhere in this codebase, and the
+         it gets its own module rather than reusing hasRole('ADMIN') — the spec's
+         suggested `TEST_CATALOG_MANAGE` does not exist anywhere in this codebase, and the
          /admin shell it assumed is GLOBAL_ADMIN-only, which would lock out the
          QA Officer the feature is written for. -->
     <changeSet author="openelisglobal" id="qa-032-add-qa-manage-accreditation-module">

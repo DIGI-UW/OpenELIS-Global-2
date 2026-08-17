@@ -33,44 +33,38 @@
   <!-- OGC-1147 Manual & RDT QC persistence -->
   <include file="liquibase/qc/010-manual-rdt-qc.xml" />
 
-  <!-- QA Menu v0.5 (IA Rehome) -->
+  <!-- QA top-level menu (OGC-688) -->
   <include file="liquibase/qa/001-add-qa-menu-items.xml" />
 
-  <!-- QA v1 MVP -->
+  <!-- QA dashboards: QI menu, amendment report module, permission model -->
   <include file="liquibase/qa/002-add-qi-dashboard-menu.xml" />
   <include file="liquibase/qa/003-add-amendment-report-module.xml" />
   <include file="liquibase/qa/004-add-qa-permission-model.xml" />
 
-  <!-- QA Phase B -->
+  <!-- Electronic Signature Log (OGC-702) -->
   <include file="liquibase/qa/005-add-esig-log-menu.xml" />
 
   <include file="liquibase/qa/006-add-capa-register-menu.xml" />
 
-  <!-- QA Phase C -->
+  <!-- QI configuration (OGC-709) -->
   <include file="liquibase/qa/007-create-qi-config-table.xml" />
 
-  <!-- QA Phase C.4 — Critical Callback -->
+  <!-- Critical callback capture (OGC-714) -->
   <include file="liquibase/qa/008-create-critical-callback-table.xml" />
   <include file="liquibase/qa/009-add-callback-qi-indicator.xml" />
 
-  <!-- QA Phase C.3 — OGC-710: TAT thresholds become duration (hours) -->
+  <!-- OGC-710: TAT thresholds become duration (hours) -->
   <include file="liquibase/qa/010-tat-duration-thresholds.xml" />
 
-  <!-- QA Phase C.3 — OGC-710: index for the rejection cohort queries -->
+  <!-- OGC-710: index for the rejection cohort queries -->
   <include file="liquibase/qa/011-analysis-started-date-index.xml" />
 
-  <!-- QA Phase C.4 — index for the released-cohort QI queries (polled) -->
+  <!-- OGC-714: index for the released-cohort QI queries (polled) -->
   <include file="liquibase/qa/012-analysis-released-date-index.xml" />
 
-  <!-- QA Phase D.1 — OGC-686: accrediting bodies + per-test accreditation -->
+  <!-- OGC-686: accrediting bodies + per-test accreditation -->
   <include file="liquibase/qa/013-create-accreditation-tables.xml" />
 
-  <!-- QA Phase D.2 — OGC-686: accreditation page menu row -->
+  <!-- OGC-686: accreditation page menu row -->
   <include file="liquibase/qa/014-add-accreditation-menu.xml" />
-
-  <!-- EQA V2.1 T-08 — OGC-609: cycle/round/state-transition-audit spine -->
-  <include file="liquibase/qa/015-create-eqa-cycle-tables.xml" />
-
-  <!-- EQA V2.1 T-08 — OGC-609: participant results, cycle links, scheme_type -->
-  <include file="liquibase/qa/016-create-eqa-participant-result.xml" />
 </databaseChangeLog>

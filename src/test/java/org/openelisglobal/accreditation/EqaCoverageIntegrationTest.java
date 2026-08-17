@@ -18,7 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * OGC-686 [QA-D.5] — accredited scope vs. live EQA cover, against a real DB.
+ * OGC-686 — accredited scope vs. live EQA cover, against a real DB.
  *
  * <p>
  * The question is ISO 15189 §7.7's: is every test the lab claims as accredited

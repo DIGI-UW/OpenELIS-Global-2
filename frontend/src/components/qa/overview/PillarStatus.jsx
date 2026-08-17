@@ -99,7 +99,7 @@ const qmsPillar = (intl, nceList) => {
 };
 
 /**
- * Pillar Status chips (OGC-694 WS-F): QC and QMS light up from live rollups,
+ * Pillar Status chips (OGC-694): QC and QMS light up from live rollups,
  * QI from the shared TAT rollup; EQA stays a placeholder until Phase E
  * (OGC-721).
  */

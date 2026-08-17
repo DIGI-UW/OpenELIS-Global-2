@@ -6,7 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-714 [QA-C.4] Critical Callback capture — the write side of Critical
+    OGC-714 Critical Callback capture — the write side of Critical
     Callback Compliance.
 
     One row documents one manual phone-callback attempt for a critical result

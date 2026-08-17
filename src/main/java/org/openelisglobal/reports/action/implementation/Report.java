@@ -137,7 +137,7 @@ public abstract class Report implements IReportCreator {
     }
 
     /**
-     * OGC-686 FR-30 — remember a test as claimable for accreditation.
+     * OGC-686 — remember a test as claimable for accreditation.
      *
      * <p>
      * Called once per analysis the report actually prints. Only validated in-house
@@ -173,7 +173,7 @@ public abstract class Report implements IReportCreator {
     }
 
     /**
-     * OGC-686 FR-29/31/33 — resolve the recorded tests into header parameters.
+     * OGC-686 — resolve the recorded tests into header parameters.
      *
      * <p>
      * Must run after the report items are built (the test set is only complete

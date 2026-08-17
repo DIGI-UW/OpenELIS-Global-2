@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * OGC-686 (QA-D.5) — one accrediting body's EQA cover, the ISO 15189 §7.7
- * question answered as a row: of the tests in this body's accredited scope, how
- * many are in a live EQA scheme, and which are not.
+ * OGC-686 — one accrediting body's EQA cover, the ISO 15189 §7.7 question
+ * answered as a row: of the tests in this body's accredited scope, how many are
+ * in a live EQA scheme, and which are not.
  *
  * <p>
  * Derived on read from data the lab already maintains in two places (test

@@ -45,9 +45,9 @@ const AnswerRow = ({ titleKey, status, answer, loading, onClick }) => (
 );
 
 /**
- * Inspector readiness Q&A (OGC-694 WS-F): Q1 answers from the QC instrument
+ * Inspector readiness Q&A (OGC-694): Q1 answers from the QC instrument
  * rollup, Q3 from the TAT rollup, Q4 from the NCE register, Q5 from the
- * accreditation portfolio summary (OGC-686 D.2); Q2 (EQA, OGC-721) stays a
+ * accreditation portfolio summary (OGC-686); Q2 (EQA, OGC-721) stays a
  * placeholder.
  */
 const InspectorReadiness = () => {

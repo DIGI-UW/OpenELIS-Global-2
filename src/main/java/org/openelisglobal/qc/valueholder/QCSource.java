@@ -7,9 +7,9 @@ package org.openelisglobal.qc.valueholder;
  * amending the CHECK.
  *
  * <p>
- * Deliberately only the three values the acceptance criteria require. The
- * {@code WORKPLAN / QC_MODULE / ANALYZER_IMPORT / ANALYZER_LIST} vocabulary
- * quoted by the FRS appears in neither OGC-427 nor OGC-428 nor anywhere in this
+ * Deliberately only the three values the acceptance criteria require. A wider
+ * {@code WORKPLAN / QC_MODULE / ANALYZER_IMPORT / ANALYZER_LIST} vocabulary was
+ * once proposed but appears in neither OGC-427 nor OGC-428 nor anywhere in this
  * codebase — those stories add their own values when they land.
  */
 public enum QCSource {
@@ -22,7 +22,7 @@ public enum QCSource {
     /** Bench quantitative control: a measured number judged against a target. */
     MANUAL,
 
-    /** Rapid diagnostic test control line: qualitative, never a number (FR-A3). */
+    /** Rapid diagnostic test control line: qualitative, never a number. */
     RDT;
 
     /**

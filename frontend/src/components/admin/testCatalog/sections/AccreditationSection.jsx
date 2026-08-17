@@ -25,17 +25,13 @@ import {
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 
 /**
- * OGC-686 (QA-D.3) — Accreditation section: which bodies accredit this test.
+ * OGC-686 — Accreditation section: which bodies accredit this test.
  *
  * The other direction of the same data the QMS page at /qa/qms/accreditation
  * manages, so it reuses that API rather than growing a per-test one: the page
  * answers "which tests does this body cover?", this answers "who accredits this
  * test?". Expiry belongs to the body, so this section never edits a date — it
  * shows the owning body's status and links out for anything else.
- *
- * ponytail: plain Table, not DataTable — Carbon's DataTable re-derives rows in
- * an effect and lags a render behind its prop, which is a whole class of bug
- * this handful of rows has no use for.
  */
 const AccreditationSection = ({ testId }) => {
   const intl = useIntl();

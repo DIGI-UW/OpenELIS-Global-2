@@ -45,8 +45,8 @@ public interface QCDashboardService {
     QCDashboardSummary getDashboardSummary(Timestamp startDate, Timestamp endDate);
 
     /**
-     * Bench QC activity for the window, grouped by lab unit and test (OGC-1147
-     * FR-D1). A null {@code source} covers MANUAL and RDT together.
+     * Bench QC activity for the window, grouped by lab unit and test (OGC-1147). A
+     * null {@code source} covers MANUAL and RDT together.
      */
     List<BenchQcSummaryRow> getBenchQcSummary(Timestamp startDate, Timestamp endDate, QCSource source);
 }

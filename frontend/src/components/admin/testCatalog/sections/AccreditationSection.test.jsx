@@ -1,5 +1,5 @@
 /**
- * AccreditationSection — OGC-686 (QA-D.3).
+ * AccreditationSection — OGC-686.
  *
  * The per-test view of accreditation: which bodies accredit this test, add and
  * remove. Covers render, the empty and error states, the permission gate, that

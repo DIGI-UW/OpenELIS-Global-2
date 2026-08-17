@@ -114,7 +114,7 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
         if (testService().getTestById(testId) == null) {
             throw new IllegalArgumentException("No test with id " + testId);
         }
-        // FR-19: the DB unique constraint is the backstop; checking here produces the
+        // The DB unique constraint is the backstop; checking here produces the
         // "already accredited by that body" message the UI links to the existing row.
         if (baseObjectDAO.getByTestAndBody(testId, accreditingBodyId) != null) {
             throw new IllegalArgumentException("This test is already accredited by that body");

@@ -5,7 +5,7 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- QA Phase D — OGC-686: Test Accreditation.
+    <!-- OGC-686: Test Accreditation.
          Adds the accreditation page under the QMS & Improvement pillar. The page
          reads on the existing qa.view.qms authority and writes on
          qa.manage.accreditation (both registered in liquibase/qa/004); the tables

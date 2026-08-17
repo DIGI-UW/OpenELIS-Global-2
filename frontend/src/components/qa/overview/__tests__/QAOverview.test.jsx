@@ -209,9 +209,9 @@ describe("QAOverview", () => {
       screen.getByText(/Daily snapshot for the QA Officer/),
     ).toBeInTheDocument();
 
-    // WS-F lit This Week / Pillars / Activity and the QC/EQA attention rows;
-    // WS-E lit the Today Amendment tile, WS-G the Average TAT tile (NCE Pulse
-    // already live via WS-C). These placeholders remain.
+    // This Week / Pillars / Activity, the QC/EQA attention rows, the Today
+    // Amendment tile and the Average TAT tile are all live now (NCE Pulse
+    // came first). These placeholders remain.
     const slotCounts = {
       "Attention Required": 1,
       Today: 0,
@@ -250,7 +250,7 @@ describe("QAOverview", () => {
     ["OGC-696", "OGC-697", "OGC-714"].forEach((ticket) => {
       expect(within(today).queryByText(ticket)).not.toBeInTheDocument();
     });
-    // Average TAT is live (WS-G): value + prior-window delta, no ticket
+    // Average TAT is live: value + prior-window delta, no ticket
     expect(within(today).queryByText("OGC-696")).not.toBeInTheDocument();
     const tatTile = within(today)
       .getByText("Average TAT")
@@ -264,7 +264,7 @@ describe("QAOverview", () => {
     expect(
       within(today).getByText("3 in corrective action"),
     ).toBeInTheDocument();
-    // Amendment Rate is live (WS-E): rate under the green threshold
+    // Amendment Rate is live: rate under the green threshold
     expect(within(today).queryByText("OGC-698")).not.toBeInTheDocument();
     expect(within(today).getByText("0.31%")).toHaveClass("qa-live-green");
     expect(within(today).getByText("8 of 2580 released")).toBeInTheDocument();

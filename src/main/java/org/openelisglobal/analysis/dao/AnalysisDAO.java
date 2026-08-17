@@ -183,7 +183,7 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
     /**
      * The lab-unit-keyed counterpart of
      * {@link #getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange}, for
-     * controls run at the bench (OGC-1147 FR-C1). A manual or RDT control has no
+     * controls run at the bench (OGC-1147). A manual or RDT control has no
      * analyzer, so its blast radius is every analysis of that test completed in the
      * same lab unit inside the window. Same contract otherwise: {sampleItemId,
      * analysisId} pairs, newest first, callers dedupe and cap by sample.

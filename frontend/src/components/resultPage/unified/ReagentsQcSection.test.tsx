@@ -21,7 +21,7 @@ import ReagentsQcSection from "./ReagentsQcSection";
 /**
  * OGC-1024 (R5) — reagent links (catalog) + FEFO lots (inventory) + record
  * use via the shipped consume endpoint; analyzer rows read-only.
- * OGC-1025 (R6, FR-D3/D4) — polymorphic control capture: RDT control-line
+ * OGC-1025 — polymorphic control capture: RDT control-line
  * outcome + kit lot, or manual quantitative measured/expected/uncertainty +
  * Pass/Fail against a bench lot, POSTed to /rest/qc/results.
  */

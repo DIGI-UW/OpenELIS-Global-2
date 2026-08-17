@@ -6,7 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-686 [QA-D.1] Test Accreditation — accrediting bodies + per-test enrollment.
+    OGC-686 Test Accreditation — accrediting bodies + per-test enrollment.
 
     Data model decision (D.0): a real accreditation certificate carries ONE
     expiry for the whole accredited scope, and mid-cycle scope extensions inherit
@@ -135,7 +135,7 @@
             referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"
             onDelete="CASCADE"/>
 
-        <!-- No onDelete: the default RESTRICT is what makes FR-6's "cannot delete a
+        <!-- No onDelete: the default RESTRICT is what makes "cannot delete a
              body while tests reference it" true at the DB level. -->
         <addForeignKeyConstraint
             constraintName="fk_test_accreditation_body"

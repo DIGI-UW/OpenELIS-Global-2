@@ -28,8 +28,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * OGC-686 [QA-D.1] — accreditation schema + service behaviour against a real DB
- * (no mocks).
+ * OGC-686 — accreditation schema + service behaviour against a real DB (no
+ * mocks).
  *
  * <p>
  * The load-bearing assertions are the ones the tickets get wrong or leave
@@ -282,7 +282,7 @@ public class AccreditationServiceIntegrationTest extends BaseWebContextSensitive
         assertTrue(accreditingBodyService.getBodyViews().get(0).enrolledTestCount == 0);
     }
 
-    // ---- delete guard (FR-6) ----
+    // ---- delete guard ----
 
     @Test
     public void deleteBody_blockedWhileEnrolled_thenAllowed() {

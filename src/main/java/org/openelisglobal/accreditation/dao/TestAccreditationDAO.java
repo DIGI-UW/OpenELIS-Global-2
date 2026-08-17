@@ -22,7 +22,10 @@ public interface TestAccreditationDAO extends BaseDAO<TestAccreditation, Long> {
      */
     List<TestAccreditation> getByTestIds(Collection<String> testIds);
 
-    /** The (test, body) row if it exists, else null. Enforces FR-19 uniqueness. */
+    /**
+     * The (test, body) row if it exists, else null. One enrollment per (test, body)
+     * pair.
+     */
     TestAccreditation getByTestAndBody(String testId, Long accreditingBodyId);
 
     /** Whether any test is still enrolled under this body (blocks body delete). */

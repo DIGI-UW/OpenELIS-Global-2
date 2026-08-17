@@ -40,8 +40,8 @@ public class NceSpecimenDAOImpl extends BaseDAOImpl<NceSpecimen, Integer> implem
 
     /**
      * Of the given analyses, those linked to a still-open QC-failure NCE — the
-     * Validation QC-fail signal (OGC-1147 FR-C1/C3). Batched deliberately: a
-     * validation list is dozens of rows and this must not become a per-row query.
+     * Validation QC-fail signal (OGC-1147). Batched deliberately: a validation list
+     * is dozens of rows and this must not become a per-row query.
      *
      * <p>
      * "Open" is everything except Closed and Completed. Erring toward keeping a

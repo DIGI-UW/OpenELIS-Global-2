@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Aggregated payload for the QA Overview page (OGC-694 WS-F). One fetch feeds
- * the This-Week counters, QC/EQA pillar chips, inspector answers, and the
- * server half of the Recent Activity feed. NCE-derived numbers are computed
+ * Aggregated payload for the QA Overview page (OGC-694). One fetch feeds the
+ * This-Week counters, QC/EQA pillar chips, inspector answers, and the server
+ * half of the Recent Activity feed. NCE-derived numbers are computed
  * client-side from the existing NCE dashboard payload (see nceOverview.js) and
  * are deliberately absent here.
  */

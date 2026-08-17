@@ -16,16 +16,16 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Raises the QC-fail signal for a failing bench control, after the control
- * itself has committed (OGC-1147 FR-C1).
+ * itself has committed (OGC-1147).
  *
  * <p>
  * Both routes end in the same place — an NCE with the affected patient analyses
- * linked — but decision D4 splits how they get there. A MANUAL Fail is a real
- * quality failure on a measurement, so it becomes a {@code qc_rule_violation}
- * and enters the corrective-action workflow exactly as an analyzer rule hit
- * does. An RDT Invalid does not: a missing control line is not a statistical
- * rule hit, and recording it as one would corrupt violation counts and sigma
- * metrics.
+ * linked — but the two routes are deliberately different. A MANUAL Fail is a
+ * real quality failure on a measurement, so it becomes a
+ * {@code qc_rule_violation} and enters the corrective-action workflow exactly
+ * as an analyzer rule hit does. An RDT Invalid does not: a missing control line
+ * is not a statistical rule hit, and recording it as one would corrupt
+ * violation counts and sigma metrics.
  *
  * <p>
  * Mirrors {@link QCResultCreatedEventListener}'s annotations deliberately —

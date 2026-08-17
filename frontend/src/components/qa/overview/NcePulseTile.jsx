@@ -13,7 +13,7 @@ import {
 /**
  * NCE Pulse — current-state count of critical NCEs pending acknowledgment
  * (OGC-699). Deliberately not a trend: no sparkline. Standalone so the QI
- * Dashboard (WS-B) can render the same tile.
+ * Dashboard can render the same tile.
  */
 const NcePulseTile = () => {
   const history = useHistory();

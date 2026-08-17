@@ -79,12 +79,6 @@
         <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
         <class>org.openelisglobal.eqa.valueholder.SampleEQA</class>
 
-        <!-- EQA V2 cycle spine (OGC-609) -->
-        <class>org.openelisglobal.eqa.valueholder.EQACycle</class>
-        <class>org.openelisglobal.eqa.valueholder.EQARound</class>
-        <class>org.openelisglobal.eqa.valueholder.EQACycleStateTransition</class>
-        <class>org.openelisglobal.eqa.valueholder.EQAParticipantResult</class>
-
         <!-- Quality Control / Internal Control entities (005-eqa-module QC/IC) -->
         <class>org.openelisglobal.qc.valueholder.QCRuleConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCFrequencyConfig</class>
@@ -156,7 +150,7 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
-        <!-- Test Accreditation (OGC-686 QA-D.1) -->
+        <!-- Test Accreditation (OGC-686) -->
         <class>org.openelisglobal.accreditation.valueholder.AccreditingBody</class>
         <class>org.openelisglobal.accreditation.valueholder.TestAccreditation</class>
 

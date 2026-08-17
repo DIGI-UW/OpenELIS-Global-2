@@ -5,7 +5,7 @@ import java.util.Collection;
 import org.openelisglobal.accreditation.dto.AccreditationReportData;
 
 /**
- * OGC-686 — the single place the FR-29 logo gate is evaluated.
+ * OGC-686 — the single place the logo visibility gate is evaluated.
  *
  * <p>
  * Both patient-report families ({@code PatientReport} and

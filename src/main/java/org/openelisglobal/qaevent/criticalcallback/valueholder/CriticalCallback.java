@@ -10,8 +10,8 @@ import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * OGC-714 [QA-C.4] — one manual critical-result callback attempt (TJC
- * NPSG.02.03.01 / CLSI GP47 read-back documentation).
+ * OGC-714 — one manual critical-result callback attempt (TJC NPSG.02.03.01 /
+ * CLSI GP47 read-back documentation).
  *
  * <p>
  * The callback act is manual; a row only records that it happened: which

@@ -48,7 +48,7 @@ public class QCControlLot extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
 
-    // Nullable since OGC-1147 (FR-B3): a bench control lot for a manual method has
+    // Nullable since OGC-1147: a bench control lot for a manual method has
     // no
     // analyzer to point at. qc-024 dropped the NOT NULL; the Bean Validation
     // @NotNull

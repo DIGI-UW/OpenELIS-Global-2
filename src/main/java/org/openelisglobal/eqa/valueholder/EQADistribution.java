@@ -63,13 +63,6 @@ public class EQADistribution extends BaseObject<Long> {
     @Column(name = "target_value", precision = 15, scale = 5)
     private BigDecimal targetValue;
 
-    /** V2 cycle/round link (FR-V2.1-03); NULL on V1 distributions. */
-    @Column(name = "cycle_id")
-    private Long cycleId;
-
-    @Column(name = "round_id")
-    private Long roundId;
-
     @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
 

@@ -25,7 +25,7 @@ public interface AccreditingBodyService extends BaseObjectService<AccreditingBod
      */
     AccreditingBody updateBody(Long id, AccreditingBody incoming, String sysUserId);
 
-    /** Delete a body. Rejected while any test is still enrolled under it (FR-6). */
+    /** Delete a body. Rejected while any test is still enrolled under it. */
     void deleteBody(Long id, String sysUserId);
 
     /** Attach (or clear, with a null image id) this body's report logo. */

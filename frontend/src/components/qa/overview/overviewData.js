@@ -2,7 +2,7 @@ import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import { tatDelta } from "../../reports/tat/tatUtils";
 
 /**
- * Shared data helpers for the QA Overview aggregators (OGC-694 WS-F).
+ * Shared data helpers for the QA Overview aggregators (OGC-694).
  *
  * Server aggregates (QC, EQA, audit, e-sig) come from one deduped fetch of
  * /rest/qa/overview/summary. NCE-derived counters reuse the nceOverview.js
@@ -37,7 +37,7 @@ export const fetchOverviewSummary = dedupedFetch((resolve) => {
   );
 });
 
-// D.2 accreditation portfolio summary (OGC-686): counts per status plus
+// Accreditation portfolio summary (OGC-686): counts per status plus
 // worstStatus, which is null when no non-inactive body exists.
 export const fetchAccreditationSummary = dedupedFetch((resolve) => {
   getFromOpenElisServer("/rest/accreditation/summary", (data) =>
@@ -109,9 +109,9 @@ export const ncesResolvedThisWeek = (
   weekStartMs = weekStart().getTime(),
 ) => list.filter((nce) => resolvedSince(nce, weekStartMs)).length;
 
-// ponytail: "CAPAs completed" is closed-count only (no effective/pending-review
-// split) until OGC-707 adds CAPA verification; a CAPA trail is any corrective
-// action or CAPA status mention in the event history.
+// "CAPAs completed" just counts closed CAPAs — no effectiveness check until
+// OGC-707 adds verification. A "CAPA trail" means the event history mentions
+// a corrective action or a CAPA status.
 const CAPA_RE = /capa|corrective/i;
 const hasCapaTrail = (nce) =>
   (nce.history || []).some(

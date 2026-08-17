@@ -204,7 +204,8 @@ public abstract class PatientProgramReport extends Report implements IReportCrea
         createReportItems();
         // OGC-686: the case-view family extends Report directly and never passes
         // through PatientReport, so it records its own tests. Its report covers the
-        // whole sample, hence every analysis on it; the recorder applies FR-30.
+        // whole sample, hence every analysis on it; the recorder filters to claimable
+        // statuses.
         if (analyses != null) {
             for (Analysis analysis : analyses) {
                 recordAccreditationCandidate(analysis, analysisService.getTest(analysis));

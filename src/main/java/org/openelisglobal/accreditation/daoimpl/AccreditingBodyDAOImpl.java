@@ -17,7 +17,7 @@ public class AccreditingBodyDAOImpl extends BaseDAOImpl<AccreditingBody, Long> i
         super(AccreditingBody.class);
     }
 
-    /** FR-31 order: display_order, ties broken alphabetically on code. */
+    /** Report order: display_order, ties broken alphabetically on code. */
     @Override
     @Transactional(readOnly = true)
     public List<AccreditingBody> getAllOrdered() {

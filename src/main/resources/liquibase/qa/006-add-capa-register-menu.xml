@@ -5,7 +5,7 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- QA Phase C — OGC-707: CAPA Register.
+    <!-- OGC-707: CAPA Register.
          Adds the cross-NCE CAPA register page under the QMS & Improvement pillar.
          REST access is enforced by @PreAuthorize on the existing qa.view.qms
          authority (liquibase/qa/004); no new system_module rows are needed. -->

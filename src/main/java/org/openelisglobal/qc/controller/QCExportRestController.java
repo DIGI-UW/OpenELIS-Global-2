@@ -190,8 +190,7 @@ public class QCExportRestController {
 
     /**
      * The bench QC register: one row per manual or RDT control run in the window
-     * (OGC-1147 FR-D5).
-     * /rest/qc/export/bench/csv?startDate=&amp;endDate=[&amp;source=]
+     * (OGC-1147). /rest/qc/export/bench/csv?startDate=&amp;endDate=[&amp;source=]
      *
      * <p>
      * A separate flat export rather than a source option on {@link #exportCsv}:

@@ -63,7 +63,7 @@ const rowWhen = (intl, timestamp) => {
 };
 
 /**
- * Recent Activity feed (OGC-694 WS-F): merges NCE history (client side, from
+ * Recent Activity feed (OGC-694): merges NCE history (client side, from
  * the shared NCE fetch) with e-signature events and QC alerts (server side)
  * over the last 24 hours.
  */

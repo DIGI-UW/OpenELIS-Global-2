@@ -202,7 +202,7 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
 
     /**
      * Flat list of bench control runs in a window, newest first — the accreditation
-     * register an assessor asks for (OGC-1147 FR-D5).
+     * register an assessor asks for (OGC-1147).
      *
      * <p>
      * Deliberately flat rather than folded into the chart export's lot sections:

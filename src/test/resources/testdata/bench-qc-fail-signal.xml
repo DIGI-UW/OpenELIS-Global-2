@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <!-- OGC-1147 FR-C1: the QC-fail signal for a bench control. A bench control
-        has no analyzer, so its blast radius is scoped by lab unit instead. The dataset
+    <!-- OGC-1147: the QC-fail signal for a bench control. A bench control has
+        no analyzer, so its blast radius is scoped by lab unit instead. The dataset
         mirrors qc-violation-nce.xml's shape so both scopes are exercised by the
         same window algorithm. Lab unit 701 (Haematology): an in-control MANUAL control
         at 11:30, then the failing control at 12:00. Analyses 9101/9102 completed
@@ -51,7 +51,7 @@
         is_reportable="Y" orderable="true" lastUpdated="2025-06-01 12:00:00" />
 
     <!-- Bench control lot: NO instrument_id. Impossible before OGC-1147 relaxed
-        qc_control_lot.instrument_id, which is what made FR-B3 unbuildable. -->
+        qc_control_lot.instrument_id — a bench lot has no analyzer to point at. -->
     <qc_control_lot id="bench-lot-a"
         fhir_uuid="55555555-5555-5555-5555-555555555501"
         product_name="Bench Control Normal" lot_number="BENCH-A"

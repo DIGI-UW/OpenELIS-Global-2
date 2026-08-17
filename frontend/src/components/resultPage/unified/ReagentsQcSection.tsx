@@ -14,7 +14,7 @@ import {
  * /rest/inventory/management/consume (FEFO across lots, analysis-linked).
  * Analyzer-loaded rows are read-only (capture mode: analyzer-reported).
  *
- * OGC-1025 (R6, FR-D3/D4) — manual control-result capture, polymorphic by
+ * OGC-1025 — manual control-result capture, polymorphic by
  * test type: RDT rows record a control-line outcome (Valid/Invalid) with a
  * free-text kit lot; manual quantitative rows record measured/expected/
  * uncertainty + Pass/Fail against a bench control lot. POSTs to the OGC-1147
@@ -55,14 +55,14 @@ interface ReagentsQcSectionProps {
   /** analyzerId as loaded — analyzer-reported rows are read-only (FR-B2). */
   fromAnalyzerId?: string;
   analyzerName?: string;
-  /** "N" = manual quantitative capture; anything else = RDT capture (FR-D3). */
+  /** "N" = manual quantitative capture; anything else = RDT capture. */
   resultType?: string;
-  /** Lab unit of the worklist — scopes the QC-fail signal (FR-C1). */
+  /** Lab unit of the worklist — scopes the QC-fail signal. */
   testSectionId?: string;
   unitOfMeasure?: string;
   open: boolean;
   onToggle: (open: boolean) => void;
-  /** the dilution inputs, relocated here from the work zone per the mockup */
+  /** the dilution inputs, relocated here from the work zone */
   dilution?: React.ReactNode;
 }
 
@@ -276,7 +276,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
         source: "MANUAL",
         qualitativeOutcome: qcDraft.outcome,
         resultValue: qcDraft.measured,
-        // tech-entered per FR-D4 — prefill from a configured QC target is
+        // always tech-entered — prefill from a configured QC target is
         // OGC-1148; when that ships, seed these two fields from the target
         expectedValue: qcDraft.expected,
         uncertainty: qcDraft.uncertainty,

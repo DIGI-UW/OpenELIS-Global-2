@@ -3,7 +3,7 @@ import { Tag, Tile } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 
 /**
- * Shared gray placeholder for QA Overview slots that later workstreams light
+ * Shared gray placeholder for QA Overview slots that future features light
  * up (OGC-683 delivery plan). Each instance is replaced wholesale by its live
  * component — placeholders are deleted, never reworked. The Tag names the
  * ticket that lights the slot up.

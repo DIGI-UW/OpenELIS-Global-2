@@ -114,7 +114,7 @@ interface ExpandedPanelProps {
   domain: ResultsDomain;
   editable: boolean;
   editing: boolean;
-  /** the worklist's lab unit — scopes OGC-1025 control capture (FR-C1). */
+  /** the worklist's lab unit — scopes OGC-1025 control capture. */
   testSectionId?: string;
   /** analyzerId as loaded from the server — drives the provenance tag (FR-B2). */
   loadedAnalyzerId?: string;

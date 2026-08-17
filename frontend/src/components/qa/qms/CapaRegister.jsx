@@ -27,7 +27,7 @@ import "../qi/QIDashboard.css";
  * corrective/preventive action with its parent NCE. Completion is read from the parent NCE
  * (status/date_completed) since the action log's own completion columns are unused in the React
  * flow. Tiles, filters and pagination are derived client-side from one capped fetch.
- * ponytail: no server filter/summary/pagination — the register is bounded (backend caps at 500).
+ * Filtering and paging are client-side; the backend caps the fetch at 500 rows.
  */
 
 const breadcrumbs = [

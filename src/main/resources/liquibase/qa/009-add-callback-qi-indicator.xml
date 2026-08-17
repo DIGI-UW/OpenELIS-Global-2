@@ -6,7 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-714 [QA-C.4] Critical Callback Compliance — the CALLBACK QI indicator.
+    OGC-714 Critical Callback Compliance — the CALLBACK QI indicator.
 
     Extends the qi_config indicator CHECK (qa/007) with 'CALLBACK' via the
     documented 3-step enum extension path (QiIndicator javadoc): new constant,

@@ -11,11 +11,11 @@ import InspectorReadiness from "./InspectorReadiness";
 import "./QAOverview.css";
 
 /**
- * QA Overview landing page (OGC-694, QA v1 MVP phase A.2).
+ * QA Overview landing page (OGC-694).
  *
  * End-state six-section layout shipped as a shell: every slot renders a
- * ticket-annotated ComingSoon placeholder that parallel workstreams replace
- * with live components (WS-B TAT, WS-C NCE, WS-D/E rate tiles, WS-F
+ * ticket-annotated ComingSoon placeholder that later features replace
+ * with live components (TAT, NCE, rate tiles,
  * aggregators — see the OGC-683 delivery plan).
  */
 

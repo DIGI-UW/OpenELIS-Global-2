@@ -134,10 +134,10 @@ public class QcViolationNceServiceImpl implements QcViolationNceService {
     }
 
     /**
-     * The RDT counterpart of {@link #createNceForViolation}. Decision D4 keeps an
-     * Invalid control line out of the statistical record — a missing control line
-     * is not a Westgard rule hit, and mixing the two would corrupt violation counts
-     * and sigma metrics — but the patient-safety half is identical: the same capped
+     * The RDT counterpart of {@link #createNceForViolation}. It keeps an Invalid
+     * control line out of the statistical record — a missing control line is not a
+     * Westgard rule hit, and mixing the two would corrupt violation counts and
+     * sigma metrics — but the patient-safety half is identical: the same capped
      * window, the same affected-analysis links, the same NCE for the lab to work.
      */
     @Override
@@ -216,7 +216,7 @@ public class QcViolationNceServiceImpl implements QcViolationNceService {
     private AffectedSamples resolveAffectedSamples(String instrumentId, String testSectionId, String testId,
             Timestamp failureTime) {
         // An analyzer failure scopes by instrument; a bench control has none, so it
-        // scopes by lab unit instead (OGC-1147 FR-C1). Everything after this choice —
+        // scopes by lab unit instead (OGC-1147). Everything after this choice —
         // the 24h floor, the 50-sample cap, the cap-reason logic — is identical, which
         // is the point: one blast-radius rule, not one per QC source.
         boolean byAnalyzer = instrumentId != null;

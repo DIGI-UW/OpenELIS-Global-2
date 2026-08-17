@@ -37,9 +37,9 @@ const LiveRow = ({ count, labelKey, alert, onClick }) => (
 
 /**
  * Attention Required action queue. Live rows: critical NCEs pending
- * acknowledgment (OGC-699 WS-C), critical results in the last 24h
+ * acknowledgment (OGC-699), critical results in the last 24h
  * (OGC-714/715), overdue CAPAs (OGC-707), QC violations in last 24h and EQA
- * submissions due in 14 days (OGC-694 WS-F).
+ * submissions due in 14 days (OGC-694).
  */
 const AttentionRequired = () => {
   const intl = useIntl();

@@ -105,7 +105,7 @@ const ControlLotSetup = () => {
       }),
     ),
     // analyzerId is deliberately absent: a bench control lot for a manual method has
-    // no analyzer (OGC-1147 FR-B3), and the dropdown makes that an explicit choice
+    // no analyzer (OGC-1147), and the dropdown makes that an explicit choice
     // rather than a blank field.
     testId: Yup.string().required(
       intl.formatMessage({ id: "qc.controlLot.validation.testRequired" }),

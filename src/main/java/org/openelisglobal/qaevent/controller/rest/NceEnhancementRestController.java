@@ -99,8 +99,7 @@ public class NceEnhancementRestController extends BaseRestController {
 
     private static final int USER_AUTOCOMPLETE_RESULT_LIMIT = 25;
 
-    // ponytail: cap 500; add server-side pagination/filter if CAPA volume ever
-    // exceeds it.
+    // Add server-side pagination if CAPA volume ever exceeds this cap.
     private static final int CAPA_REGISTER_LIMIT = 500;
 
     @GetMapping(value = "/generate-number", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -256,10 +255,9 @@ public class NceEnhancementRestController extends BaseRestController {
             item.notesCount = noteDTOs.size();
 
             // Fetch corrective/preventive actions (CAPA) so the dashboard CAPA
-            // tab/count reflects nce_action_log (the C.2 register reads the same rows).
-            // ponytail: per-NCE fetch matches this loop's existing per-NCE style
-            // (specimens/attachments/history) and is N+1; switch to a bulk grouped
-            // query like getCapaRegister if NCE volume ever makes it hurt.
+            // tab/count reflects nce_action_log (the CAPA Register reads the same rows).
+            // N+1: one query per NCE. Switch to a bulk grouped query like
+            // getCapaRegister if NCE volume ever makes this slow.
             List<NceActionLog> actionLogs = nceActionLogService.getNceActionLogByNceId(event.getId());
             List<ActionLogDTO> actionLogDTOs = new ArrayList<>();
             for (NceActionLog log : actionLogs) {

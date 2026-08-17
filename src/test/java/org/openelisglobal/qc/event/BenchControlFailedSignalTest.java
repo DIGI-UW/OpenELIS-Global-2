@@ -28,7 +28,7 @@ import org.openelisglobal.qc.valueholder.QCSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-1147 FR-C1 — the Validation QC-fail signal for a bench control.
+ * OGC-1147 — the Validation QC-fail signal for a bench control.
  *
  * <p>
  * Exercises the published path: {@code createBenchQCResult} commits and the
@@ -102,7 +102,7 @@ public class BenchControlFailedSignalTest extends BaseWebContextSensitiveTest {
         QCResult failing = persistBenchControl(QCSource.RDT, QCQualitativeOutcome.INVALID, RDT_TEST_ID, null, null,
                 FAILURE_TIME);
 
-        // Decision D4: an Invalid control line is not a Westgard rule hit, so it must
+        // An Invalid control line is not a Westgard rule hit, so it must
         // never appear in the statistical record — but it must still raise the signal.
         assertTrue("RDT must not create a statistical violation", violationsForTest(RDT_TEST_ID).isEmpty());
 

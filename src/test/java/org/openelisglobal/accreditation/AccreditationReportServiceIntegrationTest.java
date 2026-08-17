@@ -26,15 +26,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * OGC-686 [QA-D.4a] — the FR-29 report gate, against a real DB (no mocks).
+ * OGC-686 — the patient-report accreditation gate, against a real DB (no
+ * mocks).
  *
  * <p>
- * These are the vectors the mockup's report preview encodes, run against the
- * real resolver: which bodies get a logo, which only get named in the notes
- * line, and which are excluded outright. The two that matter most for a
- * compliance artifact are the reprint case (a body that has expired since the
- * report was released must still print exactly as it did) and the distinct-test
- * case (a test repeated across samples must not inflate a percentage gate).
+ * These are the report-preview scenarios, run against the real resolver: which
+ * bodies get a logo, which only get named in the notes line, and which are
+ * excluded outright. The two that matter most for a compliance artifact are the
+ * reprint case (a body that has expired since the report was released must
+ * still print exactly as it did) and the distinct-test case (a test repeated
+ * across samples must not inflate a percentage gate).
  *
  * <p>
  * Jasper is not involved: the resolver returns bytes and a string, and the

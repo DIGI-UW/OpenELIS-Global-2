@@ -105,7 +105,7 @@ public class QCRuleViolationServiceImpl implements QCRuleViolationService {
                     "Error creating alert for violation " + violation.getId() + ": " + e.getMessage());
         }
 
-        // NCE FRS trigger #10 (OGC-701): rejection-severity violations auto-create
+        // OGC-701: rejection-severity violations auto-create
         // an NCE. Runs in its own transaction and is idempotent, so a single retry
         // covers an NCE-number collision; failure never blocks violation creation.
         if ("REJECTION".equals(violation.getSeverity())) {

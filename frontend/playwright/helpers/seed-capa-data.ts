@@ -4,7 +4,7 @@ import { Page, expect } from "@playwright/test";
  * CAPA Register E2E seeding (OGC-707).
  *
  * Seeds a corrective/preventive action against a fresh NCE using the SAME
- * REST endpoints the authoring UI uses — no direct DB writes, so the spec is
+ * REST endpoints the authoring UI uses — no direct DB writes, so this seed is
  * self-contained on any stack:
  *
  *   1. POST /rest/reportnonconformingevent   → create the parent NCE (Pending)

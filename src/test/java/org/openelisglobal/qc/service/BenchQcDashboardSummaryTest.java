@@ -19,8 +19,8 @@ import org.openelisglobal.qc.valueholder.QCSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-1147 FR-D1 — the bench QC listing that makes manual and RDT controls
- * visible to a supervisor.
+ * OGC-1147 — the bench QC listing that makes manual and RDT controls visible to
+ * a supervisor.
  *
  * <p>
  * This exists as its own roll-up rather than a source filter on the instrument
@@ -119,11 +119,10 @@ public class BenchQcDashboardSummaryTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * FR-D2 end-to-end: a manual quantitative control reaches the Levey-Jennings
-     * chart's own data path, not merely "has a z-score". The chart queries by
-     * control lot with no analyzer filter, which is why this works without touching
-     * the charting code — but that is a property worth asserting rather than
-     * assuming.
+     * End-to-end: a manual quantitative control reaches the Levey-Jennings chart's
+     * own data path, not merely "has a z-score". The chart queries by control lot
+     * with no analyzer filter, which is why this works without touching the
+     * charting code — but that is a property worth asserting rather than assuming.
      */
     @Test
     public void manualQuantitativeControlAppearsInChartDataForItsLot() {
@@ -139,9 +138,9 @@ public class BenchQcDashboardSummaryTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * The other half of FR-D2/D3: an RDT control must never reach the chart. It has
-     * no lot and no number, so there is nothing to plot and no statistics to plot
-     * it against.
+     * The other half of the split: an RDT control must never reach the chart. It
+     * has no lot and no number, so there is nothing to plot and no statistics to
+     * plot it against.
      */
     @Test
     public void rdtControlNeverReachesChartData() {

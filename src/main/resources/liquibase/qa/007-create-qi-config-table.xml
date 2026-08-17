@@ -6,7 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-709 [QA-C.3] QI Configuration — the config spine for the QI dashboard.
+    OGC-709 QI Configuration — the config spine for the QI dashboard.
 
     A row is either an indicator-wide default (test_category_id IS NULL) or a
     per-test-section override. Consumers (OGC-710/711/712) resolve thresholds

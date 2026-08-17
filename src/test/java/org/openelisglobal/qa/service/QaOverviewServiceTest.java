@@ -25,7 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Integration tests for the QA Overview aggregation service (OGC-694 WS-F).
+ * Integration tests for the QA Overview aggregation service (OGC-694).
  *
  * <p>
  * QC fixture rows (instruments, results, violations) come from

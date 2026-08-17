@@ -88,8 +88,8 @@ public class QCRestController extends BaseRestController {
      * control-chart tab).
      * <li>{@code testId} alone — active <em>bench</em> lots for that test, i.e. the
      * ones with no analyzer, which is what a manual quantitative capture picks from
-     * (OGC-1147 FR-B3). Deliberately not "all lots for this test regardless of
-     * analyzer": a bench run cannot use an analyzer lot's limits.
+     * (OGC-1147). Deliberately not "all lots for this test regardless of analyzer":
+     * a bench run cannot use an analyzer lot's limits.
      * </ul>
      */
     @GetMapping("/controlLots")
@@ -506,7 +506,7 @@ public class QCRestController extends BaseRestController {
      * A separate listing rather than a source filter over
      * {@code /dashboard/instruments}: that endpoint's rows <i>are</i> analyzers,
      * and a manual or RDT control has none, so filtering it by source can only ever
-     * return an empty instrument list (OGC-1147 FR-D1).
+     * return an empty instrument list (OGC-1147).
      */
     @GetMapping("/dashboard/bench")
     @PreAuthorize("hasAuthority('qa.view.qc') or hasRole('GLOBAL_ADMIN')")

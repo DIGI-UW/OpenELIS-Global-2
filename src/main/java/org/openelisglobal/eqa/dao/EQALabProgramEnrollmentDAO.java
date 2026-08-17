@@ -17,10 +17,10 @@ public interface EQALabProgramEnrollmentDAO extends BaseDAO<EQALabProgramEnrollm
      * through a mapped panel, under an enrollment that is still active.
      *
      * <p>
-     * OGC-686 (QA-D.5): the accreditation page joins this against accredited scope
-     * to answer ISO 15189 §7.7 ("is every accredited test in an EQA scheme?"). Ids
-     * come back as strings because that is how {@code test.id} is carried
-     * everywhere outside this module.
+     * OGC-686: the accreditation page joins this against accredited scope to answer
+     * ISO 15189 §7.7 ("is every accredited test in an EQA scheme?"). Ids come back
+     * as strings because that is how {@code test.id} is carried everywhere outside
+     * this module.
      */
     List<String> findEqaCoveredTestIds();
 }

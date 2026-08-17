@@ -6,7 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!--
-    OGC-710 [QA-C.3 gap #3] TAT thresholds switch from on-time compliance %
+    OGC-710 TAT thresholds switch from on-time compliance %
     (HIGHER_BETTER, seeded 90/80 by qa/007) to mean-TAT HOURS (LOWER_BETTER,
     24h target / 48h action). Rationale: every TAT surface computes a mean
     duration; the compliance % was never computed anywhere, and the per-test

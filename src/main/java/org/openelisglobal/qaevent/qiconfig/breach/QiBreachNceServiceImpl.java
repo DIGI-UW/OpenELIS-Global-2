@@ -19,8 +19,9 @@ public class QiBreachNceServiceImpl implements QiBreachNceService {
 
     private static final String NCE_SEVERITY = "CRITICAL";
     private static final String NCE_STATUS = "Pending";
-    // ponytail: the scheduled evaluator has no request user; reuse the admin "1"
-    // fallback QcViolationNceServiceImpl uses until the daemon-user work lands.
+    // Scheduled runs have no logged-in user, so records are attributed to the
+    // admin user "1" (same fallback as QcViolationNceServiceImpl) until a
+    // dedicated system user exists.
     private static final String SYS_USER_ID = "1";
 
     @Autowired

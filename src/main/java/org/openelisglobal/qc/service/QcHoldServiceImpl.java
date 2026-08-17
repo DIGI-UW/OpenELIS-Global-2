@@ -13,8 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * OGC-1147 FR-C1/C3 — which results are held because a control covering them
- * failed.
+ * OGC-1147 — which results are held because a control covering them failed.
  *
  * <p>
  * Its own service because two call sites need the same answer and must not

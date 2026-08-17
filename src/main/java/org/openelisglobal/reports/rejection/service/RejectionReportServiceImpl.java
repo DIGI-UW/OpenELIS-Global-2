@@ -21,11 +21,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Rejection Rate compute (OGC-710, closing C.3 gap #4). A "rejection" is a
- * REJECTION_REASON ('R') note on an analysis — the durable marker the
- * results-entry flow writes when a tech rejects a test, with the note text
- * snapshotting the REJECTION_REASONS dictionary value (LogbookResultsController
- * / ResultUtil).
+ * Rejection Rate compute (OGC-710). A "rejection" is a REJECTION_REASON ('R')
+ * note on an analysis — the durable marker the results-entry flow writes when a
+ * tech rejects a test, with the note text snapshotting the REJECTION_REASONS
+ * dictionary value (LogbookResultsController / ResultUtil).
  *
  * <p>
  * Every rate is cohort-consistent: the window selects analyses by
@@ -63,10 +62,9 @@ public class RejectionReportServiceImpl implements RejectionReportService {
 
     /**
      * Requesting-organization ("ordering location") of the analysis's sample.
-     * ponytail: a sample with two organization requesters fans out — one detail row
-     * per requester (inflating that list's totalCount) and one heatmap cell per
-     * location. Not observed in practice; dedup to a single requester if it ever
-     * is.
+     * Caveat: a sample with two organization requesters produces one detail row per
+     * requester, which inflates totalCount. Not seen in practice; dedup if it ever
+     * happens.
      */
     private static final String REQUESTER_ORG_JOIN = " LEFT JOIN sample_requester sr ON sr.sample_id = s.id"
             + " AND sr.requester_type_id = (SELECT rt.id FROM requester_type rt WHERE rt.requester_type ="
@@ -104,8 +102,8 @@ public class RejectionReportServiceImpl implements RejectionReportService {
         Timestamp toTs = Timestamp.valueOf(toDate.plusDays(1).atStartOfDay());
         Session session = entityManager.unwrap(Session.class);
 
-        // ponytail: fetch-all + in-memory paging, same as the amendment report;
-        // rejections are rare and the window is capped at 366 days.
+        // Loads the whole window (rejections are rare, max 366 days) and pages in
+        // memory.
         @SuppressWarnings("unchecked")
         List<Object[]> rows = session
                 .createNativeQuery("SELECT CAST(a.id AS varchar), n.lastupdated,"

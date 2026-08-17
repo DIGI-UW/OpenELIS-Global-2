@@ -24,11 +24,11 @@ import org.springframework.stereotype.Service;
 /**
  * OGC-712 — every threshold-bearing indicator is evaluated: AMENDMENT and
  * REJECTION as month-to-date rate percentages, TAT as the month-to-date mean
- * receipt→validation duration in hours (matching its qi_config unit; C.3 gap #3
- * decision), CALLBACK as the month-to-date critical read-back compliance
- * percentage. NCE stays out — it is self-referential and ships without numeric
- * thresholds by design. CALLBACK is HIGHER_BETTER and the rest LOWER_BETTER;
- * the comparison goes through the config's direction either way.
+ * receipt→validation duration in hours (matching its qi_config unit), CALLBACK
+ * as the month-to-date critical read-back compliance percentage. NCE stays out
+ * — it is self-referential and ships without numeric thresholds by design.
+ * CALLBACK is HIGHER_BETTER and the rest LOWER_BETTER; the comparison goes
+ * through the config's direction either way.
  *
  * <p>
  * Each run evaluates two windows: the current month-to-date AND the just-closed

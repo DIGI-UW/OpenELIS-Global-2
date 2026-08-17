@@ -2282,7 +2282,7 @@ export function SearchResults(props) {
         )}
         {/* Persistent needs-callback banner (OGC-714): recomputed from the
             loaded rows on every render — saved criticals with no callback
-            logged this session. The v4 Results Entry design (FR-C2) reserves
+            logged this session. The v4 Results Entry design reserves
             a banner for exactly this; this is the legacy-page bridge. */}
         {(() => {
           const needsCallback = (props.results?.testResult || []).filter(

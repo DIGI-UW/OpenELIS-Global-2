@@ -2,12 +2,12 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 import { dedupedFetch } from "./overviewData";
 
 /**
- * Shared NCE client-filter util for the QA Overview (OGC-699 WS-C).
+ * Shared NCE client-filter util for the QA Overview (OGC-699).
  *
  * There is no acknowledgment column on nce_event: acknowledging an NCE
  * transitions status "Pending" -> "Under Investigation" (NceEnhancement
  * REST controller), so "critical pending acknowledgment" is exactly
- * severity CRITICAL + status Pending. WS-F reuses these predicates for
+ * severity CRITICAL + status Pending. The overview aggregators reuse these predicates for
  * the QMS pillar chip and This-Week counters.
  */
 
@@ -36,7 +36,7 @@ export const countInCorrectiveAction = (list) =>
 export const countEffectivenessReviewsDue = (list) =>
   list.filter((nce) => nce.status === "CAPA" && !nce.effective).length;
 
-// ponytail: v1 hard-coded thresholds (0 green, 1-4 amber, >=5 red) per
-// OGC-699; per-lab configuration arrives with QI config in v8.
+// Thresholds from OGC-699: 0 green, 1-4 amber, 5+ red. Make them
+// configurable in QI config if labs ever need their own.
 export const pulseColor = (count) =>
   count === 0 ? "green" : count < 5 ? "amber" : "red";

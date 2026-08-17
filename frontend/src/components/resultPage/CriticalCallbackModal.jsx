@@ -6,7 +6,7 @@ import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 
 /**
- * OGC-714 [QA-C.4] — documents a manual critical-result phone callback (TJC
+ * OGC-714 — documents a manual critical-result phone callback (TJC
  * NPSG.02.03.01 read-back). The body carries only analysisId + recipient +
  * outcome; caller identity and time are stamped server-side. Repeat
  * submissions for the same analysis are additional attempt rows by design.

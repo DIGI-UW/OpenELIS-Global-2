@@ -17,13 +17,13 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
 /**
- * OGC-1147 FR-D1 — bench QC (manual quantitative and RDT controls), grouped by lab unit
+ * OGC-1147 — bench QC (manual quantitative and RDT controls), grouped by lab unit
  * and test.
  *
  * A separate tab rather than a source filter on the Instruments tab: that tab's rows are
  * analyzers, and a bench control has none, so filtering it by source could only ever
  * return an empty list. For RDT this is the only QC surface it appears on at all —
- * decision D4 deliberately keeps an Invalid control line out of the statistical violation
+ * an Invalid control line is deliberately kept out of the statistical violation
  * record, so it never reaches the Alerts tab.
  */
 const SOURCES = [

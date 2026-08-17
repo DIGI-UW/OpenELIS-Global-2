@@ -554,7 +554,8 @@ public abstract class PatientReport extends Report {
 
         Test test = analysisService.getTest(currentAnalysis);
         // OGC-686: the one place every printed analysis of this family passes
-        // through with its test in hand. The recorder does its own FR-30 filtering.
+        // through with its test in hand. The recorder filters to claimable statuses
+        // itself.
         recordAccreditationCandidate(currentAnalysis, test);
         NoteService noteService = SpringContext.getBean(NoteService.class);
         String note = noteService.getNotesAsString(currentAnalysis, true, true, "<br/>", FILTER, true);

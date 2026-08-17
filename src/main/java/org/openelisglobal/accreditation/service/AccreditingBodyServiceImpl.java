@@ -38,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<AccreditingBody, Long>
         implements AccreditingBodyService {
 
-    /** FRS §5: 2–16 chars, uppercase alphanumerics plus hyphen. */
+    /** Body codes: 2–16 chars, uppercase alphanumerics plus hyphen. */
     private static final Pattern CODE_PATTERN = Pattern.compile("^[A-Z0-9-]{2,16}$");
 
     private static final int NAME_MAX = 120;
@@ -143,7 +143,7 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
     @Transactional
     public AccreditingBody updateBody(Long id, AccreditingBody incoming, String sysUserId) {
         AccreditingBody existing = require(id);
-        // FR-11: code is read-only after create. Reject rather than silently drop it,
+        // The body code is read-only after create. Reject rather than silently drop it,
         // so a client sending a changed code learns it did nothing.
         if (incoming.getCode() != null) {
             String submitted = normalizeCode(incoming.getCode());
@@ -164,7 +164,7 @@ public class AccreditingBodyServiceImpl extends AuditableBaseObjectServiceImpl<A
         AccreditingBody existing = require(id);
         long enrolled = testAccreditationDAO.countByBody(id);
         if (enrolled > 0) {
-            // FR-6: the DB FK would refuse this anyway; failing here turns a 500-ish
+            // The DB FK would refuse this anyway; failing here turns a 500-ish
             // constraint violation into an explainable message with the count in it.
             throw new IllegalArgumentException(
                     "Cannot delete — " + enrolled + " test accreditations reference this body. Remove them first.");

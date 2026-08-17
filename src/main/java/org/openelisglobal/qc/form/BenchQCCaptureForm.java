@@ -13,14 +13,14 @@ import org.openelisglobal.qc.valueholder.QCSource;
  * <p>
  * Serves both as the {@code POST /rest/qc/results} request body and as the
  * service argument, so the capture contract is stated once. The capture UI
- * itself belongs to OGC-1025 (Results Entry FR-D3/D4).
+ * itself belongs to OGC-1025 (Results Entry).
  *
  * <p>
  * Note {@code controlLotId} is an identifier, not a lot number typed by the
- * tech: the Results Entry v4 mockup shows a free-text lot field, which would
- * accumulate lot strings that match no {@code qc_control_lot} row and cannot
- * carry the fixed mean/SD a Levey-Jennings plot needs. Lots are selected, never
- * invented here — the same contract OGC-1148 specifies for the target editor.
+ * tech: a free-text lot field would accumulate lot strings that match no
+ * {@code qc_control_lot} row and cannot carry the fixed mean/SD a
+ * Levey-Jennings plot needs. Lots are selected, never invented here — the same
+ * contract OGC-1148 specifies for the target editor.
  */
 public class BenchQCCaptureForm {
 
@@ -30,7 +30,7 @@ public class BenchQCCaptureForm {
     @NotNull
     private String testId;
 
-    /** Lab unit the run happened in. Scopes the QC-fail signal (FR-C1). */
+    /** Lab unit the run happened in. Scopes the QC-fail signal. */
     @NotNull
     private String testSectionId;
 
@@ -46,7 +46,7 @@ public class BenchQCCaptureForm {
      */
     private String controlLabel;
 
-    /** Measured value. Required for MANUAL, must be absent for RDT (FR-A3). */
+    /** Measured value. Required for MANUAL, must be absent for RDT. */
     private BigDecimal resultValue;
 
     private String unitOfMeasure;
@@ -57,9 +57,8 @@ public class BenchQCCaptureForm {
 
     /**
      * The expected value and tolerance in force at capture, snapshotted onto the
-     * result so a later edit to a configured target never rewrites QC history
-     * (FR-B2). Tech-entered today; prefilled from OGC-1148's targets once those
-     * ship.
+     * result so a later edit to a configured target never rewrites QC history .
+     * Tech-entered today; prefilled from OGC-1148's targets once those ship.
      */
     private BigDecimal expectedValue;
 

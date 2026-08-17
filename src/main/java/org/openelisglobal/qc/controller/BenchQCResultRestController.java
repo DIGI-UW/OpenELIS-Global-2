@@ -58,7 +58,7 @@ public class BenchQCResultRestController extends BaseRestController {
      *
      * <p>
      * Returns 400 for an illegal source/value/outcome combination (for example an
-     * RDT control carrying a number, which FR-A3 forbids) or an unusable control
+     * RDT control carrying a number, which is never valid) or an unusable control
      * lot, rather than letting the database constraint surface as a 500.
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)

@@ -370,7 +370,7 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
-        // FR-C3/C4: this legacy endpoint finalizes analyses exactly like the REST
+        // This legacy endpoint finalizes analyses exactly like the REST
         // save, so it must honour the same QC hold — otherwise it is a sidestep
         // around the block the lab opted into.
         Set<String> blocked = SpringContext.getBean(QcHoldService.class).analysisIdsBlockedFromRelease(

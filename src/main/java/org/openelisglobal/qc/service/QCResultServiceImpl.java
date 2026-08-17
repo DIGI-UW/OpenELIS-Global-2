@@ -224,7 +224,7 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
             throw new IllegalArgumentException("A " + source + " control requires a measured value");
         }
         if (!source.isQuantitative() && resultValue != null) {
-            // FR-A3: never store a synthetic number for a qualitative outcome.
+            // Never store a synthetic number for a qualitative outcome.
             throw new IllegalArgumentException("An " + source + " control must not carry a measured value");
         }
 

@@ -16,12 +16,12 @@ import {
 } from "../../utils/Utils";
 
 /**
- * Enroll tests under an accrediting body (OGC-686, D.2). The API enrolls one test
+ * Enroll tests under an accrediting body (OGC-686). The API enrolls one test
  * per call, so a multi-select fans out to N POSTs; one rejection fails that test
  * and leaves the rest of the batch alone.
  *
  * Each rejection carries its reason in {"error": ...} — "This test is already
- * accredited by that body" (FRS AC-8), an unknown test, an unknown body. Report
+ * accredited by that body", an unknown test, an unknown body. Report
  * that reason against the test it belongs to: a bare failure count tells the QA
  * lead nothing they can act on, and cannot tell a duplicate from a 500.
  */

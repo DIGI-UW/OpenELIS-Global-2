@@ -23,8 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * OGC-686 FR-29/31/33 — resolves the accreditation logos and notes line for one
- * rendered patient report.
+ * OGC-686 — resolves the accreditation logos and notes line for one rendered
+ * patient report.
  *
  * <p>
  * Two indexed queries regardless of report size: one for the enrollment rows of
@@ -97,7 +97,10 @@ public class AccreditationReportServiceImpl implements AccreditationReportServic
                 MessageUtil.getMessage("report.accreditation.notesLine", String.join(", ", claimedBodyNames)));
     }
 
-    /** FR-29, evaluated per body against the tests printed on this report. */
+    /**
+     * Logo visibility gate, evaluated per body against the tests printed on this
+     * report.
+     */
     private boolean passesVisibilityGate(AccreditingBody body, int accredited, int totalTests) {
         if (body.getLogoVisibilityMode() == LogoVisibilityMode.PERCENTAGE) {
             short threshold = body.getThresholdPct() == null ? 0 : body.getThresholdPct();

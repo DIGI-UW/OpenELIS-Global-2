@@ -33,7 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Compiles the QA Overview aggregates (OGC-694 WS-F) from existing QC, EQA,
+ * Compiles the QA Overview aggregates (OGC-694) from existing QC, EQA,
  * audit-trail, and e-signature services within one read-only transaction
  * (Constitution IV.5).
  */

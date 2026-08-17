@@ -30,11 +30,11 @@ import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Integration test for the Rejection Rate compute (OGC-710, C.3 gap #4).
- * Fixture testdata/result.xml provides two analyses started 2025-07-07. A
- * rejection is simulated exactly as production does it: a REJECTION_REASON
- * ('R') note on the analysis whose text is the rejection-reason dictionary
- * value (LogbookResultsController / ResultUtil).
+ * Integration test for the Rejection Rate compute (OGC-710). Fixture
+ * testdata/result.xml provides two analyses started 2025-07-07. A rejection is
+ * simulated exactly as production does it: a REJECTION_REASON ('R') note on the
+ * analysis whose text is the rejection-reason dictionary value
+ * (LogbookResultsController / ResultUtil).
  */
 public class RejectionReportServiceTest extends BaseWebContextSensitiveTest {
 
