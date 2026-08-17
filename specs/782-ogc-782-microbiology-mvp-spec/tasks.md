@@ -70,65 +70,61 @@ an explicit product or engineering ruling:
     deploy a coherent user-visible slice for review, never documentation-only or
     test-only changes.
 
-## Status Vocabulary
+## Iteration Status
 
-- **Planned**: scope and acceptance behavior are clear; implementation has not
-  started.
-- **In progress**: tests or implementation are underway.
-- **Review-ready**: implementation and focused automated validation are
-  complete; human acceptance or merge remains.
-- **Accepted**: required human review is complete and the slice is merged.
-- **External dependency**: another product or platform decision must land
-  first.
+This roadmap uses three visible iteration markers:
 
-## Current Baseline
+- `[x]` means the repository iteration is finished.
+- `[*]` means the single iteration currently being worked.
+- `[ ]` means a future iteration that has not started.
 
-The official microbiology PR chain is:
+Change a marker only when an iteration starts or finishes. There is no parallel
+status table. Merge, deployment, and human-UAT state stay in GitHub, the review
+host, and Grist respectively.
 
-`#3789 -> #3972 -> #3981 -> #3984 -> #4004 -> #4051`
+### Finished Iterations
 
-| Slice | Durable scope | Status |
-| --- | --- | --- |
-| Routine bacteriology MVP (#3789) | Test configuration, order routing, case workbench, isolates, manual AST, shared worklist, critical communication, report propagation, final lock, WHONET readiness | Review-ready |
-| Clinical completeness (#3972) | Amendment and re-identification history, repeat/retest AST, reagent/card-lot traceability, initial NFR qualification | Review-ready |
-| Reference administration (#3981) | Organism and antibiotic vocabularies, AST panel versions, culture defaults, breakpoint lifecycle and guarded import | Review-ready |
-| WHONET export (#3984) | Readiness, mapping repair, preview, and audited manual CSV export | Review-ready |
-| Functional alignment (#4004) | Supported order flow, complete bench workflow, AST provenance and review, shared Culture/AST worklist, reagent selection, accessibility and security corrections | Review-ready |
-| Order and bench alignment (#4051) | Current order context, protocol handling, visible inoculation/subculture/culture-progression actions, and deterministic navigation | Review-ready |
+- [x] **Routine bacteriology MVP (#3789)** - Test configuration, order routing,
+  case workbench, isolates, manual AST, shared worklist, critical communication,
+  report propagation, final lock, and WHONET readiness.
+- [x] **Clinical completeness (#3972)** - Amendment and re-identification
+  history, repeat/retest AST, reagent/card-lot traceability, and initial NFR
+  qualification.
+- [x] **Reference administration (#3981)** - Organism and antibiotic
+  vocabularies, AST panel versions, culture defaults, breakpoint lifecycle, and
+  guarded import.
+- [x] **WHONET export (#3984)** - Readiness, mapping repair, preview, and audited
+  manual CSV export.
+- [x] **Functional alignment (#4004)** - Supported order flow, complete bench
+  workflow, AST provenance and review, shared Culture/AST worklist, reagent
+  selection, and accessibility/security corrections.
 
-The top runtime implementation is available on the AMR review site. Later
-documentation or test-only changes are intentionally not deployment events.
-Human UAT remains pending in Grist and is not inferred from automated checks.
+### Active Iteration
+
+- [*] **R2 baseline and no-growth acceptance closure (#4051)** - Finish the
+  order/bench alignment by proving the already implemented separation between
+  recording no growth and releasing the final negative report.
+
+This iteration is finished when:
+
+- The authority chain, repository spec, engineering plan, OpenELIS Work
+  functional intent, roadmap, and PR snapshot agree.
+- Repository tracing confirms that recording no growth is audited and
+  review-ready without publishing, while supervisor release projects the final
+  negative and locks the case.
+- Focused service, Carbon, and registered `core-app` Playwright coverage
+  proves the complete no-growth path without arbitrary waits or forced actions.
+- One dedicated, reviewer-executable Grist story uses its own service-created
+  fixture and is verified in the live AMR Review overlay.
+- The focused checks pass and the reconciliation is committed and pushed
+  with a clean worktree.
+
+Documentation or test-only changes are not deployment events. Runtime code
+changes only when the focused acceptance tests expose a real defect.
 
 Macro Library is a separate OGC-788 product stack, not another OGC-782
-milestone. Microbiology consumes approved clinical macros after that shared
+iteration. Microbiology consumes approved clinical macros after that shared
 capability is available; it does not own macro authoring or administration.
-
-## Baseline Reconciliation
-
-- [x] Establish the authority chain above.
-- [x] Keep `spec.md` behavior-focused and `plan.md` engineering-focused.
-- [x] Make this file the sole execution and delivery-status roadmap.
-- [x] Freeze prior status, gap-analysis, mock-comparison, and code-qa documents
-  as historical evidence.
-- [x] Record the approved separate no-growth review/release behavior in the
-  repository specification and OpenELIS Work functional artifacts.
-- [x] Reduce the deployed Review integration test to durable routing/loading
-  behavior without mirroring the live Grist catalog.
-- [x] Publish the OpenELIS Work functional clarification for review.
-- [x] Update PR #4051 with a concise snapshot linking to `spec.md` and this
-  roadmap; do not copy transient commit, deployment, or UAT inventory data.
-- [x] Commit and push the reconciliation with a clean worktree.
-
-## Next Slice: Separate No-Growth Review And Release
-
-**Status**: Planned
-
-**Delivery**: Implement as the next official stacked PR based on #4051. Do not
-expand #4051's runtime scope during baseline reconciliation.
-
-**Goal**: Make the routine negative-culture path clinically explicit. Recording
-the bench observation must not also perform the authorized report release.
 
 ### Acceptance Criteria
 
@@ -144,95 +140,51 @@ the bench observation must not also perform the authorized report release.
    standard patient-report path.
 6. Final release records the reviewer and time, publishes the negative result,
    and locks culture, isolate, AST, and protocol mutation.
-7. Later growth after final negative release uses the controlled amendment
-   path and preserves the prior final report.
-8. The case route and active section remain bookmarkable and refresh-stable;
+7. The case route and active section remain bookmarkable and refresh-stable;
    keyboard focus and status announcements follow existing Carbon patterns.
 
-### TDD Tasks
-
-- [ ] Add failing service tests for no-growth recording, review readiness, no
-  patient-result projection, authorized final release, and final-case lock.
-- [ ] Add failing controller/security tests for authenticated actor derivation,
-  release permission, spoofed actor input, and named conflict responses.
-- [ ] Add failing report-projection integration coverage proving that only final
-  negative release reaches the existing patient-result path.
-- [ ] Add failing Carbon interaction tests for the two distinct actions,
-  review-ready status, release blockers, focus, and locked controls.
-- [ ] Add a registered `core-app` Playwright journey using service-created
-  fixtures, accessible Carbon interactions, response/DOM readiness, and no
-  arbitrary waits or forced actions.
-- [ ] Inspect the current durable state before changing the model. Add a
-  Liquibase migration only if the existing case/activity model cannot preserve
-  the review-ready no-growth state; include rollback and ORM validation if a
-  migration is required.
-- [ ] Implement the smallest service, controller, and UI changes that satisfy
-  the tests and reuse the existing final-release/report infrastructure.
-- [ ] Compare stable desktop and mobile states with the OpenELIS Work M-04
-  specification and prototype; record only intentional functional deviations.
-- [ ] Run focused backend, frontend, Playwright, formatting, and diff checks.
-- [ ] Run the relevant `tools/code-qa` alignment, meaningful-coverage, and
-  simplicity checks once for the completed slice.
-- [ ] Update or add focused Grist UAT stories after the local flow passes. Keep
-  each coherent reviewer outcome separate and do not mirror Grist inventory in
-  this file.
-- [ ] Deploy only the runtime-bearing top-of-stack change, run automated
-  pre-UAT, and hand the live story to the human reviewer.
-
-## Remaining Roadmap
+## Future Outcome Queue
 
 ### Phase 1A Closure
 
-1. **Accept the current stack** - Complete human UAT in Grist, remediate real
+- [ ] **Accept the current stack** - Complete human UAT in Grist, remediate real
    findings in manageable slices, and merge the stack bottom-up.
-2. **Supported order-save integration proof** - Add the missing direct
+- [ ] **Supported order-save integration proof** - Add the missing direct
    integration test around the complete supported save path without SQL,
    fixed primary keys, or DAO bypass.
-3. **Clinical and NFR qualification** - Finish representative-volume worklist
+- [ ] **Clinical and NFR qualification** - Finish representative-volume worklist
    and case measurements, keyboard/screen-reader review, and a clear decision
    on shared offline/conflict behavior. Do not build a microbiology-only offline
    queue.
-4. **Analyzer ingress security** - Introduce a least-privilege Bridge service
+- [ ] **Analyzer ingress security** - Introduce a least-privilege Bridge service
    identity and prove legitimate delivery plus unrelated-user denial. Coordinate
    this with the analyzer workstream rather than inventing an AMR-only role.
-5. **Reagent policy dependency** - Enforce required, optional, and substitute
+- [ ] **Reagent policy dependency** - Enforce required, optional, and substitute
    reagent behavior only after Test Catalog provides an authoritative shared
    policy model; do not infer it from legacy role names.
-6. **Close remaining worklist decisions** - Validate explicit resistance
+- [ ] **Close remaining worklist decisions** - Validate explicit resistance
    classification provenance and the intended disposition of already-reviewed
    AST work against the feature specification before implementation.
 
 ### Phase 1B Clinical Depth
 
-1. Implement expert rules and macro-driven bench workflows after the shared
+- [ ] Implement expert rules and macro-driven bench workflows after the shared
    Macro Library consumer contract is available.
-2. Complete analyzer-result review and QC with representative instrument
+- [ ] Complete analyzer-result review and QC with representative instrument
    traffic and reconciliation evidence.
-3. Complete WHONET packaging, remaining vocabulary mappings, scheduling, and
+- [ ] Complete WHONET packaging, remaining vocabulary mappings, scheduling, and
    delivery beyond the current manual export.
-4. Complete any remaining reference-data administration required by those
+- [ ] Complete any remaining reference-data administration required by those
    workflows.
 
 ### Full Module
 
-1. Operational mycobacteriology/TB workflow (M-14).
-2. Antibiogram reporting (M-13).
-3. GLASS reporting through consolidated FHIR after routine bacteriology,
+- [ ] Operational mycobacteriology/TB workflow (M-14).
+- [ ] Antibiogram reporting (M-13).
+- [ ] GLASS reporting through consolidated FHIR after routine bacteriology,
    WHONET, and TB outputs are stable.
-4. Catalog subscription or cross-site distribution capabilities as separate
+- [ ] Catalog subscription or cross-site distribution capabilities as separate
    platform work, consumed by microbiology rather than owned by it.
-
-## Dependency Order
-
-1. Baseline reconciliation.
-2. Separate no-growth review/release.
-3. Human acceptance of the routine bacteriology stack.
-4. Phase 1A closure work that does not depend on another platform.
-5. Shared dependencies: Macro Library, Test Catalog reagent policy, Bridge
-   service identity, and shared offline behavior.
-6. Phase 1B clinical depth.
-7. TB and antibiogram work after the routine/reference foundation is accepted.
-8. GLASS last, after its source data and upstream outputs are stable.
 
 ## Iteration Contract
 
