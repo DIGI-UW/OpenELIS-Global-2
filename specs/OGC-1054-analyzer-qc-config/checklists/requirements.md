@@ -24,8 +24,16 @@ It validates the specification, not implementation progress.
 ## Architecture
 
 - [x] Bridge exclusively owns profiles and analyzer-facing runtime.
+- [x] Bridge profiles explicitly own control-result recognition with
+      deterministic `RULES`/affirmed-`NONE` semantics, no undocumented-as-`NONE`
+      shortcut, and no hidden fallback.
+- [x] Profile revisions are immutable/retained while referenced; Update shared
+      and Duplicate Profile never move a pinned analyzer implicitly, and
+      OpenELIS does not preserve an authoritative copied-profile snapshot.
 - [x] OpenELIS owns local bindings, audit, operational QC, activation, held
       results, alerts, and review.
+- [x] Operational QC is separate from analyzer activation; `AnalyzerQcRule` is
+      classified for removal rather than retained as operational QC.
 - [x] Analyzer mock proves real ASTM, HL7, and FILE transport through Bridge.
 - [x] No OpenELIS FILE poller, raw protocol parser, `QcRun`, dual writer,
       duplicate editor, or duplicate pending queue is permitted.
@@ -37,7 +45,7 @@ It validates the specification, not implementation progress.
 - [x] Criteria test user-visible outcomes where appropriate and do not accept
       route/API/database existence as feature proof.
 - [x] The 17 UAT steps cover the complete MVP without API-driven user actions,
-      including live reconciliation and blank-type learning.
+      including live reconciliation and draft-type learning.
 - [x] G0 binds human UAT and MP4 to one exact deployment and checklist.
 
 ## Iterations
@@ -64,5 +72,12 @@ It validates the specification, not implementation progress.
 - [x] Desktop and mobile viewports, localization, accessibility, heading, URL,
       and breadcrumb behavior are deterministic.
 - [x] Unknown traffic is held and visible, never silently dropped or posted.
-- [x] Operational QC applicability remains blocked until `AMB-M3-001` is
-      resolved in a repository specification/contract.
+- [x] The exact activation predicate excludes operational-QC and connection-test
+      state, applies on every transition into `ACTIVE`, leaves the last active
+      candidate unchanged while edits are pending, and requires an exact Bridge
+      acknowledgment of the pinned desired-state fingerprint.
+- [x] Analyzer Types owns the sole reusable mapping/recognition authoring
+      surface; Verify links to it and no per-analyzer editor remains.
+- [x] Legacy gates remove the complete OpenELIS `AnalyzerQcRule` path, its table,
+      Bridge-pushed classifier fields, and Bridge hard-coded recognition
+      fallbacks before G0.

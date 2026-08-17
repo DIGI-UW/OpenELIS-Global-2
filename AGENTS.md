@@ -39,6 +39,19 @@ orchestration, local clinical catalog bindings, audit, operational QC,
 activation, held results, and review. Do not recreate Bridge runtime behavior in
 OpenELIS.
 
+Control-result recognition is Analyzer Type behavior owned by the pinned Bridge
+profile revision. Bridge must use only the profile's explicit recognition mode
+and rules; it must not use an OpenELIS-pushed classifier or a hard-coded
+fallback. `AnalyzerQcRule` is not part of the target architecture. OpenELIS
+operational QC (`QCControlLot`, `QCResult`, statistics, Westgard evaluation,
+violations, and alerts) remains a separate linked workflow and must not gate
+analyzer activation or stale analyzer mapping/recognition verification.
+
+Published Bridge profile revisions are immutable and retained while referenced.
+An OpenELIS analyzer pins a profile ID/revision; Update shared and Duplicate
+Profile never move a configured analyzer implicitly, and OpenELIS must not keep
+an authoritative copied-profile snapshot or a per-analyzer mapping editor.
+
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
 > everything an AI agent needs to know to work effectively on OpenELIS Global 2.

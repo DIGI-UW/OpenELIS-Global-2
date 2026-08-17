@@ -148,8 +148,23 @@ evidence in an ADR, migration plan, API contract, or code review.
 - [OGC-1057 guided setup QA report](https://github.com/DIGI-UW/openelis-work/blob/qa/ogc-1057-guided-setup-report/designs/analyzer-integration/ogc-1057-qa-report.md),
   used as a functional observation of the reviewed demo, not as implementation
   direction or final acceptance proof.
+- [Westgard/QC functional specification](https://github.com/DIGI-UW/openelis-work/blob/main/designs/quality/westgard-rules.md)
+  and [Analyzer Manual QC functional specification](https://github.com/DIGI-UW/openelis-work/blob/main/designs/quality/analyzer-manual-qc.md),
+  used only for the separate operational-QC workflow and analyzer-context/return
+  behavior. Their entity, route, and `QcRun` suggestions are non-normative and
+  explicitly do not override this roadmap's no-`QcRun` decision.
+- [Analyzer result-review functional design](https://github.com/DIGI-UW/openelis-work/blob/main/designs/system/analyzer-import-redesign-v2.md)
+  and [Results Validation v4 functional design](https://github.com/DIGI-UW/openelis-work/blob/main/designs/results-validation/validation-page-v4.md),
+  used only to bound the post-OGC-1054 patient-result review/release work.
 - [Published OpenELIS design catalog](https://digi-uw.github.io/openelis-work/catalog.html),
   used for current visual comparison and neighboring workflow context.
+
+The current analyzer product artifact still uses the older labels “fork” and an
+inline instrument-not-listed profile form. The newer repository-owned feature
+specification records the approved product behavior: **Duplicate Profile** is a
+separate Analyzer Types action, and analyzer setup links to that profile manager
+then returns to the selected profile. Those wording differences are known
+product-artifact follow-ups, not implementation ambiguities.
 
 The current analyzer prototype provides a clear desktop information hierarchy
 but does not produce a usable layout at the required `390x844` viewport. It is
@@ -176,6 +191,17 @@ contracts, migration, and tests.
   and [Bridge FHIR normalization](https://github.com/DIGI-UW/openelis-analyzer-bridge/blob/develop/src/main/java/org/itech/ahb/fhir/FhirBundleBuilder.java).
 - [OpenELIS Bridge synchronization](../../src/main/java/org/openelisglobal/analyzer/service/BridgeRegistrationService.java)
   and [unified FHIR import](../../src/main/java/org/openelisglobal/analyzerimport/action/AnalyzerFhirImportController.java).
+- [OpenELIS PR #3390](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3390),
+  which introduced both the retained operational-QC foundation and the
+  superseded OpenELIS-owned analyzer classifier.
+- [Bridge PR #33](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/33),
+  which introduced OE-pushed QC classifiers and current fallback behavior, and
+  prepared [Bridge PR #46](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/46),
+  whose portable-profile direction is retained but whose bare
+  `qcIdentification` contract must be amended before acceptance.
+- [HL7 v2.9 Clinical Laboratory Automation, transfer of QC results](https://hl7.eu/HL7v2x/v29/std29/ch13.html),
+  which identifies multiple valid control-specimen fields and supports an
+  instrument-specific recognition contract rather than one protocol-wide guess.
 - [Analyzer mock server](https://github.com/DIGI-UW/analyzer-mock-server) and its
   deterministic protocol/QC tests.
 - [Analyzer profile bootstrap assets](../../projects/analyzer-profiles/README.md),
@@ -200,13 +226,17 @@ not inputs to this roadmap.
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Generic analyzer runtime | Existing ASTM, HL7, FILE, FHIR, and Bridge transport foundation                                                                                                                                                  |
 | Analyzer profile         | A versioned, portable, instrument-facing definition used by Bridge runtime                                                                                                                                       |
+| Profile revision         | An immutable, retained version of one Bridge profile; an analyzer keeps using its pinned revision until a user explicitly adopts another                                                                         |
 | Analyzer Type            | The lab-facing composed view of a Bridge profile plus site-specific OpenELIS catalog bindings and readiness                                                                                                      |
 | Site binding             | OpenELIS-owned association from normalized analyzer test/result concepts to the local Test and Result Option catalog                                                                                             |
-| Analyzer instance        | A configured instrument at a lab, associated with one profile revision, lab units, operational QC, status, and Bridge runtime registration                                                                       |
+| Control-result recognition | Bridge profile behavior that identifies an incoming control specimen/run before normalized delivery; it is not a Westgard rule, control lot, or activation prerequisite                                         |
+| Operational QC           | OpenELIS control materials/lots, QC results/statistics, Westgard evaluation, violations, alerts, corrective action, and result-release policy; it is linked to an analyzer but separate from analyzer activation   |
+| Analyzer instance        | A configured instrument at a lab, associated with one pinned profile revision, lab units, status, Bridge runtime registration, and a link to operational QC                                                       |
+| Activation candidate     | The exact profile revision, site-binding/recognition fingerprints, and analyzer-instance/runtime configuration proposed for verification and Bridge synchronization                                               |
 | PR #3792 foundation      | Historical source for selected route, mapping, QC, and test behavior; it is not in the new PR train and is not the OGC-1054 MVP                                                                                  |
 | Coordinated PR train     | Three linear, cross-linked repository stacks: OpenELIS, Analyzer Bridge, and analyzer mock                                                                                                                       |
 | OGC-1054 MVP             | A complete lab-admin workflow to manage an Analyzer Type, map and verify it, configure and activate an analyzer, and safely receive and resolve known and unknown traffic without developer-edited configuration |
-| Full OGC-1054 rollout    | The accepted MVP plus mature alert operations, profile revision/update/rollback, distribution hardening, and exact-build full-feature acceptance                                                                 |
+| Full OGC-1054 rollout    | The accepted MVP plus mature alert operations, profile revision diff/bulk adoption/rollback, distribution hardening, and exact-build full-feature acceptance                                                      |
 | Full analyzer program    | OGC-1054 plus multi-component ingestion, Results/Validation integration, per-instrument validation, maintenance, access control, and site rollout                                                                |
 
 ## Fixed Architecture
@@ -223,7 +253,8 @@ The Analyzer Bridge owns:
 - FILE directory watching, retries, delivery, and transport dead-letter state;
 - protocol parsing, framing, analyzer identification, and connection probes;
 - analyzer-code to normalized-code translation used by runtime;
-- QC-sample identification from instrument messages;
+- control-result recognition from instrument messages using only the pinned
+  profile revision;
 - normalized FHIR output, including preserved raw code/value context;
 - runtime analyzer registration and idempotent full-state reconciliation;
 - bidirectional protocol execution where a profile supports it.
@@ -236,8 +267,9 @@ OpenELIS owns:
 - analyzer instance identity, assigned lab units, lifecycle, and permissions;
 - local Test and Result Option catalog bindings;
 - mapping confirmation, verification fingerprints, actor/time, and audit;
-- operational analyzer QC rules, control lots, QC results, Westgard evaluation,
-  and activation readiness;
+- operational QC control lots, QC results/statistics, Westgard configuration
+  and evaluation, violations, alerts, corrective action, and result-release
+  policy;
 - durable staging/holding of known and unknown clinical results;
 - user-visible resolution, review, alerts, and downstream clinical processing;
 - desired analyzer-instance configuration and synchronization requests to
@@ -246,6 +278,74 @@ OpenELIS owns:
 OpenELIS does not own raw analyzer protocol parsing, instrument listeners,
 runtime FILE polling, protocol-specific connection logic, or a second portable
 profile authority.
+
+OpenELIS also does not own a per-analyzer control-recognition rule store or send
+operational-QC configuration to Bridge. `AnalyzerQcRule` is a superseded
+classifier path, not part of the target operational-QC domain.
+
+### Control-result recognition contract
+
+Control-result recognition is a required, versioned part of every Bridge
+profile because Bridge must decide whether an incoming transmission represents
+a patient specimen or a control before normalized delivery. The BR-E0 portable
+profile contract MUST expose one object named `controlResultRecognition` with
+exactly one of these modes:
+
+1. `RULES`: `rules` contains at least one schema-valid matcher. Rules have
+   stable unique keys and OR semantics: one match classifies the transmission
+   as a control. Field-based rules require an explicit target field; every rule
+   requires a nonblank operand. Optional level/type output is recognition
+   metadata only and cannot carry a local lot, assigned mean, standard
+   deviation, Westgard limit, or release policy.
+2. `NONE`: the profile explicitly does not support automated control-result
+   recognition and contains no rules. Publishing `NONE` requires the profile
+   author to affirm that this interface does not transport control results; an
+   unknown or undocumented recognition scheme remains invalid rather than
+   becoming `NONE`. `NONE` does not mean “use defaults,” does not create an
+   operational-QC blocker, and must be shown for human confirmation in Verify.
+
+Missing mode, unknown mode, `RULES` without rules, `NONE` with rules, an invalid
+matcher, or a matcher that cannot be evaluated by the profile protocol makes
+that profile revision invalid. An invalid revision cannot become active or be
+selected for a new analyzer. No `UNKNOWN`, implicit-empty, or best-effort mode
+exists.
+
+Bridge evaluates only the rules in the analyzer's pinned profile revision. It
+must not fall back to ASTM field guesses, FILE prefixes/tasks, an OE-pushed rule
+array, or any other hidden classifier when mode is `NONE` or rules do not match.
+The normalized result carries the resulting patient/control classification and
+any extracted control identifier, level, lot, and raw source context available
+from the message; OpenELIS owns local interpretation and operational QC.
+
+OpenELIS displays a human-readable summary such as “specimen ID starts with
+CNEG” or “control flag is Q” and records confirmation against the profile ID,
+revision, and recognition fingerprint. Analyzer Types may expose structured,
+protocol-aware authoring controls, but no normal lab workflow exposes a regular
+expression, raw JSON, or raw matcher field. Analyzer connection setup only
+reviews and confirms the summary. A recognition change creates a new profile
+revision and makes confirmation stale only for analyzers that explicitly move
+to that revision. Operational-QC changes never stale this confirmation.
+
+Analyzer-reported internal-control targets such as SPC, PCC, or IPC remain test
+or result-component mapping concepts. They are not automatically whole-run
+control recognition and are not operational QC.
+
+Published profile revisions are immutable and retained while any analyzer
+references them. OpenELIS stores the profile ID and revision rather than an
+authoritative copied profile snapshot. Site bindings and their verification
+fingerprints are scoped to that profile revision. **Update shared** publishes a
+new revision under the same profile identity; **Duplicate Profile** creates a
+new profile identity and initial revision. Neither action moves an existing
+analyzer. The Analyzer Types manager shows which analyzers use the profile and
+which have an update available. MVP supports explicit one-analyzer adoption,
+followed by re-verification and synchronization; R1.2 adds richer diff, bulk
+update, and rollback operations.
+
+The Analyzer Types manager is the sole authoring surface for reusable profile
+behavior and shared site bindings. Analyzer setup Verify is a review and
+confirmation surface. Any Resolve or Edit action leaves setup for that same
+Analyzer Types editor with a return URL; it never opens a second or
+analyzer-specific editor.
 
 ### Analyzer mock owns reproducible instruments
 
@@ -265,19 +365,25 @@ own application behavior or seed data.
 
 The contract is directional and versioned:
 
-1. OpenELIS selects a Bridge profile revision and sends desired instance
-   configuration and active operational QC context.
+1. OpenELIS pins a Bridge profile ID and revision and sends desired analyzer
+   instance identity, lab-owned connection choices, and runtime configuration.
+   The registration contract does not contain `AnalyzerQcRule`, control lots,
+   Westgard configuration, or other operational-QC state.
 2. Bridge validates and applies the desired runtime registration idempotently.
 3. The analyzer mock or a real instrument sends raw traffic to Bridge.
-4. Bridge parses and emits normalized FHIR with analyzer identity, profile
-   revision, raw analyzer code/value, normalized code where known, QC
-   classification, and source metadata.
+4. Bridge parses and emits normalized FHIR with analyzer identity, pinned
+   profile revision, raw analyzer code/value, normalized code where known,
+   patient/control classification from `controlResultRecognition`, and source
+   metadata.
 5. OpenELIS binds normalized/raw concepts to its local catalog, stages the
    result, evaluates operational QC, and either proceeds or holds it with a
    visible reason.
 6. Resolving an unknown local catalog binding updates durable OpenELIS site
    binding state. A portable profile change, when required, is made through the
-   Bridge profile lifecycle contract and produces a new revision.
+   Bridge profile lifecycle contract and produces a new revision. Existing
+   analyzers remain pinned to their current revision until a user explicitly
+   selects the update and re-verifies it. Duplicate Profile creates a new
+   profile identity rather than silently changing the source profile.
 
 Unknown test codes or values must cross the Bridge boundary with enough raw
 context to resolve them. Bridge must not drop them, and OpenELIS must not post
@@ -307,8 +413,9 @@ The durable baseline classification is:
 - Transitional OpenELIS filesystem profile assets and create-time bootstrap
   behavior. They are migration inputs, not the target profile authority.
 - Existing local analyzer mappings, pending-code infrastructure, Bridge desired
-  registration, and operational QC entities (`AnalyzerQcRule`, `QCControlLot`,
-  `QCResult`, and Westgard).
+  registration, the superseded per-analyzer `AnalyzerQcRule` classifier, and
+  the retained operational-QC foundation (`QCControlLot`, `QCResult`,
+  `QCStatistics`, Westgard configuration/evaluation, violations, and alerts).
 - Legacy OpenELIS protocol-reader/import paths. R0 does not treat them as the
   target runtime; E0-M4 own migration and removal under the fixed Bridge
   boundary.
@@ -327,15 +434,16 @@ acceptance criterion until reimplemented and accepted at the owning checkpoint.
 - Bridge-owned reusable profile lifecycle and site-created profile flow.
 - A living analyzer-to-profile-revision association rather than a transient
   create hint and copied per-analyzer snapshot.
-- Completeness, usage, source, lineage, deactivate/reactivate, fork, and update
-  impact in Analyzer Types.
+- Completeness, usage, source, lineage, deactivate/reactivate, Duplicate Profile,
+  and update impact in Analyzer Types.
 - A complete add/edit/remove/repoint mapping editor showing unmatched profile
   rows instead of skipping them.
-- Explicit QC-identification-code confirmation, separate from operational QC.
+- Explicit control-result-recognition confirmation, separate from operational QC.
 - Capability-aware Results only/Two-way selection.
 - Production creation of pending result values from Bridge traffic.
 - Durable hold plus Alerts/Needs attention for unknown traffic.
-- Live result capture/reconciliation and blank-profile population.
+- Live result capture/reconciliation and draft-profile population through the
+  separate Analyzer Types workflow.
 - Current integrated remote acceptance against current OpenELIS, Bridge, mock,
   profile, and review-tooling revisions.
 
@@ -350,11 +458,12 @@ not supply these implementation conclusions.
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Setup remains separate routed pages            | [`frontend/src/App.jsx`](../../frontend/src/App.jsx) and [`AnalyzersList.tsx`](../../frontend/src/components/analyzers/AnalyzersList/AnalyzersList.tsx) route Add, Edit, Mappings, QC Rules, and Control Lots separately.                                                                                                                                                                                                                                                                                                                                   |
 | Qualitative binding is not catalog-safe        | [`QualitativeResultMapping.java`](../../src/main/java/org/openelisglobal/analyzer/valueholder/QualitativeResultMapping.java) and [`QualitativeResultMappingForm.java`](../../src/main/java/org/openelisglobal/analyzer/form/QualitativeResultMappingForm.java) persist free-text `openelisCode`.                                                                                                                                                                                                                                                            |
-| Activation is not complete MVP readiness       | [`AnalyzerStatusTransitionServiceImpl.java`](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerStatusTransitionServiceImpl.java) checks current status and at least one active QC rule, not current mapping verification plus profile-applicable QC readiness.                                                                                                                                                                                                                                                                                |
+| Activation has an inconsistent legacy QC gate  | [`AnalyzerStatusTransitionServiceImpl.java`](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerStatusTransitionServiceImpl.java) requires one active `AnalyzerQcRule` only for the initial `VALIDATION -> ACTIVE` transition, while return transitions from error/offline bypass it. The target gate is current binding/recognition verification plus synchronized pinned runtime state; operational QC never participates.                                                                                                                                  |
 | OpenELIS still loads bootstrap profiles        | [`AnalyzerRestController.java`](../../src/main/java/org/openelisglobal/analyzer/controller/AnalyzerRestController.java) reads filesystem profiles and applies `defaultConfigId` at create time. E0 owns migration away from profile authority in core OpenELIS.                                                                                                                                                                                                                                                                                             |
-| Operational QC foundation exists               | [`AnalyzerQcRule.java`](../../src/main/java/org/openelisglobal/analyzer/valueholder/AnalyzerQcRule.java), [`QCControlLot.java`](../../src/main/java/org/openelisglobal/qc/valueholder/QCControlLot.java), and [`QCResult.java`](../../src/main/java/org/openelisglobal/qc/valueholder/QCResult.java) are the retained operational QC path.                                                                                                                                                                                                                  |
+| PR #3390 mixed two QC concerns                  | [`AnalyzerQcRule.java`](../../src/main/java/org/openelisglobal/analyzer/valueholder/AnalyzerQcRule.java) is the superseded classifier. [`QCControlLot.java`](../../src/main/java/org/openelisglobal/qc/valueholder/QCControlLot.java), [`QCResult.java`](../../src/main/java/org/openelisglobal/qc/valueholder/QCResult.java), QC statistics, Westgard evaluation, violations, and alerts are the retained operational-QC foundation.                                                                                                                             |
 | Bridge already owns runtime concerns           | Bridge [`AnalyzerRegistrationController`](https://github.com/DIGI-UW/openelis-analyzer-bridge/blob/develop/src/main/java/org/itech/ahb/controller/AnalyzerRegistrationController.java), [`TestConnectivityController`](https://github.com/DIGI-UW/openelis-analyzer-bridge/blob/develop/src/main/java/org/itech/ahb/controller/TestConnectivityController.java), and [`FileWatcher`](https://github.com/DIGI-UW/openelis-analyzer-bridge/blob/develop/src/main/java/org/itech/ahb/file/FileWatcher.java) own registration, probes, and FILE watching today. |
-| Bridge profile lifecycle is still absent       | Current Bridge `develop` registers analyzer entries and OE-pushed mappings but has no portable catalog/revision/fork lifecycle; BR-E0/BR-M1 own the contract and implementation rather than recreating it in OpenELIS.                                                                                                                                                                                                                                                                                                                                      |
+| Bridge retains hidden QC classifier fallbacks  | Current Bridge ASTM and FILE parsers use hard-coded field/prefix/task detection when no pushed rules exist. BR-E0/BR-M2 replace this with the explicit pinned-profile contract and tests proving `NONE` and non-match never invoke a fallback.                                                                                                                                                                                                                                                                                                                         |
+| Bridge profile lifecycle is still absent       | Current Bridge `develop` registers analyzer entries and OE-pushed mappings but has no portable catalog/revision/Duplicate Profile lifecycle; BR-E0/BR-M1 own the contract and implementation rather than recreating it in OpenELIS.                                                                                                                                                                                                                                                                                                                        |
 | Mock is multi-protocol but has legacy delivery | Current analyzer-mock [templates](https://github.com/DIGI-UW/analyzer-mock-server/tree/main/templates) cover ASTM, HL7, and FILE, while its [README](https://github.com/DIGI-UW/analyzer-mock-server/blob/main/README.md) still documents direct-to-OpenELIS delivery. M4 uses real transport to Bridge and retires direct delivery as acceptance proof.                                                                                                                                                                                                    |
 
 ## Scope
@@ -364,17 +473,21 @@ not supply these implementation conclusions.
 The MVP is reached only when a laboratory administrator can:
 
 1. find a shipped or site Analyzer Type, understand readiness and usage, and
-   create or fork a type without editing files;
-2. map every analyzer test, qualitative result value, and QC identification
-   code to valid local concepts through one protocol-neutral editor;
+   create a type or use Duplicate Profile without editing files;
+2. bind every analyzer test and qualitative result value to valid local
+   concepts and confirm the profile's human-readable control-result recognition
+   through one protocol-neutral editor;
 3. create an analyzer inline, select readable lab units, verify the mappings,
    configure Bridge-owned connectivity, and see all activation blockers;
-4. configure required operational QC with existing OpenELIS QC entities;
-5. activate the analyzer only after current mapping/QC verification;
+4. open the analyzer-linked OpenELIS Quality Control workflow without making
+   its rule, lot, result, or readiness state an analyzer-activation prerequisite;
+5. activate the analyzer only after current binding/control-recognition
+   verification and synchronized pinned Bridge runtime state;
 6. request a live result during Verify, reconcile every seen/not-seen/new item,
-   and populate a blank site type from held traffic without losing anything;
-7. receive a known patient result and a QC result through Bridge from the
-   analyzer mock;
+   and populate a draft site type created in Analyzer Types from held traffic
+   without losing anything;
+7. receive a known patient result and a recognized control result through Bridge
+   from the analyzer mock;
 8. hold and visibly flag an unknown test/value, resolve it safely, and process
    the next matching result deterministically; and
 9. reload, bookmark, navigate by breadcrumb, and review the same durable state.
@@ -382,14 +495,21 @@ The MVP is reached only when a laboratory administrator can:
 The MVP includes a discoverable Alerts/Needs attention path. A resolver hidden
 inside an analyzer page is not enough for safe operation.
 
+MVP operational-QC scope is the linked canonical workflow, control-result
+ingestion/evaluation, and proof that QC state is independent of analyzer
+activation. Patient Results/Validation release-screen integration remains
+outside OGC-1054; the architectural rule is nevertheless fixed that any
+QC-based release/hold decision belongs in OpenELIS, never Bridge or analyzer
+activation.
+
 ### Full OGC-1054 rollout
 
 After MVP acceptance, complete:
 
 - mature alert triage, acknowledgement, assignment, concurrency, and
   navigation;
-- profile revision diff, update impact, rollback, backup export, and
-  distribution hardening;
+- profile revision diff, bulk adoption impact, rollback, backup export, and
+  distribution hardening beyond MVP's explicit one-analyzer adoption;
 - scale and accessibility validation for large catalogs and profile libraries.
 
 ### Outside OGC-1054
@@ -408,8 +528,8 @@ only. They supply no implementation instructions.
 
 | Product slice                                                             | Functional/visual reference                                                        | Current code state                                                               | Delivery checkpoint      |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------ |
-| [OGC-1055](https://uwdigi.atlassian.net/browse/OGC-1055) Analyzer Types   | Reuse, create/fork, completeness, usage, lifecycle, and list presentation          | Transitional shipped-profile/type page; site lifecycle absent                    | M1                       |
-| [OGC-1056](https://uwdigi.atlassian.net/browse/OGC-1056) mapping          | Complete test/result/QC-code editor and safe save scope                            | Legacy standalone mapping/pending paths; accepted catalog-bound editor absent    | M2                       |
+| [OGC-1055](https://uwdigi.atlassian.net/browse/OGC-1055) Analyzer Types   | Reuse, create/Duplicate Profile, completeness, usage, lifecycle, and list presentation | Transitional shipped-profile/type page; site lifecycle absent                 | M1                       |
+| [OGC-1056](https://uwdigi.atlassian.net/browse/OGC-1056) mapping          | Complete test/result editor, control-recognition review, and safe revision scope    | Legacy standalone mapping/pending paths; accepted catalog-bound editor absent    | M2                       |
 | [OGC-1057](https://uwdigi.atlassian.net/browse/OGC-1057) guided setup     | Inline Instrument, Verify, and Connect sections plus a readable completion summary | Standalone routes only; current activation does not implement full readiness     | M3                       |
 | [OGC-1058](https://uwdigi.atlassian.net/browse/OGC-1058) traffic learning | Hold, alert, resolve, and reconcile unknown traffic                                | Pending/error infrastructure exists; production hold/alert/reconciliation absent | M4 core; R1.1 operations |
 | PR #3792 QC/config extension                                              | Historical behavior provenance only                                                | Frozen divergent branch; F0 evaluates behavior directly before reuse             | F0 review                |
@@ -429,17 +549,17 @@ ownership from a product artifact.
 | AC-1       | Add Analyzer starts inline while the analyzer list remains available.                       | Absent; `/analyzers/new` is a standalone route.                    | M3      |
 | AC-2       | Instrument, Verify, and Connect form one progressive, understandable setup story.           | Absent; current setup concerns are separate routes.                | M3      |
 | AC-3       | Instrument/type selection is searchable.                                                    | Partial standalone selectors; no accepted integrated type search.  | M3      |
-| AC-4       | A not-listed instrument can start creation of a reusable site type.                         | Absent.                                                            | M1 + M3 |
+| AC-4       | A not-listed instrument links to separate Analyzer Types creation and can return with the new reusable type selected. | Absent.                                             | M1 + M3 |
 | AC-5       | Verify shows every profile test, normalized identity, and match state.                      | Absent; create-time bootstrap does not retain/display every row.   | M2 + M3 |
 | AC-6       | Human mapping confirmation is mandatory and auditable.                                      | Absent on OE-R0.                                                   | M2 + M3 |
-| AC-7       | QC identification codes are reviewed and confirmed during Verify.                           | Absent; operational QC is a different capability.                  | M2 + M3 |
+| AC-7       | Profile-owned control-result recognition is summarized and confirmed during Verify; explicit `NONE` is visible and no operational-QC state is shown as an analyzer blocker. | Absent; the OE classifier is mislabeled as a QC rule and gates initial activation, while the separate operational-QC foundation does not define this recognition behavior. | M2 + M3 |
 | AC-8       | A non-match can map to an existing Test, detour to Test Catalog, or be explicitly excluded. | Partial legacy pending-code resolver; no complete source-row flow. | M2      |
 | AC-9       | One unresolved test does not hide or block independent mapping work.                        | Absent; unmatched bootstrap rows are not retained visibly.         | M2      |
 | AC-10      | Results only is the safe default; Two-way appears only when supported and probed.           | Absent; initiator mode is exposed instead.                         | M3      |
 | AC-11      | Every test mapping can be added, edited, removed, or repointed.                             | Absent for profile-applied rows.                                   | M2      |
 | AC-12      | A qualitative result can target only an option belonging to its mapped Test.                | Absent; current mapping stores free-text `openelisCode`.           | M2      |
-| AC-13      | Saving shared changes requires explicit new-type or update-shared scope.                    | Absent.                                                            | M2      |
-| AC-14      | A fork has a unique name and visible lineage.                                               | Absent.                                                            | M1 + M2 |
+| AC-13      | Saving shared changes requires explicit Duplicate Profile or update-shared scope.           | Absent.                                                            | M2      |
+| AC-14      | Duplicate Profile creates a unique profile identity and visible source lineage.             | Absent.                                                            | M1 + M2 |
 | AC-15      | Unknown traffic is held and visibly flags the analyzer/type and Alerts.                     | Pending/error infrastructure only; hold/alert path absent.         | M4      |
 | AC-16      | Analyzer Types shows completeness/usage and the required search/filter states.              | Partial type/profile list; completeness and usage absent.          | M1      |
 | AC-17      | Types can be deactivated/reactivated without deleting history.                              | Absent.                                                            | M1      |
@@ -448,7 +568,7 @@ ownership from a product artifact.
 | AC-20      | All visible copy is localized.                                                              | Partial; raw status/fallback strings remain.                       | M1-M4   |
 | AC-21      | Setup can request a live result and reconcile what was received.                            | Absent.                                                            | M4      |
 | AC-22      | Unknown data is never lost; resolution changes future matching behavior.                    | Absent end to end.                                                 | M4      |
-| AC-23      | Live traffic can populate a newly created blank type.                                       | Absent.                                                            | M4      |
+| AC-23      | Live traffic can populate a draft type created in the separate Analyzer Types workflow.     | Absent.                                                            | M4      |
 
 ### OGC-1057 QA finding disposition
 
@@ -466,12 +586,12 @@ gates.
 | 3           | Changing an applicable result option enables save, persists, and survives reload; invalid and empty-option rows remain explicit.                                              | M2; MVP-007; `AN-MVP-004`             |
 | 4           | Test selection searches the complete active local catalog by name, code, or LOINC; no fixed legacy subset can satisfy acceptance.                                             | M2; MVP-006; `AN-MVP-003`             |
 | 5           | Source aliases and local LOINC cardinality are characterized; ambiguous candidates never auto-bind and source rows remain independently confirmable.                          | E0 + M2                               |
-| 6           | Mapping/QC-identification confirmation is independent of operational QC readiness; each has its own visible completion and blocker state.                                     | M2 + M3; MVP-008/012/015/016          |
-| 7           | Instrument not listed creates a reusable site type through the Bridge-owned lifecycle without developer fields.                                                               | M1 + M3; MVP-003/010; `AN-MVP-002`    |
-| 8           | Method-dependent control-lot requirements are visible before submit and exact validation is actionable; valid save recomputes readiness.                                      | M3; MVP-015/022; `AN-MVP-009`         |
+| 6           | Control-result-recognition confirmation is independent of operational QC. Operational rules/lots/results never disable mapping confirmation or analyzer activation.             | E0 + M2 + M3; MVP-008/012/015/016     |
+| 7           | Instrument not listed links to the separate Analyzer Types create/Duplicate Profile workflow without developer fields, then returns to setup.                                  | M1 + M3; MVP-003/010; `AN-MVP-002`    |
+| 8           | Method-dependent control-lot validation remains visible and actionable inside the separate OpenELIS Quality Control workflow; it never becomes an analyzer readiness blocker.  | M3; MVP-015/022; `AN-MVP-009`         |
 | 9           | Type lifecycle uses deactivate/reactivate in M1; M2 removes Copy Mappings; M3 replaces analyzer-instance hard delete with audited deactivate/reactivate.                      | M1 + M2 + M3; MVP-004/009             |
 | Deferred    | Real mock-to-Bridge probes cover role-appropriate settings, success, failure, timeout, supported direction, and visible Results-only degradation.                             | BR-M2 + M3 + MOCK-M4; MVP-013/014/021 |
-| Untested    | M4 owns live capture/reconciliation, blank-type population, hold/alert/resolve, and deterministic next-message behavior for unknown traffic.                                  | M4; MVP-018/019/020                   |
+| Untested    | M4 owns live capture/reconciliation, draft-type population, hold/alert/resolve, and deterministic next-message behavior for unknown traffic.                                  | M4; MVP-018/019/020                   |
 | Preserve    | Inline setup, searchable selection, readable summaries, lab units, live blockers, catalog-safe result choices, and absence of developer fields remain functional regressions. | M1-M3; MVP-001/007/010/016/022        |
 | Withdrawn   | The report's withdrawn picker-search and direction-default observations add no defect requirement; later UI automation must use focused visible controls.                     | M3/G0; MVP-010/014/023                |
 | Environment | G0 starts from a deterministic reset/fixture state; artifacts left by the 2026-08-12 review are preconditions to remove, not product history to hard-delete through the UI.   | G0 deployment preflight               |
@@ -554,14 +674,44 @@ repository ownership, durable data semantics, a cross-repository contract, or
 an acceptance criterion. Resolve it in the owning specification or contract
 before the affected iteration starts.
 
-### Blocking decision
+### Resolved QC and activation decision
 
-`AMB-M3-001` blocks the start of M3: the repository specification must identify
-the source of profile-applicable operational-QC obligations and whether an
-active operational QC rule, active control lot, or both are activation
-requirements. No implementation may infer that policy from copied profile
-defaults or the historical demo. QC-identification confirmation remains a
-separate mapping concern regardless of that decision.
+The earlier blocking QC question is removed because it conflated control-result
+recognition with operational QC. The governing decisions are:
+
+1. Bridge profile `controlResultRecognition` is analyzer-type behavior and is
+   confirmed with the profile mappings.
+2. OpenELIS operational QC is a separate linked workflow and a QC/result-release
+   concern. No operational rule, control lot, QC result, Westgard state, or
+   connection-test outcome is an analyzer-activation prerequisite.
+3. `AnalyzerQcRule` is not retained. Its applicable recognition behavior moves
+   to Bridge profiles; the OpenELIS entity/table/service/controller/UI,
+   registration field, readiness checks, seed data, translations, and runtime
+   callers are removed through E0-M4.
+4. Activation is evaluated against one immutable candidate and succeeds if and
+   only if all of these predicates are true:
+   - the pinned profile ID/revision exists, is active, and passes the accepted
+     Bridge profile schema;
+   - the analyzer name is nonblank, at least one active lab unit is assigned,
+     the selected connection/data-flow modes are declared by that revision,
+     and every profile-declared required instance field is valid;
+   - every declared test/result source row is currently bound to an active,
+     valid local catalog target or explicitly excluded where exclusion is
+     offered, and the confirmed row IDs exactly match that candidate;
+   - control-result recognition is confirmed for the same profile revision and
+     recognition fingerprint, including an explicit `NONE`; and
+   - Bridge has acknowledged the same analyzer ID, profile ID/revision, and
+     canonical desired-state fingerprint.
+5. A visible connection test supplies setup evidence but does not persist as an
+   activation gate.
+6. The same server-side predicate applies to every transition into `ACTIVE`,
+   including reactivation from error/offline. Editing a profile, binding, or
+   runtime field creates a draft candidate; it does not mutate the last active
+   candidate or silently deploy it. The UI shows the pending update until the
+   new candidate is verified and synchronized.
+
+No QC policy question blocks M3. Only its ordinary predecessor and the accepted
+E0/Bridge contracts control when it starts.
 
 ### Iterations
 
@@ -574,8 +724,7 @@ separate mapping concern regardless of that decision.
 - [ ] **M1 - Bridge profile lifecycle and Analyzer Types.** Prepared work is
       preserved but remains future until E0 is `[x]`.
 - [ ] **M2 - Safe mapping editor.** Future.
-- [ ] **M3 - Guided setup, connectivity, and QC.** Future; cannot start until
-      `AMB-M3-001` is resolved in the owning specification/contract.
+- [ ] **M3 - Guided setup, connectivity, and linked operational QC.** Future.
 - [ ] **M4 - Safe traffic and integrated MVP.** Future.
 - [ ] **G0 - Full MVP deployment and human acceptance.** Future.
 - [ ] **R1.1 - Mature alert operations.** Future.
@@ -602,8 +751,8 @@ its branch.
 | 1     | OE-F0 | `codex/ogc-1054-f0-foundation`         | OE-R0 branch    | Characterize and cleanly salvage compatible #3792 foundation behavior       |
 | 2     | OE-E0 | `codex/ogc-1054-e0-contract-migration` | OE-F0 branch    | ADR, consumer contracts, migration fixtures/report, red cross-repo tests    |
 | 3     | OE-M1 | `codex/ogc-1054-m1-analyzer-types`     | OE-E0 branch    | OpenELIS Analyzer Types composition, site bindings, lifecycle UI, migration |
-| 4     | OE-M2 | `codex/ogc-1054-m2-mapping`            | OE-M1 branch    | Complete protocol-neutral mapping and QC-identification confirmation        |
-| 5     | OE-M3 | `codex/ogc-1054-m3-setup-qc`           | OE-M2 branch    | Guided setup, Bridge connectivity, operational QC, activation               |
+| 4     | OE-M2 | `codex/ogc-1054-m2-mapping`            | OE-M1 branch    | Complete protocol-neutral mapping and control-recognition confirmation; remove OE classifier path |
+| 5     | OE-M3 | `codex/ogc-1054-m3-setup-qc`           | OE-M2 branch    | Guided setup, Bridge connectivity, linked operational QC, activation        |
 | 6     | OE-M4 | `codex/ogc-1054-m4-safe-traffic`       | OE-M3 branch    | Hold/alert/resolve, integrated harness, legacy removal, full UI story       |
 | 7     | OE-G0 | `codex/ogc-1054-g0-acceptance`         | OE-M4 branch    | Exact-build deployment, Grist UAT, MP4, and acceptance corrections          |
 
@@ -625,15 +774,15 @@ does not get an empty placeholder PR.
 | Order | ID    | Fixed branch                          | Initial PR base  | Scope                                                                                                                  | Required by  |
 | ----- | ----- | ------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------ |
 | 1     | BR-E0 | `codex/ogc-1054-e0-contracts`         | Bridge `develop` | Versioned profile/registration/normalized-traffic contracts and compatibility fixtures, without lifecycle feature code | OE-E0        |
-| 2     | BR-M1 | `codex/ogc-1054-m1-profile-lifecycle` | BR-E0 branch     | Bridge-owned portable profile catalog, validation, revision, fork, and lifecycle implementation                        | OE-M1        |
-| 3     | BR-M2 | `codex/ogc-1054-m2-mapping-qc`        | BR-M1 branch     | Mapping identity, QC-identification, capability, and connection evidence contract                                      | OE-M2, OE-M3 |
-| 4     | BR-M4 | `codex/ogc-1054-m4-safe-traffic`      | BR-M2 branch     | Known/unknown/QC/FILE normalized traffic with preserved raw context                                                    | OE-M4        |
+| 2     | BR-M1 | `codex/ogc-1054-m1-profile-lifecycle` | BR-E0 branch     | Bridge-owned portable profile catalog, validation, revision, Duplicate Profile, and lifecycle implementation           | OE-M1        |
+| 3     | BR-M2 | `codex/ogc-1054-m2-mapping-qc`        | BR-M1 branch     | Mapping identity, control-result recognition, capability, and connection evidence contract; no classifier fallback     | OE-M2, OE-M3 |
+| 4     | BR-M4 | `codex/ogc-1054-m4-safe-traffic`      | BR-M2 branch     | Patient/recognized-control/unknown/FILE normalized traffic with preserved raw context                                  | OE-M4        |
 
 ### Analyzer mock stack
 
 | Order | ID      | Fixed branch                 | Initial PR base | Scope                                                                                                                    | Required by |
 | ----- | ------- | ---------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| 1     | MOCK-M4 | `codex/ogc-1054-m4-fixtures` | mock `main`     | Deterministic ASTM, HL7, and FILE known, unknown, QC, connection, failure, and supported two-way fixtures sent to Bridge | OE-M4       |
+| 1     | MOCK-M4 | `codex/ogc-1054-m4-fixtures` | mock `main`     | Deterministic ASTM, HL7, and FILE patient, recognized-control, nonmatch, unknown, connection, failure, and supported two-way fixtures sent to Bridge | OE-M4 |
 
 OpenELIS PRs that depend on a companion update the ordinary submodule pointer
 and link its PR. A companion merges before the first OpenELIS consumer that
@@ -702,15 +851,26 @@ longer an open delivery candidate.
 1. In OE-E0, record an ADR for the Bridge profile/OpenELIS site-binding boundary
    and derive persistence from current code constraints only.
 2. In BR-E0, version portable profile, registration, normalized traffic, and
-   compatibility contracts without implementing the M1 lifecycle.
+   compatibility contracts without implementing the M1 lifecycle. The portable
+   profile schema contains the discriminated `controlResultRecognition`
+   contract above; registration contains no OE classifier or operational-QC
+   fields; normalized traffic carries patient/control classification and raw
+   recognition context.
 3. Characterize `defaultConfigId`, copied plugin JSON, `analyzer_test_map`, raw
    import endpoints, and existing analyzers in migration tests.
-4. Characterize active local Test/Result Option catalog coverage, missing and
+4. Inventory every persisted `AnalyzerQcRule` set. A set identical to the
+   selected Bridge profile's recognition behavior is discarded after the
+   analyzer is pinned. A divergent set must produce a new site profile identity
+   and revision through the Bridge lifecycle before cutover. Untransformable or
+   invalid data produces a visible preflight failure and blocks migration; it
+   never enables a runtime fallback, silent drop, or dual path.
+5. Characterize active local Test/Result Option catalog coverage, missing and
    duplicate LOINCs, source aliases, and zero/one/multiple-candidate behavior.
-5. Define no-loss migration, rollback, anomaly reporting, and the one-writer
+6. Define no-loss migration, rollback, anomaly reporting, and the one-writer
    cutover for each legacy store/path.
-6. Add failing producer/consumer contract fixtures for known test, unknown test,
-   unknown value, QC, FILE, and registration reconciliation.
+7. Add failing producer/consumer contract fixtures for known test, unknown test,
+   unknown value, recognized control, explicit `NONE`, non-match/no-fallback,
+   FILE, and registration reconciliation.
 
 **Exit:** OE-E0 and BR-E0 are green; approved ADR/contracts, migration fixtures,
 rollback behavior, and contract tests exist. No M1 production code starts
@@ -723,12 +883,16 @@ against an unresolved boundary.
 2. In OE-M1, compose one lab-facing Analyzer Types view from Bridge profile
    metadata plus OpenELIS local completeness/readiness/usage, with the
    plain-language explainer and aggregate counts shown by the functional mock.
-3. Support shipped and site-created types, fork, unique naming, lineage,
-   deactivate/reactivate, and audit/history.
+3. Support shipped and site-created types, create, Duplicate Profile, unique
+   naming, source lineage, deactivate/reactivate, and audit/history in the
+   separate Analyzer Types workflow.
 4. Make search and filters URL-backed and use reusable Carbon page, breadcrumb,
    status, table, empty-state, and notification components.
-5. Migrate existing analyzers to a profile revision plus explicit local site
-   binding without silent remapping.
+5. Migrate existing analyzers to a pinned profile ID/revision plus explicit
+   local site binding without silent remapping. A later profile revision changes
+   no analyzer until that analyzer explicitly selects it, re-verifies, and
+   synchronizes the new activation candidate. Retain every referenced revision;
+   do not persist an authoritative copied-profile snapshot in OpenELIS.
 
 **Exit:** MVP-001 through MVP-004, MVP-011, and applicable MVP-022 criteria pass;
 a type is reusable by multiple analyzers and no OpenELIS filesystem catalog or
@@ -736,11 +900,15 @@ create-only copied snapshot remains authoritative.
 
 ### M2 - Safe mapping editor (OGC-1056)
 
-1. In BR-M2, expose the normalized identities, raw codes, QC-identification
-   codes, capabilities, and revision needed by the consumer contract.
-2. In OE-M2, show every profile test row, including unmatched rows, with raw
-   code, normalized identity, match state, and local Test selection. Shared
-   normalized identities never collapse distinct source rows.
+1. In BR-M2, expose normalized identities, raw codes, the human-readable
+   `controlResultRecognition` summary, capabilities, and revision needed by the
+   consumer contract. Implement `RULES`/`NONE` validation and remove every
+   hard-coded ASTM/HL7/FILE classifier fallback.
+2. In OE-M2, implement the one reusable mapping editor in Analyzer Types. Show
+   every profile test row, including unmatched rows, with raw code, normalized
+   identity, match state, and local Test selection. Shared normalized identities
+   never collapse distinct source rows. Verify links to this editor with a
+   return URL and does not implement a second editor.
 3. Add/edit/remove/repoint test bindings using complete active Test catalog
    search by name, code, or LOINC. Suggest a binding only for one unique active
    candidate; zero or multiple candidates remain visibly unresolved. A row may
@@ -749,38 +917,56 @@ create-only copied snapshot remains authoritative.
 4. Bind qualitative values only to active Result Options owned by the mapped
    Test; derive value and label server-side; prove edit, enabled save, persisted
    state, and reload behavior for every applicable row.
-5. Confirm Bridge QC-identification codes separately from operational QC.
-6. Validate Test Catalog return URLs and expose explicit fork/update scope plus
-   affected-analyzer warning.
+5. Confirm Bridge control-result recognition separately from operational QC.
+   `RULES` confirms every human-readable matcher; `NONE` confirms the explicit
+   absence of automatic recognition. Raw fields/regexes never appear in analyzer
+   connection setup.
+6. Validate Test Catalog/setup return URLs and expose explicit Duplicate Profile
+   or Update shared scope plus an affected-analyzer/update-available warning.
+   Publishing either result never moves an analyzer implicitly.
 7. Recompute completeness and stale verification after every relevant change.
+8. Remove the OpenELIS `AnalyzerQcRule` editor, routes, controller, service/DAO
+   runtime callers, profile seeding, Bridge payload, readiness use, translations,
+   and new writes. Only the E0 migration reader may remain until schema removal,
+   and it is unreachable from production runtime and lab UI.
 
 **Exit:** MVP-005 through MVP-009, MVP-012, and applicable MVP-022 criteria pass
 for ASTM, HL7, and FILE; one complete editor remains and invalid bindings are
 rejected server-side.
 
-### M3 - Guided setup, connectivity, and QC (OGC-1057)
+### M3 - Guided setup, connectivity, and linked operational QC (OGC-1057)
 
 1. Complete one inline Instrument -> Verify -> Connect story in OE-M3 with
    canonical URL/query state, linkable breadcrumbs, a readable completion
    summary, reload, back, and forward behavior. Do not add a fourth setup
    section unless the functional specification is amended.
-2. Provide searchable type selection and an instrument-not-listed path through
-   the BR-M1 lifecycle contract.
+2. Provide searchable type selection. Instrument not listed links to the
+   separate Analyzer Types create/Duplicate Profile workflow and returns with
+   the new type selectable; analyzer setup never creates or silently mutates a
+   profile.
 3. Persist and display readable lab-unit assignments.
-4. Require audited mapping/QC-identification confirmation and make it stale on
-   relevant profile, site-binding, or QC-identification change. Operational QC
-   changes recompute their own readiness and do not invalidate mapping sign-off.
+4. Require audited binding/control-recognition confirmation and make it stale
+   only when the pinned profile revision, site binding, explicit exclusion, or
+   recognition fingerprint changes. Operational-QC changes do not invalidate
+   analyzer verification.
 5. Execute probes in Bridge and show protocol-appropriate evidence; separate
    connection initiator from Results only/Two-way capability. Collect only
    role-applicable settings, show the endpoint a lab must configure, and degrade
    an unreachable Two-way probe visibly to Results only without blocking
    supported one-way setup.
-6. Configure existing `AnalyzerQcRule`, `QCControlLot`, `QCResult`, and Westgard
-   readiness without adding `QcRun`. Show method-dependent required fields and
-   actionable server validation before a control-lot save can fail generically.
-7. Block activation with a complete visible list of current blockers. A source
-   row is ready when it is validly bound or explicitly excluded and confirmed;
-   the workflow does not require a false 100% mapping claim.
+6. Provide an analyzer-scoped link into the canonical OpenELIS Quality Control
+   workflow, preserving analyzer context and a breadcrumb/back path. Retain
+   `QCControlLot`, `QCResult`, QC statistics, Westgard configuration/evaluation,
+   violations, and alerts; add no `QcRun`. Method-dependent required fields and
+   exact validation remain visible in that QC workflow. Its state is reported
+   separately and never changes analyzer activation or verification.
+7. Apply the exact predicate in the resolved decision above on every transition
+   into `ACTIVE`. Present one visible blocker for each false predicate and no
+   others. In particular, no operational rule, control lot, QC result, Westgard
+   status, or connection-test outcome appears in the list. A source row is
+   ready when it is validly bound or explicitly excluded where offered and its
+   ID is part of the current confirmation; the workflow does not display a
+   false 100% mapping claim.
 
 **Exit:** MVP-010 through MVP-016 and applicable MVP-022 criteria pass; a lab
 administrator can activate a complete analyzer without developer fields or file
@@ -789,14 +975,14 @@ edits, and runtime setup occurs in Bridge.
 ### M4 - Safe traffic and integrated MVP (OGC-1058 safety scope)
 
 1. In BR-M4, preserve raw context and normalized identity for known, unknown,
-   QC, and FILE messages.
+   recognized-control, and FILE messages.
 2. In MOCK-M4, supply deterministic real-transport fixtures; direct
    mock-to-OpenELIS delivery cannot satisfy a target-architecture test.
 3. In OE-M4, stage known patient and QC results through the unified FHIR path.
 4. Make Verify's visible “send a result” action capture real mock-to-Bridge
    traffic, reconcile every transmitted item as verified/new/not-seen, and
    keep independent source rows intact.
-5. Populate a blank site type from received test/value/QC-identification rows;
+5. Populate a draft site type from received test/value/control-recognition rows;
    require explicit catalog-safe binding and confirmation before use.
 6. Hold unknown tests/values; never discard or clinically post them.
 7. Create durable Alerts/Needs attention linked to analyzer, profile revision,
@@ -809,6 +995,10 @@ edits, and runtime setup occurs in Bridge.
 10. Remove or disable every superseded raw reader, copied-profile writer,
     duplicate editor, and duplicate pending queue; no dual-write or alternate
     acceptance path remains enabled.
+11. Remove the `analyzer_qc_rule` table and final migration adapter after the E0
+    preflight proves every analyzer migrated. Repository guards prove no
+    `AnalyzerQcRule`, OE-pushed classifier payload, or Bridge hard-coded
+    classifier fallback remains.
 
 **Exit:** MVP-017 through MVP-023 pass, all prior criteria remain green, and the
 top of the three repository stacks forms one reproducible release candidate.
@@ -906,25 +1096,25 @@ and site validation.
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | MVP-001 | Analyzer Types lists shipped and site types with a plain-language explainer, aggregate counts, source, status, completeness, usage, and attention state.                                                                                                                            | Service/integration + RTL + UI E2E              |
 | MVP-002 | Search and filters round-trip through the URL and restore identical visible state after reload/back/forward.                                                                                                                                                                        | RTL with router + UI E2E                        |
-| MVP-003 | A user can create a site type or fork a shared type; lineage, unique name, actor, and revision are durable.                                                                                                                                                                         | Bridge contract + OpenELIS integration + UI E2E |
+| MVP-003 | Analyzer Types provides Create and Duplicate Profile as separate profile-management actions. Duplicate Profile creates a new profile identity with a unique name, initial revision, source lineage, actor, and time; changing it cannot mutate the source profile or analyzers pinned to the source.                                                        | Bridge contract + OpenELIS integration + UI E2E |
 | MVP-004 | Deactivation prevents new use but preserves existing history; reactivation is audited; hard delete is unavailable.                                                                                                                                                                  | Service/integration + RTL                       |
-| MVP-005 | The editor displays every independent profile source row, including unmatched/aliased rows; local lookup never skips, collapses, or falsely completes one.                                                                                                                          | Contract + service + RTL                        |
+| MVP-005 | Analyzer Types has the sole reusable mapping editor. It displays every independent profile source row, including unmatched/aliased rows; local lookup never skips, collapses, or falsely completes one. Verify links to that editor with a return URL and contains no second/per-analyzer editor. | Contract + service + RTL + UI E2E |
 | MVP-006 | Test selection searches the complete active catalog by name/code/LOINC; only a unique candidate may be suggested, while unresolved/explicitly-excluded choices remain independent per row and never block work on other rows.                                                       | JUnit 4 + RTL + UI E2E                          |
 | MVP-007 | Every applicable qualitative row can select only an active Result Option owned by its Test; selection enables save, server-derived value/label persist, and reload restores the binding.                                                                                            | JUnit 4 + RTL + UI E2E                          |
-| MVP-008 | QC-identification codes are shown and confirmed separately from operational QC rules/lots.                                                                                                                                                                                          | Bridge/OpenELIS contract + RTL + UI E2E         |
-| MVP-009 | Saving a shared mapping requires explicit fork/update scope and names affected analyzers; no copy/clone action bypasses that lifecycle.                                                                                                                                             | Service + RTL + UI E2E                          |
-| MVP-010 | Inline setup supports type selection, instrument-not-listed, name, readable lab units, Verify, Connect, and a completion summary; profile selection visibly confirms the loaded profile plus mapping/QC/result counts, and saved analyzer name/lab-unit assignments survive reload. | RTL + UI E2E                                    |
+| MVP-008 | Every active profile revision has exactly one valid `controlResultRecognition` mode. `RULES` has one or more valid OR matchers. `NONE` has no rules and a required author affirmation that the interface transports no control results; unknown/undocumented behavior cannot publish as `NONE`. Missing/invalid combinations are not selectable. Structured Analyzer Types authoring and Verify render human-readable behavior separately from operational QC; neither exposes regex, raw JSON, or raw matcher fields. | Bridge schema/unit + OpenELIS contract + RTL + UI E2E |
+| MVP-009 | Editing a referenced Analyzer Type requires explicit Update shared or Duplicate Profile scope and identifies affected analyzers. Update shared publishes a new immutable revision under the same identity; Duplicate Profile creates a new identity/revision. Existing analyzers remain on their pinned revision and show Update available until one is explicitly moved, re-verified, and synchronized. No Copy Mappings, clone, per-analyzer override, copied snapshot, or implicit bulk update bypass exists. | Bridge/OpenELIS integration + RTL + UI E2E |
+| MVP-010 | Inline setup supports searchable existing-type selection, name, readable lab units, Verify, Connect, and a completion summary. Instrument not listed links to separate Analyzer Types creation and returns with the created type selectable. Loaded profile/mapping/recognition/result counts and saved analyzer fields survive reload.                          | RTL + UI E2E                                    |
 | MVP-011 | Every page has one semantic `h1`, linkable breadcrumbs, and canonical URL/query state.                                                                                                                                                                                              | RTL + UI E2E                                    |
-| MVP-012 | Mapping/QC-identification confirmation records actor/time/revision/fingerprint and becomes stale only after relevant profile, binding, or identification change, not operational QC.                                                                                                | JUnit 4 integration + audit assertion           |
+| MVP-012 | Confirmation records actor, time, profile ID/revision, binding fingerprint, recognition fingerprint, and every confirmed/excluded source-row ID. Selecting another profile revision or changing a binding, exclusion, or recognition definition creates a draft candidate and stales only that candidate; the last active candidate remains unchanged until verified/synchronized. Operational-QC and connection-test changes do not stale either candidate. | JUnit 4 integration + audit assertion |
 | MVP-013 | Bridge connection testing uses only role-applicable settings and returns visible success, failure, missing-configuration, and timeout evidence plus the endpoint to configure.                                                                                                      | Bridge test + RTL + UI E2E                      |
 | MVP-014 | Results only is the default; Two-way appears only when supported and a failed round-trip visibly degrades to Results only without blocking one-way setup.                                                                                                                           | Bridge contract + RTL + UI E2E                  |
-| MVP-015 | Operational QC uses existing QC entities only; applicable required fields and exact validation are visible, valid saves immediately recompute independent QC readiness.                                                                                                             | JUnit 4 analyzer/QC + RTL + UI E2E              |
-| MVP-016 | Activation is rejected until every source row is currently confirmed as validly bound or explicitly excluded, required QC is ready, and runtime registration is synchronized.                                                                                                       | JUnit 4 + contract + UI E2E                     |
-| MVP-017 | Bridge registration/profile sync is versioned, idempotent, deterministic, and emits explicit empty collections.                                                                                                                                                                     | Cross-repo contract tests                       |
-| MVP-018 | During Verify, visible live capture reconciles transmitted items as verified, new, or not seen; known patient and QC results travel mock -> Bridge -> FHIR -> OpenELIS and become visible in the correct workflow.                                                                  | Mock + Bridge + harness integration + UI E2E    |
+| MVP-015 | An analyzer-scoped Quality Control link opens the canonical OpenELIS QC workflow with analyzer context and a return path. `QCControlLot`, `QCResult`, QC statistics, Westgard configuration/evaluation, violations, and alerts remain the operational path; `AnalyzerQcRule` and `QcRun` do not. Valid/invalid QC changes never alter analyzer verification or activation blockers. | JUnit 4 analyzer/QC + RTL + UI E2E              |
+| MVP-016 | Every transition into `ACTIVE` succeeds if and only if one candidate has: an existing active schema-valid pinned profile revision; a nonblank analyzer name; at least one active lab unit; supported connection/data-flow modes and all profile-required instance fields; every declared test/result row validly bound or explicitly excluded where offered with exactly matching confirmed row IDs; current recognition confirmation for the same revision/fingerprint, including explicit `NONE`; and a Bridge acknowledgment matching analyzer ID, profile ID/revision, and canonical desired-state fingerprint. Each false predicate produces one visible blocker. Operational QC and connection-test outcomes never block. | JUnit 4 + contract + UI E2E |
+| MVP-017 | Bridge desired-state synchronization is versioned, idempotent, and deterministic for the pinned profile revision and instance runtime configuration. Its schema contains no OE classifier rules, control lots, Westgard configuration, or other operational-QC state, and repeated identical sync produces no behavioral change.                           | Cross-repo contract tests                       |
+| MVP-018 | During Verify, visible live capture reconciles transmitted items as verified, new, or not seen. Known patient and control fixtures travel mock -> Bridge -> normalized FHIR -> OpenELIS; Bridge classifies the control only from the pinned profile and OpenELIS displays it in the QC workflow rather than as a patient result.                         | Mock + Bridge + harness integration + UI E2E    |
 | MVP-019 | Unknown test/value traffic retains raw context, is held, creates visible attention/alert state, populates an unbound row during setup where applicable, and is not clinically posted.                                                                                               | Contract + OpenELIS integration + UI E2E        |
-| MVP-020 | A blank site type can be populated from held live traffic; resolution uses valid local catalog choices, is audited, and makes the next matching message deterministic.                                                                                                              | Integration + UI E2E                            |
-| MVP-021 | ASTM, HL7, and FILE each have known, unknown, QC, and connection fixtures; FILE runtime watching occurs only in Bridge.                                                                                                                                                             | Mock/Bridge suites + repository guard           |
+| MVP-020 | A draft site type created in Analyzer Types can be populated from held live traffic; resolution uses valid local catalog choices, is audited, and makes the next matching message deterministic. Analyzer setup never creates or silently mutates a profile. | Integration + UI E2E |
+| MVP-021 | ASTM, HL7, and FILE each have patient, recognized-control, nonmatching-control, unknown-code/value, and connection fixtures. Contract tests prove multiple-rule OR behavior, explicit `NONE`, no hard-coded classifier fallback, and FILE watching/transport only in Bridge. Repository guards find no OpenELIS FILE poller or `AnalyzerQcRule` runtime/schema/UI path. | Mock/Bridge suites + repository guard           |
 | MVP-022 | All user copy is localized; Carbon components/tokens are used; desktop/mobile layouts have no overlap or unreachable action.                                                                                                                                                        | RTL/a11y + inspected screenshots                |
 | MVP-023 | Playwright performs the complete visible story without `page.request`, API assertions, backend polling, forced controls, or arbitrary waits.                                                                                                                                        | Playwright guard + test audit                   |
 | MVP-024 | Generated target metadata and Git/submodule state identify the exact OpenELIS, Bridge, mock, profile, and review-tooling builds plus deployment time, checklist revision, routes, mark times, screenshots, trace, and MP4.                                                          | Target verifier + UAT report                    |
@@ -937,11 +1127,11 @@ never a functional proof.
 
 | Layer                     | Owns                                                                                                  | Required approach                                                                    |
 | ------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Bridge unit/service       | Profile validation/versioning, parsing, transport, QC identification, probes, idempotent registration | Bridge repository test conventions; real protocol fixtures                           |
-| OpenELIS unit/service/DAO | Local catalog constraints, site binding, audit, stale verification, readiness, hold/resolve           | JUnit 4; ORM validation for new mappings; real Postgres where query behavior matters |
-| Cross-repo contracts      | Registration, profile revision, normalized FHIR, raw unknown context, QC, FILE delivery               | Versioned fixtures run by both producer and consumer                                 |
-| Analyzer mock             | Reproducible ASTM/HL7/FILE known, unknown, QC, failure, and two-way scenarios                         | `pytest`; deterministic IDs and values; transport to Bridge                          |
-| Harness integration       | OpenELIS + Bridge + mock + database assembled behavior                                                | Real containers and transport; assert durable outcomes, not internal mocks           |
+| Bridge unit/service       | Profile revision validation, `RULES`/`NONE`, rule OR semantics, no fallback, parsing, transport, probes, idempotent registration | Bridge repository test conventions; real protocol fixtures                           |
+| OpenELIS unit/service/DAO | Local catalog constraints, site binding, audit, exact stale-verification triggers, exact activation predicate, independent operational QC, hold/resolve | JUnit 4; ORM validation for new mappings; real Postgres where query behavior matters |
+| Cross-repo contracts      | Pinned profile revision, runtime registration without operational QC, normalized patient/control FHIR, raw unknown/control context, FILE delivery | Versioned fixtures run by both producer and consumer                                 |
+| Analyzer mock             | Reproducible ASTM/HL7/FILE patient, recognized-control, nonmatch, explicit-`NONE`, unknown, failure, and supported two-way scenarios | `pytest`; deterministic IDs and values; transport to Bridge                          |
+| Harness integration       | OpenELIS + Bridge + mock + database classification, QC routing, activation independence, and hold/resolve | Real containers and transport; assert durable outcomes, not internal mocks           |
 | Frontend                  | Carbon composition, accessibility, validation, routing/query/breadcrumb state                         | Vitest/RTL with real router context and minimal network stubs at component boundary  |
 | Playwright                | Complete lab-facing story                                                                             | Visible UI only; seed may establish preconditions but cannot perform the story       |
 | Remote UAT                | Human acceptance and visual coherence                                                                 | Grist overlay against exact build, inspected outputs, final MP4                      |
@@ -1004,22 +1194,22 @@ answers.
 
 | Step key     | Reviewer action                                                                    | Expected result                                                                                           |
 | ------------ | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `AN-MVP-001` | Open Analyzer Types, search/filter, and inspect one shipped type.                  | Source, status, completeness, usage, protocol, mapping, QC, and attention information is understandable.  |
-| `AN-MVP-002` | Create a site type through Instrument not listed, or fork a shared type.           | A uniquely named audited revision is created without developer fields or file edits.                      |
-| `AN-MVP-003` | Open the mapping editor and resolve an unmatched test.                             | Every source row remains visible; the selected active Test persists and completeness updates.             |
+| `AN-MVP-001` | Open Analyzer Types, search/filter, and inspect one shipped type.                  | Source, status, completeness, usage, protocol, mapping, control-recognition mode, and attention information are understandable. |
+| `AN-MVP-002` | In Analyzer Types, create a type or use Duplicate Profile; return to analyzer setup and select it. | A unique profile identity/revision with source lineage is created without developer fields or file edits; the source and existing analyzers remain unchanged. |
+| `AN-MVP-003` | Open the Analyzer Types mapping editor, resolve one unmatched test, explicitly exclude another, then return to Verify. | The same sole editor is used; every source row remains visible; complete catalog search works; selections persist independently; no per-analyzer editor appears. |
 | `AN-MVP-004` | Map a qualitative analyzer value.                                                  | Only active options for that mapped Test are selectable; reload preserves the binding.                    |
-| `AN-MVP-005` | Review QC-identification codes and save with explicit fork/update scope.           | QC recognition is confirmed separately from operational QC; affected analyzers are clear.                 |
+| `AN-MVP-005` | Inspect structured authoring and Verify for `RULES`/affirmed `NONE`; publish with Update shared and Duplicate Profile; explicitly adopt one new revision. | Recognition is human-readable and separate from operational QC; `NONE` states that no controls are transported; no raw/fallback state appears; analyzers remain pinned/show Update available until explicit adoption, re-verification, and sync; duplicate identity/lineage are clear. |
 | `AN-MVP-006` | Start inline analyzer setup, choose the type, name, and lab units.                 | The URL, breadcrumb, visible section, and saved context remain coherent through reload/history.           |
-| `AN-MVP-007` | Verify all mappings and inspect actor/time/revision.                               | Confirmation is audited and all incomplete/stale items remain explicit blockers.                          |
+| `AN-MVP-007` | Confirm mappings/recognition, inspect signer metadata, change a binding, then change only operational QC. | The binding change stales only the draft and leaves the active candidate unchanged; the operational-QC change stales neither. |
 | `AN-MVP-008` | Configure connectivity and run the connection test.                                | The probe runs from Bridge; visible success/failure and supported Results only/Two-way choices are clear. |
-| `AN-MVP-009` | Select/configure an active operational QC rule and control lot.                    | QC readiness updates without replacing QC-identification confirmation.                                    |
-| `AN-MVP-010` | Review blockers, complete requirements, and activate the analyzer.                 | Activation is blocked before completion and succeeds only after current verification and runtime sync.    |
+| `AN-MVP-009` | Follow the analyzer-scoped Quality Control link, inspect or complete a valid control-lot/Westgard configuration, and return. | The canonical QC workflow retains analyzer context and validates its own fields; changing QC does not change mapping confirmation or analyzer activation blockers. |
+| `AN-MVP-010` | Review the seeded incomplete candidate's blocker list, complete its visible setup requirements, leave operational QC incomplete and the connection test failed, then activate. | Visible blockers match the applicable MVP-016 predicates and clear as their fields are completed; QC/test outcomes never appear; the synchronized exact candidate activates. Service/contract tests separately prove every predicate and every transition into `ACTIVE`. |
 | `AN-MVP-011` | In Verify, request a live known result and inspect reconciliation.                 | Seen items verify, absent items stay not seen, and new items remain explicit without data loss.           |
-| `AN-MVP-012` | Start a blank site type, request live traffic, and bind the populated rows.        | Received rows populate visibly, remain held, and require explicit valid catalog choices before use.       |
-| `AN-MVP-013` | Emit a known patient result and QC result through the visible mock control.        | Both travel through Bridge and appear in the correct OpenELIS result/QC workflow.                         |
+| `AN-MVP-012` | Create a draft site type in Analyzer Types, return to setup, request live traffic, and bind the populated rows. | Received rows populate visibly, remain held, and require explicit valid catalog choices before use; setup does not create or silently mutate the profile. |
+| `AN-MVP-013` | Emit a known patient result and recognized control result through the visible mock control. | Both travel through Bridge; the pinned profile alone classifies the control, which appears in OpenELIS QC and never as a patient result. |
 | `AN-MVP-014` | Emit an unknown test/value through the visible mock control.                       | The result is held, not posted or lost, and the analyzer plus Alerts show Needs attention.                |
 | `AN-MVP-015` | Resolve the unknown item and emit the same value again.                            | Resolution is catalog-safe and audited; the next result maps without another unknown alert.               |
-| `AN-MVP-016` | Configure and exercise a FILE profile scenario.                                    | The lab-facing outcome matches other protocols while Bridge owns watching/transport.                      |
+| `AN-MVP-016` | Exercise representative ASTM, HL7, and FILE patient/control/nonmatch scenarios through the visible demo controls. | The lab-facing outcomes are consistent; automated contracts separately prove `RULES`/`NONE`, no fallback, and Bridge-only FILE watching/transport. |
 | `AN-MVP-017` | Review the completed analyzer on desktop and mobile and revisit bookmarked routes. | The summary, breadcrumbs, query state, actions, and responsive Carbon layout remain coherent.             |
 
 The fixture loader may prepare catalog/sample data. The reviewer and Playwright
@@ -1052,11 +1242,23 @@ implementation directive. Record the MP4 only after defects are resolved.
   cannot remain the final reusable profile authority.
 - Existing per-analyzer mappings are fingerprinted and grouped only when their
   effective behavior is identical; divergent snapshots become explicit site
-  forks. No silent merge or remap is permitted.
+  profiles created through Duplicate Profile. No silent merge or remap is
+  permitted.
 - Legacy free-text result mappings remain readable as `LEGACY_UNBOUND` and
   block verification until catalog-bound.
 - After cutover, one writer owns each capability. No dual-write to old and new
   profile/mapping/pending stores is allowed.
+- Every stored `AnalyzerQcRule` is handled by the E0 migration contract. An
+  equivalent set is discarded after profile pinning; a divergent valid set
+  becomes a new Bridge site profile identity/revision; invalid or
+  untransformable data blocks migration with a report. Runtime fallback and
+  silent deletion are forbidden.
+- By M2 exit, no production caller, route, editor, writer, registration field,
+  activation/readiness check, seed, or translation references
+  `AnalyzerQcRule`. By M4 exit, its entity, DAO/service/controller classes,
+  tests for the superseded behavior, and `analyzer_qc_rule` schema are deleted.
+- Bridge contains no hard-coded ASTM, HL7, FILE, prefix, task, or field fallback
+  for control recognition. `RULES` match or do not match; `NONE` never guesses.
 - Raw OpenELIS ASTM/HL7/FILE runtime routes and direct mock-to-OpenELIS
   paths are removed or disabled before M4 exits. A follow-up issue cannot waive
   this gate.
@@ -1071,7 +1273,15 @@ The canonical MVP review host is `analyzers.openelis-global.org`. The previously
 written `analyzers.openelis-work.org` value is retired and is not a deployment or
 Grist-publication target.
 
-No architecture question remains open: Bridge is the analyzer runtime and
-portable profile owner; OpenELIS owns local clinical bindings, audit, QC, held
-results, and lab-facing orchestration; the mock proves real Bridge transports;
-and `openelis-work` remains functional/visual only.
+No architecture question remains open: Bridge is the analyzer runtime,
+portable-profile, and control-result-recognition owner; OpenELIS owns local
+clinical bindings, audit, operational QC, result-release policy, held results,
+and lab-facing orchestration; the mock proves real Bridge transports; and
+`openelis-work` remains functional/visual only.
+
+PR #3390 is retained selectively: its OpenELIS operational-QC foundation
+continues, while its `AnalyzerQcRule` classifier is superseded. Bridge PR #33's
+OE-pushed classifier and hard-coded fallback behavior are superseded by the
+versioned profile contract. Prepared Bridge PR #46 must adopt
+`controlResultRecognition`, explicit `RULES`/`NONE`, and no fallback before its
+checkpoint can be accepted.

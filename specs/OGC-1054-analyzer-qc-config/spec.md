@@ -23,9 +23,9 @@ Laboratories can connect generic ASTM, HL7, and FILE analyzers, but the current
 configuration experience still depends on developer-oriented profile files,
 incomplete mapping surfaces, copied analyzer configuration, and fragmented
 setup pages. A laboratory administrator cannot reliably establish what an
-analyzer code means, verify qualitative values and QC identifiers, activate an
-instrument from one coherent workflow, or safely resolve new traffic without
-developer intervention.
+analyzer code means, verify qualitative values and control-result recognition,
+activate an instrument from one coherent workflow, or safely resolve new
+traffic without developer intervention.
 
 ## Personas
 
@@ -44,15 +44,18 @@ routes or APIs. A user can:
 
 1. find shipped and site-created Analyzer Types and understand their source,
    protocol, lifecycle, use, completeness, and attention state;
-2. create or fork a reusable type without developer fields or file edits;
-3. review every analyzer test, qualitative result value, and QC-identification
-   code and bind each applicable item safely to the local catalog;
-4. create an analyzer inline, assign readable lab units, verify mappings,
-   configure supported connectivity, and understand every readiness blocker;
-5. configure profile-applicable operational QC through the existing OpenELIS
-   QC workflow;
-6. activate only when current verification, required QC, and Bridge runtime
-   synchronization are ready;
+2. create a reusable type or duplicate an existing type from the separate
+   Analyzer Types management workflow without developer fields or file edits;
+3. review every analyzer test and qualitative result value, bind each applicable
+   item safely to the local catalog, and confirm how the selected Analyzer Type
+   recognizes control results;
+4. create an analyzer inline by selecting an existing type, assign readable lab
+   units, apply and verify its defaults, configure supported connectivity, and
+   understand every analyzer-setup blocker;
+5. reach analyzer-scoped operational QC in the existing OpenELIS QC workflow
+   without making QC-program readiness an analyzer-activation prerequisite;
+6. activate when current binding/control-recognition verification and the same
+   pinned Analyzer Type revision are synchronized to Bridge;
 7. receive known patient and QC traffic through the Bridge, hold unknown
    traffic without clinical posting, and resolve it visibly and auditably; and
 8. reload, bookmark, navigate, and review the same durable state in a coherent
@@ -62,19 +65,21 @@ routes or APIs. A user can:
 
 ### US-1 - Manage Reusable Analyzer Types
 
-As a laboratory administrator, I can search, filter, inspect, create, fork,
-deactivate, and reactivate reusable Analyzer Types so multiple instruments can
-share a safe configuration without hidden per-instrument copies.
+As a laboratory administrator, I can search, filter, inspect, create,
+duplicate, deactivate, and reactivate reusable Analyzer Types in a dedicated
+profile-management workflow so multiple analyzer connections can reference a
+safe configuration without hidden per-connection profile copies.
 
 **Verification:** M1 closes through `MVP-001` through `MVP-004`; corresponding
 reviewer steps `AN-MVP-001` and `AN-MVP-002` run with the complete story at G0.
 
 ### US-2 - Bind Every Analyzer Concept Safely
 
-As a laboratory administrator, I can see every independent source row and map
-tests, qualitative values, and QC-identification codes using the complete
-active local catalog, so no unmatched or aliased row is hidden or falsely
-completed.
+As a laboratory administrator, I can use the Analyzer Types mapping editor to
+see every independent source row, map tests and qualitative values using the
+complete active local catalog, and confirm the Analyzer Type's human-readable
+control-recognition behavior, so no unmatched or aliased row is hidden or
+falsely completed and analyzer setup does not need a second editor.
 
 **Verification:** M2 closes through `MVP-005` through `MVP-009`; corresponding
 reviewer steps `AN-MVP-003` through `AN-MVP-005` run with the complete story at
@@ -93,9 +98,9 @@ G0.
 
 ### US-4 - Process Known Patient And QC Traffic
 
-As a laboratory administrator, I can observe a known patient result and a QC
-result sent by a reproducible analyzer through the Bridge into their correct
-OpenELIS workflows.
+As a laboratory administrator, I can observe a known patient result and a
+recognized control result sent by a reproducible analyzer through the Bridge
+into their correct OpenELIS workflows.
 
 **Verification:** M4 proves the assembled known-traffic behavior through
 `MVP-018`; reviewer steps `AN-MVP-011` and `AN-MVP-013` run at G0.
@@ -148,13 +153,29 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
 - Shipped and site-created types are searchable and distinguishable.
 - The list includes a short plain-language explanation plus aggregate Total,
   In Use, Has Unmapped Results, and Deactivated counts.
-- A type may be shared by several analyzers. A variation is an explicit fork
-  with a unique suggested name and visible lineage.
+- Profile management is distinct from analyzer-connection setup. An analyzer
+  connection selects and references one existing Analyzer Type; it does not
+  create, own, or silently modify that type.
+- A type may be referenced by several analyzer connections. **Duplicate
+  Profile** creates a new, independently editable type from an existing one,
+  with a unique suggested name and visible source lineage.
+- Each analyzer references one specific Analyzer Type revision. Publishing a
+  newer revision does not change an existing analyzer until a user explicitly
+  selects that revision, verifies it, and synchronizes the new candidate.
+- Published revisions are immutable and retained while referenced. Update
+  shared publishes a new revision under the same profile identity; Duplicate
+  Profile creates a new identity and initial revision. Existing analyzers show
+  Update available but stay on their pinned revision. OpenELIS does not keep an
+  authoritative copied profile snapshot.
 - Types and analyzers are deactivated/reactivated, never hard-deleted through
   the lab workflow.
 
 ### Mapping And Verification
 
+- Analyzer Types contains the sole reusable mapping editor. Analyzer setup
+  Verify reviews and confirms the selected revision; Resolve/Edit actions open
+  that same editor with a return URL. There is no analyzer-specific or duplicate
+  mapping editor.
 - Every profile source row remains independently visible even when two rows
   share normalized coding or one local Test.
 - Test search covers the complete active catalog by name, code, or LOINC.
@@ -165,12 +186,25 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
   requires each row to be validly bound or explicitly excluded and confirmed.
 - Qualitative values may target only active Result Options belonging to the
   mapped Test. Empty option sets provide a return-safe Test Catalog path.
-- QC-identification codes are reviewed separately from operational QC rules and
-  control lots.
-- Human verification records actor, time, revision, and fingerprint and becomes
-  stale after a relevant type/binding/identification change.
-- Shared changes require explicit fork or update-shared scope and identify
-  affected analyzers.
+- Control-result recognition is reviewed separately from operational QC. The
+  reviewer sees either one or more plain-language control identifiers/conditions
+  or an explicit statement that the type does not support automatic control
+  recognition. Structured Analyzer Types authoring and analyzer setup expose no
+  regular expressions, raw JSON, or raw matcher fields.
+- Explicit `NONE` is publishable only when the profile author affirms that the
+  analyzer interface transports no control results. Unknown or undocumented
+  recognition remains invalid; `NONE` is never a default or fallback.
+- Human verification records actor, time, Analyzer Type revision, binding
+  fingerprint, recognition fingerprint, and confirmed/excluded source rows. It
+  becomes stale on the draft candidate after selecting another type revision or
+  changing a binding, exclusion, or recognition definition. The last active
+  candidate is not silently mutated. Operational-QC and connection-test changes
+  do not stale either candidate.
+- Editing a type identifies every referencing analyzer. A user may update that
+  type or use Duplicate Profile first; analyzer setup never creates a hidden
+  per-analyzer override or copy.
+- Analyzer-reported internal-control targets are mapped as test/result concepts;
+  they are not automatically whole-run control recognition or operational QC.
 
 ### Guided Setup And Readiness
 
@@ -178,20 +212,34 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
 - The canonical sequence is Instrument, Verify, and Connect. Each section has
   linkable URL/query state and a breadcrumb path; completion has a readable
   summary, not an invented fourth setup section.
-- Instrument selection is searchable. An unlisted instrument starts a
-  reusable site-type flow using lab-facing fields only.
+- Instrument selection is searchable and selects an existing Analyzer Type.
+  An unlisted instrument links to the separate Analyzer Types create/duplicate
+  workflow and returns to analyzer setup with the new type selectable.
 - Results only is the safe default. Two-way is offered only when supported and
   visibly degrades to Results only when a round-trip probe fails.
 - Connection testing reports success, failure, timeout, and missing
   configuration in plain language and shows the endpoint the lab must configure.
-- Mapping/QC-identification verification and operational-QC readiness are
-  distinct states. Activation shows every current blocker.
+- Binding/control-recognition verification and operational-QC state are distinct.
+  Operational QC never blocks creating, connecting, or activating an analyzer.
+- Operational QC is configured and reviewed in the existing OpenELIS Quality
+  Control workflow, reached through an analyzer-scoped link. Its state governs
+  QC evaluation and patient-result release/hold policy, not interface
+  activation, and changing it does not stale mapping verification.
+- Every transition into `ACTIVE` applies the same exact predicate. One candidate
+  must have an existing active schema-valid pinned profile revision; a nonblank
+  analyzer name; at least one active lab unit; supported connection/data-flow
+  modes and every profile-required instance field; every declared test/result
+  row validly bound or explicitly excluded where offered with matching
+  confirmed row IDs; current recognition confirmation for the same revision and
+  fingerprint, including explicit `NONE` (no automatic recognition); and a Bridge
+  acknowledgment matching analyzer ID, profile ID/revision, and canonical
+  desired-state fingerprint. Each false predicate is one visible blocker. A QC
+  rule, control lot, QC result, Westgard status, and connection-test outcome are
+  never activation prerequisites.
 - Verify offers visible live capture. Every transmitted item reconciles as
-  verified, new, or not seen; unknown items remain held. A blank site type is
-  populated from received rows and still requires explicit valid catalog
-  binding and confirmation.
-- `AMB-M3-001` in the roadmap blocks M3 acceptance until the source of
-  profile-applicable operational-QC obligations is explicitly defined.
+  verified, new, or not seen; unknown items remain held. A draft type created
+  in Analyzer Types may be populated from received rows, but analyzer setup
+  never silently creates or mutates a profile.
 
 ### Traffic Safety
 
@@ -218,8 +266,8 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
 ## Out Of MVP
 
 The post-MVP train owns mature alert triage and concurrency, profile revision
-diff/update/rollback, backup export and distribution hardening, scale, and
-representative-site rollout.
+diff/bulk adoption/rollback beyond MVP's explicit one-analyzer adoption, backup
+export and distribution hardening, scale, and representative-site rollout.
 
 Multi-component target-to-result-component mapping, Results/Validation v4,
 patient-report integration, broad maintenance/fleet health, and per-instrument

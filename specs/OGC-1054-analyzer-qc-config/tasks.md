@@ -18,9 +18,12 @@ iteration; it does not maintain a second progress ledger.
 6. Reconcile the two roadmap lineages so descendant branches inherit R0 and no
    historical branch can merge a competing roadmap; Git history retains the
    prior versions.
-7. Run the requirements checklist, cross-artifact consistency analysis,
+7. Record the resolved QC boundary: Bridge profile control recognition,
+   independent OpenELIS operational QC, exact non-QC activation predicates, and
+   one-way `AnalyzerQcRule`/fallback removal.
+8. Run the requirements checklist, cross-artifact consistency analysis,
    formatting, link checks, and PR review.
-8. Rebase R0 on current `develop`, rerun checks, merge R0, then change R0 to
+9. Rebase R0 on current `develop`, rerun checks, merge R0, then change R0 to
    `[x]` and F0 to `[*]` in the canonical landed lineage.
 
 ## F0 - Foundation Salvage
@@ -37,11 +40,19 @@ iteration; it does not maintain a second progress ledger.
 ## E0 - Contracts And Migration
 
 1. Complete the ownership/persistence ADR from current OE/Bridge code.
-2. Write failing producer/consumer fixtures for profile, registration, known,
-   unknown, QC, and FILE messages.
-3. Characterize all legacy readers/writers and existing data shapes.
-4. Define no-loss migration, anomaly handling, rollback, and one-writer cutover.
-5. Validate paired Bridge/OE contracts, review, merge, then advance the marker.
+2. Write failing producer/consumer fixtures for pinned profiles,
+   `controlResultRecognition` `RULES`/`NONE`, registration without operational
+   QC, patient/control/nonmatch, unknown, and FILE messages.
+3. Characterize all legacy readers/writers and existing data shapes, including
+   every persisted `AnalyzerQcRule` set and Bridge hard-coded classifier.
+4. Define no-loss conversion to an equivalent or new site profile, visible
+   preflight failure for invalid/untransformable rules, rollback, anomaly
+   handling, and one-writer cutover without fallback or dual runtime.
+5. Define immutable profile-revision retention, revision-scoped site bindings,
+   activation-candidate fingerprints, and exact Bridge acknowledgment matching;
+   prove OpenELIS stores a revision pin rather than an authoritative profile
+   snapshot.
+6. Validate paired Bridge/OE contracts, review, merge, then advance the marker.
 
 ## M1 - Analyzer Types
 
@@ -52,8 +63,9 @@ iteration; it does not maintain a second progress ledger.
 2. Complete OE composition, persistence, and migration tests before production
    changes.
 3. Prove distinct source rows never collapse during migration.
-4. Implement lab-safe create/fork, lineage, lifecycle, completeness, usage, and
-   attention state, including the explainer and aggregate counts.
+4. Implement lab-safe Create/Duplicate Profile, lineage, pinned revisions,
+   lifecycle, completeness, usage, and attention state, including the explainer
+   and aggregate counts.
 5. Implement URL-backed list/detail state and breadcrumbs using reusable Carbon
    components.
 6. Remove or disable authoritative OpenELIS filesystem/copy writers.
@@ -68,26 +80,39 @@ iteration; it does not maintain a second progress ledger.
 1. Write failing contract and service tests for independent source rows and
    complete catalog lookup.
 2. Write failing ownership tests for qualitative Result Options.
-3. Write failing tests for QC-identification confirmation and stale mapping
-   verification.
+3. Write failing Bridge tests for `RULES`/`NONE`, multiple-rule OR behavior,
+   required `NONE` author affirmation, undocumented/invalid profile
+   combinations, non-match, and no hard-coded fallback; write OE tests for
+   human-readable confirmation and exact stale triggers.
 4. Write RTL real-router tests for add/edit/remove/repoint, catalog return, and
-   fork/update scope.
-5. Implement one protocol-neutral editor and remove duplicate editors/queues.
-6. Prove an explicit exclusion does not block independent rows or pretend to be
+   Duplicate Profile/update-shared scope.
+5. Implement the sole protocol-neutral editor in Analyzer Types; make Verify
+   link to it with a return URL and remove duplicate/per-analyzer editors and
+   queues.
+6. Remove the `AnalyzerQcRule` production editor/routes/controller/service/DAO
+   callers, profile seeding, registration fields, readiness checks,
+   translations, and writes; retain only an unreachable migration reader until
+   M4 schema deletion.
+7. Prove an explicit exclusion does not block independent rows or pretend to be
    a mapped result.
-7. Validate ASTM, HL7, and FILE criteria, review, merge, then advance the marker.
+8. Validate ASTM, HL7, and FILE criteria, review, merge, then advance the marker.
 
-## M3 - Guided Setup And QC
+## M3 - Guided Setup And Linked Operational QC
 
 **Acceptance:** `MVP-010` through `MVP-017`, completing the M3 portions of
 cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
 
-1. Resolve `AMB-M3-001` in the functional spec and engineering contract.
-2. Write failing backend tests for setup verification, readiness, audit,
-   operational QC, activation, and Bridge synchronization.
-3. Write failing Bridge probe/capability tests.
-4. Write RTL real-router tests for Instrument, Verify, Connect, the completion
+1. Write failing backend tests for setup verification/audit, each exact
+   activation predicate on initial activation and re-entry from error/offline,
+   draft-versus-active candidate isolation, operational-QC independence, and
+   pinned Bridge acknowledgment matching.
+2. Write failing Bridge probe/capability tests.
+3. Write RTL real-router tests for Instrument, Verify, Connect, separate
+   Analyzer Types create/Duplicate Profile return, the completion
    summary, breadcrumbs, URL state, history, and reload.
+4. Write integration/RTL tests for the analyzer-scoped canonical Quality Control
+   link and prove valid/invalid operational-QC changes do not alter verification
+   or activation blockers.
 5. Implement the unified Carbon workflow with no developer fields or duplicate
    setup path.
 6. Run a focused visible browser story and inspect desktop/mobile captures.
@@ -98,16 +123,18 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
 **Acceptance:** `MVP-018` through `MVP-023`, plus final assembled proof for
 `MVP-017` and every earlier criterion.
 
-1. Write failing producer/consumer tests for known patient, QC, unknown test,
-   unknown value, and FILE traffic with preserved raw context.
+1. Write failing producer/consumer tests for known patient, recognized control,
+   nonmatching control, explicit `NONE`, unknown test/value, and FILE traffic
+   with preserved raw context.
 2. Add deterministic real-transport mock fixtures.
 3. Write failing OE integration tests for hold, alert, catalog-safe resolution,
    audit, and deterministic next-message behavior.
 4. Write failing integration and UI tests for live Verify reconciliation and
-   blank-type population from held traffic.
+   draft-type population from held traffic.
 5. Implement live capture plus the visible Alerts/Needs attention flow.
-6. Remove or disable every legacy raw reader, copied-profile writer, dual
-   writer, duplicate editor, and duplicate queue.
+6. Remove every legacy raw reader, copied-profile writer, dual writer, duplicate
+   editor/queue, Bridge classifier fallback, final `AnalyzerQcRule` migration
+   adapter/class/schema, and alternate acceptance path.
 7. Write and audit the complete UI-only Playwright story.
 8. Validate all prior MVP criteria, review, merge, then advance the marker.
 

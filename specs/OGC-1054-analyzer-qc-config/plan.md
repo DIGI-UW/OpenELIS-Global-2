@@ -22,15 +22,16 @@
 
 Bridge owns portable versioned analyzer profiles and analyzer-facing runtime:
 listeners, parsing/framing, protocol execution, connection probes, FILE
-watching and transport, QC-sample identification, normalized FHIR output, and
-idempotent runtime registration.
+watching and transport, pinned-profile control-result recognition, normalized
+FHIR output, and idempotent runtime registration. It has no hidden classifier
+fallback.
 
 ### OpenELIS
 
 OpenELIS owns laboratory-facing orchestration, analyzer instances and lab-unit
 assignment, local Test/Result Option bindings, verification/audit, operational
 QC, activation, held results, alerts, resolution, and downstream clinical
-processing.
+processing. Operational QC is independent of analyzer activation.
 
 ### Analyzer Mock
 
@@ -54,12 +55,29 @@ and downloadable UAT report. It does not own application fixtures or behavior.
    selected local Test is shared.
 5. Qualitative mappings bind to active Result Options belonging to the mapped
    local Test.
-6. QC-identification confirmation is distinct from operational-QC readiness.
-7. Unknown traffic is held with raw context and never silently posted or lost.
-8. Existing `AnalyzerQcRule`, `QCControlLot`, `QCResult`, and Westgard services
-   remain the operational analyzer-QC path. No `QcRun` is introduced.
-9. No OpenELIS FILE poller, raw protocol parser, dual profile writer, duplicate
-   editor, or duplicate pending queue survives the MVP cutover.
+6. Every active Bridge profile revision declares explicit control-result
+   recognition: `RULES` with one or more OR matchers, or `NONE` with no rules.
+   `NONE` also requires an author affirmation that the interface transports no
+   control results. Missing, undocumented, or invalid behavior is not
+   selectable and no runtime fallback exists.
+7. Control-recognition confirmation is distinct from operational QC and becomes
+   stale only with the pinned profile/binding/recognition state.
+8. Unknown traffic is held with raw context and never silently posted or lost.
+9. `QCControlLot`, `QCResult`, QC statistics, Westgard evaluation, violations,
+   and alerts remain the OpenELIS operational-QC path. `AnalyzerQcRule` is a
+   superseded classifier and is removed; no `QcRun` is introduced.
+10. Activation requires current binding/control-recognition confirmation,
+    required instance values, and a Bridge acknowledgment matching the pinned
+    profile and desired-state fingerprint. The same predicate governs every
+    transition into `ACTIVE`; operational QC and connection-test outcomes are
+    not prerequisites.
+11. No OpenELIS FILE poller, raw protocol parser, dual profile writer, duplicate
+    editor, or duplicate pending queue survives the MVP cutover.
+12. Published profile revisions are immutable and retained while referenced.
+    Update shared creates a new revision, Duplicate Profile creates a new
+    identity/revision, and no analyzer moves until explicit adoption,
+    re-verification, and synchronization. OpenELIS stores a pin, not an
+    authoritative copied-profile snapshot.
 
 ## Iteration Plan
 
@@ -81,36 +99,47 @@ feature commits or preserve legacy writers as compatibility paths.
 
 Complete the Bridge-profile/OpenELIS-binding ADR and versioned producer/consumer
 contracts. Characterize legacy profiles, copied configuration, mappings, raw
-ingestion, and existing analyzers. Define no-loss migration, rollback, anomaly
-handling, and one-writer cutover before M1 production migration.
+ingestion, existing analyzers, and every `AnalyzerQcRule` set. Define the
+`controlResultRecognition` contract, no-loss profile conversion or visible
+preflight failure, rollback, anomaly handling, and one-writer cutover before M1
+production migration. The ADR must define immutable revision retention,
+revision-scoped site bindings, activation-candidate fingerprints, and exact
+Bridge acknowledgment semantics without choosing persistence from product
+mock annotations.
 
 ### M1 - Profile Lifecycle And Analyzer Types
 
 Implement Bridge profile lifecycle and the composed OpenELIS Analyzer Types
 experience. Migrate existing analyzers without heuristic profile inference or
 silent row collapse. Complete URL-backed search/filter state, breadcrumbs,
-lifecycle, usage, completeness, audit, and lab-safe create/fork behavior.
+lifecycle, usage, completeness, audit, and lab-safe Create/Duplicate Profile
+behavior with existing analyzers pinned to their selected revision.
 
 ### M2 - Safe Mapping
 
 Implement one protocol-neutral mapping editor for every test, qualitative
-value, and QC-identification row. Enforce complete active-catalog search,
-catalog ownership constraints, independent source-row identity, explicit
-fork/update scope, and stale verification.
+value, and human-readable control-recognition row in Analyzer Types. Verify
+links to this editor with a return URL and does not duplicate it. Enforce
+complete active-catalog search, catalog ownership constraints, independent
+source-row identity, explicit Duplicate Profile/Update shared scope, exact
+candidate staleness, and removal of the OpenELIS `AnalyzerQcRule` runtime/UI
+path.
 
-### M3 - Guided Setup And QC
+### M3 - Guided Setup And Linked Operational QC
 
 Implement the linkable Instrument, Verify, and Connect sequence with a readable
 completion summary. Keep Bridge probes and capabilities separate from OpenELIS
-operational-QC policy. Resolve `AMB-M3-001` in the owning spec/contract before
-starting this iteration.
+operational-QC policy. Link to the canonical QC workflow, but permit activation
+only from the exact non-QC predicates in `MVP-016`, applied to every transition
+into `ACTIVE`.
 
 ### M4 - Safe Traffic
 
-Assemble known patient/QC and unknown traffic across mock, Bridge, and
-OpenELIS. Complete visible setup capture/reconciliation and blank-type learning,
-hold and resolve unknown traffic, expose Alerts/Needs attention, remove legacy
-writers/readers, and add the complete UI-only Playwright story.
+Assemble known patient/recognized-control and unknown traffic across mock,
+Bridge, and OpenELIS. Complete visible setup capture/reconciliation and
+draft-type learning, hold and resolve unknown traffic, expose Alerts/Needs
+attention, remove legacy writers/readers/classifiers and schema, and add the
+complete UI-only Playwright story.
 
 ### G0 - Deployed MVP Acceptance
 
@@ -122,8 +151,8 @@ the unchanged build.
 
 Deliver these separately reviewable iterations in order: R1.1 mature alert
 triage, assignment, concurrency, and navigation; R1.2 profile revision
-diff/update/rollback, backup export, and distribution hardening; then R1-G
-exact-build human acceptance.
+diff/bulk adoption/rollback beyond MVP's explicit one-analyzer adoption, backup
+export, and distribution hardening; then R1-G exact-build human acceptance.
 
 ### R2 - Operational Rollout
 
@@ -143,10 +172,10 @@ For each acceptance slice:
 
 | Layer                      | Owns                                                                                     |
 | -------------------------- | ---------------------------------------------------------------------------------------- |
-| Bridge unit/service        | Profile lifecycle, validation, protocol runtime, probes, QC identification, registration |
-| OpenELIS unit/service/DAO  | Catalog constraints, bindings, audit, migration, readiness, hold/resolve                 |
-| Producer/consumer contract | Profile, registration, normalized FHIR, raw unknown context, FILE and QC boundaries      |
-| Analyzer mock              | Deterministic real-protocol known, unknown, QC, failure, and two-way fixtures            |
+| Bridge unit/service        | Profile lifecycle, `RULES`/`NONE`, rule OR semantics, no fallback, protocol runtime, probes, registration |
+| OpenELIS unit/service/DAO  | Catalog constraints, bindings, audit, migration, exact activation, independent operational QC, hold/resolve |
+| Producer/consumer contract | Pinned profile, registration without operational QC, normalized patient/control FHIR, raw context, FILE |
+| Analyzer mock              | Deterministic patient, recognized-control, nonmatch, `NONE`, unknown, failure, and two-way fixtures |
 | Harness integration        | Assembled OE/Bridge/mock behavior through real transport and persistence                 |
 | RTL with real router       | Carbon interactions, validation, breadcrumbs, URL/query state, reload/history            |
 | Playwright                 | Complete visible user story only; no API-driven acceptance                               |
