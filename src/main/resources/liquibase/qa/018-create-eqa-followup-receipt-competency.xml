@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-609 [EQA V2.1 / T-09] Schema spine 4 of 4: participant follow-ups, panel
+    receipts, analyst competency events (FR-V2.1-13/20/22).
+
+    Same conventions as qa/017. Three FK targets are named wrongly in the FRS and
+    are corrected here against the codebase:
+
+      * FR-V2.1-20 says lab_enrollment       -> real table is eqa_lab_program_enrollment
+      * FR-V2.1-20 says sample_shipment      -> real table is shipment, and its PK is
+                                                INTEGER, so shipment_id is INTEGER here
+                                                rather than the numeric(10,0) used by
+                                                every other FK in the EQA spine
+      * FR-V2.1-22 says nce                  -> real table is nc_event, PK INTEGER
+
+    FR-V2.1-20 also says the receipt sets sample_shipment.delivery_status; the real
+    column is shipment.status, carrying ShipmentStatus values (DELIVERED). That
+    write belongs to the receipt-writing service (T-15), not schema.
+    -->
+
+    <changeSet author="openelisglobal" id="eqa-followup-001-create-eqa-participant-followup">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="eqa_participant_followup" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Provider-side follow-up register for underperforming participants (FR-V2.1-13)</comment>
+        <createSequence sequenceName="eqa_participant_followup_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="eqa_participant_followup">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_eqa_participant_followup"/>
+            </column>
+            <column name="scheme_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cycle_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="participant_org_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Snapshot of the results that triggered the follow-up, so the register
+                 stays readable after later cycles change the underlying rows. -->
+            <column name="participant_result_summary_json" type="TEXT"/>
+            <column name="followup_status" type="VARCHAR(30)" defaultValue="NOTIFIED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notified_at" type="TIMESTAMP"/>
+            <column name="response_received_at" type="TIMESTAMP"/>
+            <column name="assigned_to" type="numeric(10,0)"/>
+            <column name="resolution_notes" type="TEXT"/>
+            <column name="persistent_failure_flag" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint
+            schemaName="clinlims" tableName="eqa_participant_followup"
+            columnNames="cycle_id, participant_org_id"
+            constraintName="uq_eqa_participant_followup_cycle_org"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_followup_eqa_program"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_followup" baseColumnNames="scheme_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_program" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_followup_eqa_cycle"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_followup" baseColumnNames="cycle_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_cycle" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_followup_organization"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_followup" baseColumnNames="participant_org_id"
+            referencedTableSchemaName="clinlims" referencedTableName="organization" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_followup_assigned_to"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_followup" baseColumnNames="assigned_to"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <sql>
+            ALTER TABLE clinlims.eqa_participant_followup
+            ADD CONSTRAINT eqa_participant_followup_status_chk
+            CHECK (followup_status IN ('NOTIFIED', 'RESPONSE_RECEIVED', 'UNDER_INVESTIGATION',
+                'RESOLVED', 'ESCALATED', 'REMOVED_FROM_PROGRAM'))
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="eqa_participant_followup"/>
+            <dropSequence sequenceName="eqa_participant_followup_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="eqa-followup-002-create-eqa-panel-receipt">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="eqa_panel_receipt" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Participant-side confirmation that a panel arrived (FR-V2.1-20)</comment>
+        <createSequence sequenceName="eqa_panel_receipt_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="eqa_panel_receipt">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_eqa_panel_receipt"/>
+            </column>
+            <column name="cycle_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lab_enrollment_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- INTEGER, not numeric(10,0): shipment.id is INTEGER. Nullable for
+                 walk-in pickup and legacy imports with no tracked shipment. -->
+            <column name="shipment_id" type="INTEGER"/>
+            <column name="received_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="received_by" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Unvalidated in V2.2; V3.2 adds range checks against panel storage_temp. -->
+            <column name="received_temp_c" type="DECIMAL(5,2)"/>
+            <column name="integrity_ok" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <!-- The receipt-writing service (T-15) must require this when integrity_ok
+                 is false; not a DB CHECK because the UI stages partial drafts. -->
+            <column name="integrity_notes" type="TEXT"/>
+            <column name="notes" type="TEXT"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- One receipt per cycle per participating lab. This is also what makes the
+             participant-state derivation (FR-V2.1-18) a single-row lookup. -->
+        <addUniqueConstraint
+            schemaName="clinlims" tableName="eqa_panel_receipt"
+            columnNames="cycle_id, lab_enrollment_id"
+            constraintName="uq_eqa_panel_receipt_cycle_enrollment"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_panel_receipt_eqa_cycle"
+            baseTableSchemaName="clinlims" baseTableName="eqa_panel_receipt" baseColumnNames="cycle_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_cycle" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_panel_receipt_lab_enrollment"
+            baseTableSchemaName="clinlims" baseTableName="eqa_panel_receipt" baseColumnNames="lab_enrollment_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_lab_program_enrollment"
+            referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_panel_receipt_shipment"
+            baseTableSchemaName="clinlims" baseTableName="eqa_panel_receipt" baseColumnNames="shipment_id"
+            referencedTableSchemaName="clinlims" referencedTableName="shipment" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_panel_receipt_received_by"
+            baseTableSchemaName="clinlims" baseTableName="eqa_panel_receipt" baseColumnNames="received_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="eqa_panel_receipt"/>
+            <dropSequence sequenceName="eqa_panel_receipt_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="eqa-followup-003-create-eqa-analyst-competency-event">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="eqa_analyst_competency_event" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Append-only competency event log; richer than results alone (FR-V2.1-22)</comment>
+        <createSequence sequenceName="eqa_analyst_competency_event_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="eqa_analyst_competency_event">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_eqa_analyst_competency_event"/>
+            </column>
+            <column name="analyst_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event_type" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scheme_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Null for cross-cycle events, populated for per-cycle ones. -->
+            <column name="cycle_id" type="numeric(10,0)"/>
+            <column name="participant_result_id" type="numeric(10,0)"/>
+            <column name="analyte_id" type="numeric(10,0)"/>
+            <!-- INTEGER: nc_event.id is INTEGER. Populated for escalated_to_nce. -->
+            <column name="nce_id" type="INTEGER"/>
+            <column name="dismissal_category" type="VARCHAR(40)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_competency_event_analyst"
+            baseTableSchemaName="clinlims" baseTableName="eqa_analyst_competency_event" baseColumnNames="analyst_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_competency_event_eqa_program"
+            baseTableSchemaName="clinlims" baseTableName="eqa_analyst_competency_event" baseColumnNames="scheme_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_program" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_competency_event_eqa_cycle"
+            baseTableSchemaName="clinlims" baseTableName="eqa_analyst_competency_event" baseColumnNames="cycle_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_cycle" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_competency_event_participant_result"
+            baseTableSchemaName="clinlims" baseTableName="eqa_analyst_competency_event"
+            baseColumnNames="participant_result_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_participant_result"
+            referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_competency_event_analyte"
+            baseTableSchemaName="clinlims" baseTableName="eqa_analyst_competency_event" baseColumnNames="analyte_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyte" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_competency_event_nc_event"
+            baseTableSchemaName="clinlims" baseTableName="eqa_analyst_competency_event" baseColumnNames="nce_id"
+            referencedTableSchemaName="clinlims" referencedTableName="nc_event" referencedColumnNames="id"/>
+
+        <sql>
+            ALTER TABLE clinlims.eqa_analyst_competency_event
+            ADD CONSTRAINT eqa_competency_event_type_chk
+            CHECK (event_type IN ('EXTERNAL_MISSED_DEADLINE', 'IN_HOUSE_MISSED_DEADLINE', 'UNACCEPTABLE_SCORE',
+                'QUESTIONABLE_SCORE', 'ESCALATED_TO_NCE', 'DISMISSED_EQUIPMENT', 'DISMISSED_TRANSCRIPTION',
+                'DISMISSED_ACCEPTABLE_ON_REVIEW', 'DISMISSED_OTHER'))
+        </sql>
+
+        <sql>
+            ALTER TABLE clinlims.eqa_analyst_competency_event
+            ADD CONSTRAINT eqa_competency_event_dismissal_chk
+            CHECK (dismissal_category IN ('KNOWN_EQUIPMENT_ISSUE', 'TRANSCRIPTION_ERROR', 'PENDING_RE_TEST',
+                'ACCEPTABLE_ON_REVIEW', 'OTHER'))
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="eqa_analyst_competency_event"/>
+            <dropSequence sequenceName="eqa_analyst_competency_event_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
