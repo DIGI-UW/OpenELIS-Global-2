@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
@@ -15,6 +16,7 @@ import org.jfree.util.Log;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.note.service.NoteService;
@@ -25,6 +27,7 @@ import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -58,6 +61,8 @@ public class TestCalculatedUtil {
 
     private ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
 
+    private RuleResultScope ruleResultScope = SpringContext.getBean(RuleResultScope.class);
+
     private String CALCULATION_SUBJECT = "Calculated Result Note";
 
     public List<Analysis> addNewTestsToDBForCalculatedTests(List<ResultSet> resultSetList, String sysUserId)
@@ -72,7 +77,7 @@ public class TestCalculatedUtil {
             }
             List<Calculation> calculations = calculationService.getAll();
             for (Calculation calculation : calculations) {
-                if (!calculation.getActive()) {
+                if (!isActive(calculation)) {
                     continue;
                 }
                 List<ResultCalculation> resultCalculations = resultcalculationService
@@ -81,12 +86,9 @@ public class TestCalculatedUtil {
                 if (resultCalculations.isEmpty()) {
                     Boolean createResultCalculation = false;
                     for (Operation oper : calculation.getOperations()) {
-                        if (oper.getType().equals(Operation.OperationType.TEST_RESULT)) {
-                            if (Integer.valueOf(oper.getValue())
-                                    .equals(Integer.valueOf(resultSet.result.getTestResult().getTest().getId()))) {
-                                createResultCalculation = true;
-                                break;
-                            }
+                        if (operandReads(oper, resultSet.result)) {
+                            createResultCalculation = true;
+                            break;
                         }
                     }
                     if (createResultCalculation) {
@@ -102,26 +104,31 @@ public class TestCalculatedUtil {
                         });
                         calc.setTest(tests);
                         Map<Integer, Integer> map = new HashMap<>();
-                        tests.forEach(test -> {
-                            map.put(Integer.valueOf(test.getId()), null);
+                        // One slot per operand, not per test: two components of
+                        // the same test are two operands and two measurements.
+                        calculation.getOperations().forEach(oper -> {
+                            if (oper.getType().equals(Operation.OperationType.TEST_RESULT)) {
+                                map.put(oper.getId(), null);
+                            }
                         });
-                        // insert innitial result value
-                        if (resultSet.result.getTestResult().getTest().getId() != null
-                                && resultSet.result.getId() != null) {
-                            map.put(Integer.valueOf(resultSet.result.getTestResult().getTest().getId()),
-                                    Integer.valueOf(resultSet.result.getId()));
+                        for (Operation oper : calculation.getOperations()) {
+                            if (operandReads(oper, resultSet.result) && resultSet.result.getId() != null) {
+                                map.put(oper.getId(), Integer.valueOf(resultSet.result.getId()));
+                            }
                         }
-                        calc.setTestResultMap(map);
+                        calc.setOperandResultMap(map);
                         resultcalculationService.insert(calc);
                     }
 
                 } else {
                     for (ResultCalculation resultCalculation : resultCalculations) {
-                        if (resultSet.result.getTestResult().getTest().getId() != null
-                                && resultSet.result.getId() != null) {
-                            resultCalculation.getTestResultMap().put(
-                                    Integer.valueOf(resultSet.result.getTestResult().getTest().getId()),
-                                    Integer.valueOf(resultSet.result.getId()));
+                        if (resultSet.result.getId() != null) {
+                            for (Operation oper : resultCalculation.getCalculation().getOperations()) {
+                                if (operandReads(oper, resultSet.result)) {
+                                    resultCalculation.getOperandResultMap().put(oper.getId(),
+                                            Integer.valueOf(resultSet.result.getId()));
+                                }
+                            }
                         }
 
                         resultcalculationService.update(resultCalculation);
@@ -138,15 +145,27 @@ public class TestCalculatedUtil {
             if (resultSet.result.getTestResult() == null) {
                 continue;
             } else {
-                resultCalculations = resultcalculationService.getResultCalculationByPatientAndTest(resultSet.patient,
-                        resultSet.result.getTestResult().getTest());
+                resultCalculations = resultcalculationService
+                        .getResultCalculationByPatientAndTest(resultSet.patient,
+                                resultSet.result.getTestResult().getTest())
+                        .stream().filter(calc -> runsFor(ruleResultScope, calc.getCalculation(), resultSet.result))
+                        .collect(Collectors.toList());
             }
 
             if (!resultCalculations.isEmpty()) {
                 for (ResultCalculation resultCalculation : resultCalculations) {
                     Boolean isMissingParams = false;
-                    for (Map.Entry<Integer, Integer> entry : resultCalculation.getTestResultMap().entrySet()) {
+                    for (Map.Entry<Integer, Integer> entry : resultCalculation.getOperandResultMap().entrySet()) {
                         if (entry.getValue() == null) {
+                            isMissingParams = true;
+                            break;
+                        }
+                        // a parameter whose result was blanked (e.g. rejected,
+                        // OGC-1023) is as missing as one never entered — its empty
+                        // value would otherwise reach the math expression and blow
+                        // up the whole save with a NumberFormatException
+                        Result paramResult = resultService.get(entry.getValue().toString());
+                        if (paramResult == null || StringUtils.isBlank(paramResult.getValue())) {
                             isMissingParams = true;
                             break;
                         }
@@ -234,7 +253,7 @@ public class TestCalculatedUtil {
         String resultType = testService.getResultType(test);
         Analysis analysis = null;
         if (test != null) {
-            if (resultCalculation.getTestResultMap().containsKey(Integer.valueOf(test.getId()))) {
+            if (resultCalculation.getOperandResultMap().containsValue(null)) {
                 if (Boolean.valueOf(value)) {
                     if (StringUtils.isNotBlank(calculation.getNote())) {
                         Note note = noteService.createSavableNote(resultSet.result.getAnalysis(), NoteType.EXTERNAL,
@@ -294,12 +313,14 @@ public class TestCalculatedUtil {
             }
             if (resultCalculation.getResult() != null) {
                 analysis = createCalculatedAnalysis(resultCalculation.getResult().getAnalysis(), test, resultSet.result,
-                        value, calculation.getName(), systemUserId, resultCalculated, calculation.getNote());
+                        value, calculation.getName(), systemUserId, resultCalculated, calculation.getNote(),
+                        calculation.getSampleId() == null ? null : calculation.getSampleId().toString());
                 result.setAnalysis(analysis);
                 resultService.update(result);
             } else {
                 analysis = createCalculatedAnalysis(null, test, resultSet.result, value, calculation.getName(),
-                        systemUserId, resultCalculated, calculation.getNote());
+                        systemUserId, resultCalculated, calculation.getNote(),
+                        calculation.getSampleId() == null ? null : calculation.getSampleId().toString());
                 result.setAnalysis(analysis);
                 resultService.insert(result);
             }
@@ -357,9 +378,19 @@ public class TestCalculatedUtil {
         noteService.saveAll(notes);
     }
 
+    /**
+     * The test_result row the calculated value is written through, and with it the
+     * component the value lands on. Without a destination component this took
+     * whichever row sorted last, so on a multi-component test the value went
+     * wherever that fell rather than where the lab configured it.
+     */
     private TestResult getTestResultForCalculation(Calculation calculation) {
         Test test = testService.get(calculation.getTestId().toString());
-        String resultType = testService.getResultType(test);
+        String destinationComponentId = calculation.getComponentId() == null
+                ? ruleResultScope.primaryComponentId(test.getId())
+                : calculation.getComponentId();
+        String resultType = ruleResultScope.resultTypeForComponent(test.getId(), destinationComponentId,
+                testService.getResultType(test));
         if ("D".equals(resultType)) {
             TestResult testResult;
             testResult = testResultService.getTestResultsByTestAndDictonaryResult(test.getId(),
@@ -367,10 +398,16 @@ public class TestCalculatedUtil {
             return testResult;
         } else {
             List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(test.getId());
-            // we are assuming there is only one testResult for a numeric
-            // type result
+            if (destinationComponentId != null) {
+                for (TestResult testResult : testResultList) {
+                    if (destinationComponentId.equals(testResult.getComponentId())) {
+                        return testResult;
+                    }
+                }
+            }
+            // No row carries the component - a test configured before
+            // components, whose rows all belong to the primary.
             if (!testResultList.isEmpty()) {
-                // get the latest modified test result
                 return testResultList.get(testResultList.size() - 1);
             }
         }
@@ -378,18 +415,93 @@ public class TestCalculatedUtil {
         return null;
     }
 
+    /**
+     * Whether the recorded result is one this calculation actually reads.
+     *
+     * <p>
+     * A calculation runs because one of its parameters was measured, and a
+     * parameter is a test AND a specimen AND a component. Asking only which test
+     * the calculation mentions is what let a COVID-19 PCR result recorded on Dry
+     * Tube re-run a calculation whose operand names the numeric Ct Value on
+     * Respiratory Swab: same test, different measurement entirely. The operands
+     * already know what they read, so the same question is asked of them here as
+     * when they are bound.
+     */
+    /**
+     * Whether this calculation should run because of the recorded result: it is
+     * switched on, and the result is one of its parameters.
+     */
+    static boolean runsFor(RuleResultScope scope, Calculation calculation, Result result) {
+        return isActive(calculation) && isTriggeredBy(scope, calculation, result);
+    }
+
+    /**
+     * Whether the calculation is switched on right now.
+     *
+     * <p>
+     * Deactivating a calculation flips this flag and leaves everything else in
+     * place, including the result_calculation rows that bind a patient's results to
+     * its parameters. Those rows are what the recomputation pass reads, and it read
+     * them without asking, so a deactivated rule went on producing results from
+     * every later result of a test it mentions - the switch turned nothing off for
+     * any patient it had already run for.
+     *
+     * <p>
+     * Read at execution rather than trusted from the row's existence: the flag is
+     * the lab's current instruction, and it can change between the row being
+     * written and the next result arriving.
+     */
+    static boolean isActive(Calculation calculation) {
+        return calculation != null && Boolean.TRUE.equals(calculation.getActive());
+    }
+
+    static boolean isTriggeredBy(RuleResultScope scope, Calculation calculation, Result result) {
+        if (calculation == null) {
+            return false;
+        }
+        for (Operation oper : calculation.getOperations()) {
+            if (operandReads(scope, oper, result)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether this operand reads the given result: the operand names a test, a
+     * specimen and a component, and all three have to be the result's. Matching on
+     * the test alone is what let a calculation configured for Ct Value pick up the
+     * coded PCR Result recorded beside it.
+     */
+    static boolean operandReads(RuleResultScope scope, Operation operation, Result result) {
+        if (operation == null || !Operation.OperationType.TEST_RESULT.equals(operation.getType())) {
+            return false;
+        }
+        return scope.matchesTrigger(result, operation.getValue(), operation.getComponentId(),
+                operation.getScopedSampleTypeId());
+    }
+
+    private boolean operandReads(Operation operation, Result result) {
+        return operandReads(ruleResultScope, operation, result);
+    }
+
     private void addNumericOperation(Operation operation, ResultCalculation resultCalculation, StringBuffer function,
             String inputType) {
         Test test = testService.getActiveTestById(Integer.valueOf(operation.getValue()));
         if (test != null) {
-            Integer resultId = resultCalculation.getTestResultMap().get(Integer.valueOf(test.getId()));
+            Integer resultId = resultCalculation.getOperandResultMap().get(operation.getId());
             Result result = null;
             if (resultId != null) {
                 result = resultService.get(resultId.toString());
             }
 
             if (result != null) {
-                if (testService.getResultType(result.getTestResult().getTest()).equals("N")) {
+                // The component owns the result type; a multi-component test
+                // has none of its own, and asking it would reject a numeric
+                // component sitting under a coded primary.
+                if (ruleResultScope.resultTypeForComponent(result.getTestResult().getTest().getId(),
+                        ruleResultScope.componentIdOf(result),
+                        testService.getResultType(result.getTestResult().getTest())).equals("N")) {
                     switch (inputType) {
                     case Operation.TEST_RESULT:
                         function.append(result.getValue()).append(" ");
@@ -419,7 +531,8 @@ public class TestCalculatedUtil {
     }
 
     private Analysis createCalculatedAnalysis(Analysis existingAnalysis, Test test, Result result, String value,
-            String calculationName, String systemUserId, Boolean resultCalculated, String externalNote) {
+            String calculationName, String systemUserId, Boolean resultCalculated, String externalNote,
+            String targetSampleTypeId) {
         Analysis currentAnalysis = result.getAnalysis();
         Analysis generatedAnalysis = null;
         if (existingAnalysis != null) {
@@ -441,9 +554,23 @@ public class TestCalculatedUtil {
         }
         generatedAnalysis.setParentAnalysis(currentAnalysis);
         generatedAnalysis.setParentResult(result);
-        generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
+        // The calculation names the specimen its result belongs on; the
+        // triggering result's specimen only decided that it should run. The
+        // order is given that specimen when it does not already hold one, so a
+        // calculation configured to report on DBS reports on DBS rather than on
+        // whatever happened to feed it.
+        SampleItem targetItem = ruleResultScope.resolveOrCreateSampleItemForTarget(
+                currentAnalysis.getSampleItem() == null ? null : currentAnalysis.getSampleItem().getSample(),
+                targetSampleTypeId, systemUserId);
+        if (targetItem != null) {
+            generatedAnalysis.setSampleItem(targetItem);
+            generatedAnalysis.setSampleTypeName(
+                    targetItem.getTypeOfSample() == null ? null : targetItem.getTypeOfSample().getLocalizedName());
+        } else {
+            generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
+            generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
+        }
         generatedAnalysis.setTestSection(currentAnalysis.getTestSection());
-        generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
         generatedAnalysis.setSysUserId(systemUserId);
         generatedAnalysis.setResultCalculated(resultCalculated);
         if (existingAnalysis != null) {

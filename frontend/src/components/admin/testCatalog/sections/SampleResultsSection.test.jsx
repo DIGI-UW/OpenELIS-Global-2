@@ -674,4 +674,72 @@ describe("SampleResultsSection", () => {
       "/rest/test-catalog/tests/7/sample-results/copy-from/9",
     );
   });
+
+  /**
+   * Scroll-jump regression: adding the SECOND component used to flip the list
+   * wrappers from Fragment/PlainPanel to Accordion/AccordionItem — React
+   * cannot reconcile across element types, so the whole section remounted
+   * (fresh DOM nodes), dropping focus and resetting the page scroll to the
+   * top. The wrapper types are now stable for any component count, so the
+   * first component's DOM nodes must survive the add untouched.
+   */
+  it("adding the second component does not remount the first (no scroll jump)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb({
+          testId: "7",
+          components: [
+            {
+              id: "c1",
+              code: "PRIMARY",
+              label: "Primary",
+              isPrimary: true,
+              resultType: "N",
+              displayOrder: 1,
+              showOnReport: true,
+              options: [],
+              interpretations: [],
+            },
+          ],
+        });
+      }
+    });
+    renderSection();
+    const firstLabelBefore = await screen.findByDisplayValue("Primary");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["label.testCatalog.sampleResults.addComponent"],
+      }),
+    );
+
+    // same DOM node — the section did not remount
+    expect(screen.getByDisplayValue("Primary")).toBe(firstLabelBefore);
+    // the new component rendered below, usable immediately
+    expect(document.getElementById("comp-label-1")).not.toBeNull();
+    // first component's data untouched
+    expect(screen.getByDisplayValue("Primary")).toBeInTheDocument();
+  });
+
+  it("adding a third component behaves the same as the second", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(TWO_COMPONENTS));
+      }
+    });
+    renderSection();
+    const firstLabelBefore = await screen.findByDisplayValue("Systolic");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["label.testCatalog.sampleResults.addComponent"],
+      }),
+    );
+    expect(screen.getByDisplayValue("Systolic")).toBe(firstLabelBefore);
+    expect(screen.getByDisplayValue("Diastolic")).toBeInTheDocument();
+    expect(document.getElementById("comp-label-2")).not.toBeNull();
+  });
 });

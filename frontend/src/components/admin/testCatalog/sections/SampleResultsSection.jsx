@@ -49,9 +49,12 @@ const PRIMARY_RESULT_TYPES = ["N", "D", "R"];
 const ADVANCED_RESULT_TYPES = ["M", "C", "T", "A"];
 
 // A single component renders as one flat block (no accordion chrome); 2+
-// components render as accordion panels (FR-34). PlainPanel is the flat wrapper —
-// it ignores the accordion-only `open`/`title` props.
-const PlainPanel = ({ children }) => <div>{children}</div>;
+// components render as accordion panels (FR-34) — for ANY count. The wrapper
+// element types must never depend on components.length: flipping
+// Fragment/PlainPanel to Accordion/AccordionItem when the second component is
+// added made React unmount and remount the entire section (different element
+// types are irreconcilable), losing focus and resetting the scroll position
+// to the top of the page.
 
 /**
  * Live result-entry preview (FR-35): renders a read-only representation of the
@@ -328,26 +331,45 @@ const SampleResultsSection = ({ testId }) => {
     );
   };
 
+  // After Add Component, land the user on the new component's first field
+  // instead of leaving them wherever the page happens to be.
+  const [focusComponentIndex, setFocusComponentIndex] = useState(null);
+  useEffect(() => {
+    if (focusComponentIndex === null) {
+      return;
+    }
+    const label = document.getElementById(`comp-label-${focusComponentIndex}`);
+    if (label) {
+      label.focus({ preventScroll: true });
+      label.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    setFocusComponentIndex(null);
+  }, [focusComponentIndex]);
+
   const addComponent = () =>
-    setComponents((prev) => [
-      ...prev,
-      {
-        // The first (only) component is the primary; its code is fixed to
-        // PRIMARY (mirrored to the legacy test columns).
-        code: prev.length === 0 ? "PRIMARY" : "",
-        label: "",
-        displayOrder: prev.length + 1,
-        // The type is an explicit choice (FR-56/28) — no silent Numeric default.
-        resultType: null,
-        significantDigits: null,
-        defaultResult: "",
-        allowMultipleReadings: false,
-        isPrimary: prev.length === 0,
-        showOnReport: true,
-        options: [],
-        interpretations: [],
-      },
-    ]);
+    setComponents((prev) => {
+      setFocusComponentIndex(prev.length);
+      return [
+        ...prev,
+        {
+          // The first (only) component is the primary; its code is fixed to
+          // PRIMARY (mirrored to the legacy test columns).
+          code: prev.length === 0 ? "PRIMARY" : "",
+          label: "",
+          displayOrder: prev.length + 1,
+          // The type is an explicit choice (FR-56/28) — no silent Numeric
+          // default.
+          resultType: null,
+          significantDigits: null,
+          defaultResult: "",
+          allowMultipleReadings: false,
+          isPrimary: prev.length === 0,
+          showOnReport: true,
+          options: [],
+          interpretations: [],
+        },
+      ];
+    });
 
   // Exactly one component is primary. While one is marked, the other
   // components' Primary toggles are disabled — the current primary must be
@@ -635,9 +657,6 @@ const SampleResultsSection = ({ testId }) => {
   }
 
   // One component → flat; several → accordion panels (FR-34).
-  const multipleComponents = components.length > 1;
-  const ListWrapper = multipleComponents ? Accordion : React.Fragment;
-  const ItemWrapper = multipleComponents ? AccordionItem : PlainPanel;
 
   return (
     <Stack gap={6}>
@@ -652,9 +671,9 @@ const SampleResultsSection = ({ testId }) => {
           <FormattedMessage id="label.testCatalog.sampleResults.empty" />
         </p>
       ) : (
-        <ListWrapper>
+        <Accordion>
           {components.map((c, ci) => (
-            <ItemWrapper
+            <AccordionItem
               key={c.id || `new-${ci}`}
               open
               title={componentTitle(c)}
@@ -1199,9 +1218,9 @@ const SampleResultsSection = ({ testId }) => {
                   </Button>
                 </div>
               </Stack>
-            </ItemWrapper>
+            </AccordionItem>
           ))}
-        </ListWrapper>
+        </Accordion>
       )}
 
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>

@@ -13,18 +13,33 @@ import {
   Loading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "banner.menu.results", link: "" },
+  { label: "banner.menu.results.analyzer", link: "/AnalyzerResults" },
+];
+
+/**
+ * The page title for an analyzer worklist. The URL carries the analyzer's id;
+ * the name is resolved server-side, so until it arrives (or when the id matches
+ * no analyzer) the bare label is shown — the id is never surfaced as a title.
+ */
+export const analyzerPageTitle = (label, analyzerName) =>
+  analyzerName ? `${label}: ${analyzerName}` : label;
 
 const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const [results, setResults] = useState({ resultList: [] });
   const [type, setType] = useState("");
+  // The analyzer's display name, resolved server-side from the id in the URL.
+  const [analyzerName, setAnalyzerName] = useState("");
   const [queryMode, setQueryMode] = useState("type");
   const [queryValue, setQueryValue] = useState("");
   const [nextPage, setNextPage] = useState(null);
@@ -39,8 +54,10 @@ const Index = () => {
   const [labNumber, setLabNumber] = useState("");
   const intl = useIntl();
 
+  const location = useLocation();
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
     const analyzerId = params.get("id");
     const analyserType = params.get("type");
@@ -55,7 +72,10 @@ const Index = () => {
       setType(analyserType);
       setUrl("/rest/AnalyzerResults?type=" + analyserType);
     }
-  }, []);
+    // drop the previous analyzer's name so a stale title never shows while the
+    // new one is in flight
+    setAnalyzerName("");
+  }, [location.search]);
 
   useEffect(() => {
     if (url) {
@@ -89,6 +109,11 @@ const Index = () => {
     if (data) {
       setResults(data);
       setIsLoading(false);
+      // the server echoes the analyzer's name in `type`, resolved from the id;
+      // it comes back null for an id that matches no analyzer
+      if (typeof data.type === "string" && data.type.trim()) {
+        setAnalyzerName(data.type.trim());
+      }
       if (data.paging) {
         var { totalPages, currentPage, searchTermToPage } = data.paging;
         if (totalPages > 1) {
@@ -115,7 +140,7 @@ const Index = () => {
           title: intl.formatMessage({ id: "notification.title" }),
           message:
             intl.formatMessage({ id: "validation.search.noresult.analyser" }) +
-            type,
+            (data.type || analyzerName || queryValue),
         });
         setNotificationVisible(true);
       } else {
@@ -130,7 +155,12 @@ const Index = () => {
         <Column lg={16} md={8} sm={4}>
           <Section>
             <Section>
-              <Heading>{type}</Heading>
+              <Heading>
+                {analyzerPageTitle(
+                  intl.formatMessage({ id: "banner.menu.results.analyzer" }),
+                  analyzerName,
+                )}
+              </Heading>
             </Section>
           </Section>
         </Column>
