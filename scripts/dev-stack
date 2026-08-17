@@ -193,6 +193,12 @@ def run(
     )
 
 
+def output(
+    command: Sequence[str], *, cwd: Path, environment: dict[str, str]
+) -> str:
+    return run(command, cwd=cwd, environment=environment, capture=True).stdout.strip()
+
+
 def ensure_local_env(context: StackContext) -> None:
     env_file = context.repo_root / ".env"
     example = context.repo_root / ".env.example"
@@ -201,10 +207,67 @@ def ensure_local_env(context: StackContext) -> None:
         print(f"Created local {env_file.relative_to(context.repo_root)} from .env.example")
 
 
+def submodule_repair_mode(
+    expected: str, actual: str, status: str, has_content: bool
+) -> str | None:
+    if not has_content:
+        return "force"
+    if actual == expected:
+        return None
+    if status:
+        raise RuntimeError("Submodule has local changes at the wrong commit")
+    return "checkout"
+
+
 def ensure_submodules(context: StackContext, environment: dict[str, str]) -> None:
     command = ["git", "submodule", "update", "--init", "--recursive"]
     command.extend(required_submodules())
     run(command, cwd=context.repo_root, environment=environment)
+    for relative_path in required_submodules():
+        path = context.repo_root / relative_path
+        expected = output(
+            ["git", "rev-parse", f"HEAD:{relative_path}"],
+            cwd=context.repo_root,
+            environment=environment,
+        )
+        actual = output(
+            ["git", "rev-parse", "HEAD"], cwd=path, environment=environment
+        )
+        status = output(
+            ["git", "status", "--porcelain"], cwd=path, environment=environment
+        )
+        has_content = any(entry.name != ".git" for entry in path.iterdir())
+        repair_mode = submodule_repair_mode(expected, actual, status, has_content)
+        if repair_mode == "force":
+            run(
+                [
+                    "git",
+                    "submodule",
+                    "update",
+                    "--init",
+                    "--checkout",
+                    "--force",
+                    relative_path,
+                ],
+                cwd=context.repo_root,
+                environment=environment,
+            )
+        elif repair_mode == "checkout":
+            run(
+                ["git", "submodule", "update", "--init", "--checkout", relative_path],
+                cwd=context.repo_root,
+                environment=environment,
+            )
+        verified = output(
+            ["git", "rev-parse", "HEAD"], cwd=path, environment=environment
+        )
+        verified_status = output(
+            ["git", "status", "--porcelain"], cwd=path, environment=environment
+        )
+        if verified != expected or verified_status:
+            raise RuntimeError(
+                f"Submodule {relative_path} is not a clean checkout of {expected[:12]}"
+            )
 
 
 def heal_war_mount(context: StackContext) -> None:
