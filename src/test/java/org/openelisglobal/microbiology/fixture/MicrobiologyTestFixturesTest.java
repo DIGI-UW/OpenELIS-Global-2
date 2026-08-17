@@ -21,6 +21,8 @@ import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.service.MicrobiologyConfigurationService;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.statusofsample.service.StatusOfSampleService;
@@ -29,6 +31,7 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicrobiologyTestFixturesTest {
@@ -53,6 +56,12 @@ public class MicrobiologyTestFixturesTest {
     private SystemUserService systemUserService;
     @Mock
     private MicrobiologyConfigurationService configurationService;
+    @Mock
+    private PersonService personService;
+    @Mock
+    private PatientService patientService;
+    @Mock
+    private TypeOfSampleService typeOfSampleService;
 
     private MicrobiologyTestFixtures fixtures;
 
@@ -61,7 +70,7 @@ public class MicrobiologyTestFixturesTest {
         when(systemUserService.getAllSystemUsers()).thenReturn(List.of(systemUser("7")));
         fixtures = new MicrobiologyTestFixtures(methodService, sampleService, sampleItemService, analysisService,
                 testService, testMethodService, statusService, statusOfSampleService, systemUserService,
-                configurationService);
+                configurationService, personService, patientService, typeOfSampleService);
     }
 
     @Test
