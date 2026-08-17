@@ -1,3 +1,10 @@
+> **OGC-1054 authority notice (2026-08-17):** This is not an executable
+> OGC-1054 plan. The [canonical roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+> and [engineering plan](../OGC-1054-analyzer-qc-config/plan.md) control. The
+> older status block and body below incorrectly assign parsing/profile authority
+> to OpenELIS for the target architecture; they remain only as Git provenance.
+> Bridge owns FILE watching, parsing/normalization, and transport.
+>
 > **STATUS: Architecture shipped, deferred test coverage + site validation open
 > (updated 2026-04-20).** The `GenericFile` plugin, file-reader dispatch, and
 > Upload/Review UI foundation (OGC-329 / OGC-324) are on `develop`. Per the
@@ -335,7 +342,6 @@ logic in the WAR (`src/main/java/.../analyzer/parsers/` does NOT exist).
 - [x] **Unit Tests**: `ExcelAnalyzerReader` output validation,
       `FileImportService` format dispatch, GenericFile plugin mapping logic
       (column mapping, comparison operators) — tested in the plugins submodule.
-
   - App side: Template
     `.specify/templates/testing/JUnit4ServiceTest.java.template`,
     `@RunWith(MockitoJUnitRunner.class)`.
@@ -346,18 +352,15 @@ logic in the WAR (`src/main/java/.../analyzer/parsers/` does NOT exist).
 
 - [x] **ORM Validation Tests**: Validate FileImportConfiguration entity with new
       `fileFormat` field loads correctly.
-
   - Must execute in <5 seconds, no database required.
 
 - [x] **Integration Tests**: Full flow — upload file → parse → preview → submit
       → results in analyzer_results table.
-
   - Use `BaseWebContextSensitiveTest` + `MockMvc`.
   - Real file fixtures uploaded via multipart request.
 
 - [x] **Frontend Unit Tests**: FileImportConfiguration form (fileFormat
       dropdown), upload component, preview table.
-
   - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - Wrap in `<IntlProvider>` + `<BrowserRouter>`.
 

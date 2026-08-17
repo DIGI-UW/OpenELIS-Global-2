@@ -1,5 +1,11 @@
 # Data Model: Generic ASTM Plugin Profiles v1.2 (Simplified)
 
+> **OGC-1054 authority notice (2026-08-17):** This historical model is a
+> migration input only. It does not establish current profile authority or the
+> OGC-1054 target model; E0 derives those decisions from current code and
+> approved contracts under the
+> [canonical roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+
 ## Design Principles
 
 1. Keep `Analyzer` as the runtime instance aggregate root.

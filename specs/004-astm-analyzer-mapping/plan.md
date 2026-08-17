@@ -1,5 +1,11 @@
 # Implementation Plan: ASTM Analyzer Field Mapping
 
+> **OGC-1054 authority notice (2026-08-17):** This plan is historical and is
+> not executable for OGC-1054. Current work is selected only by the
+> [OGC-1054 roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) and its
+> [engineering plan](../OGC-1054-analyzer-qc-config/plan.md). Retain this body
+> as provenance; do not extend its legacy OpenELIS runtime or duplicate UI.
+
 **Branch**: `004-astm-analyzer-mapping` | **Date**: 2025-11-14 | **Spec**:
 [spec.md](./spec.md) **Input**: Feature specification from
 `/specs/004-astm-analyzer-mapping/spec.md`
@@ -158,14 +164,12 @@ Verify compliance with
 [OpenELIS Global 2.0 Constitution](../.specify/memory/constitution.md):
 
 - [x] **Configuration-Driven**: No country-specific code branches planned
-
   - Analyzer-specific unit preferences and code systems will be handled via
     database configuration, not code branching
   - Mapping validation rules configurable via properties files
 
 - [x] **Carbon Design System**: UI uses @carbon/react exclusively (NO
       Bootstrap/Tailwind)
-
   - All UI components specified in FR-001 through FR-020 use Carbon components
     (DataTable, ComposedModal, Search, MultiSelect, Tag, SideNavMenu,
     SideNavMenuItem, etc.)
@@ -180,7 +184,6 @@ Verify compliance with
 
 - [x] **FHIR/IHE Compliance**: External data integrates via FHIR R4 + IHE
       profiles
-
   - Analyzer entities may be exposed externally (if required by national health
     information exchanges)
   - If exposed, MUST include `fhir_uuid UUID` column and bidirectional transform
@@ -191,11 +194,9 @@ Verify compliance with
 
 - [x] **Layered Architecture**: Backend follows 5-layer pattern
       (Valueholder→DAO→Service→Controller→Form)
-
   - **Legacy model exception**: Some legacy entities remain XML-mapped (e.g. the
     legacy `Analyzer` entity). This is allowed under the constitution’s legacy
     model extension guidance.
-
     - **Default**: New entities SHOULD be annotation-based.
     - If compatibility requires XML mappings for new/extended models, the
       exception MUST be documented and include an explicit migration path to
@@ -210,7 +211,6 @@ Verify compliance with
 
 - [x] **Test Coverage**: Unit + ORM validation (if applicable) + integration +
       E2E tests planned (>70% coverage goal per Constitution V.4 and V.5)
-
   - Unit tests: JUnit 4 + Mockito for service layer business logic
   - ORM validation tests: Hibernate SessionFactory build test for all new
     entities (<5s, no database)
@@ -225,7 +225,6 @@ Verify compliance with
     - Post-run review of console logs and screenshots required
 
 - [x] **Schema Management**: Database changes via Liquibase changesets only
-
   - All new tables (analyzer_field, analyzer_field_mapping,
     qualitative_result_mapping, unit_mapping, analyzer_error) via Liquibase
   - Extensions to existing `analyzer` table (if needed) via Liquibase
@@ -233,7 +232,6 @@ Verify compliance with
 
 - [x] **Internationalization**: All UI strings use React Intl (no hardcoded
       text)
-
   - All labels, tooltips, messages, error text externalized to
     `frontend/src/languages/{locale}.json`
   - Minimum translations: English (en) + French (fr)
@@ -533,7 +531,6 @@ implementation
 ### Research Tasks
 
 1. **ASTM Protocol Integration**
-
    - Research: How to query analyzers via ASTM protocol to retrieve available
      fields
    - Research: ASTM LIS2-A2 segment/field structure and parsing requirements
@@ -541,7 +538,6 @@ implementation
      `AnalyzerImportController`
 
 2. **Legacy Analyzer Entity Integration**
-
    - Research: How to extend or work alongside legacy `Analyzer` entity (XML
      mappings)
    - Research: Migration strategy for analyzer configuration (IP/Port,
@@ -550,20 +546,17 @@ implementation
      system
 
 3. **Field Mapping Architecture**
-
    - Research: Best practices for many-to-one mapping patterns (multiple
      analyzer values → single OpenELIS code)
    - Research: Unit conversion patterns and validation rules
    - Research: Type compatibility validation (numeric vs qualitative vs text)
 
 4. **Error Queue and Reprocessing**
-
    - Research: Message queue patterns for holding failed/unmapped messages
    - Research: Reprocessing workflow and state management
    - Research: Integration with existing ASTM message processing pipeline
 
 5. **Carbon Design System Components**
-
    - Research: Dual-panel layout patterns using Carbon Grid
    - Research: Visual connection lines between mapped fields (Carbon design
      tokens)
@@ -591,7 +584,6 @@ implementation
 ### Deliverables
 
 1. **Data Model** (`data-model.md`)
-
    - Entity definitions: AnalyzerField, AnalyzerFieldMapping,
      QualitativeResultMapping, UnitMapping, AnalyzerError
    - Relationships and foreign keys
@@ -599,14 +591,12 @@ implementation
    - State transitions (draft → active mappings)
 
 2. **API Contracts** (`contracts/`)
-
    - REST API endpoint specifications (OpenAPI/Swagger format)
    - Request/response schemas
    - Error response formats
    - Authentication/authorization requirements
 
 3. **Quickstart Guide** (`quickstart.md`)
-
    - Step-by-step developer setup instructions
    - Database migration steps
    - API testing examples

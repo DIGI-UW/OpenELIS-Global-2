@@ -1,5 +1,11 @@
 # Quickstart: File Stream Alignment — GenericFile Lane
 
+> **OGC-1054 authority notice (2026-08-17):** Do not use historical OpenELIS
+> FILE runtime instructions below to execute OGC-1054. Bridge owns FILE
+> watching, parsing/normalization, and transport; the active work and commands
+> are selected by the
+> [canonical roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+
 ## 2026-03-18 Ownership Update (Worktree-First Remediation)
 
 Use the remediation archive plan at

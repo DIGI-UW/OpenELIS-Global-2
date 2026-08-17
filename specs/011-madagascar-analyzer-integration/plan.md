@@ -1,3 +1,11 @@
+> **OGC-1054 authority notice (2026-08-17):** This is not an executable
+> OGC-1054 plan. Use the canonical
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) and
+> [engineering plan](../OGC-1054-analyzer-qc-config/plan.md). The historical
+> body below includes superseded OpenELIS runtime/profile ownership and Jira/
+> Confluence tracking rules; it is retained for provenance only where those
+> conflict with the current architecture and source boundary.
+>
 > **STATUS: Superseded as a delivery tracker (updated 2026-04-20).** The January
 > 2026 milestone structure below (M0–M21, RS232-via-bridge framing, Cypress 12.x
 > as E2E, contract deadline 2026-02-28) no longer describes how the work is

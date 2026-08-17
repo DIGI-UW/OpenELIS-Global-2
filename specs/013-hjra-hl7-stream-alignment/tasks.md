@@ -1,5 +1,10 @@
 # Tasks: HJRA HL7 Stream Coordination
 
+> **OGC-1054 authority notice (2026-08-17):** These tasks are historical HL7
+> coordination, not current OGC-1054 work or status. Use the canonical
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) and
+> [tasks](../OGC-1054-analyzer-qc-config/tasks.md).
+
 **Input**: Design documents from `specs/013-hjra-hl7-stream-alignment/`  
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/,
 quickstart.md  

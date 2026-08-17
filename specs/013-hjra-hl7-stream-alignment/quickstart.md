@@ -1,5 +1,10 @@
 # Quickstart: Launching the `013` HL7 Lane
 
+> **OGC-1054 authority notice (2026-08-17):** Do not use this historical
+> branch-launch guide for OGC-1054. The active iteration and branch order are
+> defined only by the
+> [canonical roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+
 ## Purpose
 
 Use this guide to start the first implementation branch only after the
@@ -99,7 +104,6 @@ enabled for HL7 E2E proof:
    ```
 
    This run:
-
    - verifies strict fixtures are present and linked
      (`verify-strict-013-fixtures.sh`)
    - sends BC-5380, BS-200, and BS-300 through

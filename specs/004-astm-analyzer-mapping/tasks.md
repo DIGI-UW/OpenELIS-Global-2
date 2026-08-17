@@ -1,5 +1,12 @@
 # Tasks: ASTM Analyzer Field Mapping
 
+> **OGC-1054 authority notice (2026-08-17):** These tasks do not represent
+> current OGC-1054 work or status. Use the canonical
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) and
+> [tasks](../OGC-1054-analyzer-qc-config/tasks.md). Unchecked items below must
+> not be resumed for OGC-1054 unless the active roadmap iteration explicitly
+> re-derives them with TDD under the Bridge-owned runtime architecture.
+
 **Current Milestone**: **M4 (Integration + Polish)**  
 **Purpose**: Keep this file concise and actionable for the remaining work
 required to stabilize CI, validate integration, and prepare for manual testing.

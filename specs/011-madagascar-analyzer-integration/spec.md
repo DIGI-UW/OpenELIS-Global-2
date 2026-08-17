@@ -8,10 +8,18 @@ HL7/ASTM/FILE; the full OGC-1054 analyzer MVP, site validation, and rollout
 remain open.
 **Extends**: Feature 004-astm-analyzer-mapping
 
+> **OGC-1054 authority notice (2026-08-17):** This document remains a
+> historical protocol/deployment foundation. The canonical OGC-1054
+> [specification](../OGC-1054-analyzer-qc-config/spec.md),
+> [plan](../OGC-1054-analyzer-qc-config/plan.md), and
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) govern current
+> implementation and acceptance. Jira and Confluence links below are
+> traceability or site context, not OGC-1054 requirements/status authority.
+
 ## Architecture Status Amendment (2026-08-13)
 
-This spec is the umbrella for the **generic analyzer integration architecture**
-that underpins the Madagascar (and subsequent) analyzer deployments. The January
+This spec records the **generic analyzer integration architecture** that
+underpins the Madagascar (and subsequent) analyzer deployments. The January
 2026 body below (12-analyzer contract matrix, RS232-via-bridge framing, contract
 deadline 2026-02-28, M0–M21 milestones) is kept for audit/history. The canonical
 target architecture is the Bridge-owned analyzer runtime defined in

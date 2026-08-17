@@ -1,5 +1,11 @@
 # Implementation Plan: HJRA HL7 Stream Coordination
 
+> **OGC-1054 authority notice (2026-08-17):** This plan is historical and is
+> not executable for OGC-1054. Use the canonical
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) and
+> [engineering plan](../OGC-1054-analyzer-qc-config/plan.md). Branch/Jira
+> sequencing below cannot select current work.
+
 **Branch**: `spec/013-hjra-hl7-stream-alignment` | **Date**: 2026-03-10 |
 **Updated**: 2026-04-20 (status reckoning) | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from

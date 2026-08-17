@@ -1,5 +1,12 @@
 # Feature Specification: HJRA HL7 Stream Coordination
 
+> **OGC-1054 authority notice (2026-08-17):** This remains a historical HL7
+> coordination/site-readiness record. Current OGC-1054 scope, architecture,
+> acceptance, and iteration order come from the
+> [canonical specification](../OGC-1054-analyzer-qc-config/spec.md) and
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md). Bridge owns the
+> target HL7 runtime and portable profile lifecycle; Jira status is not a gate.
+
 **Feature Branch**: `spec/013-hjra-hl7-stream-alignment`  
 **Created**: 2026-03-10  
 **Updated**: 2026-04-20 (status reckoning)  

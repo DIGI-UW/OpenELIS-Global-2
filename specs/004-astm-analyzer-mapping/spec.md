@@ -1,5 +1,13 @@
 # Feature Specification: ASTM Analyzer Field Mapping
 
+> **OGC-1054 authority notice (2026-08-17):** This is a historical ASTM
+> mapping foundation, not the current OGC-1054 specification. Use the
+> [canonical OGC-1054 specification](../OGC-1054-analyzer-qc-config/spec.md)
+> and [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md). The older
+> body remains for Git provenance; do not extend its OpenELIS-owned raw ASTM
+> runtime or standalone analyzer workflow where it conflicts with the current
+> Bridge-owned architecture.
+
 **Feature Branch** (Constitution Principle IX):
 `spec/004-ogc-49-astm-analyzer-mapping`  
 **Created**: 2025-11-14  
@@ -658,7 +666,6 @@ statistics).
   `/rest/menu` API endpoint. The "Analyzers" parent menu item MUST always be
   present and, when expanded, MUST display the following sub-navigation items
   (subject to role permissions):
-
   1. **Analyzers Dashboard** – default landing page at `/analyzers`, showing the
      analyzer list/overview defined in FR-001.
   2. **Error Dashboard** – `/analyzers/errors`, per FR-016.

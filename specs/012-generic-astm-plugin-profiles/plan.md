@@ -1,5 +1,12 @@
 # Implementation Plan: Generic ASTM Plugin Profiles v1.2 (Simplified)
 
+> **OGC-1054 authority notice (2026-08-17):** This plan is historical and is
+> not executable for OGC-1054. Use the canonical
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) and
+> [engineering plan](../OGC-1054-analyzer-qc-config/plan.md). Its filesystem
+> profile authority and copied-config design are inputs to characterize and
+> migrate, not target architecture.
+
 **Branch (historical M1 reference)**:
 `feat/012-ogc-337-generic-astm-plugin-profiles-m1-plugin-config`  
 **Current implementation state on this branch**: `fix/013-hl7-test-connection`

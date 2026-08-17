@@ -1,5 +1,12 @@
 # Feature Specification: File Stream Alignment — GenericFile Coordination
 
+> **OGC-1054 authority notice (2026-08-17):** This is a FILE protocol
+> foundation, not a second OGC-1054 execution plan. The ownership amendment
+> immediately below and the
+> [canonical roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) control;
+> older OpenELIS watcher/parser/profile-authority directions in this document
+> are historical and non-executable.
+
 ## Current Status (updated 2026-08-13)
 
 ### Target ownership amendment

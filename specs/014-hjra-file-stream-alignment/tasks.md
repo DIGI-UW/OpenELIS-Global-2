@@ -1,3 +1,9 @@
+> **OGC-1054 authority notice (2026-08-17):** These are historical FILE-lane
+> tasks, not current OGC-1054 work or status. Use the canonical
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) and
+> [tasks](../OGC-1054-analyzer-qc-config/tasks.md). No unchecked item below may
+> reintroduce an OpenELIS watcher, raw parser, or portable profile authority.
+>
 > **STATUS: Code shipped, several tasks deferred (updated 2026-04-20).** The M1A
 > → M4 sequencing below is historical; the current branch consolidated the
 > milestones, so branch-specific tasks (T021, T021a, T021c, T048, T067) remain

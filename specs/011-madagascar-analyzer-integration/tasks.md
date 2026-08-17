@@ -1,3 +1,10 @@
+> **OGC-1054 authority notice (2026-08-17):** This is not the current
+> OGC-1054 task list. Use the canonical
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) and
+> [tasks](../OGC-1054-analyzer-qc-config/tasks.md). Unchecked legacy tasks below
+> do not authorize implementation, and Jira/Confluence do not set OGC-1054
+> scope or status.
+>
 > **STATUS: Superseded as a task tracker (updated 2026-04-20).** The task list
 > below is tied to the retired January 2026 M0–M21 milestone plan and does not
 > reflect current work. MVP tasks mostly landed via alternate branches; site

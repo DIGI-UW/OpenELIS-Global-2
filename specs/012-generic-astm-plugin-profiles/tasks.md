@@ -1,5 +1,11 @@
 # Tasks: Generic ASTM Plugin Profiles v1.2 (Simplified)
 
+> **OGC-1054 authority notice (2026-08-17):** These tasks do not represent
+> current OGC-1054 work or status. Use the canonical
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md) and
+> [tasks](../OGC-1054-analyzer-qc-config/tasks.md). Checked or unchecked items
+> below are historical provenance and cannot advance the roadmap marker.
+
 **Input**: design documents in `specs/012-generic-astm-plugin-profiles/`  
 **Tests**: mandatory before implementation in each milestone
 

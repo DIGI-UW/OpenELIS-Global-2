@@ -1,5 +1,11 @@
 # Data Model: Madagascar Analyzer Integration
 
+> **OGC-1054 authority notice (2026-08-17):** This model describes historical
+> implementation and migration inputs. It does not define the OGC-1054 target
+> data model. E0 must derive that model from current OpenELIS/Bridge code and
+> approved contracts under the
+> [canonical roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+
 **Feature**: 011-madagascar-analyzer-integration **Date**: 2026-01-22
 **Updated**: 2026-02-11 (plugin system unification — 2-table model) **Spec
 Reference**: [spec.md](spec.md)

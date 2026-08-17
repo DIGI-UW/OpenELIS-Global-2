@@ -1,5 +1,11 @@
 # Data Model: File Stream Alignment
 
+> **OGC-1054 authority notice (2026-08-17):** This historical model is a
+> migration input, not the OGC-1054 target model. Jira prose and copied profile
+> JSON below are not authoritative. E0 derives persistence and contracts from
+> current code under the
+> [canonical roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+
 **Feature**: 014-hjra-file-stream-alignment  
 **Date**: 2026-03-10
 

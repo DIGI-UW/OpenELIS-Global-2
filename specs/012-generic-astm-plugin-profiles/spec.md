@@ -1,5 +1,12 @@
 # Feature Specification: Generic ASTM Plugin v1.2 — Plugin Config Foundation
 
+> **OGC-1054 authority notice (2026-08-17):** This is a historical plugin
+> configuration foundation, not the current OGC-1054 specification. Use the
+> [canonical specification](../OGC-1054-analyzer-qc-config/spec.md) and
+> [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md). Filesystem
+> profiles and copied per-analyzer JSON described below are migration inputs;
+> they are not the target portable-profile authority.
+
 **Feature Branch**: `spec/012-ogc-337-generic-astm-plugin-profiles` **Demo
 Branch**: `feat/012-genexpert-astm-demo` (E2E demo + test catalog work)
 **Created**: 2026-02-27 **Status**: Draft **Jira**: OGC-337

@@ -1,5 +1,9 @@
 # Quickstart: Feature 012 (GeneXpert-Focused)
 
+> **OGC-1054 authority notice (2026-08-17):** Do not use this historical
+> quickstart to execute OGC-1054. The active iteration and commands are defined
+> by the [canonical roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+
 ## Goal
 
 Implement and validate v1.2 profile/config features while keeping the existing
