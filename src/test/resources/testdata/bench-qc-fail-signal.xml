@@ -1,0 +1,125 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- OGC-1147: the QC-fail signal for a bench control. A bench control has
+        no analyzer, so its blast radius is scoped by lab unit instead. The dataset
+        mirrors qc-violation-nce.xml's shape so both scopes are exercised by the
+        same window algorithm. Lab unit 701 (Haematology): an in-control MANUAL control
+        at 11:30, then the failing control at 12:00. Analyses 9101/9102 completed
+        inside that window and must be linked; 9103 completed at 10:00 — before the
+        last in-control control — and must NOT be. 9104 belongs to lab unit 702 and
+        must never be linked regardless of time, which is the whole point of scoping
+        by lab unit. -->
+
+    <!-- Empty declarations: force truncation of tables these tests write to -->
+    <nc_event />
+    <nce_specimen />
+    <nce_history />
+    <qc_rule_violation />
+    <qc_result />
+
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y" />
+    <system_user id="7701" login_name="benchTech"
+        last_name="Tech" first_name="Bench" is_active="Y" is_employee="Y" />
+
+    <organization id="7001" name="BenchQC Lab" is_active="Y"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <localization id="7101" description="Haematology"
+        lastupdated="2025-06-01 12:00:00" />
+    <localization_value id="7101" localization_id="7101"
+        locale="en" value="Haematology" />
+    <localization id="7102" description="Parasitology"
+        lastupdated="2025-06-01 12:00:00" />
+    <localization_value id="7102" localization_id="7102"
+        locale="en" value="Parasitology" />
+
+    <test_section id="701" name="BenchHaem"
+        description="Haematology bench" org_id="7001" is_active="Y"
+        name_localization_id="7101" lastupdated="2025-06-01 12:00:00" />
+    <test_section id="702" name="BenchPara"
+        description="Parasitology bench" org_id="7001" is_active="Y"
+        name_localization_id="7102" lastupdated="2025-06-01 12:00:00" />
+
+    <test id="6601" name="Bench Haemoglobin"
+        description="Bench Haemoglobin"
+        guid="c2d5e7c8-9f12-4b3e-8d67-1e23a4b5c661" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2025-06-01 12:00:00" />
+    <test id="6602" name="Bench Malaria RDT"
+        description="Bench Malaria RDT"
+        guid="c2d5e7c8-9f12-4b3e-8d67-1e23a4b5c662" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2025-06-01 12:00:00" />
+
+    <!-- Bench control lot: NO instrument_id. Impossible before OGC-1147 relaxed
+        qc_control_lot.instrument_id — a bench lot has no analyzer to point at. -->
+    <qc_control_lot id="bench-lot-a"
+        fhir_uuid="55555555-5555-5555-5555-555555555501"
+        product_name="Bench Control Normal" lot_number="BENCH-A"
+        manufacturer="Bio-Rad" control_level="NORMAL" test_id="6601"
+        calculation_method="MANUFACTURER_FIXED" manufacturer_mean="100.00000"
+        manufacturer_std_dev="5.00000" activation_date="2025-01-01 00:00:00"
+        expiration_date="2026-12-31 00:00:00" status="ACTIVE" sys_user_id="1"
+        last_updated="2025-06-01 12:00:00" />
+
+    <qc_statistics id="bench-stats-a"
+        control_lot_id="bench-lot-a" calculation_date="2025-06-01 12:00:00"
+        mean="100.00000" standard_deviation="5.00000" num_values="1"
+        calculation_method="MANUFACTURER_FIXED"
+        validity_start="2025-01-01 00:00:00" sys_user_id="1"
+        last_updated="2025-06-01 12:00:00" />
+
+    <sample id="7501" accession_number="BENCH0001" status_id="1"
+        received_date="2025-06-09 00:00:00.0"
+        entered_date="2025-06-09 00:00:00.0"
+        collection_date="2025-06-09 00:00:00.0"
+        lastupdated="2025-06-09 12:00:00" />
+
+    <sample_item id="7801" sort_order="1" status_id="1"
+        samp_id="7501" collection_date="2025-06-10 09:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample_item id="7802" sort_order="2" status_id="1"
+        samp_id="7501" collection_date="2025-06-10 09:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample_item id="7803" sort_order="3" status_id="1"
+        samp_id="7501" collection_date="2025-06-10 09:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample_item id="7804" sort_order="4" status_id="1"
+        samp_id="7501" collection_date="2025-06-10 09:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+
+    <!-- In window [11:30, 12:00): must be linked -->
+    <analysis id="9101" sampitem_id="7801" test_id="6601"
+        test_sect_id="701" revision="1" status_id="1"
+        started_date="2025-06-10 11:45:00"
+        completed_date="2025-06-10 11:45:00" analysis_type="ROUTINE"
+        type_of_sample_name="Blood" corrected="false" reflex_trigger="false"
+        result_calculated="false" is_reportable="Y"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9101"
+        lastupdated="2025-06-10 11:45:00" />
+    <analysis id="9102" sampitem_id="7802" test_id="6601"
+        test_sect_id="701" revision="1" status_id="1"
+        started_date="2025-06-10 11:55:00"
+        completed_date="2025-06-10 11:55:00" analysis_type="ROUTINE"
+        type_of_sample_name="Blood" corrected="false" reflex_trigger="false"
+        result_calculated="false" is_reportable="Y"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9102"
+        lastupdated="2025-06-10 11:55:00" />
+    <!-- Before the last in-control control: must NOT be linked -->
+    <analysis id="9103" sampitem_id="7803" test_id="6601"
+        test_sect_id="701" revision="1" status_id="1"
+        started_date="2025-06-10 10:00:00"
+        completed_date="2025-06-10 10:00:00" analysis_type="ROUTINE"
+        type_of_sample_name="Blood" corrected="false" reflex_trigger="false"
+        result_calculated="false" is_reportable="Y"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9103"
+        lastupdated="2025-06-10 10:00:00" />
+    <!-- In window by time, but a different lab unit: must NOT be linked -->
+    <analysis id="9104" sampitem_id="7804" test_id="6601"
+        test_sect_id="702" revision="1" status_id="1"
+        started_date="2025-06-10 11:50:00"
+        completed_date="2025-06-10 11:50:00" analysis_type="ROUTINE"
+        type_of_sample_name="Blood" corrected="false" reflex_trigger="false"
+        result_calculated="false" is_reportable="Y"
+        fhir_uuid="c8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d9104"
+        lastupdated="2025-06-10 11:50:00" />
+</dataset>

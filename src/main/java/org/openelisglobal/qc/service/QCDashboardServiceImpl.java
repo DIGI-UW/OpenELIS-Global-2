@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -19,13 +20,17 @@ import org.openelisglobal.qc.dao.QCControlLotDAO;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
 import org.openelisglobal.qc.dto.AnalyteDetail;
+import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.dto.TriggeredRuleDetail;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
+import org.openelisglobal.qc.valueholder.QCSource;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,6 +70,9 @@ public class QCDashboardServiceImpl implements QCDashboardService {
 
     @Autowired
     private TestService testService;
+
+    @Autowired
+    private TestSectionService testSectionService;
 
     private Timestamp[] defaultDateRange() {
         Instant now = Instant.now();
@@ -205,6 +213,50 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         summary.setLastUpdateTime(DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
 
         return summary;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BenchQcSummaryRow> getBenchQcSummary(Timestamp startDate, Timestamp endDate, QCSource source) {
+        List<Object[]> rows = resultDAO.summariseBenchQc(startDate, endDate, source);
+        List<BenchQcSummaryRow> summary = new ArrayList<>();
+        for (Object[] row : rows) {
+            String testSectionId = Objects.toString(row[0], null);
+            String testId = Objects.toString(row[1], null);
+            summary.add(new BenchQcSummaryRow(testSectionId, resolveTestSectionName(testSectionId), testId,
+                    resolveTestName(testId), Objects.toString(row[2], null),
+                    row[3] == null ? 0L : ((Number) row[3]).longValue(),
+                    row[4] == null ? 0L : ((Number) row[4]).longValue(), (Timestamp) row[5]));
+        }
+        return summary;
+    }
+
+    /** Names are context, never a reason to fail the listing. */
+    private String resolveTestSectionName(String testSectionId) {
+        if (testSectionId == null) {
+            return null;
+        }
+        try {
+            TestSection section = testSectionService.get(testSectionId);
+            return section == null ? null : section.getLocalizedName();
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getName(), "resolveTestSectionName",
+                    "Could not resolve lab unit name for " + testSectionId);
+            return null;
+        }
+    }
+
+    private String resolveTestName(String testId) {
+        if (testId == null) {
+            return null;
+        }
+        try {
+            Test test = testService.get(testId);
+            return test == null ? null : test.getName();
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getName(), "resolveTestName", "Could not resolve test name for " + testId);
+            return null;
+        }
     }
 
     /**

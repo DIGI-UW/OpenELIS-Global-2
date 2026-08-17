@@ -184,10 +184,13 @@ public class InitialRunsCalculatorTest {
     /**
      * Test accuracy with known reference values Dataset: [95, 96, 97, 98, 99, 100,
      * 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114] Known
-     * Mean: 104.5 Known Sample SD: ~5.7663
+     * Mean: 104.5. Sum of squared deviations: 665. Sample SD (CLSI C24, ÷(N−1)):
+     * sqrt(665/19) = sqrt(35) = 5.9161 to 4 dp. The population SD (÷N) is 5.7663 —
+     * asserting the exact stored 4-dp value makes this test fail against a ÷N
+     * implementation (GAP-6).
      */
     @Test
-    public void testCalculate_WithReferenceDataset_ShouldMatchKnownValues() {
+    public void testCalculate_WithReferenceDataset_ShouldStoreSampleSD() {
         // Arrange: Create known dataset
         List<QCResult> results = new ArrayList<>();
         for (int i = 95; i <= 114; i++) {
@@ -199,9 +202,31 @@ public class InitialRunsCalculatorTest {
 
         // Assert
         assertNotNull("Statistics should not be null", statistics);
-        assertEquals("Mean should be 104.5", 104.5, statistics.getMean().doubleValue(), 0.01);
-        assertEquals("Standard deviation should be approximately 5.7663", 5.7663,
-                statistics.getStandardDeviation().doubleValue(), 0.01);
+        assertEquals("Mean should be exactly 104.5000", new BigDecimal("104.5000"), statistics.getMean());
+        assertEquals("Standard deviation must be the sample SD sqrt(665/19) = 5.9161, not the population SD 5.7663",
+                new BigDecimal("5.9161"), statistics.getStandardDeviation());
+        assertEquals("Num values should be 20", Integer.valueOf(20), statistics.getNumValues());
+    }
+
+    /**
+     * Sample SD is undefined for a single value — a lot configured with
+     * initialRunsCount=1 must not divide by zero.
+     */
+    @Test
+    public void testCalculate_WithSingleResult_ShouldReturnNull() {
+        QCControlLot singleRunLot = QCControlLotBuilder.create().withId("test-lot-4")
+                .withCalculationMethod("INITIAL_RUNS").withInitialRunsCount(1).build();
+        List<QCResult> results = new ArrayList<>();
+        results.add(QCResultBuilder.create().withResultValue(new BigDecimal("100.0")).build());
+
+        assertNull("Statistics should be null: sample SD needs at least 2 values",
+                calculator.calculate(singleRunLot, results));
+
+        // The trap: 2 results but a window capped at 1 — the effective sample is
+        // still a single value, and dividing by N−1 would be dividing by zero.
+        results.add(QCResultBuilder.create().withResultValue(new BigDecimal("101.0")).build());
+        assertNull("Statistics should be null: the effective sample is capped at initialRunsCount=1",
+                calculator.calculate(singleRunLot, results));
     }
 
 }

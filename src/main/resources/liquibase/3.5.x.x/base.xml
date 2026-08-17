@@ -209,4 +209,16 @@
   <include relativeToChangelogFile="true" file="081-reflex-sample-type-backfill.xml"/>
   <include relativeToChangelogFile="true" file="082-reflex-target-sample-type.xml"/>
 
+  <!-- OGC-701 / OGC-728: NCE trigger-source provenance for Westgard auto-created NCEs
+       (renumbered 051→076→083: develop claimed 051-075, then 076-082) -->
+  <include relativeToChangelogFile="true" file="083-nce-trigger-source.xml"/>
+
+  <!-- OGC-707: CAPA Register due date on nce_action_log
+       (renumbered 052→077→084: develop claimed 051-075, then 076-082) -->
+  <include relativeToChangelogFile="true" file="084-nce-action-log-due-date.xml"/>
+
+  <!-- C.1 / OGC-704: per-test TEa for Westgard sigma metrics
+       (renumbered 053→078→085: develop claimed 051-075, then 076-082) -->
+  <include relativeToChangelogFile="true" file="085-add-test-tea-column.xml"/>
+
 </databaseChangeLog>

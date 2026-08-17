@@ -8,7 +8,23 @@ import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * QCResult represents a single quality control measurement from an instrument.
+ * QCResult represents a single quality control measurement.
+ *
+ * <p>
+ * Since OGC-1147 this is the single store for all three QC sources (see
+ * {@link QCSource}): analyzer-transmitted results, bench quantitative controls,
+ * and RDT control lines. A separate "shared QcRun table" was considered for
+ * non-analyzer runs and rejected — it never existed in this codebase. Keeping
+ * one store means the Levey-Jennings chart, dashboard, export, rule engine and
+ * auto-NCE bridge all keep working unchanged.
+ *
+ * <p>
+ * Consequently {@code controlLotId}, {@code instrumentId} and
+ * {@code resultValue} are nullable: a bench run has no analyzer, an RDT
+ * cassette has no levelled control lot, and a qualitative outcome has no number
+ * . The {@code chk_qc_result_source_shape} database constraint is what keeps
+ * the combinations legal — every quantitative row still has a value, so
+ * existing readers of {@code resultValue} are unaffected.
  */
 @Entity
 @Table(name = "qc_result")
@@ -20,8 +36,12 @@ public class QCResult extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id;
 
-    @NotNull
-    @Column(name = "control_lot_id", nullable = false, length = 36)
+    // Nullable since OGC-1147: an RDT cassette is identified by controlLabel rather
+    // than
+    // by a levelled control-material record. Manual quantitative runs should still
+    // carry
+    // a lot — that is where the fixed mean/SD used for the z-score lives (D3).
+    @Column(name = "control_lot_id", length = 36)
     private String controlLotId;
 
     // testId and instrumentId reference Test.id and Analyzer.id (String,
@@ -32,14 +52,44 @@ public class QCResult extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
 
-    @NotNull
-    @Column(name = "instrument_id", nullable = false)
+    @Column(name = "instrument_id")
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String instrumentId;
 
-    @NotNull
-    @Column(name = "result_value", nullable = false, precision = 15, scale = 5)
+    // Nullable for RDT rows only; the DB CHECK guarantees every quantitative row
+    // has one.
+    @Column(name = "result_value", precision = 15, scale = 5)
     private BigDecimal resultValue;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, length = 10)
+    private QCSource source = QCSource.ASTM;
+
+    // D2: qualitative outcomes get their own column — never a magic number in
+    // resultValue.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "qualitative_outcome", length = 10)
+    private QCQualitativeOutcome qualitativeOutcome;
+
+    // Snapshot of the target in force when this control was captured, so a
+    // later
+    // edit to a configured target (OGC-1148) can never rewrite QC history.
+    @Column(name = "expected_value", precision = 15, scale = 5)
+    private BigDecimal expectedValue;
+
+    @Column(name = "uncertainty", precision = 15, scale = 5)
+    private BigDecimal uncertainty;
+
+    // Lab unit (test_section). The QC-fail signal is scoped by test AND lab
+    // unit, and a
+    // bench run has no analyzer to scope by instead.
+    @Column(name = "test_section_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String testSectionId;
+
+    // Kit or control designation for RDT runs.
+    @Column(name = "control_label", length = 120)
+    private String controlLabel;
 
     @Column(name = "unit_of_measure", length = 50)
     private String unitOfMeasure = "";
@@ -174,5 +224,53 @@ public class QCResult extends BaseObject<String> {
 
     public void setSystemUserId(Integer systemUserId) {
         this.systemUserId = systemUserId;
+    }
+
+    public QCSource getSource() {
+        return source;
+    }
+
+    public void setSource(QCSource source) {
+        this.source = source;
+    }
+
+    public QCQualitativeOutcome getQualitativeOutcome() {
+        return qualitativeOutcome;
+    }
+
+    public void setQualitativeOutcome(QCQualitativeOutcome qualitativeOutcome) {
+        this.qualitativeOutcome = qualitativeOutcome;
+    }
+
+    public BigDecimal getExpectedValue() {
+        return expectedValue;
+    }
+
+    public void setExpectedValue(BigDecimal expectedValue) {
+        this.expectedValue = expectedValue;
+    }
+
+    public BigDecimal getUncertainty() {
+        return uncertainty;
+    }
+
+    public void setUncertainty(BigDecimal uncertainty) {
+        this.uncertainty = uncertainty;
+    }
+
+    public String getTestSectionId() {
+        return testSectionId;
+    }
+
+    public void setTestSectionId(String testSectionId) {
+        this.testSectionId = testSectionId;
+    }
+
+    public String getControlLabel() {
+        return controlLabel;
+    }
+
+    public void setControlLabel(String controlLabel) {
+        this.controlLabel = controlLabel;
     }
 }

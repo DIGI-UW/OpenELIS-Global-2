@@ -22,6 +22,13 @@ public interface QCControlLotDAO extends BaseDAO<QCControlLot, String> {
     List<QCControlLot> getActiveByTestAndInstrument(String testId, String instrumentId) throws LIMSRuntimeException;
 
     /**
+     * Get active bench control lots for a test — those with no analyzer at all
+     * (instrument_id IS NULL). Without this there is no way to discover the lot a
+     * manual quantitative run needs, since every other lookup is keyed by analyzer.
+     */
+    List<QCControlLot> getActiveBenchByTest(String testId) throws LIMSRuntimeException;
+
+    /**
      * Get all ACTIVE control lots for an instrument across every test it's mapped
      * to. Used by bridge registration so the bridge can disambiguate lots embedded
      * in inbound sample names (FILE) or cross-check Q-segment lots (ASTM).
@@ -32,6 +39,15 @@ public interface QCControlLotDAO extends BaseDAO<QCControlLot, String> {
      * Get control lot by lot number.
      */
     QCControlLot getByLotNumber(String lotNumber) throws LIMSRuntimeException;
+
+    /**
+     * Get non-EXPIRED lots sharing (lotNumber, testId, controlLevel) — the
+     * uniqueness key for a usable lot (GAP-5). The same physical lot number
+     * legitimately recurs across different tests, and retired lots don't block
+     * reuse.
+     */
+    List<QCControlLot> getNonExpiredByLotTestAndLevel(String lotNumber, String testId, String controlLevel)
+            throws LIMSRuntimeException;
 
     /**
      * Count active control lots for a specific instrument.

@@ -241,6 +241,15 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 // tests fail order-dependently. Restore the seed invariant after
                 // every load so no dataset can drop it.
                 ensureAuditSystemUser();
+                ensureReferenceSeedRows();
+
+                // Fixture rows carry explicit ids but never advance the backing
+                // sequence, so a later sequence-backed insert into a fixture-named
+                // table collides with a seeded id (observation_history was the
+                // repeat offender). Every table a dataset names was just truncated,
+                // so MAX(id)+1 is exactly the right next value — resync here rather
+                // than hoping each test remembers resyncSequence().
+                resyncSequencesForTables(dataset.getTableNames());
 
                 // Refresh StatusService cache to pick up any status_of_sample changes
                 // from the loaded test data
@@ -403,6 +412,85 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                     + ")::bigint, false)");
         } catch (SQLException e) {
             throw new RuntimeException("Failed to resync sequence " + sequence + " from " + table, e);
+        }
+    }
+
+    /**
+     * {@link #resyncSequence} for every dataset-named table whose backing sequence
+     * follows the {@code 
+     * 
+    <table>
+     * _seq} convention and whose id column is numeric. Tables with UUID ids or
+     * unconventionally named sequences are skipped — no worse than before, when
+     * nothing was resynced at all.
+     *
+     * <p>
+     * Forward-only, via GREATEST against the sequence's own high-water mark:
+     * fixture rows never advance the sequence, so bumping it past MAX(id) fixes
+     * literal-id collisions — but pulling a high sequence DOWN to a just-truncated
+     * table's MAX+1 creates the opposite collision, because other tests insert
+     * literal low ids by raw JDBC outside any dataset load (dictionary id 8,
+     * history id 100009 in CI). A sequence may only ever move up.
+     */
+    private void resyncSequencesForTables(String[] tableNames) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            for (String table : tableNames) {
+                String tableName = table.toLowerCase();
+                String sequence = tableName + "_seq";
+                try (java.sql.PreparedStatement check = conn.prepareStatement("SELECT 1 FROM pg_class c"
+                        + " JOIN pg_namespace n ON n.oid = c.relnamespace"
+                        + " JOIN information_schema.columns col ON col.table_name = ? AND col.column_name = 'id'"
+                        + "   AND col.table_schema = 'clinlims' AND col.data_type IN ('numeric', 'integer', 'bigint')"
+                        + " WHERE c.relkind = 'S' AND c.relname = ? AND n.nspname = 'clinlims'")) {
+                    check.setString(1, tableName);
+                    check.setString(2, sequence);
+                    try (java.sql.ResultSet rs = check.executeQuery()) {
+                        if (!rs.next()) {
+                            continue;
+                        }
+                    }
+                }
+                try (Statement st = conn.createStatement()) {
+                    st.execute("SELECT setval('clinlims." + sequence + "', GREATEST("
+                            + "(SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims." + tableName + ")::bigint, "
+                            + "(SELECT last_value + 1 FROM clinlims." + sequence + ")), false)");
+                }
+            }
+        }
+    }
+
+    /**
+     * Reference vocabularies the production Liquibase seed guarantees but a fixture
+     * load can silently gut: {@code executeDataSetWithStateManagement} truncates
+     * every table a dataset names and re-inserts only the dataset's own rows, so a
+     * dataset declaring a partial {@code type_of_test_result} or
+     * {@code requester_type} leaves later suites without rows their inserts FK to
+     * (test_result_type_fk) or look up by name (getRequesterTypeByName). Restore
+     * the seed after every load, like {@link #ensureAuditSystemUser}: by id for
+     * type_of_test_result (fixture extras untouched), by name for requester_type
+     * (fixtures legitimately repurpose ids 1-2 for their own vocabularies).
+     */
+    private void ensureReferenceSeedRows() throws SQLException {
+        try (Connection conn = dataSource.getConnection(); Statement st = conn.createStatement()) {
+            st.execute("INSERT INTO clinlims.type_of_test_result (id, test_result_type, description, lastupdated,"
+                    + " hl7_value) VALUES" + " (1, 'R', 'Remark', now(), 'TX'), (2, 'D', 'Dictionary', now(), 'TX'),"
+                    + " (3, 'T', 'Titer', now(), 'TX'), (4, 'N', 'Numeric', now(), 'NM'),"
+                    + " (5, 'A', 'Alpha,no range check', now(), 'TX'), (6, 'M', 'Multiselect', now(), 'TX'),"
+                    + " (7, 'C', 'Cascading Multiselect', now(), 'TX')" + " ON CONFLICT (id) DO NOTHING");
+            // The record-status pair every sample/patient status write FKs to.
+            // ObservationHistoryService caches the name->id mapping at first use, so
+            // after a fixture guts this table the cached ids (15/16) FK-fail on
+            // insert — restoring by exact id is the only repair that honours the
+            // cache. Fixtures only ever declare ids 1-5, so no conflict.
+            st.execute("INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)"
+                    + " VALUES (15, 'SampleRecordStatus', 'Sample Record Status', now()),"
+                    + " (16, 'PatientRecordStatus', 'Patient Record Status', now())" + " ON CONFLICT (id) DO NOTHING");
+            for (String requesterType : new String[] { "organization", "provider" }) {
+                st.execute("INSERT INTO clinlims.requester_type (id, requester_type)"
+                        + " SELECT (SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.requester_type), '" + requesterType
+                        + "' WHERE NOT EXISTS (SELECT 1 FROM clinlims.requester_type WHERE requester_type = '"
+                        + requesterType + "')");
+            }
         }
     }
 

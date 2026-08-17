@@ -45,12 +45,46 @@ public interface ElectronicSignatureDAO extends BaseDAO<ElectronicSignature, Lon
             throws LIMSRuntimeException;
 
     /**
+     * Count signatures within a date range (QA Overview counter — avoids loading
+     * rows).
+     *
+     * @param startDate start of range (inclusive)
+     * @param endDate   end of range (inclusive)
+     * @return number of signatures executed in the range
+     */
+    long countSignaturesInDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException;
+
+    /**
      * Get signatures by meaning (e.g., all rejections).
      *
      * @param meaning signature meaning
      * @return list of signatures ordered by signed_at descending
      */
     List<ElectronicSignature> getSignaturesByMeaning(SignatureMeaning meaning) throws LIMSRuntimeException;
+
+    /**
+     * Search signatures with combined optional filters, paginated (E-Sig Log).
+     *
+     * @param startDate  start of range (inclusive, required)
+     * @param endDate    end of range (inclusive, required)
+     * @param signerId   optional signer filter
+     * @param meaning    optional meaning filter
+     * @param recordType optional record type filter
+     * @param page       0-based page index
+     * @param pageSize   rows per page
+     * @return matching page of signatures ordered by signed_at descending
+     */
+    List<ElectronicSignature> searchSignatures(Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType, int page, int pageSize) throws LIMSRuntimeException;
+
+    /**
+     * Count signatures matching the same filters as
+     * {@link #searchSignatures(Timestamp, Timestamp, Long, SignatureMeaning, String, int, int)}.
+     *
+     * @return total matching rows across all pages
+     */
+    long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
+            String recordType) throws LIMSRuntimeException;
 
     // ========================
     // First-Use Certification

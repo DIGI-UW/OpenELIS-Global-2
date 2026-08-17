@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Amendment Rate report module (OGC-698, QA v1 MVP).
+         First QA-added REST controller: /rest/reports/amendment. Access is
+         enforced by @PreAuthorize; these rows register the module for
+         role-management visibility per the QA release permission model. -->
+
+    <changeSet author="openelisglobal" id="qa-017-add-amendment-report-module">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'AmendmentReport'</sqlCheck>
+        </preConditions>
+        <comment>Add a module for the Amendment Rate report</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="AmendmentReport"/>
+            <column name="description" value="Amendment Rate quality indicator (results corrected after patient report)"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="N"/>
+            <column name="has_update_flag" value="N"/>
+            <column name="has_delete_flag" value="N"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_module" schemaName="clinlims">
+                <where>name = 'AmendmentReport'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-018-add-amendment-report-module-url">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module_url" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'AmendmentReport'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add URL mapping for the Amendment Rate report module</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/rest/reports/amendment"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'AmendmentReport')"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_module_url" schemaName="clinlims">
+                <where>url_path = '/rest/reports/amendment'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-019-assign-amendment-report-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Results'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'AmendmentReport'
+            </sqlCheck>
+        </preConditions>
+        <comment>Assign Amendment Rate report to Results role (read-only)</comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="N"/>
+            <column name="has_update" value="N"/>
+            <column name="has_delete" value="N"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Results')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'AmendmentReport')"/>
+        </insert>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results')
+                  AND system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'AmendmentReport');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-020-assign-amendment-report-reports">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reports'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'AmendmentReport'
+            </sqlCheck>
+        </preConditions>
+        <comment>Assign Amendment Rate report to Reports role (read-only)</comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="N"/>
+            <column name="has_update" value="N"/>
+            <column name="has_delete" value="N"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reports')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'AmendmentReport')"/>
+        </insert>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Reports')
+                  AND system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'AmendmentReport');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

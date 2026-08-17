@@ -26,6 +26,13 @@
 	<parameter name="leftHeaderImage" class="java.io.InputStream" isForPrompting="false"/>
 	<parameter name="rightHeaderImage" class="java.io.InputStream" isForPrompting="false"/>
 	<parameter name="imagesPath" class="java.lang.String"/>
+	<!-- OGC-686: accreditation logos and notes line. Fixed slots, filled
+	     in display order by AccreditationReportService; every one may be null, in
+	     which case nothing prints and the band is unchanged. -->
+	<parameter name="accredLogo1" class="java.io.InputStream" isForPrompting="false"/>
+	<parameter name="accredLogo2" class="java.io.InputStream" isForPrompting="false"/>
+	<parameter name="accredLogo3" class="java.io.InputStream" isForPrompting="false"/>
+	<parameter name="accredNotesLine" class="java.lang.String" isForPrompting="false"/>
 	<queryString>
 		<![CDATA[]]>
 	</queryString>
@@ -83,6 +90,41 @@
 					<imageExpression><![CDATA[$P{leftHeaderImage}]]></imageExpression>
 				</image>
 			</elementGroup>
+			<!-- OGC-686: accreditation logos sit in the free strip between
+			     the report title and the lab-manager line, so the band height never
+			     changes and an un-accredited report looks exactly as before. The
+			     strip is only 22pt tall — the notes line shares it to the left
+			     rather than stacking, which would shrink the logos to nothing. -->
+			<image scaleImage="RetainShape" hAlign="Center" vAlign="Middle" isUsingCache="false" onErrorType="Blank">
+				<reportElement x="290" y="58" width="46" height="20" uuid="5f1a0c11-0a01-4a19-9d21-4b0f00000001">
+					<printWhenExpression><![CDATA[$P{accredLogo1} != null]]></printWhenExpression>
+				</reportElement>
+				<imageExpression><![CDATA[$P{accredLogo1}]]></imageExpression>
+			</image>
+			<image scaleImage="RetainShape" hAlign="Center" vAlign="Middle" isUsingCache="false" onErrorType="Blank">
+				<reportElement x="340" y="58" width="46" height="20" uuid="5f1a0c11-0a01-4a19-9d21-4b0f00000002">
+					<printWhenExpression><![CDATA[$P{accredLogo2} != null]]></printWhenExpression>
+				</reportElement>
+				<imageExpression><![CDATA[$P{accredLogo2}]]></imageExpression>
+			</image>
+			<image scaleImage="RetainShape" hAlign="Center" vAlign="Middle" isUsingCache="false" onErrorType="Blank">
+				<reportElement x="390" y="58" width="46" height="20" uuid="5f1a0c11-0a01-4a19-9d21-4b0f00000003">
+					<printWhenExpression><![CDATA[$P{accredLogo3} != null]]></printWhenExpression>
+				</reportElement>
+				<imageExpression><![CDATA[$P{accredLogo3}]]></imageExpression>
+			</image>
+			<!-- The notes line names every in-force body with an accredited
+			     test on the report, whether or not its logo cleared the gate. Two
+			     lines' worth of room at font 6, so three body names still fit. -->
+			<textField isBlankWhenNull="true">
+				<reportElement x="105" y="59" width="180" height="19" uuid="5f1a0c11-0a01-4a19-9d21-4b0f00000004">
+					<printWhenExpression><![CDATA[$P{accredNotesLine} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{accredNotesLine}]]></textFieldExpression>
+			</textField>
 		</band>
 	</detail>
 	<columnFooter>

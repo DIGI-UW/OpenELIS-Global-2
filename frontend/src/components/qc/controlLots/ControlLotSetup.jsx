@@ -63,6 +63,18 @@ const ControlLotSetup = () => {
     standardDeviation: null,
   });
 
+  // A bench lot has no analyzer. Modelled as a first-class dropdown entry with an
+  // empty id so the field always shows what will actually be submitted, instead of
+  // reading as a required field the user forgot to fill in.
+  const BENCH_ANALYZER_ID = "";
+  const analyzerOptions = [
+    {
+      id: BENCH_ANALYZER_ID,
+      name: intl.formatMessage({ id: "qc.controlLot.analyzer.bench" }),
+    },
+    ...analyzers,
+  ];
+
   // Control level options (FR-002)
   const controlLevelOptions = [
     { id: "LOW", label: intl.formatMessage({ id: "qc.controlLot.level.low" }) },
@@ -92,9 +104,9 @@ const ControlLotSetup = () => {
         id: "qc.controlLot.validation.expirationRequired",
       }),
     ),
-    analyzerId: Yup.string().required(
-      intl.formatMessage({ id: "qc.controlLot.validation.analyzerRequired" }),
-    ),
+    // analyzerId is deliberately absent: a bench control lot for a manual method has
+    // no analyzer (OGC-1147), and the dropdown makes that an explicit choice
+    // rather than a blank field.
     testId: Yup.string().required(
       intl.formatMessage({ id: "qc.controlLot.validation.testRequired" }),
     ),
@@ -188,6 +200,34 @@ const ControlLotSetup = () => {
     setSubmitting(true);
     setError(null);
 
+    // Manufacturer-fixed lots need mean + SD, entered via "Configure". Catch it
+    // here so the user gets a clear pointer instead of an opaque backend 400.
+    if (
+      statisticsConfig.calculationMethod === "MANUFACTURER_FIXED" &&
+      (statisticsConfig.mean == null ||
+        statisticsConfig.standardDeviation == null)
+    ) {
+      setError(intl.formatMessage({ id: "qc.controlLot.error.statsRequired" }));
+      setSubmitting(false);
+      setFormSubmitting(false);
+      return;
+    }
+
+    // Same rule QCControlLotValidator enforces: with no analyzer there is nothing
+    // accumulating runs, so a run-derived method would leave the lot in
+    // ESTABLISHMENT forever. Caught here for a pointed message instead of a 400.
+    if (
+      !values.analyzerId &&
+      statisticsConfig.calculationMethod !== "MANUFACTURER_FIXED"
+    ) {
+      setError(
+        intl.formatMessage({ id: "qc.controlLot.error.benchNeedsFixedStats" }),
+      );
+      setSubmitting(false);
+      setFormSubmitting(false);
+      return;
+    }
+
     const payload = {
       id: isEditMode ? lotId : undefined,
       productName: values.controlMaterial,
@@ -214,12 +254,18 @@ const ControlLotSetup = () => {
     postToOpenElisServerFullResponse(
       "/rest/qc/controlLot",
       JSON.stringify(payload),
-      (response) => {
-        if (response.ok) {
+      async (response) => {
+        if (response && response.ok) {
           history.push("/analyzers/qc/control-lots");
         } else {
+          // Surface the backend's specific message (it returns the validation
+          // reason as the 400 body) rather than a generic "save failed".
+          const backendMsg = response
+            ? await response.text().catch(() => "")
+            : "";
           setError(
-            intl.formatMessage({ id: "qc.controlLot.error.saveFailed" }),
+            backendMsg?.trim() ||
+              intl.formatMessage({ id: "qc.controlLot.error.saveFailed" }),
           );
         }
         setSubmitting(false);
@@ -429,6 +475,22 @@ const ControlLotSetup = () => {
                         id: "qc.controlLot.field.expiration",
                       })}
                       onBlur={handleBlur("expirationDate")}
+                      // The outer flatpickr onChange only fires on calendar
+                      // selection, so typed input was silently dropped. Capture a
+                      // fully-typed date here (dateFormat is m/d/Y) so manual
+                      // entry persists like every other date field.
+                      onChange={(e) => {
+                        const typed = e.target.value;
+                        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(typed)) return;
+                        // Reject calendar-invalid dates (e.g. 13/45/2026) that
+                        // pass the shape regex — submit parses this via new Date()
+                        // and toISOString() would throw on an invalid date.
+                        const [mm, dd, yyyy] = typed.split("/");
+                        const d = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
+                        if (!isNaN(d.getTime())) {
+                          setFieldValue("expirationDate", typed);
+                        }
+                      }}
                       invalid={
                         touched.expirationDate && !!errors.expirationDate
                       }
@@ -450,17 +512,21 @@ const ControlLotSetup = () => {
                     label={intl.formatMessage({
                       id: "qc.controlLot.field.selectAnalyzer",
                     })}
-                    items={analyzers}
+                    helperText={intl.formatMessage({
+                      id: "qc.controlLot.field.analyzerHelper",
+                    })}
+                    items={analyzerOptions}
                     itemToString={(item) => item?.name || ""}
-                    selectedItem={analyzers.find(
+                    selectedItem={analyzerOptions.find(
                       (a) => a.id === values.analyzerId,
                     )}
                     onChange={({ selectedItem }) => {
-                      setFieldValue("analyzerId", selectedItem?.id || "");
+                      setFieldValue(
+                        "analyzerId",
+                        selectedItem?.id || BENCH_ANALYZER_ID,
+                      );
                       setFieldValue("testId", "");
                     }}
-                    invalid={touched.analyzerId && !!errors.analyzerId}
-                    invalidText={errors.analyzerId}
                     data-testid="control-lot-analyzer-dropdown"
                   />
                 </FormGroup>
@@ -485,7 +551,6 @@ const ControlLotSetup = () => {
                     }
                     invalid={touched.testId && !!errors.testId}
                     invalidText={errors.testId}
-                    disabled={!values.analyzerId}
                     data-testid="control-lot-test-dropdown"
                   />
                 </FormGroup>

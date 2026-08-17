@@ -877,6 +877,11 @@ public class ResultsLoadUtility {
         testItem.setTestMethod(analysisService.getMethodId(analysis));
         testItem.setAnalyzerId(analysis.getAnalyzerId());
         testItem.setResult(result);
+        // Persisted-result id: the saved-state signal the frontend gates
+        // post-save actions on (e.g. OGC-714 critical-callback logging).
+        if (result != null && result.getId() != null) {
+            testItem.setResultId(result.getId());
+        }
         testItem.setResultValue(getFormattedResultValue(result));
         testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getValue()));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));

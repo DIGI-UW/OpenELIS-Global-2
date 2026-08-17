@@ -674,6 +674,35 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
 
     @Override
     @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
+            Timestamp lowDate, Timestamp highDate) {
+        return getBaseObjectDAO().getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(analyzerId, testId, lowDate,
+                highDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before) {
+        return getBaseObjectDAO().existsAnalysisCompletedBeforeByAnalyzerAndTest(analyzerId, testId, before);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId,
+            String testId, Timestamp lowDate, Timestamp highDate) {
+        return getBaseObjectDAO().getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(testSectionId, testId,
+                lowDate, highDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId,
+            Timestamp before) {
+        return getBaseObjectDAO().existsAnalysisCompletedBeforeByTestSectionAndTest(testSectionId, testId, before);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAllMaxRevisionAnalysesPerTest(Test test) {
         return getBaseObjectDAO().getAllMaxRevisionAnalysesPerTest(test);
     }

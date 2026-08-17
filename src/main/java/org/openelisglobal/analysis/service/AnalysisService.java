@@ -107,6 +107,20 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAnalysisCompleteInRange(Timestamp lowDate, Timestamp highDate);
 
+    List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
+            Timestamp lowDate, Timestamp highDate);
+
+    boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before);
+
+    /**
+     * Lab-unit-keyed affected-analysis window for bench controls (OGC-1147).
+     */
+    List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId, String testId,
+            Timestamp lowDate, Timestamp highDate);
+
+    /** Lab-unit-keyed counterpart used for cap-reason accuracy (OGC-1147). */
+    boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId, Timestamp before);
+
     List<Analysis> getAnalysesForStatusId(String statusId);
 
     int getCountOfAnalysesForStatusIds(List<String> statusIdList);

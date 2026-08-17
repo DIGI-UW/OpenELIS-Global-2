@@ -165,6 +165,43 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAnalysisCompleteInRange(Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException;
 
+    /**
+     * Projected [sampleItemId, analysisId] pairs for patient analyses of a test
+     * completed on an analyzer within a window, newest first. Returns scalar ids —
+     * not managed entities — so the caller can dedupe result revisions to distinct
+     * samples and avoid loading version-locked rows that collide under concurrent
+     * NCE creation (OGC-728). Callers dedupe/cap by sample.
+     */
+    List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
+            Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException;
+
+    /**
+     * Whether any patient analysis of a test completed on an analyzer strictly
+     * before the given time. Used to tell whether the 24h affected-samples floor
+     * actually excluded samples (OGC-728 cap-reason accuracy).
+     */
+    /**
+     * The lab-unit-keyed counterpart of
+     * {@link #getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange}, for
+     * controls run at the bench (OGC-1147). A manual or RDT control has no
+     * analyzer, so its blast radius is every analysis of that test completed in the
+     * same lab unit inside the window. Same contract otherwise: {sampleItemId,
+     * analysisId} pairs, newest first, callers dedupe and cap by sample.
+     */
+    List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId, String testId,
+            Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException;
+
+    /**
+     * Lab-unit-keyed counterpart of
+     * {@link #existsAnalysisCompletedBeforeByAnalyzerAndTest}, so a bench control's
+     * cap reason is as accurate as an analyzer's.
+     */
+    boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId, Timestamp before)
+            throws LIMSRuntimeException;
+
+    boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before)
+            throws LIMSRuntimeException;
+
     List<Analysis> getAnalysisEnteredAfterDate(Timestamp latestCollectionDate) throws LIMSRuntimeException;
 
     List<Analysis> getAnalysisByAccessionAndTestId(String accessionNumber, String testId) throws LIMSRuntimeException;

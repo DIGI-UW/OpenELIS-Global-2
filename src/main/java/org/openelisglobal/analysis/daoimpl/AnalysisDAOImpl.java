@@ -1378,6 +1378,94 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
+            Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException {
+        String sql = "SELECT a.sampleItem.id, a.id FROM Analysis a"
+                + " WHERE a.analyzerId = :analyzerId AND a.test.id = :testId AND a.sampleItem IS NOT NULL"
+                + " AND a.completedDate >= :lowDate AND a.completedDate < :highDate"
+                + " ORDER BY a.completedDate DESC, a.id DESC";
+
+        try {
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(sql, Object[].class);
+            query.setParameter("analyzerId", analyzerId);
+            query.setParameter("testId", testId);
+            query.setParameter("lowDate", lowDate);
+            query.setParameter("highDate", highDate);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange");
+        }
+
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId,
+            String testId, Timestamp lowDate, Timestamp highDate) throws LIMSRuntimeException {
+        String sql = "SELECT a.sampleItem.id, a.id FROM Analysis a"
+                + " WHERE a.testSection.id = :testSectionId AND a.test.id = :testId AND a.sampleItem IS NOT NULL"
+                + " AND a.completedDate >= :lowDate AND a.completedDate < :highDate"
+                + " ORDER BY a.completedDate DESC, a.id DESC";
+
+        try {
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(sql, Object[].class);
+            query.setParameter("testSectionId", testSectionId);
+            query.setParameter("testId", testId);
+            query.setParameter("lowDate", lowDate);
+            query.setParameter("highDate", highDate);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange");
+        }
+
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId,
+            Timestamp before) throws LIMSRuntimeException {
+        String sql = "SELECT a.id FROM Analysis a WHERE a.testSection.id = :testSectionId AND a.test.id = :testId"
+                + " AND a.sampleItem IS NOT NULL AND a.completedDate < :before";
+
+        try {
+            Query<String> query = entityManager.unwrap(Session.class).createQuery(sql, String.class);
+            query.setParameter("testSectionId", testSectionId);
+            query.setParameter("testId", testId);
+            query.setParameter("before", before);
+            query.setMaxResults(1);
+            return !query.list().isEmpty();
+        } catch (HibernateException e) {
+            handleException(e, "existsAnalysisCompletedBeforeByTestSectionAndTest");
+        }
+
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before)
+            throws LIMSRuntimeException {
+        String sql = "SELECT a.id FROM Analysis a WHERE a.analyzerId = :analyzerId AND a.test.id = :testId"
+                + " AND a.sampleItem IS NOT NULL AND a.completedDate < :before";
+
+        try {
+            Query<String> query = entityManager.unwrap(Session.class).createQuery(sql, String.class);
+            query.setParameter("analyzerId", analyzerId);
+            query.setParameter("testId", testId);
+            query.setParameter("before", before);
+            query.setMaxResults(1);
+            return !query.list().isEmpty();
+        } catch (HibernateException e) {
+            handleException(e, "existsAnalysisCompletedBeforeByAnalyzerAndTest");
+        }
+
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAnalysisEnteredAfterDate(Timestamp date) throws LIMSRuntimeException {
         String sql = "From Analysis a where a.enteredDate > :date";
 

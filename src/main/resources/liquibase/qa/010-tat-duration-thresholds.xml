@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-710 TAT thresholds switch from on-time compliance %
+    (HIGHER_BETTER, seeded 90/80 by qa/007) to mean-TAT HOURS (LOWER_BETTER,
+    24h target / 48h action). Rationale: every TAT surface computes a mean
+    duration; the compliance % was never computed anywhere, and the per-test
+    TAT targets it would need (test.time_ta_*) are unpopulated with no admin
+    UI. The QiIndicator enum direction flips in the same change; this
+    changeset rewrites ALL qi_config TAT rows (default + any overrides)
+    because the unit itself changed - old %-semantics values are meaningless
+    as hours and would fail the LOWER_BETTER ordering validation.
+    -->
+    <changeSet author="openelisglobal" id="qi-config-004-tat-duration-thresholds">
+        <comment>TAT qi_config thresholds become mean-TAT hours (24 target / 48 action), LOWER_BETTER</comment>
+        <update schemaName="clinlims" tableName="qi_config">
+            <column name="target_threshold" valueNumeric="24"/>
+            <column name="action_threshold" valueNumeric="48"/>
+            <where>indicator_key = 'TAT'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="qi_config">
+                <column name="target_threshold" valueNumeric="90"/>
+                <column name="action_threshold" valueNumeric="80"/>
+                <where>indicator_key = 'TAT' AND test_category_id IS NULL</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -51,8 +51,9 @@ public class QCControlLotServiceTest {
 
     @Before
     public void setUp() {
-        // Inject the mocked statisticsDAO into the real validator
+        // Inject the mocked DAOs into the real validator
         ReflectionTestUtils.setField(validator, "statisticsDAO", statisticsDAO);
+        ReflectionTestUtils.setField(validator, "controlLotDAO", controlLotDAO);
 
         testControlLot = QCControlLotBuilder.create().withId("test-lot-1").withProductName("Hematology Control Level 1")
                 .withLotNumber("LOT-2025-001").withTestId("1").withInstrumentId("1").build();
@@ -133,6 +134,56 @@ public class QCControlLotServiceTest {
         verify(controlLotDAO, times(1)).get("test-lot-3");
         // Verify rule config seeding was attempted for this lot's test+instrument
         verify(ruleConfigService).findByTestAndInstrument(lot.getTestId(), lot.getInstrumentId());
+    }
+
+    /**
+     * GAP-5: a second live lot with the same (lotNumber, testId, controlLevel) must
+     * be refused before insert — duplicate rows split the lot's statistics between
+     * two controlLotIds.
+     */
+    @Test
+    public void testCreateControlLot_DuplicateLiveLot_ShouldThrowAndNotInsert() {
+        // Arrange: an ACTIVE lot with the same uniqueness key already exists
+        QCControlLot duplicate = QCControlLotBuilder.create().withId("new-lot").withLotNumber("UAT-BENCH-13")
+                .withTestId("13").withControlLevel("NORMAL").withCalculationMethod("MANUFACTURER_FIXED")
+                .withManufacturerValues(100.0, 5.0).build();
+        QCControlLot existing = QCControlLotBuilder.create().withId("existing-lot").withLotNumber("UAT-BENCH-13")
+                .withTestId("13").withControlLevel("NORMAL").withStatus("ACTIVE").build();
+        when(controlLotDAO.getNonExpiredByLotTestAndLevel("UAT-BENCH-13", "13", "NORMAL"))
+                .thenReturn(Arrays.asList(existing));
+
+        // Act + Assert
+        try {
+            controlLotService.createControlLot(duplicate);
+            fail("Expected IllegalArgumentException for duplicate live lot");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Message should name the conflicting lot number: " + e.getMessage(),
+                    e.getMessage().contains("UAT-BENCH-13"));
+            assertTrue("Message should name the conflicting lot's status: " + e.getMessage(),
+                    e.getMessage().contains("ACTIVE"));
+        }
+        verify(controlLotDAO, never()).insert(any(QCControlLot.class));
+    }
+
+    /**
+     * GAP-5: on update, the lot's own row is not a duplicate of itself.
+     */
+    @Test
+    public void testUpdateControlLot_OnlyMatchIsItself_ShouldNotThrow() {
+        QCControlLot lot = QCControlLotBuilder.create().withId("self-lot").withLotNumber("UAT-BENCH-13")
+                .withTestId("13").withControlLevel("NORMAL").withCalculationMethod("MANUFACTURER_FIXED")
+                .withManufacturerValues(100.0, 5.0).withStatus("ESTABLISHMENT").build();
+        when(controlLotDAO.getNonExpiredByLotTestAndLevel("UAT-BENCH-13", "13", "NORMAL"))
+                .thenReturn(Arrays.asList(lot));
+        when(controlLotDAO.insert(any(QCControlLot.class))).thenReturn("self-lot");
+        when(controlLotDAO.get("self-lot")).thenReturn(Optional.of(lot));
+        when(statisticsDAO.findLatestByControlLot("self-lot"))
+                .thenReturn(new org.openelisglobal.qc.valueholder.QCStatistics());
+
+        QCControlLot result = controlLotService.createControlLot(lot);
+
+        assertNotNull("Save must succeed when the only key match is the lot itself", result);
+        verify(controlLotDAO, times(1)).insert(any(QCControlLot.class));
     }
 
     /**

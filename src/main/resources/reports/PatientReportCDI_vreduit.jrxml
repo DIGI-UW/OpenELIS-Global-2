@@ -36,6 +36,10 @@
 	</parameter>
 	<parameter name="leftHeaderImage" class="java.io.InputStream" isForPrompting="false"/>
 	<parameter name="rightHeaderImage" class="java.io.InputStream" isForPrompting="false"/>
+	<parameter name="accredLogo1" class="java.io.InputStream" isForPrompting="false"/>
+	<parameter name="accredLogo2" class="java.io.InputStream" isForPrompting="false"/>
+	<parameter name="accredLogo3" class="java.io.InputStream" isForPrompting="false"/>
+	<parameter name="accredNotesLine" class="java.lang.String" isForPrompting="false"/>
 	<parameter name="labDirectorName" class="java.lang.String" isForPrompting="false"/>
 	<parameter name="labDirectorTitle" class="java.lang.String" isForPrompting="false"/>
 	<parameter name="useLabDirectorSignature" class="java.lang.Boolean" isForPrompting="false"/>
@@ -966,6 +970,18 @@
 				</subreportParameter>
 				<subreportParameter name="leftHeaderImage">
 					<subreportParameterExpression><![CDATA[$P{leftHeaderImage}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="accredLogo1">
+					<subreportParameterExpression><![CDATA[$P{accredLogo1}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="accredLogo2">
+					<subreportParameterExpression><![CDATA[$P{accredLogo2}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="accredLogo3">
+					<subreportParameterExpression><![CDATA[$P{accredLogo3}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="accredNotesLine">
+					<subreportParameterExpression><![CDATA[$P{accredNotesLine}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="SUBREPORT_DIR">
 					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>

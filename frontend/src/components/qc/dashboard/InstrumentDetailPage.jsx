@@ -9,7 +9,6 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Button,
   Tag,
   Tile,
   Tabs,
@@ -20,7 +19,7 @@ import {
   Loading,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   getComplianceTagType,
   getComplianceLabelKey,
@@ -36,7 +35,6 @@ import "./InstrumentDetailModal.css";
 
 const InstrumentDetailPage = () => {
   const intl = useIntl();
-  const history = useHistory();
   const { instrumentId } = useParams();
   const [instrument, setInstrument] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -188,14 +186,6 @@ const InstrumentDetailPage = () => {
           </TabPanels>
         </Tabs>
       </div>
-
-      <Button
-        kind="secondary"
-        onClick={() => history.push("/analyzers/qc/db")}
-        style={{ marginTop: "1rem" }}
-      >
-        {intl.formatMessage({ id: "qc.dashboard.title" })}
-      </Button>
     </div>
   );
 };

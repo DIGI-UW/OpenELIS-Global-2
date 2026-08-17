@@ -7,16 +7,21 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.qc.dao.QCControlLotDAO;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCStatisticsDAO;
+import org.openelisglobal.qc.event.BenchControlFailedEvent;
 import org.openelisglobal.qc.event.QCResultCreatedEvent;
+import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.service.calculator.StatisticsCalculator;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
 import org.openelisglobal.qc.valueholder.QCResult;
+import org.openelisglobal.qc.valueholder.QCSource;
 import org.openelisglobal.qc.valueholder.QCStatistics;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -70,6 +75,24 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         return resultDAO;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<QCResult> findLatestAcceptedBefore(String instrumentId, String testId, Timestamp before) {
+        return resultDAO.findLatestAcceptedBefore(instrumentId, testId, before);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<QCResult> findLatestAcceptedBenchResultBefore(String testSectionId, String testId, Timestamp before) {
+        return resultDAO.findLatestAcceptedBenchResultBefore(testSectionId, testId, before);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<QCResult> findBenchResults(Timestamp startDate, Timestamp endDate, QCSource source, int maxRows) {
+        return resultDAO.findBenchResults(startDate, endDate, source, maxRows);
+    }
+
     /**
      * Create a QC result from analyzer data (Task T140)
      *
@@ -120,16 +143,7 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         }
 
         // Calculate z-score (null during establishment when no statistics exist)
-        BigDecimal zScore = null;
-        if (statistics != null) {
-            BigDecimal mean = statistics.getMean();
-            BigDecimal stdDev = statistics.getStandardDeviation();
-            if (stdDev == null || stdDev.compareTo(BigDecimal.ZERO) == 0) {
-                zScore = BigDecimal.ZERO;
-            } else {
-                zScore = resultValue.subtract(mean).divide(stdDev, 4, RoundingMode.HALF_UP);
-            }
-        }
+        BigDecimal zScore = statistics != null ? computeZScore(resultValue, statistics) : null;
 
         // Create QC Result entity
         QCResult result = new QCResult();
@@ -178,6 +192,142 @@ public class QCResultServiceImpl extends BaseObjectServiceImpl<QCResult, String>
         }
 
         return persistedResult.get();
+    }
+
+    /**
+     * Record a bench control run (OGC-1147). See
+     * {@link QCResultService#createBenchQCResult(BenchQCCaptureForm, int)} for the
+     * contract; this method deliberately mirrors the ASTM path above rather than
+     * refactoring it, so the shipped analyzer flow is untouched (NFR-1).
+     */
+    @Override
+    @Transactional
+    public QCResult createBenchQCResult(BenchQCCaptureForm capture, int sysUserId) throws IllegalArgumentException {
+
+        QCSource source = capture.getSource();
+        if (source == null || !source.isBenchEntered()) {
+            throw new IllegalArgumentException("Bench capture requires source MANUAL or RDT, got: " + source);
+        }
+        QCQualitativeOutcome outcome = capture.getQualitativeOutcome();
+        if (outcome == null) {
+            throw new IllegalArgumentException("Bench capture requires a qualitative outcome");
+        }
+        // The DB CHECK guards value-vs-outcome presence; it deliberately does not pair
+        // outcome vocabularies to sources, so that OGC-427/428 can add sources without
+        // rewriting the constraint. That pairing is enforced here instead.
+        if (!outcome.isValidFor(source)) {
+            throw new IllegalArgumentException("Outcome " + outcome + " is not valid for source " + source);
+        }
+
+        BigDecimal resultValue = capture.getResultValue();
+        if (source.isQuantitative() && resultValue == null) {
+            throw new IllegalArgumentException("A " + source + " control requires a measured value");
+        }
+        if (!source.isQuantitative() && resultValue != null) {
+            // Never store a synthetic number for a qualitative outcome.
+            throw new IllegalArgumentException("An " + source + " control must not carry a measured value");
+        }
+
+        // A control lot is optional for RDT (the cassette is named by controlLabel) but
+        // is
+        // what makes a manual quantitative run plottable, so validate it when present.
+        QCControlLot controlLot = null;
+        if (capture.getControlLotId() != null) {
+            controlLot = controlLotDAO.get(capture.getControlLotId()).orElseThrow(
+                    () -> new IllegalArgumentException("Control lot not found: " + capture.getControlLotId()));
+            String status = controlLot.getStatus();
+            if (!"ACTIVE".equals(status) && !"ESTABLISHMENT".equals(status)) {
+                throw new IllegalArgumentException(
+                        "Control lot is not usable: " + controlLot.getId() + " (status: " + status + ")");
+            }
+            // The UI only offers bench lots, but the API must refuse too: a bench
+            // point recorded against an analyzer's lot enters that analyzer's
+            // history and its multi-result Westgard windows.
+            if (StringUtils.isNotBlank(controlLot.getInstrumentId())) {
+                throw new IllegalArgumentException("Control lot " + controlLot.getId()
+                        + " belongs to an analyzer; a bench capture requires a bench (no-analyzer) lot");
+            }
+        } else if (source.isQuantitative()) {
+            throw new IllegalArgumentException("A " + source + " control requires a control lot");
+        }
+
+        // Same z-score arithmetic as the analyzer path. Null when the lot has no
+        // statistics yet (establishment) or when there is no number at all (RDT) — and
+        // a
+        // null z-score is what keeps RDT runs out of Westgard evaluation, per D4.
+        BigDecimal zScore = null;
+        if (controlLot != null && resultValue != null) {
+            QCStatistics statistics = statisticsDAO.findLatestByControlLot(controlLot.getId());
+            if (statistics != null) {
+                zScore = computeZScore(resultValue, statistics);
+            }
+        }
+
+        LocalDateTime runAt = capture.getRunDateTime() != null ? capture.getRunDateTime() : LocalDateTime.now();
+
+        QCResult result = new QCResult();
+        result.setId(UUID.randomUUID().toString());
+        result.setSource(source);
+        result.setQualitativeOutcome(outcome);
+        result.setTestId(capture.getTestId());
+        result.setTestSectionId(capture.getTestSectionId());
+        result.setControlLotId(capture.getControlLotId());
+        result.setControlLabel(capture.getControlLabel());
+        result.setResultValue(resultValue);
+        result.setUnitOfMeasure(resolveUnit(capture.getUnitOfMeasure(), capture.getTestId()));
+        result.setExpectedValue(capture.getExpectedValue());
+        result.setUncertainty(capture.getUncertainty());
+        result.setZScore(zScore);
+        result.setRunDateTime(Timestamp.valueOf(runAt));
+        // The tech has already judged this run, so it is not PENDING evaluation the way
+        // an
+        // analyzer result is: record their verdict directly.
+        result.setResultStatus(outcome.isFailing() ? "REJECTED" : "ACCEPTED");
+        result.setNonConformityFlag(outcome.isFailing());
+        result.setExternalNotes(capture.getNotes());
+        // The acting technician, not SYSTEM_AUTOMATION_USER_ID — this is the seam that
+        // made
+        // a bench path impossible before OGC-1147.
+        result.setSystemUserId(sysUserId);
+        result.setSysUserId(String.valueOf(sysUserId));
+        result.setTechnicianId(sysUserId);
+
+        String id = resultDAO.insert(result);
+        LogEvent.logInfo(this.getClass().getName(), "createBenchQCResult",
+                "Recorded " + source + " QC result " + id + " outcome=" + outcome);
+
+        QCResult persisted = resultDAO.get(id)
+                .orElseThrow(() -> new LIMSRuntimeException("Failed to retrieve persisted QC result: " + id));
+
+        // Identical gate to the analyzer path: only a lot with real statistics and a
+        // computed z-score reaches rule evaluation.
+        if (controlLot != null && "ACTIVE".equals(controlLot.getStatus()) && persisted.getZScore() != null) {
+            eventPublisher.publishEvent(new QCResultCreatedEvent(this, persisted));
+        }
+
+        // Raised as an after-commit event, never inline. Anything that throws while
+        // raising the signal would mark THIS transaction rollback-only, and catching it
+        // here would not undo that — the control result would be silently discarded by
+        // the very code meant to react to it. See BenchControlFailedEventListener.
+        if (outcome.isFailing()) {
+            eventPublisher.publishEvent(new BenchControlFailedEvent(this, persisted));
+        }
+
+        return persisted;
+    }
+
+    /**
+     * Z-score of a measured value against a lot's established statistics. Extracted
+     * so the analyzer and bench paths cannot drift apart; behaviour is unchanged
+     * from the inline form it replaces, including returning zero rather than
+     * dividing by a zero SD.
+     */
+    private BigDecimal computeZScore(BigDecimal resultValue, QCStatistics statistics) {
+        BigDecimal stdDev = statistics.getStandardDeviation();
+        if (stdDev == null || stdDev.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        return resultValue.subtract(statistics.getMean()).divide(stdDev, 4, RoundingMode.HALF_UP);
     }
 
     /**

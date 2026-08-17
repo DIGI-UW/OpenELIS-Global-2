@@ -17,9 +17,12 @@ import {
   TableHeader,
   Checkbox,
   TableCell,
+  DatePicker,
+  DatePickerInput,
 } from "@carbon/react";
 
 import { FormattedMessage, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import { initialReportFormValues, selectOptions } from "./ViewNonConforming";
 import {
   getDifferenceInDays,
@@ -42,9 +45,16 @@ const initialFormData = {
     actionType: null,
     personResponsible: undefined,
     dateCompleted: undefined,
+    dueDate: undefined,
     turnAroundTime: undefined,
   },
 };
+
+// yyyy-MM-dd in local time; Jackson binds this straight to the java.sql.Date due_date column.
+const toIsoDate = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
 
 export const NCECorrectiveAction = () => {
   const [reportFormValues, setReportFormValues] = useState(
@@ -62,6 +72,22 @@ export const NCECorrectiveAction = () => {
     useContext(NotificationContext);
 
   const intl = useIntl();
+  const location = useLocation();
+
+  // Deep-link prefill: /NCECorrectiveAction?nceNumber=NCE-... opens the form for that
+  // NCE directly (e.g. the dashboard CAPA "Add" button), reusing the search-select load
+  // path by seeding the search field and setting `selected`.
+  useEffect(() => {
+    const nceNumber = new URLSearchParams(location.search).get("nceNumber");
+    if (nceNumber) {
+      setReportFormValues({
+        type: "nceNumber",
+        value: nceNumber,
+        error: undefined,
+      });
+      setSelected(nceNumber);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (selected) {
@@ -73,10 +99,10 @@ export const NCECorrectiveAction = () => {
               return;
             }
             setTData(null);
-            setFormData({
-              ...formData,
+            setFormData((prev) => ({
+              ...prev,
               discussionDate: data.discussionDate,
-            });
+            }));
 
             setData(data);
           },
@@ -112,10 +138,15 @@ export const NCECorrectiveAction = () => {
     }
   };
 
+  // dateCompleted is a shared NCE-level field: the same formData.dateCompleted
+  // backs both the corrective-action row's picker and the resolution section's
+  // picker. It is therefore NOT part of "is the corrective-action row blank" —
+  // otherwise filling only the resolution date makes an empty row look
+  // non-blank and blocks a resolution-only submit (canSubmit dead-end).
   const actionLogIsBlank =
     !formData.actionLog.correctiveAction &&
     !formData.actionLog.personResponsible &&
-    !formData.dateCompleted &&
+    !formData.actionLog.dueDate &&
     !formData.actionLog.actionType;
 
   const actionLogIsComplete =
@@ -124,7 +155,12 @@ export const NCECorrectiveAction = () => {
     !!formData.dateCompleted &&
     !!formData.actionLog.actionType?.split(",").filter(Boolean).length;
 
-  const canSubmit = !!submit && (actionLogIsBlank || actionLogIsComplete);
+  // F-4: Submit saves the corrective action whenever the row is complete. The
+  // effectiveness review (submit === true → Yes, false → No) is a distinct record:
+  // answering it is enough to submit on its own, and only a "Yes" verdict resolves
+  // the NCE — a "No" verdict is recorded without closing (so the outcome isn't lost).
+  const reviewAnswered = submit !== null;
+  const canSubmit = actionLogIsComplete || (actionLogIsBlank && reviewAnswered);
 
   const handleNCEFormSubmit = () => {
     if (!canSubmit) {
@@ -146,6 +182,13 @@ export const NCECorrectiveAction = () => {
       dateCompleted: formData[`dateCompleted`] ?? "",
       discussionDate: formData[`discussionDate`] ?? "",
     };
+
+    // F-4: send the actual effectiveness verdict when answered. The backend persists
+    // it either way; only "Yes" transitions the NCE to Completed, "No" is recorded
+    // without closing.
+    if (reviewAnswered) {
+      body.effective = submit ? "Yes" : "No";
+    }
 
     postToOpenElisServerJsonResponse(
       "/rest/NCECorrectiveAction",
@@ -176,13 +219,13 @@ export const NCECorrectiveAction = () => {
   };
 
   const handleCorrectiveActionChange = (e) => {
-    setFormData({
-      ...data,
+    setFormData((prev) => ({
+      ...prev,
       actionLog: {
-        ...formData.actionLog,
+        ...prev.actionLog,
         correctiveAction: e.target.value,
       },
-    });
+    }));
   };
 
   const handleDiscussionDateChange = (date) => {
@@ -191,30 +234,25 @@ export const NCECorrectiveAction = () => {
 
   const handleAddDiscussionDate = () => {
     if (tdiscussionDate) {
-      if (data.discussionDate) {
-        setFormData({
-          ...formData,
-          discussionDate: data.discussionDate + "," + tdiscussionDate,
-        });
-      } else {
-        setFormData({
-          ...formData,
-          discussionDate: tdiscussionDate,
-        });
-      }
-
+      const combined = data.discussionDate
+        ? data.discussionDate + "," + tdiscussionDate
+        : tdiscussionDate;
+      setFormData((prev) => ({
+        ...prev,
+        discussionDate: combined,
+      }));
       setTDiscussionDate(null);
     }
   };
 
   const handlePersonResponsibleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       actionLog: {
-        ...formData.actionLog,
+        ...prev.actionLog,
         personResponsible: e.target.value,
       },
-    });
+    }));
   };
 
   const handleActionTypeChange = (value) => {
@@ -361,12 +399,11 @@ export const NCECorrectiveAction = () => {
                             {row.nceNumber}
                           </TableCell>
                           <TableCell key={row.key + "2"}>
-                            {
-                              tData.reportingUnits.find(
-                                (obj) =>
-                                  parseInt(obj.id) === row.reportingUnitId,
-                              ).value
-                            }
+                            {/* system-created NCEs may carry no reporting
+                                unit */}
+                            {tData.reportingUnits.find(
+                              (obj) => parseInt(obj.id) === row.reportingUnitId,
+                            )?.value ?? "—"}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -469,9 +506,12 @@ export const NCECorrectiveAction = () => {
                     <FormattedMessage id="nonconform.label.prescibernamesite" />
                   </span>
                 </div>
-                <div
-                  style={{ marginBottom: "10px" }}
-                >{`${data.prescriberName}-${data.site}`}</div>
+                <div style={{ marginBottom: "10px" }}>
+                  {/* system-created NCEs carry no prescriber/site */}
+                  {[data.prescriberName, data.site]
+                    .filter(Boolean)
+                    .join(" - ") || "—"}
+                </div>
               </Column>
               <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
                 <div style={{ marginBottom: "10px" }}>
@@ -629,7 +669,7 @@ export const NCECorrectiveAction = () => {
                 {" "}
                 <br></br>
               </Column>
-              <Column lg={4} md={3} sm={3}>
+              <Column lg={3} md={3} sm={3}>
                 {" "}
                 <h5>
                   <FormattedMessage id="banner.menu.nonconformity.correctiveActions" />
@@ -649,10 +689,16 @@ export const NCECorrectiveAction = () => {
               <Column lg={3} md={3} sm={3}>
                 {" "}
                 <h5>
+                  <FormattedMessage id="nce.capa.dueDate" />{" "}
+                </h5>
+              </Column>
+              <Column lg={2} md={3} sm={3}>
+                {" "}
+                <h5>
                   <FormattedMessage id="nonconform.corrective.actionType" />{" "}
                 </h5>
               </Column>
-              <Column lg={3} md={3} sm={3}>
+              <Column lg={2} md={3} sm={3}>
                 {" "}
                 <h5>
                   <FormattedMessage id="nonconform.nce.turnaround.time" />{" "}
@@ -662,7 +708,7 @@ export const NCECorrectiveAction = () => {
                 {" "}
                 <br></br>
               </Column>
-              <Column lg={4} md={3} sm={3}>
+              <Column lg={3} md={3} sm={3}>
                 <TextArea
                   labelText=""
                   value={formData.actionLog[`correctiveAction`] ?? ""}
@@ -690,16 +736,52 @@ export const NCECorrectiveAction = () => {
                   autofillDate={true}
                   value={formData[`dateCompleted`] ?? undefined}
                   onChange={(e) => {
-                    setFormData({
-                      ...formData,
+                    setFormData((prev) => ({
+                      ...prev,
                       dateCompleted: e,
-                    });
+                    }));
                   }}
                   style={{ marginTop: "5px" }}
                 />
               </Column>
 
               <Column lg={3} md={3} sm={3}>
+                <DatePicker
+                  datePickerType="single"
+                  dateFormat="Y-m-d"
+                  value={formData.actionLog.dueDate ?? ""}
+                  onChange={(dates) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      actionLog: {
+                        ...prev.actionLog,
+                        dueDate: dates[0] ? toIsoDate(dates[0]) : undefined,
+                      },
+                    }))
+                  }
+                >
+                  <DatePickerInput
+                    id="capa-due-date"
+                    labelText=""
+                    placeholder="yyyy-mm-dd"
+                    // The outer flatpickr onChange only fires on calendar
+                    // selection, so typed input was silently dropped. Capture a
+                    // fully-typed ISO date here (dateFormat is Y-m-d) so manual
+                    // entry persists like every other date field.
+                    onChange={(e) => {
+                      const typed = e.target.value;
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(typed)) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          actionLog: { ...prev.actionLog, dueDate: typed },
+                        }));
+                      }
+                    }}
+                  />
+                </DatePicker>
+              </Column>
+
+              <Column lg={2} md={3} sm={3}>
                 <Checkbox
                   checked={formData.actionLog.actionType
                     ?.split(",")
@@ -734,7 +816,7 @@ export const NCECorrectiveAction = () => {
                   id="concurrent Control Action"
                 />
               </Column>
-              <Column lg={3} md={3} sm={3}>
+              <Column lg={2} md={3} sm={3}>
                 {formData[`dateCompleted`] && (
                   <div>
                     <div>
@@ -752,7 +834,7 @@ export const NCECorrectiveAction = () => {
                     {" "}
                     <br></br>
                   </Column>
-                  <Column lg={4} md={4} sm={2}>
+                  <Column lg={3} md={4} sm={2}>
                     <TextArea
                       labelText=""
                       value={log[`correctiveAction`] ?? ""}
@@ -786,6 +868,21 @@ export const NCECorrectiveAction = () => {
                   </Column>
 
                   <Column lg={3} md={3} sm={3}>
+                    <DatePicker
+                      datePickerType="single"
+                      dateFormat="Y-m-d"
+                      value={log[`dueDate`] ?? ""}
+                    >
+                      <DatePickerInput
+                        id={`saved-due-date-${index}`}
+                        labelText=""
+                        placeholder="yyyy-mm-dd"
+                        disabled
+                      />
+                    </DatePicker>
+                  </Column>
+
+                  <Column lg={2} md={3} sm={3}>
                     <Checkbox
                       checked={log.actionType?.split(",").includes("1")}
                       labelText={
@@ -813,7 +910,7 @@ export const NCECorrectiveAction = () => {
                       id="concurrent Control Action"
                     />
                   </Column>
-                  <Column lg={3} md={3} sm={3}>
+                  <Column lg={2} md={3} sm={3}>
                     <div>
                       <div>{log[`turnAroundTime`] ?? ""}</div>
                     </div>
@@ -869,12 +966,12 @@ export const NCECorrectiveAction = () => {
                     <FormattedMessage id="nonconform.date.completed" />
                   }
                   autofillDate={true}
-                  value={data[`dateCompleted`] ?? undefined}
+                  value={formData[`dateCompleted`] ?? undefined}
                   onChange={(e) => {
-                    setData({
-                      ...data,
+                    setFormData((prev) => ({
+                      ...prev,
                       dateCompleted: e,
-                    });
+                    }));
                   }}
                   style={{ marginBottom: "5px" }}
                 />
@@ -891,7 +988,7 @@ export const NCECorrectiveAction = () => {
                   </div>
                 )}
 
-                {!!submit && !actionLogIsBlank && !actionLogIsComplete && (
+                {!actionLogIsBlank && !actionLogIsComplete && (
                   <div style={{ color: "#c62828", margin: "4px 0" }}>
                     <FormattedMessage
                       id="nonconform.corrective.requiredFields"

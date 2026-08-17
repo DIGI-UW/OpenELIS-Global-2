@@ -13,7 +13,9 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.qaevent.bean.CapaRegisterItem;
 import org.openelisglobal.qaevent.service.NCEventService;
+import org.openelisglobal.qaevent.service.NceActionLogService;
 import org.openelisglobal.qaevent.service.NceAttachmentService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
 import org.openelisglobal.qaevent.service.NceHistoryService;
@@ -21,6 +23,7 @@ import org.openelisglobal.qaevent.service.NceNumberGeneratorService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
+import org.openelisglobal.qaevent.valueholder.NceActionLog;
 import org.openelisglobal.qaevent.valueholder.NceAttachment;
 import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceHistory;
@@ -39,6 +42,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -67,6 +71,9 @@ public class NceEnhancementRestController extends BaseRestController {
     private NCEventService ncEventService;
 
     @Autowired
+    private NceActionLogService nceActionLogService;
+
+    @Autowired
     private NceSpecimenService nceSpecimenService;
 
     @Autowired
@@ -92,10 +99,23 @@ public class NceEnhancementRestController extends BaseRestController {
 
     private static final int USER_AUTOCOMPLETE_RESULT_LIMIT = 25;
 
+    // Add server-side pagination if CAPA volume ever exceeds this cap.
+    private static final int CAPA_REGISTER_LIMIT = 500;
+
     @GetMapping(value = "/generate-number", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> generateNceNumber() {
         String nceNumber = nceNumberGeneratorService.generateNceNumber();
         return ResponseEntity.ok(Map.of("nceNumber", nceNumber));
+    }
+
+    /**
+     * Cross-NCE CAPA Register (OGC-707): all corrective/preventive actions with
+     * their parent NCE.
+     */
+    @GetMapping(value = "/capa-register", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority('qa.view.qms') or hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<List<CapaRegisterItem>> getCapaRegister() {
+        return ResponseEntity.ok(nceActionLogService.getCapaRegister(CAPA_REGISTER_LIMIT));
     }
 
     @GetMapping(value = "/dashboard", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -120,6 +140,9 @@ public class NceEnhancementRestController extends BaseRestController {
             item.immediateAction = event.getImmediateAction();
             item.suspectedCauses = event.getSuspectedCauses();
             item.proposedAction = event.getProposedAction();
+            item.triggerSourceType = event.getTriggerSourceType();
+            item.affectedSamplesCapReason = event.getAffectedSamplesCapReason();
+            item.effective = event.getEffective();
 
             // Fetch assigned user name
             if (event.getAssignedTo() != null) {
@@ -197,6 +220,7 @@ public class NceEnhancementRestController extends BaseRestController {
                 historyDTO.id = String.valueOf(history.getId());
                 historyDTO.activity = history.getActivity();
                 historyDTO.description = history.getDescription();
+                historyDTO.newValue = history.getNewValue();
                 historyDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toInstant().toString()
                         : null;
 
@@ -229,6 +253,26 @@ public class NceEnhancementRestController extends BaseRestController {
             item.history = historyDTOs;
             item.notes = noteDTOs;
             item.notesCount = noteDTOs.size();
+
+            // Fetch corrective/preventive actions (CAPA) so the dashboard CAPA
+            // tab/count reflects nce_action_log (the CAPA Register reads the same rows).
+            // N+1: one query per NCE. Switch to a bulk grouped query like
+            // getCapaRegister if NCE volume ever makes this slow.
+            List<NceActionLog> actionLogs = nceActionLogService.getNceActionLogByNceId(event.getId());
+            List<ActionLogDTO> actionLogDTOs = new ArrayList<>();
+            for (NceActionLog log : actionLogs) {
+                ActionLogDTO logDTO = new ActionLogDTO();
+                logDTO.id = log.getId();
+                logDTO.correctiveAction = log.getCorrectiveAction();
+                logDTO.actionType = log.getActionType();
+                logDTO.personResponsible = log.getPersonResponsible();
+                logDTO.dueDate = log.getDueDate() != null ? log.getDueDate().toLocalDate().toString() : null;
+                logDTO.dateCompleted = log.getDateCompleted() != null ? log.getDateCompleted().toLocalDate().toString()
+                        : null;
+                actionLogDTOs.add(logDTO);
+            }
+            item.actionLogs = actionLogDTOs;
+            item.capaCount = actionLogDTOs.size();
 
             nceList.add(item);
         }
@@ -471,13 +515,29 @@ public class NceEnhancementRestController extends BaseRestController {
         public String immediateAction;
         public String suspectedCauses;
         public String proposedAction;
+        public String triggerSourceType;
+        public String affectedSamplesCapReason;
+        // effectiveness verdict ("Yes"/"No", null while the review is due) —
+        // drives the QA Overview's reviews-due counter
+        public String effective;
         public String assignedTo;
         public String assignedToName;
         public int notesCount;
+        public int capaCount;
         public List<NoteDTO> notes;
         public List<LinkedSpecimenDTO> linkedSpecimens;
         public List<AttachmentDTO> attachments;
         public List<HistoryDTO> history;
+        public List<ActionLogDTO> actionLogs;
+    }
+
+    public static class ActionLogDTO {
+        public Integer id;
+        public String correctiveAction;
+        public String actionType;
+        public String personResponsible;
+        public String dueDate;
+        public String dateCompleted;
     }
 
     public static class NoteDTO {
@@ -491,6 +551,8 @@ public class NceEnhancementRestController extends BaseRestController {
         public String id;
         public String activity;
         public String description;
+        /** Structured transition target (e.g. "Completed", "CAPA") when present. */
+        public String newValue;
         public String timestamp;
         public String userName;
     }

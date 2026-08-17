@@ -302,7 +302,9 @@ public abstract class ConfigurationProperties {
         ELECTRONIC_SIGNATURE_ENABLED("electronicSignatureEnabled", "text"), // 21 CFR Part 11 e-signatures
         ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"), // signing session inactivity timeout
         RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"), // OGC-1020 R1: unified /Results worklist
-        REQUESTER_REQUIRED("requesterRequired", "text");
+        REQUESTER_REQUIRED("requesterRequired", "text"),
+        // OGC-1147: does an open QC failure block release, or only warn
+        QC_FAIL_BLOCKS_VALIDATION("qcFailBlocksValidation", "text");
 
         // visible on
         // the ui

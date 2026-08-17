@@ -125,6 +125,10 @@ public class Test extends EnumValueItemImpl {
 
     private Boolean antimicrobialResistance;
 
+    // C.1 / OGC-704: total allowable error (percent) for Westgard sigma metrics;
+    // null where not configured (sigma renders as "not calculable")
+    private Double tea;
+
     @Override
     public String getSortOrder() {
         return sortOrder;
@@ -133,6 +137,14 @@ public class Test extends EnumValueItemImpl {
     @Override
     public void setSortOrder(String sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public Double getTea() {
+        return tea;
+    }
+
+    public void setTea(Double tea) {
+        this.tea = tea;
     }
 
     public Test() {

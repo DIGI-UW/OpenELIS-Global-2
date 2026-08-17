@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1147 Manual & RDT QC persistence — source-typed QC results.
+
+    Table strategy: qc_result is the single store for all three sources. The
+    considered alternative — a hybrid over a "shared QcRun table established by
+    OGC-428" — was rejected: that table has never existed in this repository (no
+    entity, no migration, and no commit in any branch's history ever added one),
+    so the hybrid would have had to CREATE OGC-428's
+    schema from inside a story that declares instrument-level QC out of scope, so they
+    are rejected. Extending qc_result keeps the Levey-Jennings chart, dashboard,
+    export, rule engine and auto-NCE bridge working with no adapter layer, and reduces
+    "all QC for this test today" to a WHERE clause instead of a cross-table union.
+
+    D2: qualitative outcomes live in their own nullable column. No magic numbers in
+    result_value.
+
+    Migration posture: no row rewrites, no backfills. RDT outcomes have no numeric
+    value, so result_value must become nullable; dropNotNullConstraint is a
+    catalog-only change in Postgres — existing rows stay valid, nothing is
+    rewritten, and the migration is deployable mid-release without touching any
+    existing code path. Precedent on this exact table: qc-009 in
+    009-nullable-unit-of-measure.xml relaxed unit_of_measure for the same reason
+    (qualitative results have no units).
+
+    Ordering within this file is load-bearing. `source` is added and backfilled by
+    DEFAULT first, then the shape CHECK is added while every row still satisfies it,
+    and only then are the NOT NULLs relaxed. Reversing steps 2 and 3 would leave a
+    window in which a valueless quantitative row is insertable.
+
+    Changeset ids continue at qc-021: ids run to qc-020 already (qc-017..qc-020 are the
+    menu changesets in 007-add-qc-menu-items.xml). qc-008 and qc-015 are unused gaps and
+    qc-009 is used twice across two files — neither is a pattern to copy.
+    -->
+
+    <changeSet author="samuelmale" id="qc-021-qc-result-source-and-qualitative">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="qc_result"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="qc_result" columnName="source"/>
+            </not>
+        </preConditions>
+        <comment>Source-type discriminant + qualitative outcome + captured-target snapshot on qc_result</comment>
+        <addColumn schemaName="clinlims" tableName="qc_result">
+            <!-- ASTM = analyzer-transmitted (every pre-existing row, via the default).
+                 MANUAL = bench quantitative. RDT = qualitative control line.
+                 OGC-427/428 add their own values with a CHECK amendment when they land;
+                 the once-proposed WORKPLAN/QC_MODULE/ANALYZER_IMPORT/ANALYZER_LIST
+                 vocabulary is not in either of those tickets and is not seeded here. -->
+            <column name="source" type="VARCHAR(10)" defaultValue="ASTM">
+                <constraints nullable="false"/>
+            </column>
+            <!-- D2: VALID/INVALID for RDT control lines, PASS/FAIL for manual runs.
+                 NULL for ASTM rows, which carry a number instead. -->
+            <column name="qualitative_outcome" type="VARCHAR(10)"/>
+            <!-- Target snapshot: the effective target in force at capture, copied onto
+                 the row so a later edit of a configured target (OGC-1148's
+                 test_qc_target) can never rewrite QC history. Target CONFIGURATION is
+                 out of scope here and belongs entirely to OGC-1148; only the snapshot
+                 lives on the result. -->
+            <column name="expected_value" type="NUMERIC(15,5)"/>
+            <column name="uncertainty" type="NUMERIC(15,5)"/>
+            <!-- Lab unit. The QC-fail signal is scoped by test AND lab unit, and no
+                 QC table carries a test_section today — qc_result scopes by
+                 (test_id, instrument_id) only, which a bench run cannot use because it
+                 has no instrument. numeric(10) matches test_section.id. -->
+            <column name="test_section_id" type="numeric(10)"/>
+            <!-- Free-text kit/control designation for RDT runs, where the control is a
+                 cassette lot rather than a levelled control material. -->
+            <column name="control_label" type="VARCHAR(120)"/>
+        </addColumn>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="qc_result" baseColumnNames="test_section_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_section" referencedColumnNames="id"
+            constraintName="fk_qc_result_test_section"/>
+
+        <!-- Dashboard and export both filter by source over a date window; the existing
+             indexes lead with control_lot_id / instrument_id, neither of which a manual
+             row necessarily has. -->
+        <createIndex schemaName="clinlims" tableName="qc_result" indexName="idx_qc_result_source_date">
+            <column name="source"/>
+            <column name="run_date_time" descending="true"/>
+        </createIndex>
+        <!-- The affected-analysis window is keyed (test, lab unit, time). -->
+        <createIndex schemaName="clinlims" tableName="qc_result" indexName="idx_qc_result_test_section_date">
+            <column name="test_section_id"/>
+            <column name="test_id"/>
+            <column name="run_date_time" descending="true"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="qc_result" indexName="idx_qc_result_test_section_date"/>
+            <dropIndex schemaName="clinlims" tableName="qc_result" indexName="idx_qc_result_source_date"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="qc_result"
+                constraintName="fk_qc_result_test_section"/>
+            <dropColumn schemaName="clinlims" tableName="qc_result" columnName="control_label"/>
+            <dropColumn schemaName="clinlims" tableName="qc_result" columnName="test_section_id"/>
+            <dropColumn schemaName="clinlims" tableName="qc_result" columnName="uncertainty"/>
+            <dropColumn schemaName="clinlims" tableName="qc_result" columnName="expected_value"/>
+            <dropColumn schemaName="clinlims" tableName="qc_result" columnName="qualitative_outcome"/>
+            <dropColumn schemaName="clinlims" tableName="qc_result" columnName="source"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Must run BEFORE the NOT NULL relaxations below. Every existing row is
+         source='ASTM' with a non-null result_value, so this validates without a table
+         rewrite. This is the first CHECK constraint in liquibase/qc/ — statuses in this
+         directory are unconstrained VARCHARs validated only in Java. Form copied from
+         analyzer/004-012-create-analyzer-qc-rule.xml. -->
+    <changeSet author="samuelmale" id="qc-022-qc-result-shape-check">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="qc_result" columnName="source"/>
+            <not>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM pg_constraint WHERE conname = 'chk_qc_result_source_shape'
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <comment>A row is either quantitative with a value, or RDT-qualitative with an outcome — never neither</comment>
+        <sql>
+            ALTER TABLE clinlims.qc_result
+            ADD CONSTRAINT chk_qc_result_source
+            CHECK (source IN ('ASTM', 'MANUAL', 'RDT'));
+        </sql>
+        <!-- This constraint makes the manual/RDT shape rule structural rather than a
+             code convention: it simultaneously allows an RDT row to omit result_value and stops a
+             quantitative row from doing the same once the NOT NULL is dropped. Every
+             existing reader of result_value assumes a value is present; this keeps that
+             assumption true for the rows those readers can see. -->
+        <sql>
+            ALTER TABLE clinlims.qc_result
+            ADD CONSTRAINT chk_qc_result_source_shape
+            CHECK (
+                (source = 'RDT' AND result_value IS NULL AND qualitative_outcome IS NOT NULL)
+                OR
+                (source &lt;&gt; 'RDT' AND result_value IS NOT NULL)
+            );
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.qc_result DROP CONSTRAINT chk_qc_result_source_shape;</sql>
+            <sql>ALTER TABLE clinlims.qc_result DROP CONSTRAINT chk_qc_result_source;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="samuelmale" id="qc-023-relax-analyzer-and-value-not-nulls">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint WHERE conname = 'chk_qc_result_source_shape'
+            </sqlCheck>
+        </preConditions>
+        <comment>Manual/RDT controls have no analyzer, and RDT controls have no numeric value</comment>
+        <!-- A bench run has no instrument. Analyzer rows continue to populate this and
+             the FK to analyzer(id) from 008-add-instrument-fk-constraints.xml is
+             unaffected — a nullable FK column simply skips the check when NULL. -->
+        <dropNotNullConstraint schemaName="clinlims" tableName="qc_result"
+            columnName="instrument_id" columnDataType="NUMERIC(10,0)"/>
+        <!-- No synthetic numbers for qualitative outcomes. Guarded by
+             chk_qc_result_source_shape above. -->
+        <dropNotNullConstraint schemaName="clinlims" tableName="qc_result"
+            columnName="result_value" columnDataType="numeric(15,5)"/>
+        <!-- An RDT cassette lot is identified by control_label, not by a levelled
+             control-material record, so a run can exist without a qc_control_lot row.
+             Manual quantitative runs SHOULD carry one (that is where the fixed
+             mean/SD lives, per D3) but the store must not require it. -->
+        <dropNotNullConstraint schemaName="clinlims" tableName="qc_result"
+            columnName="control_lot_id" columnDataType="varchar(36)"/>
+        <rollback>
+            <!-- Reinstating these requires the manual/RDT rows to be gone first;
+                 rollback is only meaningful immediately after a failed deploy. -->
+            <addNotNullConstraint schemaName="clinlims" tableName="qc_result"
+                columnName="control_lot_id" columnDataType="varchar(36)"/>
+            <addNotNullConstraint schemaName="clinlims" tableName="qc_result"
+                columnName="result_value" columnDataType="numeric(15,5)"/>
+            <addNotNullConstraint schemaName="clinlims" tableName="qc_result"
+                columnName="instrument_id" columnDataType="NUMERIC(10,0)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Target configuration adopts the existing Westgard control-lot lifecycle
+         rather than a parallel lot store. That is impossible while
+         qc_control_lot.instrument_id is NOT NULL with an FK to analyzer(id): a bench RDT
+         kit lot has no instrument to point at, so today a manual control lot cannot be
+         created at all — which would force exactly the parallel store we want to avoid. -->
+    <changeSet author="samuelmale" id="qc-024-relax-control-lot-analyzer">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="qc_control_lot"/>
+        </preConditions>
+        <comment>Bench control lots have no analyzer</comment>
+        <dropNotNullConstraint schemaName="clinlims" tableName="qc_control_lot"
+            columnName="instrument_id" columnDataType="NUMERIC(10,0)"/>
+        <rollback>
+            <addNotNullConstraint schemaName="clinlims" tableName="qc_control_lot"
+                columnName="instrument_id" columnDataType="NUMERIC(10,0)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- D4: a MANUAL Fail creates a real violation so it enters the same
+         corrective-action workflow as an analyzer rule hit. qc_rule_violation.rule_code
+         is an unconstrained VARCHAR(20), so MANUAL_FAIL inserts cleanly alongside the
+         Unicode-subscript Westgard codes (1₃ₛ, 2₂ₛ, …); a violation raised off a bench
+         run has no analyzer either. -->
+    <changeSet author="samuelmale" id="qc-025-relax-violation-analyzer">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="qc_rule_violation"/>
+        </preConditions>
+        <comment>Violations raised from manual controls have no analyzer (D4)</comment>
+        <dropNotNullConstraint schemaName="clinlims" tableName="qc_rule_violation"
+            columnName="instrument_id" columnDataType="NUMERIC(10,0)"/>
+        <rollback>
+            <addNotNullConstraint schemaName="clinlims" tableName="qc_rule_violation"
+                columnName="instrument_id" columnDataType="NUMERIC(10,0)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Hold-or-warn is a lab policy, not a hard-coded behaviour. Off by default,
+         so the signal starts as a visible warning on the validation row and a lab opts in
+         to blocking release. A plain site flag rather than a qi_config indicator: the
+         indicator table is CHECK-constrained to its enum and buys graded numeric
+         thresholds, which a boolean signal has no use for. -->
+    <changeSet author="samuelmale" id="qc-026-qc-fail-hold-flag">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'qcFailBlocksValidation'
+            </sqlCheck>
+        </preConditions>
+        <comment>Site flag: does an open QC failure block release of the results it covers</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq"/>
+            <column name="name" value="qcFailBlocksValidation"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <!-- description is varchar(120); the full explanation lives in the
+                 instruction key, which is what the admin UI actually renders. -->
+            <column name="description" value="Block release of results covered by an open QC failure"/>
+            <column name="value" value="false"/>
+            <column name="encrypted" value="false"/>
+            <column name="domain_id"
+                valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')"/>
+            <column name="value_type" value="boolean"/>
+            <column name="instruction_key" value="instructions.qc.fail.blocks.validation"/>
+            <column name="group" value="0"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'qcFailBlocksValidation'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- DEFERRED: audit-trail registration for qc_result.
+
+         QC results are meant to be immutable post-save, with corrections linked
+         by traceability. Immutability already holds by absence: there is no PUT endpoint,
+         no service update method, and nothing anywhere in the codebase mutates a
+         persisted qc_result. Unlike qc_control_lot — registered at
+         3.5.x.x/026-register-audit-ref-tables-for-p0-services.xml:58 and served by an
+         AuditableBaseObjectServiceImpl — qc_result has no reference_tables row and its
+         service extends the non-audited base.
+
+         The plan for this story called for turning audit on here. Dropped on build: with
+         no update path, the generic audit trail would only ever record inserts, and every
+         fact it would capture (acting user, technician, run time) is already columns on
+         the row. In exchange it would add a history insert to every analyzer control run
+         — a change to the shipped ASTM write path for no present benefit, against NFR-1.
+
+         Add it together with the first thing that edits or voids a QC result, not before,
+         and add it as one changeset with the service change: AuditTrailServiceImpl
+         .saveHistory THROWS and rolls back the write when a table has no reference_tables
+         row, so a registration row and an audited service must land together. -->
+
+    <!-- GAP-5 (UAT 2026-08-10): repeated POSTs minted three identical UAT-BENCH-13 rows —
+         nothing anywhere enforced lot uniqueness, for analyzer lots either. The rule:
+         (lot_number, test_id, control_level) unique among non-retired lots. The same
+         physical lot number legitimately recurs across different tests, and EXPIRED lots
+         must not block reuse of the number, hence a partial index rather than a plain
+         unique constraint. Enforced twice per the inversion-test convention:
+         QCControlLotValidator returns a friendly 400, this index makes raw SQL fail too.
+
+         Existing duplicates are retired first (status='EXPIRED'), never deleted —
+         qc_result rows may reference any of them. The keeper is the row with the most
+         results, tie-broken by id for determinism, so the lot carrying the UAT evidence
+         stays live. -->
+    <changeSet author="samuelmale" id="qc-027-retire-duplicate-control-lots">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="qc_control_lot"/>
+        </preConditions>
+        <comment>Retire all but one of each duplicate (lot_number, test_id, control_level) group</comment>
+        <sql>
+            WITH ranked AS (
+                SELECT l.id,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY l.lot_number, l.test_id, COALESCE(l.control_level, '')
+                           ORDER BY (SELECT COUNT(*) FROM clinlims.qc_result r
+                                     WHERE r.control_lot_id = l.id) DESC,
+                                    l.id
+                       ) AS rn
+                FROM clinlims.qc_control_lot l
+                WHERE l.status &lt;&gt; 'EXPIRED'
+            )
+            UPDATE clinlims.qc_control_lot
+            SET status = 'EXPIRED', last_updated = NOW()
+            WHERE id IN (SELECT id FROM ranked WHERE rn &gt; 1);
+        </sql>
+        <rollback>
+            <!-- Which rows were live before is not recoverable; retirement is benign
+                 (retired lots stay readable) so rollback is a no-op. -->
+        </rollback>
+    </changeSet>
+
+    <changeSet author="samuelmale" id="qc-028-unique-active-control-lot">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = 'clinlims' AND indexname = 'uq_qc_control_lot_active'
+            </sqlCheck>
+        </preConditions>
+        <comment>Partial unique index: one live lot per (lot_number, test_id, control_level)</comment>
+        <sql>
+            CREATE UNIQUE INDEX uq_qc_control_lot_active
+            ON clinlims.qc_control_lot (lot_number, test_id, COALESCE(control_level, ''))
+            WHERE status &lt;&gt; 'EXPIRED';
+        </sql>
+        <rollback>
+            <sql>DROP INDEX clinlims.uq_qc_control_lot_active;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -44,6 +45,19 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         binder.registerCustomEditor(AuthType.class, new CaseInsensitiveEnumPropertyEditor<>(AuthType.class));
         binder.registerCustomEditor(ProgrammedConnection.class,
                 new CaseInsensitiveEnumPropertyEditor<>(ProgrammedConnection.class));
+    }
+
+    /**
+     * Method-security denials (@PreAuthorize) must surface as 403, not fall into
+     * the generic RuntimeException -> 500 mapping below.
+     * AuthorizationDeniedException (Spring Security 6.3+ method security) extends
+     * AccessDeniedException, so both shapes land here — the more specific handler
+     * wins over handleRuntimeException.
+     */
+    @ExceptionHandler(value = { AccessDeniedException.class })
+    protected ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+        return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.FORBIDDEN), new HttpHeaders(),
+                HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(value = { RuntimeException.class })

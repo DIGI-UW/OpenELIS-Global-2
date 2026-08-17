@@ -287,6 +287,9 @@ public abstract class PatientReport extends Report {
                 add1LineErrorMessage("report.error.message.noPrintableItems");
             } else {
                 postSampleBuild();
+                // OGC-686: after the last report item, so the test set is complete.
+                // Not in postSampleBuild — that is abstract in five subclasses.
+                addAccreditationParameters();
             }
         }
 
@@ -550,6 +553,10 @@ public abstract class PatientReport extends Report {
         List<Result> resultList = analysisService.getResults(currentAnalysis);
 
         Test test = analysisService.getTest(currentAnalysis);
+        // OGC-686: the one place every printed analysis of this family passes
+        // through with its test in hand. The recorder filters to claimable statuses
+        // itself.
+        recordAccreditationCandidate(currentAnalysis, test);
         NoteService noteService = SpringContext.getBean(NoteService.class);
         String note = noteService.getNotesAsString(currentAnalysis, true, true, "<br/>", FILTER, true);
         if (note != null) {

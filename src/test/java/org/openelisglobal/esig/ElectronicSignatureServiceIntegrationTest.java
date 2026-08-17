@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import org.junit.Before;
@@ -501,6 +502,103 @@ public class ElectronicSignatureServiceIntegrationTest extends BaseWebContextSen
                 rejections.stream().allMatch(s -> s.getSignatureMeaning() == SignatureMeaning.REJECTED));
         assertTrue("All REJECTED signatures should have rejection reason",
                 rejections.stream().allMatch(s -> s.getRejectionReason() != null && !s.getRejectionReason().isEmpty()));
+    }
+
+    // ========================================================================
+    // SEARCH TESTS (E-Sig Log, OGC-702)
+    // ========================================================================
+    // Each search test uses a record type no other test writes (QC_RESULT,
+    // REPORT) so exact-count assertions stay isolated from sibling tests'
+    // accumulated RESULT signatures.
+
+    @Test
+    public void testSearchSignatures_FiltersByMeaningRecordTypeAndSigner() {
+        certifyTestUser();
+        Long recordBase = Long.valueOf(System.currentTimeMillis());
+        Long adminId = Long.valueOf(adminUser.getId());
+        Timestamp start = new Timestamp(System.currentTimeMillis() - 86400000L);
+        Timestamp end = new Timestamp(System.currentTimeMillis() + 86400000L);
+        String rejectionReason = "Control out of range";
+
+        electronicSignatureService.executeSignature(TEST_USERNAME, TEST_PASSWORD, SignatureMeaning.AUTHORED,
+                "QC_RESULT", recordBase, null, null, null);
+        electronicSignatureService.executeSignature(TEST_USERNAME, TEST_PASSWORD,
+                SignatureMeaning.VALIDATED_AND_RELEASED, "QC_RESULT", Long.valueOf(recordBase + 1), null, null, null);
+        electronicSignatureService.executeSignature(TEST_USERNAME, TEST_PASSWORD, SignatureMeaning.REJECTED,
+                "QC_RESULT", Long.valueOf(recordBase + 2), rejectionReason, null, null);
+
+        // Record-type filter alone finds exactly our three rows
+        List<ElectronicSignature> all = electronicSignatureService.searchSignatures(start, end, null, null, "QC_RESULT",
+                0, 10);
+        assertEquals("Should find exactly the 3 QC_RESULT signatures", 3, all.size());
+        assertTrue("All rows should be QC_RESULT", all.stream().allMatch(s -> "QC_RESULT".equals(s.getRecordType())));
+        assertTrue("Should contain all three record ids",
+                all.stream().map(ElectronicSignature::getRecordId).collect(java.util.stream.Collectors.toSet())
+                        .containsAll(List.of(recordBase, Long.valueOf(recordBase + 1), Long.valueOf(recordBase + 2))));
+        for (int i = 0; i < all.size() - 1; i++) {
+            assertTrue("Rows should be ordered signedAt descending",
+                    !all.get(i).getSignedAt().before(all.get(i + 1).getSignedAt()));
+        }
+        assertEquals("Count should match list total", 3,
+                electronicSignatureService.countSearchSignatures(start, end, null, null, "QC_RESULT"));
+
+        // Meaning + record-type combination narrows to the single rejection
+        List<ElectronicSignature> rejected = electronicSignatureService.searchSignatures(start, end, null,
+                SignatureMeaning.REJECTED, "QC_RESULT", 0, 10);
+        assertEquals("Should find exactly 1 rejected QC_RESULT signature", 1, rejected.size());
+        assertEquals("Rejected row should be the expected record", Long.valueOf(recordBase + 2),
+                rejected.get(0).getRecordId());
+        assertEquals("Rejection reason should be preserved", rejectionReason, rejected.get(0).getRejectionReason());
+        assertEquals("Rejected count should match", 1, electronicSignatureService.countSearchSignatures(start, end,
+                null, SignatureMeaning.REJECTED, "QC_RESULT"));
+
+        // Signer filter: admin matches all three, an unknown signer matches none
+        List<ElectronicSignature> bySigner = electronicSignatureService.searchSignatures(start, end, adminId, null,
+                "QC_RESULT", 0, 10);
+        assertEquals("Admin signer filter should keep all 3 rows", 3, bySigner.size());
+        assertTrue("All rows should be signed by admin",
+                bySigner.stream().allMatch(s -> s.getSignerId().equals(adminId)));
+        assertEquals("Unknown signer should match nothing", 0, electronicSignatureService
+                .searchSignatures(start, end, Long.valueOf(-1L), null, "QC_RESULT", 0, 10).size());
+        assertEquals("Unknown signer count should be 0", 0,
+                electronicSignatureService.countSearchSignatures(start, end, Long.valueOf(-1L), null, "QC_RESULT"));
+    }
+
+    @Test
+    public void testSearchSignatures_PaginationAndDateRange() {
+        certifyTestUser();
+        Long recordBase = Long.valueOf(System.currentTimeMillis());
+        Timestamp start = new Timestamp(System.currentTimeMillis() - 86400000L);
+        Timestamp end = new Timestamp(System.currentTimeMillis() + 86400000L);
+
+        for (int i = 0; i < 3; i++) {
+            electronicSignatureService.executeSignature(TEST_USERNAME, TEST_PASSWORD, SignatureMeaning.AUTHORED,
+                    "REPORT", Long.valueOf(recordBase + i), null, null, null);
+        }
+
+        List<ElectronicSignature> page0 = electronicSignatureService.searchSignatures(start, end, null, null, "REPORT",
+                0, 2);
+        List<ElectronicSignature> page1 = electronicSignatureService.searchSignatures(start, end, null, null, "REPORT",
+                1, 2);
+        assertEquals("First page should hold pageSize rows", 2, page0.size());
+        assertEquals("Second page should hold the remainder", 1, page1.size());
+
+        java.util.Set<Long> allIds = new java.util.HashSet<>();
+        page0.forEach(s -> allIds.add(s.getRecordId()));
+        page1.forEach(s -> allIds.add(s.getRecordId()));
+        assertEquals("Pages should be disjoint and cover all rows", 3, allIds.size());
+        assertTrue("Pages should cover exactly the created records",
+                allIds.containsAll(List.of(recordBase, Long.valueOf(recordBase + 1), Long.valueOf(recordBase + 2))));
+        assertEquals("Count should span all pages", 3,
+                electronicSignatureService.countSearchSignatures(start, end, null, null, "REPORT"));
+
+        // A window entirely in the past excludes the just-created rows
+        Timestamp pastStart = new Timestamp(System.currentTimeMillis() - 10 * 86400000L);
+        Timestamp pastEnd = new Timestamp(System.currentTimeMillis() - 5 * 86400000L);
+        assertEquals("Past-only window should match nothing", 0,
+                electronicSignatureService.searchSignatures(pastStart, pastEnd, null, null, "REPORT", 0, 10).size());
+        assertEquals("Past-only count should be 0", 0,
+                electronicSignatureService.countSearchSignatures(pastStart, pastEnd, null, null, "REPORT"));
     }
 
     // ========================================================================

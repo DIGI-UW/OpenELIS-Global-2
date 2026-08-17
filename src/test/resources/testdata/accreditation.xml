@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- OGC-686 — minimal test catalog for accreditation enrollment tests. Only
+    what test_accreditation.test_id needs a real FK target for; no analyzer,
+    panel or result-mapping rows. -->
+<dataset>
+
+    <test id="9101" description="Glucose Test" loinc="2345-7"
+        reporting_description="Glucose, serum" sticker_req_flag="N"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="GLUC" sort_order="2147483646" name="Glucose, serum"
+        orderable="true" guid="accred-test-9101"
+        antimicrobial_resistance="false" />
+
+    <test id="9102" description="Sodium Test" loinc="2951-2"
+        reporting_description="Sodium, serum" sticker_req_flag="N"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2035-12-31 12:00:00" is_reportable="Y" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="NA" sort_order="2147483646" name="Sodium, serum"
+        orderable="true" guid="accred-test-9102"
+        antimicrobial_resistance="false" />
+
+</dataset>

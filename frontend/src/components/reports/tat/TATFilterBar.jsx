@@ -12,7 +12,7 @@ import {
 } from "@carbon/react";
 import { Search, Reset } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 
 export const SEGMENTS = [
   { id: "RECEIPT_TO_VALIDATION", labelKey: "reports.tat.segment.receiptToValidation" },
@@ -47,17 +47,13 @@ const DATE_PRESETS = [
   }},
 ];
 
-function formatDate(d) {
-  return d.toISOString().split("T")[0];
-}
-
 function getDefaultDates() {
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - 30);
   return {
-    fromDate: from.toISOString().split("T")[0],
-    toDate: to.toISOString().split("T")[0],
+    fromDate: toLocalIsoDate(from),
+    toDate: toLocalIsoDate(to),
   };
 }
 
@@ -165,8 +161,8 @@ function TATFilterBar({ onGenerate }) {
             size="sm"
             onClick={() => {
               const { from, to } = p.compute();
-              setFromDate(formatDate(from));
-              setToDate(formatDate(to));
+              setFromDate(toLocalIsoDate(from));
+              setToDate(toLocalIsoDate(to));
             }}
           >
             {intl.formatMessage({ id: p.labelKey })}

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-714 Critical Callback capture — the write side of Critical
+    Callback Compliance.
+
+    One row documents one manual phone-callback attempt for a critical result
+    (TJC NPSG.02.03.01 / CLSI GP47 read-back). The callback act is manual;
+    this table only records that it happened. Result-grain per the C.4 outline
+    (qi-critical-callback-compliance-outline.md §5): the callback anchors to a
+    PERSISTED result (result_id), and result_value snapshots the value as
+    communicated — immune to later edits/amendments. analysis_id is derived
+    from the result server-side and kept for one-hop compliance joins.
+
+    Rows are write-once and are themselves the record, so the table is NOT
+    registered for generic audit history and uses a UUID id (audited tables
+    need numeric ids — history.reference_id is numeric). Repeat POSTs for the
+    same result are new rows: multiplicity is the attempt log. Criticality is
+    never persisted here — it is derived from result_limits critical bounds
+    (validated server-side at log time, recomputed by the compliance read
+    side). The DB-filled `lastupdated` (DEFAULT now()) and the BaseObject
+    @Version column `last_updated` are two distinct columns by OpenELIS
+    convention — do not collapse them.
+
+    Convergence note (grep anchor: critical_notification): OGC-811 §F's GP47
+    read-back form and M-11's polymorphic critical_notification (OGC-785/886,
+    micro_critical_communication on the micro branches) describe this same
+    record. Extend THIS table (e.g. nullable alerts_ack_id at R3, or
+    target_type/target_id per OGC-886) rather than creating a parallel store.
+    -->
+
+    <changeSet author="openelisglobal" id="critical-callback-001-create-table">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="critical_callback" schemaName="clinlims"/></not>
+        </preConditions>
+        <createTable schemaName="clinlims" tableName="critical_callback">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_critical_callback"/>
+            </column>
+            <column name="result_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analysis_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- value as communicated on the call; server-side copy of result.value at log time -->
+            <column name="result_value" type="VARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- sys_user.id of the caller; stamped server-side, never client-supplied -->
+            <column name="logged_by" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="logged_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recipient_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- DB-filled wall-clock last-modified (not mapped in the entity) -->
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <!-- BaseObject @Version optimistic-lock column (distinct from lastupdated) -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <sql>
+            ALTER TABLE clinlims.critical_callback
+            ADD CONSTRAINT critical_callback_status_chk
+            CHECK (status IN ('CONFIRMED', 'REACHED_NO_READBACK', 'UNABLE_TO_REACH'))
+        </sql>
+
+        <addForeignKeyConstraint
+            constraintName="fk_critical_callback_result"
+            baseTableSchemaName="clinlims" baseTableName="critical_callback" baseColumnNames="result_id"
+            referencedTableSchemaName="clinlims" referencedTableName="result" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_critical_callback_analysis"
+            baseTableSchemaName="clinlims" baseTableName="critical_callback" baseColumnNames="analysis_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analysis" referencedColumnNames="id"/>
+
+        <!-- The compliance numerator joins on analysis_id -->
+        <createIndex schemaName="clinlims" tableName="critical_callback" indexName="idx_critical_callback_analysis">
+            <column name="analysis_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="critical_callback"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-714 Critical Callback Compliance — the CALLBACK QI indicator.
+
+    Extends the qi_config indicator CHECK (qa/007) with 'CALLBACK' via the
+    documented 3-step enum extension path (QiIndicator javadoc): new constant,
+    new changeset swapping the CHECK (never edit qi-config-001..003), seed the
+    default row. Seeded DISABLED — callback compliance is an opt-in program a
+    lab turns on in the OGC-709 QI Configuration page. Targets per the C.4
+    outline §4 ("every one, every time"): target 100%, action 95%.
+    -->
+
+    <changeSet author="openelisglobal" id="callback-qi-001-extend-indicator-chk">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.check_constraints
+                WHERE constraint_schema = 'clinlims'
+                AND constraint_name = 'qi_config_indicator_chk'
+                AND check_clause LIKE '%CALLBACK%'
+            </sqlCheck>
+        </preConditions>
+        <comment>Recreate qi_config_indicator_chk with CALLBACK added</comment>
+        <sql>
+            ALTER TABLE clinlims.qi_config DROP CONSTRAINT qi_config_indicator_chk;
+            ALTER TABLE clinlims.qi_config
+            ADD CONSTRAINT qi_config_indicator_chk
+            CHECK (indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE', 'CALLBACK'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.qi_config DROP CONSTRAINT qi_config_indicator_chk;
+                ALTER TABLE clinlims.qi_config
+                ADD CONSTRAINT qi_config_indicator_chk
+                CHECK (indicator_key IN ('TAT', 'REJECTION', 'AMENDMENT', 'NCE'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="callback-qi-002-seed-default-row">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.qi_config WHERE indicator_key = 'CALLBACK' AND test_category_id IS NULL</sqlCheck>
+        </preConditions>
+        <comment>Seed the CALLBACK indicator default row, disabled (opt-in). last_updated
+        (the BaseObject @Version column) MUST be non-null, else Hibernate treats the
+        seeded row as stale/unsaved on the first optimistic-locked update.</comment>
+        <insert schemaName="clinlims" tableName="qi_config">
+            <column name="id" valueSequenceNext="qi_config_id_seq"/>
+            <column name="indicator_key" value="CALLBACK"/>
+            <column name="is_enabled" valueBoolean="false"/>
+            <column name="target_threshold" valueNumeric="100"/>
+            <column name="action_threshold" valueNumeric="95"/>
+            <column name="lastupdated" valueDate="now()"/>
+            <column name="last_updated" valueDate="now()"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="qi_config">
+                <where>indicator_key = 'CALLBACK' AND test_category_id IS NULL</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
