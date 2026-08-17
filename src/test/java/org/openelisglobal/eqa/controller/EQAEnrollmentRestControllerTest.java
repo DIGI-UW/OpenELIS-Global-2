@@ -90,6 +90,30 @@ public class EQAEnrollmentRestControllerTest {
     }
 
     @Test
+    public void testCreateEnrollments_AcceptsStringOrgIds() {
+        when(enrollmentService.bulkEnroll(eq(1L), eq(List.of(100L)), eq("1")))
+                .thenReturn(List.of(enrollment1));
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("organizationIds", List.of("100"));
+
+        ResponseEntity<?> response = controller.createEnrollments(request, 1L, body);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+    }
+
+    @Test
+    public void testCreateEnrollments_NonNumericOrgIds() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("organizationIds", List.of("abc"));
+
+        ResponseEntity<?> response = controller.createEnrollments(request, 1L, body);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("organizationIds must be numeric", ((Map<?, ?>) response.getBody()).get("error"));
+    }
+
+    @Test
     public void testCreateEnrollments_MissingOrgIds() {
         Map<String, Object> body = new HashMap<>();
 

@@ -30,8 +30,9 @@ import {
 import { useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  postToOpenElisServerFullResponse,
+  putToOpenElisServerFullResponse,
+  resolveApiErrorMessage,
 } from "../../utils/Utils";
 
 const ENROLLMENT_STATUS_TAG = {
@@ -92,40 +93,56 @@ const ParticipantsTab = ({ programs }) => {
     fetchOrganizations();
   }, [fetchOrganizations]);
 
+  // the server answers failures with a JSON body ({error}/{message}/fieldErrors);
+  // surface it instead of letting a 4xx pass for success
+  const notifyServerError = (response) => {
+    Promise.resolve(response ? response.json().catch(() => null) : null).then(
+      (body) =>
+        setNotification({
+          kind: "error",
+          message: resolveApiErrorMessage(intl, body, "error.save.failed"),
+        }),
+    );
+  };
+
   const handleEnrollSubmit = () => {
     if (selectedOrgs.length === 0 || !selectedProgramId) return;
-    const orgIds = selectedOrgs.map((o) => o.id);
-    postToOpenElisServerJsonResponse(
+    const orgIds = selectedOrgs.map((o) => Number(o.id));
+    postToOpenElisServerFullResponse(
       `/rest/eqa/programs/${selectedProgramId}/enrollments`,
       JSON.stringify({ organizationIds: orgIds }),
       (response) => {
-        if (response) {
-          setEnrollModalOpen(false);
-          setSelectedOrgs([]);
-          setNotification({
-            kind: "success",
-            message: intl.formatMessage(
-              { id: "eqa.enrollment.success" },
-              { count: orgIds.length },
-            ),
-          });
-          fetchEnrollments();
+        if (!response || !response.ok) {
+          notifyServerError(response);
+          return;
         }
+        setEnrollModalOpen(false);
+        setSelectedOrgs([]);
+        setNotification({
+          kind: "success",
+          message: intl.formatMessage(
+            { id: "eqa.enrollment.success" },
+            { count: orgIds.length },
+          ),
+        });
+        fetchEnrollments();
       },
     );
   };
 
   const handleStatusChange = (enrollmentId, newStatus, reason) => {
-    putToOpenElisServer(
+    putToOpenElisServerFullResponse(
       `/rest/eqa/programs/${selectedProgramId}/enrollments/${enrollmentId}`,
       JSON.stringify({ status: newStatus, reason: reason || "" }),
-      (status) => {
-        if (status === 200) {
-          setWithdrawModalOpen(false);
-          setWithdrawReason("");
-          setSelectedEnrollment(null);
-          fetchEnrollments();
+      (response) => {
+        if (!response || !response.ok) {
+          notifyServerError(response);
+          return;
         }
+        setWithdrawModalOpen(false);
+        setWithdrawReason("");
+        setSelectedEnrollment(null);
+        fetchEnrollments();
       },
     );
   };

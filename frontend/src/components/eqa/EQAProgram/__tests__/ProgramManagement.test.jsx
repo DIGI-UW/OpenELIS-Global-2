@@ -15,11 +15,15 @@ vi.mock("../../../../components/common/PageBreadCrumb", () => {
   };
 });
 
-vi.mock("../../../utils/Utils", () => ({
-  getFromOpenElisServer: vi.fn(),
-  postToOpenElisServerJsonResponse: vi.fn(),
-  putToOpenElisServer: vi.fn(),
-}));
+vi.mock("../../../utils/Utils", async () => {
+  const actual = await vi.importActual("../../../utils/Utils");
+  return {
+    ...actual,
+    getFromOpenElisServer: vi.fn(),
+    postToOpenElisServerFullResponse: vi.fn(),
+    putToOpenElisServerFullResponse: vi.fn(),
+  };
+});
 
 // Replaced inline utils require
 
