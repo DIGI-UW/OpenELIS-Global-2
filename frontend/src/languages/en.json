@@ -7565,6 +7565,7 @@
   "microbiology.next.subculturePositive": "Positive signal recorded. Subculture the bottle and record the Gram stain.",
   "microbiology.next.recordSetup": "Case received. Record initial setup to begin incubation.",
   "microbiology.next.release": "AST reviewed. Confirm report readiness and release the final report.",
+  "microbiology.next.noGrowthRelease": "No growth recorded. Review and release the final negative report.",
   "microbiology.next.reviewAst": "Isolate recorded. Complete and review AST before release.",
   "microbiology.next.title": "Next step",
   "microbiology.navigation.backToWorklist": "Back to microbiology worklist",

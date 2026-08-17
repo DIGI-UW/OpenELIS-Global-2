@@ -182,7 +182,7 @@ const getNextStepMessageId = (caseDetail) => {
     return "microbiology.next.recordSetup";
   }
   if (caseDetail.stage === "NO_GROWTH_READY") {
-    return "microbiology.next.release";
+    return "microbiology.next.noGrowthRelease";
   }
   if (caseDetail.stage === "INCUBATING") {
     return "microbiology.next.incubating";
@@ -1176,6 +1176,9 @@ const MicrobiologyCaseView = ({
                       }
                       amendmentOpen={amendmentOpen}
                       patientId={caseDetail.patientId}
+                      preliminaryReleaseAllowed={
+                        caseDetail.stage !== "NO_GROWTH_READY"
+                      }
                       onReleased={() => loadCase({ showLoading: false })}
                       onProjectionLoaded={setProjectedResultIds}
                       refreshToken={readinessRefreshToken}

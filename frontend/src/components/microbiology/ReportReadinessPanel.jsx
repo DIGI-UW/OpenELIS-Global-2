@@ -16,6 +16,7 @@ const ReportReadinessPanel = ({
   service = MicrobiologyService,
   finalReleaseState = "",
   patientId,
+  preliminaryReleaseAllowed = true,
   onReleased,
   onProjectionLoaded,
   refreshToken = 0,
@@ -261,13 +262,15 @@ const ReportReadinessPanel = ({
           </Tag>
         ) : (
           <>
-            <Button
-              kind="secondary"
-              onClick={releasePreliminary}
-              disabled={saving || !projection?.reportableContent}
-            >
-              {intl.formatMessage({ id: "microbiology.release.preliminary" })}
-            </Button>
+            {preliminaryReleaseAllowed && (
+              <Button
+                kind="secondary"
+                onClick={releasePreliminary}
+                disabled={saving || !projection?.reportableContent}
+              >
+                {intl.formatMessage({ id: "microbiology.release.preliminary" })}
+              </Button>
+            )}
             <Button
               onClick={releaseFinal}
               disabled={

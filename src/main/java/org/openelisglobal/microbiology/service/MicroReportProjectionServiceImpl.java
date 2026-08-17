@@ -82,7 +82,11 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     @Override
     @Transactional
     public MicroReportProjectionResult releasePreliminary(String caseId, String performedBy) {
-        ProjectionInput input = projectionInput(caseId);
+        MicroCase microCase = getCase(caseId);
+        if (MicroCaseStage.NO_GROWTH_READY.name().equals(microCase.getStage())) {
+            throw new IllegalStateException("FINAL_NEGATIVE_RELEASE_REQUIRED");
+        }
+        ProjectionInput input = projectionInput(microCase);
         requireContent(input.content());
         if (!input.mappingConfigured()) {
             return new MicroReportProjectionResult(input.content(), false, List.of());
