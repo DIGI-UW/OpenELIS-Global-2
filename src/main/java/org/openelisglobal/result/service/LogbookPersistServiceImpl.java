@@ -161,7 +161,13 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     protected List<Analysis> setTestReflexes(ResultsUpdateDataSet actionDataSet, String sysUserId) {
         TestReflexUtil testReflexUtil = new TestReflexUtil();
         TestCalculatedUtil testCaliculatedUtil = new TestCalculatedUtil();
-        List allResults = actionDataSet.getNewResults();
+        // A copy, not the data set's own list: getNewResults() hands back the
+        // live collection, so appending the modified results to it left every
+        // edited result filed as newly entered as well. Callers that go on to
+        // read both lists - the two result-entry controllers, which evaluate
+        // alert rules over new plus modified - then saw each edit twice and
+        // raised the alert twice.
+        List<ResultSet> allResults = new ArrayList<>(actionDataSet.getNewResults());
         allResults.addAll(actionDataSet.getModifiedResults());
         List<Analysis> reflexAnalysises = testReflexUtil
                 .addNewTestsToDBForReflexTests(convertToTestReflexBeanList(allResults), sysUserId);

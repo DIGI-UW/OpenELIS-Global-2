@@ -878,6 +878,7 @@ public class ResultsLoadUtility {
         testItem.setAnalyzerId(analysis.getAnalyzerId());
         testItem.setResult(result);
         testItem.setResultValue(getFormattedResultValue(result));
+        testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getValue()));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
         testItem.setAnalysisStatusId(analysisService.getStatusId(analysis));
         // Display type selection:
@@ -912,7 +913,7 @@ public class ResultsLoadUtility {
         // both on the item — setResultLimitDependencies runs before the value is
         // set, so its valid/normal booleans can't see the saved value
         testItem.setResultFlag(computeResultFlag(testItem.getResultValue(), testItem.getResultType(), resultLimit));
-        testItem.setCriticalRange(buildCriticalRangeDisplay(resultLimit,
+        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
                 testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
 
         testItem.setTechnician(techSignature);
@@ -1191,31 +1192,6 @@ public class ResultsLoadUtility {
         } catch (NumberFormatException e) {
             return null;
         }
-    }
-
-    /**
-     * "&lt; 50", "&gt; 400", or "&lt; 50 or &gt; 400" — the zone(s) where a value
-     * turns critical. getDisplayCriticalRange renders a one-sided low bound as
-     * "Infinity - x" (its unset sentinel is POSITIVE_INFINITY, which
-     * getDisplayNormalRange doesn't recognize), so this is built directly.
-     */
-    private String buildCriticalRangeDisplay(ResultLimit limit, String significantDigits) {
-        if (limit == null) {
-            return "";
-        }
-        boolean hasLow = limit.getLowCritical() != Double.POSITIVE_INFINITY;
-        boolean hasHigh = limit.getHighCritical() != Double.POSITIVE_INFINITY;
-        if (hasLow && hasHigh) {
-            return "< " + StringUtil.doubleWithSignificantDigits(limit.getLowCritical(), significantDigits) + " or > "
-                    + StringUtil.doubleWithSignificantDigits(limit.getHighCritical(), significantDigits);
-        }
-        if (hasLow) {
-            return "< " + StringUtil.doubleWithSignificantDigits(limit.getLowCritical(), significantDigits);
-        }
-        if (hasHigh) {
-            return "> " + StringUtil.doubleWithSignificantDigits(limit.getHighCritical(), significantDigits);
-        }
-        return "";
     }
 
     private boolean getIsNormal(String resultValue, ResultLimit resultLimit) {

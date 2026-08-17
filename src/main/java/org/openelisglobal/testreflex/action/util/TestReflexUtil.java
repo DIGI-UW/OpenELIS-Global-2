@@ -29,6 +29,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -74,6 +75,7 @@ public class TestReflexUtil {
     private static TestResultService testResultService = SpringContext.getBean(TestResultService.class);
     private static AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
     private static TestReflexService testReflexService = SpringContext.getBean(TestReflexService.class);
+    private static RuleResultScope ruleResultScope = SpringContext.getBean(RuleResultScope.class);
     private static AnalyteService analyteService = SpringContext.getBean(AnalyteService.class);
     private static ScriptletService scriptletService = SpringContext.getBean(ScriptletService.class);
     private static NoteService noteService = SpringContext.getBean(NoteService.class);
@@ -337,7 +339,13 @@ public class TestReflexUtil {
         } else {
             reflexesForResult = reflexResolver.getTestReflexesForResult(reflexBean.getResult());
         }
+        // A reflex names a measurement, not a test. Without this the Ct Value
+        // rule is evaluated against the coded PCR Result saved beside it, and a
+        // rule authored for one specimen fires on every specimen the test runs
+        // on.
         reflexesForResult = reflexesForResult.stream()
+                .filter(e -> ruleResultScope.matchesTrigger(reflexBean.getResult(), e.getTestId(), e.getComponentId(),
+                        e.getSampleTypeId()))
                 .filter(e -> isTestTriggeredByResult(e.getAddedTest(), reflexBean.getResult()))
                 .collect(Collectors.toList());
         return reflexesForResult;
@@ -551,6 +559,15 @@ public class TestReflexUtil {
     private Optional<Analysis> addReflexTest(TestReflex reflex, Result result, String patientId, Sample sample,
             boolean addTest, boolean handleAction, String actionSelectionId, boolean failOnDuplicateTest,
             String sysUserId) {
+
+        // A deactivated rule generates nothing. Asked of the service at
+        // execution rather than inferred from the row existing: deactivating is
+        // meant to delete the rows and reactivating to write them back, but
+        // saving a rule rebuilds them whatever its state, so a deactivated rule
+        // can keep a full set of them.
+        if (!testReflexService.isReflexRuleActive(reflex)) {
+            return Optional.empty();
+        }
 
         if (addTest || handleAction) {
 

@@ -6,13 +6,13 @@ import React, {
   useState,
 } from "react";
 import {
+  ActionableNotification,
   Button,
   Column,
   DatePicker,
   DatePickerInput,
   Grid,
   Heading,
-  InlineNotification,
   Pagination,
   Search,
   Section,
@@ -42,11 +42,13 @@ import ESignatureButton, {
 } from "../../esignature/ESignatureButton";
 import PolymorphicResultCell, {
   ResultCellRow,
+  blocksSaveOnPrecision,
   worklistRowKey,
 } from "./PolymorphicResultCell";
 import {
   RowEditState,
   initialRowState,
+  isModifyingSavedResult,
   isRowEditable,
   nextRowState,
   showEdit,
@@ -122,6 +124,16 @@ interface StatusOption {
   value: string;
 }
 
+/**
+ * The worklist load's response. An error body arrives through the same
+ * callback as a good one, so the shape has to admit both (OGC-1170).
+ */
+interface WorklistResponse {
+  testResult?: WorklistRow[];
+  status?: number;
+  error?: string;
+}
+
 interface SaveResponse {
   status?: number;
   error?: string;
@@ -130,6 +142,11 @@ interface SaveResponse {
   analysisLastupdated?: string;
   /** persisted result id — the saved row adopts it so re-saves UPDATE */
   resultId?: string;
+  /** the analysis status the save moved the row to (Status column + counts) */
+  analysisStatusId?: string;
+  /** the persisted value, as reported and as stored (OGC-1179) */
+  resultValue?: string;
+  rawResultValue?: string;
   reflex?: string[];
   calculated?: string[];
 }
@@ -156,6 +173,7 @@ const UnifiedResults: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<boolean>(false);
   // ---- R2 (OGC-1021) panel state ----
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [methods, setMethods] = useState<IdValue[]>([]);
@@ -233,7 +251,23 @@ const UnifiedResults: React.FC = () => {
   }, []);
 
   const applyLoadedRows = useCallback(
-    (results: { testResult?: WorklistRow[] }) => {
+    (results: WorklistResponse | undefined) => {
+      // A worklist that failed to load and a worklist with nothing in it look
+      // the same once the rows are empty, and the page said nothing either
+      // way: a technician was shown an empty queue with no sign the request
+      // had failed, while the work sat there undone (OGC-1170).
+      //
+      // getFromOpenElisServer hands the callback whatever JSON came back,
+      // error bodies included, so the response is checked the same way the
+      // save path on this page checks its own.
+      if (!results || (results.status && results.status >= 400)) {
+        setLoadError(true);
+        setRows([]);
+        setRowStates({});
+        setLoading(false);
+        return;
+      }
+      setLoadError(false);
       const loaded = (results?.testResult || []).filter((r) => r.analysisId);
       setRows(loaded);
       const states: Record<string, RowEditState> = {};
@@ -578,6 +612,18 @@ const UnifiedResults: React.FC = () => {
 
   const handleEdit = useCallback((target: WorklistRow) => {
     const key = worklistRowKey(target);
+    // Edit the value that is stored, not the one that is reported. They differ
+    // whenever reporting formats — a numeric result on a test configured for no
+    // decimal places reports 23.7 as "23" — and an editor seeded from the
+    // reported value writes it back over the stored one, truncating the
+    // patient's result and booking the loss to the technician (OGC-1179).
+    setRows((current) =>
+      current.map((row) =>
+        worklistRowKey(row) === key && typeof row.rawResultValue === "string"
+          ? { ...row, resultValue: row.rawResultValue }
+          : row,
+      ),
+    );
     setRowStates((current) => ({
       ...current,
       [key]: nextRowState(current[key] || "SAVED", {
@@ -626,32 +672,43 @@ const UnifiedResults: React.FC = () => {
           type: "SAVE_SUCCEEDED",
         }),
       }));
-      if (response.analysisLastupdated || response.resultId) {
-        // the version token is per ANALYSIS — refresh it on every component
-        // row of this analysis so a sibling save isn't falsely rejected.
-        // The SAVED row must also adopt the persisted resultId: a row saved
-        // from the blank placeholder state would otherwise keep resultId null
-        // and every later save would INSERT a duplicate result for the
-        // component instead of updating it.
-        setRows((current) =>
-          current.map((row) => {
-            if (row.analysisId !== target.analysisId) {
-              return row;
-            }
-            const updated = response.analysisLastupdated
-              ? { ...row, analysisLastupdated: response.analysisLastupdated }
-              : { ...row };
-            if (
-              response.resultId &&
-              worklistRowKey(row) === key &&
-              !updated.resultId
-            ) {
+      // the version token and the analysis status are per ANALYSIS — refresh
+      // them on every component row of this analysis so a sibling save isn't
+      // falsely rejected, and so the Status column and the filter counts above
+      // it describe the worklist as the save left it rather than as it was
+      // loaded (OGC-1179).
+      // The SAVED row must also adopt the persisted resultId: a row saved
+      // from the blank placeholder state would otherwise keep resultId null
+      // and every later save would INSERT a duplicate result for the
+      // component instead of updating it. It adopts the persisted value in
+      // both forms too, so a row edited twice without a reload edits what is
+      // stored the second time as well.
+      setRows((current) =>
+        current.map((row) => {
+          if (row.analysisId !== target.analysisId) {
+            return row;
+          }
+          const updated = { ...row };
+          if (response.analysisLastupdated) {
+            updated.analysisLastupdated = response.analysisLastupdated;
+          }
+          if (response.analysisStatusId) {
+            updated.analysisStatusId = response.analysisStatusId;
+          }
+          if (worklistRowKey(row) === key) {
+            if (response.resultId && !updated.resultId) {
               updated.resultId = response.resultId;
             }
-            return updated;
-          }),
-        );
-      }
+            if (typeof response.rawResultValue === "string") {
+              updated.rawResultValue = response.rawResultValue;
+            }
+            if (typeof response.resultValue === "string") {
+              updated.resultValue = response.resultValue;
+            }
+          }
+          return updated;
+        }),
+      );
       setStaleInfo((current) => {
         const next = { ...current };
         delete next[key];
@@ -677,8 +734,16 @@ const UnifiedResults: React.FC = () => {
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
+      // A reflex or calculation adds analyses to this order that the save
+      // response only names. Naming them in a toast and leaving the worklist
+      // as it was asks the user to refresh to see the work they just caused,
+      // so the rows are re-read when — and only when — some were generated:
+      // an unconditional reload would discard every other row's unsaved edit.
+      if (triggered.length) {
+        loadWorklist();
+      }
     },
-    [addNotification, intl, setNotificationVisible],
+    [addNotification, intl, setNotificationVisible, loadWorklist],
   );
 
   const handleSave = useCallback(
@@ -701,8 +766,9 @@ const UnifiedResults: React.FC = () => {
       if (noteDraft && noteDraft.text.trim()) {
         item.note = noteDraft.text.trim();
         item.noteVisibility = noteDraft.visibility;
-        item.noteContext =
-          rowStates[key] === "EDITING" ? "MODIFICATION" : "ENTRY";
+        item.noteContext = isModifyingSavedResult(rowStates[key] || "EMPTY")
+          ? "MODIFICATION"
+          : "ENTRY";
       }
       // R2 (FR-D5): dilution provenance — the reported value is already in
       // resultValue; factor + measured value ride along for the audit note
@@ -947,9 +1013,43 @@ const UnifiedResults: React.FC = () => {
             ))}
         </Column>
 
+        {loadError && (
+          <Column lg={16} md={8} sm={4}>
+            {/* An empty table is how "nothing to do here" looks, so a load
+                that failed has to say so itself — otherwise the two are the
+                same picture and the work goes undone (OGC-1170). Same
+                surface the stale-save rejection uses. */}
+            <ActionableNotification
+              kind="error"
+              inline
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "error.results.loadFailed" })}
+              subtitle={intl.formatMessage({
+                id: "error.results.loadFailed.detail",
+              })}
+              actionButtonLabel={intl.formatMessage({
+                id: "label.results.retry",
+              })}
+              onActionButtonClick={() => loadWorklist()}
+              statusIconDescription={intl.formatMessage({
+                id: "notification.title",
+              })}
+            />
+          </Column>
+        )}
+
         <Column lg={16} md={8} sm={4}>
           <TableContainer>
-            <Table size="lg">
+            {/* The expanded panel renders a second table (History) inside this
+                one, so naming the outer table is what tells a screen-reader
+                user which of the two they are in (OGC-1179). */}
+            <Table
+              size="lg"
+              aria-label={intl.formatMessage({
+                id: "label.results.table.caption",
+              })}
+            >
               <TableHead>
                 <TableRow>
                   <TableHeader className="unifiedExpandHeader" />
@@ -1093,13 +1193,18 @@ const UnifiedResults: React.FC = () => {
                           )}
                           {showSave(state) && (
                             <ESignatureButton
-                              meaning={SignatureMeaning.AUTHORED}
+                              meaning={
+                                isModifyingSavedResult(state)
+                                  ? SignatureMeaning.MODIFIED
+                                  : SignatureMeaning.AUTHORED
+                              }
                               context={`${intl.formatMessage({
                                 id: "label.results.save",
                               })} ${row.accessionNumber} - ${row.testName}`}
                               recordType="RESULT"
                               recordId={row.analysisId}
                               onSign={() => handleSave(row)}
+                              disabled={blocksSaveOnPrecision(row)}
                               size="sm"
                             >
                               <FormattedMessage id="label.results.save" />
@@ -1114,7 +1219,7 @@ const UnifiedResults: React.FC = () => {
                               row={row}
                               domain={domain}
                               editable={isRowEditable(state)}
-                              editing={state === "EDITING"}
+                              editing={isModifyingSavedResult(state)}
                               loadedAnalyzerId={loadedAnalyzers[key]}
                               methods={methods}
                               analyzers={analyzers}
@@ -1138,18 +1243,23 @@ const UnifiedResults: React.FC = () => {
                               onValueChange={(field, value) =>
                                 handleValueChange(row, field, value)
                               }
-                              onNoteDraftChange={(draft) =>
+                              onNoteDraftChange={(draft) => {
                                 setNoteDrafts((current) => ({
                                   ...current,
                                   [key]: draft,
-                                }))
-                              }
-                              onDilutionDraftChange={(draft) =>
+                                }));
+                                // A note is a change worth saving — the row it
+                                // belongs to has to offer Save for it, now that
+                                // opening Edit no longer does on its own.
+                                markRowDirty(row);
+                              }}
+                              onDilutionDraftChange={(draft) => {
                                 setDilutionDrafts((current) => ({
                                   ...current,
                                   [key]: draft,
-                                }))
-                              }
+                                }));
+                                markRowDirty(row);
+                              }}
                               allowResultRejection={allowResultRejection}
                               nceOpen={nceOpenKey === key}
                               onNceOpenChange={(open) => {
@@ -1198,13 +1308,18 @@ const UnifiedResults: React.FC = () => {
                                   )}
                                   {showSave(state) && (
                                     <ESignatureButton
-                                      meaning={SignatureMeaning.AUTHORED}
+                                      meaning={
+                                        isModifyingSavedResult(state)
+                                          ? SignatureMeaning.MODIFIED
+                                          : SignatureMeaning.AUTHORED
+                                      }
                                       context={`${intl.formatMessage({
                                         id: "label.results.save",
                                       })} ${row.accessionNumber} - ${row.testName}`}
                                       recordType="RESULT"
                                       recordId={row.analysisId}
                                       onSign={() => handleSave(row)}
+                                      disabled={blocksSaveOnPrecision(row)}
                                       size="sm"
                                     >
                                       <FormattedMessage id="label.results.save" />
@@ -1219,9 +1334,15 @@ const UnifiedResults: React.FC = () => {
                       {stale && (
                         <TableRow>
                           <TableCell colSpan={11}>
-                            <InlineNotification
+                            {/* FR-O2 asks for a refresh ACTION, not only the
+                                word: InlineNotification has no `actions` prop,
+                                so the button handed to it was dropped and the
+                                user was told to refresh with nothing to press
+                                (OGC-1179). ActionableNotification is the
+                                Carbon idiom, and it dismisses. */}
+                            <ActionableNotification
                               kind="error"
-                              hideCloseButton
+                              inline
                               lowContrast
                               title={intl.formatMessage(
                                 { id: "error.results.staleSave" },
@@ -1234,15 +1355,21 @@ const UnifiedResults: React.FC = () => {
                                   1: stale.modifiedAt || "",
                                 },
                               )}
-                              actions={
-                                <Button
-                                  kind="ghost"
-                                  size="sm"
-                                  onClick={() => loadWorklist()}
-                                >
-                                  <FormattedMessage id="label.results.refresh" />
-                                </Button>
-                              }
+                              actionButtonLabel={intl.formatMessage({
+                                id: "label.results.refresh",
+                              })}
+                              onActionButtonClick={() => loadWorklist()}
+                              onClose={() => {
+                                setStaleInfo((current) => {
+                                  const next = { ...current };
+                                  delete next[key];
+                                  return next;
+                                });
+                                return true;
+                              }}
+                              statusIconDescription={intl.formatMessage({
+                                id: "notification.title",
+                              })}
                             />
                           </TableCell>
                         </TableRow>

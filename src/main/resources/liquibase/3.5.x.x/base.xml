@@ -201,5 +201,12 @@
 
   <!-- OGC-224: panel terminology mappings (LOINC backfilled from panel.loinc, the FHIR routing key) -->
   <include relativeToChangelogFile="true" file="075-panel-terminology-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="076-rule-component-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="077-alert-rule-component-scope.xml"/>
+  <include relativeToChangelogFile="true" file="078-calculation-operand-result-map.xml"/>
+  <include relativeToChangelogFile="true" file="079-alert-rule-primary-component-backfill.xml"/>
+  <include relativeToChangelogFile="true" file="080-calculation-destination-component.xml"/>
+  <include relativeToChangelogFile="true" file="081-reflex-sample-type-backfill.xml"/>
+  <include relativeToChangelogFile="true" file="082-reflex-target-sample-type.xml"/>
 
 </databaseChangeLog>
