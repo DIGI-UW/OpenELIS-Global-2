@@ -30,6 +30,18 @@ class StackContext(NamedTuple):
 
 LOCAL_DOMAINS = {"localhost", "127.0.0.1", "::1"}
 
+TEST_ONLY_FRONTEND_DEV_DEPENDENCIES = {
+    "@axe-core/playwright",
+    "@playwright/test",
+}
+TEST_ONLY_FRONTEND_SCRIPT_PREFIXES = (
+    "ci:",
+    "cy:",
+    "lint",
+    "pw:",
+    "test",
+)
+
 ANALYZER_SCENARIOS = (
     ("Cepheid GeneXpert (ASTM Mode)", "MOLECULAR", "generic-astm", "astm/genexpert-astm", "genexpert", "genexpert_astm", 9600, "ASTM_LIS2_A2", "GENEXPERT|CEPHEID"),
     ("Mindray BC-5380", "HEMATOLOGY", "generic-hl7", "hl7/mindray-bc5380", "bc5380", "mindray_bc5380", 5380, "HL7_V2_3_1", "MINDRAY.*BC.?5380|BC.?5380"),
@@ -124,17 +136,67 @@ def frontend_dependencies_changed(
     override = environment.get("DEV_STACK_BUILD_FRONTEND")
     if override is not None:
         return override.lower() == "true"
-    paths = ("frontend/package.json", "frontend/package-lock.json", "frontend/Dockerfile")
     try:
-        result = subprocess.run(
-            ["git", "diff", "--quiet", "origin/develop", "--", *paths],
+        dockerfile_changed = subprocess.run(
+            ["git", "diff", "--quiet", "origin/develop", "--", "frontend/Dockerfile"],
             cwd=context.repo_root,
             env=environment,
             check=False,
+        ).returncode != 0
+        lockfile_changed = subprocess.run(
+            ["git", "diff", "--quiet", "origin/develop", "--", "frontend/package-lock.json"],
+            cwd=context.repo_root,
+            env=environment,
+            check=False,
+        ).returncode != 0
+        base_package = json.loads(
+            output(
+                ["git", "show", "origin/develop:frontend/package.json"],
+                cwd=context.repo_root,
+                environment=environment,
+            )
         )
-        return result.returncode != 0
-    except OSError:
+        current_package = json.loads(
+            (context.repo_root / "frontend" / "package.json").read_text(encoding="utf-8")
+        )
+        return frontend_image_inputs_changed(
+            base_package,
+            current_package,
+            lockfile_changed=lockfile_changed,
+            dockerfile_changed=dockerfile_changed,
+        )
+    except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
         return True
+
+
+def frontend_image_inputs_changed(
+    base_package: dict,
+    current_package: dict,
+    *,
+    lockfile_changed: bool,
+    dockerfile_changed: bool,
+) -> bool:
+    if dockerfile_changed:
+        return True
+    if base_package == current_package:
+        return lockfile_changed
+    return scrub_test_only_frontend_inputs(base_package) != scrub_test_only_frontend_inputs(
+        current_package
+    )
+
+
+def scrub_test_only_frontend_inputs(package: dict) -> dict:
+    scrubbed = json.loads(json.dumps(package))
+    dev_dependencies = scrubbed.get("devDependencies", {})
+    for dependency in TEST_ONLY_FRONTEND_DEV_DEPENDENCIES:
+        dev_dependencies.pop(dependency, None)
+    scripts = scrubbed.get("scripts", {})
+    scrubbed["scripts"] = {
+        name: command
+        for name, command in scripts.items()
+        if not name.startswith(TEST_ONLY_FRONTEND_SCRIPT_PREFIXES)
+    }
+    return scrubbed
 
 
 def compose_command(context: StackContext, *arguments: str) -> list[str]:

@@ -144,6 +144,57 @@ class DevStackContractTest(unittest.TestCase):
             )
         )
 
+    def test_test_only_frontend_changes_reuse_runtime_image(self):
+        base = {
+            "dependencies": {"react": "17"},
+            "devDependencies": {"@playwright/test": "1", "vite": "8"},
+            "scripts": {"start": "vite", "pw:test": "playwright test"},
+        }
+        current = {
+            "dependencies": {"react": "17"},
+            "devDependencies": {
+                "@axe-core/playwright": "4",
+                "@playwright/test": "1",
+                "vite": "8",
+            },
+            "scripts": {
+                "start": "vite",
+                "pw:test": "playwright test",
+                "pw:test:a11y": "playwright test --project=a11y",
+            },
+        }
+
+        self.assertFalse(
+            self.dev_stack.frontend_image_inputs_changed(
+                base,
+                current,
+                lockfile_changed=True,
+                dockerfile_changed=False,
+            )
+        )
+
+    def test_runtime_frontend_changes_build_a_worktree_image(self):
+        base = {
+            "dependencies": {"react": "17"},
+            "devDependencies": {"vite": "8"},
+            "scripts": {"start": "vite"},
+        }
+
+        for current, lock_changed, dockerfile_changed in (
+            ({**base, "dependencies": {"react": "18"}}, True, False),
+            ({**base, "devDependencies": {"vite": "9"}}, True, False),
+            (base, True, False),
+            (base, False, True),
+        ):
+            self.assertTrue(
+                self.dev_stack.frontend_image_inputs_changed(
+                    base,
+                    current,
+                    lockfile_changed=lock_changed,
+                    dockerfile_changed=dockerfile_changed,
+                )
+            )
+
     def test_full_harness_scenarios_cover_each_transport_without_ids(self):
         scenarios = self.dev_stack.ANALYZER_SCENARIOS
 
