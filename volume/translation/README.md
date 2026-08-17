@@ -4,10 +4,19 @@ Message files placed here override the bundled UI translations, so a deployment
 can reword any string in the interface without editing source or rebuilding the
 frontend image.
 
-Nothing here has any effect until `OVERRIDE_DEFAULT_TRANSLATION=true` is set in
-`../properties/SystemConfiguration.properties`. With it unset or false the UI
-uses the bundled bundles exactly as shipped and does not even request these
-files.
+Nothing here has any effect until overriding is switched on. There are two ways,
+and either is enough:
+
+- **From the UI** — Admin → Site Information Menu
+  (`/MasterListsPage/SiteInformationMenu`), the `overrideDefaultTranslation`
+  row. Select it, press Modify, choose `true`, Save. This takes effect
+  immediately: no restart, no redeploy.
+- **From the properties file** — `OVERRIDE_DEFAULT_TRANSLATION=true` in
+  `../properties/SystemConfiguration.properties`, which overrides whatever the
+  UI holds and needs a backend restart.
+
+Left alone the setting is `false`: the UI uses the bundled bundles exactly as
+shipped and does not even request these files.
 
 ## File names
 
@@ -88,23 +97,27 @@ introduce one.
 
 ## Turning it off again
 
-`OVERRIDE_DEFAULT_TRANSLATION` behaves like every other entry in
-`SystemConfiguration.properties`: the effective value is remembered in
+If you switched it on from the UI, switch it back the same way — select the row,
+Modify, `false`, Save.
+
+If you set it in `SystemConfiguration.properties`, note that it behaves like
+every other entry there: the effective value is remembered in
 `TotalSystemConfiguration.properties`, so **commenting the line out does not
-unset it**. To switch overriding off, set it explicitly:
+unset it**. Set it explicitly instead:
 
 ```
 OVERRIDE_DEFAULT_TRANSLATION=false
 ```
 
-and restart the backend.
+and restart the backend. While that line is present it wins over the UI, so
+clear it if you want the toggle to be the thing in charge.
 
 ## If something is wrong with a file
 
-Every failure falls back to the bundled messages rather than breaking the screen:
-a missing file, an empty one, invalid JSON, or a value that is not a string (that
-one entry is dropped, the rest of the file still applies). Check the browser
-console for `[translation]` messages.
+Every failure falls back to the bundled messages rather than breaking the
+screen: a missing file, an empty one, invalid JSON, or a value that is not a
+string (that one entry is dropped, the rest of the file still applies). Check
+the browser console for `[translation]` messages.
 
 Locale files you drop here are ignored by git (see `.gitignore`) so a
 deployment's translations cannot be committed into the core repository by
