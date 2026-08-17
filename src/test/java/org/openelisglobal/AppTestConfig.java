@@ -92,10 +92,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testsamplehandling.service", "org.openelisglobal.testsamplehandling.daoimpl",
         "org.openelisglobal.testterminology.service", "org.openelisglobal.testterminology.daoimpl",
         "org.openelisglobal.sampletypeterminology.service", "org.openelisglobal.sampletypeterminology.daoimpl",
+        "org.openelisglobal.panelterminology.service", "org.openelisglobal.panelterminology.daoimpl",
         "org.openelisglobal.testreagentlink.service", "org.openelisglobal.testreagentlink.daoimpl",
-        "org.openelisglobal.testalertrule.service", "org.openelisglobal.testalertrule.daoimpl",
-        "org.openelisglobal.testcatalog.service", "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer",
-        "org.openelisglobal.plugin", "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
+        "org.openelisglobal.testalertrule", "org.openelisglobal.testcatalog.service",
+        "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.plugin",
+        "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
         "org.openelisglobal.systemusersection", "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample",
         "org.openelisglobal.siteinformation", "org.openelisglobal.config", "org.openelisglobal.image",
         "org.openelisglobal.testresult", "org.openelisglobal.barcode", "org.openelisglobal.referral",
@@ -305,6 +306,12 @@ public class AppTestConfig implements WebMvcConfigurer {
 
         Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
         builder.serializationInclusion(JsonInclude.Include.NON_NULL);
+        // Production (AppConfig.jacksonMessageConverter) uses a raw ObjectMapper,
+        // which REJECTS unknown JSON fields; Spring's builder default silently
+        // accepts them. Tests must exercise the production contract — a lenient
+        // test mapper is exactly how an un-PUT-able GET representation shipped
+        // in the alert-rule endpoints (OGC-949).
+        builder.failOnUnknownProperties(true);
 
         MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter(builder.build());
         jsonConverter.setSupportedMediaTypes(supportedMediaTypes);
@@ -350,7 +357,10 @@ public class AppTestConfig implements WebMvcConfigurer {
         // Add custom converters while keeping default converters
         // (including ResourceHttpMessageConverter for serving files)
         converters.add(new StringHttpMessageConverter());
-        converters.add(jsonConverter());
+        // index 0, like production AppConfig — otherwise Spring's default
+        // (lenient) Jackson converter handles JSON and the strict contract
+        // is never exercised
+        converters.add(0, jsonConverter());
     }
 
     @Bean()
@@ -366,6 +376,52 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     public org.openelisglobal.result.controller.rest.ResultEntryRestController resultEntryRestController() {
         return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
+    }
+
+    /**
+     * Explicit bean (the testcatalog.controller package is not scanned — a sibling
+     * controller's class init breaks the test context) so MockMvc can exercise the
+     * editor endpoints' real JSON binding: direct controller invocation bypasses
+     * Jackson, which is how the un-PUT-able alert-rule GET representation shipped
+     * unnoticed.
+     */
+    /** See testCatalogEditorRestController — same MockMvc rationale. */
+    @Bean
+    public org.openelisglobal.common.management.controller.rest.SampleTypeManagementRestController sampleTypeManagementRestController() {
+        return new org.openelisglobal.common.management.controller.rest.SampleTypeManagementRestController();
+    }
+
+    @Bean
+    public org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController testCatalogEditorRestController(
+            org.openelisglobal.test.service.TestService testService,
+            org.openelisglobal.testresultcomponent.service.TestResultComponentService componentService,
+            org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService interpretationService,
+            org.openelisglobal.testresult.service.TestResultService testResultService,
+            org.openelisglobal.resultlimit.service.ResultLimitService resultLimitService,
+            org.openelisglobal.testcatalog.service.RangeCoverageValidationService coverageService,
+            org.openelisglobal.testsamplehandling.service.TestSampleHandlingService handlingService,
+            org.openelisglobal.analyzer.service.AnalyzerService analyzerService,
+            org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService,
+            org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService,
+            org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService,
+            org.openelisglobal.testterminology.service.TestTerminologyMappingService terminologyService,
+            org.openelisglobal.panel.service.PanelService panelService,
+            org.openelisglobal.panelitem.service.PanelItemService panelItemService) {
+        return new org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController(testService,
+                componentService, interpretationService, testResultService, resultLimitService, coverageService,
+                handlingService, analyzerService, analyzerTestMappingService, typeOfSampleService,
+                typeOfSampleTestService, terminologyService, panelService, panelItemService);
+    }
+
+    @Bean
+    public org.openelisglobal.result.controller.rest.LogbookResultsRestController logbookResultsRestController(
+            org.openelisglobal.referral.service.ReferralTypeService referralTypeService) {
+        return new org.openelisglobal.result.controller.rest.LogbookResultsRestController(referralTypeService);
+    }
+
+    @Bean
+    public org.openelisglobal.eqa.controller.rest.EQAAlertRestController eqaAlertRestController() {
+        return new org.openelisglobal.eqa.controller.rest.EQAAlertRestController();
     }
 
     @Bean

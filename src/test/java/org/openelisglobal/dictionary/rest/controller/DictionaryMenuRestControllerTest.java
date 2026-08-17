@@ -101,7 +101,8 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         status = mvcResult.getResponse().getStatus();
         assertEquals(200, status);
         content = mvcResult.getResponse().getContentAsString();
-        assertEquals(content, "Dictionary Menu deleted successfully");
+        // production's Jackson-at-index-0 serializes String bodies as JSON
+        assertEquals(content, "\"Dictionary Menu deleted successfully\"");
     }
 
     private Dictionary createDictionaryObject() {

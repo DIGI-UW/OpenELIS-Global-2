@@ -55,5 +55,11 @@ public enum AlertType {
     /**
      * Critical alert unacknowledged for more than 4 hours
      */
-    CRITICAL_UNACKNOWLEDGED
+    CRITICAL_UNACKNOWLEDGED,
+
+    /**
+     * A saved result outside its authored critical bounds (OGC-1022 R3); entity is
+     * the ANALYSIS carrying the value
+     */
+    CRITICAL_RESULT
 }

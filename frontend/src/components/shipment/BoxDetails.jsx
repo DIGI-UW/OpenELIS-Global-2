@@ -457,6 +457,7 @@ const BoxDetails = () => {
         breadcrumbs={[
           { label: "home.label", link: "/" },
           { label: "shipment.breadcrumb", link: "/SampleShipment" },
+          { label: "shipment.box.details", link: "" },
         ]}
       />
       <ShipmentNavigation />

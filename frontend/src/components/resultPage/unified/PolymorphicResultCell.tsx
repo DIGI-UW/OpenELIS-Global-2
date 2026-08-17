@@ -1,5 +1,6 @@
 import React from "react";
 import { Select, SelectItem, TextArea, TextInput } from "@carbon/react";
+import { useIntl } from "react-intl";
 import ResultMultiSelect from "../../common/multiSelect";
 import CascadingMultiSelect from "../../common/cascadingMultiSelect";
 
@@ -28,9 +29,71 @@ export interface ResultCellRow {
   testResultComponentId?: string;
   resultType: string;
   resultValue?: string;
+  /** the value as stored, where resultValue is the value as reported */
+  rawResultValue?: string;
   multiSelectResultValues?: string;
   dictionaryResults?: DictionaryOption[];
   unitsOfMeasure?: string;
+  testName?: string;
+  /** decimal places this test is configured to report to */
+  significantDigits?: number;
+}
+
+/**
+ * The decimal places entered, or 0 when the value carries no fraction.
+ *
+ * <p>A value entered to more places than the test reports to is stored in full
+ * and shown rounded, so the record and the screen stop agreeing and the next
+ * edit saves the rounded form over the stored one (OGC-1179). The entry field
+ * says so rather than accepting it silently.
+ */
+export function enteredDecimalPlaces(value: string): number {
+  const dot = value.indexOf(".");
+  return dot === -1 ? 0 : value.length - dot - 1;
+}
+
+export function exceedsConfiguredPrecision(
+  value: string | undefined,
+  significantDigits: number | undefined,
+): boolean {
+  if (!value || significantDigits === undefined || significantDigits < 0) {
+    return false;
+  }
+  return (
+    Number.isFinite(Number(value)) &&
+    enteredDecimalPlaces(value) > significantDigits
+  );
+}
+
+/**
+ * Whether the row is holding a newly typed value finer than the test reports
+ * to.
+ *
+ * <p>A value already stored at that precision is left alone: it is a record
+ * that exists, and refusing to save the row would strand it — the reader could
+ * not so much as add a note to say so. What is refused is entering a new one.
+ */
+export function blocksSaveOnPrecision(row: {
+  resultType?: string;
+  resultValue?: string;
+  rawResultValue?: string;
+  significantDigits?: number;
+}): boolean {
+  return (
+    row.resultType === "N" &&
+    row.resultValue !== row.rawResultValue &&
+    exceedsConfiguredPrecision(row.resultValue, row.significantDigits)
+  );
+}
+
+/** The `step` a number input of this precision accepts. */
+export function precisionStep(significantDigits: number | undefined): string {
+  if (significantDigits === undefined || significantDigits < 0) {
+    return "any";
+  }
+  return significantDigits === 0
+    ? "1"
+    : `0.${"0".repeat(significantDigits - 1)}1`;
 }
 
 /** Unique identity for a worklist row: one analysis may render N component rows. */
@@ -79,7 +142,15 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
   editable,
   onValueChange,
 }) => {
+  const intl = useIntl();
   const rowKey = worklistRowKey(row);
+  // The cell is the page's primary control and carries no visible label — the
+  // column header names it for a sighted reader, but a screen reader lands on
+  // an unnamed control, so each variant gets a hidden one (OGC-1179).
+  const accessibleName = intl.formatMessage(
+    { id: "label.results.resultFor" },
+    { 0: row.testName || "" },
+  );
 
   if (!editable) {
     return (
@@ -95,7 +166,8 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
         <Select
           id={`unifiedResultValue-${rowKey}`}
           name={`unifiedResultValue-${rowKey}`}
-          noLabel
+          labelText={accessibleName}
+          hideLabel
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
             onValueChange("resultValue", e.target.value)
           }
@@ -134,18 +206,27 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
         />
       );
 
-    case "N":
+    case "N": {
+      const tooPrecise = blocksSaveOnPrecision(row);
       return (
         <TextInput
           id={`unifiedResultValue-${rowKey}`}
-          labelText=""
+          labelText={accessibleName}
+          hideLabel
           type="number"
+          step={precisionStep(row.significantDigits)}
+          invalid={tooPrecise}
+          invalidText={intl.formatMessage(
+            { id: "error.results.precision" },
+            { 0: row.significantDigits ?? 0 },
+          )}
           value={row.resultValue || ""}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onValueChange("resultValue", e.target.value)
           }
         />
       );
+    }
 
     case "R":
     case "A":
@@ -153,7 +234,8 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
         <TextArea
           id={`unifiedResultValue-${rowKey}`}
           rows={1}
-          labelText=""
+          labelText={accessibleName}
+          hideLabel
           value={row.resultValue || ""}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
             onValueChange("resultValue", e.target.value)

@@ -22,6 +22,7 @@ import TestMappingModal from "./TestMappingModal";
 import ValidationDashboard from "./ValidationDashboard";
 import PendingCodesPanel from "./PendingCodesPanel";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./FieldMapping.css";
 
 // Helper function to extract mappings from API response
@@ -225,6 +226,16 @@ const FieldMapping = () => {
       {/* Hierarchical Page Title with Back Arrow */}
       <div className="field-mapping-header">
         <div className="field-mapping-header-title">
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "" },
+              { label: "analyzer.page.hierarchy.mappings", link: "" },
+              // the analyzer's own crumb appears once it resolves; before that it
+              // would just repeat the section above it
+              ...(analyzer?.name ? [{ label: analyzer.name, link: "" }] : []),
+            ]}
+          />
           <PageTitle
             breadcrumbs={[
               {

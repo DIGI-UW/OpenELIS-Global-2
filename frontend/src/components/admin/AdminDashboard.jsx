@@ -2,6 +2,7 @@ import React from "react";
 import { FormattedMessage } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { ClickableTile, Column, Grid } from "@carbon/react";
+import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
   ArrowRight,
   CharacterWholeNumber,
@@ -90,6 +91,12 @@ export default function AdminDashboard({ basePath }) {
 
   return (
     <section className="admin-dashboard" data-testid="admin-dashboard">
+      <PageBreadCrumb
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+        ]}
+      />
       <h2>
         <FormattedMessage id="admin.dashboard.title" />
       </h2>

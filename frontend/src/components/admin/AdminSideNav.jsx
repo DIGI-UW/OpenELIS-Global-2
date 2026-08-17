@@ -35,6 +35,7 @@ import {
 } from "@carbon/react";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
+import { PANEL_SECTIONS } from "./testCatalog/panelSectionConfig";
 
 const getAdminBasePath = (pathname) =>
   pathname.startsWith("/admin") ? "/admin" : "/MasterListsPage";
@@ -55,7 +56,15 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const location = useLocation();
   const path = getAdminBasePath(location.pathname);
 
-  const editorMatch = location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
+  // OGC-224 — /TestCatalogEditor/panel/:id is the PANEL editor, not a test id.
+  const panelEditorMatch = location.pathname.match(
+    /\/TestCatalogEditor\/panel\/([^/]+)/,
+  );
+  const editorPanelId = panelEditorMatch ? panelEditorMatch[1] : null;
+
+  const editorMatch = editorPanelId
+    ? null
+    : location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
   const editorTestId = editorMatch ? editorMatch[1] : null;
 
   // Sample Type editor context: /SampleTypeManagement/:sampleTypeId/:section?
@@ -133,7 +142,29 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const inTestCatalogArea =
     !!editorTestId ||
     !!editorSampleTypeId ||
+    !!editorPanelId ||
     /\/(TestCatalogList|SampleTypeManagement)(\/|$)/.test(location.pathname);
+
+  // Panel name for the sidenav helper caption. "new" is create-in-place.
+  const [editorPanel, setEditorPanel] = useState({ id: null, name: null });
+  useEffect(() => {
+    if (!editorPanelId || editorPanelId === "new") {
+      return undefined;
+    }
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      `/rest/test-catalog/panels/${editorPanelId}`,
+      (res) => {
+        setEditorPanel({ id: editorPanelId, name: res?.name || null });
+      },
+      controller.signal,
+    );
+    return () => {
+      controller.abort();
+    };
+  }, [editorPanelId]);
+  const editorPanelName =
+    editorPanel.id === editorPanelId ? editorPanel.name : null;
 
   const handleNavigation = (targetPath) => (e) => {
     e.preventDefault();
@@ -150,6 +181,28 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       onClick: handleNavigation(targetPath),
     };
   };
+
+  // OGC-224 — the list route hosts two entities (?entity=panels); the two
+  // entity links disambiguate on the query string so only one lights up.
+  const onPanelsList =
+    new URLSearchParams(location.search).get("entity") === "panels";
+  const entityListNavProps = (targetPath, isActive) => ({
+    href: targetPath,
+    isActive,
+    "aria-current": isActive ? "page" : undefined,
+    onClick: handleNavigation(targetPath),
+  });
+  const testsListNavProps = (targetPath) =>
+    entityListNavProps(
+      targetPath,
+      normalizePath(location.pathname) === normalizePath(targetPath) &&
+        !onPanelsList,
+    );
+  const panelsListNavProps = (targetPath) =>
+    entityListNavProps(
+      targetPath,
+      /\/TestCatalogList(\/|$)/.test(location.pathname) && onPanelsList,
+    );
 
   return (
     <SideNavItems className="adminSideNav">
@@ -202,7 +255,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         </SideNavMenuItem>
         <SideNavMenuItem
           data-cy="testCatalogList"
-          {...navProps(`${path}/TestCatalogList`)}
+          {...testsListNavProps(`${path}/TestCatalogList`)}
         >
           <FormattedMessage
             id={
@@ -212,7 +265,51 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
             }
           />
         </SideNavMenuItem>
-        {editorSampleTypeId ? (
+        {/* OGC-224 — Panels is a peer entity of Tests / Sample Types in this
+            shell; the list route hosts it via ?entity=panels. */}
+        <SideNavMenuItem
+          data-cy="panelsList"
+          {...panelsListNavProps(`${path}/TestCatalogList?entity=panels`)}
+        >
+          <FormattedMessage id="label.testCatalog.entity.panels" />
+        </SideNavMenuItem>
+        {editorPanelId ? (
+          <>
+            {/* OGC-224 — panel editor context: caption + the panel's sections
+                as SideNav submenu items (FRS: submenus, never tabs). */}
+            <li
+              id="panelSectionsHelp"
+              data-cy="panelSectionsContext"
+              className="adminSideNav__sectionsContext"
+              style={{
+                padding: "0.25rem 1rem 0.5rem",
+                fontSize: "0.75rem",
+                lineHeight: 1.3,
+                color: "var(--cds-text-secondary, #6f6f6f)",
+              }}
+            >
+              {editorPanelId === "new" ? (
+                <FormattedMessage id="sidenav.label.admin.panel.addingNew" />
+              ) : (
+                <FormattedMessage
+                  id="sidenav.label.admin.panel.editing"
+                  values={{ name: editorPanelName || "" }}
+                />
+              )}
+            </li>
+            {PANEL_SECTIONS.map((sectionKey) => (
+              <SideNavMenuItem
+                key={sectionKey}
+                data-cy={`panel-section-${sectionKey}`}
+                {...navProps(
+                  `${path}/TestCatalogEditor/panel/${editorPanelId}/${sectionKey}`,
+                )}
+              >
+                <FormattedMessage id={`label.panel.section.${sectionKey}`} />
+              </SideNavMenuItem>
+            ))}
+          </>
+        ) : editorSampleTypeId ? (
           <>
             <li
               id="sampleTypeSectionsHelp"

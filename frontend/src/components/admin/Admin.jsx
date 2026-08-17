@@ -27,6 +27,7 @@ import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
 import TestCatalog from "./testManagement/ViewTestCatalog";
 import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
+import PanelEditor from "./testCatalog/PanelEditor";
 import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
@@ -92,6 +93,12 @@ function Admin() {
       <Route
         path={`${path}/TestCatalogEditor/group/:ids/:section?`}
         component={CombinedTestEditor}
+      />
+      {/* OGC-224 — panel entity segment must precede the generic :testId
+          route, which would otherwise swallow "panel" as a test id. */}
+      <Route
+        path={`${path}/TestCatalogEditor/panel/:panelId/:section?`}
+        component={PanelEditor}
       />
       <Route
         path={`${path}/TestCatalogEditor/:testId?/:section?`}
@@ -186,6 +193,8 @@ function Admin() {
       />
       <Route path={`${path}/UomManagement`} component={UomManagement} />
       <Route path={`${path}/UomCreate`} component={UomCreate} />
+      {/* OGC-224 — the legacy Panel pages stay authoritative until the new
+          Panels context is stabilized; they are not redirected. */}
       <Route path={`${path}/PanelManagement`} component={PanelManagement} />
       <Route path={`${path}/PanelCreate`} component={PanelCreate} />
       <Route path={`${path}/PanelOrder`} component={PanelOrder} />

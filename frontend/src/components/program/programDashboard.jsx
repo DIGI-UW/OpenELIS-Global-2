@@ -26,7 +26,13 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  {
+    label: "banner.menu.results.order.programmes",
+    link: "/genericProgram",
+  },
+];
 
 const ProgramDashboard = () => {
   const programDashboardUrl = "/rest/programSamplesList";

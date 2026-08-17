@@ -34,6 +34,7 @@ import { useParams, useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import LeveyJenningsChart from "./LeveyJenningsChart";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./ControlChartDetail.css";
 
 const ControlChartDetail = () => {
@@ -275,6 +276,14 @@ const ControlChartDetail = () => {
         className="control-chart-detail-header"
         data-testid="control-chart-detail-header"
       >
+        <PageBreadCrumb
+          breadcrumbs={[
+            { label: "home.label", link: "/" },
+            { label: "analyzer.page.hierarchy.root", link: "" },
+            { label: "qc.dashboard.title", link: "" },
+            { label: analyzerInfo?.name || "qc.chart.title", link: "" },
+          ]}
+        />
         <PageTitle
           breadcrumbs={[
             {
