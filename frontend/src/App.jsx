@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { confirmAlert } from "react-confirm-alert";
 import { IntlProvider } from "react-intl";
 import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
@@ -112,6 +112,11 @@ import {
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { languages, languageMessages } from "./languages";
+import {
+  NO_OVERRIDE,
+  applyOverride,
+  loadTranslationOverride,
+} from "./languages/translationOverride";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -195,6 +200,53 @@ export default function App() {
 
   const [locale, setLocale] = useState(initialLocale);
   const [messages, setMessages] = useState(languages[initialLocale].messages);
+
+  // A deployment's own translations, layered over the bundled ones. Held apart
+  // from `messages` so the bundled bundle stays the thing language switching
+  // manages, and the override is a lens over whatever it currently holds.
+  const [translationOverride, setTranslationOverride] = useState(NO_OVERRIDE);
+  const [overrideTranslations, setOverrideTranslations] = useState(false);
+
+  // Read before login, because the login page is translated too. Layout fetches
+  // the same endpoint for the rest of the app, but it renders inside
+  // IntlProvider — the messages have to be settled before that.
+  useEffect(() => {
+    getFromOpenElisServer(
+      "/rest/open-configuration-properties",
+      (properties) => {
+        setOverrideTranslations(
+          String(properties?.OVERRIDE_DEFAULT_TRANSLATION) === "true",
+        );
+      },
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!overrideTranslations) {
+      return undefined;
+    }
+    let current = true;
+    loadTranslationOverride(locale).then((override) => {
+      // A language switch mid-flight must not be overwritten by the old locale.
+      if (current) {
+        setTranslationOverride(override);
+      }
+    });
+    return () => {
+      current = false;
+    };
+  }, [overrideTranslations, locale]);
+
+  // The flag gates whether an override applies at all, not merely whether one
+  // was fetched — so turning it off falls back to the shipped bundle without
+  // having to unpick anything already loaded.
+  const localizedMessages = useMemo(
+    () =>
+      overrideTranslations
+        ? applyOverride(messages, translationOverride)
+        : messages,
+    [overrideTranslations, messages, translationOverride],
+  );
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
@@ -400,7 +452,7 @@ export default function App() {
       locale={locale}
       key={locale}
       defaultLocale="en"
-      messages={messages}
+      messages={localizedMessages}
     >
       <UserSessionDetailsContext.Provider
         value={{

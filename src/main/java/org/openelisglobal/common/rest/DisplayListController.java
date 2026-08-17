@@ -372,6 +372,10 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL));
         configs.put(Property.DEFAULT_NATIONALITY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_NATIONALITY));
+        // The login page is translated too, so the UI needs this before it has a
+        // session — hence the open endpoint rather than the authenticated one.
+        configs.put(Property.OVERRIDE_DEFAULT_TRANSLATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.OVERRIDE_DEFAULT_TRANSLATION));
         configs.put(Property.releaseNumber.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.releaseNumber));
         configs.put(Property.ACCESSION_NUMBER_VALIDATE.toString(),

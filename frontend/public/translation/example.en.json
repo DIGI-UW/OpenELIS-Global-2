@@ -1,0 +1,5 @@
+{
+  "_comment": "Rename this file to en.json to activate it. Only string values are used; keys not listed here keep their bundled text.",
+  "sidenav.label.dashboard": "Home",
+  "login.msg.login": "Sign in to the laboratory system"
+}
