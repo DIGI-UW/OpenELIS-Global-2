@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-609 [EQA V2.1 / T-10] Write permission for EQA cycle state changes.
+
+    FR-V2.1-04 requires manual cycle transitions to be gated on a manage-level
+    permission, and none existed: the schema had only qa.view.eqa (read), so
+    the transition endpoint — which mutates cycle state and writes an immutable
+    audit row — was reachable by any RECEPTION or RESULTS user.
+
+    Shape copied verbatim from qa/004's qa.manage.accreditation pair (register
+    the key, then grant it), including the NOT EXISTS guard that makes the grant
+    re-runnable.
+
+    Slot note: §05 of the delivery plan reserves qa/019 for T-12's full V2
+    permission tiers, so this takes the first buffer slot instead of squatting
+    it. T-12 should grant additional roles against this module rather than
+    re-registering the key — the precondition below makes a duplicate insert a
+    no-op, but a second module row with the same name would split the grants.
+    -->
+
+    <changeSet author="openelisglobal" id="qa-035-add-qa-manage-eqa-module">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.manage.eqa'</sqlCheck>
+        </preConditions>
+        <comment>Register the qa.manage.eqa permission key</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="qa.manage.eqa"/>
+            <column name="description" value="Manage EQA cycles: advance cycle state and record manual overrides"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="N"/>
+            <column name="has_update_flag" value="N"/>
+            <column name="has_delete_flag" value="N"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_module" schemaName="clinlims">
+                <where>name = 'qa.manage.eqa'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-036-grant-qa-manage-eqa">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.manage.eqa'</sqlCheck>
+        </preConditions>
+        <comment>Grant qa.manage.eqa to QA Officer and Global Administrator</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_module
+                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+            FROM clinlims.system_role r, clinlims.system_module m
+            WHERE r.name IN ('QA Officer', 'Global Administrator') AND m.name = 'qa.manage.eqa'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.system_role_module srm
+                  WHERE srm.system_role_id = r.id AND srm.system_module_id = m.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'qa.manage.eqa');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

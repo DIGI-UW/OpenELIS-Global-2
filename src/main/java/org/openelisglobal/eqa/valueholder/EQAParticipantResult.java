@@ -29,9 +29,10 @@ import org.openelisglobal.common.valueholder.BaseObject;
  *
  * <p>
  * Reference columns are raw Longs in the module's SampleEQA.eqaEnrollmentId
- * style; labEnrollmentId in particular must stay raw — EQALabProgramEnrollment
- * is not registered in the production persistence unit, so an association would
- * fail at startup.
+ * style. (An earlier revision claimed EQALabProgramEnrollment is unmapped in
+ * production; that is wrong — the production unit scans its classpath root and
+ * maps it, verified empirically. The raw-Long style stands on the module
+ * precedent alone.)
  */
 @Getter
 @Setter
