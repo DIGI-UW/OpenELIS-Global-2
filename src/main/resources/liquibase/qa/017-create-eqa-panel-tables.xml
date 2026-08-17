@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-609 [EQA V2.1 / T-09] Schema spine 3 of 4: panels, sealed panel samples,
+    eligible analysts (FR-V2.1-08/11/12/16/17).
+
+    Conventions follow qa/015 + qa/016 (V1-EQA column style under qa/ mechanics):
+    numeric(10,0) PKs, <table>_seq sequences, sys_user_id VARCHAR(36) NOT NULL,
+    last_updated, no reference_tables registration, enum values stored UPPERCASE.
+
+    Deliberate deviations from the FRS, all deliberate and worth knowing:
+
+      * FR-V2.1-17 spells storage temperatures 'frozen_-20C' / 'ultra_frozen_-80C'.
+        A hyphen cannot appear in a Java enum constant, and this codebase stores
+        @Enumerated(STRING) names verbatim, so the DB values are
+        FROZEN_MINUS_20C / ULTRA_FROZEN_MINUS_80C. Same set, legal identifiers.
+
+      * FR-V2.1-08 names the column user_id; the house name for a system_user
+        reference is system_user_id (result_signature, system_user_section), so
+        that is what is used here.
+
+      * FR-V2.1-11 names panel_type but never enumerates its values, so it is a
+        plain VARCHAR with no CHECK — a constraint would be invented, not specified.
+
+      * FR-V2.1-17 describes "supervisor checkbox + free-text notes" but never names
+        the notes column; V2.4 FR-V2.4-02 requires it. Added as homogeneity_qc_notes.
+
+      * Uniqueness on (panel_id, sample_code) and (scheme_id, system_user_id) is not
+        in the FRS. Both are added: V2.4 generates sample codes per panel, and an
+        analyst opt-in list is a set, not a bag.
+
+    eqa_panel_sample.target_value holds ciphertext (FR-V2.1-16) via the existing
+    EncryptionConverter. Three consequences, none of them optional:
+      * VARCHAR(512), not 255. Measured against jasypt 1.9.3 AES256TextEncryptor:
+        ciphertext is 4*ceil((32 + 16*(floor(bytes/16)+1))/3) chars, so a 255-char
+        VARCHAR silently caps plaintext at 143 bytes and then errors.
+      * No index, no UNIQUE, no equality lookup on this column — the ciphertext is
+        salted per write, so the same plaintext never encrypts to the same bytes.
+      * Never seed plaintext into it. Reading a non-ciphertext value throws
+        EncryptionOperationNotPossibleException at the converter. Leave rows NULL.
+    -->
+
+    <changeSet author="openelisglobal" id="eqa-panel-001-create-eqa-panel">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="eqa_panel" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Shared panel entity for in-house and provider schemes (FR-V2.1-11 + FR-V2.1-17)</comment>
+        <createSequence sequenceName="eqa_panel_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="eqa_panel">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_eqa_panel"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_eqa_panel_fhir_uuid"/>
+            </column>
+            <column name="scheme_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Nullable: a panel may be prepared before it is bound to a cycle. -->
+            <column name="cycle_id" type="numeric(10,0)"/>
+            <column name="panel_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Derived from scheme_type; the FRS never enumerates values, so no CHECK. -->
+            <column name="panel_type" type="VARCHAR(30)"/>
+            <column name="prepared_by" type="numeric(10,0)"/>
+            <column name="prepared_at" type="TIMESTAMP"/>
+            <!-- Required for in-house panels; enforced in the service, not here,
+                 because the rule depends on the parent scheme's scheme_type. -->
+            <column name="unblind_date" type="DATE"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="PREPARING">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- FR-V2.1-17 source + inventory. NULL source_type is permitted for
+                 in-house panels, which use the V2.4 blinding flow instead. -->
+            <column name="source_type" type="VARCHAR(30)"/>
+            <column name="lot_number" type="VARCHAR(100)"/>
+            <column name="vendor_name" type="VARCHAR(255)"/>
+            <column name="vendor_lot" type="VARCHAR(100)"/>
+            <column name="vendor_certificate_ref" type="VARCHAR(255)"/>
+            <column name="aliquots_produced" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="aliquots_reserved" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="aliquots_shipped" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="storage_temp" type="VARCHAR(30)"/>
+            <column name="expiration_date" type="DATE"/>
+            <column name="homogeneity_qc_passed" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="homogeneity_qc_notes" type="TEXT"/>
+
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_panel_eqa_program"
+            baseTableSchemaName="clinlims" baseTableName="eqa_panel" baseColumnNames="scheme_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_program" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_panel_eqa_cycle"
+            baseTableSchemaName="clinlims" baseTableName="eqa_panel" baseColumnNames="cycle_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_cycle" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_panel_prepared_by"
+            baseTableSchemaName="clinlims" baseTableName="eqa_panel" baseColumnNames="prepared_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <sql>
+            ALTER TABLE clinlims.eqa_panel
+            ADD CONSTRAINT eqa_panel_status_chk
+            CHECK (status IN ('PREPARING', 'SEALED', 'DISTRIBUTED', 'UNBLINDED', 'SCORED', 'CLOSED'))
+        </sql>
+
+        <sql>
+            ALTER TABLE clinlims.eqa_panel
+            ADD CONSTRAINT eqa_panel_source_type_chk
+            CHECK (source_type IN ('IN_HOUSE_ALIQUOTED', 'VENDOR_SOURCED', 'MIXED'))
+        </sql>
+
+        <sql>
+            ALTER TABLE clinlims.eqa_panel
+            ADD CONSTRAINT eqa_panel_storage_temp_chk
+            CHECK (storage_temp IN ('AMBIENT', 'REFRIGERATED_2_8C', 'FROZEN_MINUS_20C',
+                'ULTRA_FROZEN_MINUS_80C', 'DRY_ICE'))
+        </sql>
+
+        <!-- FR-V2.1-17 inventory invariant. Cheap and absolute at this level; the
+             service repeats it to return 422 with a usable message (AC-V2.1-11). -->
+        <sql>
+            ALTER TABLE clinlims.eqa_panel
+            ADD CONSTRAINT eqa_panel_aliquots_chk
+            CHECK (aliquots_produced >= aliquots_reserved + aliquots_shipped)
+        </sql>
+
+        <createIndex schemaName="clinlims" tableName="eqa_panel" indexName="idx_eqa_panel_scheme_cycle_status">
+            <column name="scheme_id"/>
+            <column name="cycle_id"/>
+            <column name="status"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="eqa_panel"/>
+            <dropSequence sequenceName="eqa_panel_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="eqa-panel-002-create-eqa-panel-sample">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="eqa_panel_sample" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Panel samples with sealed, encrypted-at-rest target values (FR-V2.1-12 + FR-V2.1-16)</comment>
+        <createSequence sequenceName="eqa_panel_sample_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="eqa_panel_sample">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_eqa_panel_sample"/>
+            </column>
+            <column name="panel_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Participant-facing obfuscated id for in-house blinding (V2.4). -->
+            <column name="blind_code" type="VARCHAR(50)"/>
+            <column name="analyte_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Ciphertext. See the header note: 512, never indexed, never seeded. -->
+            <column name="target_value" type="VARCHAR(512)"/>
+            <column name="target_unit" type="VARCHAR(50)"/>
+            <column name="acceptance_range_low" type="DECIMAL(15,5)"/>
+            <column name="acceptance_range_high" type="DECIMAL(15,5)"/>
+            <column name="source_reference" type="VARCHAR(255)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint
+            schemaName="clinlims" tableName="eqa_panel_sample"
+            columnNames="panel_id, sample_code"
+            constraintName="uq_eqa_panel_sample_panel_code"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_panel_sample_eqa_panel"
+            baseTableSchemaName="clinlims" baseTableName="eqa_panel_sample" baseColumnNames="panel_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_panel" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_panel_sample_analyte"
+            baseTableSchemaName="clinlims" baseTableName="eqa_panel_sample" baseColumnNames="analyte_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyte" referencedColumnNames="id"/>
+
+        <sql>
+            ALTER TABLE clinlims.eqa_panel_sample
+            ADD CONSTRAINT eqa_panel_sample_range_chk
+            CHECK (acceptance_range_low IS NULL OR acceptance_range_high IS NULL
+                OR acceptance_range_low &lt;= acceptance_range_high)
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="eqa_panel_sample"/>
+            <dropSequence sequenceName="eqa_panel_sample_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="eqa-panel-003-create-eqa-scheme-analyst">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="eqa_scheme_analyst" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Opt-in list of users eligible to be recorded as analyst on a scheme (FR-V2.1-08)</comment>
+        <createSequence sequenceName="eqa_scheme_analyst_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="eqa_scheme_analyst">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_eqa_scheme_analyst"/>
+            </column>
+            <column name="scheme_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="system_user_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="added_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="added_by" type="numeric(10,0)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- An empty list means "any user may be recorded" (FR-V2.1-08), so this is
+             an opt-in set: one row per (scheme, user), never a bag. -->
+        <addUniqueConstraint
+            schemaName="clinlims" tableName="eqa_scheme_analyst"
+            columnNames="scheme_id, system_user_id"
+            constraintName="uq_eqa_scheme_analyst_scheme_user"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_scheme_analyst_eqa_program"
+            baseTableSchemaName="clinlims" baseTableName="eqa_scheme_analyst" baseColumnNames="scheme_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_program" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_scheme_analyst_system_user"
+            baseTableSchemaName="clinlims" baseTableName="eqa_scheme_analyst" baseColumnNames="system_user_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_scheme_analyst_added_by"
+            baseTableSchemaName="clinlims" baseTableName="eqa_scheme_analyst" baseColumnNames="added_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="eqa_scheme_analyst"/>
+            <dropSequence sequenceName="eqa_scheme_analyst_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

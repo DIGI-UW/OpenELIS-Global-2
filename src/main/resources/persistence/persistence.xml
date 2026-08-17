@@ -85,6 +85,14 @@
         <class>org.openelisglobal.eqa.valueholder.EQACycleStateTransition</class>
         <class>org.openelisglobal.eqa.valueholder.EQAParticipantResult</class>
 
+        <!-- EQA V2 panels, receipts, follow-ups, competency (OGC-609) -->
+        <class>org.openelisglobal.eqa.valueholder.EQAPanel</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAPanelSample</class>
+        <class>org.openelisglobal.eqa.valueholder.EQASchemeAnalyst</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAParticipantFollowup</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAPanelReceipt</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAAnalystCompetencyEvent</class>
+
         <!-- Quality Control / Internal Control entities (005-eqa-module QC/IC) -->
         <class>org.openelisglobal.qc.valueholder.QCRuleConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCFrequencyConfig</class>

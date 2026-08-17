@@ -73,4 +73,13 @@
 
   <!-- EQA V2.1 T-08 — OGC-609: participant results, cycle links, scheme_type -->
   <include file="liquibase/qa/016-create-eqa-participant-result.xml" />
+
+  <!-- EQA V2.1 T-09 — OGC-609: panels, sealed panel samples, eligible analysts -->
+  <include file="liquibase/qa/017-create-eqa-panel-tables.xml" />
+
+  <!-- EQA V2.1 T-09 — OGC-609: follow-ups, panel receipts, competency events -->
+  <include file="liquibase/qa/018-create-eqa-followup-receipt-competency.xml" />
+
+  <!-- EQA V2.1 T-10 — OGC-609: write permission for cycle state changes -->
+  <include file="liquibase/qa/023-add-eqa-manage-permission.xml" />
 </databaseChangeLog>
