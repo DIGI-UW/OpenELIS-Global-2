@@ -28,10 +28,11 @@ type UatStoryIndex = {
 };
 
 const EXPECTED_AMR_STORIES = [
-  ["AMR-S01", "R1 - M-03 - Route a culture order"],
+  ["AMR-S01", "R2 - M-03 - Route and contextualize a culture order"],
   ["AMR-S17", "R1 - M-07 - Work the Culture queue"],
   ["AMR-S18", "R1 - M-04 - Classify and navigate sibling cases"],
-  ["AMR-S02", "R1 - M-04 - Record culture progression"],
+  ["AMR-S02", "R2 - M-04 - Record culture progression"],
+  ["AMR-S28", "R2 - M-04 - Set or change the bench protocol"],
   ["AMR-S19", "R1 - M-04 - Identify isolates and manage exceptions"],
   ["AMR-S20", "R1 - M-05 - Review manual AST"],
   ["AMR-S21", "R1 - M-05 - Review analyzer AST and QC"],
@@ -50,11 +51,12 @@ const EXPECTED_AMR_STORIES = [
   ["AMR-S14", "M4 - Preview and export WHONET CSV"],
 ];
 
-const EXPECTED_R1_STEPS = [
-  ["AMR-S01", ["AMR-2", "AMR-63", "AMR-64"]],
+const EXPECTED_ALIGNMENT_STEPS = [
+  ["AMR-S01", ["AMR-2", "AMR-79", "AMR-63", "AMR-64", "AMR-83"]],
   ["AMR-S17", ["AMR-1", "AMR-3", "AMR-75"]],
   ["AMR-S18", ["AMR-65", "AMR-66"]],
-  ["AMR-S02", ["AMR-4", "AMR-67", "AMR-68"]],
+  ["AMR-S02", ["AMR-4", "AMR-67", "AMR-84", "AMR-68"]],
+  ["AMR-S28", ["AMR-81", "AMR-82"]],
   ["AMR-S19", ["AMR-5", "AMR-69", "AMR-70"]],
   ["AMR-S20", ["AMR-6", "AMR-71", "AMR-72"]],
   ["AMR-S21", ["AMR-73", "AMR-74"]],
@@ -126,19 +128,32 @@ test.describe("OGC-782 live AMR UAT", () => {
         schemaVersion: 2,
         instance: "amr",
         jira: "OGC-782",
-        title: "Microbiology M1-M4 + R1 authoritative alignment review",
+        title: "Microbiology M1-M4 + R1/R2 authoritative alignment review",
       });
       expect(
         checklist.sections
-          .filter((section) => section.title.startsWith("R1 -"))
+          .filter((section) =>
+            [
+              "AMR-S01",
+              "AMR-S17",
+              "AMR-S18",
+              "AMR-S02",
+              "AMR-S28",
+              "AMR-S19",
+              "AMR-S20",
+              "AMR-S21",
+              "AMR-S22",
+              "AMR-S03",
+            ].includes(section.key),
+          )
           .map((section) => [
             section.key,
             section.steps.map((step) => step.key),
           ]),
-      ).toEqual(EXPECTED_R1_STEPS);
+      ).toEqual(EXPECTED_ALIGNMENT_STEPS);
       const steps = checklist.sections.flatMap((section) => section.steps);
-      expect(checklist.sections).toHaveLength(22);
-      expect(steps).toHaveLength(67);
+      expect(checklist.sections).toHaveLength(23);
+      expect(steps).toHaveLength(72);
       expect(new Set(steps.map((step) => step.key)).size).toBe(steps.length);
       expect(
         steps.filter((step) => !step.required).map((step) => step.key),
@@ -158,7 +173,7 @@ test.describe("OGC-782 live AMR UAT", () => {
       await widget.getByRole("button", { name: "Choose story" }).click();
       const storyList = widget.getByRole("listbox", { name: /stories/i });
       await expect(storyList).toBeVisible();
-      await expect(storyList.getByRole("option")).toHaveCount(20);
+      await expect(storyList.getByRole("option")).toHaveCount(21);
       await expect(
         storyList.getByRole("option", { name: /OGC-788/ }),
       ).toHaveCount(0);

@@ -422,7 +422,13 @@ from Piotr's human UAT ruling.
 - [x] T197 [MVP] Deploy the exact #3789 candidate plus compatible review-tooling revision to `amr.openelis-global.org`; app SHA `ee5e4d1fa5324dd0ae742c0cc303b9e1b61b25cf`, review-tooling SHA `4df8441896e59520ffb9bb247b1b2e3ce3f5248d`, health/smoke/SHA guard passed.
 - [x] T198 [MVP] Run registered `core-app`/deployed Playwright pre-UAT journeys for order routing, worklist state, case setup, isolate/AST, critical communication, final lock, and visible patient-report propagation; the final `core-demo-video` passed in 1.9 minutes and the external evidence bundle is `/tmp/ogc-782-mvp-evidence-final-2026-07-29/`.
 - [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target in #3789 until evidence exists.
-- [ ] T200 [Human UAT] Piotr completes Pass/Fail/N/A plus notes for the live combined M1/M2/M3/M4 checklist: 38 required steps across 14 stories at pre-deployment revision `2c50adaa394ee252cd775a87383c70d5af672b42530614c9bc1ad201dac27ba8`; the optional TB reflection cannot block acceptance. Reconfirm the revision after the exact M4 deployment. Automated execution cannot check off this task.
+- [ ] T200 [Human UAT] Piotr completes Pass/Fail/N/A plus notes for the live
+  AMR-hosted checklist: 57 required and 3 optional steps across 21 stories at
+  revision `c9a3c898db53d6370afea074d094ff3b999841e63ad7f630be465c61f5ae8cd4`.
+  The analyzer-AST/QC and shared-specimen reflection steps are optional and
+  cannot block acceptance. The two Macro stories in the shared catalog are
+  host-scoped to `phrases.openelis-global.org`, not AMR. Automated execution
+  cannot check off this task.
 - [x] T201 [MVP] Update PR #3789 with final scope, V2 exclusions, exact commits, test/evidence links, UAT revision and rulings, deployment SHAs, and one-shot required-check status.
 
 ## Phase 13: Follow-On Stack Status
@@ -727,13 +733,18 @@ culture-action entry points. The independent status ledger is
   The first browser run correctly failed on a generic `.check()` interaction
   with Carbon's wrapped radio; the final test uses focus + Space, asserts the
   selected state, and contains no forced action or arbitrary wait.
-- [ ] T314 [M-04] Commit and push the coherent slice, deploy its exact SHA to
-  AMR, verify target metadata, and execute the exact registered journey against
-  the deployment.
-- [ ] T315 [M-04] Rewrite and dry-run Grist story `AMR-S02` against the deployed
-  UI one step at a time. Publish the complete nav path, exact accession and
-  fresh-record rule, control labels, inputs, and expected outcomes. Human marks
-  remain pending until Piotr completes them.
+- [x] T314 [M-04] Commit and push the coherent slice, deploy implementation SHA
+  `ad18410c92221f9222a3f00483a6f726d08933bf` to AMR with review-tooling SHA
+  `f3b34f7c000c99492025f35ae2c6f21188344c00`, verify ready target metadata,
+  and pass the exact deployed foundational journey 2/2. The closure commit adds
+  only tests and evidence; its exact-head deployment is recorded in PR #4051.
+- [x] T315 [M-04] Rewrite and dry-run Grist story `AMR-S02` v3.0 against the
+  deployed UI one step at a time. Checklist revision
+  `c9a3c898db53d6370afea074d094ff3b999841e63ad7f630be465c61f5ae8cd4` and
+  story revision `e5397f19f26f` publish the complete nav path, consume-once
+  accession `UATMICROB407A659D2`, exact case, control labels, inputs, and four
+  expected outcomes. The exact live-UAT contract passes 2/2; human marks remain
+  pending until Piotr completes them.
 
 ## Dependencies & Execution Order
 
