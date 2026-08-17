@@ -80,82 +80,61 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
 
-**Prerequisites for all methods below:**
-
-Before running any `docker compose` command, you must create a `.env` file with
-your environment configuration:
+Development has one supported startup path. From the root of any clone or Git
+worktree, run:
 
 ```bash
-cp .env.example .env
+scripts/dev-stack up
 ```
 
-Then edit `.env` to customize settings for your environment (database passwords,
-domain, etc.). See `.env.example` for detailed documentation of each variable.
+The command initializes the required submodules, uses Java 21, builds the local
+WAR and analyzer components, and starts the complete OpenELIS + analyzer harness.
+Its Compose project, containers, images, networks, ports, and volumes are derived
+from the worktree path, so multiple worktrees can run concurrently.
+The harness analyzer scenarios are created idempotently through authenticated
+application services after login readiness; startup never seeds the database
+directly. Use `--no-scenarios` only when testing an intentionally empty system.
 
-**IMPORTANT:** Never commit `.env` to version control as it contains secrets and
-server-specific settings. CI copies `.env.example` to `.env` before running
-docker compose.
+Useful commands:
 
-#### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
+```bash
+scripts/dev-stack status
+scripts/dev-stack url
+eval "$(scripts/dev-stack env)"  # configure Playwright for this worktree
+scripts/dev-stack logs -f oe.openelis.org
+scripts/dev-stack down
+scripts/dev-stack down --volumes --yes  # explicit data reset
+```
 
-    docker compose up -d
+Local development needs no configuration: `.env` is created from `.env.example`,
+the proxy binds random loopback ports, and `scripts/dev-stack url` prints the
+browser URL. Frontend source remains hot-reloaded. Re-run `scripts/dev-stack up`
+after backend or analyzer component changes.
 
-#### Running OpenELIS Global2 using docker compose with docker images built directly from the source code
+The published development frontend dependency image is reused when
+`package.json`, `package-lock.json`, and `frontend/Dockerfile` match `develop`;
+worktree source is still mounted for hot reload. If any of those inputs differ,
+the command automatically builds an isolated frontend image. Set
+`DEV_STACK_BUILD_FRONTEND=true` only to force that rebuild.
 
-    docker compose -f build.docker-compose.yml up -d --build
+For a domain-enabled development server, set a real `LETSENCRYPT_DOMAIN` and
+`LETSENCRYPT_EMAIL` in `.env`, then run the same `scripts/dev-stack up` command.
+It binds ports 80/443, renders the named nginx hosts, and uses the existing
+Let's Encrypt HTTP-01 flow. DNS for both the primary domain and
+`bridge.<domain>` must resolve to the server. Port and bind overrides are listed
+in `.env.example` for hosts that already have an external router; those hosts
+should terminate TLS at that router and set `DEV_STACK_TLS=self-signed` for the
+private upstream.
 
-#### Running OpenELIS Global2 with docker compose For Development
-
-Here Artifacts (ie the War file and React code) are compiled/built on the local
-machine outside docker and just mounted into the docker compose setup. This
-speeds up the development process
-
-1.  Fork the
-    [OpenELIS-Global Repository](https://github.com/DIGI-UW/OpenELIS-Global-2.git)
-    and clone the forked repo. The `username` below is the `username` of your
-    Github profile.
-
-         git clone https://github.com/username/OpenELIS-Global-2.git
-
-1.  innitialize and build sub modules
-
-        cd OpenELIS-Global-2
-        git submodule update --init --recursive
-        cd dataexport
-        mvn clean install -DskipTests
-
-1.  Navigate back to the repository directory:
-
-         cd ..
-
-1.  Build the War file
-
-          mvn clean install -DskipTests -Dmaven.test.skip=true
-
-1.  Start the containers to mount the locally compiled artifacts
-
-        docker compose -f dev.docker-compose.yml up -d
-
-    Note : For Reflecting Local changes in the Running Containers ;
-
-- Any Changes to the [Front-end](./frontend/) React Source Code will be directly
-  Hot Reloaded in the UI
-- For changes to the [Back-end](./src/) Java Source code
-
-  - Run the maven build again to re-build the War file
-
-         mvn clean install -DskipTests -Dmaven.test.skip=true
-
-  - Recreate the Openelis webapp container
-
-        docker compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
+Do not invoke the development Compose layers directly. CI, release, and packaged
+installation commands remain separate operational interfaces.
 
 #### The Instances can be accessed at
 
 | Instance     |                   URL                   | credentials (user : password) |
 | ------------ | :-------------------------------------: | ----------------------------: |
-| Legacy UI    | https://localhost/api/OpenELIS-Global/  |            admin: adminADMIN! |
-| New React UI |           https://localhost/            |            admin: adminADMIN! |
+| Legacy UI    | `<scripts/dev-stack url>/api/OpenELIS-Global/` | admin: adminADMIN! |
+| New React UI | output of `scripts/dev-stack url`              | admin: adminADMIN! |
 
 **Note:** If your browser indicates that the website is not secure after
 accessing any of these links, simply follow these steps:
