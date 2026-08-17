@@ -1,11 +1,11 @@
 # OGC-1054 Analyzer Feature Authoritative Roadmap
 
-**Updated:** 2026-08-13
+**Updated:** 2026-08-17
 **Status:** Authoritative implementation roadmap; MVP not yet delivered
 **Epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
 **Roadmap branch:** `codex/ogc-1054-r0-roadmap`
 **Historical foundation pull request:** [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792)
-**First product-review gate:** Full MVP deployed to
+**First human product-acceptance gate:** Full MVP deployed to
 [`https://analyzers.openelis-global.org`](https://analyzers.openelis-global.org/login)
 with current Grist UAT and MP4 evidence
 
@@ -17,7 +17,9 @@ PR #3792 SpecKit set. Those files remain foundation records for git provenance.
 The implementation is a coordinated three-repository PR train, not one large
 cross-cutting PR. OpenELIS, Analyzer Bridge, and analyzer mock each have a
 linear stack. Companion PRs at one checkpoint share a contract revision and
-must pass together before the next checkpoint starts.
+must pass together before the checkpoint can be accepted. A descendant branch
+may be prepared and tested while its predecessor is under review, but it cannot
+be accepted, merged, or deployed before the predecessor.
 
 ## Non-Negotiable Source Boundary
 
@@ -202,26 +204,50 @@ them as patient results until clinically bound.
 
 ## Current Code Baseline
 
-Baseline reviewed on 2026-08-13:
+Baseline reconciled on 2026-08-17:
 
-- OpenELIS `develop` at `25d9d7a506e3db4839a0f8f972f43e92158e3511`;
-- PR #3792 branch `codex/ogc-1054-analyzer-qc-mvp` at
-  `d985e6ce727b555c414b7db1129b3b1eeaf664cc`;
-- PR #3792 is open, non-draft, conflicting, review-required, 43 commits ahead
-  and 29 commits behind `develop`, with 191 changed files;
-- Bridge pinned by OpenELIS at
-  `12a338992eaf791a63159b7e5016f75369722dbf` and Bridge `develop` observed at
-  `53b6acbf2a3fedef0ddd9f582cb9cbdf86a59dd0`;
-- analyzer mock pinned by OpenELIS at
-  `d063356e5a8f82ca6a44cf809be1874a7d704f8e`, with mock `main` observed at
-  `573308f6bc994ba585cb1cedb8f932b79ce6b215`;
-- review tooling `main` at
-  `21bf2515a2b4de3aad6dde8b61b17d3c74b3f772`, which already supplies stable step keys,
-  deterministic checklist revisions, refresh/stale-answer behavior, exact-SHA
-  targeted analyzer deployment, and verified target metadata;
-- July demo application at `2c840a55b03b238a2ad00c987181504c2bef6ef6`,
-  which is historical and not a current acceptance build;
-- the canonical analyzer review host is `analyzers.openelis-global.org`.
+- OpenELIS `develop` is `2017f491b7cbf1b7b6b06cc47a048b4298fd55cd`.
+- OE-R0 [#4049](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4049)
+  is open at `6c3f001e2d74be92ee91b9b810d1581d03710845`; its last checks
+  are green, but it is behind current `develop` and review is required.
+- OE-F0 [#4053](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4053)
+  is open and green at `ec80c9e9d1490dbbc6709ad5a8bebd58589e0079`.
+- OE-E0 [#4055](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4055)
+  is open and green at `41f2091f4f92485f747a388203406207e0242282`.
+- OE-M1 [#4056](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4056)
+  is open at `074f4d1468ac873128631c0496d70ea87ad30c99`; frontend and
+  translation checks pass, while backend CI fails because two new database
+  integration tests collide with pre-seeded analyzer primary keys in the full
+  suite. Focused tests alone do not close that failure.
+- BR-E0 [#45](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/45)
+  is open and green at `e17b021ad0687b455d01d1cc6f4702e045ea0fe3`.
+- BR-M1 [#46](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/46)
+  is open and green at `42cb4bc4d2181ac578d0e3d9d5f589e85b3b4fa1`; OE-M1 pins
+  that exact Bridge revision.
+- OE-M1 pins analyzer mock
+  `d063356e5a8f82ca6a44cf809be1874a7d704f8e` and code-qa
+  `30528d176bd128b4765242d130f38ca9fb85d7b8`. Current analyzer-mock
+  `main` is `573308f6bc994ba585cb1cedb8f932b79ce6b215`.
+- `openelis-work` current `main` is
+  `5490a45f5d3775c0ee31a7baf691f64a66e02151`; it remains functional and
+  visual evidence only.
+- Review-tooling `main` is
+  `21bf2515a2b4de3aad6dde8b61b17d3c74b3f772`, which supplies stable step
+  keys, deterministic checklist revisions, refresh/stale-answer behavior,
+  exact-SHA targeted deployment, and verified target metadata.
+- PR #3792 was retitled as historical and closed on 2026-08-13 at
+  `d985e6ce727b555c414b7db1129b3b1eeaf664cc`. It is immutable provenance,
+  not a stack member or delivery candidate.
+- The live analyzer host still serves historical deployment
+  `20260728T205914Z-2c840a55b03b` from OE
+  `2c840a55b03b238a2ad00c987181504c2bef6ef6` and review overlay
+  `f3deb02e6e45cacbe9a7ad77159c2aaf3fea8e2c`. Its published checklist is
+  schema 2, revision
+  `9164a26d8c71f27ef72cd2452643f97d146b8e4f377bd2816c021776edbf239c`,
+  with eight historical `AN-QC-*` steps. It is not current MVP acceptance
+  evidence.
+- The canonical analyzer review host remains
+  `analyzers.openelis-global.org`.
 
 ### Present on OE-F0
 
@@ -403,19 +429,42 @@ visual comparison and evidence gates.
 
 These are engineering validation milestones, not partial product acceptance.
 The first product review requested from the user is G0, the full deployed MVP.
-There is one next checkpoint at a time and no architecture-selection prompt in
-the workstream.
+There is one next **acceptance** checkpoint at a time and no
+architecture-selection prompt in the workstream. Descendant implementation may
+continue while an earlier checkpoint awaits review, but its status cannot
+advance past `IN_PROGRESS` until every earlier checkpoint is `MERGED`.
+
+### Checkpoint lifecycle and authority
+
+Every checkpoint uses exactly these states. A commit, passing focused command,
+open PR, deployed route, or old UAT report cannot imply a transition.
+
+| State | Deterministic condition | Who records or controls the transition |
+| ----- | ----------------------- | -------------------------------------- |
+| `NOT_STARTED` | No checkpoint implementation or red test has begun. | Roadmap owner records the initial state. |
+| `IN_PROGRESS` | At least one checkpoint task or red test has begun, or any required test, evidence item, review thread, or predecessor gate remains open. | Implementer records it; CI failure or a changed accepted SHA returns the checkpoint here. |
+| `READY_FOR_REVIEW` | The exact PR head has the required acceptance record, assigned criteria, targeted and broad tests, formatting, CI, runtime evidence, and no unresolved blocking ambiguity; every predecessor is `MERGED`. | Implementer may record it only from cited evidence. |
+| `READY_FOR_UAT` | G0 only: the exact release-candidate SHAs are deployed, all machine gates pass, the 15-step Grist revision is served, and the inspected non-video/video evidence bundle is complete. | Delivery owner records it from deployment and evidence manifests. An agent or Playwright run cannot mark human UAT results. |
+| `ACCEPTED` | Engineering checkpoint: required repository reviewer approval applies to the unchanged ready SHA. G0: a human product reviewer marks every required Grist step `pass` against the unchanged ready deployment and approves the evidence bundle. | Required GitHub reviewer for R0-M4; human product reviewer for G0. Implementers and agents cannot self-accept. |
+| `MERGED` | The accepted SHA has landed on its canonical target and every dependent PR has been rebased/retargeted to that landed identity. | Repository maintainer performs the merge; implementer records the landed SHA and updates descendants. |
+
+Any production or evidence change after `READY_FOR_REVIEW`, `READY_FOR_UAT`, or
+`ACCEPTED` invalidates that status. The checkpoint returns to `IN_PROGRESS`, is
+redeployed where applicable, and repeats every affected gate. Documentation-only
+changes may retain approval only when the required reviewer explicitly confirms
+that no accepted behavior or evidence identity changed.
 
 An executor given the goal “execute this roadmap through deployed MVP” must:
 
 1. fetch all three repository bases and read their local `AGENTS.md` files;
-2. resume the first checkpoint whose status is not `ACCEPTED`;
+2. resume the first checkpoint whose status is neither `ACCEPTED` nor `MERGED`;
 3. create or reuse exactly the branch and base named below;
 4. record a failing test before production implementation, implement to green,
    refactor, and attach the red/green/refactor commands and commits to the PR;
 5. update this roadmap's status ledger, acceptance record, issue/ambiguity
    register, and evidence links in the same checkpoint PR;
-6. continue to the next stacked checkpoint without waiting for a product review;
+6. continue preparing the next stacked checkpoint without waiting for a product
+   review, while leaving it `IN_PROGRESS` until its predecessors merge;
 7. stop only for a permission/credential boundary, a required external review
    or merge, or evidence that contradicts this fixed architecture.
 
@@ -464,10 +513,13 @@ truth.
 | Refactor               | Refactor commit or explicit `NO_REFACTOR_NEEDED`, followed by the targeted command                                |
 | Layer validation       | Unit/service, persistence, contract, RTL, harness, Playwright, and UAT marked `RUN`, `NOT_APPLICABLE`, or `LATER` |
 | Acceptance crosswalk   | Criterion ID to automated test, visible workflow where applicable, and evidence artifact                          |
+| Visible route scope    | Exact routes/query states, semantic `h1`, breadcrumb targets, reload/back/forward assertions, and screenshot names |
+| Viewport evidence      | `1440x900` desktop and `390x844` mobile for every changed lab-facing route; inspected result recorded, not merely generated |
 | Legacy-path audit      | Touched superseded paths removed, guarded, or linked to a priority removal issue                                  |
 | Decisions              | Engineering decisions grounded in current code/ADR/contract; product references remain functional/visual only     |
 | Issues and ambiguities | Stable ID, evidence, impact, owner, resolution gate, status, and decision or conservative interim behavior        |
 | Final gate             | Formatting, focused regression, required broader suite, CI, review threads, and resulting status transition       |
+| Status authority       | Exact previous/new lifecycle state, immutable head/deployment identity, evidence, and person or role authorized to make the transition |
 
 An ambiguity is blocking when resolving it could change clinical safety,
 repository ownership, durable data semantics, a cross-repository contract, or
@@ -487,6 +539,8 @@ silently route around.
 | `ISSUE-R0-004` | Provenance | `RESOLVED` | A commit cannot name its own SHA; committed records name implementation/evidence commits and CI records the final immutable PR-head SHA.                                                                                                                |
 | `ISSUE-R0-005` | Provenance | `RESOLVED` | PR #3792 was retitled and closed as historical after OE-F0 #4053 opened; it links OE-R0/OE-F0 and its branch remains immutable history.                                                                                                                 |
 | `ISSUE-R0-006` | Provenance | `RESOLVED` | Code audit found #3792-only behavior described as current. R0 now distinguishes current-code facts from historical provenance and enforces one descendant roadmap lineage.                                                                              |
+| `ISSUE-R0-007` | Provenance | `RESOLVED` | The 2026-08-14 reconciliation replaced stale #3792, PR-head, CI, deployment, checklist, Bridge, mock, review-tooling, and `openelis-work` facts with exact current revisions and states.                                                                  |
+| `AMB-R0-008`   | Acceptance | `RESOLVED` | Checkpoints now use explicit `NOT_STARTED`, `IN_PROGRESS`, `READY_FOR_REVIEW`, `READY_FOR_UAT`, `ACCEPTED`, and `MERGED` states with immutable-SHA rules and named transition authority.                                                                  |
 | `AMB-F0-001`   | Scope      | `RESOLVED` | The F0 salvage manifest classifies every considered #3792 behavior group before production reimplementation and prohibits commit-level cherry-picks.                                                                                                    |
 | `ISSUE-F0-001` | Test scope | `RESOLVED` | Three analyzer transport/setup specs used backend helpers while labeled as demo evidence; F0 reclassified all three as foundational and retained 13 integration cases.                                                                                  |
 | `ISSUE-F0-002` | Validation | `OPEN`     | Repo-wide `npm run typecheck` has 1,589 baseline TypeScript errors and none name the three changed analyzer specs; targeted Playwright compilation passes. Fix before G0.                                                                               |
@@ -507,9 +561,11 @@ silently route around.
 | `ISSUE-M1-006` | Product    | `OPEN`     | The current fork UI exposes a technical `Profile ID`, while the functional requirement requires a suggested next unique fork name and no developer identity field. BR-M1 must own deterministic profile identity generation; OE-M1 must submit only lab-facing input. |
 | `ISSUE-M1-007` | Security   | `OPEN`     | Analyzer Type routes are gated by frontend `ANALYSER_IMPORT` while the composed REST API requires `ROLE_ADMIN`. Align and prove one explicit permission contract before M1 runtime acceptance; do not infer equivalence from the default admin fixture. |
 | `ISSUE-M1-008` | Validation | `OPEN`     | Current list/detail RTL tests mock router hooks, so they prove emitted strings but not reload/back/forward restoration. Replace the routing seam with a real test router and add the focused visible M1 browser flow required by MVP-001 through MVP-004 and MVP-011. |
-| `AMB-M2-001`   | Product    | `OPEN`     | Multiple source codes share LOINCs. Before M2, confirm whether they are aliases for one local Test or require distinct representation; never collapse them meanwhile.                                                                                   |
+| `ISSUE-M1-009` | CI         | `OPEN`     | OE-M1 #4056 backend CI at `074f4d146` runs 4,970 tests and fails two new PostgreSQL integration tests because the analyzer ID sequence is behind seeded rows. Fix fixture/sequence isolation and prove the focused tests plus the full backend job; do not dismiss the full-suite collision because focused runs pass. |
+| `ISSUE-M1-010` | Migration  | `RESOLVED` | A local migration test briefly treated two explicit source rows sharing normalized coding or one local Test as a blocker. ADR-001 and the E0 no-loss report require both rows to remain independent; corrected tests now prove both explicit bindings migrate without collapse, while ambiguous aliases still block. |
+| `AMB-M2-001`   | Product    | `RESOLVED` | Multiple source rows that share LOINC or one local Test remain independently visible, bindable, verifiable, and fingerprinted for MVP. No grouping or alias inference may collapse them; a later explicit product revision may add presentation grouping without changing identity.                         |
 | `AMB-M3-001`   | Safety     | `OPEN`     | The source of profile-applicable operational-QC requirements must be fixed by BR-M2/OE-M3 contracts before activation readiness is implemented.                                                                                                         |
-| `AMB-M3-002`   | Product    | `OPEN`     | The functional spec names three stacked sections while this roadmap adds Review. Before M3, confirm whether Review is a fourth section or a final summary in Connect.                                                                                   |
+| `AMB-M3-002`   | Product    | `RESOLVED` | MVP uses four linkable setup sections: Instrument, Verify, Connect, and Review. Review is a summary/activation section with its own canonical query state and breadcrumb position; it does not duplicate editors from the first three sections.                                                    |
 | `ISSUE-G0-001` | Operations | `OPEN`     | Live preflight on 2026-08-13 found historical OE `2c840a55b03b`, harness `f3deb02e`, and only eight `AN-QC-*` steps. G0 must deploy the exact RC with current review tooling and publish/verify all 15 `AN-MVP-*` steps.                                |
 
 Resolved rows remain in the table for provenance. New evidence updates a row in
@@ -517,44 +573,42 @@ the checkpoint that discovers or resolves it; IDs are never reused.
 
 ### Status ledger
 
-| Order | Checkpoint                | Status on 2026-08-13 | Next transition                      |
-| ----- | ------------------------- | -------------------- | ------------------------------------ |
-| 0     | R0 roadmap                | `IN_PROGRESS`        | External approval and merge          |
-| 1     | F0 foundation salvage     | `IN_PROGRESS`        | Final validation/evidence review     |
-| 2     | E0 contract and migration | `IN_PROGRESS`        | OE-E0 PR/CI and prerequisite reviews |
-| 3     | M1 Analyzer Types         | `IN_PROGRESS`        | OE-M1 TDD and predecessor acceptance |
-| 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 accepted                |
-| 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 accepted                          |
-| 6     | M4 safe traffic           | `NOT_STARTED`        | M3, BR-M4, and MOCK-M4 accepted      |
-| 7     | G0 deployed acceptance    | `NOT_STARTED`        | M4 accepted and exact RC SHA pushed  |
-| 8     | R1 full feature           | `NOT_STARTED`        | G0 accepted                          |
-| 9     | R2 operational rollout    | `NOT_STARTED`        | R1 accepted                          |
+| Order | Checkpoint                | Status on 2026-08-17 | Exact next transition gate |
+| ----- | ------------------------- | -------------------- | -------------------------- |
+| 0     | R0 roadmap                | `IN_PROGRESS`        | Rebase #4049 onto current `develop`, rerun required checks, then record `READY_FOR_REVIEW` |
+| 1     | F0 foundation salvage     | `IN_PROGRESS`        | R0 merged; reconcile the acceptance record and CI on rebased #4053 head |
+| 2     | E0 contract and migration | `IN_PROGRESS`        | F0 merged; rebase paired BR-E0/OE-E0, rerun contracts/CI, complete review |
+| 3     | M1 Analyzer Types         | `IN_PROGRESS`        | Fix #4056 backend CI, finish M1-AC-001 through M1-AC-010, runtime/browser evidence, and predecessor merges |
+| 4     | M2 mapping                | `NOT_STARTED`        | M1 and BR-M2 merged |
+| 5     | M3 guided setup and QC    | `NOT_STARTED`        | M2 merged and `AMB-M3-001` resolved in a versioned contract |
+| 6     | M4 safe traffic           | `NOT_STARTED`        | M3, BR-M4, and MOCK-M4 merged |
+| 7     | G0 deployed acceptance    | `NOT_STARTED`        | M4 merged and exact RC manifest committed |
+| 8     | R1 full feature train     | `NOT_STARTED`        | G0 human-accepted and merged |
+| 9     | R2 operational rollout    | `NOT_STARTED`        | R1-G1 human-accepted and merged |
 
-`ACCEPTED` means the checkpoint exit gate, assigned acceptance criteria, CI,
-review threads, and evidence are complete. A failed required test or UAT step
-keeps the checkpoint `IN_PROGRESS`; it cannot be relabeled as a follow-up.
+A failed required test, open blocking review thread, missing artifact, or
+failed required UAT step keeps a checkpoint `IN_PROGRESS` or returns it there.
+It cannot be relabeled as a follow-up. Only the transition authority in the
+lifecycle table can record `ACCEPTED`.
 
 BR-M1 is prepared and pushed at `42cb4bc` in
 [PR #46](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/46). Its 643-test
 local suite and GitHub `Run Tests` check are green, including the resolved
 `ISSUE-M1-001` and `ISSUE-M1-002` cases. OE-M1 has begun but is not complete.
-Its Bridge catalog consumer and revisioned site-binding persistence foundation
-are implemented and tested in
-[PR #4056](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4056). Local
-descendant commits also implement composition plus the Carbon list/detail and
-lifecycle UI, but they are not pushed, runtime-validated, or accepted. Legacy
-migration/cutover, lab-safe fork identity, permission alignment, real-router
-coverage, and runtime evidence remain open. M1 is therefore `IN_PROGRESS`, not
-`ACCEPTED`, and remains gated by every earlier item in the global acceptance
-order.
+Its pushed #4056 head contains the Bridge catalog consumer, revisioned
+site-binding persistence, catalog composition, Carbon list/detail and lifecycle
+UI, imported-binding reuse, and durable migration-anomaly lifecycle. Backend CI
+is red at that exact head, and local work beyond it is not remote evidence.
+Migration/cutover, lab-safe fork identity, permission alignment, real-router
+coverage, isolated runtime/browser evidence, and every predecessor merge remain
+open. M1 is therefore `IN_PROGRESS`, not `READY_FOR_REVIEW` or `ACCEPTED`.
 
 ## Pull Request Train
 
-PR #3792 is not a stack. It is frozen historical provenance and a behavior
-source for F0. It is not rebased, merged, or used as a branch base. Once the F0
-replacement PR is open, rename #3792 to “OGC-1054 historical analyzer QC/config
-foundation (superseded)”, link R0/F0, and close it as superseded without deleting
-its branch.
+PR #3792 is not a stack. It was renamed and closed as frozen historical
+provenance after F0 opened. It is not rebased, merged, edited, or used as a
+branch base; its branch remains available only for the committed F0 behavior
+classification.
 
 ### OpenELIS stack
 
@@ -607,10 +661,11 @@ The one global acceptance order is:
 12. OE-M4
 13. OE-G0
 
-Branches may be prepared while their predecessor is under review, but a later
-item cannot become `ACCEPTED`, merge, or become the deployment candidate before
-every earlier item is accepted. This order, not PR creation time, selects the
-next checkpoint.
+Branches may be prepared and tested while their predecessor is under review,
+but a later item cannot become `READY_FOR_REVIEW` before every earlier item is
+`MERGED`. It cannot become `ACCEPTED`, merge, or become a deployment candidate
+out of order. This order, not PR creation time, selects the next acceptance
+checkpoint.
 
 Review tooling `main` is an acceptance dependency, not an implementation lane.
 Its current contract already satisfies this roadmap. A review-tooling PR is

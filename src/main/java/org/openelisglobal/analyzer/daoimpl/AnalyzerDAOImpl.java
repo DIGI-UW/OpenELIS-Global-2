@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.analyzer.daoimpl;
 
+import jakarta.persistence.LockModeType;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,6 +115,14 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
         query.setParameter("id", id);
         Analyzer result = query.uniqueResult();
         return Optional.ofNullable(result);
+    }
+
+    @Override
+    public Optional<Analyzer> findByIdForUpdate(String id) {
+        if (id == null || id.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(entityManager.find(Analyzer.class, id.trim(), LockModeType.PESSIMISTIC_WRITE));
     }
 
     @Override
