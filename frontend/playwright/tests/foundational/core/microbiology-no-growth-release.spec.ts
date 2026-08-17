@@ -77,12 +77,11 @@ test.describe("Microbiology no-growth review and release", () => {
       .click();
     await expect(page).toHaveURL(/section=timeline$/);
     const timeline = page.getByTestId("microbiology-timeline-card");
-    await expect(
-      timeline.getByText("Incubation complete with no growth", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      timeline.getByText("Performed by Open ELIS", { exact: true }).first(),
-    ).toBeVisible();
+    const noGrowthEvent = timeline.getByRole("listitem").filter({
+      hasText: "Incubation complete with no growth",
+    });
+    await expect(noGrowthEvent).toContainText("Stage Changed");
+    await expect(noGrowthEvent).toContainText("Performed by Open ELIS");
 
     await currentStep.getByRole("button", { name: "Open Reports" }).click();
     await expect(page).toHaveURL(/section=reports$/);
