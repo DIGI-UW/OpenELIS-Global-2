@@ -23,7 +23,14 @@ public interface RoleService extends BaseObjectService<Role, Integer> {
     @PreAuthorize("hasAuthority('PRIV_ROLE_MANAGE')")
     List<Role> getPageOfRoles(int startingRecNo);
 
-    @PreAuthorize("hasAuthority('PRIV_ROLE_VIEW')")
+    // Name->role resolution is an operational primitive (getUserTestSections,
+    // logbook/results/reports screens all resolve a role id by name for the
+    // current user's own workflow), NOT the role-administration surface — those
+    // methods (getAllRoles/getPageOfRoles/getReferencingRoles) keep PRIV_ROLE_VIEW.
+    // Gate at PRIV_ORDER_VIEW, the privilege every operational lab-unit role holds,
+    // so ordinary Results/Reports/Validation/Reception users don't get denied
+    // (which crashed the report page: the 500 made labUnits a non-array).
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     Role getRoleByName(String name);
 
     @PreAuthorize("hasAuthority('PRIV_ROLE_MANAGE')")
