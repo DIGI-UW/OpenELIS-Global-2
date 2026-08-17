@@ -67,8 +67,8 @@ public class EQAPanel extends BaseObject<Long> {
     private Timestamp preparedAt;
 
     /**
-     * Required for in-house panels — enforced in the service, where the parent
-     * scheme's type is known.
+     * Required for in-house panels; the panel-writing service (T-11) must enforce
+     * this, where the parent scheme's type is known.
      */
     @Column(name = "unblind_date")
     private Date unblindDate;

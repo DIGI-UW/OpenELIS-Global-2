@@ -21,7 +21,7 @@
 
     FR-V2.1-20 also says the receipt sets sample_shipment.delivery_status; the real
     column is shipment.status, carrying ShipmentStatus values (DELIVERED). That
-    write is a service-layer side-effect (T-10), not schema.
+    write belongs to the receipt-writing service (T-15), not schema.
     -->
 
     <changeSet author="openelisglobal" id="eqa-followup-001-create-eqa-participant-followup">
@@ -96,12 +96,6 @@
                 'RESOLVED', 'ESCALATED', 'REMOVED_FROM_PROGRAM'))
         </sql>
 
-        <createIndex schemaName="clinlims" tableName="eqa_participant_followup"
-            indexName="idx_eqa_participant_followup_scheme_org">
-            <column name="scheme_id"/>
-            <column name="participant_org_id"/>
-        </createIndex>
-
         <rollback>
             <dropTable schemaName="clinlims" tableName="eqa_participant_followup"/>
             <dropSequence sequenceName="eqa_participant_followup_seq" schemaName="clinlims"/>
@@ -138,8 +132,8 @@
             <column name="integrity_ok" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
-            <!-- Required at the application layer when integrity_ok is false; not a
-                 DB CHECK because the UI must be able to stage a partial draft. -->
+            <!-- The receipt-writing service (T-15) must require this when integrity_ok
+                 is false; not a DB CHECK because the UI stages partial drafts. -->
             <column name="integrity_notes" type="TEXT"/>
             <column name="notes" type="TEXT"/>
             <column name="sys_user_id" type="VARCHAR(36)">
@@ -268,12 +262,6 @@
             CHECK (dismissal_category IN ('KNOWN_EQUIPMENT_ISSUE', 'TRANSCRIPTION_ERROR', 'PENDING_RE_TEST',
                 'ACCEPTABLE_ON_REVIEW', 'OTHER'))
         </sql>
-
-        <createIndex schemaName="clinlims" tableName="eqa_analyst_competency_event"
-            indexName="idx_eqa_competency_event_analyst_date">
-            <column name="analyst_id"/>
-            <column name="event_date"/>
-        </createIndex>
 
         <rollback>
             <dropTable schemaName="clinlims" tableName="eqa_analyst_competency_event"/>

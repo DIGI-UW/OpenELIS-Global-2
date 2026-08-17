@@ -7,19 +7,12 @@ import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.sql.Date;
-import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.eqa.dao.EQAAnalystCompetencyEventDAO;
-import org.openelisglobal.eqa.dao.EQACycleDAO;
-import org.openelisglobal.eqa.dao.EQAPanelDAO;
-import org.openelisglobal.eqa.dao.EQAPanelReceiptDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantFollowupDAO;
 import org.openelisglobal.eqa.dao.EQASchemeAnalystDAO;
-import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAAnalystCompetencyEvent;
 import org.openelisglobal.eqa.valueholder.EQACompetencyEventType;
 import org.openelisglobal.eqa.valueholder.EQACycle;
@@ -33,9 +26,7 @@ import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeAnalyst;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
-import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * OGC-609 [EQA V2.1 / T-09] — panels, sealed samples, receipts, follow-ups and
@@ -53,22 +44,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * largest whose ciphertext (236 chars) still fits VARCHAR(255); 144 bytes
  * yields 256 chars and overflows it.
  */
-public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
+public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
 
-    private static final String USER = "1";
-    private static final long ADMIN_USER_ID = 1L;
     private static final long ENROLLMENT_ID = 9903L;
     private static final long ANALYTE_HIV_VL = 9802L;
     private static final long ORG_ID = 9904L;
-
-    @Autowired
-    private EQAProgramService eqaProgramService;
-
-    @Autowired
-    private EQACycleDAO eqaCycleDAO;
-
-    @Autowired
-    private EQAPanelDAO eqaPanelDAO;
 
     @Autowired
     private EQAPanelSampleDAO eqaPanelSampleDAO;
@@ -77,55 +57,23 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
     private EQASchemeAnalystDAO eqaSchemeAnalystDAO;
 
     @Autowired
-    private EQAPanelReceiptDAO eqaPanelReceiptDAO;
-
-    @Autowired
     private EQAParticipantFollowupDAO eqaParticipantFollowupDAO;
 
     @Autowired
     private EQAAnalystCompetencyEventDAO eqaAnalystCompetencyEventDAO;
 
-    @Autowired
-    private SystemUserService systemUserService;
-
-    @Autowired
-    private DataSource dataSource;
-
-    private JdbcTemplate jdbc;
-
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        jdbc = new JdbcTemplate(dataSource);
-        executeDataSetWithStateManagement("testdata/eqa-cycle-spine.xml");
-        clean();
-        jdbc.update("INSERT INTO clinlims.eqa_lab_program_enrollment"
-                + " (id, program_name, provider, is_active, created_date, sys_user_id, lastupdated)"
-                + " VALUES (?, 'Panel spine enrollment', 'NHLS', true, now(), ?, now())", ENROLLMENT_ID, USER);
+        seedEnrollment(ENROLLMENT_ID, "Panel spine enrollment");
         jdbc.update("INSERT INTO clinlims.organization (id, name, lastupdated)"
                 + " VALUES (?, 'Panel spine participant', now())", ORG_ID);
     }
 
-    @After
-    public void tearDown() {
-        clean();
-    }
-
-    private void clean() {
-        jdbc.update("DELETE FROM clinlims.eqa_analyst_competency_event");
-        jdbc.update("DELETE FROM clinlims.eqa_participant_followup");
-        jdbc.update("DELETE FROM clinlims.eqa_panel_receipt");
-        jdbc.update("DELETE FROM clinlims.eqa_panel_sample");
-        jdbc.update("DELETE FROM clinlims.eqa_panel");
-        jdbc.update("DELETE FROM clinlims.eqa_scheme_analyst");
-        jdbc.update("DELETE FROM clinlims.eqa_participant_result");
-        jdbc.update("DELETE FROM clinlims.eqa_cycle_state_transition");
-        jdbc.update("DELETE FROM clinlims.eqa_round");
-        jdbc.update("DELETE FROM clinlims.eqa_cycle");
-        jdbc.update("DELETE FROM clinlims.eqa_lab_program_enrollment WHERE id = ?", ENROLLMENT_ID);
-        jdbc.update("DELETE FROM clinlims.eqa_program_test");
-        jdbc.update("DELETE FROM clinlims.eqa_program");
+    @Override
+    protected void cleanEqaTables() {
+        super.cleanEqaTables();
         jdbc.update("DELETE FROM clinlims.organization WHERE id = ?", ORG_ID);
     }
 
@@ -133,7 +81,7 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void panelAndSealedSampleRoundTripWithExactValues() {
-        EQAPanel panel = insertPanel(insertScheme("Panel round-trip", EQASchemeType.INTER_LAB_SPLIT), p -> {
+        EQAPanel panel = insertPanel(insertScheme("Panel round-trip", EQASchemeType.INTER_LAB_SPLIT, "NHLS"), p -> {
             p.setPanelName("2026 R1 panel");
             p.setStatus(EQAPanelStatus.SEALED);
             p.setSourceType(EQAPanelSourceType.VENDOR_SOURCED);
@@ -194,7 +142,7 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void inventoryInvariantIsEnforcedByTheDatabase() {
-        EQAProgram scheme = insertScheme("Inventory", EQASchemeType.INTER_LAB_SPLIT);
+        EQAProgram scheme = insertScheme("Inventory", EQASchemeType.INTER_LAB_SPLIT, "NHLS");
         try {
             insertPanel(scheme, p -> {
                 p.setPanelName("Oversold panel");
@@ -204,13 +152,13 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
             });
             fail("produced must be >= reserved + shipped (FR-V2.1-17)");
         } catch (Exception expected) {
-            assertConstraint(expected, "eqa_panel_aliquots_chk");
+            assertConstraintViolation(expected, "eqa_panel_aliquots_chk");
         }
     }
 
     @Test
     public void unknownPanelStatusIsRejectedByTheDatabase() {
-        EQAProgram scheme = insertScheme("Bad panel status", EQASchemeType.INTER_LAB_SPLIT);
+        EQAProgram scheme = insertScheme("Bad panel status", EQASchemeType.INTER_LAB_SPLIT, "NHLS");
         try {
             jdbc.update(
                     "INSERT INTO clinlims.eqa_panel (id, fhir_uuid, scheme_id, panel_name, status,"
@@ -220,7 +168,7 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
                     scheme.getId(), USER);
             fail("the panel status CHECK should reject an unknown state");
         } catch (Exception expected) {
-            assertConstraint(expected, "eqa_panel_status_chk");
+            assertConstraintViolation(expected, "eqa_panel_status_chk");
         }
     }
 
@@ -228,13 +176,13 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void anAnalystMayBeListedOncePerScheme() {
-        EQAProgram scheme = insertScheme("Analyst list", EQASchemeType.INTERNATIONAL_PT);
+        EQAProgram scheme = insertScheme("Analyst list", EQASchemeType.INTERNATIONAL_PT, "NHLS");
         insertAnalyst(scheme, ADMIN_USER_ID);
         try {
             insertAnalyst(scheme, ADMIN_USER_ID);
             fail("the eligible-analyst list is a set, not a bag");
         } catch (Exception expected) {
-            assertConstraint(expected, "uq_eqa_scheme_analyst_scheme_user");
+            assertConstraintViolation(expected, "uq_eqa_scheme_analyst_scheme_user");
         }
     }
 
@@ -242,21 +190,22 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void oneReceiptPerCyclePerLab() {
-        EQACycle cycle = insertCycle(insertScheme("Receipts", EQASchemeType.INTERNATIONAL_PT));
-        insertReceipt(cycle);
+        EQACycle cycle = readBack(insertCycle(insertScheme("Receipts", EQASchemeType.INTERNATIONAL_PT, "NHLS"), 1));
+        insertReceipt(cycle, ENROLLMENT_ID);
         try {
-            insertReceipt(cycle);
+            insertReceipt(cycle, ENROLLMENT_ID);
             fail("a lab confirms receipt of a cycle's panel exactly once");
         } catch (Exception expected) {
-            assertConstraint(expected, "uq_eqa_panel_receipt_cycle_enrollment");
+            assertConstraintViolation(expected, "uq_eqa_panel_receipt_cycle_enrollment");
         }
     }
 
     @Test
     public void receiptWithoutAShipmentIsAllowed() {
         // Walk-in pickup and legacy imports have no tracked shipment.
-        EQACycle cycle = insertCycle(insertScheme("Walk-in", EQASchemeType.INTERNATIONAL_PT));
-        EQAPanelReceipt receipt = eqaPanelReceiptDAO.get(insertReceipt(cycle)).orElseThrow(AssertionError::new);
+        EQACycle cycle = readBack(insertCycle(insertScheme("Walk-in", EQASchemeType.INTERNATIONAL_PT, "NHLS"), 1));
+        EQAPanelReceipt receipt = eqaPanelReceiptDAO.get(insertReceipt(cycle, ENROLLMENT_ID))
+                .orElseThrow(AssertionError::new);
         assertEquals(null, receipt.getShipmentId());
         assertTrue("integrity defaults to ok", receipt.getIntegrityOk());
     }
@@ -265,13 +214,13 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void oneOpenFollowupPerCyclePerOrganisation() {
-        EQACycle cycle = insertCycle(insertScheme("Follow-ups", EQASchemeType.INTERNATIONAL_PT));
+        EQACycle cycle = readBack(insertCycle(insertScheme("Follow-ups", EQASchemeType.INTERNATIONAL_PT, "NHLS"), 1));
         insertFollowup(cycle);
         try {
             insertFollowup(cycle);
             fail("AC-V2.1-09: duplicate follow-up must be refused");
         } catch (Exception expected) {
-            assertConstraint(expected, "uq_eqa_participant_followup_cycle_org");
+            assertConstraintViolation(expected, "uq_eqa_participant_followup_cycle_org");
         }
     }
 
@@ -279,7 +228,7 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void competencyEventPersistsWithItsVocabulary() {
-        EQAProgram scheme = insertScheme("Competency", EQASchemeType.INTERNATIONAL_PT);
+        EQAProgram scheme = insertScheme("Competency", EQASchemeType.INTERNATIONAL_PT, "NHLS");
 
         EQAAnalystCompetencyEvent event = new EQAAnalystCompetencyEvent();
         event.setAnalystId(ADMIN_USER_ID);
@@ -298,7 +247,7 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void unknownCompetencyEventTypeIsRejectedByTheDatabase() {
-        EQAProgram scheme = insertScheme("Bad event", EQASchemeType.INTERNATIONAL_PT);
+        EQAProgram scheme = insertScheme("Bad event", EQASchemeType.INTERNATIONAL_PT, "NHLS");
         try {
             jdbc.update(
                     "INSERT INTO clinlims.eqa_analyst_competency_event (id, analyst_id, event_type, event_date,"
@@ -307,40 +256,11 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
                     ADMIN_USER_ID, scheme.getId(), USER);
             fail("AC-V2.1-22: an undefined event_type must be refused");
         } catch (Exception expected) {
-            assertConstraint(expected, "eqa_competency_event_type_chk");
+            assertConstraintViolation(expected, "eqa_competency_event_type_chk");
         }
     }
 
     // ---- helpers ----
-
-    private EQAProgram insertScheme(String name, EQASchemeType type) {
-        EQAProgram scheme = new EQAProgram();
-        scheme.setName(name);
-        scheme.setSchemeType(type);
-        scheme.setProvider(type == EQASchemeType.IN_HOUSE ? null : "NHLS");
-        scheme.setSysUserId(USER);
-        scheme.setId(eqaProgramService.insert(scheme));
-        return scheme;
-    }
-
-    private EQACycle insertCycle(EQAProgram scheme) {
-        EQACycle cycle = new EQACycle();
-        cycle.setScheme(scheme);
-        cycle.setCycleNumber(1);
-        cycle.setCreatedBy(systemUserService.get(String.valueOf(ADMIN_USER_ID)));
-        cycle.setSysUserId(USER);
-        return eqaCycleDAO.get(eqaCycleDAO.insert(cycle)).orElseThrow(AssertionError::new);
-    }
-
-    private EQAPanel insertPanel(EQAProgram scheme, java.util.function.Consumer<EQAPanel> customise) {
-        EQAPanel panel = new EQAPanel();
-        panel.setScheme(scheme);
-        panel.setPanelName("Panel");
-        panel.setSysUserId(USER);
-        customise.accept(panel);
-        panel.setId(eqaPanelDAO.insert(panel));
-        return panel;
-    }
 
     private void insertAnalyst(EQAProgram scheme, long userId) {
         EQASchemeAnalyst analyst = new EQASchemeAnalyst();
@@ -350,16 +270,6 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
         eqaSchemeAnalystDAO.insert(analyst);
     }
 
-    private Long insertReceipt(EQACycle cycle) {
-        EQAPanelReceipt receipt = new EQAPanelReceipt();
-        receipt.setCycle(cycle);
-        receipt.setLabEnrollmentId(ENROLLMENT_ID);
-        receipt.setReceivedDate(Date.valueOf("2026-08-14"));
-        receipt.setReceivedBy(ADMIN_USER_ID);
-        receipt.setSysUserId(USER);
-        return eqaPanelReceiptDAO.insert(receipt);
-    }
-
     private void insertFollowup(EQACycle cycle) {
         EQAParticipantFollowup followup = new EQAParticipantFollowup();
         followup.setScheme(cycle.getScheme());
@@ -367,13 +277,5 @@ public class EQAPanelSpineIntegrationTest extends BaseWebContextSensitiveTest {
         followup.setParticipantOrgId(ORG_ID);
         followup.setSysUserId(USER);
         eqaParticipantFollowupDAO.insert(followup);
-    }
-
-    private void assertConstraint(Exception e, String constraintName) {
-        StringBuilder messages = new StringBuilder();
-        for (Throwable t = e; t != null; t = t.getCause()) {
-            messages.append(t.getMessage()).append(' ');
-        }
-        assertTrue("expected " + constraintName + ", got: " + messages, messages.toString().contains(constraintName));
     }
 }

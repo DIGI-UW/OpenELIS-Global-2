@@ -64,7 +64,10 @@ public class EQAPanelReceipt extends BaseObject<Long> {
     @Column(name = "integrity_ok", nullable = false)
     private Boolean integrityOk = true;
 
-    /** Required by the service when integrityOk is false. */
+    /**
+     * The receipt-writing service (T-15) must require this when integrityOk is
+     * false.
+     */
     @Column(name = "integrity_notes", columnDefinition = "TEXT")
     private String integrityNotes;
 

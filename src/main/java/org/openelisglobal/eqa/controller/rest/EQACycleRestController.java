@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
@@ -32,9 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
  * Cycle read + transition API (T-10).
  *
  * <p>
- * There is deliberately no PUT or DELETE mapping for the transitions path:
- * cycle-state audit rows are immutable (FR-V2.1-21), and leaving those methods
- * unmapped is what makes Spring answer 405 without a hand-written guard.
+ * No PUT or DELETE is mapped for the transitions path: audit rows are immutable
+ * (FR-V2.1-21), and leaving those methods unmapped makes Spring answer 405.
  */
 @RestController
 @RequestMapping("/rest/eqa")
@@ -58,7 +58,7 @@ public class EQACycleRestController extends BaseRestController {
         for (EQACycle cycle : cycleService.getAll()) {
             Map<String, Object> dto = toCycleDto(cycle);
             if (labEnrollmentId != null) {
-                dto.put("participantState", cycleService.deriveParticipantState(cycle.getId(), labEnrollmentId).name());
+                dto.put("participantState", cycleService.deriveParticipantState(cycle, labEnrollmentId).name());
             }
             rows.add(dto);
         }
@@ -80,7 +80,6 @@ public class EQACycleRestController extends BaseRestController {
         return dto;
     }
 
-    /** Read-only by construction — see the class note on 405. */
     @GetMapping(value = "/cycles/{id}/transitions", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Map<String, Object>> transitions(@PathVariable Long id) {
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -101,35 +100,46 @@ public class EQACycleRestController extends BaseRestController {
     }
 
     /**
-     * Advancing a cycle changes lab-wide state and writes a permanent audit row, so
+     * Advancing a cycle mutates lab-wide state and writes a permanent audit row, so
      * it needs a manage-level grant rather than the class-level read roles
-     * (FR-V2.1-04). A method annotation replaces the class one for this handler.
+     * (FR-V2.1-04).
+     *
+     * <p>
+     * Provenance is never taken from the request body: an HTTP call is a person
+     * acting, so it is always recorded as a MANUAL override attributed to the
+     * session user (FR-V2.1-21).
      */
     @PatchMapping(value = "/cycles/{id}/transition", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAuthority('qa.manage.eqa') or hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<Map<String, Object>> transition(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
-        String newState = (String) body.get("newState");
+        String newState = stringField(body, "newState");
         if (newState == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "newState is required"));
         }
 
-        EQAStateMachine machine = EQAStateMachine.valueOf(
-                ((String) body.getOrDefault("stateMachine", EQAStateMachine.PARTICIPANT.name())).toUpperCase());
+        EQACycleStatus targetState;
+        EQAStateMachine machine;
+        try {
+            targetState = EQACycleStatus.valueOf(newState.toUpperCase());
+            String machineName = stringField(body, "stateMachine");
+            machine = machineName == null ? EQAStateMachine.PARTICIPANT
+                    : EQAStateMachine.valueOf(machineName.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Unknown state or state machine"));
+        }
 
-        // Provenance is never taken from the request body. An HTTP call is a person
-        // acting, so it is always recorded as a MANUAL override attributed to the
-        // authenticated user. Letting the caller supply triggerType/triggeredBy/
-        // triggerEvent would let them file a human decision as an unattributed
-        // system event — and since AUTO rows are exempt from the reason rule, it
-        // would also silently skip that. Destroying exactly the manual-vs-automatic
-        // distinction the audit table exists to preserve (FR-V2.1-21).
         String sysUserId = getSysUserId(request);
-        EQACycle updated = cycleService.transition(id, EQACycleStatus.valueOf(newState.toUpperCase()), machine,
-                EQATriggerType.MANUAL, EQATriggerEvent.MANUAL_OVERRIDE, actingUserId(sysUserId),
-                (String) body.get("reason"), sysUserId);
+        EQACycle updated = cycleService.transition(id, targetState, machine, EQATriggerType.MANUAL,
+                EQATriggerEvent.MANUAL_OVERRIDE, actingUserId(sysUserId), stringField(body, "reason"), sysUserId);
 
         return ResponseEntity.ok(toCycleDto(updated));
+    }
+
+    /** Tolerates non-string JSON values rather than throwing ClassCastException. */
+    private String stringField(Map<String, Object> body, String key) {
+        Object value = body.get(key);
+        return value == null ? null : String.valueOf(value);
     }
 
     /**
@@ -155,6 +165,12 @@ public class EQACycleRestController extends BaseRestController {
                 cycle.getPlannedStartDate() == null ? null : cycle.getPlannedStartDate().toString());
         dto.put("plannedEndDate", cycle.getPlannedEndDate() == null ? null : cycle.getPlannedEndDate().toString());
         return dto;
+    }
+
+    @ExceptionHandler(ObjectNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, String> handleNotFound(ObjectNotFoundException e) {
+        return Map.of("error", "EQA cycle not found");
     }
 
     /** An edge that is not in the machine is a conflict, not bad input. */

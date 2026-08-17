@@ -9,11 +9,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.sql.Timestamp;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -47,12 +45,6 @@ public class EQASchemeAnalyst extends BaseObject<Long> {
     @Column(name = "system_user_id", nullable = false)
     private Long systemUserId;
 
-    @Column(name = "added_at", nullable = false)
-    private Timestamp addedAt;
-
-    @Column(name = "added_by")
-    private Long addedBy;
-
     @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
 
@@ -64,12 +56,5 @@ public class EQASchemeAnalyst extends BaseObject<Long> {
     @Override
     public void setSysUserId(String sysUserId) {
         this.sysUserId = sysUserId;
-    }
-
-    @PrePersist
-    public void prePersist() {
-        if (addedAt == null) {
-            addedAt = new Timestamp(System.currentTimeMillis());
-        }
     }
 }

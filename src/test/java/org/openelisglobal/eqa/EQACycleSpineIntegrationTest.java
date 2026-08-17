@@ -8,16 +8,9 @@ import static org.junit.Assert.fail;
 
 import java.sql.Timestamp;
 import java.util.Map;
-import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQACycleStateTransitionDAO;
-import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
-import org.openelisglobal.eqa.dao.EQARoundDAO;
-import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
@@ -31,29 +24,15 @@ import org.openelisglobal.eqa.valueholder.EQASubmissionChannel;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
-import org.openelisglobal.systemuser.service.SystemUserService;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * OGC-609 [EQA V2.1 / T-08] — the cycle spine against a real DB.
- *
- * <p>
- * The test DB is Liquibase-provisioned (BaseTestConfig runs base-changelog.xml
- * against a testcontainers Postgres), so qa/015 and qa/016 shape these tables:
- * CHECK constraints, foreign keys and unique constraints are all live here, and
- * the tests assert them rather than deferring to manual UAT.
- *
- * <p>
- * BaseWebContextSensitiveTest runs with transactions NOT_SUPPORTED, so each DAO
- * call commits on its own — a read-back is a genuinely fresh session, not the
- * same instance handed back from a first-level cache.
+ * OGC-609 [EQA V2.1 / T-08] — the cycle spine against a real DB. qa/015 and
+ * qa/016 shape these tables: CHECK constraints, foreign keys and unique
+ * constraints are all live here, and the tests assert them rather than
+ * deferring to manual UAT.
  */
-public class EQACycleSpineIntegrationTest extends BaseWebContextSensitiveTest {
-
-    private static final String USER = "1";
-    private static final long ADMIN_USER_ID = 1L;
+public class EQACycleSpineIntegrationTest extends EQASpineTestBase {
 
     private static final long ENROLLMENT_ID = 9901L;
     private static final long ANALYTE_HIV_SEROLOGY = 9801L;
@@ -61,51 +40,13 @@ public class EQACycleSpineIntegrationTest extends BaseWebContextSensitiveTest {
     private static final long TEST_HIV_SEROLOGY = 9701L;
 
     @Autowired
-    private EQAProgramService eqaProgramService;
-
-    @Autowired
-    private EQACycleDAO eqaCycleDAO;
-
-    @Autowired
-    private EQARoundDAO eqaRoundDAO;
-
-    @Autowired
-    private EQAParticipantResultDAO eqaParticipantResultDAO;
-
-    @Autowired
     private EQACycleStateTransitionDAO eqaCycleStateTransitionDAO;
-
-    @Autowired
-    private SystemUserService systemUserService;
-
-    @Autowired
-    private DataSource dataSource;
-
-    private JdbcTemplate jdbc;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        jdbc = new JdbcTemplate(dataSource);
-        executeDataSetWithStateManagement("testdata/eqa-cycle-spine.xml");
-        clean();
-        seedLabEnrollment();
-    }
-
-    @After
-    public void tearDown() {
-        clean();
-    }
-
-    private void clean() {
-        jdbc.update("DELETE FROM clinlims.eqa_participant_result");
-        jdbc.update("DELETE FROM clinlims.eqa_cycle_state_transition");
-        jdbc.update("DELETE FROM clinlims.eqa_round");
-        jdbc.update("DELETE FROM clinlims.eqa_cycle");
-        jdbc.update("DELETE FROM clinlims.eqa_lab_program_enrollment WHERE id = ?", ENROLLMENT_ID);
-        jdbc.update("DELETE FROM clinlims.eqa_program_test");
-        jdbc.update("DELETE FROM clinlims.eqa_program");
+        seedEnrollment(ENROLLMENT_ID, "Spine test enrollment");
     }
 
     // ---- FR-V2.1-01/02/05/21: the spine persists and reads back intact ----
@@ -123,7 +64,7 @@ public class EQACycleSpineIntegrationTest extends BaseWebContextSensitiveTest {
         cycle.setSysUserId(USER);
         Long cycleId = eqaCycleDAO.insert(cycle);
 
-        EQACycle readCycle = eqaCycleDAO.get(cycleId).orElseThrow(AssertionError::new);
+        EQACycle readCycle = readBack(cycleId);
         assertEquals("2026 Cycle 1", readCycle.getCycleName());
         assertEquals(Integer.valueOf(1), readCycle.getCycleNumber());
         assertEquals(EQACycleStatus.TESTING, readCycle.getStatus());
@@ -256,9 +197,9 @@ public class EQACycleSpineIntegrationTest extends BaseWebContextSensitiveTest {
         EQAProgram scheme = insertScheme("Dup result", EQASchemeType.INTERNATIONAL_PT, "NHLS");
         EQACycle cycle = readBack(insertCycle(scheme, 1));
         EQARound round = eqaRoundDAO.get(insertRound(cycle, 1, "OPEN")).orElseThrow(AssertionError::new);
-        insertResult(cycle, round, ANALYTE_HIV_SEROLOGY, "Reactive");
+        insertParticipantResult(cycle, round, ENROLLMENT_ID, ANALYTE_HIV_SEROLOGY, null, "Reactive");
         try {
-            insertResult(cycle, round, ANALYTE_HIV_SEROLOGY, "Non-reactive");
+            insertParticipantResult(cycle, round, ENROLLMENT_ID, ANALYTE_HIV_SEROLOGY, null, "Non-reactive");
             fail("a lab reports one result per analyte per round");
         } catch (Exception expected) {
             assertConstraintViolation(expected, "uq_eqa_participant_result_round_lab_analyte");
@@ -376,74 +317,5 @@ public class EQACycleSpineIntegrationTest extends BaseWebContextSensitiveTest {
                 jdbc.queryForObject(
                         "SELECT count(*) FROM clinlims.eqa_program_test" + " WHERE eqa_program_id = ? AND test_id = ?",
                         Integer.class, scheme.getId(), TEST_HIV_SEROLOGY));
-    }
-
-    // ---- helpers ----
-
-    private void seedLabEnrollment() {
-        jdbc.update("INSERT INTO clinlims.eqa_lab_program_enrollment"
-                + " (id, program_name, provider, is_active, created_date, sys_user_id, lastupdated)"
-                + " VALUES (?, 'Spine test enrollment', 'NHLS', true, now(), ?, now())", ENROLLMENT_ID, USER);
-    }
-
-    private EQAProgram insertScheme(String name, EQASchemeType type, String provider) {
-        EQAProgram scheme = new EQAProgram();
-        scheme.setName(name);
-        scheme.setSchemeType(type);
-        scheme.setProvider(provider);
-        scheme.setSysUserId(USER);
-        Long id = eqaProgramService.insert(scheme);
-        scheme.setId(id);
-        return scheme;
-    }
-
-    private Long insertCycle(EQAProgram scheme, int cycleNumber) {
-        EQACycle cycle = new EQACycle();
-        cycle.setScheme(scheme);
-        cycle.setCycleNumber(cycleNumber);
-        cycle.setCreatedBy(systemUser(ADMIN_USER_ID));
-        cycle.setSysUserId(USER);
-        return eqaCycleDAO.insert(cycle);
-    }
-
-    private EQACycle readBack(Long cycleId) {
-        return eqaCycleDAO.get(cycleId).orElseThrow(AssertionError::new);
-    }
-
-    private Long insertRound(EQACycle cycle, int roundNumber, String status) {
-        EQARound round = new EQARound();
-        round.setCycle(cycle);
-        round.setRoundNumber(roundNumber);
-        round.setStatus(status);
-        round.setSysUserId(USER);
-        return eqaRoundDAO.insert(round);
-    }
-
-    private Long insertResult(EQACycle cycle, EQARound round, long analyteId, String value) {
-        EQAParticipantResult result = new EQAParticipantResult();
-        result.setCycle(cycle);
-        result.setRound(round);
-        result.setLabEnrollmentId(ENROLLMENT_ID);
-        result.setAnalyteId(analyteId);
-        result.setResultValue(value);
-        result.setSysUserId(USER);
-        return eqaParticipantResultDAO.insert(result);
-    }
-
-    private SystemUser systemUser(long id) {
-        return systemUserService.get(String.valueOf(id));
-    }
-
-    private void assertConstraintViolation(Exception e, String constraintName) {
-        assertTrue("expected " + constraintName + " to be the failing constraint, got: " + rootMessage(e),
-                rootMessage(e).contains(constraintName));
-    }
-
-    private String rootMessage(Throwable t) {
-        StringBuilder messages = new StringBuilder();
-        for (Throwable current = t; current != null; current = current.getCause()) {
-            messages.append(current.getMessage()).append(' ');
-        }
-        return messages.toString();
     }
 }

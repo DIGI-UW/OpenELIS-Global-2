@@ -1,7 +1,6 @@
 package org.openelisglobal.eqa.service;
 
 import java.util.List;
-import java.util.Set;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
@@ -33,6 +32,6 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
      */
     EQACycleStatus deriveParticipantState(Long cycleId, Long labEnrollmentId);
 
-    /** The states reachable from {@code from} on the given machine. */
-    Set<EQACycleStatus> legalNextStates(EQACycleStatus from, EQAStateMachine machine);
+    /** Same derivation for a cycle already in hand, avoiding a re-fetch. */
+    EQACycleStatus deriveParticipantState(EQACycle cycle, Long labEnrollmentId);
 }
