@@ -74,8 +74,8 @@ export function seedExportData(): ExportSeed {
   );
 
   psql(`
-    INSERT INTO ${SCHEMA}.analyzer (id, name, is_active)
-      VALUES (${ANALYZER_ID}, 'PW Export Analyzer', true)
+    INSERT INTO ${SCHEMA}.analyzer (id, name, is_active, last_updated)
+      VALUES (${ANALYZER_ID}, 'PW Export Analyzer', true, now())
       ON CONFLICT (id) DO NOTHING;
     DELETE FROM ${SCHEMA}.qc_rule_violation WHERE id = '${VIOLATION_ID}';
     DELETE FROM ${SCHEMA}.qc_result WHERE control_lot_id = '${LOT_ID}';

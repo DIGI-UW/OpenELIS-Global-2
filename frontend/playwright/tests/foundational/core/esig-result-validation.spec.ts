@@ -129,11 +129,23 @@ test("E-Signature — full result entry and validation flow", async ({
     await pwInput.click();
     await pwInput.pressSequentially(password, { delay: 30 });
 
+    // A signed save makes the results page reload itself (SearchResultForm
+    // refreshOnSubmit sets window.location.href on success). A goto racing
+    // that reload is aborted by the browser with net::ERR_ABORTED, so arm a
+    // listener for the reload's document load before clicking Sign and let
+    // it land first.
+    const postSaveReload = page.waitForEvent("load", {
+      timeout: LONG_TIMEOUT,
+    });
+
     // Click Sign
     await modal.getByRole("button", { name: /sign/i }).click();
 
     // Modal should close after successful signature
     await expect(modal).toBeHidden({ timeout: LONG_TIMEOUT });
+
+    await postSaveReload;
+    await page.waitForLoadState("domcontentloaded");
   });
 
   // ── Step 4: Validation — VALIDATED_AND_RELEASED signature ─────

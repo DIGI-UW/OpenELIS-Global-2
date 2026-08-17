@@ -100,8 +100,8 @@ export function seedSigmaData(opts: {
   );
 
   psql(`
-    INSERT INTO ${SCHEMA}.analyzer (id, name, is_active)
-      VALUES (${ANALYZER_ID}, 'PW Sigma Analyzer', true)
+    INSERT INTO ${SCHEMA}.analyzer (id, name, is_active, last_updated)
+      VALUES (${ANALYZER_ID}, 'PW Sigma Analyzer', true, now())
       ON CONFLICT (id) DO NOTHING;
     DELETE FROM ${SCHEMA}.qc_statistics WHERE control_lot_id = '${LOT_ID}';
     DELETE FROM ${SCHEMA}.qc_control_lot WHERE id = '${LOT_ID}';

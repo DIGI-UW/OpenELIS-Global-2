@@ -167,7 +167,7 @@ test.describe.serial("Critical Callback Compliance (OGC-714/715)", () => {
       await expect(tile.locator(".qi-tile__value")).toHaveText(/\d+\.\d{2}%/, {
         timeout: UI_TIMEOUT,
       });
-      await expect(tile).toContainText("Target: 100%");
+      await expect(tile).toContainText("Target ≥ 100%");
       await expect(tile).toContainText(
         /of \d+ critical results acknowledged within target/,
       );
