@@ -144,7 +144,7 @@ capability is available; it does not own macro authoring or administration.
 
 ### Phase 1A Closure
 
-- [ ] **No-growth deterministic acceptance proof** - Add focused service,
+- [*] **No-growth deterministic acceptance proof** - Add focused service,
   Carbon, and registered `core-app` Playwright coverage for the approved
   no-growth path without arbitrary waits or forced actions. Change runtime code
   only if this evidence exposes a real defect; do not deploy test-only changes.

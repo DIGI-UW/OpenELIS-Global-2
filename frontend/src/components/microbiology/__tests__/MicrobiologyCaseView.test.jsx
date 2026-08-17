@@ -284,6 +284,72 @@ describe("MicrobiologyCaseView", () => {
     },
   );
 
+  it("presents no growth as awaiting final review without a preliminary release action", async () => {
+    const user = userEvent.setup();
+    const activities = [
+      ...caseDetail.activities,
+      {
+        id: "a2",
+        activityType: "STAGE_CHANGED",
+        note: "Incubation complete with no growth",
+      },
+    ];
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        stage: "NO_GROWTH_READY",
+        activities,
+      }),
+      getCaseTimeline: vi.fn().mockResolvedValue(activities),
+      getReportProjection: vi.fn().mockResolvedValue({
+        reportableContent: true,
+        mappingConfigured: true,
+        content: "No growth",
+        projectedResultIds: [],
+      }),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup",
+    );
+
+    const nextStep = await screen.findByTestId("microbiology-next-step");
+    expect(nextStep).toHaveTextContent(
+      "No growth recorded. Review and release the final negative report.",
+    );
+    const openReports = within(
+      screen.getByTestId("microbiology-current-step-action"),
+    ).getByRole("button", { name: "Open Reports" });
+    openReports.focus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=reports",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-case-section-reports"),
+      ).toHaveFocus(),
+    );
+    expect(
+      await screen.findByTestId("microbiology-report-projection-content"),
+    ).toHaveTextContent("No growth");
+    expect(
+      screen.queryByRole("button", { name: "Release preliminary report" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Release final report" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("link", { name: "View patient results" }),
+    ).toHaveAttribute("href", "/PatientResults/patient-1");
+  });
+
   it("opens the incubating next action from the case page with canonical URL state", async () => {
     const user = userEvent.setup();
     const incubatingCase = {

@@ -3,6 +3,9 @@ package org.openelisglobal.microbiology.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +72,11 @@ public class MicroReportReleaseServiceTest {
         } catch (IllegalStateException expected) {
             assertEquals("Final release is blocked: AST_REVIEW_REQUIRED", expected.getMessage());
         }
+        verify(reportProjectionService, never()).releaseFinal(anyString(), anyString());
+        verify(caseDAO, never()).update(any(MicroCase.class));
+        verify(reportVersionService, never()).recordInitialFinal(anyString(), any(MicroReportProjectionResult.class),
+                anyString());
+        verify(activityDAO, never()).insert(any());
     }
 
     @Test
@@ -136,6 +144,34 @@ public class MicroReportReleaseServiceTest {
         } catch (IllegalStateException expected) {
             assertEquals("Final release is blocked: CRITICAL_FOLLOW_UP_REQUIRED", expected.getMessage());
         }
+        verify(reportProjectionService, never()).releaseFinal(anyString(), anyString());
+        verify(caseDAO, never()).update(any(MicroCase.class));
+        verify(reportVersionService, never()).recordInitialFinal(anyString(), any(MicroReportProjectionResult.class),
+                anyString());
+        verify(activityDAO, never()).insert(any());
+    }
+
+    @Test
+    public void projectionFailureDoesNotPartiallyReleaseTheCase() {
+        MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
+        readiness.caseId = "case-1";
+        readiness.finalReleaseReady = true;
+        when(readinessService.getReadiness("case-1")).thenReturn(readiness);
+        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(reportProjectionService.releaseFinal("case-1", "42"))
+                .thenThrow(new IllegalStateException("REPORT_MAPPING_REQUIRED"));
+
+        try {
+            service.releaseFinal("case-1", "42");
+            fail("Expected final release to fail before changing case state");
+        } catch (IllegalStateException expected) {
+            assertEquals("REPORT_MAPPING_REQUIRED", expected.getMessage());
+        }
+
+        verify(caseDAO, never()).update(any(MicroCase.class));
+        verify(reportVersionService, never()).recordInitialFinal(anyString(), any(MicroReportProjectionResult.class),
+                anyString());
+        verify(activityDAO, never()).insert(any());
     }
 
 }

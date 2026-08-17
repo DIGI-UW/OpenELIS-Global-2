@@ -7,6 +7,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -155,6 +156,66 @@ public class MicroReportProjectionServiceTest {
     }
 
     @Test
+    public void noGrowthPreviewDoesNotPersistAndFinalReleaseCreatesOneStandardResult() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.NO_GROWTH_READY);
+        MicroCaseAnalysis link = link("case-1", "42", "17");
+        Analysis analysis = mock(Analysis.class);
+        org.openelisglobal.test.valueholder.Test analysisTest = new org.openelisglobal.test.valueholder.Test();
+        analysisTest.setId("test-1");
+        when(analysis.getTest()).thenReturn(analysisTest);
+        TestAnalyte testAnalyte = reportableTestAnalyte("17", "test-1");
+        TestResult reportTestResult = reportTestResult(analysisTest);
+
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(link));
+        when(analysisService.get("42")).thenReturn(analysis);
+        when(testAnalyteService.get("17")).thenReturn(testAnalyte);
+        when(testResultService.getAllActiveTestResultsPerTest(analysisTest)).thenReturn(List.of(reportTestResult));
+        when(resultService.insert(any(Result.class))).thenAnswer(invocation -> {
+            Result result = invocation.getArgument(0);
+            result.setId("201");
+            return "201";
+        });
+        when(statusService.getStatusID(AnalysisStatus.Finalized)).thenReturn("6");
+
+        MicroReportProjectionResult preview = service.preview("case-1");
+
+        assertEquals("No growth", preview.getContent());
+        assertTrue(preview.getProjectedResultIds().isEmpty());
+        verify(resultService, never()).insert(any(Result.class));
+        verify(resultService, never()).update(any(Result.class));
+
+        MicroReportProjectionResult released = service.releaseFinal("case-1", "9");
+
+        assertEquals("No growth", released.getContent());
+        assertEquals(List.of("201"), released.getProjectedResultIds());
+        ArgumentCaptor<Result> result = ArgumentCaptor.forClass(Result.class);
+        verify(resultService, times(1)).insert(result.capture());
+        assertEquals("No growth", result.getValue().getValue());
+        assertEquals("Y", result.getValue().getIsReportable());
+        assertEquals("9", result.getValue().getSysUserId());
+        verify(analysis).setStatusId("6");
+        verify(analysis).setReleasedDate(any(Timestamp.class));
+        verify(analysis).setSysUserId("9");
+        verify(analysisService).update(analysis);
+    }
+
+    @Test
+    public void preliminaryReleaseRejectsNoGrowthWithoutPersistingAPatientResult() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.NO_GROWTH_READY);
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+
+        try {
+            service.releasePreliminary("case-1", "9");
+            fail("Expected no-growth reporting to require authorized final release");
+        } catch (IllegalStateException expected) {
+            assertEquals("FINAL_NEGATIVE_RELEASE_REQUIRED", expected.getMessage());
+        }
+        verify(resultService, never()).insert(any(Result.class));
+        verify(resultService, never()).update(any(Result.class));
+    }
+
+    @Test
     public void amendedProjectionCreatesNewAnalysisRevisionAndPreservesPriorResult() {
         MicroCase microCase = microCase("case-1", MicroCaseStage.AMENDED);
         MicroCaseAnalysis link = link("case-1", "42", "17");
@@ -207,14 +268,17 @@ public class MicroReportProjectionServiceTest {
 
     @Test
     public void preliminaryReleaseKeepsTheCaseUsableWhenAStandardMappingIsNotConfigured() {
-        MicroCase microCase = microCase("case-1", MicroCaseStage.NO_GROWTH_READY);
+        MicroCase microCase = microCase("case-1", MicroCaseStage.REVIEW_READY);
         MicroCaseAnalysis link = link("case-1", "42", null);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(link));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate("iso-1")));
+        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of());
+        when(organismDAO.get("org-1")).thenReturn(Optional.of(organism("org-1", "Escherichia coli")));
 
         MicroReportProjectionResult result = service.releasePreliminary("case-1", "9");
 
-        assertEquals("No growth", result.getContent());
+        assertEquals("Isolate A: Escherichia coli", result.getContent());
         assertFalse(result.isMappingConfigured());
         assertTrue(result.getProjectedResultIds().isEmpty());
     }
