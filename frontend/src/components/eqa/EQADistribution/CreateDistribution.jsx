@@ -14,10 +14,13 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
+  postToOpenElisServerFullResponse,
+  putToOpenElisServerFullResponse,
+  resolveApiErrorMessage,
+  formatDateOnly,
 } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
@@ -31,6 +34,8 @@ const breadcrumbs = [
 const CreateDistribution = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
+  const draftId = new URLSearchParams(location.search).get("id");
   const [currentStep, setCurrentStep] = useState(0);
   const [name, setName] = useState("");
   const [programId, setProgramId] = useState("");
@@ -48,6 +53,28 @@ const CreateDistribution = () => {
       }
     });
   }, []);
+
+  // resuming a draft: the row carries name/program/deadline, but participants are
+  // not persisted yet (no distribution-participant table until the cycle work),
+  // so step 2 always starts empty and has to be re-picked
+  // ponytail: hydrate participants here once eqa_cycle_participant exists (T-24)
+  useEffect(() => {
+    if (!draftId) return;
+    getFromOpenElisServer(`/rest/eqa/distributions/${draftId}`, (data) => {
+      if (!data || data.error) {
+        setNotification({
+          kind: "error",
+          message: intl.formatMessage({ id: "eqa.distribution.loadError" }),
+        });
+        return;
+      }
+      setName(data.distributionName || "");
+      setProgramId(data.programId != null ? String(data.programId) : "");
+      setDeadline(
+        data.deadline ? new Date(data.deadline).toISOString().slice(0, 10) : "",
+      );
+    });
+  }, [draftId, intl]);
 
   useEffect(() => {
     if (!programId) {
@@ -80,28 +107,47 @@ const CreateDistribution = () => {
       participantOrganizationIds: selectedOrgs.map((o) => o.id),
     });
 
-    postToOpenElisServerJsonResponse(
-      "/rest/eqa/distributions",
-      payload,
-      (response) => {
-        if (response && !response.error) {
-          setCreated(true);
-          setNotification({
-            kind: "success",
-            message: intl.formatMessage({
-              id: "eqa.distribution.createSuccess",
-            }),
-          });
-        } else {
+    const handleResponse = (response) => {
+      if (!response || !response.ok) {
+        Promise.resolve(
+          response ? response.json().catch(() => null) : null,
+        ).then((body) =>
           setNotification({
             kind: "error",
-            message:
-              response?.error ||
-              intl.formatMessage({ id: "eqa.distribution.createError" }),
-          });
-        }
-      },
-    );
+            message: resolveApiErrorMessage(
+              intl,
+              body,
+              "eqa.distribution.createError",
+            ),
+          }),
+        );
+        return;
+      }
+      setCreated(true);
+      setNotification({
+        kind: "success",
+        message: intl.formatMessage({
+          id: draftId
+            ? "eqa.distribution.updateSuccess"
+            : "eqa.distribution.createSuccess",
+        }),
+      });
+    };
+
+    // saving a resumed draft updates that row; only a fresh wizard creates one
+    if (draftId) {
+      putToOpenElisServerFullResponse(
+        `/rest/eqa/distributions/${draftId}`,
+        payload,
+        handleResponse,
+      );
+    } else {
+      postToOpenElisServerFullResponse(
+        "/rest/eqa/distributions",
+        payload,
+        handleResponse,
+      );
+    }
   };
 
   const canAdvanceFromStep0 = name && programId && deadline;
@@ -171,6 +217,8 @@ const CreateDistribution = () => {
           <Column lg={8} md={8} sm={4}>
             <DatePicker
               datePickerType="single"
+              dateFormat="d/m/Y"
+              value={deadline ? new Date(`${deadline}T00:00:00`) : ""}
               onChange={([date]) => {
                 if (date) {
                   const y = date.getFullYear();
@@ -186,7 +234,7 @@ const CreateDistribution = () => {
                 labelText={intl.formatMessage({
                   id: "eqa.distribution.deadline",
                 })}
-                placeholder="mm/dd/yyyy"
+                placeholder="dd/mm/yyyy"
                 disabled={created}
               />
             </DatePicker>
@@ -219,6 +267,13 @@ const CreateDistribution = () => {
               selectionFeedback="top-after-reopen"
               disabled={created || organizations.length === 0}
             />
+            {draftId && (
+              <p style={{ color: "#525252", marginTop: "0.5rem" }}>
+                {intl.formatMessage({
+                  id: "eqa.distribution.participants.notSaved",
+                })}
+              </p>
+            )}
             {organizations.length === 0 && (
               <p style={{ color: "#da1e28", marginTop: "0.5rem" }}>
                 {intl.formatMessage({
@@ -267,7 +322,7 @@ const CreateDistribution = () => {
               <strong>
                 {intl.formatMessage({ id: "eqa.distribution.deadline" })}:
               </strong>{" "}
-              {deadline}
+              {formatDateOnly(deadline)}
             </p>
             <p>
               <strong>

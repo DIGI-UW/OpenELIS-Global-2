@@ -8066,5 +8066,8 @@
   "qc.bench.column.runs": "Controls run",
   "qc.bench.column.failed": "Failed",
   "qc.bench.column.lastRun": "Last run",
-  "qc.bench.empty": "No manual or rapid-test controls were recorded in this period."
+  "qc.bench.empty": "No manual or rapid-test controls were recorded in this period.",
+  "eqa.distribution.loadError": "Could not load this draft distribution.",
+  "eqa.distribution.updateSuccess": "Draft distribution updated.",
+  "eqa.distribution.participants.notSaved": "Participants are not stored with a draft yet — select them again before saving."
 }

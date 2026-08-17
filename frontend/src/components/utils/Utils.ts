@@ -129,6 +129,27 @@ export const toLocalIsoDateTime = (
   return `${toLocalIsoDate(d)} ${hh}:${mm}`;
 };
 
+/**
+ * Render a date-of-record (deadline, due date) as `dd/MM/yyyy`. Such values are
+ * stored as an end-of-day timestamp, so reading LOCAL components rolls them to
+ * the next day for any browser east of the server; the UTC components give the
+ * calendar date that was actually entered. Returns "" for absent values.
+ */
+export const formatDateOnly = (
+  value: Date | string | number | null | undefined,
+): string => {
+  if (!value) {
+    return "";
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${day}/${month}/${d.getUTCFullYear()}`;
+};
+
 export const getFromOpenElisServer = <T = LegacyApiResponse>(
   endPoint: string,
   callback: (response: T | undefined) => void,
