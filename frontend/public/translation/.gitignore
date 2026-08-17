@@ -1,6 +1,0 @@
-# A deployment's own translations must never be committed into the core
-# repository — core Transifex owns the bundled bundles under src/languages, and a
-# distro's Transifex owns whatever it mounts here. Ignore every locale file a
-# developer drops here for testing, and keep only the documentation and example.
-*.json
-!example.en.json

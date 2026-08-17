@@ -5,10 +5,12 @@
  * `npm run build`, so replacing a file on disk cannot change a string in a built
  * image — the bytes are already in the bundle. Overrides are therefore fetched
  * over HTTP at runtime from a directory the deployment mounts into the frontend
- * container. That is the one mechanism that behaves identically in the Vite dev
- * server (which serves `public/` at the web root) and in the nginx image (which
- * serves the same files from the built `dist/`, under a `location /translation/`
- * of their own).
+ * container — `volume/translation` in development, whatever the distro mounts in
+ * production. That is the one mechanism that works in both the Vite dev server,
+ * which serves the mount through `public/` at the web root, and the nginx image,
+ * which serves it under a `location /translation/` of its own. (nginx reads from
+ * disk per request; Vite lists its static files at startup, so a locale file
+ * added while it is running is not served until it restarts.)
  *
  * <p>Nothing here runs unless OVERRIDE_DEFAULT_TRANSLATION is on, and every
  * failure resolves to "no override" — a deployment that mounts nothing, mounts
