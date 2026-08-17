@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SDKMAN_DIR="${SDKMAN_DIR:-$HOME/.sdkman}"
+SDKMANRC="$PROJECT_ROOT/.sdkmanrc"
+
+if [[ ! -r "$SDKMANRC" ]]; then
+    echo "OpenELIS SDKMAN configuration is missing at $SDKMANRC" >&2
+    exit 1
+fi
+
+JAVA_VERSION="$(awk -F= '$1 == "java" { print $2; exit }' "$SDKMANRC")"
+JAVA_HOME="${JAVA_HOME_21:-$SDKMAN_DIR/candidates/java/$JAVA_VERSION}"
+
+if [[ -z "$JAVA_VERSION" || ! -x "$JAVA_HOME/bin/java" ]]; then
+    echo "Java $JAVA_VERSION is not installed under SDKMAN at $JAVA_HOME" >&2
+    exit 1
+fi
+
+export JAVA_HOME
+export PATH="$JAVA_HOME/bin:$PATH"
+
+JAVA_SPECIFICATION_VERSION="$({ java -XshowSettings:properties -version; } 2>&1 \
+    | awk -F'= ' '/java.specification.version/ { print $2; exit }')"
+
+if [[ "$JAVA_SPECIFICATION_VERSION" != "21" ]]; then
+    echo "OpenELIS requires Java 21; selected Java $JAVA_SPECIFICATION_VERSION" >&2
+    exit 1
+fi
+
+if [[ "$#" -eq 0 ]]; then
+    java -version
+    exit 0
+fi
+
+exec "$@"
