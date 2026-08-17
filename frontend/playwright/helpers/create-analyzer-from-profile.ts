@@ -21,7 +21,7 @@ import type { AnalyzerTestConfig } from "./analyzer-test-config";
 import { LONG_TIMEOUT } from "./timeouts";
 import { resolveDbContainer } from "./db-container";
 
-const SIMULATOR_URL = "http://localhost:8085";
+const SIMULATOR_URL = process.env.MOCK_SIMULATOR_URL || "http://localhost:8085";
 const ANALYZER_API_PATH = "/api/OpenELIS-Global/rest/analyzer/analyzers";
 const API_READY_TIMEOUT_MS = 15_000;
 const API_RETRY_DELAY_MS = 500;

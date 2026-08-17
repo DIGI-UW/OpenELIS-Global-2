@@ -1,0 +1,607 @@
+#!/usr/bin/env python3
+"""Worktree-isolated OpenELIS development stack interface."""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import shutil
+import ssl
+import subprocess
+import sys
+import time
+from typing import NamedTuple, Sequence
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+
+class StackContext(NamedTuple):
+    repo_root: Path
+    project: str
+    project_dir: Path
+    compose_files: tuple[Path, ...]
+
+
+LOCAL_DOMAINS = {"localhost", "127.0.0.1", "::1"}
+
+ANALYZER_SCENARIOS = (
+    ("Cepheid GeneXpert (ASTM Mode)", "MOLECULAR", "generic-astm", "astm/genexpert-astm", "genexpert", "genexpert_astm", 9600, "ASTM_LIS2_A2", "GENEXPERT|CEPHEID"),
+    ("Mindray BC-5380", "HEMATOLOGY", "generic-hl7", "hl7/mindray-bc5380", "bc5380", "mindray_bc5380", 5380, "HL7_V2_3_1", "MINDRAY.*BC.?5380|BC.?5380"),
+    ("Mindray BS-200", "CHEMISTRY", "generic-hl7", "hl7/mindray-bs200", "bs200", "mindray_bs200", 6001, "HL7_V2_3_1", "MINDRAY.*BS.?200|BS.?200"),
+    ("QuantStudio 5", "MOLECULAR", "generic-file", "file/quantstudio", None, None, None, None, None),
+    ("QuantStudio 7", "MOLECULAR", "generic-file", "file/quantstudio", None, None, None, None, None),
+    ("FluoroCycler XT", "MOLECULAR", "generic-file", "file/fluorocycler-xt", None, None, None, None, None),
+    ("Wondfo Finecare FS-205", "IMMUNOASSAY", "generic-file", "file/wondfo-csv", None, None, None, None, None),
+    ("Tecan Infinite F50", "IMMUNOASSAY", "generic-file", "file/tecan-f50", None, None, None, None, None),
+    ("Thermo Multiskan FC", "IMMUNOASSAY", "generic-file", "file/multiskan-fc", None, None, None, None, None),
+)
+
+
+def slugify(value: str, limit: int = 28) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "worktree"
+    return slug[:limit].rstrip("-")
+
+
+def make_context(repo_root: Path) -> StackContext:
+    root = repo_root.resolve()
+    digest = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:8]
+    project = f"oe2-{slugify(root.name)}-{digest}-dev"
+    project_dir = root / "projects" / "analyzer-harness"
+    compose_files = (
+        project_dir / "docker-compose.dev.yml",
+        project_dir / "docker-compose.base.yml",
+        project_dir / "docker-compose.analyzer-test.yml",
+        project_dir / "docker-compose.letsencrypt.yml",
+        project_dir / "docker-compose.worktree.yml",
+    )
+    return StackContext(root, project, project_dir, compose_files)
+
+
+def read_dotenv(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.is_file():
+        return values
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        values[key] = value
+    return values
+
+
+def is_local_domain(domain: str) -> bool:
+    return domain.lower() in LOCAL_DOMAINS
+
+
+def build_environment(context: StackContext) -> dict[str, str]:
+    environment = os.environ.copy()
+    for key, value in read_dotenv(context.repo_root / ".env").items():
+        environment.setdefault(key, value)
+    environment["DEV_STACK_PROJECT"] = context.project
+    environment.setdefault("OE_UAT_SCENARIOS_ENABLED", "true")
+    domain = environment.get("LETSENCRYPT_DOMAIN", "localhost")
+    environment["LETSENCRYPT_DOMAIN"] = domain
+    environment.setdefault("LETSENCRYPT_BRIDGE_DOMAIN", f"bridge.{domain}")
+    if is_local_domain(domain):
+        environment.setdefault("DEV_STACK_INGRESS_BIND_ADDRESS", "127.0.0.1")
+        environment.setdefault("DEV_STACK_HTTP_PORT", "0")
+        environment.setdefault("DEV_STACK_HTTPS_PORT", "0")
+        environment.setdefault("DEV_STACK_TLS", "self-signed")
+    else:
+        environment.setdefault("DEV_STACK_INGRESS_BIND_ADDRESS", "0.0.0.0")
+        environment.setdefault("DEV_STACK_HTTP_PORT", "80")
+        environment.setdefault("DEV_STACK_HTTPS_PORT", "443")
+        environment.setdefault("DEV_STACK_TLS", "letsencrypt")
+    digest = int(hashlib.sha256(str(context.repo_root).encode("utf-8")).hexdigest()[:8], 16)
+    environment["ANALYZER_NETWORK_NAMESPACE"] = context.project
+    environment["ANALYZER_SUBNET_PREFIX"] = f"10.{64 + digest % 160}"
+    if frontend_dependencies_changed(context, environment):
+        environment["DEV_STACK_FRONTEND_IMAGE"] = f"{context.project}-frontend:dev"
+        environment["DEV_STACK_BUILD_FRONTEND"] = "true"
+    else:
+        environment.setdefault(
+            "DEV_STACK_FRONTEND_IMAGE",
+            "itechuw/openelis-global-2-frontend-dev:develop",
+        )
+        environment.setdefault("DEV_STACK_BUILD_FRONTEND", "false")
+    return environment
+
+
+def frontend_dependencies_changed(
+    context: StackContext, environment: dict[str, str]
+) -> bool:
+    override = environment.get("DEV_STACK_BUILD_FRONTEND")
+    if override is not None:
+        return override.lower() == "true"
+    paths = ("frontend/package.json", "frontend/package-lock.json", "frontend/Dockerfile")
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--quiet", "origin/develop", "--", *paths],
+            cwd=context.repo_root,
+            env=environment,
+            check=False,
+        )
+        return result.returncode != 0
+    except OSError:
+        return True
+
+
+def compose_command(context: StackContext, *arguments: str) -> list[str]:
+    command = [
+        "docker",
+        "compose",
+        "-p",
+        context.project,
+        "--project-directory",
+        str(context.project_dir),
+    ]
+    env_file = context.repo_root / ".env"
+    if env_file.is_file():
+        command.extend(("--env-file", str(env_file)))
+    for compose_file in context.compose_files:
+        command.extend(("-f", str(compose_file)))
+    command.extend(arguments)
+    return command
+
+
+def required_submodules() -> tuple[str, ...]:
+    return (
+        "dataexport",
+        "plugins",
+        "tools/analyzer-mock-server",
+        "tools/openelis-analyzer-bridge",
+    )
+
+
+def parse_published_port(value: str) -> int:
+    match = re.search(r":(\d+)\s*$", value)
+    if not match:
+        raise ValueError(f"Could not parse Docker published port from: {value!r}")
+    return int(match.group(1))
+
+
+def validate_down_options(remove_volumes: bool, confirmed: bool) -> None:
+    if remove_volumes and not confirmed:
+        raise ValueError("Removing stack volumes requires both --volumes and --yes")
+
+
+def run(
+    command: Sequence[str],
+    *,
+    cwd: Path,
+    environment: dict[str, str],
+    capture: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        list(command),
+        cwd=cwd,
+        env=environment,
+        check=True,
+        text=True,
+        capture_output=capture,
+    )
+
+
+def ensure_local_env(context: StackContext) -> None:
+    env_file = context.repo_root / ".env"
+    example = context.repo_root / ".env.example"
+    if not env_file.exists() and example.is_file():
+        shutil.copyfile(example, env_file)
+        print(f"Created local {env_file.relative_to(context.repo_root)} from .env.example")
+
+
+def ensure_submodules(context: StackContext, environment: dict[str, str]) -> None:
+    command = ["git", "submodule", "update", "--init", "--recursive"]
+    command.extend(required_submodules())
+    run(command, cwd=context.repo_root, environment=environment)
+
+
+def heal_war_mount(context: StackContext) -> None:
+    war = context.repo_root / "target" / "OpenELIS-Global.war"
+    if war.is_dir():
+        try:
+            war.rmdir()
+        except OSError as error:
+            raise RuntimeError(f"Expected a WAR file but found a non-empty directory at {war}") from error
+
+
+def build_application(context: StackContext, environment: dict[str, str]) -> None:
+    java = context.repo_root / "scripts" / "run-java21"
+    dataexport = context.repo_root / "dataexport" / "pom.xml"
+    run(
+        [str(java), "mvn", "-q", "-f", str(dataexport), "install", "-DskipTests", "-Dmaven.test.skip=true"],
+        cwd=context.repo_root,
+        environment=environment,
+    )
+    run(
+        [str(java), "mvn", "-q", "package", "-DskipTests", "-Dmaven.test.skip=true"],
+        cwd=context.repo_root,
+        environment=environment,
+    )
+    war = context.repo_root / "target" / "OpenELIS-Global.war"
+    if not war.is_file():
+        raise RuntimeError(f"Build did not produce {war}")
+
+
+def stage_analyzer_plugins(context: StackContext, environment: dict[str, str]) -> None:
+    java = context.repo_root / "scripts" / "run-java21"
+    plugins = context.repo_root / "plugins" / "pom.xml"
+    run(
+        [str(java), "mvn", "-q", "-f", str(plugins), "install", "-DskipTests", "-Dmaven.test.skip=true"],
+        cwd=context.repo_root,
+        environment=environment,
+    )
+    destination = context.project_dir / "volume" / "plugins"
+    destination.mkdir(parents=True, exist_ok=True)
+    for existing in destination.glob("*.jar"):
+        existing.unlink()
+    jars = [
+        path
+        for path in (context.repo_root / "plugins" / "analyzers").glob("*/target/*.jar")
+        if not path.name.endswith(("-sources.jar", "-javadoc.jar"))
+    ]
+    if not jars:
+        raise RuntimeError("Analyzer plugin build produced no runtime jars")
+    for jar in jars:
+        shutil.copy2(jar, destination / jar.name)
+
+
+def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str]) -> None:
+    arguments = [str(context.project_dir / "bootstrap.sh"), "--skip-plugins"]
+    if is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
+        arguments.append("--local")
+    run(
+        arguments,
+        cwd=context.project_dir,
+        environment=environment,
+    )
+
+
+def build_images(context: StackContext, environment: dict[str, str]) -> None:
+    services = ["astm-simulator", "openelis-analyzer-bridge"]
+    if environment["DEV_STACK_BUILD_FRONTEND"] == "true":
+        services.insert(0, "frontend.openelis.org")
+    run(
+        compose_command(context, "build", *services),
+        cwd=context.project_dir,
+        environment=environment,
+    )
+
+
+def published_port(context: StackContext, service: str, target: int, environment: dict[str, str]) -> int:
+    result = run(
+        compose_command(context, "port", service, str(target)),
+        cwd=context.project_dir,
+        environment=environment,
+        capture=True,
+    )
+    return parse_published_port(result.stdout)
+
+
+def endpoint_environment(context: StackContext, environment: dict[str, str]) -> dict[str, str]:
+    domain = environment["LETSENCRYPT_DOMAIN"]
+    https_port = published_port(context, "proxy", 443, environment)
+    authority = domain if https_port == 443 else f"{domain}:{https_port}"
+    endpoints = {
+        "BASE_URL": f"https://{authority}",
+        "OE_BACKEND_URL": f"https://localhost:{published_port(context, 'oe.openelis.org', 8443, environment)}",
+        "FHIR_URL": f"https://localhost:{published_port(context, 'fhir.openelis.org', 8443, environment)}",
+        "DB_PORT": str(published_port(context, "db.openelis.org", 5432, environment)),
+        "COMPOSE_PROJECT_NAME": context.project,
+    }
+    subnet_prefix = environment["ANALYZER_SUBNET_PREFIX"]
+    endpoints.update(
+        {
+            "MOCK_SIMULATOR_URL": f"http://localhost:{published_port(context, 'astm-simulator', 8080, environment)}",
+            "ANALYZER_BRIDGE_URL": f"https://localhost:{published_port(context, 'openelis-analyzer-bridge', 8443, environment)}",
+            "ANALYZER_NETWORK_NAMESPACE": context.project,
+            "ANALYZER_SUBNET_PREFIX": subnet_prefix,
+            "ANALYZER_GENEXPERT_IP": f"{subnet_prefix}.20.10",
+            "ANALYZER_BRIDGE_DESTINATION": f"tcp://{subnet_prefix}.20.2:12001",
+        }
+    )
+    return endpoints
+
+
+def configure_tls(context: StackContext, environment: dict[str, str]) -> None:
+    tls_mode = environment["DEV_STACK_TLS"].lower()
+    if tls_mode == "self-signed":
+        return
+    if tls_mode != "letsencrypt":
+        raise ValueError("DEV_STACK_TLS must be either self-signed or letsencrypt")
+    if is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
+        raise ValueError("DEV_STACK_TLS=letsencrypt requires a public LETSENCRYPT_DOMAIN")
+    if not environment.get("LETSENCRYPT_EMAIL"):
+        raise ValueError("DEV_STACK_TLS=letsencrypt requires LETSENCRYPT_EMAIL")
+    proxy = run(
+        compose_command(context, "ps", "-q", "proxy"),
+        cwd=context.project_dir,
+        environment=environment,
+        capture=True,
+    ).stdout.strip()
+    if not proxy:
+        raise RuntimeError("The worktree proxy is not running")
+    tls_environment = environment.copy()
+    tls_environment["DEV_STACK_PROXY_CONTAINER_ID"] = proxy
+    run(
+        [str(context.project_dir / "scripts" / "generate-letsencrypt-certs.sh")],
+        cwd=context.project_dir,
+        environment=tls_environment,
+    )
+    run(
+        compose_command(context, "restart", "proxy"),
+        cwd=context.project_dir,
+        environment=environment,
+    )
+
+
+def print_endpoints(context: StackContext, environment: dict[str, str], shell_exports: bool = False) -> None:
+    endpoints = endpoint_environment(context, environment)
+    for name, value in endpoints.items():
+        if shell_exports:
+            print(f"export {name}={shlex.quote(value)}")
+        else:
+            print(f"{name}={value}")
+
+
+def wait_for_login(context: StackContext, environment: dict[str, str]) -> None:
+    base_url = endpoint_environment(context, environment)["BASE_URL"]
+    wait_environment = environment.copy()
+    wait_environment["BASE_URL"] = base_url
+    run(
+        [str(context.repo_root / "scripts" / "e2e" / "wait-for-openelis-login.sh")],
+        cwd=context.repo_root,
+        environment=wait_environment,
+    )
+
+
+def request_json(
+    url: str,
+    *,
+    method: str = "GET",
+    payload: dict[str, object] | None = None,
+    username: str | None = None,
+    password: str | None = None,
+) -> tuple[int, dict[str, object]]:
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request = Request(url, data=data, method=method)
+    request.add_header("Accept", "application/json")
+    if payload is not None:
+        request.add_header("Content-Type", "application/json")
+    if username is not None and password is not None:
+        credentials = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+        request.add_header("Authorization", f"Basic {credentials}")
+    context = ssl._create_unverified_context() if url.startswith("https://") else None
+    try:
+        with urlopen(request, timeout=15, context=context) as response:
+            body = response.read().decode("utf-8")
+            return response.status, json.loads(body) if body else {}
+    except HTTPError as error:
+        body = error.read().decode("utf-8")
+        parsed = json.loads(body) if body else {}
+        return error.code, parsed
+
+
+def wait_for_mock_analyzer(mock_url: str, name: str, timeout_seconds: float = 15) -> str:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        try:
+            status, body = request_json(f"{mock_url}/analyzers")
+            if status == 200:
+                for analyzer in body.get("analyzers", []):
+                    if analyzer.get("name") == name and analyzer.get("ip"):
+                        return str(analyzer["ip"])
+        except (URLError, TimeoutError):
+            pass
+        time.sleep(0.25)
+    raise RuntimeError(f"Mock analyzer {name} did not become ready")
+
+
+def ensure_mock_analyzer(mock_url: str, name: str, template: str, port: int) -> str:
+    try:
+        status, body = request_json(
+            f"{mock_url}/analyzers",
+            method="POST",
+            payload={"name": name, "template": template, "port": port},
+        )
+        if status in (200, 201) and body.get("ip"):
+            return str(body["ip"])
+        if status != 409:
+            raise RuntimeError(f"Mock analyzer {name} creation returned HTTP {status}: {body}")
+    except (URLError, TimeoutError):
+        pass
+    return wait_for_mock_analyzer(mock_url, name)
+
+
+def initialize_harness_scenarios(
+    context: StackContext, environment: dict[str, str]
+) -> None:
+    endpoints = endpoint_environment(context, environment)
+    analyzer_url = f"{endpoints['BASE_URL']}/api/OpenELIS-Global/rest/analyzer/analyzers"
+    mock_url = endpoints["MOCK_SIMULATOR_URL"]
+    username = environment.get("TEST_USER", "admin")
+    password = environment.get("TEST_PASS", "adminADMIN!")
+    status, body = request_json(analyzer_url, username=username, password=password)
+    if status != 200:
+        raise RuntimeError(f"Analyzer list returned HTTP {status}: {body}")
+    existing = {str(item.get("name")) for item in body.get("analyzers", [])}
+
+    for (
+        name,
+        analyzer_type,
+        plugin_type,
+        profile,
+        mock_name,
+        template,
+        port,
+        protocol,
+        identifier,
+    ) in ANALYZER_SCENARIOS:
+        ip_address = None
+        if mock_name and template and port:
+            ip_address = ensure_mock_analyzer(mock_url, mock_name, template, port)
+        if name in existing:
+            continue
+        payload: dict[str, object] = {
+            "name": name,
+            "analyzerType": analyzer_type,
+            "pluginTypeId": plugin_type,
+            "status": "ACTIVE",
+            "defaultConfigId": profile,
+        }
+        if ip_address and port and protocol and identifier:
+            payload.update(
+                {
+                    "ipAddress": ip_address,
+                    "port": port,
+                    "protocolVersion": protocol,
+                    "communicationMode": "ANALYZER_INITIATED",
+                    "identifierPattern": identifier,
+                }
+            )
+        create_status, create_body = request_json(
+            analyzer_url,
+            method="POST",
+            payload=payload,
+            username=username,
+            password=password,
+        )
+        if create_status not in (201, 409):
+            raise RuntimeError(f"Analyzer {name} creation returned HTTP {create_status}: {create_body}")
+
+    status, body = request_json(analyzer_url, username=username, password=password)
+    names = {str(item.get("name")) for item in body.get("analyzers", [])}
+    missing = [scenario[0] for scenario in ANALYZER_SCENARIOS if scenario[0] not in names]
+    if status != 200 or missing:
+        raise RuntimeError(f"Analyzer scenarios are incomplete: {missing}")
+    print(f"Analyzer scenarios ready through services ({len(ANALYZER_SCENARIOS)})")
+
+
+def cleanup_analyzer_networks(context: StackContext, environment: dict[str, str]) -> None:
+    try:
+        base = endpoint_environment(context, environment)["MOCK_SIMULATOR_URL"]
+        with urlopen(f"{base}/analyzers", timeout=5) as response:
+            payload = json.load(response)
+        for analyzer in payload.get("analyzers", []):
+            name = analyzer.get("name")
+            if not name:
+                continue
+            request = Request(f"{base}/analyzers/{name}", method="DELETE")
+            with urlopen(request, timeout=10):
+                pass
+    except (subprocess.CalledProcessError, URLError, TimeoutError, ValueError, KeyError) as error:
+        print(f"Warning: could not clean analyzer networks through the mock API: {error}", file=sys.stderr)
+
+
+def doctor(context: StackContext, environment: dict[str, str]) -> None:
+    for path in context.compose_files:
+        if not path.is_file():
+            raise RuntimeError(f"Missing compose file: {path}")
+    run(["docker", "info"], cwd=context.repo_root, environment=environment, capture=True)
+    run([str(context.repo_root / "scripts" / "run-java21")], cwd=context.repo_root, environment=environment)
+    if not is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
+        if environment["DEV_STACK_TLS"] == "letsencrypt" and not environment.get("LETSENCRYPT_EMAIL"):
+            raise RuntimeError("Domain mode requires LETSENCRYPT_EMAIL when DEV_STACK_TLS=letsencrypt")
+    print(f"{context.project}: prerequisites are ready")
+
+
+def parse_args(argv: Sequence[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="dev-stack",
+        description="Run the full worktree-isolated OpenELIS + analyzer development stack.",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    up = subparsers.add_parser("up")
+    up.add_argument("--skip-build", action="store_true")
+    up.add_argument("--no-wait", action="store_true")
+    up.add_argument("--no-scenarios", action="store_true")
+    down = subparsers.add_parser("down")
+    down.add_argument("--volumes", action="store_true")
+    down.add_argument("--yes", action="store_true")
+    subparsers.add_parser("status")
+    subparsers.add_parser("url")
+    subparsers.add_parser("env")
+    subparsers.add_parser("config")
+    subparsers.add_parser("doctor")
+    logs = subparsers.add_parser("logs")
+    logs.add_argument("services", nargs="*")
+    logs.add_argument("--follow", "-f", action="store_true")
+    return parser.parse_args(list(argv))
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parse_args(argv if argv is not None else sys.argv[1:])
+    context = make_context(Path(__file__).resolve().parent.parent)
+    environment = build_environment(context)
+
+    if args.command == "doctor":
+        bootstrap_analyzer_harness(context, environment)
+        doctor(context, environment)
+    elif args.command == "config":
+        bootstrap_analyzer_harness(context, environment)
+        run(compose_command(context, "config"), cwd=context.project_dir, environment=environment)
+    elif args.command == "up":
+        ensure_local_env(context)
+        ensure_submodules(context, environment)
+        bootstrap_analyzer_harness(context, environment)
+        heal_war_mount(context)
+        if not args.skip_build:
+            build_application(context, environment)
+            stage_analyzer_plugins(context, environment)
+            build_images(context, environment)
+        elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
+            raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")
+        run(
+            compose_command(context, "up", "-d", "--remove-orphans"),
+            cwd=context.project_dir,
+            environment=environment,
+        )
+        configure_tls(context, environment)
+        if not args.no_wait:
+            wait_for_login(context, environment)
+            if not args.no_scenarios:
+                initialize_harness_scenarios(context, environment)
+        print_endpoints(context, environment)
+    elif args.command == "down":
+        validate_down_options(args.volumes, args.yes)
+        cleanup_analyzer_networks(context, environment)
+        down_args = ["down", "--remove-orphans"]
+        if args.volumes:
+            down_args.append("--volumes")
+        run(compose_command(context, *down_args), cwd=context.project_dir, environment=environment)
+    elif args.command == "status":
+        run(compose_command(context, "ps"), cwd=context.project_dir, environment=environment)
+        try:
+            print_endpoints(context, environment)
+        except subprocess.CalledProcessError:
+            pass
+    elif args.command == "url":
+        print(endpoint_environment(context, environment)["BASE_URL"])
+    elif args.command == "env":
+        print_endpoints(context, environment, shell_exports=True)
+    elif args.command == "logs":
+        log_args = ["logs"]
+        if args.follow:
+            log_args.append("--follow")
+        log_args.extend(args.services)
+        run(compose_command(context, *log_args), cwd=context.project_dir, environment=environment)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (RuntimeError, ValueError, subprocess.CalledProcessError) as error:
+        print(f"dev-stack: {error}", file=sys.stderr)
+        raise SystemExit(1)

@@ -18,10 +18,14 @@ NC='\033[0m'
 
 FORCE_BUILD_PLUGINS=false
 FORCE_RELOAD_CONFIG=false
+LOCAL_MODE=false
+SKIP_PLUGINS=false
 for arg in "$@"; do
   case $arg in
     --force-build-plugins) FORCE_BUILD_PLUGINS=true ;;
     --force-reload-config) FORCE_RELOAD_CONFIG=true ;;
+    --local) LOCAL_MODE=true ;;
+    --skip-plugins) SKIP_PLUGINS=true ;;
   esac
 done
 
@@ -35,7 +39,9 @@ if [ -f "$HARNESS_DIR/.env" ]; then
 elif [ -f "$REPO_ROOT/.env" ]; then
   set -a; . "$REPO_ROOT/.env"; set +a
 fi
-if [ -z "${LETSENCRYPT_DOMAIN:-}" ]; then
+if [ "$LOCAL_MODE" = true ]; then
+  : "${LETSENCRYPT_DOMAIN:=localhost}"
+elif [ -z "${LETSENCRYPT_DOMAIN:-}" ]; then
   echo -e "${RED}ERROR: LETSENCRYPT_DOMAIN is not set. Add it to $REPO_ROOT/.env before running bootstrap.${NC}" >&2
   exit 1
 fi
@@ -118,7 +124,9 @@ _ensure_generic_plugins() {
   fi
 }
 
-if [ "$HARNESS_PLUGINS" = "all" ]; then
+if [ "$SKIP_PLUGINS" = true ]; then
+  echo -e "  ${YELLOW}→ Plugin build/staging delegated to scripts/dev-stack${NC}"
+elif [ "$HARNESS_PLUGINS" = "all" ]; then
   # Load all plugins (legacy + generic) from submodule
   _ensure_generic_plugins "$FORCE_BUILD_PLUGINS"
   if [ -d "$PLUGIN_SUBMODULE_DIR" ] && ls "$PLUGIN_SUBMODULE_DIR"/*.jar 1>/dev/null 2>&1; then
@@ -201,7 +209,10 @@ fi
 # nginx.conf: render from the env-driven template in the root volume so
 # ${LETSENCRYPT_DOMAIN} flows through to server_name and cert paths without
 # editing nginx.conf by hand. Fallback to plain copy if only nginx.conf exists.
-if [ -f "$ROOT_VOLUME/nginx/nginx.conf.template" ]; then
+if [ "$LOCAL_MODE" = true ] && [ -f "$ROOT_VOLUME/nginx/nginx.conf" ]; then
+  cp "$ROOT_VOLUME/nginx/nginx.conf" "$HARNESS_VOLUME/nginx/nginx.conf"
+  echo "  copied local self-signed volume/nginx/nginx.conf"
+elif [ -f "$ROOT_VOLUME/nginx/nginx.conf.template" ]; then
   if ! command -v envsubst >/dev/null 2>&1; then
     # No silent fallback — the committed nginx.conf is a stale snapshot of the
     # template and lacks the bridge vhost + env-substituted domain names.
