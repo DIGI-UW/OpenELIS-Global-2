@@ -63,8 +63,8 @@ Playwright.
 
 The startup path does not execute SQL fixture loaders or use fixed primary keys.
 It creates the analyzer harness scenarios idempotently through authenticated
-application services. Feature-specific scenarios follow the same rule. CI
-parity is a separate validation command because it intentionally reproduces CI
+application services. Feature-specific scenarios follow the same rule. CI parity
+is a separate validation command because it intentionally reproduces CI
 packaging.
 
 To remove this worktree's data explicitly:
