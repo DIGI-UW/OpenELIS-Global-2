@@ -91,6 +91,11 @@ public class EQAOrdersRestControllerTest {
         overdueSample.setEqaPriority(EQAPriority.STANDARD);
         overdueSample.setEqaDeadline(Timestamp.valueOf(LocalDate.now().minusDays(3).atStartOfDay()));
         overdueSample.setSysUserId("1");
+
+        // Status derivation lives in the service (T-02); the controller only routes it.
+        when(sampleEQAService.deriveOrderStatus(sample1)).thenReturn("PENDING");
+        when(sampleEQAService.deriveOrderStatus(sample2)).thenReturn("PENDING");
+        when(sampleEQAService.deriveOrderStatus(overdueSample)).thenReturn("OVERDUE");
     }
 
     @Test
@@ -208,11 +213,28 @@ public class EQAOrdersRestControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         Map<String, Object> summary = response.getBody();
-        assertNotNull(summary.get("pending"));
-        assertNotNull(summary.get("inProgress"));
-        assertNotNull(summary.get("overdue"));
-        assertNotNull(summary.get("completedThisMonth"));
+        assertEquals(2L, summary.get("pending"));
+        assertEquals(0L, summary.get("inProgress"));
         assertEquals(1L, summary.get("overdue"));
+        assertEquals(0L, summary.get("completedThisMonth"));
+    }
+
+    @Test
+    public void testGetSummary_CompletedCountsOnlyThisMonth() {
+        sample1.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        sample2.setLastupdated(Timestamp.valueOf(LocalDate.now().minusMonths(2).atStartOfDay()));
+        when(sampleEQAService.deriveOrderStatus(sample1)).thenReturn("COMPLETED");
+        when(sampleEQAService.deriveOrderStatus(sample2)).thenReturn("COMPLETED");
+        when(sampleEQAService.findEqaSamples()).thenReturn(List.of(sample1, sample2));
+
+        ResponseEntity<Map<String, Object>> response = controller.getSummary();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        Map<String, Object> summary = response.getBody();
+        assertEquals(1L, summary.get("completedThisMonth"));
+        assertEquals(0L, summary.get("pending"));
+        assertEquals(0L, summary.get("inProgress"));
+        assertEquals(0L, summary.get("overdue"));
     }
 
     @Test

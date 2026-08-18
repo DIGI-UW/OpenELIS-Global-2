@@ -15,4 +15,12 @@ public interface SampleEQAService extends BaseObjectService<SampleEQA, Long> {
     List<SampleEQA> findByProgramId(Long programId);
 
     List<SampleEQA> findEqaSamples();
+
+    /**
+     * Order status derived live from the linked order's analyses (D-LIVE-2):
+     * COMPLETED when every non-cancelled analysis is finalized, else OVERDUE once
+     * the deadline has passed, IN_PROGRESS once any analysis has left NotStarted,
+     * else PENDING. Read-side only — V2 cycle state (T-10) supersedes this.
+     */
+    String deriveOrderStatus(SampleEQA sampleEQA);
 }
