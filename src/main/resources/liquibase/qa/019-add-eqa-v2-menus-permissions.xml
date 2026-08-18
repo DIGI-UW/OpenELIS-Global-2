@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2 T-12 (OGC-609): menu rows for the V2 three-lane IA + the V2
+    permission tiers. qa.view.eqa stays the read umbrella; the tiers below are
+    what the V2 endpoints/pages actually gate on (FRS permissions table
+    collapsed to the set the cards use). Routes come from the FRS route
+    registry (/eqa/participant|oversight|management/...).
+
+    Menu-visibility filtering by grant (OGC-1151) has no mechanism on this
+    lineage yet — these rows are visible to all authenticated users until that
+    lands; the permission rows still gate the REST/pages (T-05/T-13+).
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- ===================== V2 menu rows (flat under menu_eqa) ===================== -->
+
+    <changeSet author="openelisglobal" id="qa-039-add-menu-eqa-my-cycles">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_my_cycles'</sqlCheck>
+        </preConditions>
+        <comment>My Cycles — participant lane landing page (FR-V2.2-02)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
+            <column name="presentation_order" value="30" />
+            <column name="element_id" value="menu_eqa_my_cycles" />
+            <column name="action_url" value="/eqa/participant/cycles" />
+            <column name="display_key" value="banner.menu.eqa.myCycles" />
+            <column name="tool_tip_key" value="banner.menu.eqa.myCycles" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_eqa_my_cycles'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-040-add-menu-eqa-lab-performance">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_lab_performance'</sqlCheck>
+        </preConditions>
+        <comment>Lab Performance — oversight lane (T-20; lands on coverage)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
+            <column name="presentation_order" value="40" />
+            <column name="element_id" value="menu_eqa_lab_performance" />
+            <column name="action_url" value="/eqa/oversight/lab-performance/coverage" />
+            <column name="display_key" value="banner.menu.eqa.labPerformance" />
+            <column name="tool_tip_key" value="banner.menu.eqa.labPerformance" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_eqa_lab_performance'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-041-add-menu-eqa-follow-up-queue">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_follow_up_queue'</sqlCheck>
+        </preConditions>
+        <comment>Follow-Up Queue — oversight lane (T-18)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
+            <column name="presentation_order" value="50" />
+            <column name="element_id" value="menu_eqa_follow_up_queue" />
+            <column name="action_url" value="/eqa/oversight/follow-up-queue" />
+            <column name="display_key" value="banner.menu.eqa.followUpQueue" />
+            <column name="tool_tip_key" value="banner.menu.eqa.followUpQueue" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_eqa_follow_up_queue'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-042-add-menu-eqa-analyst-competency">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_analyst_competency'</sqlCheck>
+        </preConditions>
+        <comment>Analyst Competency — oversight lane (T-19)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
+            <column name="presentation_order" value="60" />
+            <column name="element_id" value="menu_eqa_analyst_competency" />
+            <column name="action_url" value="/eqa/oversight/analyst-track" />
+            <column name="display_key" value="banner.menu.eqa.analystCompetency" />
+            <column name="tool_tip_key" value="banner.menu.eqa.analystCompetency" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_eqa_analyst_competency'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-043-add-menu-eqa-provider">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_provider'</sqlCheck>
+        </preConditions>
+        <comment>Provider — schemes and cycle wizard entry (T-24)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
+            <column name="presentation_order" value="70" />
+            <column name="element_id" value="menu_eqa_provider" />
+            <column name="action_url" value="/eqa/management/provider/schemes" />
+            <column name="display_key" value="banner.menu.eqa.provider" />
+            <column name="tool_tip_key" value="banner.menu.eqa.provider" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_eqa_provider'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ===================== V2 permission tiers ===================== -->
+
+    <changeSet author="openelisglobal" id="qa-044-add-eqa-v2-permission-tiers">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'qa.eqa.participant'</sqlCheck>
+        </preConditions>
+        <comment>Register the V2 EQA permission tiers (qa.view.eqa stays the read umbrella)</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="qa.eqa.participant"/>
+            <column name="description" value="EQA participant lane: my cycles, receipts, result drafts and submission"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="N"/>
+            <column name="has_update_flag" value="N"/>
+            <column name="has_delete_flag" value="N"/>
+        </insert>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="qa.eqa.oversight"/>
+            <column name="description" value="EQA oversight lane: lab performance, follow-up queue, analyst competency"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="N"/>
+            <column name="has_update_flag" value="N"/>
+            <column name="has_delete_flag" value="N"/>
+        </insert>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="qa.eqa.provider"/>
+            <column name="description" value="EQA provider lane: schemes, cycles, prep and shipping, scoring"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="N"/>
+            <column name="has_update_flag" value="N"/>
+            <column name="has_delete_flag" value="N"/>
+        </insert>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="qa.eqa.inhouse.unblind"/>
+            <column name="description" value="Reveal sealed in-house panel targets before the unblind date"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="N"/>
+            <column name="has_update_flag" value="N"/>
+            <column name="has_delete_flag" value="N"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_module" schemaName="clinlims">
+                <where>name IN ('qa.eqa.participant', 'qa.eqa.oversight', 'qa.eqa.provider', 'qa.eqa.inhouse.unblind')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-045-grant-eqa-v2-permission-tiers">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="4">SELECT count(*) FROM clinlims.system_module WHERE name IN
+                ('qa.eqa.participant', 'qa.eqa.oversight', 'qa.eqa.provider', 'qa.eqa.inhouse.unblind')</sqlCheck>
+        </preConditions>
+        <comment>Grant the V2 EQA tiers to QA Officer and Global Administrator</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_module
+                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+            FROM clinlims.system_role r, clinlims.system_module m
+            WHERE r.name IN ('QA Officer', 'Global Administrator')
+              AND m.name IN ('qa.eqa.participant', 'qa.eqa.oversight', 'qa.eqa.provider', 'qa.eqa.inhouse.unblind')
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.system_role_module srm
+                  WHERE srm.system_role_id = r.id AND srm.system_module_id = m.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_module_id IN (SELECT id FROM clinlims.system_module WHERE name IN
+                    ('qa.eqa.participant', 'qa.eqa.oversight', 'qa.eqa.provider', 'qa.eqa.inhouse.unblind'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
