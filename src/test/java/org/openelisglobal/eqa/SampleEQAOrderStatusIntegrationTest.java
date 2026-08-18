@@ -16,6 +16,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * D-LIVE-2 (T-02): EQA order status must follow the order's analyses through
@@ -41,9 +42,38 @@ public class SampleEQAOrderStatusIntegrationTest extends BaseWebContextSensitive
     @Autowired
     private IStatusService statusService;
 
+    @Autowired
+    private javax.sql.DataSource dataSource;
+
     @Before
     public void initData() throws Exception {
+        ensureStatusRows();
         executeDataSetWithStateManagement("testdata/eqa-order-status.xml");
+    }
+
+    /**
+     * Other fixtures (e.g. testdata/analysis.xml) truncate status_of_sample and a
+     * later cache refresh rebuilds StatusService's maps from those dummy rows, so
+     * in a full-suite run every AnalysisStatus lookup can return "-1" by the time
+     * this class runs. Restore the canonical ANALYSIS rows by the exact names
+     * StatusService maps (plus sentinel id 1 for the dataset's sample_item rows),
+     * then refresh the cache so the ids this class writes and compares are real
+     * again — under any suite order.
+     */
+    private void ensureStatusRows() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO clinlims.status_of_sample (id, code, status_type, name, description)"
+                + " VALUES (1, 1, 'ANALYSIS', 'Fixture sentinel', 'restored by SampleEQAOrderStatusIntegrationTest')"
+                + " ON CONFLICT (id) DO NOTHING");
+        String[][] canonical = { { "9604", "Not Tested" }, { "9615", "Technical Acceptance" },
+                { "9616", "Technical Rejected" }, { "9606", "Finalized" }, { "9614", "Test Canceled" } };
+        for (String[] row : canonical) {
+            jdbc.update("INSERT INTO clinlims.status_of_sample (id, code, status_type, name, description)"
+                    + " SELECT ?::numeric, 1, 'ANALYSIS', ?, 'restored by SampleEQAOrderStatusIntegrationTest'"
+                    + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.status_of_sample"
+                    + "   WHERE name = ? AND status_type = 'ANALYSIS')", row[0], row[1], row[1]);
+        }
+        statusService.refreshCache();
     }
 
     private SampleEQA eqaOrder(Long sampleId, Timestamp deadline) {

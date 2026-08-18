@@ -78,24 +78,28 @@
     <type_of_sample id="1" description="Blood Sample"
         domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
 
-    <!-- sample -->
-    <sample id="1" accession_number="EQAT02001" status_id="1"
+    <!-- sample: status_id is nullable and irrelevant to the derivation, so
+        it is omitted rather than pinned to a row another fixture may have wiped
+        (status_of_sample is truncated by e.g. testdata/analysis.xml, so suite order
+        must not matter here). -->
+    <sample id="1" accession_number="EQAT02001"
         received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
         lastupdated="2023-11-01 12:00:00" />
-    <sample id="2" accession_number="EQAT02002" status_id="1"
+    <sample id="2" accession_number="EQAT02002"
         received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
         lastupdated="2023-11-01 12:00:00" />
-    <sample id="3" accession_number="EQAT02003" status_id="1"
+    <sample id="3" accession_number="EQAT02003"
         received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
         lastupdated="2023-11-01 12:00:00" />
 
-    <!-- sample_item -->
+    <!-- sample_item.status_id is NOT NULL; id 1 is the sentinel status row
+        the test guarantees in @Before (ensureStatusRows) before this loads. -->
     <sample_item id="1" sort_order="1" status_id="1"
         samp_id="1" typeosamp_id="1" collection_date="2023-11-15 10:00:00"
         lastupdated="2023-12-01 12:00:00" />
@@ -106,17 +110,19 @@
         samp_id="3" typeosamp_id="1" collection_date="2023-11-15 10:00:00"
         lastupdated="2023-12-01 12:00:00" />
 
-    <!-- analysis: two on sample 1, one on sample 2, none on sample 3 -->
+    <!-- analysis: two on sample 1, one on sample 2, none on sample 3. status_id
+        is nullable and every test sets real ids via IStatusService before asserting,
+        so no static status literal is baked in. -->
     <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
-        revision="1" status_id="1" analysis_type="ROUTINE"
-        entry_date="2023-11-15 12:00:00" lastupdated="2023-12-01 12:00:00"
+        revision="1" analysis_type="ROUTINE" entry_date="2023-11-15 12:00:00"
+        lastupdated="2023-12-01 12:00:00"
         fhir_uuid="e1b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01" />
     <analysis id="2" sampitem_id="1" test_sect_id="1" test_id="1"
-        revision="1" status_id="1" analysis_type="ROUTINE"
-        entry_date="2023-11-15 12:00:00" lastupdated="2023-12-01 12:00:00"
+        revision="1" analysis_type="ROUTINE" entry_date="2023-11-15 12:00:00"
+        lastupdated="2023-12-01 12:00:00"
         fhir_uuid="e1b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02" />
     <analysis id="3" sampitem_id="2" test_sect_id="1" test_id="1"
-        revision="1" status_id="1" analysis_type="ROUTINE"
-        entry_date="2023-11-15 12:00:00" lastupdated="2023-12-01 12:00:00"
+        revision="1" analysis_type="ROUTINE" entry_date="2023-11-15 12:00:00"
+        lastupdated="2023-12-01 12:00:00"
         fhir_uuid="e1b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b03" />
 </dataset>
