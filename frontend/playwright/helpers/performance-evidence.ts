@@ -2,6 +2,7 @@ import { writeFile } from "fs/promises";
 import type { TestInfo } from "@playwright/test";
 
 export const PERCENTILE_METHOD = "nearest-rank-ceiling";
+export const P95_MEASURED_ITERATIONS = 20;
 
 export interface BrowserMeasurement {
   name: string;
@@ -44,6 +45,11 @@ export const measureBrowserOperation = async (
   thresholdMs: number,
   operation: (iteration: number, warmup: boolean) => Promise<number>,
 ): Promise<BrowserMeasurement> => {
+  if (measuredIterations < P95_MEASURED_ITERATIONS) {
+    throw new Error(
+      `p95 requires at least ${P95_MEASURED_ITERATIONS} measured iterations`,
+    );
+  }
   for (let index = 0; index < warmupIterations; index += 1) {
     await operation(index, true);
   }
