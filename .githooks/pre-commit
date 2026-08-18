@@ -60,7 +60,7 @@ if [ -n "$FRONTEND_FILES" ]; then
     # Format only staged frontend files
     echo "$FRONTEND_FILES" | while IFS= read -r file; do
         if [ -f "$file" ]; then
-            (cd frontend && npx prettier --write "../$file" --silent)
+            (cd frontend && npx prettier --write "../$file")
         fi
     done
     FORMATTED=true
