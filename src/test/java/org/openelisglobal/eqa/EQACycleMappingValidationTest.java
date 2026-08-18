@@ -90,10 +90,10 @@ public class EQACycleMappingValidationTest {
     public void auditVocabulariesMatchTheCheckConstraints() {
         assertEquals(Arrays.asList("PARTICIPANT", "PROVIDER"), names(EQAStateMachine.values()));
         assertEquals(Arrays.asList("AUTO", "MANUAL"), names(EQATriggerType.values()));
-        assertEquals(
-                Arrays.asList("LAST_VALIDATED_RESULT", "FHIR_SUBMIT_SUCCESS", "FHIR_SUBMIT_FAILURE_RETRY",
-                        "SCORE_INTAKE", "DEADLINE_TIMER", "ALL_SHIPMENTS_DELIVERED", "ALL_SUBMISSIONS_RECEIVED",
-                        "PANEL_SEAL", "PANEL_UNBLIND", "HOMOGENEITY_QC_PASSED", "MANUAL_OVERRIDE", "SCHEDULED_JOB"),
+        // PANEL_RECEIPT joined in T-11 (qa/024 extends the DB CHECK in step).
+        assertEquals(Arrays.asList("LAST_VALIDATED_RESULT", "FHIR_SUBMIT_SUCCESS", "FHIR_SUBMIT_FAILURE_RETRY",
+                "SCORE_INTAKE", "DEADLINE_TIMER", "ALL_SHIPMENTS_DELIVERED", "ALL_SUBMISSIONS_RECEIVED", "PANEL_SEAL",
+                "PANEL_UNBLIND", "HOMOGENEITY_QC_PASSED", "MANUAL_OVERRIDE", "SCHEDULED_JOB", "PANEL_RECEIPT"),
                 names(EQATriggerEvent.values()));
     }
 
