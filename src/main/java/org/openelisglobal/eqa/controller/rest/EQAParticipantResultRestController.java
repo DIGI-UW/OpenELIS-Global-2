@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize("hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')")
 public class EQAParticipantResultRestController extends BaseRestController {
 
     private final EQAParticipantResultService resultService;
@@ -50,6 +50,7 @@ public class EQAParticipantResultRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/participant-results", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority('qa.eqa.participant') or hasAnyRole('RECEPTION', 'RESULTS', 'GLOBAL_ADMIN')")
     public ResponseEntity<Map<String, Object>> createDraft(HttpServletRequest request,
             @RequestBody Map<String, Object> body) {
         Long cycleId = longField(body, "cycleId");
@@ -81,6 +82,7 @@ public class EQAParticipantResultRestController extends BaseRestController {
     }
 
     @PatchMapping(value = "/participant-results/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority('qa.eqa.participant') or hasAnyRole('RECEPTION', 'RESULTS', 'GLOBAL_ADMIN')")
     public ResponseEntity<Map<String, Object>> transition(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         String target = stringField(body, "target");

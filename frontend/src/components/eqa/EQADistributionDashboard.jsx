@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -25,6 +25,8 @@ import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer, formatDateOnly } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { canManageEqaProvider } from "./eqaAccess";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -41,6 +43,8 @@ const STATUS_TAG_MAP = {
 
 const EQADistributionDashboard = () => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canManage = canManageEqaProvider(userSessionDetails);
   const history = useHistory();
   const [shipments, setShipments] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
@@ -201,14 +205,15 @@ const EQADistributionDashboard = () => {
         </Button>
       );
     }
+    // Ship and Continue are provider-lane writes; View Report and Track read.
     if (row.status === "PREPARED") {
-      return (
+      return canManage ? (
         <Button kind="primary" size="sm" renderIcon={SendFilled}>
           {intl.formatMessage({ id: "eqa.distribution.action.ship" })}
         </Button>
-      );
+      ) : null;
     }
-    return (
+    return canManage ? (
       <Button
         kind="primary"
         size="sm"
@@ -216,7 +221,7 @@ const EQADistributionDashboard = () => {
       >
         {intl.formatMessage({ id: "eqa.distribution.action.continue" })}
       </Button>
-    );
+    ) : null;
   };
 
   return (
@@ -317,14 +322,16 @@ const EQADistributionDashboard = () => {
           </Select>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
-          <Button
-            kind="primary"
-            size="md"
-            renderIcon={Add}
-            onClick={() => history.push("/EQADistribution/create")}
-          >
-            {intl.formatMessage({ id: "eqa.distribution.createShipment" })}
-          </Button>
+          {canManage && (
+            <Button
+              kind="primary"
+              size="md"
+              renderIcon={Add}
+              onClick={() => history.push("/EQADistribution/create")}
+            >
+              {intl.formatMessage({ id: "eqa.distribution.createShipment" })}
+            </Button>
+          )}
           <Button kind="secondary" size="md" renderIcon={GroupPresentation}>
             {intl.formatMessage({
               id: "eqa.distribution.manageParticipants",

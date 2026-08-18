@@ -4,6 +4,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import ProgramManagement from "../ProgramManagement";
+import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import ProgramForm from "../ProgramForm";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 
@@ -27,10 +28,22 @@ vi.mock("../../../utils/Utils", async () => {
 
 // Replaced inline utils require
 
-const renderWithIntl = (component) => {
+const renderWithIntl = (
+  component,
+  { permissions = ["qa.view.eqa", "qa.eqa.provider"], roles = [] } = {},
+) => {
   return render(
     <IntlProvider locale="en" messages={messages}>
-      {component}
+      <UserSessionDetailsContext.Provider
+        value={{
+          userSessionDetails: { authenticated: true, roles, permissions },
+          errorLoadingSessionDetails: false,
+          isCheckingLogin: () => false,
+          logout: vi.fn(),
+        }}
+      >
+        {component}
+      </UserSessionDetailsContext.Provider>
     </IntlProvider>,
   );
 };
@@ -68,6 +81,14 @@ describe("ProgramManagement", () => {
   test("renders add program button", () => {
     renderWithIntl(<ProgramManagement />);
     expect(screen.getByText("Add Program")).toBeTruthy();
+  });
+
+  test("hides create and edit controls from a reader without the provider grant", () => {
+    // Program CRUD is provider-lane, so a bench reader sees the list but no
+    // controls that would answer 403.
+    renderWithIntl(<ProgramManagement />, { permissions: ["qa.view.eqa"] });
+    expect(screen.queryByText("Add Program")).toBeNull();
+    expect(screen.queryByLabelText("Edit program")).toBeNull();
   });
 
   test("renders program list from API", () => {

@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/programs")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize("hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')")
 public class EQAProgramRestController extends ControllerUtills {
 
     @Autowired
@@ -36,7 +36,7 @@ public class EQAProgramRestController extends ControllerUtills {
     private EQAProgramEnrollmentService enrollmentService;
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('Global Administrator')")
+    @PreAuthorize("hasAuthority('qa.eqa.provider') or hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<?> createProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String name = (String) body.get("name");
@@ -88,7 +88,7 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('Global Administrator')")
+    @PreAuthorize("hasAuthority('qa.eqa.provider') or hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<?> updateProgram(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         try {
@@ -141,7 +141,7 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}/tests", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('Global Administrator')")
+    @PreAuthorize("hasAuthority('qa.eqa.provider') or hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<?> updateTestAssignments(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
             programService.get(id);

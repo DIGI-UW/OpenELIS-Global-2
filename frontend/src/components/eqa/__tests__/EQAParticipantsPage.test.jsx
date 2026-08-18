@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import EQAParticipantsPage from "../EQAParticipantsPage";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
 vi.mock("../../utils/Utils", () => ({
@@ -60,10 +61,22 @@ const mockEnrollments = [
   },
 ];
 
-const renderPage = () => {
+const renderPage = ({
+  permissions = ["qa.view.eqa", "qa.eqa.provider"],
+  roles = [],
+} = {}) => {
   return render(
     <IntlProvider locale="en" messages={messages}>
-      <EQAParticipantsPage />
+      <UserSessionDetailsContext.Provider
+        value={{
+          userSessionDetails: { authenticated: true, roles, permissions },
+          errorLoadingSessionDetails: false,
+          isCheckingLogin: () => false,
+          logout: vi.fn(),
+        }}
+      >
+        <EQAParticipantsPage />
+      </UserSessionDetailsContext.Provider>
     </IntlProvider>,
   );
 };
@@ -144,6 +157,16 @@ describe("EQAParticipantsPage", () => {
       screen.getAllByText("Organization Code").length,
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("District")).toBeTruthy();
+    expect(screen.getByText("Enrollment Date")).toBeTruthy();
+  });
+
+  test("hides enrollment controls from a reader without the provider grant", () => {
+    // Provider-lane writes answer 403 for this principal, so the control must
+    // not be offered. Reads stay available.
+    renderPage({ permissions: ["qa.view.eqa"] });
+    const select = screen.getByTestId("program-selector");
+    fireEvent.change(select, { target: { value: "1" } });
+    expect(screen.queryByTestId("enroll-button")).toBeNull();
     expect(screen.getByText("Enrollment Date")).toBeTruthy();
   });
 

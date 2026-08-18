@@ -23,6 +23,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/*
+ * Deliberately NOT on the qa.view.eqa umbrella. Despite living in the eqa
+ * package, this controller is mapped at /rest and serves the lab-wide alerts
+ * dashboard: both GETs read alertService.getAll() with no EQA filter, so the
+ * payload includes freezer, cold-chain and analyzer alerts. Gating it on an EQA
+ * permission would hide lab-wide alerts from users who have every right to see
+ * them, and would buy nothing: AlertRestController exposes the same
+ * alertService.getAll() at GET /rest/alerts, plus acknowledge and resolve, with
+ * no guard at all. That gap needs its own ticket and its own regression pass.
+ */
 @RestController
 @RequestMapping("/rest")
 @PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")

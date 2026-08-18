@@ -4,6 +4,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import ParticipantsTab from "../ParticipantsTab";
+import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
@@ -25,12 +26,32 @@ const organizations = [
   { id: 100, organizationName: "Hospital A", isActive: "Y" },
 ];
 
-const renderTab = () =>
+const renderTab = ({
+  permissions = ["qa.view.eqa", "qa.eqa.provider"],
+  roles = [],
+} = {}) =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <ParticipantsTab programs={programs} />
+      <UserSessionDetailsContext.Provider
+        value={{
+          userSessionDetails: { authenticated: true, roles, permissions },
+          errorLoadingSessionDetails: false,
+          isCheckingLogin: () => false,
+          logout: vi.fn(),
+        }}
+      >
+        <ParticipantsTab programs={programs} />
+      </UserSessionDetailsContext.Provider>
     </IntlProvider>,
   );
+
+test("hides the enroll control from a reader without the provider grant", () => {
+  const { container } = renderTab({ permissions: ["qa.view.eqa"] });
+  selectProgram(container);
+  expect(
+    screen.queryByRole("button", { name: "Enroll Participant" }),
+  ).toBeNull();
+});
 
 const jsonResponse = (ok, status, body) => ({
   ok,

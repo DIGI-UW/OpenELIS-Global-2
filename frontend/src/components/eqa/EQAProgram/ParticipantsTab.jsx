@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -28,6 +28,8 @@ import {
   GroupPresentation,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { canManageEqaProvider } from "../eqaAccess";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
@@ -43,6 +45,8 @@ const ENROLLMENT_STATUS_TAG = {
 
 const ParticipantsTab = ({ programs }) => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canManage = canManageEqaProvider(userSessionDetails);
   const [selectedProgramId, setSelectedProgramId] = useState("");
   const [enrollments, setEnrollments] = useState([]);
   const [organizations, setOrganizations] = useState([]);
@@ -312,14 +316,16 @@ const ParticipantsTab = ({ programs }) => {
             </Column>
             <Column lg={7} md={4} sm={4}>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <Button
-                  renderIcon={Add}
-                  onClick={() => setEnrollModalOpen(true)}
-                >
-                  {intl.formatMessage({
-                    id: "eqa.enrollment.enrollParticipant",
-                  })}
-                </Button>
+                {canManage && (
+                  <Button
+                    renderIcon={Add}
+                    onClick={() => setEnrollModalOpen(true)}
+                  >
+                    {intl.formatMessage({
+                      id: "eqa.enrollment.enrollParticipant",
+                    })}
+                  </Button>
+                )}
               </div>
             </Column>
           </Grid>
@@ -419,55 +425,58 @@ const ParticipantsTab = ({ programs }) => {
                                       gap: "0.25rem",
                                     }}
                                   >
-                                    {rawRow?.status === "Active" && (
-                                      <Button
-                                        kind="ghost"
-                                        size="sm"
-                                        hasIconOnly
-                                        iconDescription={intl.formatMessage({
-                                          id: "eqa.enrollment.suspend",
-                                        })}
-                                        renderIcon={PauseOutline}
-                                        onClick={() =>
-                                          handleStatusChange(
-                                            enrollment?.id,
-                                            "Suspended",
-                                          )
-                                        }
-                                      />
-                                    )}
-                                    {rawRow?.status !== "Withdrawn" && (
-                                      <Button
-                                        kind="ghost"
-                                        size="sm"
-                                        hasIconOnly
-                                        iconDescription={intl.formatMessage({
-                                          id: "eqa.enrollment.withdraw",
-                                        })}
-                                        renderIcon={StopOutline}
-                                        onClick={() => {
-                                          setSelectedEnrollment(enrollment);
-                                          setWithdrawModalOpen(true);
-                                        }}
-                                      />
-                                    )}
-                                    {rawRow?.status === "Suspended" && (
-                                      <Button
-                                        kind="ghost"
-                                        size="sm"
-                                        hasIconOnly
-                                        iconDescription={intl.formatMessage({
-                                          id: "eqa.enrollment.reactivate",
-                                        })}
-                                        renderIcon={Renew}
-                                        onClick={() =>
-                                          handleStatusChange(
-                                            enrollment?.id,
-                                            "Active",
-                                          )
-                                        }
-                                      />
-                                    )}
+                                    {canManage &&
+                                      rawRow?.status === "Active" && (
+                                        <Button
+                                          kind="ghost"
+                                          size="sm"
+                                          hasIconOnly
+                                          iconDescription={intl.formatMessage({
+                                            id: "eqa.enrollment.suspend",
+                                          })}
+                                          renderIcon={PauseOutline}
+                                          onClick={() =>
+                                            handleStatusChange(
+                                              enrollment?.id,
+                                              "Suspended",
+                                            )
+                                          }
+                                        />
+                                      )}
+                                    {canManage &&
+                                      rawRow?.status !== "Withdrawn" && (
+                                        <Button
+                                          kind="ghost"
+                                          size="sm"
+                                          hasIconOnly
+                                          iconDescription={intl.formatMessage({
+                                            id: "eqa.enrollment.withdraw",
+                                          })}
+                                          renderIcon={StopOutline}
+                                          onClick={() => {
+                                            setSelectedEnrollment(enrollment);
+                                            setWithdrawModalOpen(true);
+                                          }}
+                                        />
+                                      )}
+                                    {canManage &&
+                                      rawRow?.status === "Suspended" && (
+                                        <Button
+                                          kind="ghost"
+                                          size="sm"
+                                          hasIconOnly
+                                          iconDescription={intl.formatMessage({
+                                            id: "eqa.enrollment.reactivate",
+                                          })}
+                                          renderIcon={Renew}
+                                          onClick={() =>
+                                            handleStatusChange(
+                                              enrollment?.id,
+                                              "Active",
+                                            )
+                                          }
+                                        />
+                                      )}
                                   </div>
                                 </TableCell>
                               );

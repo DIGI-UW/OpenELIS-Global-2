@@ -49,7 +49,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize("hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')")
 public class EQACycleRestController extends BaseRestController {
 
     private final EQACycleService cycleService;
