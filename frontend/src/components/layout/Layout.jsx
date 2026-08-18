@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useState,
-  useEffect,
-  useContext,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -15,9 +9,13 @@ import {
   languages as defaultLanguages,
   buildLanguagesFromConfig,
 } from "../../languages";
+import TranslationOverrideProvider from "../../languages/TranslationOverrideProvider";
+import { ConfigurationContext, NotificationContext } from "./contexts";
 
-export const ConfigurationContext = createContext(null);
-export const NotificationContext = createContext(null);
+// Declared in ./contexts so a component Layout renders can read one without
+// importing Layout back; re-exported here because this is where the rest of the
+// app has always imported them from.
+export { ConfigurationContext, NotificationContext };
 
 const isAdminNavRoute = (pathname) =>
   pathname === "/admin" ||
@@ -202,44 +200,46 @@ export default function Layout(props) {
         enabledLanguages: enabledLanguages,
       }}
     >
-      <NotificationContext.Provider
-        value={{
-          notificationVisible,
-          setNotificationVisible,
-          notifications,
-          addNotification,
-          removeNotification,
-        }}
-      >
-        <div className="d-flex flex-column min-vh-100">
-          <Header
-            onChangeLanguage={props.onChangeLanguage}
-            navOpen={navOpen}
-            isDesktop={isDesktop}
-            navPinned={navPinned}
-            navPersistent={navPersistent}
-            toggleNavPinned={toggleNavPinned}
-            toggleSideNav={() => setDrawerOpen((open) => !open)}
-            closeSideNav={closeSideNav}
-            storageKeyPrefix={storageKeyPrefix}
-            navContext={navContext}
-            showSideNav={!isFocusedAuthRoute}
-          />
-          {/* Theme wrapper creates white theme zone for content area */}
-          {/* Global SCSS theme = blue header/nav, this = light content */}
-          <Theme theme="white">
-            <Content
-              data-testid="content-wrapper"
-              className={`${isLocked ? "content-nav-locked" : ""}${
-                isAdminContext ? " content-admin-context" : ""
-              }`.trim()}
-            >
-              {children}
-            </Content>
-          </Theme>
-          <Footer />
-        </div>
-      </NotificationContext.Provider>
+      <TranslationOverrideProvider>
+        <NotificationContext.Provider
+          value={{
+            notificationVisible,
+            setNotificationVisible,
+            notifications,
+            addNotification,
+            removeNotification,
+          }}
+        >
+          <div className="d-flex flex-column min-vh-100">
+            <Header
+              onChangeLanguage={props.onChangeLanguage}
+              navOpen={navOpen}
+              isDesktop={isDesktop}
+              navPinned={navPinned}
+              navPersistent={navPersistent}
+              toggleNavPinned={toggleNavPinned}
+              toggleSideNav={() => setDrawerOpen((open) => !open)}
+              closeSideNav={closeSideNav}
+              storageKeyPrefix={storageKeyPrefix}
+              navContext={navContext}
+              showSideNav={!isFocusedAuthRoute}
+            />
+            {/* Theme wrapper creates white theme zone for content area */}
+            {/* Global SCSS theme = blue header/nav, this = light content */}
+            <Theme theme="white">
+              <Content
+                data-testid="content-wrapper"
+                className={`${isLocked ? "content-nav-locked" : ""}${
+                  isAdminContext ? " content-admin-context" : ""
+                }`.trim()}
+              >
+                {children}
+              </Content>
+            </Theme>
+            <Footer />
+          </div>
+        </NotificationContext.Provider>
+      </TranslationOverrideProvider>
     </ConfigurationContext.Provider>
   );
 }
