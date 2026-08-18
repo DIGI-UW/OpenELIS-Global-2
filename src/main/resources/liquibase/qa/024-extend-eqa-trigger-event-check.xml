@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2.1 T-11 (OGC-609): the panel-receipt insert fires the participant
+    EQA V2.1 (OGC-609): the panel-receipt insert fires the participant
     machine's planned -> panel_received transition automatically (FR-V2.1-20),
     which needs a trigger_event value of its own. Extends the CHECK from qa/015
     with PANEL_RECEIPT.

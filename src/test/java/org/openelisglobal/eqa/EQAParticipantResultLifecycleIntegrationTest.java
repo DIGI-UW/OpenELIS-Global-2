@@ -19,8 +19,8 @@ import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-609 [EQA V2.1 / T-11] — participant-result lifecycle enforcement
- * (FR-V2.1-05) and the competency events it emits (FR-V2.1-22).
+ * OGC-609 [EQA V2.1] — participant-result lifecycle enforcement (FR-V2.1-05)
+ * and the competency events it emits (FR-V2.1-22).
  */
 public class EQAParticipantResultLifecycleIntegrationTest extends EQASpineTestBase {
 

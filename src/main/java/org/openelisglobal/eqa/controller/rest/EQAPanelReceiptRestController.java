@@ -21,8 +21,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Panel-receipt intake (T-11, FR-V2.1-20). Reception records receipts, so the
- * class-level roles are the real gate here, not a placeholder.
+ * Panel-receipt intake (OGC-609, FR-V2.1-20). Reception records receipts, so
+ * the class-level roles are the real gate here, not a placeholder.
  */
 @RestController
 @RequestMapping("/rest/eqa")

@@ -20,8 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Panel lifecycle + sealed-target read rule (T-11). SCORED/CLOSED moves belong
- * to scoring (T-22/T-26), not here.
+ * Panel lifecycle + sealed-target read rule (OGC-609). SCORED/CLOSED moves
+ * belong to the scoring flows, not here.
  */
 @Service
 @Transactional

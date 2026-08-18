@@ -22,14 +22,14 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Panel lifecycle + sealed-sample reads (T-11). The sealed-target rule is
+ * Panel lifecycle + sealed-sample reads (OGC-609). The sealed-target rule is
  * enforced in the service's DTO mapping; this controller only decides whether
  * the caller holds the unblind privilege.
  *
  * <p>
- * Class-level roles are the V1 placeholder (T-05/T-12 tighten them); the
- * lifecycle writes and the unblind privilege are gated on {@code qa.manage.eqa}
- * now because sealing integrity cannot wait.
+ * Class-level roles are the V1 placeholder (dedicated tiers tighten them under
+ * OGC-609); the lifecycle writes and the unblind privilege are gated on
+ * {@code qa.manage.eqa} now because sealing integrity cannot wait.
  */
 @RestController
 @RequestMapping("/rest/eqa")
@@ -78,8 +78,8 @@ public class EQAPanelRestController extends BaseRestController {
 
     /**
      * The unblind privilege, evaluated per call: the cycle-transition grant
-     * (qa.manage.eqa, from T-10) doubles as the sealed-target read grant until
-     * T-12's dedicated tiers land.
+     * (qa.manage.eqa) doubles as the sealed-target read grant until the dedicated
+     * permission tiers land (OGC-609).
      */
     private boolean callerCanUnblind() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

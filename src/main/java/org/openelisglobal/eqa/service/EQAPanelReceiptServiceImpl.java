@@ -21,7 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Panel receipt intake and its transactional side-effects (T-11, FR-V2.1-20).
+ * Panel receipt intake and its transactional side-effects (OGC-609,
+ * FR-V2.1-20).
  */
 @Service
 @Transactional

@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Participant-result lifecycle enforcement + competency events (T-11,
+ * Participant-result lifecycle enforcement + competency events (OGC-609,
  * FR-V2.1-05 / FR-V2.1-22).
  */
 @Service
@@ -171,12 +171,12 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
     }
 
     /**
-     * T-17 hook (tiered EQA→NCE trigger adapter): the adapter replaces this body.
-     * Fired after the score and any competency event are committed to the session,
-     * inside the same transaction.
+     * Hook for the tiered EQA→NCE trigger adapter (OGC-609): the adapter replaces
+     * this body. Fired after the score and any competency event are committed to
+     * the session, inside the same transaction.
      */
     protected void onResultScored(EQAParticipantResult result, EQAPerformanceStatus performance) {
-        // Intentionally empty until T-17 wires the NCE adapter.
+        // Intentionally empty until the NCE adapter is wired (OGC-609).
     }
 
     @Override

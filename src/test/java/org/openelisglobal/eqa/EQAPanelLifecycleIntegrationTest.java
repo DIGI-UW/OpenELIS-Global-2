@@ -19,8 +19,8 @@ import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-609 [EQA V2.1 / T-11] — panel lifecycle guards and the sealed-target read
- * rule (FR-V2.1-11 / FR-V2.1-16 / AC-V2.4-03). Runs against the
+ * OGC-609 [EQA V2.1] — panel lifecycle guards and the sealed-target read rule
+ * (FR-V2.1-11 / FR-V2.1-16 / AC-V2.4-03). Runs against the
  * liquibase-provisioned schema, so the encryption converter and constraints are
  * live.
  */

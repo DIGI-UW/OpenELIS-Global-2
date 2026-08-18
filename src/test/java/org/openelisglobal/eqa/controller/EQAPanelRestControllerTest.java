@@ -17,10 +17,10 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
- * OGC-609 [EQA V2.1 / T-11] — the unblind privilege the controller hands the
- * DTO mapper comes from the caller's authorities, nothing else. The mapping
- * itself (null targets vs values) is covered by
- * EQAPanelLifecycleIntegrationTest against the real converter.
+ * OGC-609 [EQA V2.1] — the unblind privilege the controller hands the DTO
+ * mapper comes from the caller's authorities, nothing else. The mapping itself
+ * (null targets vs values) is covered by EQAPanelLifecycleIntegrationTest
+ * against the real converter.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class EQAPanelRestControllerTest {

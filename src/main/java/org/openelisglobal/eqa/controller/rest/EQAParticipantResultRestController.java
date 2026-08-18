@@ -27,8 +27,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Participant-result lifecycle API (T-11, FR-V2.1-05). Paths follow the T-10
- * frozen contract style under /rest/eqa.
+ * Participant-result lifecycle API (OGC-609, FR-V2.1-05). Paths follow the
+ * established /rest/eqa contract style.
  */
 @RestController
 @RequestMapping("/rest/eqa")

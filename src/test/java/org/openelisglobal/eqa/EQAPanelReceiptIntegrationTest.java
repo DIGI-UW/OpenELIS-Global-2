@@ -14,7 +14,7 @@ import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * OGC-609 [EQA V2.1 / T-11] — receipt intake side-effects are one transaction
+ * OGC-609 [EQA V2.1] — receipt intake side-effects are one transaction
  * (FR-V2.1-20): receipt row + shipment delivery + cycle transition, and a
  * double receipt is a read, not a write.
  */

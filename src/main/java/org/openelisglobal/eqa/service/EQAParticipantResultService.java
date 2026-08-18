@@ -36,7 +36,7 @@ public interface EQAParticipantResultService extends BaseObjectService<EQAPartic
     /**
      * DRAFT/VALIDATED_PARTIAL → MISSED_DEADLINE (timer terminal). Writes the
      * scheme-type-appropriate missed-deadline competency event when an analyst is
-     * assigned (FR-V2.1-22). Called by the deadline scheduler (T-16) and manually.
+     * assigned (FR-V2.1-22). Called by the deadline scheduler and manually.
      */
     EQAParticipantResult markMissedDeadline(Long resultId, String sysUserId);
 
