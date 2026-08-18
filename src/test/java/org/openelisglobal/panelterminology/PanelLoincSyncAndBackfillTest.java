@@ -27,9 +27,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * over it.
  *
  * <p>
- * Covers both legs plus the one-off backfill that carries codes across for panels
- * configured before the editor existed. The editor is new, so a panel reaching the
- * backfill has a legacy code and nothing in the store.
+ * Covers both legs plus the one-off backfill that carries codes across for
+ * panels configured before the editor existed. The editor is new, so a panel
+ * reaching the backfill has a legacy code and nothing in the store.
  */
 public class PanelLoincSyncAndBackfillTest extends BaseWebContextSensitiveTest {
 
@@ -228,8 +228,8 @@ public class PanelLoincSyncAndBackfillTest extends BaseWebContextSensitiveTest {
     }
 
     private void cleanup() {
-        jdbc.update("DELETE FROM clinlims.panel_terminology_mapping WHERE panel_id IN (?, ?, ?)", LEGACY_ONLY,
-                NO_LOINC, SYNC_TARGET);
+        jdbc.update("DELETE FROM clinlims.panel_terminology_mapping WHERE panel_id IN (?, ?, ?)", LEGACY_ONLY, NO_LOINC,
+                SYNC_TARGET);
         jdbc.update("DELETE FROM clinlims.panel WHERE id IN (?, ?, ?)", LEGACY_ONLY, NO_LOINC, SYNC_TARGET);
         for (long panel : new long[] { LEGACY_ONLY, NO_LOINC, SYNC_TARGET }) {
             jdbc.update("DELETE FROM clinlims.localization_value WHERE id = ?", panel + LOCALIZATION_OFFSET);

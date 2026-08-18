@@ -1,6 +1,7 @@
 # Panel LOINC → terminology mappings
 
-Changeset: `src/main/resources/liquibase/3.5.x.x/084-panel-loinc-terminology-backfill.xml`
+Changeset:
+`src/main/resources/liquibase/3.5.x.x/084-panel-loinc-terminology-backfill.xml`
 (id `OGC-panel-loinc-terminology-backfill`)
 
 ## Why it exists
@@ -28,8 +29,8 @@ Nothing to do by hand. It is registered in
 `src/main/resources/liquibase/3.5.x.x/base.xml` and runs on the next application
 start, like every other changeset.
 
-To run it alone against a database — for a rehearsal, or to confirm what it would
-touch:
+To run it alone against a database — for a rehearsal, or to confirm what it
+would touch:
 
 ```bash
 mvn liquibase:update \
@@ -55,13 +56,13 @@ SELECT p.id, p.name, trim(p.loinc) AS legacy_loinc
 
 - **Re-runnable.** The `NOT EXISTS` guard keys on the same
   `(panel_id, source, code)` the table's unique constraint uses, so a second run
-  inserts nothing. Liquibase records it anyway; the guard matters if it is applied
-  by hand.
-- **Additive.** It only inserts. No panel row is modified, and no existing mapping
-  is updated or deleted — a panel that somehow already carries a mapping is simply
-  skipped.
-- **Skipped where it cannot apply.** A `tableExists` precondition marks it run on
-  a database without `panel_terminology_mapping`.
+  inserts nothing. Liquibase records it anyway; the guard matters if it is
+  applied by hand.
+- **Additive.** It only inserts. No panel row is modified, and no existing
+  mapping is updated or deleted — a panel that somehow already carries a mapping
+  is simply skipped.
+- **Skipped where it cannot apply.** A `tableExists` precondition marks it run
+  on a database without `panel_terminology_mapping`.
 - **Reversible.** The rollback removes only LOINC / SAME_AS mappings whose code
   still matches their panel's legacy column — that is, the rows this changeset
   could have created. A mapping added by hand in the editor survives a rollback.
@@ -78,8 +79,8 @@ on:
 
 Two details worth knowing:
 
-- `panel.loinc` is `varchar(10)`. A longer code can live in the mapping store but
-  cannot be denormalized onto the column, so it stays in the store only.
+- `panel.loinc` is `varchar(10)`. A longer code can live in the mapping store
+  but cannot be denormalized onto the column, so it stays in the store only.
 - `syncLegacyLoinc` does not overwrite a relationship someone chose in the
   editor. The legacy column says _which_ code the panel has, not what it means.
 
