@@ -72,6 +72,19 @@ describe("the three editors are named consistently", () => {
     );
   });
 
+  it("names the panel entity Panel Editor, not Panels", () => {
+    // One key drives the SideNav item, the list heading and both breadcrumb
+    // trails, so "Panels" showed in all four places while its two peers read as
+    // editors.
+    expect(messages["label.testCatalog.entity.panels"]).toBe("Panel Editor");
+  });
+
+  it("keeps calling the Test Catalogue Editor's own section Panels", () => {
+    // That section lists the panels a test belongs to. It is not the editor, and
+    // renaming it would say the wrong thing.
+    expect(messages["label.testCatalog.section.panels"]).toBe("Panels");
+  });
+
   it("uses one wording for all three empty states", () => {
     expect(messages["sidenav.label.admin.testCatalog.sectionsHelper"]).toBe(
       "Click a test to edit its sections",

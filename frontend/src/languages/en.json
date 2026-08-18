@@ -4972,7 +4972,7 @@
   "label.testCatalog.section.ranges": "Ranges",
   "label.testCatalog.section.storage": "Sample Storage",
   "label.testCatalog.section.panels": "Panels",
-  "label.testCatalog.entity.panels": "Panels",
+  "label.testCatalog.entity.panels": "Panel Editor",
   "note.panel.domainUpgrade": "Panels now have a Domain; existing panels were set to Clinical.",
   "note.panel.domainLaterPhase": "Environmental and Vector domains are enabled in a later phase.",
   "label.panel.list.description": "Ordered bundles of tests; sample types derive from the member tests",
