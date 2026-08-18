@@ -67,6 +67,43 @@ describe("legacy Test Management links open legacy pages", () => {
   });
 
   /**
+   * Every rename tile needs a route of its own.
+   *
+   * Manage Sample Types broke by having its route pointed elsewhere; Rename
+   * Existing Sample Types broke by having no route at all. The tile rendered, the
+   * link worked, and the page came up empty inside the admin shell because
+   * nothing in the Switch matched. Derived from the menu so a tile added without
+   * a route fails here rather than in someone's browser.
+   */
+  it("routes every rename tile in the menu", () => {
+    const tilePaths = [
+      ...legacyMenu.matchAll(/href="\/MasterListsPage\/(\w*RenameEntry)"/g),
+    ].map((m) => m[1]);
+
+    expect(tilePaths.length).toBeGreaterThanOrEqual(6);
+    tilePaths.forEach((routePath) => {
+      const component = componentFor(routePath);
+      expect(component, `${routePath} has no route in Admin.jsx`).toBeTruthy();
+      expect(
+        importSourceOf(component),
+        `${routePath} must resolve to a testManagementConfigMenu module`,
+      ).toContain("testManagementConfigMenu/");
+    });
+  });
+
+  it("routes Rename Existing Sample Types to the rename page", () => {
+    // Named separately from the sweep above: this is the one that was missing,
+    // and it is easy to confuse with Manage Sample Types two tests up.
+    expect(legacyMenu).toContain(
+      'href="/MasterListsPage/SampleTypeRenameEntry"',
+    );
+    expect(componentFor("SampleTypeRenameEntry")).toBe("SampleTypeRenameEntry");
+    expect(importSourceOf("SampleTypeRenameEntry")).toContain(
+      "testManagementConfigMenu/SampleTypeRenameEntry",
+    );
+  });
+
+  /**
    * Every other tile in the menu, so a future editor cannot quietly take one of
    * these paths over the way the sample type one was taken over.
    */

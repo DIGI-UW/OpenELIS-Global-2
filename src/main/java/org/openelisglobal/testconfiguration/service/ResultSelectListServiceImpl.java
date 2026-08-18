@@ -87,7 +87,9 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
         }
         for (String id : ids) {
             Dictionary dictionary = dictionaryService.getDictionaryById(id);
-            dictionaries.add(dictionary);
+            if (dictionary != null) {
+                dictionaries.add(dictionary);
+            }
         }
         return dictionaries;
     }
