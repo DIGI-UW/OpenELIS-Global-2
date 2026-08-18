@@ -13,11 +13,12 @@ import {
 import {
   attachBrowserPerformanceEvidence,
   measureBrowserOperation,
+  P95_MEASURED_ITERATIONS,
   type BrowserPerformanceEvidence,
 } from "../../../helpers/performance-evidence";
 
 const WARMUPS = 2;
-const MEASURED = 10;
+const MEASURED = P95_MEASURED_ITERATIONS;
 const CULTURE_WORKLIST_URL =
   "/Microbiology/worklist?workflow=BACTERIOLOGY&sort=priority&page=1&pageSize=100";
 const AST_WORKLIST_URL =

@@ -66,6 +66,18 @@ class DevStackContractTest(unittest.TestCase):
         self.assertRegex(environment["ANALYZER_SUBNET_PREFIX"], r"^10\.(?:[6-9][0-9]|1[0-9]{2}|2[01][0-9]|22[0-3])$")
         self.assertEqual(environment["OE_UAT_SCENARIOS_ENABLED"], "true")
 
+    def test_explicit_uat_scenario_setting_overrides_isolated_default(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+
+        with patch.dict(
+            self.dev_stack.os.environ,
+            {"OE_UAT_SCENARIOS_ENABLED": "false"},
+            clear=True,
+        ):
+            environment = self.dev_stack.build_environment(context)
+
+        self.assertEqual(environment["OE_UAT_SCENARIOS_ENABLED"], "false")
+
     def test_localhost_uses_random_loopback_ingress_and_self_signed_tls(self):
         context = self.dev_stack.make_context(REPO_ROOT)
 

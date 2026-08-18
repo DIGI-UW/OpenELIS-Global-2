@@ -478,11 +478,10 @@ describe("MicrobiologyCaseView", () => {
     expect(screen.getAllByText(/UATMICRO001/).length).toBeGreaterThan(0);
     expect(screen.getByText("Blood")).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
-    await user.click(
-      within(screen.getByTestId("microbiology-next-step")).getByRole("button", {
-        name: "Start inoculation",
-      }),
-    );
+    const startInoculation = within(
+      screen.getByTestId("microbiology-case-section-setup"),
+    ).getByRole("button", { name: "Start inoculation" });
+    await user.click(startInoculation);
     await user.type(screen.getByLabelText("Bottle or plate ID"), "BOTTLE-001");
     await user.type(
       screen.getByLabelText("Media or bottle"),
@@ -513,6 +512,13 @@ describe("MicrobiologyCaseView", () => {
     expect(
       screen.getByText(/Incubating. Mark the case positive/),
     ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-current-url"),
+      ).not.toHaveTextContent("action="),
+    );
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    expect(startInoculation).toHaveFocus();
   });
 
   it("links the report workflow to the patient results page", async () => {

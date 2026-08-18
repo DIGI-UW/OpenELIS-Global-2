@@ -153,10 +153,14 @@ capability is available; it does not own macro authoring or administration.
 - [x] **Supported order-save integration proof** - Add the missing direct
    integration test around the complete supported save path without SQL,
    fixed primary keys, or DAO bypass.
-- [*] **Clinical and NFR qualification** - Finish representative-volume worklist
-   and case measurements, keyboard/screen-reader review, and a clear decision
-   on shared offline/conflict behavior. Do not build a microbiology-only offline
-   queue.
+- [x] **Clinical and NFR qualification evidence** - Establish statistically
+   meaningful representative-volume measurements and complete the automated
+   keyboard/screen-reader review, fixing defects exposed by that evidence.
+- [*] **Dense-case rendering performance** - Bring representative case rendering
+   within the agreed diagnostic budget without weakening the measurement or
+   optimizing unmeasured server paths.
+- [ ] **Shared offline/conflict behavior** - Adopt an application-wide offline
+   pattern when its ownership is agreed; do not build a microbiology-only queue.
 - [ ] **Analyzer ingress security** - Introduce a least-privilege Bridge service
    identity and prove legitimate delivery plus unrelated-user denial. Coordinate
    this with the analyzer workstream rather than inventing an AMR-only role.
