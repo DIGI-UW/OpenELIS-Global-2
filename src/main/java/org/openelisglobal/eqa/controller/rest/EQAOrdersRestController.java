@@ -139,6 +139,8 @@ public class EQAOrdersRestController extends ControllerUtills {
             }
         }
         dto.put("status", sampleEQAService.deriveOrderStatus(sample));
+        // T-13 uncycled bucket: null until T-15 links orders to cycles at receipt.
+        dto.put("cycleId", sample.getCycleId());
         dto.put("deadline", sample.getEqaDeadline());
         dto.put("priority", sample.getEqaPriority() != null ? sample.getEqaPriority().name() : null);
         dto.put("dateEntered", sample.getLastupdated());
