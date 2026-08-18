@@ -79,12 +79,11 @@ public class EQAOrdersRestController extends ControllerUtills {
                     .collect(Collectors.toList());
         }
 
-        if (status != null && !status.isBlank()) {
-            samples = samples.stream().filter(s -> status.equalsIgnoreCase(deriveStatus(s)))
-                    .collect(Collectors.toList());
-        }
-
-        List<Map<String, Object>> dtos = samples.stream().map(this::toOrderDto).collect(Collectors.toList());
+        // Status is derived per sample inside toOrderDto; filter on the DTO so each
+        // sample's analyses are only queried once.
+        List<Map<String, Object>> dtos = samples.stream().map(this::toOrderDto).filter(
+                dto -> status == null || status.isBlank() || status.equalsIgnoreCase((String) dto.get("status")))
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
     }
@@ -93,14 +92,26 @@ public class EQAOrdersRestController extends ControllerUtills {
     public ResponseEntity<Map<String, Object>> getSummary() {
         List<SampleEQA> samples = sampleEQAService.findEqaSamples();
 
-        long pending = samples.stream().filter(s -> "PENDING".equals(deriveStatus(s))).count();
-        long inProgress = samples.stream().filter(s -> "IN_PROGRESS".equals(deriveStatus(s))).count();
-        long overdue = samples.stream().filter(s -> "OVERDUE".equals(deriveStatus(s))).count();
-
         LocalDateTime startOfMonth = LocalDate.now().withDayOfMonth(1).atStartOfDay();
         Timestamp monthStart = Timestamp.valueOf(startOfMonth);
-        long completedThisMonth = samples.stream().filter(s -> "COMPLETED".equals(deriveStatus(s)))
-                .filter(s -> s.getLastupdated() != null && !s.getLastupdated().before(monthStart)).count();
+
+        long pending = 0;
+        long inProgress = 0;
+        long overdue = 0;
+        long completedThisMonth = 0;
+        for (SampleEQA sample : samples) {
+            String derived = sampleEQAService.deriveOrderStatus(sample);
+            if ("PENDING".equals(derived)) {
+                pending++;
+            } else if ("IN_PROGRESS".equals(derived)) {
+                inProgress++;
+            } else if ("OVERDUE".equals(derived)) {
+                overdue++;
+            } else if ("COMPLETED".equals(derived) && sample.getLastupdated() != null
+                    && !sample.getLastupdated().before(monthStart)) {
+                completedThisMonth++;
+            }
+        }
 
         Map<String, Object> summary = new HashMap<>();
         summary.put("pending", pending);
@@ -109,14 +120,6 @@ public class EQAOrdersRestController extends ControllerUtills {
         summary.put("completedThisMonth", completedThisMonth);
 
         return ResponseEntity.ok(summary);
-    }
-
-    private String deriveStatus(SampleEQA sample) {
-        if (sample.getEqaDeadline() != null
-                && sample.getEqaDeadline().before(new Timestamp(System.currentTimeMillis()))) {
-            return "OVERDUE";
-        }
-        return "PENDING";
     }
 
     private Map<String, Object> toOrderDto(SampleEQA sample) {
@@ -135,7 +138,7 @@ public class EQAOrdersRestController extends ControllerUtills {
                 dto.put("providerName", enrollment.getProvider());
             }
         }
-        dto.put("status", deriveStatus(sample));
+        dto.put("status", sampleEQAService.deriveOrderStatus(sample));
         dto.put("deadline", sample.getEqaDeadline());
         dto.put("priority", sample.getEqaPriority() != null ? sample.getEqaPriority().name() : null);
         dto.put("dateEntered", sample.getLastupdated());

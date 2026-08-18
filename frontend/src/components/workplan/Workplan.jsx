@@ -335,7 +335,7 @@ export default function Workplan(props) {
                                         )}
                                       </u>
                                     </Link>
-                                    {row.isEqaSample && (
+                                    {row.eqaSample && (
                                       <EQABadge priority={row.eqaPriority} />
                                     )}
                                   </>
