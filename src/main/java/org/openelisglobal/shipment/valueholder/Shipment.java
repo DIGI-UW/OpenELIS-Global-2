@@ -59,6 +59,13 @@ public class Shipment extends BaseObject<Integer> {
     @Column(name = "status", nullable = false, length = 50)
     private ShipmentStatus status;
 
+    /**
+     * The shipment this one replaces (EQA reprovisioning, FR-V2.5-15). Plain id
+     * rather than a self-reference: readers only ever display or join it.
+     */
+    @Column(name = "repeat_of_shipment_id")
+    private Integer repeatOfShipmentId;
+
     public Shipment() {
         this.status = ShipmentStatus.PENDING;
     }
@@ -143,5 +150,13 @@ public class Shipment extends BaseObject<Integer> {
 
     public void setStatus(ShipmentStatus status) {
         this.status = status;
+    }
+
+    public Integer getRepeatOfShipmentId() {
+        return repeatOfShipmentId;
+    }
+
+    public void setRepeatOfShipmentId(Integer repeatOfShipmentId) {
+        this.repeatOfShipmentId = repeatOfShipmentId;
     }
 }
