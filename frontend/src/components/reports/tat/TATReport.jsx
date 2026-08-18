@@ -48,11 +48,8 @@ function TATReport() {
   );
 
   const breadcrumb = [
-    { label: intl.formatMessage({ id: "reports.tat.home" }), link: "/" },
-    {
-      label: intl.formatMessage({ id: "reports.tat.title" }),
-      link: "/TATReport",
-    },
+    { label: "home.label", link: "/" },
+    { label: "reports.tat.title", link: "/TATReport" },
   ];
 
   return (

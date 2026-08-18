@@ -30,6 +30,7 @@ import {
 import ActivityTimelineTab from "./ActivityTimelineTab";
 import ControlChartTab from "./ControlChartTab";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import "./InstrumentDetailModal.css";
 
@@ -61,6 +62,14 @@ const InstrumentDetailPage = () => {
   if (!instrument) {
     return (
       <div>
+        <PageBreadCrumb
+          breadcrumbs={[
+            { label: "home.label", link: "/" },
+            { label: "analyzer.page.hierarchy.root", link: "" },
+            { label: "qc.dashboard.title", link: "" },
+            { label: instrument?.name || "qc.dashboard.title", link: "" },
+          ]}
+        />
         <PageTitle
           breadcrumbs={[
             {

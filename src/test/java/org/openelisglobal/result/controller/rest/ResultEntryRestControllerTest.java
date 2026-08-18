@@ -1,6 +1,9 @@
 package org.openelisglobal.result.controller.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -153,6 +156,41 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals("another analysis' result is untouched", otherValueBefore, resultService.get("4").getValue());
         assertEquals("another analysis' version is untouched", otherLastupdatedBefore,
                 analysisService.get("2").getLastupdated());
+    }
+
+    /**
+     * OGC-1179 #1/#4 — what a saved row is told about itself.
+     *
+     * <p>
+     * The row stays on screen after saving, so it has to learn three things the
+     * save decided: the id its result was persisted under, the status the analysis
+     * moved to, and the value as persisted — in both the form it is reported in and
+     * the form it is stored in. Without the status the Status column and the filter
+     * counts above it go on describing the worklist as it was loaded; without the
+     * stored value a second edit of the same row, with no reload between, edits
+     * what the row held before.
+     */
+    @Test
+    public void save_echoesStatusAndBothFormsOfTheValue() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.resultId").value("3"))
+                .andExpect(jsonPath("$.rawResultValue").value("90.0")).andExpect(jsonPath("$.resultValue").exists())
+                .andExpect(jsonPath("$.analysisStatusId").value(analysisService.getStatusId(analysisService.get("1"))));
+    }
+
+    /**
+     * The stored value is echoed exactly, not as reported. A test that reports to
+     * no decimal places renders 90.5 as "90" — a row that adopted that would save
+     * it back over the stored value on its next edit.
+     */
+    @Test
+    public void save_echoesTheStoredValueUnrounded() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.5", currentToken("1"))).session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.rawResultValue").value("90.5"));
+
+        assertEquals("and the database holds it unrounded too", "90.5", resultService.get("3").getValue());
     }
 
     @Test
@@ -529,11 +567,247 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                         org.hamcrest.CoreMatchers.hasItem(org.hamcrest.CoreMatchers.containsString("NCE-42"))));
     }
 
+    /**
+     * OGC-1026 (R7, FR-G1) — an interpretation entered on the unified page rides
+     * the save as an EXTERNAL note under the "Interpretation" subject, so it
+     * reaches the patient report and the analysis timeline without new schema.
+     */
+    @Test
+    public void save_withInterpretation_writesReportVisibleNote() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"\",\"interpretation\":\"Fasting glucose within the reference range.\""))
+                .session(session)).andExpect(status().isOk());
+
+        Integer notes = jdbc.queryForObject("SELECT count(*) FROM clinlims.note WHERE reference_id = 1"
+                + " AND note_type = 'E' AND subject = 'Interpretation'"
+                + " AND text = 'Fasting glucose within the reference range.'", Integer.class);
+        assertEquals(Integer.valueOf(1), notes);
+    }
+
     @Test
     public void labUnitDomain_mapsFromTestSectionColumn() {
         // FR-M1 foundation: the OGC-1020 test_section.domain column round-trips
         // through the hbm mapping; unset rows default CLINICAL.
         assertEquals("ENVIRONMENTAL", testSectionService.get("2").getDomain());
         assertEquals("CLINICAL", testSectionService.get("1").getDomain());
+    }
+
+    /**
+     * OGC-1021 (R2, FR-G) — interpretation rule buckets configured on the test's
+     * components are readable through the RESULTS-role endpoint (the catalog
+     * editor's own endpoint is ADMIN-only and would hide them from bench techs).
+     */
+    @Test
+    public void testInterpretations_returnsActiveBucketsForResultsRole() throws Exception {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES ('c-9401', 1, 'PRIMARY', 'Primary', true, 'Y', NOW())");
+        jdbc.update("INSERT INTO clinlims.test_result_interpretation (id, component_id, value_match,"
+                + " interpretation_text, severity, color, display_order, is_active, lastupdated)"
+                + " VALUES ('i-9401', 'c-9401', '70-99', 'Normal fasting glucose.', 'NORMAL', 'green', 1, 'Y',"
+                + " NOW())");
+        jdbc.update("INSERT INTO clinlims.test_result_interpretation (id, component_id, value_match,"
+                + " interpretation_text, severity, color, display_order, is_active, lastupdated)"
+                + " VALUES ('i-9402', 'c-9401', '>=126', 'Diabetic range.', 'CRITICAL', 'red', 2, 'N', NOW())");
+
+        mockMvc.perform(get("/rest/results-entry/test/1/interpretations").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].valueMatch").value("70-99"))
+                .andExpect(jsonPath("$[0].text").value("Normal fasting glucose."))
+                .andExpect(jsonPath("$[0].componentId").value("c-9401"));
+    }
+
+    /**
+     * OGC-1024 (R5) — the test's reagent links (Test Catalog) are readable through
+     * the RESULTS-role endpoint, enriched with the inventory item's name and units
+     * so the bench section can render lots and record consumption.
+     */
+    @Test
+    public void testReagentLinks_returnsCatalogLinksWithItemNames() throws Exception {
+        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, item_type, units, is_active,"
+                + " last_updated) VALUES (9501, '11111111-1111-1111-1111-111111119501'::uuid, 'Glucose HK Gen.3',"
+                + " 'REAGENT', 'mL', 'Y', NOW())");
+        jdbc.update("INSERT INTO clinlims.test_reagent_link (id, test_id, reagent_id, usage_type, quantity_per_test,"
+                + " quantity_unit, lastupdated) VALUES ('trl-9501', 1, 9501, 'PRIMARY', 1.5, 'mL', NOW())");
+
+        mockMvc.perform(get("/rest/results-entry/test/1/reagents").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].reagentId").value(9501))
+                .andExpect(jsonPath("$[0].name").value("Glucose HK Gen.3"))
+                .andExpect(jsonPath("$[0].units").value("mL")).andExpect(jsonPath("$[0].usageType").value("PRIMARY"))
+                .andExpect(jsonPath("$[0].quantityPerTest").value(1.5));
+
+        mockMvc.perform(get("/rest/results-entry/test/2/reagents").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    /**
+     * Duplicate-component regression (unified page): a row saved from the blank
+     * placeholder state posts resultId = "" — the legacy save service INSERTS on a
+     * blank id, so a stale client duplicated the component's result on every save.
+     * The endpoint now binds a blank-id item to the analysis's existing result for
+     * that component (update, not insert), and returns the persisted resultId so
+     * the client can adopt it.
+     */
+    @Test
+    public void save_blankResultId_updatesExistingResultInsteadOfDuplicating() throws Exception {
+        Integer before = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "", "1", "91.0", currentToken("1"))).session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultId").exists());
+
+        Integer afterFirst = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+        assertEquals("blank-id save must UPDATE the existing result, not insert", before, afterFirst);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "", "1", "92.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        Integer afterSecond = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+        assertEquals("repeat blank-id saves must stay idempotent", before, afterSecond);
+        assertEquals("the latest value won", "92.0", resultService.get("3").getValue());
+    }
+
+    /**
+     * The loader buckets legacy null-component results onto the PRIMARY component's
+     * row — a blank-id save from that row must find them too.
+     */
+    @Test
+    public void save_blankResultId_primaryComponentRow_matchesLegacyNullComponentResult() throws Exception {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES ('c-dup-1', 1, 'PRIMARY', 'Primary', true, 'Y', NOW())");
+        Integer before = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "", "1", "93.0", currentToken("1"),
+                        "\"note\":\"\",\"testResultComponentId\":\"c-dup-1\""))
+                .session(session)).andExpect(status().isOk());
+
+        Integer after = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+        assertEquals("primary-row save must bind to the legacy null-component result", before, after);
+        assertEquals("93.0", resultService.get("3").getValue());
+    }
+
+    private void seedComponent(String componentId, String code) {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES (?, 1, ?, ?, false, 'Y', NOW())", componentId, code, code);
+    }
+
+    /**
+     * OGC-811 — a note authored from a component row is stored scoped to that
+     * component; Component A's note must never surface on Component B's row.
+     */
+    @Test
+    public void save_noteFromComponentRow_isScopedToThatComponent() throws Exception {
+        seedComponent("c-note-1", "COMP_A");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"component A note\",\"testResultComponentId\":\"c-note-1\""))
+                .session(session)).andExpect(status().isOk());
+
+        assertEquals("c-note-1", jdbc.queryForObject("SELECT test_result_component_id FROM clinlims.note"
+                + " WHERE reference_id = 1 AND text = 'component A note'", String.class));
+    }
+
+    /**
+     * OGC-811 backward compatibility — a save without a component (legacy pages,
+     * single-component tests) keeps the historic analysis-level scope: null
+     * component id, displayed on every row.
+     */
+    @Test
+    public void save_noteWithoutComponent_staysAnalysisLevel() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(
+                        saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"), "\"note\":\"analysis-wide note\""))
+                .session(session)).andExpect(status().isOk());
+
+        assertNull(jdbc.queryForObject("SELECT test_result_component_id FROM clinlims.note"
+                + " WHERE reference_id = 1 AND text = 'analysis-wide note'", String.class));
+    }
+
+    /**
+     * OGC-811 — the free-text interpretation (an EXTERNAL note under its own
+     * subject) is associated with the component it was authored on.
+     */
+    @Test
+    public void save_interpretationFromComponentRow_isScopedToThatComponent() throws Exception {
+        seedComponent("c-interp-1", "COMP_I");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"\",\"interpretation\":\"Consistent with iron deficiency.\","
+                                + "\"testResultComponentId\":\"c-interp-1\""))
+                .session(session)).andExpect(status().isOk());
+
+        assertEquals("c-interp-1",
+                jdbc.queryForObject(
+                        "SELECT test_result_component_id FROM clinlims.note WHERE reference_id = 1"
+                                + " AND subject = 'Interpretation' AND text = 'Consistent with iron deficiency.'",
+                        String.class));
+    }
+
+    /**
+     * OGC-811 — the worklist load surfaces each note's component scope so the
+     * unified panel can filter per row (legacy analysis-level notes have none).
+     */
+    @Test
+    public void worklistLoad_surfacesNoteComponentScope() throws Exception {
+        seedComponent("c-note-load", "COMP_L");
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"scoped note\",\"testResultComponentId\":\"c-note-load\""))
+                .session(session)).andExpect(status().isOk());
+
+        try {
+            loadWorklistFor12345().andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].text").value("scoped note"))
+                    .andExpect(jsonPath("$.testResult[0].analysisNotes[0].testResultComponentId").value("c-note-load"));
+        } finally {
+            reset(webApplicationContext.getBean(DisplayListService.class));
+        }
+    }
+
+    /**
+     * OGC-811 — component-aware history: with a componentId the timeline returns
+     * that component's events plus every analysis-level event; without one the
+     * analysis-level contract is unchanged. The audit services are untouched —
+     * attribution rides data already present at emission time.
+     */
+    @Test
+    public void history_componentIdParam_filtersToComponentPlusAnalysisLevel() throws Exception {
+        seedComponent("c-hist-1", "COMP_H1");
+        seedComponent("c-hist-2", "COMP_H2");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
+                        "\"note\":\"scoped to A\",\"testResultComponentId\":\"c-hist-1\""))
+                .session(session)).andExpect(status().isOk());
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"), "\"note\":\"analysis wide\""))
+                .session(session)).andExpect(status().isOk());
+
+        String unfiltered = mockMvc
+                .perform(get("/rest/results-entry/analysis/1/history").param("pageSize", "100").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue("unchanged contract must include component events", unfiltered.contains("scoped to A"));
+        assertTrue(unfiltered.contains("analysis wide"));
+
+        String componentA = mockMvc
+                .perform(get("/rest/results-entry/analysis/1/history").param("pageSize", "100")
+                        .param("componentId", "c-hist-1").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue("own component's events stay visible", componentA.contains("scoped to A"));
+        assertTrue("analysis-level events show on every component", componentA.contains("analysis wide"));
+
+        String componentB = mockMvc
+                .perform(get("/rest/results-entry/analysis/1/history").param("pageSize", "100")
+                        .param("componentId", "c-hist-2").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertFalse("another component's events must not leak", componentB.contains("scoped to A"));
+        assertTrue(componentB.contains("analysis wide"));
     }
 }

@@ -15,9 +15,17 @@ import PolymorphicResultCell, {
   ResultCellRow,
   worklistRowKey,
 } from "./PolymorphicResultCell";
-import ReferenceSection from "./ReferenceSection";
+import {
+  AttachmentsSection,
+  OrderInfoSection,
+  ProgrammeSection,
+  StorageSection,
+  useOrderContext,
+} from "./orderContextSections";
 import CriticalBanner from "./CriticalBanner";
 import HistorySection from "./HistorySection";
+import InterpretationSection from "./InterpretationSection";
+import ReagentsQcSection from "./ReagentsQcSection";
 import AliquotsSection from "./AliquotsSection";
 import ReferralAction, {
   ReferralDraft,
@@ -28,6 +36,8 @@ import ReferralAction, {
 // @ts-ignore
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
+import { AnalysisNote, noteVisibleOnRow } from "./noteScope";
+import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
 import { dilutionApplies, computeReportedValue } from "./dilution";
 import {
@@ -53,13 +63,8 @@ export interface IdValue {
   value: string;
 }
 
-export interface AnalysisNote {
-  text?: string;
-  noteType?: string;
-  subject?: string;
-  author?: string;
-  date?: string;
-}
+export type { AnalysisNote } from "./noteScope";
+export { noteVisibleOnRow } from "./noteScope";
 
 export interface PanelRow extends ResultCellRow {
   accessionNumber?: string;
@@ -125,7 +130,11 @@ interface ExpandedPanelProps {
   onNoteDraftChange: (draft: NoteDraft) => void;
   onDilutionDraftChange: (draft: DilutionDraft) => void;
   actions: React.ReactNode;
-  /** OGC-1023 (R4): gates "Report Non-Conformity" and result rejection. */
+  /**
+   * OGC-1023 (R4): gates result rejection only. Reporting a non-conformity is
+   * always available, matching the legacy Results page where the configuration
+   * adds/removes the reject column and nothing else.
+   */
   allowResultRejection: boolean;
   nceOpen: boolean;
   onNceOpenChange: (open: boolean) => void;
@@ -136,6 +145,16 @@ interface ExpandedPanelProps {
   rejectReasons: IdValue[];
   rejectDraft: RejectDraft | null;
   onRejectDraftChange: (draft: RejectDraft | null) => void;
+  interpretationDraft: string | null;
+  onInterpretationDraftChange: (draft: string | null) => void;
+  nceDisposition: NceDisposition;
+  onNceDispositionChange: (disposition: NceDisposition) => void;
+  nceRejectReasonId: string;
+  onNceRejectReasonChange: (reasonId: string) => void;
+  onNceApplyDisposition: (
+    disposition: NceDisposition,
+    rejectReasonId: string,
+  ) => void;
 }
 
 const noteVisibilityTag = (noteType?: string) =>
@@ -187,6 +206,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   rejectReasons,
   rejectDraft,
   onRejectDraftChange,
+  interpretationDraft,
+  onInterpretationDraftChange,
+  nceDisposition,
+  onNceDispositionChange,
+  nceRejectReasonId,
+  onNceRejectReasonChange,
+  onNceApplyDisposition,
 }) => {
   const intl = useIntl();
   const rowKey = worklistRowKey(row);
@@ -211,10 +237,17 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
     }
   };
 
-  const orderInfoAvailable = Boolean(
-    row.testDate || row.receivedDate || row.sampleType || row.technician,
+  // one order-record fetch per accession feeds Order info + Programme
+  const orderContext = useOrderContext(row.accessionNumber);
+  // notes and the interpretation are component-scoped on component rows;
+  // legacy analysis-level notes (no component id) still show everywhere
+  const rowComponentId = row.testResultComponentId as string | undefined;
+  const notes = (row.analysisNotes || []).filter((note) =>
+    noteVisibleOnRow(note, rowComponentId),
   );
-  const notes = row.analysisNotes || [];
+  const latestInterpretation = [...notes]
+    .reverse()
+    .find((note) => note.subject === "Interpretation")?.text;
 
   const toggleSection = (sectionId: string, open: boolean) =>
     onSectionLayoutChange(rememberSectionChoice(sectionId, open));
@@ -271,43 +304,6 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                     {" "}
                     <FormattedMessage id="label.results.critical.range" />:{" "}
                     {row.criticalRange}
-                  </span>
-                )}
-              </div>
-            )}
-            {editable && dilutionApplies(row.resultType) && (
-              <div className="unifiedDilution">
-                <TextInput
-                  id={`dilution-measured-${rowKey}`}
-                  labelText={intl.formatMessage({
-                    id: "label.results.dilution.measured",
-                  })}
-                  type="number"
-                  value={dilutionDraft.measuredValue}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    applyDilution({
-                      ...dilutionDraft,
-                      measuredValue: e.target.value,
-                    })
-                  }
-                />
-                <TextInput
-                  id={`dilution-factor-${rowKey}`}
-                  labelText={intl.formatMessage({
-                    id: "label.results.dilution.factor",
-                  })}
-                  type="number"
-                  value={dilutionDraft.factor}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    applyDilution({ ...dilutionDraft, factor: e.target.value })
-                  }
-                />
-                {reported !== null && (
-                  <span className="unifiedDilutionComputed">
-                    <FormattedMessage
-                      id="label.results.dilution.reported"
-                      values={{ 0: reported }}
-                    />
                   </span>
                 )}
               </div>
@@ -388,6 +384,11 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 <span>{note.author}</span>
                 {noteContextTag(note.subject)}
                 {noteVisibilityTag(note.noteType)}
+                {rowComponentId && !note.testResultComponentId && (
+                  <Tag type="cool-gray" size="sm">
+                    <FormattedMessage id="label.results.note.analysisLevel" />
+                  </Tag>
+                )}
               </div>
               <div>{note.text}</div>
             </div>
@@ -465,17 +466,15 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
 
         <div className="unifiedWorkZoneActions">
           {actions}
-          {allowResultRejection && (
-            <Button
-              kind="ghost"
-              size="sm"
-              className="unifiedNceButton"
-              onClick={() => onNceOpenChange(!nceOpen)}
-              data-testid={`nce-toggle-${rowKey}`}
-            >
-              <FormattedMessage id="label.results.nce.report" />
-            </Button>
-          )}
+          <Button
+            kind="tertiary"
+            size="sm"
+            className="unifiedNceButton"
+            onClick={() => onNceOpenChange(!nceOpen)}
+            data-testid={`nce-toggle-${rowKey}`}
+          >
+            <FormattedMessage id="label.results.nce.report" />
+          </Button>
           {allowResultRejection && (
             <Button
               kind="ghost"
@@ -556,14 +555,82 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       </div>
 
       {/* Inline NCE (FR-E1/E2) — the shipped form, embedded, auto-linked to
-          this sample + result; gated by allowResultRejection */}
+          this sample + result */}
       {nceOpen && (
         <div className="unifiedNceEmbed" data-testid={`nce-${rowKey}`}>
           <InlineNceForm
             resultRow={row}
             onClose={() => onNceOpenChange(false)}
-            onSubmitSuccess={() => onNceOpenChange(false)}
+            onSubmitSuccess={() => {
+              onNceApplyDisposition(nceDisposition, nceRejectReasonId);
+              onNceOpenChange(false);
+            }}
           />
+          {/* FR-E3 — result disposition applied when the NCE is submitted;
+              refer-out is a separate row action, never a disposition */}
+          <div
+            className="unifiedDisposition"
+            data-testid={`disposition-${rowKey}`}
+          >
+            <span className="cds--label">
+              <FormattedMessage id="label.results.nce.disposition" />
+            </span>
+            <div className="unifiedDispositionTiles">
+              {(
+                [
+                  ["NONE", "label.results.nce.disposition.none"],
+                  ["CANCEL", "label.results.nce.disposition.cancel"],
+                  ["REJECT", "label.results.nce.disposition.reject"],
+                  ["RETEST", "label.results.nce.disposition.retest"],
+                ] as [NceDisposition, string][]
+              )
+                .filter(([value]) => value !== "REJECT" || allowResultRejection)
+                .map(([value, labelKey]) => (
+                  <button
+                    type="button"
+                    key={value}
+                    className={`unifiedDispositionTile${
+                      nceDisposition === value
+                        ? " unifiedDispositionTile--selected"
+                        : ""
+                    }`}
+                    onClick={() => onNceDispositionChange(value)}
+                    data-testid={`disposition-${value}`}
+                  >
+                    <strong>
+                      <FormattedMessage id={labelKey} />
+                    </strong>
+                    <span className="unifiedBucketText">
+                      <FormattedMessage id={`${labelKey}.detail`} />
+                    </span>
+                  </button>
+                ))}
+            </div>
+            {nceDisposition === "REJECT" && (
+              <Select
+                id={`nce-reject-reason-${rowKey}`}
+                labelText={intl.formatMessage({
+                  id: "label.results.reject.reason",
+                })}
+                value={nceRejectReasonId}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  onNceRejectReasonChange(e.target.value)
+                }
+              >
+                <SelectItem value="" text="" />
+                {rejectReasons.map((reason) => (
+                  <SelectItem
+                    key={reason.id}
+                    value={reason.id}
+                    text={reason.value}
+                  />
+                ))}
+              </Select>
+            )}
+            <span className="unifiedFieldHint">
+              <FormattedMessage id="label.results.nce.disposition.hint" />
+            </span>
+          </div>
         </div>
       )}
 
@@ -574,6 +641,60 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           criticalRange={row.criticalRange}
         />
       )}
+
+      {/* CONSUMABLES & QUALITY (R5/R6 — OGC-1024/OGC-1025) */}
+      <ReagentsQcSection
+        testId={row.testId as string | undefined}
+        analysisId={row.analysisId as string | undefined}
+        editable={editable}
+        fromAnalyzerId={loadedAnalyzerId}
+        analyzerName={
+          analyzers.find((a) => a.id === loadedAnalyzerId)?.value as
+            | string
+            | undefined
+        }
+        open={isSectionOpen(sectionLayout, "combo", true)}
+        onToggle={(open) => toggleSection("combo", open)}
+        dilution={
+          editable && dilutionApplies(row.resultType) ? (
+            <div className="unifiedDilution">
+              <TextInput
+                id={`dilution-measured-${rowKey}`}
+                labelText={intl.formatMessage({
+                  id: "label.results.dilution.measured",
+                })}
+                type="number"
+                value={dilutionDraft.measuredValue}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  applyDilution({
+                    ...dilutionDraft,
+                    measuredValue: e.target.value,
+                  })
+                }
+              />
+              <TextInput
+                id={`dilution-factor-${rowKey}`}
+                labelText={intl.formatMessage({
+                  id: "label.results.dilution.factor",
+                })}
+                type="number"
+                value={dilutionDraft.factor}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  applyDilution({ ...dilutionDraft, factor: e.target.value })
+                }
+              />
+              {reported !== null && (
+                <span className="unifiedDilutionComputed">
+                  <FormattedMessage
+                    id="label.results.dilution.reported"
+                    values={{ 0: reported }}
+                  />
+                </span>
+              )}
+            </div>
+          ) : undefined
+        }
+      />
 
       {/* REFERENCE ZONE (FR-C3/C4/C5) */}
       <div className="unifiedRefZone">
@@ -595,57 +716,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           </Button>
         </div>
 
-        {orderInfoAvailable && (
-          <ReferenceSection
-            sectionId="orderInfo"
-            title={<FormattedMessage id="label.results.section.orderInfo" />}
-            summary={[row.sampleType, row.receivedDate]
-              .filter(Boolean)
-              .join(" · ")}
-            open={isSectionOpen(sectionLayout, "orderInfo", false)}
-            onToggle={(open) => toggleSection("orderInfo", open)}
-          >
-            <div className="unifiedRefGrid">
-              {row.sampleType && (
-                <div>
-                  <span className="cds--label">
-                    <FormattedMessage id="label.results.sampleType" />
-                  </span>
-                  <span>{row.sampleType}</span>
-                </div>
-              )}
-              {row.testDate && (
-                <div>
-                  <span className="cds--label">
-                    <FormattedMessage id="label.results.testDate" />
-                  </span>
-                  <span>{row.testDate}</span>
-                </div>
-              )}
-              {row.receivedDate && (
-                <div>
-                  <span className="cds--label">
-                    <FormattedMessage id="label.results.receivedDate" />
-                  </span>
-                  <span>{row.receivedDate}</span>
-                </div>
-              )}
-              {row.technician && (
-                <div>
-                  <span className="cds--label">
-                    <FormattedMessage id="label.results.technician" />
-                  </span>
-                  <span>{row.technician}</span>
-                </div>
-              )}
-            </div>
-          </ReferenceSection>
-        )}
-
-        <HistorySection
-          analysisId={row.analysisId as string | undefined}
-          open={isSectionOpen(sectionLayout, "history", false)}
-          onToggle={(open) => toggleSection("history", open)}
+        <OrderInfoSection
+          open={isSectionOpen(sectionLayout, "orderInfo", false)}
+          onToggle={(open) => toggleSection("orderInfo", open)}
+          order={orderContext}
+          sampleType={row.sampleType}
+          receivedDate={row.receivedDate}
+          technician={row.technician}
         />
 
         <AliquotsSection
@@ -653,6 +730,52 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           sampleItemId={row.sampleItemId as string | undefined}
           open={isSectionOpen(sectionLayout, "aliquots", false)}
           onToggle={(open) => toggleSection("aliquots", open)}
+        />
+
+        {domain === "CLINICAL" && (
+          <InterpretationSection
+            testId={row.testId as string | undefined}
+            componentId={row.testResultComponentId as string | undefined}
+            resultValue={row.resultValue as string | undefined}
+            latestInterpretation={latestInterpretation}
+            draft={interpretationDraft}
+            onDraftChange={onInterpretationDraftChange}
+            editable={editable}
+            openOverride={sectionLayout["interpretation"]}
+            onToggle={(open) => toggleSection("interpretation", open)}
+          />
+        )}
+
+        <ProgrammeSection
+          open={isSectionOpen(sectionLayout, "program", false)}
+          onToggle={(open) => toggleSection("program", open)}
+          order={orderContext}
+          eqaSample={Boolean(row.eqaSample)}
+          eqaPriority={row.eqaPriority as string | undefined}
+        />
+
+        <StorageSection
+          open={isSectionOpen(sectionLayout, "storage", false)}
+          onToggle={(open) => toggleSection("storage", open)}
+          sampleItemId={row.sampleItemId as string | undefined}
+          accessionNumber={row.accessionNumber}
+          sampleType={row.sampleType}
+          editable={editable}
+        />
+
+        <AttachmentsSection
+          open={isSectionOpen(sectionLayout, "attachments", false)}
+          onToggle={(open) => toggleSection("attachments", open)}
+          accessionNumber={row.accessionNumber}
+          analysisId={row.analysisId as string | undefined}
+          componentId={row.testResultComponentId as string | undefined}
+        />
+
+        <HistorySection
+          analysisId={row.analysisId as string | undefined}
+          componentId={rowComponentId}
+          open={isSectionOpen(sectionLayout, "history", false)}
+          onToggle={(open) => toggleSection("history", open)}
         />
       </div>
     </div>

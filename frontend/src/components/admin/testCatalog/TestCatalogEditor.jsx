@@ -292,7 +292,7 @@ const TestCatalogEditor = () => {
               ) : activeSection === "terminology" ? (
                 <TerminologySection testId={testId} />
               ) : activeSection === "panels" ? (
-                <PanelsSection testId={testId} />
+                <PanelsSection testId={testId} testDomain={envelope?.domain} />
               ) : activeSection === "reagents" ? (
                 <ReagentsSection testId={testId} />
               ) : activeSection === "labels" ? (

@@ -124,6 +124,9 @@ public class ResultUtil {
     /** OGC-1021 (R2, FR-J1) — subject records the auto-set context axis. */
     private static final String RESULT_MODIFICATION_SUBJECT = "Result Note (Modification)";
 
+    /** OGC-1026 (R7, FR-G1) — interpretation notes are filterable by subject. */
+    private static final String INTERPRETATION_SUBJECT = "Interpretation";
+
     /**
      * Visibility axis of the dual-axis note (FR-J1): "E" = send with result
      * (external), anything else = internal — the legacy default.
@@ -138,6 +141,18 @@ public class ResultUtil {
      */
     private static String noteSubjectForContext(TestResultItem item) {
         return "MODIFICATION".equals(item.getNoteContext()) ? RESULT_MODIFICATION_SUBJECT : RESULT_SUBJECT;
+    }
+
+    /**
+     * OGC-811 — a note authored from a component row belongs to that component;
+     * items without a component (single-component tests, legacy pages) keep the
+     * historic analysis-level scope (null).
+     */
+    private static Note scopedToComponent(Note note, TestResultItem item) {
+        if (note != null && !GenericValidator.isBlankOrNull(item.getTestResultComponentId())) {
+            note.setTestResultComponentId(item.getTestResultComponentId());
+        }
+        return note;
     }
 
     public static String getStringValueOfResult(Result result) {
@@ -328,30 +343,38 @@ public class ResultUtil {
                         : testResultItem.getAnalyzerId());
             }
 
-            actionDataSet.addToNoteList(noteService.createSavableNote(analysis, noteTypeForVisibility(testResultItem),
-                    testResultItem.getNote(), noteSubjectForContext(testResultItem),
-                    ControllerUtills.getSysUserId(request)));
+            actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
+                    noteTypeForVisibility(testResultItem), testResultItem.getNote(),
+                    noteSubjectForContext(testResultItem), ControllerUtills.getSysUserId(request)), testResultItem));
 
             // OGC-1021 (R2, FR-D5): a dilution changes the reported value, so the
             // factor and the raw measured value are preserved as an internal
             // provenance note (reuse-first — no new schema).
             if (!GenericValidator.isBlankOrNull(testResultItem.getDilutionFactor())) {
-                actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,
+                actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.INTERNAL,
                         MessageUtil.getMessage("note.dilution.applied",
                                 new String[] { testResultItem.getDilutionFactor(),
                                         GenericValidator.isBlankOrNull(testResultItem.getMeasuredValue()) ? "?"
                                                 : testResultItem.getMeasuredValue(),
                                         testResultItem.getResultValue() }),
-                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)), testResultItem));
             }
 
             // OGC-745: persist unconditional-acceptance justification as a
             // distinct note type so supervisor audit review can filter on it.
             if (ResultUtil.isForcedToAcceptance(testResultItem)
                     && !GenericValidator.isBlankOrNull(testResultItem.getForceTechApprovalNote())) {
-                actionDataSet.addToNoteList(noteService.createSavableNote(analysis,
+                actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                         NoteType.UNCONDITIONAL_ACCEPTANCE_REASON, testResultItem.getForceTechApprovalNote(),
-                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)), testResultItem));
+            }
+
+            // OGC-1026 (R7, FR-G1): the clinical interpretation goes with the
+            // result to the report — an EXTERNAL note under its own subject
+            if (!GenericValidator.isBlankOrNull(testResultItem.getInterpretation())) {
+                actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
+                        testResultItem.getInterpretation().trim(), INTERPRETATION_SUBJECT,
+                        ControllerUtills.getSysUserId(request)), testResultItem));
             }
 
             if (testResultItem.isShadowRejected()) {
@@ -360,8 +383,9 @@ public class ResultUtil {
                 String rejectedReasonId = testResultItem.getRejectReasonId();
                 for (IdValuePair rejectReason : DisplayListService.getInstance().getList(ListType.REJECTION_REASONS)) {
                     if (rejectedReasonId.equals(rejectReason.getId())) {
-                        actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.REJECTION_REASON,
-                                rejectReason.getValue(), RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+                        actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
+                                NoteType.REJECTION_REASON, rejectReason.getValue(), RESULT_SUBJECT,
+                                ControllerUtills.getSysUserId(request)), testResultItem));
                         break;
                     }
                 }
@@ -387,9 +411,9 @@ public class ResultUtil {
                         MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
                         ControllerUtills.getSysUserId(request));
                 if (!noteService.duplicateNoteExists(note)) {
-                    actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
-                            MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
-                            ControllerUtills.getSysUserId(request)));
+                    actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
+                            NoteType.EXTERNAL, MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
+                            ControllerUtills.getSysUserId(request)), testResultItem));
                 }
             }
 
@@ -459,8 +483,8 @@ public class ResultUtil {
             originalResultNote = originalResultNote + testResultItem.getResultValue();
         }
 
-        actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL, originalResultNote,
-                RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+        actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.INTERNAL,
+                originalResultNote, RESULT_SUBJECT, ControllerUtills.getSysUserId(request)), testResultItem));
     }
 
     public static boolean analysisShouldBeUpdated(TestResultItem testResultItem, Result result,

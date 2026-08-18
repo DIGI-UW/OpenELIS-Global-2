@@ -4,7 +4,10 @@ import EOrder from "./EOrder";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { Column, Grid, Section, Heading } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "eorder.header", link: "/ElectronicOrders" },
+];
 
 export { default as EOrderSearch } from "./EOrderSearch";
 export { default as EOrder } from "./EOrder";

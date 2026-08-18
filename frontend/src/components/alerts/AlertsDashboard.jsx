@@ -6,8 +6,14 @@ import AlertSummaryTiles from "./AlertSummaryTiles";
 import AlertsTable from "./AlertsTable";
 import AlertAcknowledgeModal from "./AlertAcknowledgeModal";
 import EQADeadlineSummary from "./EQADeadlineSummary";
+import PageBreadCrumb from "../common/PageBreadCrumb";
 
 const AUTO_REFRESH_INTERVAL = 60000;
+
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "alerts.dashboard.title", link: "/Alerts" },
+];
 
 const AlertsDashboard = () => {
   const intl = useIntl();
@@ -87,6 +93,7 @@ const AlertsDashboard = () => {
 
   return (
     <div className="alerts-dashboard pageContent">
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>{intl.formatMessage({ id: "alerts.dashboard.title" })}</h2>
 
       <AlertSummaryTiles summary={summary} />

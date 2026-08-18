@@ -7,7 +7,10 @@ import { Heading, Grid, Column, Section } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "sidenav.label.validation", link: "/validation" },
+];
 
 const Index = () => {
   const { notificationVisible } = useContext(NotificationContext);

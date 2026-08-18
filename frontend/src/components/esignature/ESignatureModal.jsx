@@ -290,6 +290,11 @@ const ESignatureModal = ({
           id: "esig.meaning.authored",
           defaultMessage: "Authored",
         });
+      case SignatureMeaning.MODIFIED:
+        return intl.formatMessage({
+          id: "esig.meaning.modified",
+          defaultMessage: "Modified",
+        });
       case SignatureMeaning.VALIDATED_AND_RELEASED:
         return intl.formatMessage({
           id: "esig.meaning.validatedAndReleased",

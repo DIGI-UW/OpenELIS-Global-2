@@ -10,6 +10,7 @@ import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.notification.service.sender.AsyncNotificationDispatcher;
 import org.openelisglobal.notification.valueholder.EmailNotification;
 import org.openelisglobal.notification.valueholder.RemoteNotification;
@@ -37,6 +38,9 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
 
     @Autowired
     private TestAlertRuleService alertRuleService;
+
+    @Autowired
+    private RuleResultScope ruleResultScope;
 
     @Autowired
     private AlertService alertService;
@@ -82,7 +86,16 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
             return;
         }
         for (TestAlertRule rule : rules) {
-            if (!Boolean.TRUE.equals(rule.getEnabled()) || !matches(rule, result, value, critical)) {
+            if (!Boolean.TRUE.equals(rule.getEnabled())) {
+                continue;
+            }
+            // The rule names a measurement, not a test: a rule about the numeric
+            // Ct Value must not be handed the coded PCR Result recorded beside
+            // it, nor the same component's result from another specimen.
+            if (!ruleResultScope.matches(result, rule.getComponentId(), rule.getSampleTypeId())) {
+                continue;
+            }
+            if (!matches(rule, result, value, critical)) {
                 continue;
             }
             String testName = test.getLocalizedName() != null ? test.getLocalizedName() : test.getName();
@@ -102,7 +115,7 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         case "ALL":
             return true;
         case "SPECIFIC_VALUE":
-            return rule.getTriggerValue() != null && rule.getTriggerValue().equals(value);
+            return valueMatches(rule.getTriggerValue(), value, result.getResultType());
         case "ABNORMAL":
             return resultService.isAbnormalDictionaryResult(result);
         case "CRITICAL":
@@ -110,6 +123,37 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         default:
             // COMPLIANCE_BREACH needs the S-01 compliance module (OGC-528) and
             // doesn't fire until that lands.
+            return false;
+        }
+    }
+
+    /**
+     * Whether the recorded value is the value the rule names.
+     *
+     * <p>
+     * A numeric result is stored to the test's significant digits, so 200 entered
+     * on a two-digit test is persisted as "200.00". A rule authored for 200 holds
+     * the string the user typed, and comparing the two as text says they differ.
+     *
+     * <p>
+     * This is why the rule appeared to work on a new result and not on an edited
+     * one: entering a value posts the characters typed, while editing one posts
+     * what the field was showing — the formatted value. Same measurement, same
+     * rule, two spellings of the number. A numeric rule is about the number.
+     */
+    private boolean valueMatches(String triggerValue, String value, String resultType) {
+        if (triggerValue == null || value == null) {
+            return false;
+        }
+        if (triggerValue.equals(value)) {
+            return true;
+        }
+        if (!"N".equals(resultType)) {
+            return false;
+        }
+        try {
+            return Double.compare(Double.parseDouble(triggerValue.trim()), Double.parseDouble(value.trim())) == 0;
+        } catch (NumberFormatException e) {
             return false;
         }
     }

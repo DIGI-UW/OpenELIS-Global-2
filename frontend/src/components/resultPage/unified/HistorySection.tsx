@@ -16,6 +16,8 @@ export interface TimelineEvent {
   when?: string;
   detail?: string;
   by?: string;
+  /** null/absent = analysis-level; set = attributable to one component. */
+  componentId?: string;
 }
 
 interface HistoryResponse {
@@ -38,12 +40,18 @@ const EVENT_TAG_TYPE: Record<string, string> = {
 
 interface HistorySectionProps {
   analysisId?: string;
+  /**
+   * OGC-811 — component rows see their own events plus analysis-level ones;
+   * absent = the full analysis timeline (single-component tests, legacy).
+   */
+  componentId?: string;
   open: boolean;
   onToggle: (open: boolean) => void;
 }
 
 const HistorySection: React.FC<HistorySectionProps> = ({
   analysisId,
+  componentId,
   open,
   onToggle,
 }) => {
@@ -59,8 +67,11 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       if (!analysisId) {
         return;
       }
+      const componentParam = componentId
+        ? `&componentId=${encodeURIComponent(componentId)}`
+        : "";
       getFromOpenElisServer(
-        `/rest/results-entry/analysis/${analysisId}/history?page=${nextPage}&pageSize=${nextPageSize}`,
+        `/rest/results-entry/analysis/${analysisId}/history?page=${nextPage}&pageSize=${nextPageSize}${componentParam}`,
         (body: HistoryResponse) => {
           setEvents(body?.events || []);
           setTotal(body?.total || 0);
@@ -70,7 +81,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
         },
       );
     },
-    [analysisId],
+    [analysisId, componentId],
   );
 
   useEffect(() => {

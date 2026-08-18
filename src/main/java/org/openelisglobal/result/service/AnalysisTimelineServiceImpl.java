@@ -126,7 +126,9 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
         try {
             for (Result result : resultService.getResultsByAnalysis(analysis)) {
                 for (AuditTrailItem item : new ResultHistoryService(result, analysis).getAuditTrailItems()) {
-                    events.add(fromAuditItem(item, "RESULT", transitionDetail(item)));
+                    AnalysisTimelineEvent event = fromAuditItem(item, "RESULT", transitionDetail(item));
+                    event.setComponentId(componentOfResult(result));
+                    events.add(event);
                 }
             }
         } catch (RuntimeException e) {
@@ -139,13 +141,24 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
             for (Note note : noteService.getNotes(analysis)) {
                 Timestamp when = note.getLastupdated();
                 String subject = GenericValidator.isBlankOrNull(note.getSubject()) ? "" : note.getSubject() + ": ";
-                events.add(new AnalysisTimelineEvent("NOTE", when != null ? when.getTime() : 0,
+                AnalysisTimelineEvent event = new AnalysisTimelineEvent("NOTE", when != null ? when.getTime() : 0,
                         when != null ? DateUtil.convertTimestampToStringDateAndTime(when) : "",
-                        subject + note.getText(), noteAuthor(note)));
+                        subject + note.getText(), noteAuthor(note));
+                event.setComponentId(note.getTestResultComponentId());
+                events.add(event);
             }
         } catch (RuntimeException e) {
             LogEvent.logError(e);
         }
+    }
+
+    /**
+     * OGC-811 — the component a result is attributable to, via its test_result
+     * row's component binding. Null (legacy results, single-component tests) stays
+     * analysis-level.
+     */
+    private String componentOfResult(Result result) {
+        return result.getTestResult() != null ? result.getTestResult().getComponentId() : null;
     }
 
     /**
@@ -175,8 +188,10 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
                     String childTest = child.getTest() != null
                             ? TestServiceImpl.getLocalizedTestNameWithType(child.getTest())
                             : "";
-                    events.add(new AnalysisTimelineEvent("REFLEX", when != null ? when.getTime() : 0,
-                            when != null ? DateUtil.convertTimestampToStringDateAndTime(when) : "", childTest, ""));
+                    AnalysisTimelineEvent event = new AnalysisTimelineEvent("REFLEX", when != null ? when.getTime() : 0,
+                            when != null ? DateUtil.convertTimestampToStringDateAndTime(when) : "", childTest, "");
+                    event.setComponentId(componentOfResult(result));
+                    events.add(event);
                 }
             }
         } catch (RuntimeException e) {

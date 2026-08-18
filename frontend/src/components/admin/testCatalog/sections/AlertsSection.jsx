@@ -38,6 +38,9 @@ const AlertsSection = ({ testId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rules, setRules] = useState([]);
+  // Resolved so the list can name what a rule watches rather than print ids.
+  const [components, setComponents] = useState([]);
+  const [sampleTypes, setSampleTypes] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -49,6 +52,14 @@ const AlertsSection = ({ testId }) => {
     }
     setLoading(true);
     setError(false);
+    getFromOpenElisServer(
+      `/rest/test-catalog/${testId}/alerts/components`,
+      (data) => setComponents(Array.isArray(data) ? data : []),
+    );
+    getFromOpenElisServer(
+      `/rest/test-catalog/${testId}/alerts/sample-types`,
+      (data) => setSampleTypes(Array.isArray(data) ? data : []),
+    );
     getFromOpenElisServer(`/rest/test-catalog/${testId}/alerts`, (res) => {
       setLoading(false);
       if (!res) {
@@ -68,6 +79,25 @@ const AlertsSection = ({ testId }) => {
     byId[r.id] = r;
   });
 
+  /**
+   * What the rule watches. A rule that names neither reads as the test-wide
+   * rule it is, which is what every rule authored before components meant.
+   */
+  const scopeText = (r) => {
+    const parts = [];
+    if (r.sampleTypeId) {
+      const specimen = sampleTypes.find((t) => t.id === r.sampleTypeId);
+      parts.push(specimen ? specimen.value : r.sampleTypeId);
+    }
+    if (r.componentId) {
+      const component = components.find((c) => c.id === r.componentId);
+      parts.push(component ? component.value : r.componentId);
+    }
+    return parts.length
+      ? parts.join(" · ")
+      : intl.formatMessage({ id: "label.testCatalog.alerts.scope.wholeTest" });
+  };
+
   const channelsText = (r) => {
     const ch = [];
     if (r.notifySms) {
@@ -86,7 +116,25 @@ const AlertsSection = ({ testId }) => {
   const toggleEnabled = (rule, checked) => {
     putToOpenElisServer(
       `/rest/test-catalog/${testId}/alerts/${rule.id}`,
-      JSON.stringify({ ...rule, enabled: checked }),
+      // explicit whitelist — rule comes from GET and carries server-managed
+      // fields; only the editable contract fields ride the PUT
+      JSON.stringify({
+        name: rule.name,
+        componentId: rule.componentId,
+        sampleTypeId: rule.sampleTypeId,
+        triggerType: rule.triggerType,
+        triggerValue: rule.triggerValue,
+        notifySms: rule.notifySms,
+        notifyEmail: rule.notifyEmail,
+        notifyOrderingPhysician: rule.notifyOrderingPhysician,
+        notifyPatient: rule.notifyPatient,
+        notifyReferringFacility: rule.notifyReferringFacility,
+        notifyCustomPhone: rule.notifyCustomPhone,
+        notifyCustomEmail: rule.notifyCustomEmail,
+        notifyRoleId: rule.notifyRoleId,
+        acknowledgmentRequired: rule.acknowledgmentRequired,
+        enabled: checked,
+      }),
       (status) => {
         if (status >= 200 && status < 300) {
           setRules((prev) =>
@@ -146,6 +194,10 @@ const AlertsSection = ({ testId }) => {
       header: intl.formatMessage({
         id: "label.testCatalog.alerts.col.trigger",
       }),
+    },
+    {
+      key: "scope",
+      header: intl.formatMessage({ id: "label.testCatalog.alerts.col.scope" }),
     },
     {
       key: "channels",
@@ -282,6 +334,7 @@ const AlertsSection = ({ testId }) => {
                                 : "")}
                           </Tag>
                         </TableCell>
+                        <TableCell>{scopeText(rule)}</TableCell>
                         <TableCell>{channelsText(rule)}</TableCell>
                         <TableCell>
                           {rule.acknowledgmentRequired ? (

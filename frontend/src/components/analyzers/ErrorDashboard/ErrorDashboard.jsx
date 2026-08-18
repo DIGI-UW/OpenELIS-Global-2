@@ -39,6 +39,7 @@ import {
 } from "../../../components/utils/Utils";
 import ErrorDetailsModal from "./ErrorDetailsModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./ErrorDashboard.css";
 
 const ErrorDashboard = () => {
@@ -387,6 +388,13 @@ const ErrorDashboard = () => {
         data-testid="error-dashboard-header"
       >
         <div className="error-dashboard-header-title">
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "" },
+              { label: "analyzer.errorDashboard.title", link: "" },
+            ]}
+          />
           <PageTitle
             breadcrumbs={[
               {

@@ -302,6 +302,10 @@ public abstract class ConfigurationProperties {
         ELECTRONIC_SIGNATURE_ENABLED("electronicSignatureEnabled", "text"), // 21 CFR Part 11 e-signatures
         ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"), // signing session inactivity timeout
         RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"), // OGC-1020 R1: unified /Results worklist
+        // When true the UI layers translation files mounted at /translation over
+        // its bundled ones, so a deployment can reword any string without a
+        // source change or a frontend rebuild.
+        OVERRIDE_DEFAULT_TRANSLATION("overrideDefaultTranslation", "text"),
         REQUESTER_REQUIRED("requesterRequired", "text");
 
         // visible on

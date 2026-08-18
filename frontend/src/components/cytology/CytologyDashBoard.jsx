@@ -284,7 +284,10 @@ function CytologyDashboard() {
     };
   }, [filters]);
 
-  let breadcrumbs = [{ label: "home.label", link: "/" }];
+  let breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "cytology.label.dashboard", link: "/CytologyDashboard" },
+  ];
 
   return (
     <>

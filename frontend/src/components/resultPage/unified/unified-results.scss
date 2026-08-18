@@ -183,6 +183,48 @@
   width: 2.5rem;
 }
 
+/* Gallery parity — expand control matches the mockup's icon button */
+.unifiedExpandButton.cds--btn {
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+/* Gallery parity — subject cell: avatar + mono accession + identity sub-line */
+.unifiedSubjectCell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.unifiedAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  flex-shrink: 0;
+}
+
+.unifiedAccession {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  color: var(--cds-text-primary, #393939);
+}
+
+.unifiedSubjectSub {
+  font-size: 0.6875rem;
+  color: var(--cds-text-secondary, #6f6f6f);
+  margin-top: 0.125rem;
+}
+
+.unifiedTestCell {
+  font-weight: 600;
+}
+
 /* FR-L1 — flags: icon + tag + bold at WCAG 2.2 AA, plus a left accent bar on
  * the value cell. Fixed AA color pairs (Carbon has no yellow tag type). */
 .unifiedValueAccent {
@@ -388,4 +430,237 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 0.75rem;
+}
+
+/* R7/FR-G1 — interpretation buckets + editor */
+.unifiedRuleBanner {
+  padding: 0.625rem;
+  background: #edf5ff;
+  border-left: 4px solid #0f62fe;
+  font-size: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: #0043ce;
+}
+
+.unifiedInterpretationLayout {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.unifiedBucketList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 14rem;
+}
+
+.unifiedBucket {
+  text-align: left;
+  padding: 0.5rem;
+  border: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+  background: var(--cds-layer-02, #ffffff);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.unifiedBucket:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.unifiedBucket--applied {
+  border: 2px solid #0f62fe;
+  background: #edf5ff;
+}
+
+.unifiedBucketText {
+  margin-top: 0.25rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.unifiedInterpretationText {
+  flex: 1;
+  min-width: 17.5rem;
+}
+
+/* R4/FR-E3 — NCE action + disposition tiles (gallery parity) */
+.unifiedNceButton.cds--btn--tertiary {
+  border-color: #da1e28;
+  color: #a2191f;
+}
+
+.unifiedNceButton.cds--btn--tertiary:hover {
+  background: #fff1f1;
+  color: #750e13;
+}
+
+.unifiedReferral {
+  border-left-color: #8a3ffc;
+}
+
+.unifiedDisposition {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.unifiedDispositionTiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.5rem;
+}
+
+.unifiedDispositionTile {
+  text-align: left;
+  padding: 0.5rem;
+  border: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+  background: var(--cds-layer-02, #ffffff);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.unifiedDispositionTile--selected {
+  border: 2px solid #0f62fe;
+  background: #edf5ff;
+}
+
+/* OGC-1026 (R7) — Sample status block inside Storage & sample disposal */
+.unifiedSampleStatus {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.unifiedSampleStatusLine {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.unifiedSampleStatusLine > span:first-child {
+  padding-bottom: 0.375rem;
+}
+
+.unifiedMiniNumber {
+  max-width: 8rem;
+}
+
+.unifiedSampleStatusNote {
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  background: #fff8e8;
+  border: 1px solid #f1c21b;
+  border-radius: 0.25rem;
+}
+
+.unifiedSampleStatusError {
+  color: #da1e28;
+  font-size: 0.75rem;
+}
+
+/* OGC-1024 (R5) — Reagents, QC & Controls combo section */
+.unifiedReagentProvenance {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.unifiedReagent {
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.unifiedReagentHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.unifiedLotCard {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+  border-left: 3px solid #007d79;
+  background: var(--cds-layer-02, #ffffff);
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.unifiedReagentOk {
+  color: #0e6027;
+  font-size: 0.75rem;
+}
+
+.unifiedAvatar--photo {
+  padding: 0;
+  overflow: hidden;
+}
+
+.unifiedAvatar--photo img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* The main row is the PRIMARY result-entry surface — the controls must be
+ * comfortably usable without expanding the row. The accent wrapper is
+ * inline-flex, which otherwise collapses Carbon inputs to their content
+ * minimum; size by result type instead of an arbitrary fixed width. The
+ * table sits in a horizontally scrollable container, so min-widths stay
+ * responsive-safe. */
+.unifiedResultsValueCell {
+  min-width: 13rem;
+}
+
+.unifiedResultsValueCell .unifiedValueAccent {
+  width: 100%;
+}
+
+.unifiedResultsValueCell .unifiedValueAccent > .cds--form-item {
+  flex: 1 1 auto;
+}
+
+/* numeric — enough digits + spin controls to review a value comfortably */
+.unifiedResultsValueCell input[type="number"] {
+  min-width: 7.5rem;
+}
+
+/* dictionary select — option labels must be readable, not elided at 3 chars */
+.unifiedResultsValueCell .cds--select,
+.unifiedResultsValueCell .cds--select-input {
+  min-width: 11rem;
+}
+
+/* free-text / remark / alphanumeric — room for normal result strings */
+.unifiedResultsValueCell textarea,
+.unifiedResultsValueCell .cds--text-input:not([type="number"]) {
+  min-width: 12rem;
+}
+
+/* multiselect groups grow with their options; keep them from collapsing */
+.unifiedResultsValueCell .cds--checkbox-wrapper {
+  min-width: 10rem;
+}
+
+.unifiedResultsValueCell .unifiedResultsReadOnlyValue {
+  white-space: normal;
+  word-break: break-word;
 }

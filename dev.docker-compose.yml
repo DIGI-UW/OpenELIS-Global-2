@@ -124,6 +124,11 @@ services:
         volumes:
             - './frontend/src:/app/src'
             - './frontend/public:/app/public'
+            # Translations a deployment supplies for itself, layered over the
+            # bundled ones when OVERRIDE_DEFAULT_TRANSLATION is on. Vite serves
+            # public/ at the web root, so these land at /translation/<locale>.json
+            # — the same URL the nginx image serves them from in production.
+            - './volume/translation:/app/public/translation'
             - './frontend/package.json:/app/package.json:ro'
             - './frontend/package-lock.json:/app/package-lock.json:ro'
             - './frontend/vite.config.ts:/app/vite.config.ts:ro'

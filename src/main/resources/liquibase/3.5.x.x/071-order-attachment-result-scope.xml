@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-811 (Results Entry v3) - an order attachment may be scoped to the
+    analysis and result component it documents. Both columns are nullable:
+    attachments captured at order entry stay order-level (both null); the
+    Results pages stamp the analysis (and component, for multi-component
+    tests) they were uploaded against. ON DELETE SET NULL demotes a scoped
+    attachment back to order level rather than losing the file.
+    -->
+    <changeSet id="order-attachment-002-result-scope" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="order_attachment"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="order_attachment" columnName="analysis_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Scope order attachments to an analysis / result component</comment>
+        <addColumn schemaName="clinlims" tableName="order_attachment">
+            <column name="analysis_id" type="numeric(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="test_result_component_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="order_attachment"
+            baseColumnNames="analysis_id" constraintName="fk_order_attachment_analysis"
+            referencedTableSchemaName="clinlims" referencedTableName="analysis" referencedColumnNames="id"
+            onDelete="SET NULL"/>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="order_attachment"
+            baseColumnNames="test_result_component_id" constraintName="fk_order_attachment_component"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+        <createIndex schemaName="clinlims" tableName="order_attachment" indexName="idx_order_attachment_analysis_id">
+            <column name="analysis_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
