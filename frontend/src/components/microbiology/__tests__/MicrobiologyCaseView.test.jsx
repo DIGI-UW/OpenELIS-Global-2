@@ -145,6 +145,9 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByTestId("microbiology-case-section-setup"),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole("region", { name: "Inoculation" })).toHaveLength(
+      1,
+    );
     expect(
       screen.queryByTestId("microbiology-case-section-timeline"),
     ).not.toBeInTheDocument();
