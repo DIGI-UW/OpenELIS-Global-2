@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2.5 T-23 (OGC-613): FR-V2.5-15 reprovisioning sends a repeat panel as a
+    EQA V2.5 (OGC-613): FR-V2.5-15 reprovisioning sends a repeat panel as a
     new shipment that records which shipment it replaces. Nullable self-FK; the
     only schema change the shared shipment module needs for EQA.
 -->

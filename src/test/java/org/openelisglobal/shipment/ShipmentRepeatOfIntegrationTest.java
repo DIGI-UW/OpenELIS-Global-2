@@ -14,7 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * OGC-613 [EQA V2.5 / T-23] — shipment.repeat_of_shipment_id (FR-V2.5-15): the
+ * OGC-613 [EQA V2.5] — shipment.repeat_of_shipment_id (FR-V2.5-15): the
  * reprovisioning trail persists, and deleting an original that a repeat still
  * points at is refused (RESTRICT), so the register cannot lose its history.
  */
