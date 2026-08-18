@@ -141,7 +141,7 @@ const CaseInoculationPanel = ({
   };
 
   return (
-    <section aria-labelledby="microbiology-inoculation-title">
+    <div>
       <Stack gap={5}>
         <div>
           <h3 id="microbiology-inoculation-title">
@@ -396,7 +396,7 @@ const CaseInoculationPanel = ({
           )}
         />
       </Stack>
-    </section>
+    </div>
   );
 };
 
