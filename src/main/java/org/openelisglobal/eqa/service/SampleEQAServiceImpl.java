@@ -67,8 +67,8 @@ public class SampleEQAServiceImpl extends BaseObjectServiceImpl<SampleEQA, Long>
         boolean completed = false;
         boolean started = false;
         if (sampleEQA.getSampleId() != null) {
-            // ponytail: one analysis query per order — fine at EQA volumes (tens); batch if
-            // that ever changes
+            // One analysis query per order — fine at EQA volumes (tens); batch if
+            // that ever changes.
             List<Analysis> analyses = analysisService.getAnalysesBySampleIdExcludedByStatusId(
                     String.valueOf(sampleEQA.getSampleId()),
                     Set.of(statusService.getStatusID(AnalysisStatus.Canceled)));

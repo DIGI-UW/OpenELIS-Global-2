@@ -92,7 +92,7 @@ public class EQAOrdersRestControllerTest {
         overdueSample.setEqaDeadline(Timestamp.valueOf(LocalDate.now().minusDays(3).atStartOfDay()));
         overdueSample.setSysUserId("1");
 
-        // Status derivation lives in the service (T-02); the controller only routes it.
+        // Status derivation lives in the service; the controller only routes it.
         when(sampleEQAService.deriveOrderStatus(sample1)).thenReturn("PENDING");
         when(sampleEQAService.deriveOrderStatus(sample2)).thenReturn("PENDING");
         when(sampleEQAService.deriveOrderStatus(overdueSample)).thenReturn("OVERDUE");

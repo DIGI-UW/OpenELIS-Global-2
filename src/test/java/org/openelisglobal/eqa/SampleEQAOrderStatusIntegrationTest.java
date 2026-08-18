@@ -19,9 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * D-LIVE-2 (T-02): EQA order status must follow the order's analyses through
- * the result pipeline instead of sitting on PENDING until the deadline passes.
- * Runs against the real schema: fixture analyses are moved through real
+ * OGC-609: EQA order status must follow the order's analyses through the result
+ * pipeline instead of sitting on PENDING until the deadline passes. Runs
+ * against the real schema: fixture analyses are moved through real
  * {@code status_of_sample} ids resolved via {@link IStatusService}.
  */
 public class SampleEQAOrderStatusIntegrationTest extends BaseWebContextSensitiveTest {
