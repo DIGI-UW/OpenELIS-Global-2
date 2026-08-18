@@ -50,10 +50,14 @@ It validates the specification, not implementation progress.
 
 ## Iterations
 
-- [x] The roadmap uses only `[x]`, `[*]`, and `[ ]` markers.
+- [x] The roadmap uses only `[✓]`, `[x]`, `[*]`, and `[ ]` markers.
 - [x] Exactly one iteration is `[*]`.
-- [x] Marker transitions occur only when an iteration starts or finishes.
-- [x] A finished iteration requires its full exit gate, review, and merge.
+- [x] Marker transitions occur only for formal start, review-ready exit, or
+      completed merge.
+- [x] `[x]` requires the full implementation and automated exit gate; `[✓]`
+      requires every checkpoint PR to be merged on its canonical target.
+- [x] The immediate successor of `[x]` may start while predecessor review
+      continues, but no checkpoint merges before every predecessor is `[✓]`.
 - [x] No future iteration begins production work.
 
 ## TDD And Test Levels

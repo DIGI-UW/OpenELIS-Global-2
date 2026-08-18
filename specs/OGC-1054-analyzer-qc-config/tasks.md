@@ -4,6 +4,12 @@
 selects the only active iteration. This file defines dependency order inside an
 iteration; it does not maintain a second progress ledger.
 
+At each checkpoint boundary, apply the roadmap's marker and merge rules: make
+the completed implementation `[x]`, start its immediate successor as `[*]`, and
+submit the completed PRs for review. Review leaves the predecessor `[x]`; merge
+changes it to `[✓]` in the rebased active descendant. No task below repeats that
+state bookkeeping.
+
 ## R0 - Authoritative Roadmap
 
 1. Inspect the current OE, Bridge, mock, review-tooling, design, deployment,
@@ -22,9 +28,10 @@ iteration; it does not maintain a second progress ledger.
    independent OpenELIS operational QC, exact non-QC activation predicates, and
    one-way `AnalyzerQcRule`/fallback removal.
 8. Run the requirements checklist, cross-artifact consistency analysis,
-   formatting, link checks, and PR review.
-9. Rebase R0 on current `develop`, rerun checks, merge R0, then change R0 to
-   `[x]` and F0 to `[*]` in the canonical landed lineage.
+   formatting, and link checks; mark R0 `[x]` and F0 `[*]` when R0 is
+   review-ready.
+9. Keep R0 current and address review. After R0 merges, rebase F0 on current
+   `develop`, record R0 as `[✓]`, and rerun F0 gates before F0 review.
 
 ## F0 - Foundation Salvage
 
@@ -35,7 +42,7 @@ iteration; it does not maintain a second progress ledger.
    lab-facing workflow.
 4. Guard Playwright against API-driven acceptance and remove stale evidence
    claims.
-5. Validate, review, merge, then advance the roadmap marker.
+5. Run the F0 exit gate and submit the PR for review.
 
 ## E0 - Contracts And Migration
 
@@ -52,7 +59,7 @@ iteration; it does not maintain a second progress ledger.
    activation-candidate fingerprints, and exact Bridge acknowledgment matching;
    prove OpenELIS stores a revision pin rather than an authoritative profile
    snapshot.
-6. Validate paired Bridge/OE contracts, review, merge, then advance the marker.
+6. Run the paired Bridge/OE exit gate and submit the checkpoint PRs for review.
 
 ## M1 - Analyzer Types
 
@@ -70,7 +77,7 @@ iteration; it does not maintain a second progress ledger.
    components.
 6. Remove or disable authoritative OpenELIS filesystem/copy writers.
 7. Run focused, broad, runtime, RTL real-router, and visible browser gates.
-8. Validate paired Bridge/OE PRs, review, merge, then advance the marker.
+8. Run the paired Bridge/OE exit gate and submit the checkpoint PRs for review.
 
 ## M2 - Mapping
 
@@ -95,7 +102,8 @@ iteration; it does not maintain a second progress ledger.
    M4 schema deletion.
 7. Prove an explicit exclusion does not block independent rows or pretend to be
    a mapped result.
-8. Validate ASTM, HL7, and FILE criteria, review, merge, then advance the marker.
+8. Run the ASTM, HL7, and FILE exit gate and submit the checkpoint PRs for
+   review.
 
 ## M3 - Guided Setup And Linked Operational QC
 
@@ -116,7 +124,7 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
 5. Implement the unified Carbon workflow with no developer fields or duplicate
    setup path.
 6. Run a focused visible browser story and inspect desktop/mobile captures.
-7. Validate, review, merge, then advance the marker.
+7. Run the M3 exit gate and submit the checkpoint PRs for review.
 
 ## M4 - Safe Traffic
 
@@ -136,7 +144,7 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
    editor/queue, Bridge classifier fallback, final `AnalyzerQcRule` migration
    adapter/class/schema, and alternate acceptance path.
 7. Write and audit the complete UI-only Playwright story.
-8. Validate all prior MVP criteria, review, merge, then advance the marker.
+8. Run the M4 exit gate and submit the checkpoint PRs for review.
 
 ## G0 - Remote MVP Acceptance
 
@@ -152,15 +160,15 @@ unchanged release candidate.
 6. Fix failures and restart the acceptance run whenever the candidate changes.
 7. Record MP4 only after the inspected non-video run is clean.
 8. Obtain the completed human Grist report for the same deployment.
-9. Merge the accepted candidate and advance the roadmap to R1.
+9. Run the G0 exit gate and submit the accepted candidate for review.
 
 ## R1.1 - Mature Alert Operations
 
 1. Write failing tests for triage, assignment, acknowledgement, concurrency,
    and durable navigation.
 2. Implement the queue and conflict-safe resolution workflow.
-3. Prove no held item is lost or double-resolved, review, merge, then advance
-   the marker.
+3. Prove no held item is lost or double-resolved, run the R1.1 exit gate, and
+   submit for review.
 
 ## R1.2 - Profile Revision And Distribution Operations
 
@@ -168,8 +176,8 @@ unchanged release candidate.
    stale verification, and affected-analyzer reporting.
 2. Implement the revision workflow, faithful backup/support export, and
    migration protections.
-3. Validate export, distribution, and rollback, review, merge, then advance the
-   marker.
+3. Validate export, distribution, and rollback, run the R1.2 exit gate, and
+   submit for review.
 
 ## R1-G - Full-Feature Acceptance
 

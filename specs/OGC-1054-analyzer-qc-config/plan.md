@@ -3,18 +3,21 @@
 **Control:** Governed by the single active marker in the
 [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 **Spec:** [spec.md](./spec.md)
-**Updated:** 2026-08-17
+**Updated:** 2026-08-18
 
 ## Planning Rules
 
-- The roadmap selects the one active iteration using `[x]`, `[*]`, and `[ ]`.
+- The roadmap selects the one active iteration using `[✓]`, `[x]`, `[*]`, and
+  `[ ]`.
 - This plan contains no independent status, branch-head, CI, or deployment
   ledger.
 - Requirements come from repository specs and `openelis-work` functional and
   visual artifacts. Jira is traceability only.
 - `openelis-work` cannot determine repositories, APIs, persistence, events,
   migrations, or test layers.
-- Production work for a future `[ ]` iteration does not start.
+- Production work for a future `[ ]` iteration does not start. The immediate
+  successor may become `[*]` when its predecessor is `[x]` review-ready, without
+  waiting for that predecessor to merge.
 
 ## Fixed Architecture
 
@@ -187,9 +190,12 @@ For each acceptance slice:
   required change.
 - Companion PRs are created only when a failing contract proves work is needed
   in that repository.
-- A future branch may be preserved but does not become active or merge before
-  its predecessor is `[x]`.
+- A future branch may be preserved but does not become active before its
+  predecessor is `[x]` review-ready.
+- A checkpoint may not merge before every predecessor is `[✓]` merged.
 - After a predecessor merges, descendants rebase on the landed target and rerun
-  applicable tests.
-- The roadmap marker changes only in the PR that starts or finishes an
-  iteration.
+  applicable tests, then record that predecessor as `[✓]`.
+- The roadmap markers change only for a formal start, review-ready exit, or
+  completed merge. GitHub remains authoritative for review and merge state.
+- An iteration remains `[x]` throughout review and review corrections until it
+  merges; review does not change roadmap markers or the active child.

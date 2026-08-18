@@ -1,6 +1,6 @@
 # OGC-1054 Analyzer Feature Authoritative Roadmap
 
-**Updated:** 2026-08-17
+**Updated:** 2026-08-18
 **Epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
 **Historical foundation pull request:** [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792)
 **First product-review gate:** Full MVP deployed to
@@ -600,25 +600,35 @@ gates.
 
 These are engineering validation milestones, not partial product acceptance.
 The first product review requested from the user is G0, the full deployed MVP.
-There is one next acceptance checkpoint at a time and no architecture-selection
-prompt in the workstream. Descendant branches may be prepared while a
-predecessor is reviewed, but acceptance and merge remain strictly ordered.
+There is one active implementation checkpoint at a time and no
+architecture-selection prompt in the workstream. Once that checkpoint is
+review-ready, the next stacked checkpoint may start while review continues;
+acceptance and merge remain strictly ordered.
 
 ### Prime iteration-marker rule
 
-The roadmap has exactly three state markers and no other workflow state:
+The roadmap has exactly four state markers and no other workflow state:
 
-- `[x]` **finished**: the iteration's full exit gate is satisfied, required
-  review is complete, and its PR is merged on the canonical target;
-- `[*]` **active**: the one iteration currently allowed to change; and
-- `[ ]` **future**: every iteration that has not started, including a branch
-  that was prepared early or contains unaccepted code.
+- `[✓]` **merged**: every required PR for the iteration is merged on its
+  canonical target;
+- `[x]` **review-ready**: implementation and the iteration's full automated
+  exit gate are complete, and every required PR is ready for review but not
+  necessarily merged;
+- `[*]` **active**: the one iteration currently being implemented; and
+- `[ ]` **future**: an iteration that has not started.
 
-Exactly one iteration is `[*]` until the roadmap is fully finished. A marker
-changes only in two cases: `[ ]` to `[*]` when the preceding iteration becomes
-`[x]` and the next iteration formally starts, or `[*]` to `[x]` when its entire
-exit gate is proven and merged. A commit, passing test, open PR, review request,
-deployment, or prepared descendant branch does not change a marker.
+Exactly one iteration is `[*]` while any implementation iteration remains.
+The ordinary transition is `[ ]` to `[*]` when its review-ready predecessor is
+`[x]`, `[*]` to `[x]` when its implementation and automated exit gate are
+complete, and `[x]` to `[✓]` when GitHub records every required checkpoint PR
+as merged. Starting the next stacked iteration and changing its predecessor to
+`[x]` happen in the same roadmap amendment, so the roadmap never invents a
+second active implementation state.
+
+GitHub is authoritative for review and merge state. An iteration remains `[x]`
+through review and any review corrections; review does not change roadmap
+markers. The active descendant records a predecessor's `[✓]` after the
+predecessor merges and the stack is rebased or retargeted.
 
 All finer-grained facts, including implementation progress, red/green commits,
 CI, review readiness, and branch heads, already live in Git and GitHub. They are
@@ -631,10 +641,10 @@ An executor given the goal “execute this roadmap through deployed MVP” must:
 3. create or reuse exactly the branch and base named below;
 4. record a failing test before production implementation, implement to green,
    refactor, and keep that provenance in the checkpoint's commits and PR;
-5. change this roadmap's marker only when the iteration formally starts or
-   finishes;
-6. do not begin production work for a `[ ]` checkpoint; preserving already
-   prepared descendant work does not make it active;
+5. change this roadmap's markers only for a formal start, review-ready exit, or
+   completed merge;
+6. do not begin production work for a `[ ]` checkpoint; start only the immediate
+   successor of an `[x]` or `[✓]` checkpoint;
 7. stop only for a permission/credential boundary, a required external review
    or merge, or current code/contract behavior that contradicts this fixed
    architecture.
@@ -642,16 +652,16 @@ An executor given the goal “execute this roadmap through deployed MVP” must:
 ### Roadmap provenance invariant
 
 This path has one active lineage. R0 establishes the authority; each later
-OpenELIS checkpoint may update stable scope, acceptance, and the three-state
-iteration marker only as a Git descendant of the merged predecessor. A sibling
-or historical branch may retain an older blob as provenance, but it is never an
-active roadmap and is never merged as a competing version. Git history
+OpenELIS checkpoint may update stable scope, acceptance, and the four-state
+iteration marker only as a Git descendant of its review-ready predecessor. A
+sibling or historical branch may retain an older blob as provenance, but it is
+never an active roadmap and is never merged as a competing version. Git history
 preserves PR #3792 as historical input; it receives no roadmap edits and is
 never an implementation base.
 
 After a prerequisite merges, rebase the dependent branch on current
-`develop`/`main`, retarget its PR, and rerun its gates. Never mark an iteration
-finished because code merely exists.
+`develop`/`main`, retarget its PR, rerun its gates, and record the prerequisite
+as `[✓]`. Never mark an iteration `[x]` because code merely exists.
 
 Each checkpoint is a manageable implementation and review unit. Work within a
 checkpoint proceeds one independently testable behavior at a time. Start at the
@@ -715,10 +725,10 @@ E0/Bridge contracts control when it starts.
 
 ### Iterations
 
-- [*] **R0 - Authoritative roadmap.** Finish and merge the governing artifact
-  set from current `develop`.
-- [ ] **F0 - Deterministic foundation salvage.** Prepared branch/PR exists but
-      remains future until R0 is `[x]`.
+- [x] **R0 - Authoritative roadmap.** Governing artifact set is complete,
+      validated, and awaiting required review on PR #4049.
+- [*] **F0 - Deterministic foundation salvage.** Reconstruct the prepared PR as
+      a small, test-backed foundation on the review-ready R0 lineage.
 - [ ] **E0 - Engineering contract and migration characterization.** Prepared
       OE/Bridge branches exist but remain future until F0 is `[x]`.
 - [ ] **M1 - Bridge profile lifecycle and Analyzer Types.** Prepared work is
@@ -732,8 +742,9 @@ E0/Bridge contracts control when it starts.
 - [ ] **R1-G - Full-feature deployment and human acceptance.** Future.
 - [ ] **R2 - Operational rollout.** Future.
 
-Prepared descendants do not create parallel active roadmap blocks. Their
-actual state remains visible in Git and their pull requests.
+Review-ready predecessors and merged checkpoints do not create parallel active
+implementation blocks. Their actual review and merge state remains visible in
+Git and GitHub.
 
 ## Pull Request Train
 
@@ -806,9 +817,10 @@ The MVP acceptance order is:
 12. OE-M4
 13. OE-G0
 
-Prepared branches do not alter roadmap state. Only the item marked `[*]` is
-active, and a later item cannot merge or become the deployment candidate before
-every earlier item is `[x]`. This order, not PR creation time, selects work.
+Only the item marked `[*]` is under active implementation. Its immediate
+successor cannot start until it reaches `[x]`, and a later item cannot merge or
+become the deployment candidate before every earlier item is `[✓]`. This order,
+not PR creation time, selects work.
 
 Review tooling `main` is an acceptance dependency, not an implementation lane.
 Its current contract already satisfies this roadmap. A review-tooling PR is
