@@ -36,6 +36,37 @@ public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveT
     @Before
     public void setUpJdbc() {
         jdbc = new JdbcTemplate(dataSource);
+        ensureTiersAndGrants();
+    }
+
+    /**
+     * Other fixtures truncate system_module / system_role_module (and can wipe
+     * system_role), so in a full-suite run the liquibase-seeded rows may be gone by
+     * the time this class runs. Re-apply qa/019's idempotent registration SQL first
+     * — what these tests then verify is that registration's semantics (exactly-one
+     * module row per tier, both roles granted), under any suite order. The menu
+     * assertions stay untouched: they read qa/019's own rows.
+     */
+    private void ensureTiersAndGrants() {
+        for (String role : new String[] { "QA Officer", "Global Administrator" }) {
+            jdbc.update("INSERT INTO clinlims.system_role (id, name)" + " SELECT nextval('clinlims.system_role_seq'), ?"
+                    + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_role WHERE name = ?)", role, role);
+        }
+        for (String tier : TIERS) {
+            jdbc.update("INSERT INTO clinlims.system_module (id, name, description, has_select_flag,"
+                    + " has_add_flag, has_update_flag, has_delete_flag)"
+                    + " SELECT nextval('clinlims.system_module_seq'), ?, 'restored by EQAV2MenuPermissionIntegrationTest',"
+                    + " 'Y', 'N', 'N', 'N'" + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_module WHERE name = ?)",
+                    tier, tier);
+        }
+        jdbc.update("INSERT INTO clinlims.system_role_module"
+                + " (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)"
+                + " SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id"
+                + " FROM clinlims.system_role r, clinlims.system_module m"
+                + " WHERE r.name IN ('QA Officer', 'Global Administrator')"
+                + "   AND m.name IN ('qa.eqa.participant', 'qa.eqa.oversight', 'qa.eqa.provider', 'qa.eqa.inhouse.unblind')"
+                + "   AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_module srm"
+                + "       WHERE srm.system_role_id = r.id AND srm.system_module_id = m.id)");
     }
 
     @Test
