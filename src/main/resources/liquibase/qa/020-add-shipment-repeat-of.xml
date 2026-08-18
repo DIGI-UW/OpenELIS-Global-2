@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.5 T-23 (OGC-613): FR-V2.5-15 reprovisioning sends a repeat panel as a
+    new shipment that records which shipment it replaces. Nullable self-FK; the
+    only schema change the shared shipment module needs for EQA.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-038-add-shipment-repeat-of">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="shipment" schemaName="clinlims" />
+            <not>
+                <columnExists tableName="shipment" columnName="repeat_of_shipment_id" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Track which shipment a repeat shipment replaces (FR-V2.5-15)</comment>
+        <addColumn tableName="shipment" schemaName="clinlims">
+            <column name="repeat_of_shipment_id" type="INTEGER">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+        <!-- RESTRICT, not CASCADE: deleting an original that a repeat points at
+             would silently erase the reprovisioning trail the register reads. -->
+        <addForeignKeyConstraint constraintName="fk_shipment_repeat_of"
+            baseTableSchemaName="clinlims" baseTableName="shipment" baseColumnNames="repeat_of_shipment_id"
+            referencedTableSchemaName="clinlims" referencedTableName="shipment" referencedColumnNames="id"
+            onDelete="RESTRICT" />
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="shipment"
+                constraintName="fk_shipment_repeat_of" />
+            <dropColumn tableName="shipment" columnName="repeat_of_shipment_id" schemaName="clinlims" />
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
