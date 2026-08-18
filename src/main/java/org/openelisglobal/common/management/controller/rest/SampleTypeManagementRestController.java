@@ -407,6 +407,45 @@ public class SampleTypeManagementRestController extends BaseRestController {
         public List<TerminologyMappingDto> mappings = new ArrayList<>();
     }
 
+    // ── Localization ──────────────────────────────────────────────────────────
+    // A sample type's display name lives in the generic localization tables and it
+    // already FK-links to its row there — the same arrangement a test has. So this
+    // only bridges sampleTypeId → the backing localization id, and the editor's
+    // Localization section reads and writes per-locale values through the existing
+    // /rest/localizations/{id} endpoints. Names loaded from a sample-types
+    // configuration file land in those same tables, so what the file configured is
+    // what the editor shows.
+
+    public static class LocalizationFieldRef {
+        public String field;
+        public String localizationId;
+
+        public LocalizationFieldRef(String field, String localizationId) {
+            this.field = field;
+            this.localizationId = localizationId;
+        }
+    }
+
+    public static class LocalizationRefs {
+        public String sampleTypeId;
+        public List<LocalizationFieldRef> fields = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/sample-types/{sampleTypeId}/localization", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LocalizationRefs> getLocalizationRefs(@PathVariable String sampleTypeId) {
+        TypeOfSample sampleType = typeOfSampleService.getTypeOfSampleById(sampleTypeId);
+        if (sampleType == null) {
+            return ResponseEntity.notFound().build();
+        }
+        LocalizationRefs refs = new LocalizationRefs();
+        refs.sampleTypeId = sampleTypeId;
+        Localization localization = sampleType.getLocalization();
+        if (localization != null && localization.getId() != null) {
+            refs.fields.add(new LocalizationFieldRef("name", localization.getId()));
+        }
+        return ResponseEntity.ok(refs);
+    }
+
     @GetMapping(value = "/sample-types/{sampleTypeId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TerminologyResponse> getTerminology(@PathVariable String sampleTypeId) {
         if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {

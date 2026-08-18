@@ -209,5 +209,6 @@
   <include relativeToChangelogFile="true" file="081-reflex-sample-type-backfill.xml"/>
   <include relativeToChangelogFile="true" file="082-reflex-target-sample-type.xml"/>
   <include relativeToChangelogFile="true" file="083-override-default-translation-config.xml"/>
+  <include relativeToChangelogFile="true" file="084-panel-loinc-terminology-backfill.xml"/>
 
 </databaseChangeLog>

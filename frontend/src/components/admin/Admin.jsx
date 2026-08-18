@@ -50,7 +50,8 @@ import MethodCreate from "./testManagementConfigMenu/MethodCreate";
 import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement";
 import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate";
 import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder";
-import SampleTypeManagement from "./sampleTypeManagement/SampleTypeManagement.jsx";
+import SampleTypeEditor from "./sampleTypeManagement/SampleTypeManagement.jsx";
+import LegacySampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement";
 import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign";
 import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder";
 import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate";
@@ -181,9 +182,17 @@ function Admin() {
         path={`${path}/TestSectionTestAssign`}
         component={TestSectionTestAssign}
       />
+      {/* Manage Sample Types under the legacy Test Management menu keeps opening
+          the legacy page. The new editor answers on its own path so that link,
+          and every other legacy one, is left where it was. */}
       <Route
-        path={`${path}/SampleTypeManagement/:sampleTypeId?/:section?`}
-        component={SampleTypeManagement}
+        path={`${path}/SampleTypeManagement`}
+        exact
+        component={LegacySampleTypeManagement}
+      />
+      <Route
+        path={`${path}/SampleTypeEditor/:sampleTypeId?/:section?`}
+        component={SampleTypeEditor}
       />
       <Route path={`${path}/SampleTypeCreate`} component={SampleTypeCreate} />
       <Route path={`${path}/SampleTypeOrder`} component={SampleTypeOrder} />
