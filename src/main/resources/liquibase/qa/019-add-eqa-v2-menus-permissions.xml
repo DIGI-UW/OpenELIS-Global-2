@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2 T-12 (OGC-609): menu rows for the V2 three-lane IA + the V2
+    EQA V2 (OGC-609): menu rows for the V2 three-lane IA + the V2
     permission tiers. qa.view.eqa stays the read umbrella; the tiers below are
     what the V2 endpoints/pages actually gate on (FRS permissions table
     collapsed to the set the cards use). Routes come from the FRS route
@@ -8,7 +8,7 @@
 
     Menu-visibility filtering by grant (OGC-1151) has no mechanism on this
     lineage yet — these rows are visible to all authenticated users until that
-    lands; the permission rows still gate the REST/pages (T-05/T-13+).
+    lands; the permission rows still gate the REST endpoints and pages.
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -45,7 +45,7 @@
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_lab_performance'</sqlCheck>
         </preConditions>
-        <comment>Lab Performance — oversight lane (T-20; lands on coverage)</comment>
+        <comment>Lab Performance — oversight lane; lands on the coverage tab</comment>
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq" />
             <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
@@ -69,7 +69,7 @@
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_follow_up_queue'</sqlCheck>
         </preConditions>
-        <comment>Follow-Up Queue — oversight lane (T-18)</comment>
+        <comment>Follow-Up Queue — oversight lane</comment>
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq" />
             <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
@@ -93,7 +93,7 @@
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_analyst_competency'</sqlCheck>
         </preConditions>
-        <comment>Analyst Competency — oversight lane (T-19)</comment>
+        <comment>Analyst Competency — oversight lane</comment>
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq" />
             <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
@@ -117,7 +117,7 @@
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_provider'</sqlCheck>
         </preConditions>
-        <comment>Provider — schemes and cycle wizard entry (T-24)</comment>
+        <comment>Provider — schemes and cycle wizard entry</comment>
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq" />
             <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />

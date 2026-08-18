@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * OGC-609 [EQA V2 / T-12] — qa/019 lands the three-lane menu rows and the V2
+ * OGC-609 [EQA V2] — qa/019 lands the three-lane menu rows and the V2
  * permission tiers. Asserted against the liquibase-provisioned schema, so this
  * is the changeset's own regression test.
  */
