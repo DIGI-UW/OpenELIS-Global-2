@@ -80,6 +80,9 @@
   <!-- EQA V2.1 T-09 — OGC-609: follow-ups, panel receipts, competency events -->
   <include file="liquibase/qa/018-create-eqa-followup-receipt-competency.xml" />
 
+  <!-- EQA V2 — OGC-609: V2 three-lane menus + permission tiers -->
+  <include file="liquibase/qa/019-add-eqa-v2-menus-permissions.xml" />
+
   <!-- EQA V2.5 — OGC-613: shipment.repeat_of_shipment_id for reprovisioning -->
   <include file="liquibase/qa/020-add-shipment-repeat-of.xml" />
 

@@ -8069,5 +8069,10 @@
   "qc.bench.empty": "No manual or rapid-test controls were recorded in this period.",
   "eqa.distribution.loadError": "Could not load this draft distribution.",
   "eqa.distribution.updateSuccess": "Draft distribution updated.",
-  "eqa.distribution.participants.notSaved": "Participants are not stored with a draft yet — select them again before saving."
+  "eqa.distribution.participants.notSaved": "Participants are not stored with a draft yet — select them again before saving.",
+  "banner.menu.eqa.myCycles": "My Cycles",
+  "banner.menu.eqa.labPerformance": "Lab Performance",
+  "banner.menu.eqa.followUpQueue": "Follow-Up Queue",
+  "banner.menu.eqa.analystCompetency": "Analyst Competency",
+  "banner.menu.eqa.provider": "EQA Provider"
 }
