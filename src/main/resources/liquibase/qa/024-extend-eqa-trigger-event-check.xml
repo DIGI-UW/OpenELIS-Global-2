@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.1 T-11 (OGC-609): the panel-receipt insert fires the participant
+    machine's planned -> panel_received transition automatically (FR-V2.1-20),
+    which needs a trigger_event value of its own. Extends the CHECK from qa/015
+    with PANEL_RECEIPT.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-037-add-panel-receipt-trigger-event">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM pg_constraint
+                WHERE conname = 'eqa_cycle_state_transition_trigger_event_chk'
+            </sqlCheck>
+        </preConditions>
+        <comment>Allow PANEL_RECEIPT as a cycle-transition trigger event</comment>
+        <sql>
+            ALTER TABLE clinlims.eqa_cycle_state_transition
+            DROP CONSTRAINT eqa_cycle_state_transition_trigger_event_chk;
+
+            ALTER TABLE clinlims.eqa_cycle_state_transition
+            ADD CONSTRAINT eqa_cycle_state_transition_trigger_event_chk
+            CHECK (trigger_event IN ('LAST_VALIDATED_RESULT', 'FHIR_SUBMIT_SUCCESS', 'FHIR_SUBMIT_FAILURE_RETRY',
+                'SCORE_INTAKE', 'DEADLINE_TIMER', 'ALL_SHIPMENTS_DELIVERED', 'ALL_SUBMISSIONS_RECEIVED',
+                'PANEL_SEAL', 'PANEL_UNBLIND', 'HOMOGENEITY_QC_PASSED', 'MANUAL_OVERRIDE', 'SCHEDULED_JOB',
+                'PANEL_RECEIPT'))
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.eqa_cycle_state_transition
+                DROP CONSTRAINT eqa_cycle_state_transition_trigger_event_chk;
+
+                ALTER TABLE clinlims.eqa_cycle_state_transition
+                ADD CONSTRAINT eqa_cycle_state_transition_trigger_event_chk
+                CHECK (trigger_event IN ('LAST_VALIDATED_RESULT', 'FHIR_SUBMIT_SUCCESS', 'FHIR_SUBMIT_FAILURE_RETRY',
+                    'SCORE_INTAKE', 'DEADLINE_TIMER', 'ALL_SHIPMENTS_DELIVERED', 'ALL_SUBMISSIONS_RECEIVED',
+                    'PANEL_SEAL', 'PANEL_UNBLIND', 'HOMOGENEITY_QC_PASSED', 'MANUAL_OVERRIDE', 'SCHEDULED_JOB'))
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

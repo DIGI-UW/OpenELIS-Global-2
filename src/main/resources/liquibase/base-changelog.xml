@@ -82,4 +82,7 @@
 
   <!-- EQA V2.1 T-10 — OGC-609: write permission for cycle state changes -->
   <include file="liquibase/qa/023-add-eqa-manage-permission.xml" />
+
+  <!-- EQA V2.1 T-11 — OGC-609: PANEL_RECEIPT trigger event for receipt-driven transitions -->
+  <include file="liquibase/qa/024-extend-eqa-trigger-event-check.xml" />
 </databaseChangeLog>
