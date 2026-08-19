@@ -1,0 +1,137 @@
+{
+  "schemaVersion": "1.0",
+  "checkpoint": "OE-E0",
+  "inputs": {
+    "defaultConfigId": {
+      "classification": "TRANSIENT_CREATE_HINT",
+      "currentState": "Accepted only by the analyzer create form and not persisted on Analyzer.",
+      "migration": "Read only while selecting an explicit portable profile revision; replace with the pinned profile reference in OE-M1."
+    },
+    "copiedPluginJson": {
+      "classification": "READ_ONLY_MIGRATION_INPUT",
+      "currentState": "analyzer_plugin_config.config can contain a copied bootstrap profile and analyzer instance settings without a profile reference.",
+      "migration": "Extract portable type behavior for preflight comparison, retain only analyzer instance overrides after cutover, and never treat the copy as profile authority."
+    },
+    "analyzerTestMap": {
+      "classification": "PER_ANALYZER_BINDING_INPUT",
+      "currentState": "Each analyzer source code is an independent row bound to a local Test.",
+      "migration": "Preserve every source row and its local binding. Group analyzers only when their complete effective portable behavior is identical; never collapse aliases or infer a binding from another row."
+    },
+    "qualitativeValues": {
+      "classification": "LEGACY_UNBOUND",
+      "currentState": "openelis_code can contain free text or a display code instead of a durable Result Option identity.",
+      "migration": "Resolve each value to one active Result Option owned by its mapped Test or report an explicit blocking anomaly."
+    },
+    "existingAnalyzers": {
+      "classification": "IDENTITY_PRESERVING_MIGRATION",
+      "currentState": "Analyzer rows identify installed connections but do not pin an immutable portable profile revision.",
+      "migration": "Preserve analyzer identity and require explicit profile selection. Never assign a profile by heuristic similarity or silently move an analyzer to a later revision."
+    },
+    "analyzerQcRule": {
+      "classification": "READ_ONLY_MIGRATION_INPUT",
+      "currentState": "AnalyzerQcRule stores analyzer-specific control-result recognition behavior that is superseded by the pinned Bridge profile revision.",
+      "inventory": [
+        {
+          "analyzerId": "9701",
+          "selectedProfileId": "site.mock-hematology",
+          "selectedProfileRevision": 1,
+          "persistedRuleIds": [
+            "rule-exact"
+          ],
+          "disposition": "DISCARD_AFTER_EXACT_PROFILE_PIN",
+          "reason": "The complete active rule set is canonically identical to the explicitly selected profile revision.",
+          "prerequisites": [
+            "Validate exact canonical equivalence",
+            "Pin and synchronize the selected profile revision",
+            "Retain the migration export and audit outcome"
+          ]
+        },
+        {
+          "analyzerId": "9702",
+          "selectedProfileId": "site.mock-hematology",
+          "selectedProfileRevision": 1,
+          "persistedRuleIds": [
+            "rule-divergent"
+          ],
+          "disposition": "CREATE_SITE_PROFILE_BEFORE_PIN",
+          "reason": "The rule is schema-valid but differs from the explicitly selected profile revision.",
+          "prerequisites": [
+            "Publish a new site profile identity and immutable revision through Bridge lifecycle",
+            "Verify the new profile revision",
+            "Pin and synchronize the analyzer to that revision"
+          ]
+        },
+        {
+          "analyzerId": "9703",
+          "selectedProfileId": "site.mock-hematology",
+          "selectedProfileRevision": 1,
+          "persistedRuleIds": [
+            "rule-invalid"
+          ],
+          "disposition": "BLOCK_MIGRATION",
+          "reason": "The stored ASTM field is invalid under the accepted portable profile schema.",
+          "prerequisites": [
+            "Correct or explicitly retire the invalid behavior",
+            "Rerun preflight",
+            "Do not enable any fallback or parallel classifier"
+          ]
+        }
+      ]
+    },
+    "rawIngress": {
+      "classification": "ROUTE_BY_ROUTE_CUTOVER",
+      "currentState": {
+        "/importAnalyzer": "ACTIVE_LEGACY_READER",
+        "/analyzer/astm": "DEPRECATED_LEGACY_READER",
+        "/analyzer/hl7": "DEPRECATED_LEGACY_READER",
+        "/analyzer/runAction": "ACTIVE_LEGACY_READER",
+        "/analyzer/fhir": "NORMALIZED_TARGET"
+      },
+      "migration": "Bridge becomes the sole analyzer-facing runtime writer through normalized FHIR. Remove raw OpenELIS readers after traffic and rollback gates pass."
+    },
+    "catalogCoverage": {
+      "classification": "EXPLICIT_CARDINALITY",
+      "states": [
+        "ZERO_ACTIVE_CANDIDATES",
+        "ONE_ACTIVE_CANDIDATE",
+        "MULTIPLE_ACTIVE_CANDIDATES",
+        "INACTIVE_ONLY",
+        "MISSING_LOINC",
+        "SOURCE_ALIAS"
+      ],
+      "migration": "Only one active candidate may be suggested, never silently selected. All other states remain visible and independently resolvable."
+    }
+  },
+  "cutovers": {
+    "portableProfileWriter": "BR-M1",
+    "siteBindingWriter": "OE-M1",
+    "controlRecognitionRuntime": "BR-M2",
+    "legacyClassifierWriterDisabled": "OE-M2",
+    "legacyClassifierSchemaRemoved": "OE-M4",
+    "normalizedTrafficWriter": "BR-M4"
+  },
+  "phases": {
+    "beforeCutover": "READ_LEGACY_WRITE_LEGACY",
+    "duringMigration": "READ_LEGACY_WRITE_TARGET_ONLY_AFTER_PREFLIGHT",
+    "afterCutover": "READ_TARGET_WRITE_TARGET"
+  },
+  "rollback": {
+    "databaseAction": "RESTORE_PRE_CUTOVER_BACKUP",
+    "profileCatalogAction": "RESTORE_PRE_CUTOVER_PROFILE_CATALOG",
+    "rule": "Never reverse-transform target writes or enable dual write; restore the coordinated pre-cutover state or roll forward."
+  },
+  "anomalies": [
+    "NO_EXPLICIT_PROFILE_SELECTION",
+    "DIVERGENT_ANALYZER_CONFIGURATION",
+    "INVALID_CONTROL_RECOGNITION_RULE",
+    "ZERO_ACTIVE_TEST_CANDIDATES",
+    "MULTIPLE_ACTIVE_TEST_CANDIDATES",
+    "INACTIVE_TEST_TARGET",
+    "MISSING_LOINC",
+    "UNBOUND_FREE_TEXT_RESULT_VALUE",
+    "COPIED_PROFILE_JSON_INVALID",
+    "ORPHAN_ANALYZER_TEST_MAPPING",
+    "ACTIVE_RAW_INGRESS_ROUTE",
+    "SOURCE_ALIAS_REQUIRES_INDEPENDENT_BINDING"
+  ]
+}
