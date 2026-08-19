@@ -32,6 +32,8 @@ import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribut
 import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderWorkbenchPage from "./components/eqa/Provider/Workbench/ProviderWorkbenchPage";
+import InHousePanelsPage from "./components/eqa/InHouse/InHousePanelsPage";
+import BlindingWizard from "./components/eqa/InHouse/BlindingWizard";
 import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import EQAResultsPage from "./components/eqa/EQAResultsPage";
@@ -838,6 +840,23 @@ export default function App() {
                   path="/qa/eqa/provider/workbench"
                   exact
                   component={() => <ProviderWorkbenchPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* In-house blinding (T-21): landing list, then the 4-step
+                    wizard. The wizard's writes carry their own qa.manage.eqa
+                    guard server-side, so both routes sit on the read umbrella. */}
+                <SecureRoute
+                  path="/qa/eqa/in-house/new"
+                  exact
+                  component={() => <BlindingWizard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/qa/eqa/in-house"
+                  exact
+                  component={() => <InHousePanelsPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />

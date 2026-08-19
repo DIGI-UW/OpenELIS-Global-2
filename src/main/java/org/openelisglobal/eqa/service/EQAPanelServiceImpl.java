@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,6 +19,8 @@ import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPanelStatus;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
+import org.openelisglobal.testanalyte.service.TestAnalyteService;
+import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +55,9 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
     @Autowired
     private AnalyteService analyteService;
 
+    @Autowired
+    private TestAnalyteService testAnalyteService;
+
     public EQAPanelServiceImpl() {
         super(EQAPanel.class);
     }
@@ -59,6 +65,40 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
     @Override
     protected EQAPanelDAO getBaseObjectDAO() {
         return eqaPanelDAO;
+    }
+
+    @Override
+    public EQAPanel create(EQAPanel panel, List<EQAPanelSample> samples, String sysUserId) {
+        if (panel.getScheme() == null) {
+            throw new IllegalArgumentException("A panel needs a scheme");
+        }
+        if (samples == null || samples.isEmpty()) {
+            throw new IllegalArgumentException("A panel needs at least one sample");
+        }
+
+        panel.setStatus(EQAPanelStatus.PREPARING);
+        panel.setPreparedBy(GenericValidator.isBlankOrNull(sysUserId) ? null : Long.valueOf(sysUserId));
+        panel.setPreparedAt(new Timestamp(System.currentTimeMillis()));
+        panel.setSysUserId(sysUserId);
+        panel.setId(eqaPanelDAO.insert(panel));
+
+        int position = 1;
+        for (EQAPanelSample sample : samples) {
+            sample.setPanel(panel);
+            sample.setSysUserId(sysUserId);
+            if (GenericValidator.isBlankOrNull(sample.getSampleCode())) {
+                sample.setSampleCode(String.format("S%02d", position));
+            }
+            // The blind code becomes an accession number at distribution, so it has
+            // to be unique lab-wide: the panel id is the only identifier in hand
+            // that already is.
+            if (GenericValidator.isBlankOrNull(sample.getBlindCode())) {
+                sample.setBlindCode(String.format("IH-%d-%02d", panel.getId(), position));
+            }
+            sample.setId(eqaPanelSampleDAO.insert(sample));
+            position++;
+        }
+        return panel;
     }
 
     @Override
@@ -139,6 +179,30 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
 
     @Override
     @Transactional(readOnly = true)
+    public List<Map<String, Object>> getPanelDtosByScheme(Long schemeId) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EQAPanel panel : eqaPanelDAO.getAllMatching("scheme.id", schemeId)) {
+            rows.add(toPanelDto(panel));
+        }
+        return rows;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getTestableTestIds() {
+        // Resolved here rather than in the controller: test is held in a legacy
+        // ValueHolder, which needs the session open to answer.
+        Set<String> ids = new LinkedHashSet<>();
+        for (TestAnalyte testAnalyte : testAnalyteService.getAllTestAnalytes()) {
+            if (testAnalyte.getTest() != null) {
+                ids.add(testAnalyte.getTest().getId());
+            }
+        }
+        return new ArrayList<>(ids);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<String, Object> toPanelDto(EQAPanel panel) {
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("id", panel.getId());
@@ -147,6 +211,11 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
         dto.put("status", panel.getStatus() == null ? null : panel.getStatus().name());
         dto.put("schemeId", panel.getScheme() == null ? null : panel.getScheme().getId());
         dto.put("cycleId", panel.getCycle() == null ? null : panel.getCycle().getId());
+        // Resolved here, inside the transaction, so the landing list can label a
+        // panel by its cycle without a second call per row.
+        dto.put("cycleNumber", panel.getCycle() == null ? null : panel.getCycle().getCycleNumber());
+        dto.put("cycleName", panel.getCycle() == null ? null : panel.getCycle().getCycleName());
+        dto.put("sampleCount", panel.getId() == null ? 0 : samplesOf(panel.getId()).size());
         dto.put("sourceType", panel.getSourceType() == null ? null : panel.getSourceType().name());
         dto.put("lotNumber", panel.getLotNumber());
         dto.put("unblindDate", panel.getUnblindDate() == null ? null : panel.getUnblindDate().toString());
@@ -154,7 +223,13 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
         dto.put("aliquotsReserved", panel.getAliquotsReserved());
         dto.put("aliquotsShipped", panel.getAliquotsShipped());
         dto.put("homogeneityQcPassed", panel.getHomogeneityQcPassed());
+        dto.put("homogeneityQcNotes", panel.getHomogeneityQcNotes());
         dto.put("expirationDate", panel.getExpirationDate() == null ? null : panel.getExpirationDate().toString());
+        // When the targets were revealed, and how. The landing list states the seal
+        // as a fact an auditor can read (FR-V2.1-16) rather than leaving it to be
+        // inferred from the lifecycle status.
+        dto.put("unblindedAt", panel.getUnblindedAt() == null ? null : panel.getUnblindedAt().toString());
+        dto.put("unblindMethod", panel.getUnblindMethod() == null ? null : panel.getUnblindMethod().name());
         return dto;
     }
 

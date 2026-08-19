@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.4 (OGC-612): the In-House Blinding menu row. qa/019 seeded the other
+    four V2 lanes but not this one, so the wizard would have no way in.
+
+    The action_url is the route the SPA serves (/qa/eqa/in-house), not the FRS
+    path (/eqa/management/in-house) — qa/029 established that convention after
+    the My Cycles row shipped as a dead click.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-059-add-menu-eqa-in-house">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_in_house'</sqlCheck>
+        </preConditions>
+        <comment>In-House Blinding — management lane; the 4-step wizard entry (FR-V2.4-01)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
+            <column name="presentation_order" value="80" />
+            <column name="element_id" value="menu_eqa_in_house" />
+            <column name="action_url" value="/qa/eqa/in-house" />
+            <column name="display_key" value="banner.menu.eqa.inHouse" />
+            <column name="tool_tip_key" value="banner.menu.eqa.inHouse" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_eqa_in_house'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

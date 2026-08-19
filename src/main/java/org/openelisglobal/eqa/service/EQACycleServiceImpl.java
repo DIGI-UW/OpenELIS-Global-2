@@ -15,6 +15,7 @@ import static org.openelisglobal.eqa.valueholder.EQACycleStatus.SUBMISSIONS_OPEN
 import static org.openelisglobal.eqa.valueholder.EQACycleStatus.SUBMITTED;
 import static org.openelisglobal.eqa.valueholder.EQACycleStatus.TESTING;
 
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -37,10 +38,12 @@ import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,6 +105,12 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     @Autowired
     private EQAProgramEnrollmentService eqaProgramEnrollmentService;
 
+    @Autowired
+    private EQAProgramService eqaProgramService;
+
+    @Autowired
+    private SystemUserService systemUserService;
+
     public EQACycleServiceImpl() {
         super(EQACycle.class);
     }
@@ -109,6 +118,32 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     @Override
     protected EQACycleDAO getBaseObjectDAO() {
         return eqaCycleDAO;
+    }
+
+    @Override
+    public EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate,
+            Date plannedEndDate, String sysUserId) {
+        EQAProgram scheme = eqaProgramService.get(schemeId);
+        List<EQACycle> existing = eqaCycleDAO.getAllMatchingOrdered("scheme.id", schemeId, "cycleNumber", true);
+        int number = cycleNumber == null ? (existing.isEmpty() ? 1 : existing.get(0).getCycleNumber() + 1)
+                : cycleNumber;
+        // uq_eqa_cycle_scheme_number would catch this too, but as a 500 with a
+        // constraint name in it rather than something a wizard can render.
+        if (existing.stream().anyMatch(cycle -> cycle.getCycleNumber() == number)) {
+            throw new IllegalArgumentException("Scheme " + scheme.getName() + " already has cycle " + number);
+        }
+
+        EQACycle cycle = new EQACycle();
+        cycle.setScheme(scheme);
+        cycle.setCycleNumber(number);
+        cycle.setCycleName(GenericValidator.isBlankOrNull(cycleName) ? null : cycleName);
+        cycle.setPlannedStartDate(plannedStartDate);
+        cycle.setPlannedEndDate(plannedEndDate);
+        cycle.setStatus(EQACycleStatus.PLANNED);
+        cycle.setCreatedBy(systemUserService.get(sysUserId));
+        cycle.setSysUserId(sysUserId);
+        cycle.setId(eqaCycleDAO.insert(cycle));
+        return cycle;
     }
 
     private static Set<EQACycleStatus> legalNextStates(EQACycleStatus from, EQAStateMachine machine) {

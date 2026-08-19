@@ -1,7 +1,6 @@
 package org.openelisglobal.eqa.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -95,18 +94,6 @@ public class EQAShipmentRestController extends BaseRestController {
     private Boolean booleanField(Map<String, Object> body, String key) {
         String value = stringField(body, key);
         return value == null ? null : Boolean.valueOf(value);
-    }
-
-    private Date dateField(Map<String, Object> body, String key) {
-        String value = stringField(body, key);
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return Date.valueOf(value.trim());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(key + " must be an ISO date (yyyy-MM-dd)");
-        }
     }
 
     private List<Long> longListField(Map<String, Object> body, String key) {

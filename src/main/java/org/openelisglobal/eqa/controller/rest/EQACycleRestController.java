@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -113,6 +114,25 @@ public class EQACycleRestController extends BaseRestController {
             rows.add(dto);
         }
         return rows;
+    }
+
+    /**
+     * FR-V2.4-01 step 1 creates the cycle it blinds into; the provider wizard
+     * (T-24) creates one the same way. {@code cycleNumber} may be omitted — the
+     * service takes the scheme's next number, which is what both wizards suggest.
+     */
+    @PostMapping(value = "/cycles", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createCycle(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        Long schemeId = longField(body, "schemeId");
+        if (schemeId == null) {
+            throw new IllegalArgumentException("A cycle needs a scheme");
+        }
+        EQACycle cycle = cycleService.create(schemeId, integerField(body, "cycleNumber"),
+                stringField(body, "cycleName"), dateField(body, "plannedStartDate"), dateField(body, "plannedEndDate"),
+                getSysUserId(request));
+        return toCycleDto(cycle);
     }
 
     @GetMapping(value = "/cycles/{id}", produces = MediaType.APPLICATION_JSON_VALUE)

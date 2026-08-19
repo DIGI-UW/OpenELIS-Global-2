@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
+import org.openelisglobal.eqa.valueholder.EQASchemeAnalyst;
 
 public interface EQAProgramService extends BaseObjectService<EQAProgram, Long> {
 
@@ -18,4 +19,10 @@ public interface EQAProgramService extends BaseObjectService<EQAProgram, Long> {
     EQAProgramTest assignTest(Long programId, Long testId);
 
     void removeTestAssignment(Long programTestId);
+
+    /** FR-V2.4-03: the scheme's eligible analysts, the round-robin roster. */
+    List<EQASchemeAnalyst> getAnalysts(Long programId);
+
+    /** Replaces the roster with exactly these system users. */
+    List<EQASchemeAnalyst> setAnalysts(Long programId, List<Long> systemUserIds, String sysUserId);
 }

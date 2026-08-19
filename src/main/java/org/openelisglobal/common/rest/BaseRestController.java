@@ -1,5 +1,6 @@
 package org.openelisglobal.common.rest;
 
+import java.sql.Date;
 import java.util.Map;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.ControllerUtills;
@@ -50,6 +51,24 @@ public class BaseRestController extends ControllerUtills implements IActionConst
             return Integer.valueOf(value.trim());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(key + " must be a whole number");
+        }
+    }
+
+    /**
+     * A date field in ISO yyyy-MM-dd — the shape the SPA's date inputs post — or
+     * null when absent or blank.
+     *
+     * @throws IllegalArgumentException when present but not an ISO date
+     */
+    protected Date dateField(Map<String, Object> body, String key) {
+        String value = stringField(body, key);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Date.valueOf(value.trim());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(key + " must be an ISO date (yyyy-MM-dd)");
         }
     }
 }
