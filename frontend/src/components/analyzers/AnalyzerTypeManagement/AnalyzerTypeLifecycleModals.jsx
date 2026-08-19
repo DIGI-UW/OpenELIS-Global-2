@@ -625,7 +625,7 @@ const ProfileHistoryModal = ({ profile, onClose, onError }) => {
                 </TableCell>
                 <TableCell>{revision.publication.actor}</TableCell>
                 <TableCell>
-                  {intl.formatDate(new Date(revision.publication.publishedAt), {
+                  {intl.formatDate(new Date(revision.publication.markedAt), {
                     year: "numeric",
                     month: "short",
                     day: "numeric",
