@@ -6478,6 +6478,7 @@
   "validation.reject.all": "Retest All Tests",
   "validation.save.error": "Results have been validated successfully",
   "validation.save.success": "Results have been validated successfully",
+  "validation.save.noRowsSelected": "Select at least one row to save.",
   "validation.search.noresult": "No Results found to be validated",
   "validation.search.noresult.analyser": "No Results found from : ",
   "vl.arvRegimen": "ARV Regimen",
