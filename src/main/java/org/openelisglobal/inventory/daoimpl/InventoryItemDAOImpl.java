@@ -95,6 +95,24 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
 
     @Override
     @Transactional(readOnly = true)
+    public InventoryItem getByCode(String code) throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
+            Root<InventoryItem> root = cq.from(InventoryItem.class);
+
+            cq.select(root).where(cb.equal(root.get("code"), code));
+
+            List<InventoryItem> results = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting inventory item by code", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InventoryItem getByFhirUuid(String fhirUuid) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();
