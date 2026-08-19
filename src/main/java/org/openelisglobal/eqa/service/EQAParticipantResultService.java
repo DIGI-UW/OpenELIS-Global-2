@@ -26,9 +26,10 @@ public interface EQAParticipantResultService extends BaseObjectService<EQAPartic
     EQAParticipantResult transitionStatus(Long resultId, EQASubmissionStatus target, String sysUserId);
 
     /**
-     * SUBMITTED → SCORED with the provider's verdict. A QUESTIONABLE or
-     * UNACCEPTABLE score on a result with an assigned analyst writes the
-     * corresponding competency event (FR-V2.1-22).
+     * SUBMITTED → SCORED with the provider's verdict, which is persisted on the row
+     * (FR-V2.4-07) so a scored result is distinguishable from an unscored one. A
+     * QUESTIONABLE or UNACCEPTABLE score on a result with an assigned analyst
+     * writes the corresponding competency event (FR-V2.1-22).
      */
     EQAParticipantResult recordScore(Long resultId, EQAPerformanceStatus performance, Long eqaResultId,
             String sysUserId);

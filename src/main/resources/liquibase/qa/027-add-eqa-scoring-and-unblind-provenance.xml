@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.4 (OGC-612): the three columns in-house scoring cannot work without,
+    plus unblind provenance.
+
+    1. eqa_participant_result.performance_status — FR-V2.4-07 requires the
+       scoring verdict to be persisted. Without it a scored result is
+       indistinguishable from an unscored one and the post-unblind view
+       (FR-V2.4-09) has nothing to render. z_score is nullable and stays null
+       for in-house, which has no consensus SD by construction; it exists so an
+       external scheme's score intake has somewhere to put it.
+
+    2. eqa_participant_result.panel_sample_id — the result grain. FR-V2.4-02
+       Mode A splits one pool into N aliquots, all for the same analyte, so the
+       original unique constraint (round_id, lab_enrollment_id, analyte_id) made
+       the primary in-house panel mode impossible to distribute. The constraint
+       is replaced by two partial unique indexes so external PT keeps exactly
+       its previous per-analyte guarantee while in-house becomes per-aliquot.
+
+    3. eqa_panel.unblind_method / unblinded_by / unblinded_at — FR-V2.4-10
+       requires the audit trail to distinguish a scheduled unblind from a manual
+       one. sys_user_id alone cannot: the scheduler writes a real user id.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-047-add-participant-result-scoring-columns">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="eqa_participant_result" schemaName="clinlims"/>
+                <not>
+                    <columnExists tableName="eqa_participant_result" columnName="performance_status"
+                        schemaName="clinlims"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Persist the scoring verdict and its optional z-score (FR-V2.4-07)</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_participant_result">
+            <column name="performance_status" type="VARCHAR(20)"/>
+            <column name="z_score" type="numeric(10,5)"/>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.eqa_participant_result
+            ADD CONSTRAINT eqa_participant_result_performance_status_chk
+            CHECK (performance_status IS NULL
+                OR performance_status IN ('ACCEPTABLE', 'QUESTIONABLE', 'UNACCEPTABLE'))
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.eqa_participant_result
+                DROP CONSTRAINT IF EXISTS eqa_participant_result_performance_status_chk;
+            </sql>
+            <dropColumn schemaName="clinlims" tableName="eqa_participant_result" columnName="z_score"/>
+            <dropColumn schemaName="clinlims" tableName="eqa_participant_result"
+                columnName="performance_status"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-048-add-participant-result-panel-sample">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="eqa_panel_sample" schemaName="clinlims"/>
+                <not>
+                    <columnExists tableName="eqa_participant_result" columnName="panel_sample_id"
+                        schemaName="clinlims"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Per-aliquot result grain for in-house panels (FR-V2.4-02 Mode A)</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_participant_result">
+            <column name="panel_sample_id" type="numeric(10,0)"/>
+        </addColumn>
+        <addForeignKeyConstraint
+            constraintName="fk_eqa_participant_result_panel_sample"
+            baseTableSchemaName="clinlims" baseTableName="eqa_participant_result"
+            baseColumnNames="panel_sample_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_panel_sample"
+            referencedColumnNames="id"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims"
+                baseTableName="eqa_participant_result"
+                constraintName="fk_eqa_participant_result_panel_sample"/>
+            <dropColumn schemaName="clinlims" tableName="eqa_participant_result"
+                columnName="panel_sample_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-049-split-participant-result-uniqueness">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM pg_constraint
+                WHERE conname = 'uq_eqa_participant_result_round_lab_analyte'
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            External PT keeps one result per analyte per lab per round; in-house gets one
+            result per aliquot. A single nullable-column constraint cannot express both,
+            because Postgres treats every NULL as distinct and would stop enforcing the
+            external rule entirely.
+        </comment>
+        <sql>
+            ALTER TABLE clinlims.eqa_participant_result
+            DROP CONSTRAINT uq_eqa_participant_result_round_lab_analyte;
+
+            CREATE UNIQUE INDEX uq_eqa_participant_result_round_lab_analyte
+            ON clinlims.eqa_participant_result (round_id, lab_enrollment_id, analyte_id)
+            WHERE panel_sample_id IS NULL;
+
+            CREATE UNIQUE INDEX uq_eqa_participant_result_round_lab_sample
+            ON clinlims.eqa_participant_result (round_id, lab_enrollment_id, panel_sample_id)
+            WHERE panel_sample_id IS NOT NULL;
+        </sql>
+        <rollback>
+            <sql>
+                DROP INDEX IF EXISTS clinlims.uq_eqa_participant_result_round_lab_sample;
+                DROP INDEX IF EXISTS clinlims.uq_eqa_participant_result_round_lab_analyte;
+
+                ALTER TABLE clinlims.eqa_participant_result
+                ADD CONSTRAINT uq_eqa_participant_result_round_lab_analyte
+                UNIQUE (round_id, lab_enrollment_id, analyte_id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-050-add-panel-unblind-provenance">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="eqa_panel" schemaName="clinlims"/>
+                <not>
+                    <columnExists tableName="eqa_panel" columnName="unblind_method" schemaName="clinlims"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Record how and by whom a panel was unblinded (FR-V2.4-10)</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_panel">
+            <column name="unblind_method" type="VARCHAR(20)"/>
+            <column name="unblinded_by" type="numeric(10,0)"/>
+            <column name="unblinded_at" type="TIMESTAMP WITHOUT TIME ZONE"/>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.eqa_panel
+            ADD CONSTRAINT eqa_panel_unblind_method_chk
+            CHECK (unblind_method IS NULL OR unblind_method IN ('SCHEDULED', 'MANUAL'))
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.eqa_panel DROP CONSTRAINT IF EXISTS eqa_panel_unblind_method_chk;
+            </sql>
+            <dropColumn schemaName="clinlims" tableName="eqa_panel" columnName="unblinded_at"/>
+            <dropColumn schemaName="clinlims" tableName="eqa_panel" columnName="unblinded_by"/>
+            <dropColumn schemaName="clinlims" tableName="eqa_panel" columnName="unblind_method"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

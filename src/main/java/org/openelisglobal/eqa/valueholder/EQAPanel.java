@@ -73,6 +73,20 @@ public class EQAPanel extends BaseObject<Long> {
     @Column(name = "unblind_date")
     private Date unblindDate;
 
+    /**
+     * How the panel left DISTRIBUTED (FR-V2.4-10). sys_user_id cannot carry this on
+     * its own, because the scheduler also writes a real user id.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "unblind_method", length = 20)
+    private EQAUnblindMethod unblindMethod;
+
+    @Column(name = "unblinded_by")
+    private Long unblindedBy;
+
+    @Column(name = "unblinded_at")
+    private Timestamp unblindedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private EQAPanelStatus status = EQAPanelStatus.PREPARING;

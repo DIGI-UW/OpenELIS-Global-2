@@ -19,7 +19,9 @@ import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.eqa.controller.rest.EQAMyProgramsRestController;
 import org.openelisglobal.eqa.controller.rest.EQAPanelRestController;
 import org.openelisglobal.eqa.controller.rest.EQAProgramRestController;
+import org.openelisglobal.eqa.service.EQABlindingService;
 import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
+import org.openelisglobal.eqa.service.EQALabelPDFService;
 import org.openelisglobal.eqa.service.EQAPanelService;
 import org.openelisglobal.eqa.service.EQAProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAProgramService;
@@ -231,8 +233,19 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
         }
 
         @Bean
-        EQAPanelRestController panelRestController(EQAPanelService panelService) {
-            return new EQAPanelRestController(panelService);
+        EQABlindingService blindingService() {
+            return Mockito.mock(EQABlindingService.class);
+        }
+
+        @Bean
+        EQALabelPDFService labelPDFService() {
+            return Mockito.mock(EQALabelPDFService.class);
+        }
+
+        @Bean
+        EQAPanelRestController panelRestController(EQAPanelService panelService, EQABlindingService blindingService,
+                EQALabelPDFService labelPDFService) {
+            return new EQAPanelRestController(panelService, blindingService, labelPDFService);
         }
 
         @Bean
