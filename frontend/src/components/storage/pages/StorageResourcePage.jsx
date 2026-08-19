@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import {
   Button,
@@ -13,11 +13,12 @@ import {
   TableHeader,
   TableRow,
   Pagination,
+  Search,
   Tag,
   Loading,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
 import useStorageTableData from "../hooks/useStorageTableData";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
@@ -39,6 +40,7 @@ export default function StorageResourcePage({
   crumbs,
   heading,
   listUrl,
+  searchUrl,
   headers,
   mapRow,
   page,
@@ -46,13 +48,20 @@ export default function StorageResourcePage({
   pageSize,
   setPageSize,
   editHref,
-  addHref,
+  onAddRequested,
+  searchPlaceholderId,
   onDeleteRequested,
+  // Rendered inside the Storage Management dashboard tab, where the container
+  // already supplies the breadcrumb and heading.
+  embedded = false,
 }) {
+  const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const isGlobalAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+
+  const [searchTerm, setSearchTerm] = useState("");
 
   const refreshKey = useMemo(
     () => new URLSearchParams(location.search).get("t") || "initial",
@@ -61,6 +70,8 @@ export default function StorageResourcePage({
 
   const { items, totalItems, loading } = useStorageTableData({
     listUrl,
+    searchUrl,
+    searchTerm,
     page,
     pageSize,
     refreshKey,
@@ -123,17 +134,46 @@ export default function StorageResourcePage({
   }, [headers, editHref, isGlobalAdmin, onDeleteRequested]);
 
   return (
-    <div className="storage-resource-page pageContent">
-      <BreadcrumbNav crumbs={crumbs} />
-      <h1>{heading}</h1>
+    <div
+      className={
+        embedded ? "storage-resource-page" : "storage-resource-page pageContent"
+      }
+    >
+      {!embedded && (
+        <>
+          <BreadcrumbNav crumbs={crumbs} />
+          <h1>{heading}</h1>
+        </>
+      )}
 
-      {addHref && isGlobalAdmin && (
+      {searchUrl && (
+        <div
+          className="storage-resource-page-toolbar"
+          style={{ margin: "1rem 0" }}
+        >
+          <Search
+            id="storage-resource-search"
+            size="md"
+            labelText={intl.formatMessage({
+              id: searchPlaceholderId || "label.search",
+              defaultMessage: "Search",
+            })}
+            placeHolderText={intl.formatMessage({
+              id: searchPlaceholderId || "label.search",
+              defaultMessage: "Search",
+            })}
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+      )}
+
+      {onAddRequested && isGlobalAdmin && (
         <div style={{ margin: "1rem 0" }}>
-          <Button
-            kind="primary"
-            renderIcon={Add}
-            onClick={() => history.push(addHref)}
-          >
+          <Button kind="primary" renderIcon={Add} onClick={onAddRequested}>
             <FormattedMessage id="label.add" defaultMessage="Add" />
           </Button>
         </div>

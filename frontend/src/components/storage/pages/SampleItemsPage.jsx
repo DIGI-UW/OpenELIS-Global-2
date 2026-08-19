@@ -28,7 +28,7 @@ import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
  * Per-row overflow menu navigates to
  * /Storage/sample-items/:id/manage-location.
  */
-export default function SampleItemsPage() {
+export default function SampleItemsPage({ embedded = false }) {
   const history = useHistory();
   const location = useLocation();
   const intl = useIntl();
@@ -206,14 +206,24 @@ export default function SampleItemsPage() {
   }, [items]);
 
   return (
-    <div className="storage-sample-items-page pageContent">
-      <BreadcrumbNav crumbs={crumbs} />
-      <h1>
-        <FormattedMessage
-          id="storage.tab.samples"
-          defaultMessage="Sample Items"
-        />
-      </h1>
+    <div
+      className={
+        embedded
+          ? "storage-sample-items-page"
+          : "storage-sample-items-page pageContent"
+      }
+    >
+      {!embedded && (
+        <>
+          <BreadcrumbNav crumbs={crumbs} />
+          <h1>
+            <FormattedMessage
+              id="storage.tab.samples"
+              defaultMessage="Sample Items"
+            />
+          </h1>
+        </>
+      )}
 
       <div
         className="storage-sample-items-page-toolbar"

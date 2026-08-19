@@ -1,21 +1,53 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useContext } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 import DeleteLocationConfirmModal from "../components/DeleteLocationConfirmModal";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
+import { storageLevel } from "../storageLevels";
+import AddLocationModal from "../components/AddLocationModal";
 
 /**
  * BoxesPage — /Storage/boxes. List of boxes with per-row Edit.
  * Edit uses a dedicated EditBoxPage (boxes have grid-layout fields
  * that don't fit the generic EditLocationPage shell).
  */
-export default function BoxesPage() {
+export default function BoxesPage({ embedded = false }) {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
+  // Name the level being acted on — "Rack created", not a generic
+  // "Storage location created" that reads identically for all five.
+  const level = storageLevel("box");
+  const notify = (kind, messageId, defaultMessage) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind,
+      title: intl.formatMessage({
+        id:
+          kind === NotificationKinds.success
+            ? "notification.title"
+            : "notification.error",
+      }),
+      message: intl.formatMessage(
+        { id: messageId, defaultMessage },
+        {
+          level: intl.formatMessage({
+            id: level.labelId,
+            defaultMessage: level.label,
+          }),
+        },
+      ),
+    });
+  };
 
   const mapRow = useCallback(
     (b) => ({
@@ -32,6 +64,7 @@ export default function BoxesPage() {
   return (
     <>
       <StorageResourcePage
+        embedded={embedded}
         crumbs={[
           {
             label: intl.formatMessage({
@@ -53,6 +86,8 @@ export default function BoxesPage() {
           defaultMessage: "Boxes",
         })}
         listUrl="/rest/storage/boxes"
+        searchUrl="/rest/storage/boxes/search"
+        searchPlaceholderId="storage.search.boxes.placeholder"
         headers={[
           {
             key: "label",
@@ -96,8 +131,25 @@ export default function BoxesPage() {
         pageSize={pageSize}
         setPageSize={setPageSize}
         editHref={(box) => `/Storage/boxes/${box.id}/edit`}
-        addHref="/Storage/boxes/new"
+        onAddRequested={() => setAddOpen(true)}
         onDeleteRequested={setDeleteTarget}
+      />
+      <AddLocationModal
+        level="box"
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => {
+          setAddOpen(false);
+          notify(
+            NotificationKinds.success,
+            "storage.location.created",
+            "{level} created",
+          );
+          history.replace({
+            pathname: location.pathname,
+            search: `?t=${Date.now()}`,
+          });
+        }}
       />
       <DeleteLocationConfirmModal
         isOpen={Boolean(deleteTarget)}
@@ -106,6 +158,11 @@ export default function BoxesPage() {
         onClose={() => setDeleteTarget(null)}
         onDeleted={() => {
           setDeleteTarget(null);
+          notify(
+            NotificationKinds.success,
+            "storage.location.deleted",
+            "{level} deleted",
+          );
           history.replace({
             pathname: location.pathname,
             search: `?t=${Date.now()}`,

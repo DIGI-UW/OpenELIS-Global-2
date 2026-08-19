@@ -890,3 +890,85 @@ describe("Header Component - M2b Enhancement Tests", () => {
     });
   });
 });
+
+describe("OEHeader menu items whose children are all deactivated", () => {
+  // A parent renders as an expandable SideNavMenu and never navigates, so a
+  // parent left holding only deactivated children became an expandable that
+  // opened onto nothing — the Storage Management case.
+  const MENU_WITH_DEACTIVATED_CHILDREN = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_management",
+            displayKey: "storage.nav.dashboard",
+            actionURL: "/Storage",
+            isActive: true,
+          },
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_storage_rooms",
+                displayKey: "storage.nav.rooms",
+                actionURL: "/Storage/rooms",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                elementId: "menu_storage_boxes",
+                displayKey: "storage.nav.boxes",
+                actionURL: "/Storage/boxes",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  test("renders the parent as a navigable link, not an empty expandable", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    const parent = await waitFor(() => {
+      const el = container.querySelector("#menu_storage_management");
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    // Carbon renders an expandable parent as a button inside .cds--side-nav__submenu
+    expect(parent.querySelector(".cds--side-nav__submenu")).toBeNull();
+    expect(parent.querySelector('a[href="/Storage"]')).toBeTruthy();
+  });
+
+  test("navigates when the parent is clicked", async () => {
+    const { container, getByTestId } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        "#menu_storage_management a[href='/Storage']",
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    fireEvent.click(link);
+
+    await waitFor(() => {
+      expect(getByTestId("current-path").textContent).toBe("/Storage");
+    });
+  });
+});
