@@ -53,9 +53,11 @@ as engineering authority. `openelis-work` remains functional/visual input only.
 
 ### 3.2 Analyzer setup
 
-The established OE form fetches the selected full profile and uses its
-communication/configuration fields to prefill the new analyzer. The create
-request sends `defaultConfigId`. OE then loads that profile and currently:
+The established OE form fetches the selected full profile and uses many of its
+communication/configuration fields to prefill the new analyzer. It is not yet a
+complete consumer: protocol version and some empty-state values still come from
+frontend constants/fallbacks instead of the selected profile. The create request
+sends `defaultConfigId`. OE then loads that profile and currently:
 
 - stores instance values on `Analyzer`;
 - creates local analyzer-code-to-test bindings;
@@ -100,16 +102,19 @@ The architecture and two profile jobs were not wrong. The concrete debt is:
 3. **Loose schema.** The current schema permits inconsistent fields and unknown
    properties; several profiles do not describe communication/defaults with the
    same completeness.
-4. **Copied configuration.** OE expands one profile into analyzer fields,
+4. **Incomplete default ownership.** The current OE form hardcodes protocol
+   version and fallback values even after loading the selected profile. This is
+   existing debt to remove, not behavior to preserve.
+5. **Copied configuration.** OE expands one profile into analyzer fields,
    mapping rows, plugin JSON, and `AnalyzerQcRule`, obscuring provenance.
-5. **No managed lifecycle.** There is no proper Draft, Publish, Duplicate,
+6. **No managed lifecycle.** There is no proper Draft, Publish, Duplicate,
    immutable revision, retirement, or explicit adoption workflow.
-6. **Hidden analyzer-specific runtime behavior.** Bridge contains hardcoded
+7. **Hidden analyzer-specific runtime behavior.** Bridge contains hardcoded
    FluoroCycler synonyms, ASTM `O.12 == Q` control fallback, FILE control
    prefixes, and Cepheid-specific result filtering in generic parser code.
-7. **Partial mock alignment.** Many mock templates still duplicate profile
+8. **Partial mock alignment.** Many mock templates still duplicate profile
    content instead of consuming the same revision.
-8. **Uneven profile data quality.** Existing mapping rows require evidence-based
+9. **Uneven profile data quality.** Existing mapping rows require evidence-based
    curation. Equal LOINC values do not prove aliases, and existing rows are not
    automatically obligations to preserve.
 
@@ -146,11 +151,13 @@ without semantic curation. They must not be restored as-is.
 ### 5.3 OE-M1 consumer and UX
 
 OE-M1 introduces a Bridge-backed type catalog and profile revision fields, but
-the selected catalog item is metadata-only. `AnalyzerForm` sets protocol version
-from `PLUGIN_PROTOCOL_DEFAULTS` and initializes communication mode from
-`DEFAULT_COMMUNICATION_MODE`; it no longer fetches and applies the selected
-profile's complete defaults. FILE setup is similarly reduced. This is a direct
-regression from the profile-driven setup the UX is supposed to improve.
+the selected catalog item is metadata-only. The established form's incomplete
+protocol fallback remains, while its full-profile fetch and application of
+communication and FILE defaults disappear. `AnalyzerForm` sets protocol version
+from `PLUGIN_PROTOCOL_DEFAULTS`, initializes communication mode from
+`DEFAULT_COMMUNICATION_MODE`, and never receives the selected revision's
+complete defaults. This broadens an existing default-ownership defect into a
+direct regression from the profile-driven setup the UX is supposed to improve.
 
 ### 5.4 Acceptance failure
 
