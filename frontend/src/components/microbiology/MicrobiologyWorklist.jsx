@@ -78,6 +78,12 @@ const DUE_OPTIONS = [
   "AST_REVIEW",
   "CASE_REVIEW",
 ];
+const AST_STATUS_OPTIONS = [
+  ["pending-setup", "microbiology.worklist.summary.astPendingSetup"],
+  ["in-progress", "microbiology.worklist.summary.astInProgress"],
+  ["results-in", "microbiology.worklist.summary.astResultsIn"],
+  ["reviewed", "microbiology.worklist.filter.reviewed"],
+];
 const EMPTY_SUMMARY = {
   totalPending: 0,
   incubating: 0,
@@ -126,9 +132,7 @@ const summaryFromRows = (rows) =>
         summary.astPendingSetup + (row.astStatus === "PENDING_SETUP" ? 1 : 0),
       astInProgress:
         summary.astInProgress +
-        (["IN_PROGRESS", "AWAITING_RESULTS", "REVIEWED"].includes(row.astStatus)
-          ? 1
-          : 0),
+        (["IN_PROGRESS", "AWAITING_RESULTS"].includes(row.astStatus) ? 1 : 0),
       astAwaitingResults:
         summary.astAwaitingResults +
         (row.astStatus === "AWAITING_RESULTS" ? 1 : 0),
@@ -908,6 +912,32 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 ))}
               </Select>
             )}
+            {isAstGrain && (
+              <Select
+                id="microbiology-worklist-ast-status-filter"
+                labelText={intl.formatMessage({
+                  id: "microbiology.worklist.filter.astStatus",
+                })}
+                value={filters.status}
+                onChange={(event) =>
+                  updateFilters({ status: event.target.value })
+                }
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({
+                    id: "microbiology.worklist.filter.activeAst",
+                  })}
+                />
+                {AST_STATUS_OPTIONS.map(([value, labelId]) => (
+                  <SelectItem
+                    key={value}
+                    value={value}
+                    text={intl.formatMessage({ id: labelId })}
+                  />
+                ))}
+              </Select>
+            )}
             <Select
               id="microbiology-worklist-urgency-filter"
               labelText={intl.formatMessage({
@@ -1368,26 +1398,31 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                           >
                                             <OverflowMenuItem
                                               itemText={intl.formatMessage({
-                                                id: "microbiology.worklist.openCase",
+                                                id:
+                                                  isAstGrain &&
+                                                  row.astStatus === "REVIEWED"
+                                                    ? "microbiology.worklist.viewReviewedAst"
+                                                    : "microbiology.worklist.openCase",
                                               })}
                                               onClick={() =>
                                                 history.push(caseUrl)
                                               }
                                             />
-                                            {isAstGrain && (
-                                              <OverflowMenuItem
-                                                itemText={intl.formatMessage({
-                                                  id: row.astRunId
-                                                    ? "microbiology.worklist.editAst"
-                                                    : "microbiology.worklist.setupAst",
-                                                })}
-                                                onClick={() =>
-                                                  history.push(
-                                                    caseActionUrl("ast", ""),
-                                                  )
-                                                }
-                                              />
-                                            )}
+                                            {isAstGrain &&
+                                              row.astStatus !== "REVIEWED" && (
+                                                <OverflowMenuItem
+                                                  itemText={intl.formatMessage({
+                                                    id: row.astRunId
+                                                      ? "microbiology.worklist.editAst"
+                                                      : "microbiology.worklist.setupAst",
+                                                  })}
+                                                  onClick={() =>
+                                                    history.push(
+                                                      caseActionUrl("ast", ""),
+                                                    )
+                                                  }
+                                                />
+                                              )}
                                             {isAstGrain && (
                                               <OverflowMenuItem
                                                 itemText={intl.formatMessage({
@@ -1398,24 +1433,6 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                                     caseActionUrl(
                                                       "timeline",
                                                       "",
-                                                    ),
-                                                  )
-                                                }
-                                              />
-                                            )}
-                                            {isAstGrain && row.astRunId && (
-                                              <OverflowMenuItem
-                                                itemText={intl.formatMessage({
-                                                  id: "microbiology.worklist.newAstAttempt",
-                                                })}
-                                                disabled={
-                                                  row.astStatus !== "REVIEWED"
-                                                }
-                                                onClick={() =>
-                                                  history.push(
-                                                    caseActionUrl(
-                                                      "ast",
-                                                      "new-ast-attempt",
                                                     ),
                                                   )
                                                 }

@@ -36,6 +36,23 @@ describe("MicrobiologyRoutes", () => {
     );
   });
 
+  it("preserves the reviewed AST view as canonical worklist state", () => {
+    const url = getMicrobiologyWorklistUrl({
+      grain: "ast",
+      status: "reviewed",
+      q: "LAB-1001",
+    });
+
+    expect(url).toBe(
+      "/Microbiology/worklist?grain=ast&status=reviewed&q=LAB-1001",
+    );
+    expect(parseMicrobiologyWorklistSearch(url.split("?")[1])).toMatchObject({
+      grain: "ast",
+      status: "reviewed",
+      q: "LAB-1001",
+    });
+  });
+
   it("drops unsupported worklist state while parsing", () => {
     expect(
       parseMicrobiologyWorklistSearch(

@@ -188,7 +188,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         for (MicroAstRun run : runsByIsolate.values().stream().flatMap(List::stream).toList()) {
             java.sql.Timestamp flagTime = run.getAnalyzerCompletedAt() == null ? run.getAnalyzerLoadedAt()
                     : run.getAnalyzerCompletedAt();
-            if (!isActiveWorklistRun(run) || flagTime == null
+            if (!isWorklistVisibleRun(run) || flagTime == null
                     || !flagTime.toLocalDateTime().toLocalDate().equals(today)) {
                 continue;
             }
@@ -245,6 +245,10 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     }
 
     private boolean matches(MicroWorklistRowForm row, MicroWorklistQueryForm query) {
+        if (AST_GRAIN.equals(row.grain) && query.status.isEmpty()
+                && MicroAstRunStatus.REVIEWED.name().equals(row.astStatus)) {
+            return false;
+        }
         if (!query.status.isEmpty() && !matchesStatus(row, query.status)) {
             return false;
         }
@@ -274,7 +278,8 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
 
     private String statusForGrain(String grain, String value) {
         String status = text(value).toLowerCase(Locale.ROOT);
-        List<String> allowed = AST_GRAIN.equals(grain) ? List.of("pending-setup", "in-progress", "results-in")
+        List<String> allowed = AST_GRAIN.equals(grain)
+                ? List.of("pending-setup", "in-progress", "results-in", "reviewed")
                 : List.of("incubating", "positive", "growth", "ready");
         return allowed.contains(status) ? status : "";
     }
@@ -288,8 +293,12 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 return MicroAstRunStatus.RESULTS_IN.name().equals(row.astStatus)
                         || MicroAstRunStatus.QC_FAILED.name().equals(row.astStatus);
             }
+            if ("reviewed".equals(status)) {
+                return MicroAstRunStatus.REVIEWED.name().equals(row.astStatus);
+            }
             return !"PENDING_SETUP".equals(row.astStatus) && !MicroAstRunStatus.RESULTS_IN.name().equals(row.astStatus)
-                    && !MicroAstRunStatus.QC_FAILED.name().equals(row.astStatus);
+                    && !MicroAstRunStatus.QC_FAILED.name().equals(row.astStatus)
+                    && !MicroAstRunStatus.REVIEWED.name().equals(row.astStatus);
         }
         if ("incubating".equals(status)) {
             return MicroCaseStage.INCUBATING.name().equals(row.stage);
@@ -374,7 +383,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         for (MicroCase microCase : openCases) {
             for (MicroIsolate isolate : valuesFor(isolatesByCase, microCase.getId())) {
                 List<MicroAstRun> activeRuns = valuesFor(runsByIsolate, isolate.getId()).stream()
-                        .filter(this::isActiveWorklistRun).toList();
+                        .filter(this::isWorklistVisibleRun).toList();
                 if (activeRuns.isEmpty()) {
                     if (MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name().equals(isolate.getSignificance())) {
                         rows.add(toAstRow(microCase, isolate, null));
@@ -389,7 +398,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         return rows;
     }
 
-    private boolean isActiveWorklistRun(MicroAstRun run) {
+    private boolean isWorklistVisibleRun(MicroAstRun run) {
         return !MicroAstRunStatus.INVALIDATED.name().equals(run.getStatus())
                 && !MicroAstRunStatus.RERUN_REQUIRED.name().equals(run.getStatus())
                 && !MicroAstRunStatus.CANCELLED.name().equals(run.getStatus());
@@ -422,7 +431,11 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
             row.analyzerResultsAvailable = MicroAstRunStatus.RESULTS_IN.name().equals(run.getStatus())
                     || MicroAstRunStatus.QC_FAILED.name().equals(run.getStatus());
             row.analyzerExpertFlags = run.getAnalyzerExpertFlags();
-            row.dueAction = row.analyzerResultsAvailable ? "AST_REVIEW" : "AST_IN_PROGRESS";
+            if (MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
+                row.dueAction = "VIEW";
+            } else {
+                row.dueAction = row.analyzerResultsAvailable ? "AST_REVIEW" : "AST_IN_PROGRESS";
+            }
         }
         row.needsAstReview = row.analyzerResultsAvailable;
         row.urgency = urgency(microCase, row.needsAstReview, false);

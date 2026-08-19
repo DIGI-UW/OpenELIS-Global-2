@@ -43,7 +43,7 @@ const DEFAULT_WORKLIST_STATE = {
 
 const WORKLIST_STATUSES = {
   cultures: ["incubating", "positive", "growth", "ready"],
-  ast: ["pending-setup", "in-progress", "results-in"],
+  ast: ["pending-setup", "in-progress", "results-in", "reviewed"],
 };
 
 const textValue = (value) => (typeof value === "string" ? value.trim() : "");
