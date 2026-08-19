@@ -12,15 +12,17 @@ Bridge-owned in architecture and already supports the two intended profile jobs:
 1. define communication with one analyzer type; and
 2. define defaults used when OpenELIS creates an instance of that analyzer type.
 
-The current BR-E0/BR-M1 work did not evolve that system. It introduced a second,
+The initial BR-E0/BR-M1 work did not evolve that system. It introduced a second,
 thinner `portable-profile` contract and built a separate lifecycle catalog around
-it. That contract omits important established communication fields and the
-profile's OE instance defaults. The current BR-M1 branch also ships none of the
-20 established profiles. OE-M1 consequently selects profile metadata but fills
-profile-owned settings from frontend constants.
+it. That contract omitted important established communication fields and the
+profile's OE instance defaults. BR-M1 also shipped none of the 20 established
+profiles. OE-M1 consequently selected profile metadata but filled profile-owned
+settings from frontend constants.
 
-This is an unmerged stack defect. The established system remains intact on
-`develop`. PRs #45, #46, #4055, and #4056 must not merge in their current form.
+This was an unmerged stack defect; the established system remained intact on
+`develop`. BR-E0 has now removed the parallel contract and evolved the established
+two-job profile shape. BR-M1, OE-E0, and OE-M1 remain blocked on the unchecked
+remediation below and must not merge in their current form.
 
 ## 2. Evidence examined
 
@@ -369,21 +371,29 @@ branch.
 
 ### BR-E0 - Evolve the established contract
 
-- [ ] Replace the thin `portable-profile` semantics with a strict additive
+- [x] Replace the thin `portable-profile` semantics with a strict additive
       evolution of `analyzer-defaults` that retains communication and defaults.
-- [ ] Define protocol-discriminated ASTM, HL7, and FILE requirements.
-- [ ] Define generated revision/fingerprint/publication metadata separately
+- [x] Define protocol-discriminated ASTM, HL7, and FILE requirements.
+- [x] Define generated revision/fingerprint/publication metadata separately
       from authored profile behavior.
-- [ ] Define `controlResultRecognition` as Bridge runtime behavior and exclude
+- [x] Define `controlResultRecognition` as Bridge runtime behavior and exclude
       operational QC.
-- [ ] Add semantic validation for code/alias/value uniqueness and conditional
+- [x] Add semantic validation for code/alias/value uniqueness and conditional
       completeness; schema validity alone is insufficient.
-- [ ] Make GeneXpert and Fluoro fixtures pass without losing a field used by the
+- [x] Make GeneXpert and Fluoro fixtures pass without losing a field used by the
       current setup or runtime.
+- [x] Delete the parallel profile/compatibility artifacts rather than retaining
+      a compatibility reader, migration adapter, or second runtime path.
+- [x] Keep analyzer/model/manufacturer/code/default literals in profile fixture
+      data only; production contract validation is generic over loaded profiles.
 
-**BR-E0 exit evidence:** Bridge contract tests validate both fixtures and reject
-missing communication/default behavior, duplicate raw identities, operational-QC
-content, and instance-specific/site identifiers.
+**BR-E0 exit evidence:** 22 focused Bridge contract tests validate both fixtures
+and reject missing communication/default behavior, duplicate raw identities,
+operational-QC content, instance-specific/site identifiers, contradictory
+registration outcomes, incomplete recognition evidence, and parallel profile
+artifacts. The complete Bridge suite passes 622 tests with zero failures or
+errors (3 environment-dependent serial tests skipped); Prettier and diff checks
+pass. Analyzer-specific names occur only in the two profile fixture documents.
 
 ### OE-E0 - Define the clean consumer and removal boundary
 
@@ -468,8 +478,8 @@ parity, and roadmap execution can resume from the next unchecked M1 slice.
   [Bridge `AnalyzerRegistrationController.java`](https://github.com/DIGI-UW/openelis-analyzer-bridge/blob/develop/src/main/java/org/itech/ahb/controller/AnalyzerRegistrationController.java)
 - Existing mock profile adapter:
   [analyzer-mock `profile_adapter.py`](https://github.com/DIGI-UW/analyzer-mock-server/blob/main/profile_adapter.py)
-- Wrong BR-E0 contract:
-  [BR-E0 `portable-profile.schema.json`](https://github.com/DIGI-UW/openelis-analyzer-bridge/blob/codex/ogc-1054-e0-contracts/contracts/analyzer/v1/portable-profile.schema.json)
+- Superseded BR-E0 contract history and correction:
+  [Bridge PR #45](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/45)
 - Current BR-M1 lifecycle:
   [BR-M1 `PortableProfileCatalog.java`](https://github.com/DIGI-UW/openelis-analyzer-bridge/blob/codex/ogc-1054-m1-profile-lifecycle/src/main/java/org/itech/ahb/profile/PortableProfileCatalog.java)
 - Regressed OE-M1 setup:
