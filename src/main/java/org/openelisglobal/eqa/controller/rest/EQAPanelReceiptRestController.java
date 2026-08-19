@@ -42,13 +42,13 @@ public class EQAPanelReceiptRestController extends BaseRestController {
     @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<Map<String, Object>> recordReceipt(HttpServletRequest request, @PathVariable Long cycleId,
             @RequestBody Map<String, Object> body) {
-        Long labEnrollmentId = longField(body, "labEnrollmentId");
+        Long labEnrollmentId = strictLong(body, "labEnrollmentId");
         if (labEnrollmentId == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "labEnrollmentId is required"));
         }
 
         String sysUserId = getSysUserId(request);
-        Long receivedBy = longField(body, "receivedBy");
+        Long receivedBy = strictLong(body, "receivedBy");
         if (receivedBy == null) {
             try {
                 receivedBy = Long.valueOf(sysUserId);
@@ -106,17 +106,14 @@ public class EQAPanelReceiptRestController extends BaseRestController {
         return dto;
     }
 
-    private String stringField(Map<String, Object> body, String key) {
-        Object value = body.get(key);
-        return value == null ? null : String.valueOf(value);
-    }
-
-    private Long longField(Map<String, Object> body, String key) {
-        Object value = body.get(key);
-        if (value == null || String.valueOf(value).isBlank()) {
-            return null;
-        }
-        return Long.valueOf(String.valueOf(value));
+    /**
+     * Deliberately not the inherited {@code longField}: a malformed id here escapes
+     * as NumberFormatException, which this controller answers 400 — the same status
+     * as its other malformed numeric fields.
+     */
+    private Long strictLong(Map<String, Object> body, String key) {
+        String value = stringField(body, key);
+        return value == null || value.isBlank() ? null : Long.valueOf(value);
     }
 
     @ExceptionHandler(ObjectNotFoundException.class)

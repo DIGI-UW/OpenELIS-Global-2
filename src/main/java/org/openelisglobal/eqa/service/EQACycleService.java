@@ -34,4 +34,12 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
 
     /** Same derivation for a cycle already in hand, avoiding a re-fetch. */
     EQACycleStatus deriveParticipantState(EQACycle cycle, Long labEnrollmentId);
+
+    /**
+     * Evaluate the ready-to-ship gate once: QC (AC-V2.1-13) and inventory
+     * (FR-V2.5-12) together, with the per-panel arithmetic the prep workbench
+     * displays. The transition enforces exactly this verdict, so the workbench
+     * cannot show one gate while another is applied.
+     */
+    EQAPrepGate evaluatePrepGate(EQACycle cycle);
 }

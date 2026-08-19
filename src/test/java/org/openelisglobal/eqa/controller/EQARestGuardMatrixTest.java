@@ -82,6 +82,9 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAProgramRestController#updateProgram", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAProgramRestController#updateTestAssignments", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQASubmissionRestController#approveLateSubmission", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAShipmentRestController#savePrep", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAShipmentRestController#saveShipment", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAShipmentRestController#ship", EQAGuards.PROVIDER);
         // Participant lane — bench work, so the legacy roles still admit it
         WRITE_GUARDS.put("EQAMyProgramsRestController#createMyProgram", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQAMyProgramsRestController#updateMyProgram", EQAGuards.PARTICIPANT);

@@ -122,23 +122,6 @@ public class EQAParticipantResultRestController extends BaseRestController {
         return ResponseEntity.ok(Map.of("id", scored.getId(), "submissionStatus", scored.getSubmissionStatus().name()));
     }
 
-    private String stringField(Map<String, Object> body, String key) {
-        Object value = body.get(key);
-        return value == null ? null : String.valueOf(value);
-    }
-
-    private Long longField(Map<String, Object> body, String key) {
-        Object value = body.get(key);
-        if (value == null || String.valueOf(value).isBlank()) {
-            return null;
-        }
-        try {
-            return Long.valueOf(String.valueOf(value));
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(key + " must be a number");
-        }
-    }
-
     private Long longOrNull(String value) {
         try {
             return Long.valueOf(value);

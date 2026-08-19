@@ -100,4 +100,7 @@
 
   <!-- EQA V2.4 — OGC-612: scoring verdict, per-aliquot result grain, unblind provenance -->
   <include file="liquibase/qa/027-add-eqa-scoring-and-unblind-provenance.xml" />
+
+  <!-- EQA V2.5 T-25 — OGC-613: shipping_box.eqa_cycle_id + FIRST_SHIPMENT_SENT -->
+  <include file="liquibase/qa/028-eqa-shipment-workbench.xml" />
 </databaseChangeLog>

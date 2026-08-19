@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
@@ -47,6 +48,9 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
 
     @Autowired
     private EQAPanelSampleDAO eqaPanelSampleDAO;
+
+    @Autowired
+    private AnalyteService analyteService;
 
     public EQAPanelServiceImpl() {
         super(EQAPanel.class);
@@ -168,6 +172,8 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
             dto.put("sampleCode", sample.getSampleCode());
             dto.put("blindCode", sample.getBlindCode());
             dto.put("analyteId", sample.getAnalyteId());
+            // Names, not ids, so the pack list a courier reads is legible (T-25).
+            dto.put("analyteName", analyteName(sample.getAnalyteId()));
             // The blinding guarantee: nulls, not omissions, so the shape is stable and a
             // client cannot infer anything from missing keys.
             dto.put("targetValue", revealTargets ? sample.getTargetValue() : null);
@@ -178,6 +184,16 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
             rows.add(dto);
         }
         return rows;
+    }
+
+    /**
+     * The analyte's name, or null when the sample names no analyte.
+     * {@code analyteService.get} throws rather than answering null for a missing
+     * row, which fk_eqa_panel_sample_analyte makes unreachable — so there is no
+     * not-found branch to write here.
+     */
+    private String analyteName(Long analyteId) {
+        return analyteId == null ? null : analyteService.get(String.valueOf(analyteId)).getAnalyteName();
     }
 
     private List<EQAPanelSample> samplesOf(Long panelId) {

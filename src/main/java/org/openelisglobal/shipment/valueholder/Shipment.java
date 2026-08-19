@@ -66,6 +66,15 @@ public class Shipment extends BaseObject<Integer> {
     @Column(name = "repeat_of_shipment_id")
     private Integer repeatOfShipmentId;
 
+    /**
+     * The acting user, as {@code shipping_box} records it. Mapped explicitly
+     * because {@link BaseObject#getSysUserId()} is transient, and the column is NOT
+     * NULL — until EQA dispatch (T-25) no code path inserted a shipment through
+     * Hibernate, so every insert would have failed on it.
+     */
+    @Column(name = "sys_user_id", nullable = false)
+    private Integer systemUserId;
+
     public Shipment() {
         this.status = ShipmentStatus.PENDING;
     }
@@ -150,6 +159,14 @@ public class Shipment extends BaseObject<Integer> {
 
     public void setStatus(ShipmentStatus status) {
         this.status = status;
+    }
+
+    public Integer getSystemUserId() {
+        return systemUserId;
+    }
+
+    public void setSystemUserId(Integer systemUserId) {
+        this.systemUserId = systemUserId;
     }
 
     public Integer getRepeatOfShipmentId() {

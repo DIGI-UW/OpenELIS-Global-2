@@ -49,6 +49,17 @@ public interface ShippingBoxService {
     List<ShippingBox> getBoxesByState(BoxState state);
 
     /**
+     * Get the boxes distributing one EQA cycle's panel material, each with its
+     * shipment already loaded (FR-V2.5-13). Destination facilities are deliberately
+     * left lazy: the EQA workbench names participants from its own enrollment rows,
+     * which it needs whether or not a box exists yet.
+     *
+     * @param eqaCycleId EQA cycle id
+     * @return List of shipping boxes
+     */
+    List<ShippingBox> getBoxesByEqaCycle(Long eqaCycleId);
+
+    /**
      * Get shipping boxes by destination facility
      *
      * @param facilityId Destination facility ID

@@ -31,6 +31,7 @@ import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard"
 import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
 import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
+import ProviderWorkbenchPage from "./components/eqa/Provider/Workbench/ProviderWorkbenchPage";
 import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import EQAResultsPage from "./components/eqa/EQAResultsPage";
@@ -819,6 +820,24 @@ export default function App() {
                   path="/qa/eqa/distribution"
                   exact
                   component={() => <EQADistributionDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Provider prep + shipping workbenches (T-25). Same page with
+                    and without a cycle: without one it lists provider cycles,
+                    which is what makes it reachable until T-24 ships the
+                    scheme list qa/019's menu row points at. */}
+                <SecureRoute
+                  path="/qa/eqa/provider/cycles/:cycleId/workbench"
+                  exact
+                  component={() => <ProviderWorkbenchPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/qa/eqa/provider/workbench"
+                  exact
+                  component={() => <ProviderWorkbenchPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />

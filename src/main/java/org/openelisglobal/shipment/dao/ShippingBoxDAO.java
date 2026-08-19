@@ -42,6 +42,16 @@ public interface ShippingBoxDAO extends BaseDAO<ShippingBox, Integer> {
     List<ShippingBox> findByDestinationFacilityId(Integer facilityId);
 
     /**
+     * Find the boxes distributing one EQA cycle's panel material, with their
+     * shipments joined: the provider workbench renders every participant's box in
+     * one go (FR-V2.5-13), so this is one query rather than one per participant.
+     *
+     * @param eqaCycleId EQA cycle id
+     * @return List of shipping boxes, shipment association initialised
+     */
+    List<ShippingBox> findByEqaCycleId(Long eqaCycleId);
+
+    /**
      * Find shipping boxes created within a date range
      *
      * @param startDate Start date

@@ -121,6 +121,17 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ShippingBox> getBoxesByEqaCycle(Long eqaCycleId) {
+        try {
+            return shippingBoxDAO.findByEqaCycleId(eqaCycleId);
+        } catch (Exception e) {
+            logger.error("Error getting shipping boxes by EQA cycle", e);
+            throw new LIMSRuntimeException("Error getting shipping boxes by EQA cycle", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ShippingBox> getBoxesByDestinationFacility(Integer facilityId) {
         try {
             List<ShippingBox> boxes = shippingBoxDAO.findByDestinationFacilityId(facilityId);

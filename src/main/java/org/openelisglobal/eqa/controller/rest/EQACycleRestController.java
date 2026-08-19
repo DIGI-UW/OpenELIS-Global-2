@@ -256,11 +256,6 @@ public class EQACycleRestController extends BaseRestController {
     }
 
     /** Tolerates non-string JSON values rather than throwing ClassCastException. */
-    private String stringField(Map<String, Object> body, String key) {
-        Object value = body.get(key);
-        return value == null ? null : String.valueOf(value);
-    }
-
     /**
      * The session's user id as the audit actor. A manual transition with no
      * resolvable actor is refused rather than recorded anonymously.
