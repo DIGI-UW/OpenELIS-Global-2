@@ -777,7 +777,8 @@ export default function App() {
                   path="/qa/eqa/my-cycles"
                   exact
                   component={() => <MyCyclesPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
                 />
                 <SecureRoute
                   path="/qa/eqa/my-programs"
