@@ -15,7 +15,9 @@ claimed in this milestone.
 
 The milestone includes manual CSV export, scoped readiness, direct repair links
 for organism and antibiotic mapping gaps, a deterministic seven-day
-first-isolate option, and an audit record for each generated file.
+first-isolate option, and an audit record for each generated file. Follow-on
+roadmap slices extend the same workflow one export vocabulary or delivery
+behavior at a time.
 
 The milestone does not include scheduled delivery, SFTP or email, TXT output,
 lab-profile packaging, TB export, phenotype columns, national aggregation,
@@ -117,10 +119,12 @@ Configure, Preview, and Generate workflow.
 - The M-09 mock labels its seven-day default “WHO GLASS standard.” This
   milestone uses a deterministic local first-isolate rule and does not make that
   standards claim until the exact current guidance is verified.
-- The M-09 and OGC-794 artifacts prescribe tables, routes, column sets,
-  sub-pages, scheduling, and delivery mechanisms. Those are engineering ideas,
-  not product requirements; this milestone carries only the user-visible
-  outcomes above.
+- M-09's tables, routes, and service/storage suggestions are not binding
+  implementation constraints. Its user-visible date presets, export filters,
+  advanced de-duplication choices, output choices, mapping workflow, history,
+  and scheduled-delivery outcomes are functional requirements. They remain
+  explicit follow-on slices where this first manual-export milestone does not
+  yet implement them.
 - Specimen, origin, patient-type, department, breakpoint-standard, and phenotype
   mapping are not silently invented here. They remain later work because the
   current M3 foundation has authoritative organism and antibiotic mappings but
@@ -143,3 +147,38 @@ Configure, Preview, and Generate workflow.
   counts, page, and visible rows.
 - **SC-004**: Focused service, controller, ORM, Liquibase update/rollback,
   frontend, accessibility, and Playwright tests pass without arbitrary waits.
+
+## Follow-on Story - Export Mapped Specimen Codes
+
+As a surveillance user, I need each exported isolate to carry the configured
+WHONET specimen code so that a locally named sample type does not produce an
+ambiguous surveillance value.
+
+**Acceptance scenarios**
+
+1. Given a finalized routine-bacteriology case whose sample type has a WHONET
+   specimen code, when the user previews and generates the export, then the
+   preview and CSV use that code rather than the local display name.
+2. Given a selected case whose sample type has no WHONET specimen code, when the
+   user previews the export, then all rows for that isolate are excluded and one
+   warning names the affected sample type and the number of excluded rows.
+3. Given a mixed selected set, when one sample type is unmapped, then mapped
+   rows remain available for generation and only affected rows are excluded.
+4. The warning opens the affected sample type's existing administration
+   workflow at its WHONET code control and provides a return path to the exact
+   export preview.
+5. After an administrator saves the missing code and returns, refreshing the
+   preview clears the warning and includes the repaired rows without changing
+   the other export settings.
+
+**Requirements**
+
+- **FR-013**: Specimen readiness MUST be evaluated only for sample types used by
+  the selected export set.
+- **FR-014**: A sample type MUST have one user-visible WHONET specimen code in
+  its owning administration workflow; the export workflow MUST NOT introduce a
+  parallel specimen-mapping catalog.
+- **FR-015**: Missing specimen mapping MUST exclude only affected export rows
+  and MUST block generation only when no valid row remains.
+- **FR-016**: Mapping repair and return navigation MUST preserve the canonical
+  export preview state and remain keyboard accessible.

@@ -11,6 +11,10 @@ export interface SeededMicrobiologyCase {
   patientId: string;
   patientExternalId?: string;
   analysisId: string;
+  isolateId?: string;
+  astRunId?: string;
+  analyzerInstrumentId?: string;
+  analyzerCardId?: string;
   siblingCaseId?: string;
   organismId?: string;
   antibioticId?: string;
@@ -57,6 +61,7 @@ export interface SeededMicrobiologyReferenceAdmin extends SeededMicrobiologyCase
 
 export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyReferenceAdmin {
   exportDate: string;
+  sampleTypeId: string;
   unmappedOrganismId: string;
 }
 
@@ -186,6 +191,7 @@ export async function seedMicrobiologyReferenceAdmin(
     "activeBreakpointStandardId",
     "loadedBreakpointStandardId",
     "methodId",
+    "sampleTypeId",
   ] as const;
   for (const field of required) {
     if (!seeded[field]) {
@@ -340,6 +346,7 @@ export async function seedMicrobiologyWhonetExport(
     }
   }
   const reference = seeded as SeededMicrobiologyReferenceAdmin & {
+    sampleTypeId: string;
     unmappedOrganismId: string;
   };
   const antibiotics = (

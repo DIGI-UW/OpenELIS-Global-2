@@ -39,6 +39,7 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -115,6 +116,13 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         for (Candidate candidate : candidates) {
             List<MicroAstReading> readings = valuesFor(reportableRunsByIsolate, candidate.isolate.getId()).stream()
                     .flatMap(run -> valuesFor(readingsByRun, run.getId()).stream()).toList();
+            if (!hasText(candidate.context.specimenType)) {
+                int excluded = Math.max(1, readings.size());
+                excludedRows += excluded;
+                addWarning(warnings, "SPECIMEN_MAPPING_REQUIRED", "specimen-types", candidate.context.specimenTypeId,
+                        candidate.context.specimenTypeLabel, excluded);
+                continue;
+            }
             Optional<MicroOrganism> organism = optionalReference(candidate.isolate.getOrganismId(), organismDAO::get);
             if (organism.isEmpty() || !hasText(organism.get().getWhonetCode())) {
                 int excluded = Math.max(1, readings.size());
@@ -256,8 +264,10 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         context.collectionDate = sampleItem == null || sampleItem.getCollectionDate() == null ? ""
                 : sampleItem.getCollectionDate().toLocalDateTime().toLocalDate()
                         .format(DateTimeFormatter.ISO_LOCAL_DATE);
-        context.specimenType = sampleItem == null || sampleItem.getTypeOfSample() == null ? ""
-                : safe(sampleItem.getTypeOfSample().getDescription());
+        TypeOfSample sampleType = sampleItem == null ? null : sampleItem.getTypeOfSample();
+        context.specimenTypeId = sampleType == null ? "" : safe(sampleType.getId());
+        context.specimenTypeLabel = sampleType == null ? "" : safe(sampleType.getDescription());
+        context.specimenType = sampleType == null ? "" : safe(sampleType.getWhonetCode());
         context.latitude = sample == null || sample.getGpsLatitude() == null ? "" : sample.getGpsLatitude().toString();
         context.longitude = sample == null || sample.getGpsLongitude() == null ? ""
                 : sample.getGpsLongitude().toString();
@@ -357,6 +367,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         private String accessionNumber;
         private String enteredDate;
         private String collectionDate;
+        private String specimenTypeId;
+        private String specimenTypeLabel;
         private String specimenType;
         private String latitude;
         private String longitude;

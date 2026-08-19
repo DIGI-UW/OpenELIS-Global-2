@@ -24,14 +24,13 @@ import {
 // Mirrors the Test Catalog Editor's Terminology UX (Source/Code/Relationship,
 // inline edit, draft-row add). Persists through
 // `GET/PUT /rest/sample-types/{id}/terminology`.
-const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL", "WHONET"];
+const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL"];
 const RELATIONSHIPS = ["SAME_AS", "BROADER_THAN", "NARROWER_THAN"];
 const SOURCE_TAG = {
   LOINC: "blue",
   SNOMED: "teal",
   CIEL: "purple",
   OCL: "cyan",
-  WHONET: "magenta",
 };
 
 const emptyDraft = () => ({ source: "", code: "", relationship: "" });

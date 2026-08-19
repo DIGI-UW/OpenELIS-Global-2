@@ -80,3 +80,24 @@ fixtures, tests, and UI do not receive migrations.
 Scheduled delivery, SFTP/email, TXT, profile packaging, exact re-download, TB,
 phenotypes, expert rules, national aggregation, GLASS submission, and new
 specimen/origin/patient/department mapping masters.
+
+## R8 Engineering Addendum - Specimen Mapping
+
+R8 closes the first remaining vocabulary gap without changing the established
+long-format file shape. `TypeOfSample` already owns a nullable WHONET specimen
+code and Sample Type Management already carries that value in its REST contract.
+The exporter therefore reads the existing field, projects it into the existing
+`SPECIMEN_TYPE` column, and links missing mappings to the owning sample-type
+editor. No microbiology-specific specimen table or mapping endpoint is added.
+
+The generic sample-type terminology editor currently also offers `WHONET` as a
+source even though it is not synchronized with the dedicated specimen code.
+That competing authoring option is removed from the touched admin surface; the
+single export-relevant value is edited with the sample type itself. Existing
+organism and antibiotic repair behavior is unchanged.
+
+The repair URL carries the exact canonical export preview as a validated local
+return destination. The sample-type editor focuses the WHONET control on entry
+and exposes an explicit return action after save. The service-created WHONET
+scenario supplies both mapped and unmapped sample types through existing
+services. No migration is added because no data model changes.

@@ -1,18 +1,23 @@
 package org.openelisglobal.common.management.controller.rest;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.view.PageBuilderService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -26,6 +31,14 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 @ContextConfiguration(classes = { SampleTypeManagementRestControllerSecurityTest.TestConfig.class })
 @TestPropertySource("classpath:common.properties")
 public class SampleTypeManagementRestControllerSecurityTest extends SecuritySliceMockMvcTest {
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
+    @Before
+    public void resetSharedServiceMocks() {
+        reset(typeOfSampleService);
+    }
 
     @Test
     public void testSampleTypeManagement_WithoutAuthentication_Returns401() throws Exception {
@@ -121,6 +134,18 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     public void terminology_AdminRole_PassesAuth() throws Exception {
         mockMvc.perform(get("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void terminology_AdminRole_RejectsWhonetAsAParallelSpecimenMapping() throws Exception {
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setId("1");
+        when(typeOfSampleService.getTypeOfSampleById("1")).thenReturn(typeOfSample);
+
+        mockMvc.perform(put("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"BLD\"}]}"))
+                .andExpect(status().isUnprocessableEntity());
     }
 
     // Bidirectional associated-tests endpoints carry the same ADMIN gate.

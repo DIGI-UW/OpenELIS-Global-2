@@ -61,4 +61,27 @@ describe("WhonetRoutes", () => {
       buildWhonetSearch(parseWhonetSearch("?step=preview", now), now),
     ).toContain("step=preview");
   });
+
+  it("builds specimen repair URLs with an exact local preview return", () => {
+    const returnTo =
+      "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=preview&page=2&pageSize=50";
+
+    expect(
+      getWhonetMappingRepairUrl("specimen-types", "sample type / 1", returnTo),
+    ).toBe(
+      "/MasterListsPage/SampleTypeManagement/sample%20type%20%2F%201/basic-info?focus=whonet&returnTo=%2FMicrobiology%2Fwhonet%3Ffrom%3D2026-07-01%26to%3D2026-07-31%26significance%3DCLINICALLY_SIGNIFICANT%26dedup%3DFIRST_ISOLATE_7_DAY%26step%3Dpreview%26page%3D2%26pageSize%3D50",
+    );
+  });
+
+  it("does not preserve external return destinations", () => {
+    expect(
+      getWhonetMappingRepairUrl(
+        "specimen-types",
+        "sample-type-1",
+        "https://example.org/not-openelis",
+      ),
+    ).toBe(
+      "/MasterListsPage/SampleTypeManagement/sample-type-1/basic-info?focus=whonet",
+    );
+  });
 });

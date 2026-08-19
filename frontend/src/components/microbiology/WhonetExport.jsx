@@ -52,6 +52,12 @@ const formatRequestError = (intl, error) => {
   return intl.formatMessage({ id: "microbiology.whonet.error.generic" });
 };
 
+const mappingRepairMessage = {
+  organisms: "microbiology.whonet.mapping.fixOrganism",
+  antibiotics: "microbiology.whonet.mapping.fixAntibiotic",
+  "specimen-types": "microbiology.whonet.mapping.fixSpecimen",
+};
+
 const WhonetExport = ({ service = defaultService, now }) => {
   const intl = useIntl();
   const history = useHistory();
@@ -470,6 +476,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
                     const repairUrl = getWhonetMappingRepairUrl(
                       warning.resource,
                       warning.resourceId,
+                      `${location.pathname}?${canonicalSearch}`,
                     );
                     return (
                       <div
@@ -493,10 +500,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
                             renderIcon={Edit}
                           >
                             {intl.formatMessage({
-                              id:
-                                warning.resource === "organisms"
-                                  ? "microbiology.whonet.mapping.fixOrganism"
-                                  : "microbiology.whonet.mapping.fixAntibiotic",
+                              id: mappingRepairMessage[warning.resource],
                             })}
                           </CarbonLink>
                         )}

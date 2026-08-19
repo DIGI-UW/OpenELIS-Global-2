@@ -2,6 +2,7 @@ import { expect, test } from "../../../helpers/test-base";
 import type { Download } from "@playwright/test";
 import { seedMicrobiologyWhonetExport } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+import { Sidenav } from "../../../fixtures/sidenav";
 
 const currentPeriodQuery = (exportDate: string) => {
   return new URLSearchParams({
@@ -40,11 +41,10 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
 
     await test.step("Reach the export through configured navigation", async () => {
       await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
-      await page.getByRole("button", { name: "Open menu" }).click();
-      await page
-        .getByRole("button", { name: "Microbiology", exact: true })
-        .click();
-      const exportLink = page.getByRole("link", {
+      const sidenav = new Sidenav(page);
+      await sidenav.ensureExpanded();
+      await sidenav.expandMenu("Microbiology");
+      const exportLink = sidenav.nav.getByRole("link", {
         name: "WHONET export",
         exact: true,
       });
@@ -103,6 +103,73 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
         "2",
       );
       await expect(metric("Mappable isolates").locator("strong")).toHaveText(
+        "0",
+      );
+      await expect(metric("Eligible rows").locator("strong")).toHaveText("0");
+      await expect(metric("Rows excluded").locator("strong")).toHaveText("4");
+      await expect(
+        page.getByRole("button", { name: "Generate CSV" }),
+      ).toBeDisabled();
+
+      const previewUrl = page.url();
+      const previewLocation = new URL(previewUrl);
+      const previewReturnTo = `${previewLocation.pathname}${previewLocation.search}`;
+      const mappingReadiness = page.getByLabel("Mapping readiness");
+      const specimenRepairHref =
+        `/MasterListsPage/SampleTypeManagement/${seeded.sampleTypeId}/basic-info?` +
+        new URLSearchParams({
+          focus: "whonet",
+          returnTo: previewReturnTo,
+        }).toString();
+      const specimenRepairLink = mappingReadiness.locator(
+        `a[href="${specimenRepairHref}"]`,
+      );
+      await expect(specimenRepairLink.locator("..")).toContainText(
+        "4 rows excluded",
+      );
+      await expect(specimenRepairLink).toHaveAccessibleName(
+        "Fix specimen mapping",
+      );
+      await expect(specimenRepairLink).toHaveAttribute(
+        "href",
+        specimenRepairHref,
+      );
+
+      await specimenRepairLink.click();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/MasterListsPage/SampleTypeManagement/${seeded.sampleTypeId}/basic-info`,
+        ),
+      );
+      const specimenCode = page.getByLabel("WHONET specimen code");
+      await expect(specimenCode).toBeFocused();
+      await specimenCode.fill("BLD");
+      const saveResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(`/rest/sample-types/${seeded.sampleTypeId}`) &&
+          response.request().method() === "PUT" &&
+          response.status() === 200,
+      );
+      await page.getByRole("button", { name: "Save" }).click();
+      await saveResponse;
+
+      const refreshedPreview = page.waitForResponse(
+        (response) =>
+          response.url().includes("/rest/microbiology/whonet/preview?") &&
+          response.request().method() === "GET" &&
+          response.status() === 200,
+      );
+      await page
+        .getByRole("link", { name: "Return to WHONET preview" })
+        .click();
+      await refreshedPreview;
+      await expect(page).toHaveURL(previewUrl);
+      await expect(
+        mappingReadiness.getByRole("link", { name: "Fix specimen mapping" }),
+      ).toHaveCount(0);
+      await expect(metric("Mappable isolates").locator("strong")).toHaveText(
         "1",
       );
       await expect(metric("Eligible rows").locator("strong")).toHaveText("2");
@@ -118,14 +185,12 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       const repairHref =
         `/MasterListsPage/MicrobiologyReference/organisms?edit=` +
         seeded.unmappedOrganismId;
-      const mappingReadiness = page.getByLabel("Mapping readiness");
       const repairLink = mappingReadiness.locator(`a[href="${repairHref}"]`);
       const warning = repairLink.locator("..");
       await expect(warning).toContainText("2 rows excluded");
       await expect(repairLink).toHaveAccessibleName("Fix organism mapping");
       await expect(repairLink).toHaveAttribute("href", repairHref);
 
-      const previewUrl = page.url();
       await repairLink.click();
       await expect(page).toHaveURL(
         new RegExp(`edit=${seeded.unmappedOrganismId}`),
@@ -158,10 +223,12 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       const accessionIndex = header.indexOf("LAB_NUMBER");
       const antibioticIndex = header.indexOf("ANTIBIOTIC");
       const organismIndex = header.indexOf("ORGANISM");
+      const specimenIndex = header.indexOf("SPECIMEN_TYPE");
       const interpretationIndex = header.indexOf("RESULT");
       expect(accessionIndex).toBeGreaterThanOrEqual(0);
       expect(antibioticIndex).toBeGreaterThanOrEqual(0);
       expect(organismIndex).toBeGreaterThanOrEqual(0);
+      expect(specimenIndex).toBeGreaterThanOrEqual(0);
       expect(interpretationIndex).toBeGreaterThanOrEqual(0);
 
       const seededRows = lines
@@ -175,13 +242,24 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
             antibiotic: row[antibioticIndex],
             interpretation: row[interpretationIndex],
             organism: row[organismIndex],
+            specimen: row[specimenIndex],
           }))
           .sort((left, right) =>
             left.antibiotic.localeCompare(right.antibiotic),
           ),
       ).toEqual([
-        { antibiotic: "CIPUAT", interpretation: "S", organism: "refuat" },
-        { antibiotic: "GENUAT", interpretation: "R", organism: "refuat" },
+        {
+          antibiotic: "CIPUAT",
+          interpretation: "S",
+          organism: "refuat",
+          specimen: "BLD",
+        },
+        {
+          antibiotic: "GENUAT",
+          interpretation: "R",
+          organism: "refuat",
+          specimen: "BLD",
+        },
       ]);
     });
   });
