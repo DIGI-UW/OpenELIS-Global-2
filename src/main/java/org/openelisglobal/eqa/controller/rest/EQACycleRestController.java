@@ -75,15 +75,20 @@ public class EQACycleRestController extends BaseRestController {
      * OGC-933: the printed CPHL-format performance report. Streams a PDF rather
      * than JSON, so the browser can open it straight from a link.
      *
-     * @param labEnrollmentId provider-side per-participant variant; omit for the
-     *                        whole cycle
+     * <p>
+     * An unknown cycle is a missing resource, so it answers 404 rather than the 422
+     * the class's bad-input handler would otherwise give a path variable that names
+     * no row.
      */
     @GetMapping(value = "/cycles/{cycleId}/performance-report", produces = MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<byte[]> performanceReport(@PathVariable Long cycleId,
-            @RequestParam(required = false) Long labEnrollmentId) {
-        byte[] pdf = performanceReportService.generatePerformanceReport(cycleId, labEnrollmentId);
-        String filename = "eqa-performance-report-cycle-" + cycleId
-                + (labEnrollmentId == null ? "" : "-participant-" + labEnrollmentId) + ".pdf";
+    public ResponseEntity<byte[]> performanceReport(@PathVariable Long cycleId) {
+        byte[] pdf;
+        try {
+            pdf = performanceReportService.generatePerformanceReport(cycleId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+        String filename = "eqa-performance-report-cycle-" + cycleId + ".pdf";
         return ResponseEntity.ok().header("Content-Disposition", "inline; filename=\"" + filename + "\"")
                 .contentType(MediaType.APPLICATION_PDF).body(pdf);
     }

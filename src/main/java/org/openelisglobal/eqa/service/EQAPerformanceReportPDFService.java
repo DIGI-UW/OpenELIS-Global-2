@@ -7,12 +7,6 @@ package org.openelisglobal.eqa.service;
  */
 public interface EQAPerformanceReportPDFService {
 
-    /**
-     * Renders one cycle's report.
-     *
-     * @param labEnrollmentId narrows the report to a single participant enrollment,
-     *                        for the provider-side per-participant variant; null
-     *                        reports the whole cycle
-     */
-    byte[] generatePerformanceReport(Long cycleId, Long labEnrollmentId);
+    /** Renders one cycle's report. Unsubmitted (DRAFT) results are excluded. */
+    byte[] generatePerformanceReport(Long cycleId);
 }
