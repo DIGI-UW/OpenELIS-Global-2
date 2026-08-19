@@ -382,16 +382,21 @@ branch.
       completeness; schema validity alone is insufficient.
 - [x] Make GeneXpert and Fluoro fixtures pass without losing a field used by the
       current setup or runtime.
+- [x] Preserve the established conditional shape: socket profiles do not require
+      an invented model, and FILE profiles may be column-only without default
+      test rows or a tabular-header declaration.
 - [x] Delete the parallel profile/compatibility artifacts rather than retaining
       a compatibility reader, migration adapter, or second runtime path.
 - [x] Keep analyzer/model/manufacturer/code/default literals in profile fixture
       data only; production contract validation is generic over loaded profiles.
 
-**BR-E0 exit evidence:** 22 focused Bridge contract tests validate both fixtures
+**BR-E0 exit evidence:** 24 focused Bridge contract tests validate both fixtures
 and reject missing communication/default behavior, duplicate raw identities,
 operational-QC content, instance-specific/site identifiers, contradictory
 registration outcomes, incomplete recognition evidence, and parallel profile
-artifacts. The complete Bridge suite passes 622 tests with zero failures or
+artifacts. They also reject universal socket/model assumptions that would make
+the evolved contract incompatible with established FILE profiles. The complete
+Bridge suite passes 624 tests with zero failures or
 errors (3 environment-dependent serial tests skipped); Prettier and diff checks
 pass. Analyzer-specific names occur only in the two profile fixture documents.
 
