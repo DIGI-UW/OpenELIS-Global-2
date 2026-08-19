@@ -73,8 +73,30 @@ public abstract class EQASpineTestBase extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
+        ensureSystemUserOne();
         executeDataSetWithStateManagement("testdata/eqa-cycle-spine.xml");
         cleanEqaTables();
+    }
+
+    /**
+     * {@link #ADMIN_USER_ID} has to resolve to a usable entity, not just to a
+     * number: {@code eqa_cycle.created_by} and
+     * {@code eqa_analyst_competency_event.analyst_id} both reference
+     * {@code system_user}.
+     *
+     * <p>
+     * Other suites truncate {@code system_user}, and the web base restores its
+     * admin row from the sequence rather than at id 1, so in a full-suite run the
+     * row can be missing entirely. The related null-version trap is repaired in the
+     * web base, which every suite shares.
+     */
+    private void ensureSystemUserOne() {
+        jdbc.update(
+                "INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name,"
+                        + " initials, is_active, is_employee, lastupdated)"
+                        + " SELECT ?, 'EQA_TEST_SEED', 'eqa_test_seed', 'Seed', 'EQA', 'ES', 'Y', 'Y', now()"
+                        + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_user WHERE id = ?)",
+                ADMIN_USER_ID, ADMIN_USER_ID);
     }
 
     @After
