@@ -85,6 +85,19 @@ public class AnalyzerSiteBindingLiquibaseTest {
         assertTrue("every structural changeset must define rollback", elements(migration, "rollback").size() >= 2);
     }
 
+    @Test
+    public void migrationRegistersBindingRevisionForDurableAuditHistory() throws Exception {
+        Document migration = parse(MIGRATION);
+
+        Element auditRegistration = elements(migration, "insert").stream()
+                .filter(insert -> "reference_tables".equals(insert.getAttribute("tableName"))).findFirst()
+                .orElseThrow();
+        Set<String> registeredValues = attributes(childColumns(auditRegistration), "value");
+
+        assertTrue(registeredValues.contains("analyzer_site_binding_revision"));
+        assertTrue(registeredValues.contains("Y"));
+    }
+
     private static Document parse(Path path) throws Exception {
         assertTrue("missing changelog " + path, Files.isRegularFile(path));
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();

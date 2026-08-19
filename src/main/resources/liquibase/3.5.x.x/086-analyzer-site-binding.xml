@@ -178,4 +178,19 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="OGC-1054-analyzer-site-binding-audit-reference" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(name) = 'analyzer_site_binding_revision'
+            </sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="analyzer_site_binding_revision"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+    </changeSet>
+
 </databaseChangeLog>
