@@ -26,7 +26,7 @@ import { Add, Copy } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getAnalyzerTypeCatalog } from "../../../services/analyzerService";
 import AnalyzerTypeLifecycleModals from "./AnalyzerTypeLifecycleModals";
 import "./AnalyzerTypeManagement.scss";
 
@@ -90,7 +90,7 @@ const AnalyzerTypeManagement = () => {
   }, [location.search]);
 
   const fetchAnalyzerTypes = useCallback(() => {
-    getFromOpenElisServer("/rest/analyzer-types", (data) => {
+    getAnalyzerTypeCatalog((data) => {
       if (!data || !Array.isArray(data.types) || !data.summary) {
         setCatalog(null);
         setLoadError(true);

@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route, useLocation } from "react-router-dom";
+import { vi } from "vitest";
 import AnalyzerForm from "../AnalyzerForm";
 import messages from "../../../../languages/en.json";
 import * as analyzerService from "../../../../services/analyzerService";
@@ -12,9 +13,6 @@ import * as analyzerService from "../../../../services/analyzerService";
 vi.mock("../../../../services/analyzerService", () => ({
   getAnalyzer: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
-  getAnalyzerTypes: vi.fn(),
-  getDefaultConfigs: vi.fn(),
-  getDefaultConfig: vi.fn(),
   createAnalyzer: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
@@ -68,13 +66,6 @@ describe("AnalyzerForm profile revision pin", () => {
     analyzerService.getAnalyzerTypeCatalog.mockImplementation((callback) => {
       callback(catalog);
     });
-    analyzerService.getAnalyzerTypes.mockImplementation((filters, callback) => {
-      callback([]);
-    });
-    analyzerService.getDefaultConfigs.mockImplementation((callback) => {
-      callback([]);
-    });
-    analyzerService.getDefaultConfig.mockImplementation(() => {});
     analyzerService.createAnalyzer.mockImplementation((data, callback) => {
       callback({ id: "501", ...data });
     });

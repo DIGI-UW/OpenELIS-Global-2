@@ -11,11 +11,15 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { getAnalyzerTypeCatalog } from "../../../services/analyzerService";
 import AnalyzerTypeManagement from "./AnalyzerTypeManagement";
 
 vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
+}));
+vi.mock("../../../services/analyzerService", () => ({
+  getAnalyzerTypeCatalog: vi.fn(),
 }));
 
 const catalog = {
@@ -118,8 +122,7 @@ describe("AnalyzerTypeManagement", () => {
       toJSON: () => ({}),
     });
     window.history.replaceState({}, "", "/analyzers/types");
-    getFromOpenElisServer.mockImplementation((endpoint, callback) => {
-      expect(endpoint).toBe("/rest/analyzer-types");
+    getAnalyzerTypeCatalog.mockImplementation((callback) => {
       callback(catalog);
     });
     postToOpenElisServerJsonResponse.mockImplementation(
@@ -362,10 +365,6 @@ describe("AnalyzerTypeManagement", () => {
 
   it("loads revision history through the profile history action", async () => {
     getFromOpenElisServer.mockImplementation((endpoint, callback) => {
-      if (endpoint === "/rest/analyzer-types") {
-        callback(catalog);
-        return;
-      }
       expect(endpoint).toBe("/rest/analyzer-types/site.mindray/history");
       callback([
         {

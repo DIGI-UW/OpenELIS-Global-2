@@ -67,7 +67,14 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
         if (analyzer == null) {
             throw new AnalyzerProfileBindingException("Analyzer is required");
         }
-        AnalyzerProfileBinding binding = resolveActiveRevision(profileId, profileRevision, sysUserId);
+        String normalizedProfileId = normalizeProfileId(profileId);
+        AnalyzerProfileBinding existing = analyzer.getProfileBinding();
+        if (existing != null && normalizedProfileId.equals(existing.getProfileId())
+                && profileRevision == existing.getProfileRevision()) {
+            return existing;
+        }
+
+        AnalyzerProfileBinding binding = resolveActiveRevision(normalizedProfileId, profileRevision, sysUserId);
         analyzer.setProfileBinding(binding);
         return binding;
     }

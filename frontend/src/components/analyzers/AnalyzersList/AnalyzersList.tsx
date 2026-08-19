@@ -593,7 +593,7 @@ const AnalyzersList = () => {
                               testId = `analyzer-actions-${row.id}`;
                               cellContent = analyzer ? (
                                 <OverflowMenu
-                                  ariaLabel={intl.formatMessage({
+                                  aria-label={intl.formatMessage({
                                     id: "analyzer.table.actions",
                                   })}
                                   data-testid={`analyzer-row-overflow-${row.id}`}

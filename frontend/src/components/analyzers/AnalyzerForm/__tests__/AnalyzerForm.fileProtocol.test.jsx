@@ -1,27 +1,48 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
+import { vi } from "vitest";
 import AnalyzerForm from "../AnalyzerForm";
 import messages from "../../../../languages/en.json";
 import * as analyzerService from "../../../../services/analyzerService";
 
 vi.mock("../../../../services/analyzerService", () => ({
   getAnalyzer: vi.fn(),
-  getDefaultConfigs: vi.fn(),
-  getDefaultConfig: vi.fn(),
-  getAnalyzerTypes: vi.fn(),
+  getAnalyzerTypeCatalog: vi.fn(),
   createAnalyzer: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
 
-// Render the page-based AnalyzerForm under a MemoryRouter with a route that
-// carries the edit `:id` param. The component reads the id via useParams()
-// and calls getAnalyzer(id, cb) on mount — tests mock that service.
-const renderAtEditRoute = (analyzerId) => {
-  return render(
+const catalog = {
+  schemaVersion: "1.0",
+  catalogFingerprint: "sha256:catalog",
+  summary: { total: 2, inUse: 2, needsAttention: 2, deactivated: 0 },
+  types: [
+    {
+      profileId: "site.file",
+      revision: 3,
+      revisionFingerprint: "sha256:file",
+      displayName: "Site FILE Analyzer",
+      source: "SITE",
+      status: "ACTIVE",
+      protocol: "FILE",
+    },
+    {
+      profileId: "shipped.astm",
+      revision: 2,
+      revisionFingerprint: "sha256:astm",
+      displayName: "Shipped ASTM Analyzer",
+      source: "SHIPPED",
+      status: "ACTIVE",
+      protocol: "ASTM",
+    },
+  ],
+};
+
+const renderAtEditRoute = (analyzerId) =>
+  render(
     <MemoryRouter initialEntries={[`/analyzers/${analyzerId}/edit`]}>
       <IntlProvider locale="en" messages={messages}>
         <Route path="/analyzers/:id/edit">
@@ -30,191 +51,85 @@ const renderAtEditRoute = (analyzerId) => {
       </IntlProvider>
     </MemoryRouter>,
   );
-};
 
-const renderNewRoute = () => {
-  return render(
-    <MemoryRouter initialEntries={["/analyzers/new"]}>
-      <IntlProvider locale="en" messages={messages}>
-        <Route path="/analyzers/new">
-          <AnalyzerForm />
-        </Route>
-      </IntlProvider>
-    </MemoryRouter>,
-  );
-};
-
-const PLUGIN_TYPES = [
-  { id: "1", name: "Generic ASTM", protocol: "ASTM", isGenericPlugin: true },
-  { id: "2", name: "Generic HL7", protocol: "HL7", isGenericPlugin: true },
-  { id: "3", name: "Generic File", protocol: "FILE", isGenericPlugin: true },
-];
-
-const DEFAULT_CONFIGS = [
-  {
-    id: "astm/genexpert-astm",
-    protocol: "ASTM",
-    analyzerName: "GeneXpert ASTM",
-  },
-  {
-    id: "file/quantstudio",
-    protocol: "FILE",
-    analyzerName: "QuantStudio QS5/QS7",
-  },
-  {
-    id: "hl7/mindray-bc5380",
-    protocol: "HL7",
-    analyzerName: "Mindray BC-5380",
-  },
-];
-
-describe("AnalyzerForm - FILE Protocol Behavior", () => {
+describe("AnalyzerForm protocol-specific instance fields", () => {
   beforeEach(() => {
-    analyzerService.getAnalyzerTypes.mockImplementation((filters, callback) => {
-      callback(PLUGIN_TYPES);
-    });
-    analyzerService.getDefaultConfigs.mockImplementation((callback) => {
-      callback(DEFAULT_CONFIGS);
-    });
-    analyzerService.getDefaultConfig.mockImplementation(
-      (protocol, name, callback) => {
-        callback({ error: "not needed" });
-      },
-    );
-    analyzerService.createAnalyzer.mockImplementation((data, callback) => {
-      callback({ id: "NEW-ID", ...data });
-    });
-    analyzerService.getAnalyzer.mockImplementation((id, callback) => {
-      callback({ error: "not configured for this test" });
-    });
-  });
-
-  afterEach(() => {
     vi.clearAllMocks();
+    analyzerService.getAnalyzerTypeCatalog.mockImplementation((callback) => {
+      callback(catalog);
+    });
   });
 
-  test("hides connection fields and protocol version when FILE plugin is selected", async () => {
-    const fileAnalyzer = {
-      id: "test-1",
-      name: "Test FILE Analyzer",
-      analyzerType: "MOLECULAR",
-      pluginTypeId: "3",
-      status: "SETUP",
-    };
+  it("keeps Bridge-owned FILE parsing fields out of analyzer setup", async () => {
     analyzerService.getAnalyzer.mockImplementation((id, callback) => {
-      callback(fileAnalyzer);
+      callback({
+        id,
+        name: "FILE Bench 1",
+        analyzerType: "FILE",
+        profileId: "site.file",
+        profileRevision: 3,
+        status: "SETUP",
+        importDirectory: "/data/analyzer-imports/file-bench-1",
+      });
     });
 
-    renderAtEditRoute("test-1");
+    renderAtEditRoute("file-1");
 
-    await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
-
-    // Connection fields should NOT be in the DOM for FILE protocol
+    expect(
+      await screen.findByRole("combobox", { name: "Analyzer Type" }),
+    ).toHaveTextContent("Site FILE Analyzer");
     expect(
       screen.queryByTestId("analyzer-form-connection-fields"),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId("analyzer-form-ip-input"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId("analyzer-form-port-input"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId("analyzer-form-test-connection-button"),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("analyzer-form-import-directory-input"),
+    ).toHaveValue("/data/analyzer-imports/file-bench-1");
 
-    // Protocol version dropdown should NOT be in the DOM
     expect(
-      screen.queryByTestId("analyzer-form-protocol-version-dropdown"),
+      screen.queryByTestId("analyzer-form-file-format-dropdown"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-file-pattern-input"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-column-mappings-input"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-delimiter-input"),
     ).not.toBeInTheDocument();
   });
 
-  test("shows FILE import settings when FILE plugin is selected", async () => {
-    const fileAnalyzer = {
-      id: "test-2",
-      name: "Test FILE Analyzer",
-      analyzerType: "MOLECULAR",
-      pluginTypeId: "3",
-      status: "SETUP",
-    };
+  it("shows connection fields for an ASTM profile revision", async () => {
     analyzerService.getAnalyzer.mockImplementation((id, callback) => {
-      callback(fileAnalyzer);
+      callback({
+        id,
+        name: "ASTM Bench 1",
+        analyzerType: "ASTM",
+        profileId: "shipped.astm",
+        profileRevision: 2,
+        ipAddress: "192.168.1.100",
+        port: 9600,
+        status: "SETUP",
+      });
     });
 
-    renderAtEditRoute("test-2");
+    renderAtEditRoute("astm-1");
 
-    await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
-
-    // FILE import settings section should be visible (Section 3b in
-    // AnalyzerForm) — format dropdown, import directory, file pattern,
-    // and column mappings.
     expect(
-      screen.queryByTestId("analyzer-form-file-format-dropdown"),
+      await screen.findByRole("combobox", { name: "Analyzer Type" }),
+    ).toHaveTextContent("Shipped ASTM Analyzer");
+    expect(
+      screen.getByTestId("analyzer-form-connection-fields"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-form-ip-input")).toHaveValue(
+      "192.168.1.100",
+    );
+    expect(screen.getByTestId("analyzer-form-port-input")).toHaveValue("9600");
+    expect(
+      screen.getByTestId("analyzer-form-test-connection-button"),
     ).toBeInTheDocument();
     expect(
       screen.queryByTestId("analyzer-form-import-directory-input"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("analyzer-form-file-pattern-input"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("analyzer-form-column-mappings-input"),
-    ).toBeInTheDocument();
-  });
-
-  test("shows connection fields when ASTM plugin is selected", async () => {
-    const astmAnalyzer = {
-      id: "test-3",
-      name: "Test ASTM Analyzer",
-      analyzerType: "MOLECULAR",
-      pluginTypeId: "1",
-      ipAddress: "192.168.1.100",
-      port: "9600",
-      status: "SETUP",
-    };
-    analyzerService.getAnalyzer.mockImplementation((id, callback) => {
-      callback(astmAnalyzer);
-    });
-
-    renderAtEditRoute("test-3");
-
-    await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
-
-    // Connection fields SHOULD be in the DOM for ASTM
-    expect(
-      screen.queryByTestId("analyzer-form-connection-fields"),
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId("analyzer-form-ip-input")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("analyzer-form-port-input"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("analyzer-form-test-connection-button"),
-    ).toBeInTheDocument();
-
-    // Protocol version dropdown SHOULD be in the DOM
-    expect(
-      screen.queryByTestId("analyzer-form-protocol-version-dropdown"),
-    ).toBeInTheDocument();
-
-    // FILE info tile should NOT be in the DOM
-    expect(
-      screen.queryByTestId("analyzer-form-file-protocol-info"),
     ).not.toBeInTheDocument();
-  });
-
-  test("plugin types are sorted with generic plugins first", async () => {
-    renderNewRoute();
-
-    await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
-
-    // The plugin type dropdown should exist
-    const dropdown = screen.queryByTestId("analyzer-form-plugin-type-dropdown");
-    expect(dropdown).toBeInTheDocument();
-
-    // getAnalyzerTypes should have been called
-    await waitFor(() => {
-      expect(analyzerService.getAnalyzerTypes).toHaveBeenCalled();
-    });
   });
 });

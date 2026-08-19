@@ -15,6 +15,7 @@ import type {
   Analyzer,
   AnalyzerApiError,
   AnalyzerApiResponse,
+  AnalyzerProtocol,
 } from "../components/analyzers/types";
 import config from "../config.json";
 
@@ -60,10 +61,30 @@ export interface CopyMappingsRequest {
   [key: string]: unknown;
 }
 
-export interface AnalyzerTypeFilters {
-  active?: boolean;
-  genericOnly?: boolean;
-  search?: string;
+export interface AnalyzerTypeSummary {
+  profileId: string;
+  revision: number;
+  revisionFingerprint: string;
+  displayName: string;
+  manufacturer?: string | null;
+  model?: string | null;
+  source: "SHIPPED" | "SITE" | string;
+  status: "ACTIVE" | "INACTIVE" | string;
+  protocol: AnalyzerProtocol;
+  parentProfileId?: string | null;
+  parentRevision?: number | null;
+}
+
+export interface AnalyzerTypeCatalog {
+  schemaVersion: string;
+  catalogFingerprint: string;
+  summary: {
+    total: number;
+    inUse: number;
+    needsAttention: number;
+    deactivated: number;
+  };
+  types: AnalyzerTypeSummary[];
 }
 
 /**
@@ -769,81 +790,10 @@ export const deleteValidationRule = (
     });
 };
 
-/**
- * Get all analyzer plugin types from the analyzer_type table.
- *
- * <p>Returns plugin type definitions including:
- * - id: Database ID
- * - name: Human-readable name (e.g., "Generic ASTM", "Horiba Pentra 60")
- * - protocol: Communication protocol (ASTM, HL7, FILE)
- * - isGenericPlugin: Whether this is a dashboard-configurable generic plugin
- * - identifierPattern: Regex pattern for generic plugins
- *
- *
- * @param {Object} filters - Optional filters { active, genericOnly, search }
- * @param {Function} callback - Callback function (data) => void
- */
-export const getAnalyzerTypes = (
-  filters: AnalyzerTypeFilters = {},
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+export const getAnalyzerTypeCatalog = (
+  callback: DataCallback<AnalyzerTypeCatalog | undefined>,
 ) => {
-  let endpoint = "/rest/analyzer-types";
-  const params = new URLSearchParams();
-
-  if (filters) {
-    if (filters.active !== undefined) {
-      params.append("active", String(filters.active));
-    }
-    if (filters.genericOnly !== undefined) {
-      params.append("genericOnly", String(filters.genericOnly));
-    }
-    if (filters.search) {
-      params.append("search", filters.search);
-    }
-  }
-
-  if (params.toString()) {
-    endpoint += "?" + params.toString();
-  }
-
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Get list of available default analyzer configurations.
- *
- * <p>Returns minimal metadata for each template:
- * - id (e.g., "astm/mindray-ba88a")
- * - protocol ("ASTM" or "HL7")
- * - analyzerName (from JSON)
- *
- *
- * @param {Function} callback - Callback function (data) => void
- */
-export const getDefaultConfigs = (
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-) => {
-  const endpoint = "/rest/analyzer/profiles";
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Get specific default analyzer configuration template.
- *
- * <p>Loads JSON template from filesystem for the specified protocol and name.
- *
- *
- * @param {String} protocol - Protocol type ("astm" or "hl7")
- * @param {String} name - Template name (without .json extension)
- * @param {Function} callback - Callback function (data) => void
- */
-export const getDefaultConfig = (
-  protocol: string,
-  name: string,
-  callback: DataCallback<AnalyzerApiResponse | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/profiles/${protocol}/${name}`;
-  getFromOpenElisServer(endpoint, callback);
+  getFromOpenElisServer("/rest/analyzer-types", callback);
 };
 
 /**

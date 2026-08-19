@@ -15,9 +15,8 @@ vi.mock("../../../services/analyzerService", () => ({
   createAnalyzer: vi.fn(),
   updateAnalyzer: vi.fn(),
   testConnection: vi.fn(),
-  getAnalyzerTypes: vi.fn(),
-  getDefaultConfigs: vi.fn(),
-  getDefaultConfig: vi.fn(),
+  getAnalyzer: vi.fn(),
+  getAnalyzerTypeCatalog: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
@@ -29,8 +28,12 @@ import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
+import { vi } from "vitest";
 import AnalyzerForm from "./AnalyzerForm";
-import { createAnalyzer } from "../../../services/analyzerService";
+import {
+  createAnalyzer,
+  getAnalyzerTypeCatalog,
+} from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
 
 // ========== TEST SETUP ==========
@@ -45,14 +48,33 @@ const renderWithIntl = (component) => {
   );
 };
 
+const profileCatalog = {
+  schemaVersion: "1.0",
+  catalogFingerprint: "sha256:catalog",
+  summary: { total: 1, inUse: 0, needsAttention: 1, deactivated: 0 },
+  types: [
+    {
+      profileId: "shipped.astm",
+      revision: 1,
+      revisionFingerprint: "sha256:astm",
+      displayName: "ASTM Analyzer",
+      source: "SHIPPED",
+      status: "ACTIVE",
+      protocol: "ASTM",
+    },
+  ],
+};
+
 describe("AnalyzerForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getAnalyzerTypeCatalog.mockImplementation((callback) => {
+      callback(profileCatalog);
+    });
   });
 
   test("testSubmitForm_WithValidData_CallsAPI", async () => {
     // Arrange
-    const mockCallback = vi.fn();
     createAnalyzer.mockImplementation((data, callback) => {
       callback({ id: "1", ...data }, null);
     });
@@ -69,40 +91,30 @@ describe("AnalyzerForm", () => {
     const nameInput = screen.getByTestId("analyzer-form-name-input");
     await userEvent.type(nameInput, "Test Analyzer", { delay: 0 });
 
-    // For dropdown, we'll test that the form validates (requires analyzerType)
-    // The actual dropdown interaction is complex with Carbon, so we'll verify
-    // the form structure and that validation works
     const ipInput = screen.getByTestId("analyzer-form-ip-input");
     await userEvent.type(ipInput, "192.168.1.100", { delay: 0 });
 
     const portInput = screen.getByTestId("analyzer-form-port-input");
     await userEvent.type(portInput, "5000", { delay: 0 });
 
-    // Try to submit form (will fail validation because analyzerType is required)
+    // Try to submit without selecting an Analyzer Type.
     const saveButton = screen.getByTestId("analyzer-form-save-button");
     await userEvent.click(saveButton);
 
     // Assert: Verify API was NOT called because validation should fail
-    // (analyzerType is required but not filled)
+    // (an Analyzer Type revision is required but not selected)
     await waitFor(() => {
       expect(createAnalyzer).not.toHaveBeenCalled();
     });
 
-    // Verify form has validation error for analyzerType
+    // Verify the Analyzer Type control is present for the validation error.
     const typeDropdown = screen.getByTestId("analyzer-form-type-dropdown");
     // Check that dropdown exists (validation will show error)
     expect(typeDropdown).not.toBeNull();
   });
 
   /**
-   * Test: Analyzer type dropdown displays all options correctly
-   *
-   * This test verifies that the analyzer type dropdown exists and is rendered.
-   * The actual dropdown interaction is complex with Carbon components in test
-   * environment, so we verify the dropdown exists and has the correct structure.
-   *
-   * This would have caught the issue where analyzer type dropdown wasn't rendering.
-   *
+   * The form consumes the reusable Analyzer Type catalog, not plugin handlers.
    */
   test("testAnalyzerTypeDropdown_DisplaysAllOptions", async () => {
     // Arrange
@@ -118,13 +130,7 @@ describe("AnalyzerForm", () => {
     const typeDropdown = screen.getByTestId("analyzer-form-type-dropdown");
     expect(typeDropdown).not.toBeNull();
 
-    // Verify dropdown exists and is in the DOM
-    // Note: Carbon Dropdown component interaction in test environment is complex
-    // due to portal rendering. The dropdown should be present and the component
-    // should handle the options internally. In a real browser, all analyzer types
-    // (HEMATOLOGY, CHEMISTRY, IMMUNOLOGY, MICROBIOLOGY, OTHER) should be available.
-    // This test verifies the dropdown exists, which would catch rendering issues
-    // where the dropdown wasn't showing analyzer type names.
+    expect(getAnalyzerTypeCatalog).toHaveBeenCalledTimes(1);
   });
 
   test("testValidateIPAddress_WithInvalidFormat_ShowsError", async () => {
@@ -176,6 +182,8 @@ describe("AnalyzerForm", () => {
     await userEvent.click(testButton);
 
     // Assert: Verify test connection modal opens
-    await screen.findByTestId("test-connection-modal", {}, { timeout: 2000 });
+    expect(
+      await screen.findByTestId("test-connection-modal", {}, { timeout: 2000 }),
+    ).toBeInTheDocument();
   });
 });

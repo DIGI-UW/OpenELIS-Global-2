@@ -14,10 +14,6 @@
 
 vi.mock("../../../services/analyzerService", () => ({
   getAnalyzers: vi.fn(),
-  getAnalyzerTypes: vi.fn(),
-  getDefaultConfigs: vi.fn(),
-  getDefaultConfig: vi.fn(),
-  createAnalyzer: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
 
@@ -47,6 +43,7 @@ import "@testing-library/jest-dom";
 
 // 3. userEvent (PREFERRED for user interactions)
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 
 // 5. IntlProvider (if component uses i18n)
 import { IntlProvider } from "react-intl";
@@ -58,13 +55,7 @@ import { BrowserRouter } from "react-router-dom";
 import AnalyzersList from "./AnalyzersList";
 
 // 8. Utilities (import functions, not just for mocking)
-import {
-  getAnalyzers,
-  getAnalyzerTypes,
-  getDefaultConfigs,
-  getDefaultConfig,
-  createAnalyzer,
-} from "../../../services/analyzerService";
+import { getAnalyzers } from "../../../services/analyzerService";
 
 // 9. Messages/translations
 import messages from "../../../languages/en.json";
@@ -102,36 +93,6 @@ describe("AnalyzersList", () => {
     vi.clearAllMocks();
     mockHistory.push.mockClear();
     mockHistory.replace.mockClear();
-
-    // Default mock implementations for AnalyzerForm dependencies
-    getAnalyzerTypes.mockImplementation((filters, callback) => {
-      callback([
-        {
-          id: "1",
-          name: "Generic ASTM",
-          protocol: "ASTM",
-          isGenericPlugin: true,
-        },
-        {
-          id: "2",
-          name: "Generic HL7",
-          protocol: "HL7",
-          isGenericPlugin: true,
-        },
-      ]);
-    });
-
-    getDefaultConfigs.mockImplementation((callback) => {
-      callback([]);
-    });
-
-    getDefaultConfig.mockImplementation((protocol, name, callback) => {
-      callback({ error: "Not found" });
-    });
-
-    createAnalyzer.mockImplementation((data, callback) => {
-      callback({ id: "new-id", ...data });
-    });
   });
 
   /**
