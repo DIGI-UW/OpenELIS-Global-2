@@ -106,6 +106,17 @@ const renderPage = () =>
 describe("AnalyzerTypeManagement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
+      bottom: 40,
+      height: 40,
+      left: 0,
+      right: 160,
+      top: 0,
+      width: 160,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
     window.history.replaceState({}, "", "/analyzers/types");
     getFromOpenElisServer.mockImplementation((endpoint, callback) => {
       expect(endpoint).toBe("/rest/analyzer-types");
@@ -116,6 +127,10 @@ describe("AnalyzerTypeManagement", () => {
         callback({ profile: { profileId: "site.created" } });
       },
     );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("renders the lab-facing profile catalog and removes developer plugin fields", async () => {
@@ -334,7 +349,7 @@ describe("AnalyzerTypeManagement", () => {
     });
     expect(within(dialog).queryByText(/delete/i)).not.toBeInTheDocument();
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Deactivate" }),
+      within(dialog).getByRole("button", { name: /Deactivate$/ }),
     );
 
     expect(postToOpenElisServerJsonResponse).toHaveBeenCalledWith(

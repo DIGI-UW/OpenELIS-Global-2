@@ -27,6 +27,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import AnalyzerTypeLifecycleModals from "./AnalyzerTypeLifecycleModals";
 import "./AnalyzerTypeManagement.scss";
 
 const SOURCE_VALUES = new Set(["ALL", "SHIPPED", "SITE"]);
@@ -79,6 +80,14 @@ const AnalyzerTypeManagement = () => {
   const [catalog, setCatalog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const actionState = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return {
+      action: params.get("action"),
+      profileId: params.get("profile"),
+    };
+  }, [location.search]);
 
   const fetchAnalyzerTypes = useCallback(() => {
     getFromOpenElisServer("/rest/analyzer-types", (data) => {
@@ -101,6 +110,45 @@ const AnalyzerTypeManagement = () => {
     setLoadError(false);
     fetchAnalyzerTypes();
   };
+
+  const closeAction = useCallback(() => {
+    const params = new URLSearchParams(location.search);
+    params.delete("action");
+    params.delete("profile");
+    history.push({
+      pathname: location.pathname,
+      search: params.toString() ? `?${params.toString()}` : "",
+    });
+  }, [history, location.pathname, location.search]);
+
+  const handleActionSuccess = useCallback(
+    (action) => {
+      closeAction();
+      setNotification({
+        kind: "success",
+        titleId: `analyzerType.notification.${action}.success`,
+        detail: "",
+      });
+      fetchAnalyzerTypes();
+    },
+    [closeAction, fetchAnalyzerTypes],
+  );
+
+  const handleActionError = useCallback(
+    (detail) => {
+      closeAction();
+      setNotification({
+        kind: "error",
+        titleId: "analyzerType.notification.action.error",
+        detail:
+          detail ||
+          intl.formatMessage({
+            id: "analyzerType.notification.action.error.subtitle",
+          }),
+      });
+    },
+    [closeAction, intl],
+  );
 
   const updateQuery = useCallback(
     (key, value, replace = false) => {
@@ -290,6 +338,19 @@ const AnalyzerTypeManagement = () => {
               id: "analyzerType.explainer.subtitle",
             })}
           />
+
+          {notification && (
+            <InlineNotification
+              className="analyzer-type-page__notification"
+              kind={notification.kind}
+              lowContrast
+              title={intl.formatMessage({
+                id: notification.titleId,
+              })}
+              subtitle={notification.detail}
+              onCloseButtonClick={() => setNotification(null)}
+            />
+          )}
 
           <section
             className="analyzer-type-summary"
@@ -613,7 +674,11 @@ const AnalyzerTypeManagement = () => {
                                 <TableCell>
                                   <OverflowMenu
                                     size="sm"
-                                    ariaLabel={intl.formatMessage(
+                                    aria-label={intl.formatMessage(
+                                      { id: "analyzerType.actions.ariaLabel" },
+                                      { name: type.displayName },
+                                    )}
+                                    iconDescription={intl.formatMessage(
                                       { id: "analyzerType.actions.ariaLabel" },
                                       { name: type.displayName },
                                     )}
@@ -623,7 +688,7 @@ const AnalyzerTypeManagement = () => {
                                         id: "analyzerType.button.duplicate",
                                       })}
                                       onClick={() =>
-                                        openAction("duplicate", type.id)
+                                        openAction("duplicate", type.profileId)
                                       }
                                     />
                                     <OverflowMenuItem
@@ -631,25 +696,27 @@ const AnalyzerTypeManagement = () => {
                                         id: "analyzerType.action.history",
                                       })}
                                       onClick={() =>
-                                        openAction("history", type.id)
+                                        openAction("history", type.profileId)
                                       }
                                     />
-                                    <OverflowMenuItem
-                                      itemText={intl.formatMessage({
-                                        id:
-                                          type.status === "ACTIVE"
-                                            ? "analyzerType.action.deactivate"
-                                            : "analyzerType.action.reactivate",
-                                      })}
-                                      onClick={() =>
-                                        openAction(
-                                          type.status === "ACTIVE"
-                                            ? "deactivate"
-                                            : "reactivate",
-                                          type.id,
-                                        )
-                                      }
-                                    />
+                                    {type.source === "SITE" && (
+                                      <OverflowMenuItem
+                                        itemText={intl.formatMessage({
+                                          id:
+                                            type.status === "ACTIVE"
+                                              ? "analyzerType.action.deactivate"
+                                              : "analyzerType.action.reactivate",
+                                        })}
+                                        onClick={() =>
+                                          openAction(
+                                            type.status === "ACTIVE"
+                                              ? "deactivate"
+                                              : "reactivate",
+                                            type.profileId,
+                                          )
+                                        }
+                                      />
+                                    )}
                                   </OverflowMenu>
                                 </TableCell>
                               </TableRow>
@@ -665,6 +732,17 @@ const AnalyzerTypeManagement = () => {
           )}
         </Column>
       </Grid>
+      {catalog && actionState.action && (
+        <AnalyzerTypeLifecycleModals
+          key={`${actionState.action}:${actionState.profileId || ""}`}
+          action={actionState.action}
+          profileId={actionState.profileId}
+          types={catalog.types}
+          onClose={closeAction}
+          onSuccess={handleActionSuccess}
+          onError={handleActionError}
+        />
+      )}
     </>
   );
 };
