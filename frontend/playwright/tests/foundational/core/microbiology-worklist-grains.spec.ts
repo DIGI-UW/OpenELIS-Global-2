@@ -291,8 +291,20 @@ test.describe("M-07 microbiology worklist grains", () => {
     const seeded = await seedAnalyzerReviewMicrobiologyCase(page);
     const unmatched = await submitUnmatchedAstAnalyzerResults(page, seeded);
 
-    await page.goto("/AnalyzerResults?view=import-issues", {
+    await page.goto("/Dashboard", {
       waitUntil: "domcontentloaded",
+    });
+    const adminMenu = page.getByRole("button", { name: "Admin", exact: true });
+    await expect(adminMenu).toBeVisible({ timeout: LONG_TIMEOUT });
+    await adminMenu.click();
+    await page
+      .getByRole("link", { name: "Stuck analyzer events", exact: true })
+      .click();
+    await page.waitForURL((url) => {
+      return (
+        url.pathname === "/AnalyzerResults" &&
+        url.searchParams.get("view") === "import-issues"
+      );
     });
 
     await expect(

@@ -198,6 +198,17 @@ class DevStackContractTest(unittest.TestCase):
             ).read_text(),
         )
 
+    def test_harness_refreshes_repository_owned_menu_configuration(self):
+        bootstrap = (
+            REPO_ROOT / "projects" / "analyzer-harness" / "bootstrap.sh"
+        ).read_text()
+
+        self.assertIn(
+            'cp "$ROOT_VOLUME/menu/menu_config.json" '
+            '"$HARNESS_VOLUME/menu/menu_config.json"',
+            bootstrap,
+        )
+
     def test_full_harness_scenarios_cover_each_transport_without_ids(self):
         scenarios = self.dev_stack.ANALYZER_SCENARIOS
 

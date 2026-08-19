@@ -237,7 +237,10 @@ if [ ! -f "$HARNESS_VOLUME/analyzer/analyzer-test-map.csv" ]; then
   touch "$HARNESS_VOLUME/analyzer/analyzer-test-map.csv"
   echo "  created placeholder analyzer/analyzer-test-map.csv"
 fi
-if [ ! -f "$HARNESS_VOLUME/menu/menu_config.json" ]; then
+if [ -f "$ROOT_VOLUME/menu/menu_config.json" ]; then
+  cp "$ROOT_VOLUME/menu/menu_config.json" "$HARNESS_VOLUME/menu/menu_config.json"
+  echo "  copied repository menu/menu_config.json"
+elif [ ! -f "$HARNESS_VOLUME/menu/menu_config.json" ]; then
   echo '{}' > "$HARNESS_VOLUME/menu/menu_config.json"
   echo "  created placeholder menu/menu_config.json"
 fi
