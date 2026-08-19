@@ -24,9 +24,9 @@ import org.junit.Test;
  * Consumer-side executable contract for Bridge-owned OGC-1054 v1 artifacts.
  *
  * <p>
- * This validates schemas and compatibility fixtures. It does not claim that the
- * current Bridge runtime emits them; BR-M1, BR-M2, and BR-M4 own that
- * production conformance.
+ * This validates schemas and representative profile-data fixtures. It does not
+ * claim that the current Bridge runtime emits them; BR-M1, BR-M2, and BR-M4 own
+ * that production conformance.
  */
 public class AnalyzerBridgeContractConsumerTest {
 
@@ -43,21 +43,27 @@ public class AnalyzerBridgeContractConsumerTest {
     private static final String CONTROL_RECOGNITION_EXTENSION = "https://openelis-global.org/fhir/StructureDefinition/analyzer-control-recognition";
 
     @Test
-    public void portableProfilesPinImmutableBridgeOwnedRecognition() throws IOException {
-        JsonNode rules = fixture("portable-profile.json");
-        JsonNode none = fixture("portable-profile-none.json");
+    public void establishedProfilesRetainRuntimeCommunicationAndInstanceDefaults() throws IOException {
+        JsonNode socketProfile = fixture("analyzer-profile-astm.json");
+        JsonNode fileProfile = fixture("analyzer-profile-file.json");
 
-        assertConforms("portable-profile.schema.json", rules);
-        assertConforms("portable-profile.schema.json", none);
-        assertTrue(rules.path("revisionFingerprint").asText().matches(FINGERPRINT_PATTERN));
-        assertTrue(rules.path("controlResultRecognition").path("recognitionFingerprint").asText()
-                .matches(FINGERPRINT_PATTERN));
-        assertEquals("RULES", rules.path("controlResultRecognition").path("mode").asText());
-        assertEquals("NONE", none.path("controlResultRecognition").path("mode").asText());
-        assertTrue(none.path("controlResultRecognition").path("affirmedNoControlResults").asBoolean());
-        assertFalse(rules.has("qcIdentification"));
+        assertConforms("analyzer-profile.schema.json", socketProfile);
+        assertConforms("analyzer-profile.schema.json", fileProfile);
+        for (JsonNode profile : new JsonNode[] { socketProfile, fileProfile }) {
+            assertTrue(profile.path("catalog").path("revisionFingerprint").asText().matches(FINGERPRINT_PATTERN));
+            assertTrue(profile.path("catalog").path("recognitionFingerprint").asText().matches(FINGERPRINT_PATTERN));
+            assertFalse(profile.path("protocol").path("name").asText().isBlank());
+            assertTrue(profile.path("configDefaults").isObject());
+            assertTrue(profile.path("configDefaults").size() > 0);
+            assertFalse(profile.has("qcIdentification"));
+        }
+        assertTrue(socketProfile.path("communication").isObject());
+        assertTrue(socketProfile.path("transport").size() > 0);
+        assertTrue(socketProfile.path("default_test_mappings").size() > 0);
+        assertTrue(fileProfile.path("supported_extensions").size() > 0);
+        assertTrue(fileProfile.path("column_mapping").size() > 0);
 
-        String schema = Files.readString(CONTRACT_ROOT.resolve("portable-profile.schema.json"));
+        String schema = Files.readString(CONTRACT_ROOT.resolve("analyzer-profile.schema.json"));
         assertFalse(schema.contains("openelisTestId"));
         assertFalse(schema.contains("openelisResultOptionId"));
         assertFalse(schema.contains("labUnitId"));
@@ -71,14 +77,15 @@ public class AnalyzerBridgeContractConsumerTest {
         assertConforms("registration-sync.schema.json", requested);
         assertConforms("registration-sync-result.schema.json", result);
 
-        JsonNode analyzer = requested.path("analyzers").path(0);
-        JsonNode acknowledgement = result.path("registrations").path(0);
+        JsonNode analyzer = requested.path("analyzers").path("42");
+        JsonNode acknowledgement = result.path("registrations").path("42");
         assertTrue(analyzer.path("desiredStateFingerprint").asText().matches(FINGERPRINT_PATTERN));
         assertFalse(analyzer.has("siteBindingRevision"));
         assertFalse(analyzer.has("operationalQc"));
         assertFalse(analyzer.has("qcRules"));
         assertFalse(analyzer.has("controlLots"));
-        assertEquals(analyzer.path("oeAnalyzerId"), acknowledgement.path("oeAnalyzerId"));
+        assertFalse(analyzer.has("oeAnalyzerId"));
+        assertFalse(acknowledgement.has("oeAnalyzerId"));
         assertEquals(analyzer.path("profileRef"), acknowledgement.path("profileRef"));
         assertEquals(analyzer.path("desiredStateFingerprint"), acknowledgement.path("desiredStateFingerprint"));
     }
@@ -105,14 +112,23 @@ public class AnalyzerBridgeContractConsumerTest {
 
     @Test
     public void schemasRejectLocalOwnershipAndOperationalQcLeakage() throws IOException {
-        JsonNode profile = fixture("portable-profile.json").deepCopy();
-        ((com.fasterxml.jackson.databind.node.ObjectNode) profile.path("tests").path(0)).put("openelisTestId", "123");
-        assertFalse(validationMessages("portable-profile.schema.json", profile).isEmpty());
+        JsonNode profile = fixture("analyzer-profile-astm.json").deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) profile).put("labUnitId", "123");
+        assertFalse(validationMessages("analyzer-profile.schema.json", profile).isEmpty());
 
         JsonNode registration = fixture("registration-initial.json").deepCopy();
-        ((com.fasterxml.jackson.databind.node.ObjectNode) registration.path("analyzers").path(0)).set("operationalQc",
-                JSON.createObjectNode());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) registration.path("analyzers").path("42"))
+                .set("operationalQc", JSON.createObjectNode());
         assertFalse(validationMessages("registration-sync.schema.json", registration).isEmpty());
+    }
+
+    @Test
+    public void noParallelProfileOrCompatibilityContractIsConsumable() {
+        for (String removed : new String[] { "portable-profile.schema.json", "legacy-registration.schema.json",
+                "compatibility.json", "fixtures/portable-profile.json", "fixtures/portable-profile-none.json",
+                "fixtures/legacy-registration.json" }) {
+            assertFalse(removed, Files.exists(CONTRACT_ROOT.resolve(removed)));
+        }
     }
 
     private static void assertConforms(String schemaName, JsonNode fixture) throws IOException {
