@@ -173,7 +173,9 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
                     EQATriggerType.AUTO, EQATriggerEvent.SCHEDULED_JOB, null, null, USER);
             fail("there is nothing to ship");
         } catch (EQAInvalidTransitionException expected) {
-            assertTrue(expected.getMessage().contains("no panel"));
+            // The refusal quotes the gate's own blockers (T-25), one vocabulary for the
+            // transition and the prep workbench alike.
+            assertTrue(expected.getMessage(), expected.getMessage().contains("No panel has been prepared"));
         }
         assertEquals("the cycle must not have moved", EQACycleStatus.PREP_IN_PROGRESS,
                 readBack(cycle.getId()).getStatus());

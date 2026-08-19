@@ -118,7 +118,9 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
             readyToShip();
             fail("FR-V2.5-12: ready_to_ship must be refused while the panel is short of aliquots");
         } catch (EQAInvalidTransitionException expected) {
-            assertTrue(expected.getMessage().contains("aliquots produced"));
+            // The refusal quotes the gate's own blocker, so the operator reads the same
+            // sentence the workbench showed.
+            assertTrue(expected.getMessage(), expected.getMessage().contains("needs 4 aliquots, has 3"));
         }
         assertEquals("the cycle must not have moved", EQACycleStatus.PREP_IN_PROGRESS,
                 readBack(cycle.getId()).getStatus());
@@ -132,6 +134,28 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         assertEquals(Boolean.TRUE, shipmentService.getPrepStatus(cycle.getId()).get("readyToShipAllowed"));
         readyToShip();
         assertEquals(EQACycleStatus.READY_TO_SHIP, readBack(cycle.getId()).getStatus());
+    }
+
+    @Test
+    public void aClearedCycleNoLongerOffersTheReadyToShipMove() {
+        clearTheGate();
+
+        // Gate arithmetic still satisfied, but PREP_IN_PROGRESS -> READY_TO_SHIP is no
+        // longer a legal edge, so the workbench must not offer the button.
+        Map<String, Object> prep = shipmentService.getPrepStatus(cycle.getId());
+        assertTrue("nothing is outstanding", blockers(prep).isEmpty());
+        assertEquals(Boolean.FALSE, prep.get("readyToShipAllowed"));
+    }
+
+    @Test
+    public void theGateRefusesACycleWithNoPanelAtAll() {
+        EQAProgram bare = insertScheme("Panel-less " + System.nanoTime(), EQASchemeType.REGIONAL_PT, "This lab");
+        EQACycle bareCycle = readBack(insertCycle(bare, 1));
+
+        Map<String, Object> prep = shipmentService.getPrepStatus(bareCycle.getId());
+
+        assertTrue(blockers(prep).toString().contains("No panel has been prepared"));
+        assertEquals(Boolean.FALSE, prep.get("readyToShipAllowed"));
     }
 
     @Test
@@ -203,6 +227,11 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                         Integer.class, cycle.getId()));
         assertEquals("2 samples x 2 participants dispatched", Integer.valueOf(4), jdbc.queryForObject(
                 "SELECT aliquots_shipped FROM clinlims.eqa_panel WHERE id = ?", Integer.class, panel.getId()));
+        assertEquals("the dispatching user is recorded on the shipment", Integer.valueOf(USER),
+                jdbc.queryForObject(
+                        "SELECT s.sys_user_id FROM clinlims.shipment s JOIN clinlims.shipping_box b"
+                                + " ON b.id = s.shipping_box_id WHERE b.eqa_cycle_id = ? LIMIT 1",
+                        Integer.class, cycle.getId()));
 
         assertEquals(EQACycleStatus.SHIPPED, readBack(cycle.getId()).getStatus());
         List<EQACycleStateTransition> audit = cycleService.getTransitions(cycle.getId());
@@ -210,6 +239,18 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         assertEquals("SHIPPED", last.getNewState());
         assertEquals(EQATriggerEvent.FIRST_SHIPMENT_SENT, last.getTriggerEvent());
         assertEquals(EQATriggerType.AUTO, last.getTriggerType());
+    }
+
+    @Test
+    public void aParticipantNamedTwiceInOneBatchDispatchesOnce() {
+        clearTheGate();
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+
+        List<Map<String, Object>> shipped = shipmentService.markShipped(cycle.getId(), List.of(ORG_A, ORG_A), USER);
+
+        assertEquals("one dispatch per participant, however often named", 1, shipped.size());
+        assertEquals("2 samples for 1 participant", Integer.valueOf(2), jdbc.queryForObject(
+                "SELECT aliquots_shipped FROM clinlims.eqa_panel WHERE id = ?", Integer.class, panel.getId()));
     }
 
     @Test
@@ -243,7 +284,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         try {
             shipmentService.markShipped(cycle.getId(), List.of(9962L), USER);
             fail("dispatching more material than was produced must be refused");
-        } catch (IllegalArgumentException expected) {
+        } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("does not hold enough aliquots"));
         }
         assertEquals("no aliquots may be consumed by a refused dispatch", Integer.valueOf(4), jdbc.queryForObject(

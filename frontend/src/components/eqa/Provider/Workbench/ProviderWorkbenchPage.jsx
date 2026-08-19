@@ -17,12 +17,12 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
-  Tag,
   Tile,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
+import { CycleStatusTag, hintStyle } from "../../eqaCommon";
 import {
   fetchPrepStatus,
   fetchProviderCycles,
@@ -30,21 +30,6 @@ import {
 } from "./workbenchApi";
 import PrepWorkbench from "./PrepWorkbench";
 import ShipmentWorkbench from "./ShipmentWorkbench";
-
-const STATUS_TAG = {
-  PLANNED: "gray",
-  PREP_IN_PROGRESS: "blue",
-  READY_TO_SHIP: "purple",
-  SHIPPED: "teal",
-  DELIVERED: "cyan",
-  SUBMISSIONS_OPEN: "cyan",
-  SUBMISSIONS_CLOSED: "magenta",
-  SCORING: "warm-gray",
-  SCORED: "green",
-  CLOSED: "gray",
-};
-
-const hintStyle = { fontSize: "0.75rem", color: "#525252" };
 
 const breadcrumbs = (cycleId) => {
   const crumbs = [
@@ -84,35 +69,32 @@ const ProviderWorkbenchPage = () => {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(null);
 
-  const reload = useCallback(() => {
-    if (!cycleId) {
-      fetchProviderCycles((data) => {
-        setCycles(data);
+  // Reloading after a save keeps the rendered page; only a change of cycle goes
+  // back to the spinner, since none of the current page's numbers survive it.
+  const reload = useCallback(
+    (withSpinner = false) => {
+      if (withSpinner) {
+        setLoading(true);
+      }
+      if (!cycleId) {
+        fetchProviderCycles((data) => {
+          setCycles(data);
+          setLoading(false);
+        });
+        return;
+      }
+      fetchPrepStatus(cycleId, (data) => {
+        setPrep(data);
         setLoading(false);
       });
-      return;
-    }
-    fetchPrepStatus(cycleId, (data) => {
-      setPrep(data);
-      setLoading(false);
-    });
-    fetchShipmentRows(cycleId, setRows);
-  }, [cycleId]);
-
-  // loading starts true and every fetch path clears it; the two routes are
-  // separate Route paths, so a cycle change remounts rather than re-fetching.
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  const statusTag = (status) => (
-    <Tag type={STATUS_TAG[status] || "gray"} size="sm">
-      {t(
-        `eqa.cycle.status.${(status || "").toLowerCase()}`,
-        (status || "").replace(/_/g, " "),
-      )}
-    </Tag>
+      fetchShipmentRows(cycleId, setRows);
+    },
+    [cycleId],
   );
+
+  useEffect(() => {
+    reload(true);
+  }, [reload]);
 
   if (loading) {
     return <Loading />;
@@ -172,7 +154,7 @@ const ProviderWorkbenchPage = () => {
                     <TableHeader>
                       {t("eqa.provider.scheme", "Scheme")}
                     </TableHeader>
-                    <TableHeader>{t("eqa.cycle.status", "Status")}</TableHeader>
+                    <TableHeader>{t("label.status", "Status")}</TableHeader>
                     <TableHeader>
                       {t("eqa.prep.participants", "Participants")}
                     </TableHeader>
@@ -190,7 +172,9 @@ const ProviderWorkbenchPage = () => {
                         </RouterLink>
                       </TableCell>
                       <TableCell>{cycle.schemeName}</TableCell>
-                      <TableCell>{statusTag(cycle.status)}</TableCell>
+                      <TableCell>
+                        <CycleStatusTag status={cycle.status} />
+                      </TableCell>
                       <TableCell>{cycle.participantCount}</TableCell>
                       <TableCell>{cycle.panelCount}</TableCell>
                     </TableRow>
@@ -206,7 +190,7 @@ const ProviderWorkbenchPage = () => {
         <Grid fullWidth>
           <Column lg={16} md={8} sm={4}>
             <Tile style={{ marginBottom: "1rem" }}>
-              {statusTag(prep?.cycleStatus)}
+              <CycleStatusTag status={prep?.cycleStatus} />
               <span style={{ ...hintStyle, marginLeft: "0.5rem" }}>
                 {t(
                   "eqa.provider.workbench.stateHint",

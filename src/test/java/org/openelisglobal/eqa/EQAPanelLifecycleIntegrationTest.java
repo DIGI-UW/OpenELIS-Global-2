@@ -145,6 +145,11 @@ public class EQAPanelLifecycleIntegrationTest extends EQASpineTestBase {
         Map<String, Object> dto = dtos.get(0);
         assertEquals("A01", dto.get("sampleCode"));
         assertEquals("BLIND-A01", dto.get("blindCode"));
+        // T-25's pack list prints analyte names, not ids — and a name is not a target,
+        // so it travels with a sealed panel.
+        assertEquals("the analyte resolves to its name",
+                jdbc.queryForObject("SELECT name FROM clinlims.analyte WHERE id = ?", String.class, ANALYTE),
+                dto.get("analyteName"));
         assertNull("sealed target must not appear in the DTO", dto.get("targetValue"));
         assertNull("sealed unit must not appear in the DTO", dto.get("targetUnit"));
         assertNull("sealed range low must not appear in the DTO", dto.get("acceptanceRangeLow"));

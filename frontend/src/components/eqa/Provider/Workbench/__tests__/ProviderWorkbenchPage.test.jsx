@@ -10,6 +10,7 @@ import {
   patchToOpenElisServerFullResponse,
   postToOpenElisServerFullResponse,
 } from "../../../../utils/Utils";
+import { generateManifestPDF } from "../../../../shipment/utils/pdfGenerator";
 
 vi.mock("../../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
@@ -72,10 +73,9 @@ const PREP_CLEAR = {
   readyToShipAllowed: false,
 };
 
+/** Exactly the keys GET /rest/eqa/cycles/{id}/shipments answers with. */
 const ROWS = [
   {
-    cycleId: 7,
-    enrollmentId: 1,
     organizationId: 100,
     organizationName: "District Lab A",
     boxId: 5,
@@ -84,13 +84,10 @@ const ROWS = [
     courier: "DHL",
     trackingNumber: "TRK-A",
     estimatedDeliveryDate: "2026-09-01 00:00:00",
-    shipmentId: 5,
     shipmentStatus: "PENDING",
     shippedDate: null,
   },
   {
-    cycleId: 7,
-    enrollmentId: 2,
     organizationId: 101,
     organizationName: "District Lab B",
     boxId: null,
@@ -99,16 +96,16 @@ const ROWS = [
     courier: null,
     trackingNumber: null,
     estimatedDeliveryDate: null,
-    shipmentId: null,
     shipmentStatus: null,
     shippedDate: null,
   },
 ];
 
-const renderWorkbench = (prep = PREP_SHORT, rows = ROWS) => {
+const renderWorkbench = (prep = PREP_SHORT, rows = ROWS, samplesByUrl = {}) => {
   getFromOpenElisServer.mockImplementation((url, cb) => {
     if (url.endsWith("/prep")) cb(prep);
     else if (url.endsWith("/shipments")) cb(rows);
+    else if (url in samplesByUrl) cb(samplesByUrl[url]);
     else cb([]);
   });
   return render(
@@ -123,9 +120,8 @@ const renderWorkbench = (prep = PREP_SHORT, rows = ROWS) => {
 };
 
 /**
- * Carbon renders the button's hint as a title and hides checkbox inputs behind
- * a visually-hidden class, so both are reached the way a user does: through
- * their visible text / label, not by accessible-name lookup.
+ * Carbon renders this button's hint as a title attribute, so the accessible name
+ * is the hint rather than the label — reach it through its visible text.
  */
 const readyToShipButton = () =>
   screen.getByText("Mark cycle ready to ship").closest("button");
@@ -165,11 +161,9 @@ describe("ProviderWorkbenchPage", () => {
     expect(readyToShipButton()).toBeDisabled();
   });
 
-  test("ready-to-ship is enabled only while the cycle is still in prep", () => {
-    // Gate arithmetic satisfied, but the cycle already left prep_in_progress —
-    // the transition would be an illegal edge, so the button stays disabled.
-    renderWorkbench({ ...PREP_CLEAR });
-    expect(readyToShipButton()).toBeDisabled();
+  test("ready-to-ship is offered as soon as the server allows it", () => {
+    renderWorkbench({ ...PREP_CLEAR, readyToShipAllowed: true });
+    expect(readyToShipButton()).toBeEnabled();
   });
 
   test("a refused ready-to-ship shows the server's own reason", async () => {
@@ -180,7 +174,7 @@ describe("ProviderWorkbenchPage", () => {
         json: () =>
           Promise.resolve({
             error:
-              "Cannot ship until panel HIV VL panel has 4 aliquots produced (has 3)",
+              "Cannot ship yet: Panel HIV VL panel needs 4 aliquots, has 3",
           }),
       }),
     );
@@ -189,7 +183,7 @@ describe("ProviderWorkbenchPage", () => {
 
     expect(
       await screen.findByText(
-        "Cannot ship until panel HIV VL panel has 4 aliquots produced (has 3)",
+        "Cannot ship yet: Panel HIV VL panel needs 4 aliquots, has 3",
       ),
     ).toBeInTheDocument();
   });
@@ -207,9 +201,90 @@ describe("ProviderWorkbenchPage", () => {
     renderWorkbench();
     fireEvent.click(screen.getByRole("tab", { name: "Shipments" }));
 
-    // Lab B has no box yet, so its row cannot be selected for dispatch.
-    expect(document.getElementById("select-100")).not.toBeDisabled();
-    expect(document.getElementById("select-101")).toBeDisabled();
+    // Lab B has no box yet, so its row cannot be selected for dispatch. Reached by
+    // label, which is also the assertion that each row control has an accessible
+    // name rather than an empty one.
+    expect(
+      screen.getByLabelText("Select District Lab A for dispatch"),
+    ).toBeEnabled();
+    expect(
+      screen.getByLabelText("Select District Lab B for dispatch"),
+    ).toBeDisabled();
+    expect(
+      screen.getByLabelText("Courier for District Lab A"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Tracking number for District Lab A"),
+    ).toBeInTheDocument();
+  });
+
+  test("a pack list is refused rather than produced empty when samples cannot be read", async () => {
+    renderWorkbench(PREP_SHORT, ROWS, {
+      "/rest/eqa/panels/11/samples": undefined,
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Shipments" }));
+
+    // A failed read answers undefined, which looks exactly like an empty panel — a
+    // courier must not be handed a blank manifest.
+    fireEvent.click(screen.getAllByText("Pack list")[0].closest("button"));
+
+    expect(
+      await screen.findByText(
+        "The panel samples could not be read, so no pack list was produced. Reload and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(generateManifestPDF).not.toHaveBeenCalled();
+  });
+
+  test("one unreadable panel refuses the whole pack list, never a partial one", async () => {
+    // Two-panel cycle, second panel's read fails. Listing only the first panel
+    // would hand the courier a manifest for 2 of 4 samples, unmarked.
+    const twoPanels = {
+      ...PREP_SHORT,
+      panels: [
+        PREP_SHORT.panels[0],
+        { ...PREP_SHORT.panels[0], panelId: 12, panelName: "Syphilis panel" },
+      ],
+    };
+    renderWorkbench(twoPanels, ROWS, {
+      "/rest/eqa/panels/11/samples": [
+        { id: 1, blindCode: "BLIND-1", analyteName: "HIV-1 RNA" },
+        { id: 2, blindCode: "BLIND-2", analyteName: "HIV-1 RNA" },
+      ],
+      "/rest/eqa/panels/12/samples": undefined,
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Shipments" }));
+
+    fireEvent.click(screen.getAllByText("Pack list")[0].closest("button"));
+
+    expect(
+      await screen.findByText(
+        "The panel samples could not be read, so no pack list was produced. Reload and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(generateManifestPDF).not.toHaveBeenCalled();
+  });
+
+  test("a complete read produces the manifest with every panel's samples", async () => {
+    renderWorkbench(PREP_SHORT, ROWS, {
+      "/rest/eqa/panels/11/samples": [
+        { id: 1, blindCode: "BLIND-1", analyteName: "HIV-1 RNA" },
+        { id: 2, sampleCode: "SC-2", analyteName: "HIV-1 RNA" },
+      ],
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Shipments" }));
+
+    fireEvent.click(screen.getAllByText("Pack list")[0].closest("button"));
+
+    await vi.waitFor(() =>
+      expect(generateManifestPDF).toHaveBeenCalledTimes(1),
+    );
+    const manifest = generateManifestPDF.mock.calls[0][0];
+    expect(manifest.samples).toHaveLength(2);
+    // Blind code preferred over the real sample code; never a target value.
+    expect(manifest.samples[0].accessionNumber).toBe("BLIND-1");
+    expect(manifest.samples[1].accessionNumber).toBe("SC-2");
+    expect(JSON.stringify(manifest)).not.toContain("targetValue");
   });
 
   test("dispatch posts the selected participants and reports the count", async () => {

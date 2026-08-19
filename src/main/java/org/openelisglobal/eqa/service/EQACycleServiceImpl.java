@@ -16,6 +16,7 @@ import static org.openelisglobal.eqa.valueholder.EQACycleStatus.SUBMITTED;
 import static org.openelisglobal.eqa.valueholder.EQACycleStatus.TESTING;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -30,7 +31,7 @@ import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelReceiptDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
-import org.openelisglobal.eqa.dao.EQAProgramEnrollmentDAO;
+import org.openelisglobal.eqa.service.EQAPrepGate.PanelRequirement;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
@@ -60,9 +61,6 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
 
     /** FR-V2.1-18. Terminal: CLOSED. */
     private static final Map<EQACycleStatus, Set<EQACycleStatus>> PROVIDER_EDGES = new EnumMap<>(EQACycleStatus.class);
-
-    /** The enrollment status a participant must hold to be counted (BR-013). */
-    private static final String ACTIVE_ENROLLMENT = "Active";
 
     static {
         PARTICIPANT_EDGES.put(PLANNED, EnumSet.of(PANEL_RECEIVED));
@@ -102,7 +100,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     private EQAPanelSampleDAO eqaPanelSampleDAO;
 
     @Autowired
-    private EQAProgramEnrollmentDAO eqaProgramEnrollmentDAO;
+    private EQAProgramEnrollmentService eqaProgramEnrollmentService;
 
     public EQACycleServiceImpl() {
         super(EQACycle.class);
@@ -169,53 +167,62 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     }
 
     /**
-     * FR-V2.1-18 / AC-V2.1-13: a provider cycle may not reach ready_to_ship until
-     * every panel has passed homogeneity QC and holds enough material for its
-     * participants. A cycle with no panel is refused too — the FRS predicate is
-     * vacuously true on an empty set, which would let a panel-less cycle through a
-     * gate whose point is that something passed QC.
-     *
-     * <p>
-     * The inventory half (T-25, FR-V2.5-12) reads participants off the scheme's
-     * active enrollments, since no table records per-cycle participants: each
-     * participant needs one aliquot per panel sample, on top of what the panel
-     * holds back. The row-level invariant produced >= reserved + shipped is a DB
-     * CHECK in qa/017.
+     * FR-V2.1-18 / AC-V2.1-13: a provider cycle may not reach ready_to_ship while
+     * {@link #evaluatePrepGate} names anything outstanding. The refusal quotes the
+     * gate's own blockers, so the operator reads the same sentences the prep
+     * workbench shows.
      */
     private void enforcePrepGate(EQACycle cycle, EQACycleStatus priorState, EQACycleStatus newState,
             EQAStateMachine machine) {
         if (machine != EQAStateMachine.PROVIDER || priorState != PREP_IN_PROGRESS || newState != READY_TO_SHIP) {
             return;
         }
-        List<EQAPanel> panels = eqaPanelDAO.getAllMatching("cycle.id", cycle.getId());
-        if (panels.isEmpty()) {
-            throw new EQAInvalidTransitionException(priorState, newState, "Cannot ship a cycle with no panel prepared");
-        }
-        if (panels.stream().anyMatch(p -> !Boolean.TRUE.equals(p.getHomogeneityQcPassed()))) {
+        EQAPrepGate gate = evaluatePrepGate(cycle);
+        if (!gate.isClear()) {
             throw new EQAInvalidTransitionException(priorState, newState,
-                    "Cannot ship until every panel has passed homogeneity QC");
-        }
-        int participants = cycle.getScheme() == null ? 0
-                : eqaProgramEnrollmentDAO.findByProgramIdAndStatus(cycle.getScheme().getId(), ACTIVE_ENROLLMENT).size();
-        for (EQAPanel panel : panels) {
-            int needed = aliquotsNeeded(panel, participants);
-            if (nullToZero(panel.getAliquotsProduced()) < needed) {
-                throw new EQAInvalidTransitionException(priorState, newState,
-                        "Cannot ship until panel " + panel.getPanelName() + " has " + needed
-                                + " aliquots produced (has " + nullToZero(panel.getAliquotsProduced()) + ")");
-            }
+                    "Cannot ship yet: " + String.join("; ", gate.blockers()));
         }
     }
 
     /**
-     * FR-V2.5-12's inventory requirement for one panel: one aliquot per sample per
-     * participant, plus the panel's own reserve. A panel with no samples needs
-     * nothing — the seal rule (T-11) is what refuses those.
+     * The gate, evaluated once for both its readers. A cycle with no panel is
+     * refused — the FRS predicate is vacuously true on an empty set, which would
+     * let a panel-less cycle through a gate whose point is that something passed
+     * QC.
+     *
+     * <p>
+     * The inventory half (T-25, FR-V2.5-12) sizes the cycle by the scheme's active
+     * enrollments, since no table records per-cycle participants: each participant
+     * needs one aliquot per panel sample, on top of what the panel holds back. The
+     * row-level invariant produced >= reserved + shipped is a DB CHECK in qa/017.
      */
     @Override
-    public int aliquotsNeeded(EQAPanel panel, int participantCount) {
-        int samples = eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId()).size();
-        return samples * participantCount + nullToZero(panel.getAliquotsReserved());
+    @Transactional(readOnly = true)
+    public EQAPrepGate evaluatePrepGate(EQACycle cycle) {
+        int participants = cycle.getScheme() == null ? 0
+                : (int) eqaProgramEnrollmentService.countActiveEnrollments(cycle.getScheme().getId());
+        List<EQAPanel> panels = eqaPanelDAO.getAllMatching("cycle.id", cycle.getId());
+
+        List<PanelRequirement> requirements = new ArrayList<>();
+        List<String> blockers = new ArrayList<>();
+        if (panels.isEmpty()) {
+            blockers.add("No panel has been prepared for this cycle");
+        }
+        for (EQAPanel panel : panels) {
+            int samples = eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId()).size();
+            PanelRequirement requirement = new PanelRequirement(panel, samples,
+                    samples * participants + nullToZero(panel.getAliquotsReserved()));
+            requirements.add(requirement);
+
+            if (!Boolean.TRUE.equals(panel.getHomogeneityQcPassed())) {
+                blockers.add("Panel " + panel.getPanelName() + " has not passed homogeneity QC");
+            }
+            if (requirement.shortfall() > 0) {
+                blockers.add("Panel " + panel.getPanelName() + " needs " + requirement.aliquotsNeeded()
+                        + " aliquots, has " + requirement.produced());
+            }
+        }
+        return new EQAPrepGate(participants, requirements, blockers);
     }
 
     private static int nullToZero(Integer value) {

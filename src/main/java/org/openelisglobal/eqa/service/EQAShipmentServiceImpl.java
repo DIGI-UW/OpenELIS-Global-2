@@ -4,14 +4,16 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
-import org.openelisglobal.eqa.dao.EQAProgramEnrollmentDAO;
+import org.openelisglobal.eqa.service.EQAPrepGate.PanelRequirement;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
@@ -36,14 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class EQAShipmentServiceImpl implements EQAShipmentService {
 
-    private static final String ACTIVE_ENROLLMENT = "Active";
-
-    /** Provider cycle states, in FR-V2.1-18 order. */
-    private static final List<EQACycleStatus> PROVIDER_STATES = List.of(EQACycleStatus.PLANNED,
-            EQACycleStatus.PREP_IN_PROGRESS, EQACycleStatus.READY_TO_SHIP, EQACycleStatus.SHIPPED,
-            EQACycleStatus.DELIVERED, EQACycleStatus.SUBMISSIONS_OPEN, EQACycleStatus.SUBMISSIONS_CLOSED,
-            EQACycleStatus.SCORING, EQACycleStatus.SCORED, EQACycleStatus.CLOSED);
-
     @Autowired
     private EQACycleDAO eqaCycleDAO;
 
@@ -57,7 +51,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     private EQAPanelSampleDAO eqaPanelSampleDAO;
 
     @Autowired
-    private EQAProgramEnrollmentDAO eqaProgramEnrollmentDAO;
+    private EQAProgramEnrollmentService eqaProgramEnrollmentService;
 
     @Autowired
     private OrganizationService organizationService;
@@ -72,11 +66,13 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getProviderCycles() {
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (EQACycle cycle : eqaCycleDAO.getAll()) {
+        // Newest first; the picker is a stopgap until T-24 owns the scheme list, so it
+        // does not earn a bespoke ordering of its own.
+        for (EQACycle cycle : eqaCycleDAO.getAllOrdered("id", true)) {
             if (cycle.getScheme() == null) {
                 continue;
             }
-            int participants = activeEnrollments(cycle).size();
+            long participants = eqaProgramEnrollmentService.countActiveEnrollments(cycle.getScheme().getId());
             if (participants == 0) {
                 continue;
             }
@@ -85,16 +81,11 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             dto.put("cycleNumber", cycle.getCycleNumber());
             dto.put("cycleName", cycle.getCycleName());
             dto.put("status", cycle.getStatus() == null ? null : cycle.getStatus().name());
-            dto.put("schemeId", cycle.getScheme().getId());
             dto.put("schemeName", cycle.getScheme().getName());
-            dto.put("schemeType",
-                    cycle.getScheme().getSchemeType() == null ? null : cycle.getScheme().getSchemeType().name());
-            dto.put("participantCount", participants);
+            dto.put("participantCount", (int) participants);
             dto.put("panelCount", panelsOf(cycle.getId()).size());
-            dto.put("plannedEndDate", cycle.getPlannedEndDate() == null ? null : cycle.getPlannedEndDate().toString());
             rows.add(dto);
         }
-        rows.sort((a, b) -> compareByProviderProgress(a, b));
         return rows;
     }
 
@@ -102,53 +93,37 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Transactional(readOnly = true)
     public Map<String, Object> getPrepStatus(Long cycleId) {
         EQACycle cycle = cycle(cycleId);
-        int participants = activeEnrollments(cycle).size();
-        List<EQAPanel> panels = panelsOf(cycleId);
+        // The gate the transition enforces, evaluated once (T-10): its blockers and its
+        // arithmetic are what this renders, so the button and the rule agree.
+        EQAPrepGate gate = eqaCycleService.evaluatePrepGate(cycle);
 
         List<Map<String, Object>> panelDtos = new ArrayList<>();
-        List<String> blockers = new ArrayList<>();
-        if (panels.isEmpty()) {
-            blockers.add("No panel has been prepared for this cycle");
-        }
-        for (EQAPanel panel : panels) {
-            int needed = eqaCycleService.aliquotsNeeded(panel, participants);
-            int produced = zeroIfNull(panel.getAliquotsProduced());
-
+        for (PanelRequirement requirement : gate.panels()) {
+            EQAPanel panel = requirement.panel();
             Map<String, Object> dto = new LinkedHashMap<>();
             dto.put("panelId", panel.getId());
             dto.put("panelName", panel.getPanelName());
-            dto.put("status", panel.getStatus() == null ? null : panel.getStatus().name());
-            dto.put("sampleCount", sampleCount(panel.getId()));
-            dto.put("aliquotsProduced", produced);
+            dto.put("sampleCount", requirement.sampleCount());
+            dto.put("aliquotsProduced", requirement.produced());
             dto.put("aliquotsReserved", zeroIfNull(panel.getAliquotsReserved()));
             dto.put("aliquotsShipped", zeroIfNull(panel.getAliquotsShipped()));
-            dto.put("aliquotsNeeded", needed);
-            dto.put("shortfall", Math.max(0, needed - produced));
+            dto.put("aliquotsNeeded", requirement.aliquotsNeeded());
+            dto.put("shortfall", requirement.shortfall());
             dto.put("homogeneityQcPassed", Boolean.TRUE.equals(panel.getHomogeneityQcPassed()));
             dto.put("homogeneityQcNotes", panel.getHomogeneityQcNotes());
-            dto.put("storageTemp", panel.getStorageTemp() == null ? null : panel.getStorageTemp().name());
-            dto.put("lotNumber", panel.getLotNumber());
-            dto.put("expirationDate", panel.getExpirationDate() == null ? null : panel.getExpirationDate().toString());
             panelDtos.add(dto);
-
-            if (!Boolean.TRUE.equals(panel.getHomogeneityQcPassed())) {
-                blockers.add("Panel " + panel.getPanelName() + " has not passed homogeneity QC");
-            }
-            if (produced < needed) {
-                blockers.add("Panel " + panel.getPanelName() + " needs " + needed + " aliquots, has " + produced);
-            }
         }
 
         Map<String, Object> status = new LinkedHashMap<>();
         status.put("cycleId", cycleId);
         status.put("cycleName", cycle.getCycleName());
         status.put("cycleStatus", cycle.getStatus() == null ? null : cycle.getStatus().name());
-        status.put("participantCount", participants);
+        status.put("participantCount", gate.participantCount());
         status.put("panels", panelDtos);
-        status.put("blockers", blockers);
+        status.put("blockers", gate.blockers());
         // The button state the workbench renders; the gate itself is enforced on the
         // transition (T-10), so a stale client cannot ship past it.
-        status.put("readyToShipAllowed", blockers.isEmpty() && cycle.getStatus() == EQACycleStatus.PREP_IN_PROGRESS);
+        status.put("readyToShipAllowed", gate.isClear() && cycle.getStatus() == EQACycleStatus.PREP_IN_PROGRESS);
         return status;
     }
 
@@ -157,22 +132,25 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             Boolean homogeneityQcPassed, String homogeneityQcNotes, String sysUserId) {
         EQAPanel panel = eqaPanelDAO.get(panelId)
                 .orElseThrow(() -> new ObjectNotFoundException(panelId, EQAPanel.class.getName()));
+        if (panel.getCycle() == null) {
+            throw new IllegalArgumentException("Panel " + panelId + " is not bound to a cycle yet");
+        }
 
-        if (aliquotsProduced != null) {
-            panel.setAliquotsProduced(aliquotsProduced);
-        }
-        if (aliquotsReserved != null) {
-            panel.setAliquotsReserved(aliquotsReserved);
-        }
-        if (zeroIfNull(panel.getAliquotsProduced()) < 0 || zeroIfNull(panel.getAliquotsReserved()) < 0) {
+        // Validate the counts this save would leave behind before touching the entity:
+        // a refused save must not depend on the rollback to stay invisible.
+        int produced = aliquotsProduced == null ? zeroIfNull(panel.getAliquotsProduced()) : aliquotsProduced;
+        int reserved = aliquotsReserved == null ? zeroIfNull(panel.getAliquotsReserved()) : aliquotsReserved;
+        if (produced < 0 || reserved < 0) {
             throw new IllegalArgumentException("Aliquot counts cannot be negative");
         }
         // Mirrors the qa/017 CHECK, so the workbench sees a message instead of a
         // constraint violation.
-        if (zeroIfNull(panel.getAliquotsProduced()) < zeroIfNull(panel.getAliquotsReserved())
-                + zeroIfNull(panel.getAliquotsShipped())) {
+        if (produced < reserved + zeroIfNull(panel.getAliquotsShipped())) {
             throw new IllegalArgumentException("Aliquots produced cannot be fewer than reserved plus already shipped");
         }
+
+        panel.setAliquotsProduced(produced);
+        panel.setAliquotsReserved(reserved);
         if (homogeneityQcPassed != null) {
             panel.setHomogeneityQcPassed(homogeneityQcPassed);
         }
@@ -181,9 +159,6 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         }
         panel.setSysUserId(sysUserId);
         EQAPanel saved = eqaPanelDAO.update(panel);
-        if (saved.getCycle() == null) {
-            throw new IllegalArgumentException("Panel " + panelId + " is not bound to a cycle yet");
-        }
         return getPrepStatus(saved.getCycle().getId());
     }
 
@@ -191,9 +166,11 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getShipmentRows(Long cycleId) {
         EQACycle cycle = cycle(cycleId);
+        Map<String, ShippingBox> boxes = boxesByCode(cycleId);
         List<Map<String, Object>> rows = new ArrayList<>();
         for (EQAProgramEnrollment enrollment : activeEnrollments(cycle)) {
-            rows.add(toShipmentRow(cycleId, enrollment, box(cycleId, enrollment.getOrganizationId())));
+            ShippingBox box = boxes.get(boxCode(cycleId, enrollment.getOrganizationId()));
+            rows.add(toShipmentRow(enrollment, box, box == null ? null : box.getShipment()));
         }
         return rows;
     }
@@ -202,9 +179,9 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     public Map<String, Object> saveShipmentDetails(Long cycleId, Long organizationId, String courier,
             String trackingNumber, Date estimatedDeliveryDate, String sysUserId) {
         EQACycle cycle = cycle(cycleId);
-        EQAProgramEnrollment enrollment = enrollment(cycle, organizationId);
+        EQAProgramEnrollment enrollment = participant(cycle, organizationId);
 
-        ShippingBox box = box(cycleId, organizationId);
+        ShippingBox box = shippingBoxService.getBoxByBoxId(boxCode(cycleId, organizationId));
         if (box == null) {
             box = createBox(cycle, organizationId, sysUserId);
         } else if (box.getState() != BoxState.DRAFT && box.getState() != BoxState.READY_TO_SEND) {
@@ -226,11 +203,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
                 estimatedDeliveryDate == null ? null : new Timestamp(estimatedDeliveryDate.getTime()));
         shipment.setSysUserId(sysUserId);
         shipment.setSystemUserId(userId(sysUserId));
-        if (isNew) {
-            shipment.setId(shipmentService.createShipment(shipment).getId());
-        } else {
-            shipmentService.updateShipment(shipment);
-        }
+        shipment = isNew ? shipmentService.createShipment(shipment) : shipmentService.updateShipment(shipment);
 
         // A packed box waiting for dispatch: the EQA prep gate, not the box's own
         // sample count, is what says this box may go out — so this walks the state
@@ -239,7 +212,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         if (box.getState() == BoxState.DRAFT) {
             box = shippingBoxService.changeBoxState(box.getId(), BoxState.READY_TO_SEND, userId(sysUserId));
         }
-        return toShipmentRow(cycleId, enrollment, box);
+        return toShipmentRow(enrollment, box, shipment);
     }
 
     @Override
@@ -252,19 +225,25 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         if (organizationIds == null || organizationIds.isEmpty()) {
             throw new IllegalArgumentException("Name at least one participant to mark shipped");
         }
+        // One dispatch per participant however often the client names them, so a
+        // repeated id cannot inflate the inventory arithmetic below.
+        List<Long> targets = new ArrayList<>(new LinkedHashSet<>(organizationIds));
 
         // Resolve and validate every participant before writing anything, so a bulk
-        // dispatch is all-or-nothing rather than half-sent.
-        List<EQAProgramEnrollment> enrollments = new ArrayList<>();
-        List<ShippingBox> boxes = new ArrayList<>();
-        for (Long organizationId : organizationIds) {
-            EQAProgramEnrollment enrollment = enrollment(cycle, organizationId);
-            ShippingBox box = box(cycleId, organizationId);
+        // dispatch is all-or-nothing rather than half-sent. Enrollments and boxes are
+        // each read once for the whole batch.
+        List<EQAProgramEnrollment> participants = activeEnrollments(cycle);
+        Map<String, ShippingBox> boxes = boxesByCode(cycleId);
+        List<EQAProgramEnrollment> dispatchTo = new ArrayList<>();
+        List<ShippingBox> dispatching = new ArrayList<>();
+        for (Long organizationId : targets) {
+            EQAProgramEnrollment enrollment = participant(participants, organizationId);
+            ShippingBox box = boxes.get(boxCode(cycleId, organizationId));
             if (box == null) {
                 throw new IllegalArgumentException(
                         "No shipment prepared for organization " + organizationId + "; record courier details first");
             }
-            Shipment shipment = shipmentService.getShipmentByShippingBoxId(box.getId());
+            Shipment shipment = box.getShipment();
             if (shipment == null || GenericValidator.isBlankOrNull(shipment.getCourier())) {
                 throw new IllegalArgumentException(
                         "Record a courier for organization " + organizationId + " before marking it shipped");
@@ -273,39 +252,46 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
                 throw new IllegalStateException(
                         "Box " + box.getBoxId() + " is " + box.getState() + ", so it cannot be marked shipped");
             }
-            enrollments.add(enrollment);
-            boxes.add(box);
+            dispatchTo.add(enrollment);
+            dispatching.add(box);
         }
 
         // Refuse a dispatch the inventory cannot cover, before the qa/017 CHECK turns
         // it into a constraint error: produced >= reserved + shipped must still hold
-        // after this batch.
-        for (EQAPanel panel : panelsOf(cycleId)) {
-            int afterBatch = zeroIfNull(panel.getAliquotsShipped()) + sampleCount(panel.getId()) * boxes.size();
+        // after this batch. A shortfall is a conflict with the panel's current state,
+        // like the box-state refusals above.
+        List<EQAPanel> panels = panelsOf(cycleId);
+        Map<Long, Integer> samplesPerPanel = new LinkedHashMap<>();
+        for (EQAPanel panel : panels) {
+            int samples = sampleCount(panel.getId());
+            samplesPerPanel.put(panel.getId(), samples);
+            int afterBatch = zeroIfNull(panel.getAliquotsShipped()) + samples * dispatching.size();
             if (afterBatch + zeroIfNull(panel.getAliquotsReserved()) > zeroIfNull(panel.getAliquotsProduced())) {
-                throw new IllegalArgumentException("Panel " + panel.getPanelName() + " does not hold enough aliquots"
-                        + " for " + boxes.size() + " more participants; produce more before dispatching");
+                throw new IllegalStateException("Panel " + panel.getPanelName() + " does not hold enough aliquots"
+                        + " for " + dispatching.size() + " more participants; produce more before dispatching");
             }
         }
 
-        Timestamp now = new Timestamp(System.currentTimeMillis());
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (int i = 0; i < boxes.size(); i++) {
-            ShippingBox box = shippingBoxService.changeBoxState(boxes.get(i).getId(), BoxState.SENT, userId(sysUserId));
-            Shipment shipment = shipmentService.getShipmentByShippingBoxId(box.getId());
-            shipment.setStatus(ShipmentStatus.IN_TRANSIT);
-            shipment.setShippedDate(now);
+        for (int i = 0; i < dispatching.size(); i++) {
+            ShippingBox box = shippingBoxService.changeBoxState(dispatching.get(i).getId(), BoxState.SENT,
+                    userId(sysUserId));
+            // updateShipmentStatus stamps the shipped date with the status — one owner for
+            // "this shipment left", rather than a second copy of the rule here. It has no
+            // user to record, so the dispatcher is stamped on the returned managed entity
+            // and flushes with the transaction.
+            Shipment shipment = shipmentService.updateShipmentStatus(dispatching.get(i).getShipment().getId(),
+                    ShipmentStatus.IN_TRANSIT);
             shipment.setSysUserId(sysUserId);
             shipment.setSystemUserId(userId(sysUserId));
-            shipmentService.updateShipment(shipment);
-            rows.add(toShipmentRow(cycleId, enrollments.get(i), box));
+            rows.add(toShipmentRow(dispatchTo.get(i), box, shipment));
         }
 
         // Inventory follows the material: each dispatched participant consumes one
         // aliquot per panel sample (FR-V2.5-12).
-        for (EQAPanel panel : panelsOf(cycleId)) {
+        for (EQAPanel panel : panels) {
             panel.setAliquotsShipped(
-                    zeroIfNull(panel.getAliquotsShipped()) + sampleCount(panel.getId()) * boxes.size());
+                    zeroIfNull(panel.getAliquotsShipped()) + samplesPerPanel.get(panel.getId()) * dispatching.size());
             panel.setSysUserId(sysUserId);
             eqaPanelDAO.update(panel);
         }
@@ -326,11 +312,15 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
 
     private List<EQAProgramEnrollment> activeEnrollments(EQACycle cycle) {
         return cycle.getScheme() == null ? List.of()
-                : eqaProgramEnrollmentDAO.findByProgramIdAndStatus(cycle.getScheme().getId(), ACTIVE_ENROLLMENT);
+                : eqaProgramEnrollmentService.findActiveByProgramId(cycle.getScheme().getId());
     }
 
-    private EQAProgramEnrollment enrollment(EQACycle cycle, Long organizationId) {
-        for (EQAProgramEnrollment enrollment : activeEnrollments(cycle)) {
+    private EQAProgramEnrollment participant(EQACycle cycle, Long organizationId) {
+        return participant(activeEnrollments(cycle), organizationId);
+    }
+
+    private EQAProgramEnrollment participant(List<EQAProgramEnrollment> participants, Long organizationId) {
+        for (EQAProgramEnrollment enrollment : participants) {
             if (enrollment.getOrganizationId().equals(organizationId)) {
                 return enrollment;
             }
@@ -350,16 +340,31 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     /**
      * One box per participant per cycle, identified structurally rather than by the
      * shipment module's sequential generator: the id is the idempotency key that
-     * makes re-saving courier details an update.
+     * makes re-saving courier details an update, and box_id is UNIQUE.
      */
     private String boxCode(Long cycleId, Long organizationId) {
         return "EQA-C" + cycleId + "-" + organizationId;
     }
 
-    private ShippingBox box(Long cycleId, Long organizationId) {
-        return shippingBoxService.getBoxByBoxId(boxCode(cycleId, organizationId));
+    /**
+     * Every box of the cycle in one query, keyed by its code — this is what
+     * qa/028's shipping_box.eqa_cycle_id index is for, and it is why rendering the
+     * workbench does not cost a query per participant. Shipments ride along on the
+     * same fetch.
+     */
+    private Map<String, ShippingBox> boxesByCode(Long cycleId) {
+        Map<String, ShippingBox> boxes = new LinkedHashMap<>();
+        for (ShippingBox box : shippingBoxService.getBoxesByEqaCycle(cycleId)) {
+            boxes.put(box.getBoxId(), box);
+        }
+        return boxes;
     }
 
+    /**
+     * Creating the box publishes it to the FHIR store as a SupplyDelivery, as any
+     * other shipping box would be (failures are logged, not fatal). Nothing on it
+     * carries a target value.
+     */
     private ShippingBox createBox(EQACycle cycle, Long organizationId, String sysUserId) {
         Organization participant = organizationService.getOrganizationById(String.valueOf(organizationId));
         if (participant == null) {
@@ -382,21 +387,17 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         return shippingBoxService.createBox(box);
     }
 
-    private Map<String, Object> toShipmentRow(Long cycleId, EQAProgramEnrollment enrollment, ShippingBox box) {
+    private Map<String, Object> toShipmentRow(EQAProgramEnrollment enrollment, ShippingBox box, Shipment shipment) {
         Organization participant = organizationService
                 .getOrganizationById(String.valueOf(enrollment.getOrganizationId()));
-        Shipment shipment = box == null ? null : shipmentService.getShipmentByShippingBoxId(box.getId());
 
         Map<String, Object> row = new LinkedHashMap<>();
-        row.put("cycleId", cycleId);
-        row.put("enrollmentId", enrollment.getId());
         row.put("organizationId", enrollment.getOrganizationId());
         row.put("organizationName", participant == null ? null : participant.getOrganizationName());
         row.put("boxId", box == null ? null : box.getId());
         row.put("boxCode", box == null ? null : box.getBoxId());
         row.put("boxState", box == null ? null : box.getState().name());
         row.put("temperatureRequirement", box == null ? null : box.getTemperatureRequirement());
-        row.put("shipmentId", shipment == null ? null : shipment.getId());
         row.put("courier", shipment == null ? null : shipment.getCourier());
         row.put("trackingNumber", shipment == null ? null : shipment.getTrackingNumber());
         row.put("estimatedDeliveryDate", shipment == null || shipment.getEstimatedDeliveryDate() == null ? null
@@ -412,28 +413,20 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
                 : cycle.getCycleName();
     }
 
-    /** Boxes record the acting user as an Integer; EQA carries it as a String. */
+    /**
+     * Boxes record the acting user as an Integer; EQA carries it as a String. A
+     * session whose user id is not numeric is a server fault, not something the
+     * operator can fix by editing the form.
+     */
     private Integer userId(String sysUserId) {
         try {
             return Integer.valueOf(sysUserId);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Cannot attribute this shipment to an authenticated user");
+            throw new LIMSRuntimeException("Cannot attribute this shipment to an authenticated user", e);
         }
     }
 
     private static int zeroIfNull(Integer value) {
         return value == null ? 0 : value;
-    }
-
-    /** Least-advanced provider cycles first — those are the ones needing work. */
-    private static int compareByProviderProgress(Map<String, Object> a, Map<String, Object> b) {
-        int byState = Integer.compare(providerStateOrder(a), providerStateOrder(b));
-        return byState != 0 ? byState : Long.compare((Long) b.get("id"), (Long) a.get("id"));
-    }
-
-    private static int providerStateOrder(Map<String, Object> row) {
-        Object status = row.get("status");
-        int index = status == null ? -1 : PROVIDER_STATES.indexOf(EQACycleStatus.valueOf((String) status));
-        return index < 0 ? PROVIDER_STATES.size() : index;
     }
 }

@@ -25,6 +25,12 @@ import { useIntl } from "react-intl";
 import { Link as RouterLink, useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  CycleStatusTag,
+  hintStyle,
+  kpiLabelStyle,
+  kpiValueStyle,
+} from "../eqaCommon";
 import { fetchMyCycles, submitCycle } from "./cyclesApi";
 
 const breadcrumbs = [
@@ -45,16 +51,6 @@ const BUCKETS = {
     "scored",
     "closed",
   ],
-};
-
-const STATUS_TAG = {
-  planned: "gray",
-  panel_received: "teal",
-  testing: "blue",
-  ready_to_submit: "purple",
-  submitted: "cyan",
-  scored: "green",
-  closed: "gray",
 };
 
 const TYPE_TAG = {
@@ -118,10 +114,6 @@ const sampleRows = (cycle) => {
   );
 };
 
-const kpiValueStyle = { fontSize: "1.75rem", fontWeight: 600 };
-const kpiLabelStyle = { fontSize: "0.75rem", color: "#525252" };
-const hintStyle = { fontSize: "0.75rem", color: "#525252" };
-
 const MyCyclesPage = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -149,15 +141,6 @@ const MyCyclesPage = () => {
       setUncycledOrders((data || []).filter((o) => !o.cycleId));
     });
   }, []);
-
-  const statusLabel = (status) =>
-    t(`eqa.cycle.status.${status}`, status.replace(/_/g, " "));
-
-  const statusTag = (status) => (
-    <Tag type={STATUS_TAG[status] || "gray"} size="sm">
-      {statusLabel(status)}
-    </Tag>
-  );
 
   const schemeTypeLabel = (type) =>
     t(`eqa.schemeType.${type}`, type.replace(/_/g, " "));
@@ -648,7 +631,9 @@ const MyCyclesPage = () => {
                       </Tag>
                     </TableCell>
                     <TableCell>{c.cycleNumber}</TableCell>
-                    <TableCell>{statusTag(c.status)}</TableCell>
+                    <TableCell>
+                      <CycleStatusTag status={c.status} />
+                    </TableCell>
                     <TableCell>{c.deadline}</TableCell>
                     <TableCell>
                       {c.progress.entered} / {c.progress.total}

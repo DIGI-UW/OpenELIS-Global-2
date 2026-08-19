@@ -12,11 +12,8 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { resolveApiErrorMessage } from "../../../utils/Utils";
+import { hintStyle, kpiLabelStyle, kpiValueStyle } from "../../eqaCommon";
 import { savePrep, requestReadyToShip } from "./workbenchApi";
-
-const kpiValueStyle = { fontSize: "1.75rem", fontWeight: 600 };
-const kpiLabelStyle = { fontSize: "0.75rem", color: "#525252" };
-const hintStyle = { fontSize: "0.75rem", color: "#525252" };
 
 /**
  * Prep workbench (FR-V2.5-12): inventory progress against what the cycle owes

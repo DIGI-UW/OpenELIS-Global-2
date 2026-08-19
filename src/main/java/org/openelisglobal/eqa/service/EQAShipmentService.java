@@ -22,7 +22,9 @@ public interface EQAShipmentService {
      *
      * <p>
      * ponytail: the provider cycle list T-24 will own properly; this is the minimum
-     * that makes the workbench reachable.
+     * that makes the workbench reachable. It walks every cycle and asks each scheme
+     * for its participant count, which is fine at a few hundred cycles — T-24
+     * should replace it with a query that filters and counts in the database.
      */
     List<Map<String, Object>> getProviderCycles();
 
@@ -59,11 +61,14 @@ public interface EQAShipmentService {
     /**
      * Dispatch the named participants' boxes (bulk mark-shipped). The first
      * dispatch of a cycle moves it ready_to_ship → shipped automatically, so the
-     * gate is what stands between prep and dispatch — not a UI decision.
+     * gate is what stands between prep and dispatch — not a UI decision. Repeated
+     * ids dispatch once.
      *
-     * @throws IllegalStateException    when the cycle has not been cleared to ship
-     * @throws IllegalArgumentException when a named participant has no courier
-     *                                  recorded
+     * @throws IllegalStateException    when the cycle has not been cleared to ship,
+     *                                  a box is in no state to leave, or a panel
+     *                                  holds too few aliquots for the batch
+     * @throws IllegalArgumentException when a named participant is not enrolled,
+     *                                  has no box, or has no courier recorded
      */
     List<Map<String, Object>> markShipped(Long cycleId, List<Long> organizationIds, String sysUserId);
 }

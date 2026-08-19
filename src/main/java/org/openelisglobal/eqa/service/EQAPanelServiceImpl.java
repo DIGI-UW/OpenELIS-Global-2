@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analyte.service.AnalyteService;
-import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
@@ -187,13 +186,14 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
         return rows;
     }
 
-    /** Null rather than an error for an analyte that no longer resolves. */
+    /**
+     * The analyte's name, or null when the sample names no analyte.
+     * {@code analyteService.get} throws rather than answering null for a missing
+     * row, which fk_eqa_panel_sample_analyte makes unreachable — so there is no
+     * not-found branch to write here.
+     */
     private String analyteName(Long analyteId) {
-        if (analyteId == null) {
-            return null;
-        }
-        Analyte analyte = analyteService.get(String.valueOf(analyteId));
-        return analyte == null ? null : analyte.getAnalyteName();
+        return analyteId == null ? null : analyteService.get(String.valueOf(analyteId)).getAnalyteName();
     }
 
     private List<EQAPanelSample> samplesOf(Long panelId) {

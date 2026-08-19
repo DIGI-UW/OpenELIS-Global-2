@@ -75,8 +75,12 @@ export const requestReadyToShip = (cycleId, callback) =>
     withBody(callback),
   );
 
-/** Panel samples, for the pack list. Targets are nulled server-side. */
+/**
+ * Panel samples, for the pack list. Targets are nulled server-side.
+ *
+ * Deliberately NOT defaulted to []: a failed read answers undefined, and the
+ * pack list has to tell that apart from a panel that genuinely holds no samples
+ * — otherwise a courier gets a manifest missing whole panels.
+ */
 export const fetchPanelSamples = (panelId, callback) =>
-  getFromOpenElisServer(`/rest/eqa/panels/${panelId}/samples`, (data) =>
-    callback(data || []),
-  );
+  getFromOpenElisServer(`/rest/eqa/panels/${panelId}/samples`, callback);

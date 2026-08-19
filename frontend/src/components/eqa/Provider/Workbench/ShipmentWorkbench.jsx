@@ -16,6 +16,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { resolveApiErrorMessage, toLocalIsoDate } from "../../../utils/Utils";
+import { hintStyle } from "../../eqaCommon";
 import {
   generateLabelPDF,
   generateManifestPDF,
@@ -37,8 +38,6 @@ const BOX_STATE_TAG = {
   LOST_IN_TRANSIT: "red",
 };
 
-const hintStyle = { fontSize: "0.75rem", color: "#525252" };
-
 /**
  * Shipment workbench (FR-V2.5-13): one row per participant, courier details,
  * bulk dispatch, and the two documents that travel with the box.
@@ -56,7 +55,9 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
 
   const [drafts, setDrafts] = useState({});
   const [selected, setSelected] = useState([]);
-  const [busy, setBusy] = useState(false);
+  // Which write is in flight: an organizationId for that row's save, "ship" for
+  // the batch. One flag would freeze every row while a single one saved.
+  const [busy, setBusy] = useState(null);
 
   const draftOf = (row) => ({
     courier: row.courier || "",
@@ -75,12 +76,12 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
 
   const handleSave = (row) => {
     const draft = draftOf(row);
-    setBusy(true);
+    setBusy(row.organizationId);
     saveShipmentDetails(
       cycleId,
       { organizationId: row.organizationId, ...draft },
       ({ ok, body }) => {
-        setBusy(false);
+        setBusy(null);
         if (ok) {
           setDrafts((prev) => ({ ...prev, [row.organizationId]: undefined }));
           onChanged();
@@ -99,9 +100,9 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
   };
 
   const handleShip = () => {
-    setBusy(true);
+    setBusy("ship");
     markShipped(cycleId, selected, ({ ok, body }) => {
-      setBusy(false);
+      setBusy(null);
       if (ok) {
         setSelected([]);
         onChanged();
@@ -122,19 +123,19 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
     });
   };
 
-  const labelData = (row) => ({
-    boxId: row.boxCode,
-    destinationFacility: row.organizationName,
-    temperature: row.temperatureRequirement,
-    sampleCount: totalSamples(),
-    sampleTypeCounts: {},
-  });
-
-  const totalSamples = () =>
-    (prep?.panels || []).reduce((sum, panel) => sum + panel.sampleCount, 0);
-
   const handleLabel = (row) =>
-    generateLabelPDF(labelData(row), intl.formatMessage);
+    generateLabelPDF(
+      {
+        boxId: row.boxCode,
+        destinationFacility: row.organizationName,
+        temperature: row.temperatureRequirement,
+        sampleCount: (prep?.panels || []).reduce(
+          (sum, panel) => sum + panel.sampleCount,
+          0,
+        ),
+      },
+      intl.formatMessage,
+    );
 
   /** Pack list = the panel samples this participant's box carries. */
   const handlePackList = (row) => {
@@ -154,36 +155,49 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
         (panel) =>
           new Promise((resolve) =>
             fetchPanelSamples(panel.panelId, (samples) =>
+              // undefined = the read failed; null marks it so a partial manifest is
+              // refused rather than shipped as if it were the whole box.
               resolve(
-                samples.map((sample) => ({
-                  accessionNumber: sample.blindCode || sample.sampleCode,
-                  typeOfSample: panel.panelName,
-                  referralTests: sample.analyteName || "",
-                  collectionDate: null,
-                })),
+                samples === undefined
+                  ? null
+                  : samples.map((sample) => ({
+                      accessionNumber: sample.blindCode || sample.sampleCode,
+                      typeOfSample: panel.panelName,
+                      referralTests: sample.analyteName || "",
+                    })),
               ),
             ),
           ),
       ),
-    ).then((perPanel) =>
+    ).then((perPanel) => {
+      const samples = perPanel.filter(Boolean).flat();
+      // Any panel that could not be read, or nothing to list at all: a pack list a
+      // courier signs for must never quietly under-report the box.
+      if (perPanel.some((rows) => rows === null) || samples.length === 0) {
+        onNotice({
+          kind: "error",
+          text: t(
+            "eqa.shipment.packList.unavailable",
+            "The panel samples could not be read, so no pack list was produced. Reload and try again.",
+          ),
+        });
+        return;
+      }
       generateManifestPDF(
         {
           boxId: row.boxCode,
-          serviceLocation: "",
           destinationFacility: row.organizationName,
           state: row.boxState,
           temperature: row.temperatureRequirement,
-          createdDate: null,
-          createdBy: "",
-          samples: perPanel.flat(),
+          samples: samples,
           notes: t(
             "eqa.shipment.packList.notes",
             "EQA panel material — do not open before the testing window.",
           ),
         },
         intl.formatMessage,
-      ),
-    );
+      );
+    });
   };
 
   const selectable = rows.filter((row) => !dispatched(row) && row.boxId);
@@ -220,7 +234,7 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
             />
             <Button
               size="sm"
-              disabled={selected.length === 0 || busy}
+              disabled={selected.length === 0 || busy !== null}
               onClick={handleShip}
             >
               {t("eqa.shipment.markShipped", "Mark {n} shipped", {
@@ -251,9 +265,7 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
                 <TableHeader>
                   {t("eqa.shipment.expected", "Expected delivery")}
                 </TableHeader>
-                <TableHeader>
-                  {t("eqa.shipment.actions", "Actions")}
-                </TableHeader>
+                <TableHeader>{t("column.actions", "Actions")}</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -265,7 +277,11 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
                     <TableCell>
                       <Checkbox
                         id={`select-${row.organizationId}`}
-                        labelText=""
+                        labelText={t(
+                          "eqa.shipment.selectRow",
+                          "Select {name} for dispatch",
+                          { name: row.organizationName },
+                        )}
                         hideLabel
                         checked={selected.includes(row.organizationId)}
                         disabled={isDispatched || !row.boxId}
@@ -294,7 +310,11 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
                     <TableCell>
                       <TextInput
                         id={`courier-${row.organizationId}`}
-                        labelText=""
+                        labelText={t(
+                          "eqa.shipment.courierFor",
+                          "Courier for {name}",
+                          { name: row.organizationName },
+                        )}
                         hideLabel
                         size="sm"
                         value={draft.courier}
@@ -309,7 +329,11 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
                     <TableCell>
                       <TextInput
                         id={`tracking-${row.organizationId}`}
-                        labelText=""
+                        labelText={t(
+                          "eqa.shipment.trackingFor",
+                          "Tracking number for {name}",
+                          { name: row.organizationName },
+                        )}
                         hideLabel
                         size="sm"
                         value={draft.trackingNumber}
@@ -336,7 +360,11 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
                       >
                         <DatePickerInput
                           id={`expected-${row.organizationId}`}
-                          labelText=""
+                          labelText={t(
+                            "eqa.shipment.expectedFor",
+                            "Expected delivery for {name}",
+                            { name: row.organizationName },
+                          )}
                           hideLabel
                           size="sm"
                           placeholder="dd/mm/yyyy"
@@ -349,10 +377,10 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
                         <Button
                           kind="ghost"
                           size="sm"
-                          disabled={busy}
+                          disabled={busy === row.organizationId}
                           onClick={() => handleSave(row)}
                         >
-                          {t("eqa.shipment.save", "Save")}
+                          {t("button.save", "Save")}
                         </Button>
                       )}
                       {row.boxId && (

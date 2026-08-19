@@ -92,31 +92,6 @@ public class EQAShipmentRestController extends BaseRestController {
         return shipmentService.markShipped(cycleId, longListField(body, "organizationIds"), getSysUserId(request));
     }
 
-    /** Tolerates JSON numbers arriving as any numeric type or as a string. */
-    private Integer integerField(Map<String, Object> body, String key) {
-        String value = stringField(body, key);
-        if (value == null) {
-            return null;
-        }
-        try {
-            return Integer.valueOf(value.trim());
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(key + " must be a whole number");
-        }
-    }
-
-    private Long longField(Map<String, Object> body, String key) {
-        String value = stringField(body, key);
-        if (value == null) {
-            return null;
-        }
-        try {
-            return Long.valueOf(value.trim());
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(key + " must be an id");
-        }
-    }
-
     private Boolean booleanField(Map<String, Object> body, String key) {
         String value = stringField(body, key);
         return value == null ? null : Boolean.valueOf(value);
@@ -132,11 +107,6 @@ public class EQAShipmentRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(key + " must be an ISO date (yyyy-MM-dd)");
         }
-    }
-
-    private String stringField(Map<String, Object> body, String key) {
-        Object value = body.get(key);
-        return value == null ? null : String.valueOf(value);
     }
 
     private List<Long> longListField(Map<String, Object> body, String key) {
