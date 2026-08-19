@@ -19,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -106,6 +107,20 @@ public class AnalyzerProfileBindingServiceTest {
                 () -> service.resolveActiveRevision(PROFILE_ID, REVISION, "oe-user-17"));
 
         assertEquals("Bridge profile site.mock-hematology revision 3 was not found", exception.getMessage());
+        verify(bindingDAO, never()).insert(any(AnalyzerProfileBinding.class));
+    }
+
+    @Test
+    public void assignProfilePreservesAnUnchangedPinnedRevisionWithoutConsultingLatestCatalog() {
+        Analyzer analyzer = new Analyzer();
+        AnalyzerProfileBinding existing = binding(FINGERPRINT);
+        analyzer.setProfileBinding(existing);
+
+        AnalyzerProfileBinding result = service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
+
+        assertSame(existing, result);
+        assertSame(existing, analyzer.getProfileBinding());
+        verify(catalogService, never()).getCatalog();
         verify(bindingDAO, never()).insert(any(AnalyzerProfileBinding.class));
     }
 
