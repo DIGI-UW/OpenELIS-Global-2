@@ -261,17 +261,18 @@ class DevStackContractTest(unittest.TestCase):
             commands[1][-6:], ["exec", "-T", "proxy", "nginx", "-s", "reload"]
         )
 
-    def test_backend_is_recreated_to_remount_the_current_war(self):
-        context = self.dev_stack.make_context(REPO_ROOT)
-        environment = self.dev_stack.build_environment(context)
+    def test_up_does_not_recreate_backend_after_initial_start(self):
+        source = SCRIPT_PATH.read_text()
 
-        with patch.object(self.dev_stack, "run") as run:
-            self.dev_stack.remount_application_artifact(context, environment)
-
-        command = run.call_args.args[0]
-        self.assertEqual(
-            command[-5:],
-            ["up", "-d", "--no-deps", "--force-recreate", "oe.openelis.org"],
+        self.assertNotIn("--force-recreate", source)
+        self.assertIn(
+            "../../target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war",
+            (
+                REPO_ROOT
+                / "projects"
+                / "analyzer-harness"
+                / "docker-compose.dev.yml"
+            ).read_text(),
         )
 
     def test_full_harness_scenarios_cover_each_transport_without_ids(self):

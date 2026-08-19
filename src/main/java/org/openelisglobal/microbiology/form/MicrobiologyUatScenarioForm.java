@@ -13,6 +13,8 @@ public class MicrobiologyUatScenarioForm {
     public String siblingCaseId;
     public String isolateId;
     public String astRunId;
+    public String analyzerInstrumentId;
+    public String analyzerCardId;
     public String analysisId;
     public String reportableTestAnalyteId;
     public String organismId;

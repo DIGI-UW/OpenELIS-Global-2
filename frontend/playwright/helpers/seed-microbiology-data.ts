@@ -41,6 +41,13 @@ const isReviewedMicrobiologyCase = (
   typeof seeded.astRunId === "string" &&
   seeded.astRunId.length > 0;
 
+export interface SeededAnalyzerReviewMicrobiologyCase extends SeededReviewedMicrobiologyCase {
+  analyzerInstrumentId: string;
+  analyzerCardId: string;
+  organismId: string;
+  antibioticId: string;
+}
+
 export type SeededMicrobiologyAstWorklistCase = SeededReviewedMicrobiologyCase;
 
 export interface SeededDenseMicrobiologyCase extends SeededMicrobiologyCase {
@@ -72,7 +79,8 @@ type MicrobiologyScenario =
   | "M3"
   | "M4"
   | "R1"
-  | "AST_REVIEWED";
+  | "AST_REVIEWED"
+  | "AST_ANALYZER_REVIEW";
 
 interface MicrobiologyReferenceOption {
   id: string;
@@ -605,6 +613,113 @@ export async function seedReviewedMicrobiologyCase(
     throw new Error("Microbiology AST_REVIEWED scenario is incomplete");
   }
   return seeded;
+}
+
+export async function seedAnalyzerReviewMicrobiologyCase(
+  page: Page,
+): Promise<SeededAnalyzerReviewMicrobiologyCase> {
+  const seeded = await provisionMicrobiologyScenario(
+    page,
+    "AST_ANALYZER_REVIEW",
+  );
+  if (
+    !seeded.isolateId ||
+    !seeded.astRunId ||
+    !seeded.analyzerInstrumentId ||
+    !seeded.analyzerCardId ||
+    !seeded.organismId ||
+    !seeded.antibioticId
+  ) {
+    throw new Error("Microbiology AST_ANALYZER_REVIEW scenario is incomplete");
+  }
+  return seeded as SeededAnalyzerReviewMicrobiologyCase;
+}
+
+export async function submitQcFailedAstAnalyzerResults(
+  page: Page,
+  seeded: SeededAnalyzerReviewMicrobiologyCase,
+) {
+  const externalEventId = `playwright-ast-result-${randomUUID()}`;
+  const response = await page.request.post(
+    `${API_PREFIX}/rest/analyzer/events/ast`,
+    {
+      headers: { "X-CSRF-Token": await getCsrfToken(page) },
+      data: {
+        externalEventId,
+        eventType: "AST_RESULT_AVAILABLE",
+        analyzerId: seeded.analyzerInstrumentId,
+        sourceId: seeded.analyzerCardId,
+        payload: {
+          analyzerInstrumentId: seeded.analyzerInstrumentId,
+          analyzerCardId: seeded.analyzerCardId,
+          analyzerSoftwareVersion: "UAT-1.0",
+          analyzerOrganismId: seeded.organismId,
+          analyzerOrganismName: "Escherichia coli (UAT)",
+          analyzerOrganismConfidence: 99.5,
+          instrumentQcReference: "UAT-QC-CONTROL-17",
+          qcPassed: false,
+          analyzerMessageCodes: ["CONTROL_OUT_OF_RANGE"],
+          readings: [
+            {
+              antibioticId: seeded.antibioticId,
+              rawValue: 4,
+              units: "mg/L",
+              instrumentInterpretation: "SUSCEPTIBLE",
+              analyzerResultReference: `${externalEventId}-CIP`,
+            },
+          ],
+        },
+      },
+    },
+  );
+  if (response.status() !== 202) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `AST analyzer event failed: HTTP ${response.status()} ${body.slice(0, 500)}`,
+    );
+  }
+  return response.json();
+}
+
+export async function submitUnmatchedAstAnalyzerResults(
+  page: Page,
+  seeded: SeededAnalyzerReviewMicrobiologyCase,
+) {
+  const externalEventId = `playwright-ast-unmatched-${randomUUID()}`;
+  const sourceId = `${seeded.analyzerCardId}-UNMATCHED`;
+  const response = await page.request.post(
+    `${API_PREFIX}/rest/analyzer/events/ast`,
+    {
+      headers: { "X-CSRF-Token": await getCsrfToken(page) },
+      data: {
+        externalEventId,
+        eventType: "AST_RESULT_AVAILABLE",
+        analyzerId: seeded.analyzerInstrumentId,
+        sourceId,
+        payload: {
+          analyzerInstrumentId: seeded.analyzerInstrumentId,
+          analyzerCardId: sourceId,
+          analyzerSoftwareVersion: "UAT-1.0",
+          readings: [
+            {
+              antibioticId: seeded.antibioticId,
+              rawValue: 4,
+              units: "mg/L",
+              instrumentInterpretation: "SUSCEPTIBLE",
+              analyzerResultReference: `${externalEventId}-CIP`,
+            },
+          ],
+        },
+      },
+    },
+  );
+  if (response.status() !== 422) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Unmatched AST analyzer event returned HTTP ${response.status()} ${body.slice(0, 500)}`,
+    );
+  }
+  return { externalEventId, sourceId };
 }
 
 export async function seedDenseMicrobiologyCase(

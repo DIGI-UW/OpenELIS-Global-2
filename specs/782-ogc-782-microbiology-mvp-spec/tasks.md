@@ -172,10 +172,10 @@ capability is available; it does not own macro authoring or administration.
 
 - [ ] Implement expert rules and macro-driven bench workflows after the shared
    Macro Library consumer contract is available.
-- [*] Complete analyzer-result review and QC with representative instrument
+- [x] Complete analyzer-result review and QC with representative instrument
   traffic and reconciliation evidence.
-- [ ] Complete WHONET packaging, remaining vocabulary mappings, scheduling, and
-   delivery beyond the current manual export.
+- [*] Complete WHONET packaging, remaining vocabulary mappings, scheduling, and
+  delivery beyond the current manual export.
 - [ ] Complete any remaining reference-data administration required by those
    workflows.
 
