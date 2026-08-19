@@ -476,6 +476,37 @@ export const putToOpenElisServerFullResponse = <TExtra = unknown>(
     });
 };
 
+/**
+ * PATCH counterpart of {@link postToOpenElisServerFullResponse}: the callback
+ * gets the raw Response, so a 409/422 body can be read and shown. The JSON
+ * variant discards the body on !ok, which is exactly what a state-machine
+ * refusal must not do.
+ */
+export const patchToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
+  fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken(),
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+    body: payLoad as BodyInit,
+  })
+    .then(handleSessionError)
+    .then((response) => callback(response, extraParams))
+    .catch((error) => {
+      console.error(error);
+      callback(undefined, extraParams);
+    });
+};
+
 export const deleteFromOpenElisServer = (
   endPoint: string,
   callback: (status: number) => void,

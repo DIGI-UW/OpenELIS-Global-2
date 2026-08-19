@@ -5,6 +5,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
@@ -34,4 +35,11 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
 
     /** Same derivation for a cycle already in hand, avoiding a re-fetch. */
     EQACycleStatus deriveParticipantState(EQACycle cycle, Long labEnrollmentId);
+
+    /**
+     * How many aliquots FR-V2.5-12 requires of this panel: one per sample per
+     * participant, plus the panel's reserve. Exposed because the prep workbench has
+     * to show the same number the ready_to_ship gate enforces.
+     */
+    int aliquotsNeeded(EQAPanel panel, int participantCount);
 }

@@ -89,6 +89,14 @@ public class ShippingBox extends BaseObject<Integer> {
     @Column(name = "sys_user_id", nullable = false)
     private Integer systemUserId;
 
+    /**
+     * The EQA cycle this box distributes panel material for (FR-V2.5-13). Plain id
+     * rather than a reference to the EQA module: the shipment module never reads
+     * cycle state, and only the EQA side joins on it.
+     */
+    @Column(name = "eqa_cycle_id")
+    private Long eqaCycleId;
+
     // Relationships
     @OneToMany(mappedBy = "shippingBox", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<BoxSampleItem> boxSampleItems = new ArrayList<>();
@@ -250,6 +258,14 @@ public class ShippingBox extends BaseObject<Integer> {
 
     public void setBoxSampleItems(List<BoxSampleItem> boxSampleItems) {
         this.boxSampleItems = boxSampleItems;
+    }
+
+    public Long getEqaCycleId() {
+        return eqaCycleId;
+    }
+
+    public void setEqaCycleId(Long eqaCycleId) {
+        this.eqaCycleId = eqaCycleId;
     }
 
     public Shipment getShipment() {
