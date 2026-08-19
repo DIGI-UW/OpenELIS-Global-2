@@ -19,31 +19,29 @@ public class AnalyzerSiteBindingLiquibaseTest {
 
     private static final Path VERSION_ROOT = Path.of("src", "main", "resources", "liquibase", "3.5.x.x");
     private static final Path BASE_CHANGELOG = VERSION_ROOT.resolve("base.xml");
-    private static final Path MIGRATION = VERSION_ROOT.resolve("085-analyzer-site-binding.xml");
+    private static final Path PROFILE_REFERENCE_MIGRATION = VERSION_ROOT.resolve("085-analyzer-profile-binding.xml");
+    private static final Path MIGRATION = VERSION_ROOT.resolve("086-analyzer-site-binding.xml");
 
     @Test
     public void versionedChangelogIncludesAnalyzerSiteBindingMigration() throws Exception {
         Document base = parse(BASE_CHANGELOG);
 
         assertTrue(elements(base, "include").stream()
-                .anyMatch(include -> "085-analyzer-site-binding.xml".equals(include.getAttribute("file"))));
+                .anyMatch(include -> "086-analyzer-site-binding.xml".equals(include.getAttribute("file"))));
     }
 
     @Test
     public void migrationDefinesImmutableLocalBindingRevisionsAndIndependentRows() throws Exception {
         Document migration = parse(MIGRATION);
 
-        assertEquals(
-                Set.of("analyzer_profile_binding", "analyzer_site_binding", "analyzer_site_binding_revision",
-                        "analyzer_site_binding_test", "analyzer_site_binding_result"),
-                attributes(elements(migration, "createTable"), "tableName"));
+        assertEquals(Set.of("analyzer_site_binding", "analyzer_site_binding_revision", "analyzer_site_binding_test",
+                "analyzer_site_binding_result"), attributes(elements(migration, "createTable"), "tableName"));
 
         Element analyzerColumns = elements(migration, "addColumn").stream()
                 .filter(element -> "analyzer".equals(element.getAttribute("tableName"))).findFirst().orElseThrow();
         assertEquals(Set.of("site_binding_revision_id"), childColumnNames(analyzerColumns));
 
         Set<String> uniqueConstraints = attributes(elements(migration, "addUniqueConstraint"), "constraintName");
-        assertTrue(uniqueConstraints.contains("uq_analyzer_profile_binding_revision"));
         assertTrue(uniqueConstraints.contains("uq_analyzer_site_binding_revision_number"));
         assertTrue(uniqueConstraints.contains("uq_analyzer_site_binding_revision_fingerprint"));
 
@@ -57,9 +55,11 @@ public class AnalyzerSiteBindingLiquibaseTest {
 
     @Test
     public void migrationStoresReferencesAndLocalDecisionsWithoutCopyingPortableProfileContent() throws Exception {
+        Document profileReferenceMigration = parse(PROFILE_REFERENCE_MIGRATION);
         Document migration = parse(MIGRATION);
 
         Set<String> allColumns = attributes(elements(migration, "column"), "name");
+        allColumns.addAll(attributes(elements(profileReferenceMigration, "column"), "name"));
         assertTrue(allColumns.contains("profile_id"));
         assertTrue(allColumns.contains("profile_revision"));
         assertTrue(allColumns.contains("source_row_key"));
