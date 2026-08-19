@@ -298,6 +298,10 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   URL and server query state. Culture rows and AST-run rows use different DTO
   projections but share navigation, filtering, paging, refresh, and empty-state
   infrastructure.
+- Keep reviewed AST attempts out of the default AST query while retaining them
+  behind the canonical `status=reviewed` filter. Project reviewed rows as
+  read-only case links; the existing case-scoped repeat/retest flow remains the
+  only place that can start another attempt and require its reason.
 - Compile laboratory accession, patient, specimen, latest activity, and AST
   panel display context inside the worklist service transaction with a fixed
   set of bounded batch projections. Keep the source records authoritative: do

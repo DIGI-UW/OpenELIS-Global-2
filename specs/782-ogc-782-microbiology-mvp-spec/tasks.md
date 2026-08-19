@@ -140,7 +140,7 @@ capability is available; it does not own macro authoring or administration.
 7. The case route and active section remain bookmarkable and refresh-stable;
    keyboard focus and status announcements follow existing Carbon patterns.
 
-## Future Outcome Queue
+## Roadmap Status
 
 ### Phase 1A Closure
 
@@ -164,18 +164,16 @@ capability is available; it does not own macro authoring or administration.
 - [ ] **Reagent policy dependency** - Enforce required, optional, and substitute
    reagent behavior only after Test Catalog provides an authoritative shared
    policy model; do not infer it from legacy role names.
-- [*] **Reviewed AST worklist behavior** - Decide whether a reviewed AST attempt
-  leaves the active queue, remains visible in a completed view, or stays
-  actionable only when a repeat is needed. OpenELIS Work ends at Complete and
-  Review, while the repository specification does not define what happens on
-  the queue after review. Do not change this behavior until Piotr rules.
+- [x] **Reviewed AST worklist behavior** - Remove reviewed attempts from the
+  default action queue, retain them in a bookmarkable Reviewed view with a
+  read-only View action, and keep reasoned repeat/retest setup inside the case.
 
 ### Phase 1B Clinical Depth
 
 - [ ] Implement expert rules and macro-driven bench workflows after the shared
    Macro Library consumer contract is available.
-- [ ] Complete analyzer-result review and QC with representative instrument
-   traffic and reconciliation evidence.
+- [*] Complete analyzer-result review and QC with representative instrument
+  traffic and reconciliation evidence.
 - [ ] Complete WHONET packaging, remaining vocabulary mappings, scheduling, and
    delivery beyond the current manual export.
 - [ ] Complete any remaining reference-data administration required by those

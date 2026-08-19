@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import {
   seedMicrobiologyAstWorklistCase,
   seedMicrobiologyWorklistCase,
+  seedReviewedMicrobiologyCase,
 } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -108,6 +109,72 @@ test.describe("M-07 microbiology worklist grains", () => {
         url.pathname === `/Microbiology/cases/${seeded.caseId}` &&
         url.searchParams.get("grain") === "ast" &&
         url.searchParams.get("status") === "in-progress" &&
+        url.searchParams.get("section") === "ast" &&
+        url.searchParams.get("astIsolateId") === seeded.isolateId &&
+        url.searchParams.get("astRunId") === seeded.astRunId
+      );
+    });
+    await expect(page.getByRole("heading", { name: "Manual AST" })).toBeVisible(
+      { timeout: LONG_TIMEOUT },
+    );
+  });
+
+  test("Reviewed AST runs leave active work and remain available read-only", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 1600 });
+    const seeded = await seedReviewedMicrobiologyCase(page);
+    const query = new URLSearchParams({
+      grain: "ast",
+      q: seeded.caseId,
+    });
+    await page.goto(`/Microbiology/worklist?${query}`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    await expect(page.getByRole("heading", { name: "AST runs" })).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    const row = page.getByTestId(
+      `microbiology-worklist-row-${seeded.astRunId}`,
+    );
+    await expect(row).not.toBeVisible();
+
+    await page.getByLabel("AST status").selectOption("reviewed");
+    await page.waitForURL((url) => {
+      return (
+        url.pathname === "/Microbiology/worklist" &&
+        url.searchParams.get("grain") === "ast" &&
+        url.searchParams.get("status") === "reviewed" &&
+        url.searchParams.get("q") === seeded.caseId
+      );
+    });
+
+    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(row).toContainText("Reviewed");
+    await testInfo.attach("reviewed-ast-worklist", {
+      body: await page.getByTestId("microbiology-worklist").screenshot(),
+      contentType: "image/png",
+    });
+    await row.getByRole("button", { name: "Row actions" }).click();
+    await expect(
+      page.getByText("View reviewed AST", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("Edit AST", { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByText("Set up new AST run", { exact: true }),
+    ).toHaveCount(0);
+    await testInfo.attach("reviewed-ast-worklist-read-only", {
+      body: await page.getByTestId("microbiology-worklist").screenshot(),
+      contentType: "image/png",
+    });
+    await page.getByText("View reviewed AST", { exact: true }).click();
+
+    await page.waitForURL((url) => {
+      return (
+        url.pathname === `/Microbiology/cases/${seeded.caseId}` &&
+        url.searchParams.get("grain") === "ast" &&
+        url.searchParams.get("status") === "reviewed" &&
         url.searchParams.get("section") === "ast" &&
         url.searchParams.get("astIsolateId") === seeded.isolateId &&
         url.searchParams.get("astRunId") === seeded.astRunId

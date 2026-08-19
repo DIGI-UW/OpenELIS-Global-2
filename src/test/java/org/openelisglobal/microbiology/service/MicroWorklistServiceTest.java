@@ -111,6 +111,7 @@ public class MicroWorklistServiceTest {
         MicroWorklistRowForm cultureRow = culturePage.rows.get(0);
         MicroWorklistQueryForm astQuery = new MicroWorklistQueryForm();
         astQuery.grain = "ast";
+        astQuery.status = "reviewed";
         astQuery.q = "Gram negative";
         MicroWorklistRowForm astRow = service.getWorklistPage(astQuery).rows.get(0);
 
@@ -382,6 +383,38 @@ public class MicroWorklistServiceTest {
         assertEquals("Isolate 1", page.rows.get(0).isolateLabel);
         assertEquals("E. coli", page.rows.get(0).organismDisplay);
         assertEquals(MicroAstRunStatus.RESULTS_IN.name(), page.rows.get(0).astStatus);
+    }
+
+    @Test
+    public void reviewedRunsLeaveDefaultActionQueueAndRemainInReviewedView() {
+        MicroCase microCase = microCase("case-ast", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.REVIEW_READY, "ROUTINE");
+        MicroIsolate isolate = significantIsolate("iso-1");
+        isolate.setCaseId("case-ast");
+        MicroAstRun inProgress = astRun("run-active", "iso-1", MicroAstRunStatus.IN_PROGRESS);
+        MicroAstRun reviewed = astRun("run-reviewed", "iso-1", MicroAstRunStatus.REVIEWED);
+
+        when(caseDAO.getOpenCases()).thenReturn(List.of(microCase));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(microCase));
+        when(isolateDAO.getByCaseIds(List.of("case-ast"))).thenReturn(List.of(isolate));
+        when(astRunDAO.getByIsolateIds(List.of("iso-1"))).thenReturn(List.of(inProgress, reviewed));
+        when(communicationDAO.getByCaseIds(List.of("case-ast"))).thenReturn(List.of());
+
+        MicroWorklistQueryForm activeQuery = new MicroWorklistQueryForm();
+        activeQuery.grain = "ast";
+        MicroWorklistPageForm activePage = service.getWorklistPage(activeQuery);
+        MicroWorklistQueryForm reviewedQuery = new MicroWorklistQueryForm();
+        reviewedQuery.grain = "ast";
+        reviewedQuery.status = "reviewed";
+        MicroWorklistPageForm reviewedPage = service.getWorklistPage(reviewedQuery);
+
+        assertEquals(1, activePage.total);
+        assertEquals("run-active", activePage.rows.get(0).astRunId);
+        assertEquals(1, activePage.summary.astInQueue);
+        assertEquals(1, reviewedPage.total);
+        assertEquals("run-reviewed", reviewedPage.rows.get(0).astRunId);
+        assertEquals(MicroAstRunStatus.REVIEWED.name(), reviewedPage.rows.get(0).astStatus);
+        assertEquals("VIEW", reviewedPage.rows.get(0).dueAction);
     }
 
     private MicroAstRun astRun(String id, String isolateId, MicroAstRunStatus status) {
