@@ -20,6 +20,7 @@ import org.dbunit.dataset.FilteredDataSet;
 import org.dbunit.dataset.IDataSet;
 import org.dbunit.dataset.filter.ExcludeTableFilter;
 import org.dbunit.dataset.xml.FlatXmlDataSetBuilder;
+import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
 import org.junit.After;
 import org.junit.Before;
@@ -29,7 +30,6 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.security.WithDaemonUser;
-import org.openelisglobal.testsupport.dbunit.PostgresqlJsonbDataTypeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -325,7 +325,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         DatabaseConfig config = connection.getConfig();
         config.setProperty(DatabaseConfig.FEATURE_ALLOW_EMPTY_FIELDS, true);
         config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, true);
-        config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlJsonbDataTypeFactory());
+        config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
         return connection;
     }
 

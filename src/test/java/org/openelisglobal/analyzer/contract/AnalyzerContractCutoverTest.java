@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -96,13 +97,14 @@ public class AnalyzerContractCutoverTest {
     public void cutoverDeletesSupersededPathsWithoutACompatibilityRuntime() throws Exception {
         String adr = Files.readString(ADR);
         String cutover = Files.readString(CUTOVER);
+        String normalizedAdr = adr.toLowerCase(Locale.ROOT);
 
         assertTrue(adr.contains("**Status:** Accepted"));
-        assertTrue(adr.contains("established Bridge-owned profile"));
-        assertTrue(adr.contains("runtime communication"));
-        assertTrue(adr.contains("instance defaults"));
-        assertTrue(adr.contains("OpenELIS-owned site binding"));
-        assertTrue(adr.contains("No copied profile authority"));
+        assertTrue(normalizedAdr.contains("established bridge-owned profile"));
+        assertTrue(normalizedAdr.contains("runtime communication"));
+        assertTrue(normalizedAdr.contains("instance defaults"));
+        assertTrue(normalizedAdr.contains("openelis-owned site binding"));
+        assertTrue(normalizedAdr.contains("no copied profile authority"));
 
         for (String target : new String[] { "`defaultConfigId`", "copied plugin/profile JSON",
                 "OE profile serving/application", "per-analyzer copied mappings", "`AnalyzerQcRule`",

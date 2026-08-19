@@ -2,127 +2,108 @@
 
 **Status:** Accepted
 
-**Date:** 2026-08-18
+**Date:** 2026-08-19
 
 **Checkpoint:** OE-E0 / BR-E0
 
 ## Context
 
-Current OpenELIS code mixes three concerns: copied bootstrap profile JSON,
-site-specific Test and Result Option mappings, and analyzer-instance runtime
-settings. It also stores analyzer-specific control-result classification in
-`AnalyzerQcRule`. Current Bridge code owns analyzer-facing protocols and
-transport but does not yet provide the immutable portable profile lifecycle
-required by the target workflow.
+OpenELIS already ships an analyzer profile system used by analyzer setup, Bridge
+registration/runtime, and analyzer-mock fixtures. Each established profile has
+two jobs:
 
-The target must let a laboratory manage an Analyzer Type independently from an
-installed analyzer connection. A configured analyzer must not change behavior
-because a shared type is edited, and a portable profile must not contain local
-OpenELIS catalog identities. The boundary also must support deterministic
-verification, synchronization, migration, and rollback without two competing
-authorities.
+1. define runtime communication for one analyzer type; and
+2. provide instance defaults when a laboratory creates an analyzer connection.
+
+The target adds strict validation, immutable publication, and a lab-facing
+catalog around that system. It does not replace the profile shape or treat
+OpenELIS copies, mapping rows, or classifier rows as a second profile source.
 
 ## Decision
 
-### Bridge-owned portable profile
+### Established Bridge-owned profile
 
-Analyzer Bridge owns each portable Analyzer Type profile and its analyzer-facing
-behavior: protocol, listener/parser/probe behavior, connection-field definition,
-source test and result declarations, control-result recognition, and FILE
-watching/transport. A published profile revision is immutable and retained while
-referenced. Bridge exposes an explicit profile identity and revision; it does not
-silently replace one revision with another.
+Analyzer Bridge owns the established profile document and analyzer-facing
+runtime behavior: protocols, listeners, parsing, probes, connection/default
+fields, source test/result declarations, control-result recognition, and FILE
+watching/transport. The contract remains protocol-discriminated: socket profiles
+carry socket communication and non-empty default mappings, while FILE profiles
+may be column-only. An invented model, socket field, tabular header, or mapping
+row is never required merely to make a profile fit one universal template.
 
-Control recognition has exactly one schema-valid mode on each active revision:
-explicit rules, or an author-affirmed declaration that the interface transports
-no controls. Bridge evaluates only that definition. It has no OpenELIS-pushed
-classifier and no hard-coded fallback.
+Published revisions are immutable and retained while referenced. Generated
+revision, fingerprint, publication, and lineage metadata is catalog state; it is
+not authored analyzer behavior.
+
+Profiles are data. Production code selects behavior only from the loaded profile
+and pinned revision. Analyzer IDs, names, manufacturers, models, raw codes,
+mappings, recognition rules, connection values, and defaults are not embedded in
+generic runtime or consumer code.
 
 ### OpenELIS-owned site binding
 
-OpenELIS owns a revision-scoped site binding between the selected portable
-profile revision and local clinical catalog identities, including Test, Result
-Option, explicit exclusion, lab-unit applicability, verification, audit, and
-activation state. OpenELIS also owns analyzer-instance identity and runtime
-configuration needed to register that installed connection.
+OpenELIS owns installed-analyzer identity, lab units, site-entered connection
+values, local Test and Result Option bindings, explicit exclusions,
+verification/audit, activation, held-result review, and operational state. An
+analyzer stores a profile ID/revision pin and the OpenELIS-owned candidate; it
+does not store an authoritative profile document.
 
-An analyzer pins the profile ID and revision plus the applicable OpenELIS site
-binding. It does not own an authoritative copied profile snapshot or a separate
-mapping editor. Updating a shared Analyzer Type publishes a new immutable
-revision; existing analyzers remain pinned until a user explicitly adopts,
-re-verifies, and synchronizes the new candidate.
+No copied profile authority is permitted. Updating or duplicating a profile
+never moves a configured analyzer. Adoption creates a new candidate that must be
+reviewed, verified, synchronized, and explicitly activated while the prior
+active candidate remains unchanged.
+
+### Recognition and operational QC
+
+Control-result recognition is profile behavior. Each publishable revision
+declares evidence-backed `RULES` or an author-affirmed `NONE`; Bridge evaluates
+that declaration without an OpenELIS classifier or hard-coded fallback.
+
+`AnalyzerQcRule` is deleted from the target architecture. Its rows are not
+converted into profiles, retained as overrides, or used to create site profiles.
+Existing repository data may inform human curation only when independently
+supported by protocol, vendor, capture, or mock evidence.
+
+OpenELIS operational QC remains separate: control lots, control results,
+statistics, Westgard evaluation, violations, alerts, and result-release policy.
+Operational QC neither enters Bridge registration nor changes analyzer
+verification or activation blockers.
 
 ### Verification and synchronization
 
-The activation candidate identifies the pinned profile ID/revision, the complete
-site-binding fingerprint, the profile's recognition fingerprint, and the
-analyzer-instance configuration fingerprint. Bridge registration acknowledges
-the same analyzer ID, profile ID/revision, and canonical desired-state fingerprint.
-A mismatch is visible and cannot activate the candidate.
+The OpenELIS candidate records the pinned profile ID/revision, site-owned state,
+binding fingerprint, profile revision fingerprint, recognition fingerprint,
+verifier, verification time, audit event, and desired-registration fingerprint.
+Bridge acknowledges the same analyzer key, profile reference, and desired-state
+fingerprint. A mismatch is visible and cannot activate the candidate.
 
-Operational QC remains an OpenELIS clinical workflow based on control lots,
-control results, statistics, Westgard evaluation, violations, and alerts. It is
-linked from an analyzer but does not alter profile verification, the desired-state
-fingerprint, or activation blockers.
+### One-way cutover
 
-### Migration of current state
-
-`defaultConfigId`, copied plugin JSON, `analyzer_test_map`, qualitative mapping,
-raw ingress, and `AnalyzerQcRule` are migration inputs, not target authority.
-Every analyzer requires an explicit selected profile revision; profile assignment
-is never inferred from similarity.
-
-For each analyzer, the complete active `AnalyzerQcRule` set is compared
-canonically with the recognition behavior of that explicitly selected profile:
-
-- Exact behavior is discarded only after the analyzer is pinned, verified, and
-  synchronized and the migration outcome is audited.
-- Valid divergent behavior requires a new site profile identity and immutable
-  Bridge revision before that analyzer can be pinned.
-- Invalid or untransformable behavior blocks migration visibly. It never enables
-  a fallback, silent drop, or parallel classifier.
-
-Inactive rows remain in the migration export and audit until the migration is
-accepted. They never become runtime recognition behavior.
-
-### One authority at every phase
-
-No dual write is permitted. Each store or runtime path has one named writer
-before and after its checkpoint cutover. Readers may temporarily support
-preflight and rollback, but target writes begin only after preflight succeeds.
-After target writes exist, rollback restores a coordinated pre-cutover database
-and profile catalog or rolls forward; it does not reverse-transform target data.
-
-## Persistence Direction
-
-M1 persistence must model the references and site-owned state above using the
-existing OpenELIS layered architecture and current Bridge contracts. E0 fixes
-ownership and invariants, not table names. M1 must demonstrate that profile
-identity/revision, site binding, analyzer candidate, verification, and audit can
-be queried transactionally without copying portable profile authority into
-OpenELIS.
-
-## Alternatives Rejected
-
-1. **Mutable shared profiles referenced by installed analyzers.** A profile edit
-   would change analyzer behavior without adoption, verification, or audit.
-2. **An authoritative profile snapshot in each OpenELIS analyzer.** This creates
-   a second profile authority and makes revision lineage and reuse ambiguous.
-3. **Per-analyzer mapping or classifier overrides.** These recreate the legacy
-   pathway and make a profile revision non-deterministic across analyzers.
-4. **Operational-QC readiness as an activation condition.** Clinical QC policy
-   is separate from connection correctness and must not stale or block setup.
-5. **Heuristic migration and dual write.** Either can silently bind the wrong
-   clinical concept or leave two runtime behaviors active.
+The current OE-hosted profile serving/application path, copied plugin/profile
+JSON, `defaultConfigId`, per-analyzer copied mappings, `AnalyzerQcRule`, and raw
+analyzer import routes are deletion targets at their roadmap gates. No runtime
+adapter, compatibility reader, dual writer, or alternate acceptance path is
+introduced. If a real deployment contains analyzer-specific site facts, an
+offline preflight reports them for explicit approved conversion before cutover;
+the product runtime remains clean.
 
 ## Consequences
 
-- Bridge lifecycle work must precede profile creation, revision, and duplicate
-  behavior in OpenELIS.
-- OpenELIS can compose portable metadata with local completeness without owning
-  analyzer-facing runtime behavior.
-- Published profile updates are explicit and reviewable; configured analyzers
-  remain stable until adopted.
-- Migration can stop on ambiguity or invalid state without losing legacy data.
-- `AnalyzerQcRule` and raw OpenELIS analyzer readers can be removed after their
-  one-writer cutovers, while operational QC remains intact.
+- Bridge lifecycle work wraps the established two-job profile contract.
+- All 20 source profiles receive an evidence-backed curation disposition before
+  Bridge M1 publication; current rows are never accepted mechanically.
+- OpenELIS M1 persists only the pin and site-owned candidate state.
+- GeneXpert ASTM and FluoroCycler remain blocking assembled parity fixtures.
+- Superseded OE and Bridge paths are removed at the named roadmap gates rather
+  than maintained for compatibility.
+
+## Alternatives Rejected
+
+1. A second thin profile contract.
+2. Mutable published profiles or implicit analyzer upgrades.
+3. An authoritative copied profile in OpenELIS.
+4. Per-analyzer mapping or classifier overrides.
+5. `AnalyzerQcRule` conversion into Bridge profile data.
+6. Operational-QC readiness as an analyzer activation condition.
+7. Runtime adapters, compatibility readers, heuristic profile inference, or
+   dual write.
