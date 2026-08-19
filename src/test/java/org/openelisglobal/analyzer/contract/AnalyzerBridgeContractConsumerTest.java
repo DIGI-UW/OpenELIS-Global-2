@@ -34,7 +34,10 @@ public class AnalyzerBridgeContractConsumerTest {
             "v1");
     private static final Path FIXTURE_ROOT = CONTRACT_ROOT.resolve("fixtures");
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final JsonSchemaFactory SCHEMAS = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
+    private static final JsonSchemaFactory SCHEMAS = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012,
+            builder -> builder
+                    .schemaMappers(mappers -> mappers.mapPrefix("https://openelis-global.org/contracts/analyzer/v1/",
+                            CONTRACT_ROOT.toAbsolutePath().toUri().toString())));
     private static final FhirContext FHIR = FhirContext.forR4();
     private static final String FINGERPRINT_PATTERN = "sha256:[0-9a-f]{64}";
     private static final String RAW_CODE_SYSTEM = "https://openelis-global.org/fhir/CodeSystem/analyzer-raw-code";
@@ -67,6 +70,21 @@ public class AnalyzerBridgeContractConsumerTest {
         assertFalse(schema.contains("openelisTestId"));
         assertFalse(schema.contains("openelisResultOptionId"));
         assertFalse(schema.contains("labUnitId"));
+    }
+
+    @Test
+    public void profileCatalogComposesImmutablePortableProfileRevisions() throws IOException {
+        JsonNode response = fixture("profile-catalog-response.json");
+
+        assertConforms("profile-catalog-response.schema.json", response);
+        assertEquals("1.0", response.path("schemaVersion").asText());
+        assertTrue(response.path("catalogFingerprint").asText().matches(FINGERPRINT_PATTERN));
+
+        JsonNode entry = response.path("profiles").path(0);
+        assertEquals("DUPLICATED", entry.path("publication").path("action").asText());
+        assertTrue(entry.path("profile").path("revisionFingerprint").asText().matches(FINGERPRINT_PATTERN));
+        assertFalse(entry.path("profile").has("openelisTestId"));
+        assertFalse(entry.path("profile").has("qcIdentification"));
     }
 
     @Test
@@ -140,17 +158,6 @@ public class AnalyzerBridgeContractConsumerTest {
         JsonNode connection = fixture("connection-create.json").deepCopy();
         ((com.fasterxml.jackson.databind.node.ObjectNode) connection).set("operationalQc", JSON.createObjectNode());
         assertFalse(validationMessages("connection-create.schema.json", connection).isEmpty());
-    }
-
-    @Test
-    public void noParallelProfileOrCompatibilityContractIsConsumable() {
-        for (String removed : new String[] { "portable-profile.schema.json", "legacy-registration.schema.json",
-                "compatibility.json", "registration-sync.schema.json", "registration-sync-result.schema.json",
-                "fixtures/portable-profile.json", "fixtures/portable-profile-none.json",
-                "fixtures/legacy-registration.json", "fixtures/registration-initial.json",
-                "fixtures/registration-next.json", "fixtures/registration-result.json" }) {
-            assertFalse(removed, Files.exists(CONTRACT_ROOT.resolve(removed)));
-        }
     }
 
     private static void assertConforms(String schemaName, JsonNode fixture) throws IOException {
