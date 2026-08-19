@@ -734,6 +734,12 @@ public class MicrobiologyUatScenarioServiceTest {
 
         assertEquals("organism-mapped", result.organismId);
         assertEquals("organism-unmapped", result.unmappedOrganismId);
+        ArgumentCaptor<TypeOfSample> sampleTypeCaptor = ArgumentCaptor.forClass(TypeOfSample.class);
+        verify(typeOfSampleService).insert(sampleTypeCaptor.capture());
+        assertEquals(result.sampleTypeId, sampleTypeCaptor.getValue().getId());
+        assertTrue(sampleTypeCaptor.getValue().getDescription().startsWith("UAT WHONET specimen "));
+        assertEquals("", sampleTypeCaptor.getValue().getWhonetCode());
+        verify(sampleItemService).update(sampleItem);
         ArgumentCaptor<MicroOrganism> organismCaptor = ArgumentCaptor.forClass(MicroOrganism.class);
         verify(configurationService).createOrganism(organismCaptor.capture());
         assertTrue(organismCaptor.getValue().getDisplayName().startsWith("WHONET mapping pending (UAT "));

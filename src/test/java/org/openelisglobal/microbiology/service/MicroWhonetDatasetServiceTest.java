@@ -105,6 +105,65 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
+    public void previewAndExportUseTheMappedWhonetSpecimenCode() {
+        MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
+        MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
+        MicroAstRun run = reviewedRun("run-1", "isolate-1");
+
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of(microCase));
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
+        when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
+        when(astReadingDAO.getByRunIds(List.of("run-1")))
+                .thenReturn(List.of(reading("reading-1", "run-1", "antibiotic-1", "S")));
+        when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
+        when(antibioticDAO.get("antibiotic-1"))
+                .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "sample-type-1", "BLD");
+
+        MicroWhonetDataset dataset = service.compile(query("NONE"));
+
+        assertEquals("BLD", dataset.getPreview().rows.get(0).specimenType);
+        assertTrue(dataset.getRows().get(0).getRow().contains("\"BLD\""));
+        assertFalse(dataset.getRows().get(0).getRow().contains("\"Blood\""));
+    }
+
+    @Test
+    public void previewExcludesOnlyRowsForAnUnmappedSpecimenAndProvidesExactRepairTarget() {
+        MicroCase mappedCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
+        MicroCase unmappedCase = finalizedCase("case-2", "item-2", "2026-07-13 10:00:00");
+        MicroIsolate mappedIsolate = isolate("isolate-1", "case-1", "organism-1");
+        MicroIsolate unmappedIsolate = isolate("isolate-2", "case-2", "organism-1");
+        MicroAstRun mappedRun = reviewedRun("run-1", "isolate-1");
+        MicroAstRun unmappedRun = reviewedRun("run-2", "isolate-2");
+
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of(mappedCase, unmappedCase));
+        when(isolateDAO.getByCaseIds(List.of("case-1", "case-2"))).thenReturn(List.of(mappedIsolate, unmappedIsolate));
+        when(astRunDAO.getByIsolateIds(List.of("isolate-1", "isolate-2"))).thenReturn(List.of(mappedRun, unmappedRun));
+        when(astReadingDAO.getByRunIds(List.of("run-1", "run-2"))).thenReturn(List.of(
+                reading("reading-1", "run-1", "antibiotic-1", "S"), reading("reading-2", "run-2", "antibiotic-1", "R"),
+                reading("reading-3", "run-2", "antibiotic-1", "I")));
+        when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
+        when(antibioticDAO.get("antibiotic-1"))
+                .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "sample-type-mapped", "BLD");
+        stubPatientContext("case-2", "item-2", "patient-2", "LAB-002", "sample-type-unmapped", "");
+
+        MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
+
+        assertTrue(preview.canGenerate);
+        assertEquals(1, preview.exportedRows);
+        assertEquals(2, preview.excludedRows);
+        assertEquals(1, preview.warnings.size());
+        assertEquals("SPECIMEN_MAPPING_REQUIRED", preview.warnings.get(0).code);
+        assertEquals("specimen-types", preview.warnings.get(0).resource);
+        assertEquals("sample-type-unmapped", preview.warnings.get(0).resourceId);
+        assertEquals("Blood", preview.warnings.get(0).itemLabel);
+        assertEquals(2, preview.warnings.get(0).excludedRows);
+    }
+
+    @Test
     public void previewExcludesOnlyUnmappedReadingsAndProvidesExactRepairTarget() {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
@@ -401,7 +460,14 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     private void stubPatientContext(String caseId, String sampleItemId, String patientId, String accession) {
-        contextsByCase.put(caseId, new MicroWhonetContext(caseId, sampleItemId, patientId, "NAT-001", "Ada", "Lovelace",
-                "F", null, accession, null, Timestamp.valueOf("2026-07-09 09:00:00"), "Blood", null, null));
+        stubPatientContext(caseId, sampleItemId, patientId, accession, "sample-type-1", "BLD");
+    }
+
+    private void stubPatientContext(String caseId, String sampleItemId, String patientId, String accession,
+            String sampleTypeId, String whonetCode) {
+        contextsByCase.put(caseId,
+                new MicroWhonetContext(caseId, sampleItemId, patientId, "NAT-001", "Ada", "Lovelace", "F", null,
+                        accession, null, Timestamp.valueOf("2026-07-09 09:00:00"), sampleTypeId, "Blood", whonetCode,
+                        null, null));
     }
 }
