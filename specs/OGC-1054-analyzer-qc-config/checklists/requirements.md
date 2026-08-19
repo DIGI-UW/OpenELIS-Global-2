@@ -45,6 +45,10 @@ It validates the specification, not implementation progress.
       duplicate editor, or duplicate pending queue is permitted.
 - [x] Existing profile content is curated by evidence; current rows and equal
       LOINCs create no preserve-every-row or `LEGACY_UNBOUND` requirement.
+- [x] Profile-specific values exist only in profile data and parameterized test
+      fixtures; production validators, consumers, runtime handlers, and UI have
+      no hard-coded profile/model/manufacturer/code special case or copied
+      profile default. Generic data/pin lookup remains valid.
 
 ## Acceptance
 

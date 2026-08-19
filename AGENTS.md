@@ -55,6 +55,14 @@ to its semantics; current storage or equal LOINC values never create a
 preservation obligation. Do not introduce `LEGACY_UNBOUND`, a legacy profile-row
 domain, or a runtime compatibility path for superseded profile/config storage.
 
+Profile execution is fully data-driven. Production code must not special-case a
+hard-coded profile ID/revision, manufacturer, model, display name, analyzer test
+code, fixture name, or vendor-specific field/value, and it must not duplicate a
+profile-owned default in frontend or server constants. Generic lookup by values
+read from a profile or analyzer pin is expected. Named analyzer profiles belong
+only in profile data and parameterized test fixtures; validators, consumers,
+runtime handlers, and UI composition remain profile-agnostic.
+
 Control-result recognition is Analyzer Type behavior owned by the pinned Bridge
 profile revision. Bridge must use only the profile's explicit recognition mode
 and rules; it must not use an OpenELIS-pushed classifier or a hard-coded

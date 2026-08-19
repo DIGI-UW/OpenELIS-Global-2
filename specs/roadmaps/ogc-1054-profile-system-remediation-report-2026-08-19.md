@@ -182,6 +182,11 @@ amendment, but none of the two jobs may be lost.
   copied profile.
 - Analyzer-specific behavior must be expressed by profile data or a versioned
   generic plugin option, never a model-name/code fallback.
+- Production code contains no hard-coded profile-ID/revision, manufacturer,
+  model, display-name, analyzer-code, fixture-name, or vendor-value special case
+  and no duplicate of a profile-owned default. Generic lookup uses values read
+  from profile data/pins. Named analyzers exist only in profile data and
+  parameterized tests; the validator/consumer/runtime path remains generic.
 - Operational QC is not profile configuration and never gates activation.
 
 ### 6.2 Required, conditional, generated, and optional content
@@ -342,9 +347,13 @@ PR #4049 description identifies the correction.
 ### F0 - Make the acceptance foundation detect this regression
 
 - [ ] Add fixtures representing the established GeneXpert ASTM and
-      FluoroCycler profiles without translating them into a second semantic model.
+      FluoroCycler profiles without translating them into a second semantic
+      model or adding analyzer-specific validator/consumer branches.
 - [ ] Add contract checks that require both profile jobs: runtime communication
       and OE instance defaults.
+- [ ] Add a generic production guard rejecting hard-coded
+      profile/model/manufacturer/code special cases and duplicated profile-owned
+      defaults; fixture names may occur only in parameterized test data.
 - [ ] Add stack guards proving no accepted profile path depends on an OE FILE
       poller, `AnalyzerQcRule`, copied profile authority, or hidden classifier.
 - [ ] Document the exact layered parity matrix used by E0/M1.

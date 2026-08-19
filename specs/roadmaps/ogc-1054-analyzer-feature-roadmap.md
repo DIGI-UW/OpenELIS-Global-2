@@ -109,6 +109,13 @@ decisions.
    system. They never justify a second profile schema or loss of established
    communication/default behavior. GeneXpert ASTM and FluoroCycler are blocking
    compatibility fixtures for every profile-contract change.
+10. **Profiles are data, never production special cases.** No production OE,
+    Bridge, or mock code may special-case a hard-coded profile ID/revision,
+    manufacturer, model, display name, analyzer code, fixture name, or vendor-
+    specific value, or duplicate profile-owned defaults in source constants.
+    Generic lookup by profile data/pins is expected. Named profiles appear only
+    as profile data and parameterized fixtures; all validators, consumers,
+    handlers, and UI composition are generic.
 
 ## Authority Order
 
@@ -275,6 +282,13 @@ metadata, strict protocol-discriminated validation, immutable revisions, and
 lifecycle without dropping either job. It forbids OpenELIS database IDs,
 instance-specific site values, operational-QC policy/data, arbitrary copied
 plugin JSON, and hidden analyzer-specific fallbacks.
+
+The contract is the only source of profile-specific runtime/default values.
+Production code has no hard-coded profile/model/manufacturer/analyzer-code
+switch, named special case, or selected-profile fallback constant. Generic
+lookup tables populated from the selected profile are required. GeneXpert and
+FluoroCycler are named only as parameterized compatibility inputs; passing their
+tests must exercise the same generic code path used by every other profile.
 
 Published revisions are immutable and retained while referenced. Duplicate
 Profile creates a new draft identity; Update shared creates a draft successor

@@ -48,7 +48,9 @@ state bookkeeping.
 5. Add established GeneXpert ASTM and FluoroCycler fixtures that fail when a
    contract loses profile-owned communication or OE instance defaults.
 6. Add guards against a second profile model, selected-profile frontend
-   defaults, `AnalyzerQcRule`, and an OE FILE poller.
+   defaults, hard-coded profile/model/manufacturer/analyzer-code production
+   special cases, `AnalyzerQcRule`, and an OE FILE poller. Named fixtures
+   exercise one generic validator/consumer path.
 7. Run the F0 exit gate and submit the PR for review.
 
 ## E0 - Contracts And Migration

@@ -13,7 +13,10 @@ instance. Required proof is the unabridged profile fixture under the accepted
 schema, producer/consumer contract tests, OE default-application tests, Bridge
 runtime/mock transport tests, and assembled parity. A metadata-only catalog,
 translated thin fixture, hardcoded frontend default, or old video cannot pass
-this gate.
+this gate. Both named fixtures must pass through the same parameterized,
+profile-agnostic validator/consumer/runtime path; any hard-coded production
+special case for a profile/model/manufacturer/analyzer code or fixture name
+fails the gate.
 
 | ID      | Iteration | Preconditions                                                                                                                                                                                                                                                                                                                             | User/system action                                                                                                                       | Observable result                                                                                                                                                                                                                                                                                      | Required automated proof                                          | Human UAT                     |
 | ------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ----------------------------- |
