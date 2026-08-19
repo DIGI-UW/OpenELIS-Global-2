@@ -182,6 +182,25 @@ export const InventoryLotAPI = {
   // Dispose lot
   dispose: (id, reason, notes) =>
     post(`/lots/${id}/dispose`, { reason, notes }),
+
+  printLabel: (id) =>
+    new Promise((resolve, reject) => {
+      postToOpenElisServerForBlob(
+        `${BASE_PATH}/lots/${id}/print-label`,
+        JSON.stringify({}),
+        (blob, response) => {
+          const disposition = response.headers.get("Content-Disposition");
+          const match =
+            disposition && disposition.match(/filename="?(.+?)"?$/i);
+          resolve({
+            data: blob,
+            contentType: response.headers.get("Content-Type"),
+            filename: match ? match[1] : `lot-${id}.pdf`,
+          });
+        },
+        (error) => reject(error),
+      );
+    }),
 };
 
 /**

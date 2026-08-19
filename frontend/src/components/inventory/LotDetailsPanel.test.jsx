@@ -55,3 +55,25 @@ describe("LotDetailsPanel — storage location visibility (OGC-657)", () => {
     expect(await screen.findByText(/not assigned/i)).toBeInTheDocument();
   });
 });
+
+describe("LotDetailsPanel — barcode visibility", () => {
+  const baseLot = {
+    id: 7001,
+    lotNumber: "LOT-2025-001",
+    barcode: "TEST_REAGENT_A_LOT_2025_001",
+    inventoryItem: { name: "Test Reagent A", itemType: "REAGENT", units: "mL" },
+    qcStatus: "PASSED",
+    initialQuantity: 10,
+    currentQuantity: 10,
+    receiptDate: "2026-01-01",
+    expirationDate: "2026-12-31",
+  };
+
+  it("shows the generated barcode so it can be matched against a printed label", async () => {
+    renderWithIntl(<LotDetailsPanel open lot={baseLot} onClose={vi.fn()} />);
+
+    expect(
+      await screen.findByText("TEST_REAGENT_A_LOT_2025_001"),
+    ).toBeInTheDocument();
+  });
+});

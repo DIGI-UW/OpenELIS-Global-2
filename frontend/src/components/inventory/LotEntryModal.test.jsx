@@ -240,3 +240,56 @@ describe("LotEntryModal — auto-generated lot number", () => {
     expect(InventoryLotAPI.update).not.toHaveBeenCalled();
   });
 });
+
+describe("LotEntryModal — system-generated barcode", () => {
+  it("sends null when the barcode is left blank so the server generates one", async () => {
+    InventoryManagementAPI.receive.mockResolvedValue({ id: 77 });
+    InventoryLotStorageAPI.assignLocation.mockResolvedValue({
+      assignmentId: "1",
+    });
+    renderWithIntl(<LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} />);
+
+    await fillRequiredFieldsExceptLocation();
+    fireEvent.click(screen.getByText(/assign storage location/i));
+    fireEvent.click(await screen.findByText("mock-confirm-location"));
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(InventoryManagementAPI.receive).toHaveBeenCalledWith(
+        expect.objectContaining({ barcode: null }),
+      );
+    });
+  });
+
+  it("offers auto-generation when creating", () => {
+    renderWithIntl(<LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} />);
+
+    const barcode = screen.getByLabelText(/barcode/i);
+    expect(barcode).toBeEnabled();
+    expect(
+      screen.getByText(/leave blank to generate one/i),
+    ).toBeInTheDocument();
+  });
+
+  it("locks the barcode once the lot is saved", () => {
+    const lot = {
+      id: 12,
+      inventoryItem: { id: "MALARIA_RDT" },
+      lotNumber: "LOT-12",
+      barcode: "TEST_REAGENT_A_LOT_12",
+      currentQuantity: 4,
+      status: "ACTIVE",
+      qcStatus: "PENDING",
+    };
+    renderWithIntl(
+      <LotEntryModal open onClose={vi.fn()} onSave={vi.fn()} lot={lot} />,
+    );
+
+    const barcode = screen.getByLabelText(/barcode/i);
+    expect(barcode).toHaveValue("TEST_REAGENT_A_LOT_12");
+    expect(barcode).toBeDisabled();
+    expect(
+      screen.getByText(/barcode is locked once saved/i),
+    ).toBeInTheDocument();
+  });
+});

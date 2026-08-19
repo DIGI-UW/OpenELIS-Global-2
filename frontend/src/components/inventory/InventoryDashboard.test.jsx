@@ -21,6 +21,7 @@ vi.mock("./InventoryService", () => ({
   },
   InventoryLotAPI: {
     getAll: vi.fn(),
+    printLabel: vi.fn(),
   },
   InventoryLotStorageAPI: {
     getLocation: vi.fn(),
@@ -289,5 +290,157 @@ describe("InventoryDashboard Location column", () => {
       );
     });
     expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();
+  });
+});
+
+describe("InventoryDashboard barcode search", () => {
+  const barcodedLot = { ...lotWithLocation, barcode: "BC-ALPHA-1" };
+  const otherLot = { ...lotWithoutLocation, barcode: "BC-BETA-2" };
+
+  const typeSearch = (value) => {
+    const input = document.querySelector("input.cds--search-input");
+    fireEvent.change(input, { target: { value } });
+  };
+
+  it("finds a lot by its barcode", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([barcodedLot, otherLot]);
+    renderDashboard();
+    await screen.findByText("LOT-100");
+
+    typeSearch("BC-ALPHA-1");
+
+    const table = document.querySelector("table");
+    expect(within(table).getByText("LOT-100")).toBeInTheDocument();
+    expect(within(table).queryByText("LOT-200")).not.toBeInTheDocument();
+  });
+
+  it("matches a barcode case-insensitively", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([barcodedLot, otherLot]);
+    renderDashboard();
+    await screen.findByText("LOT-100");
+
+    typeSearch("bc-alpha-1");
+
+    const table = document.querySelector("table");
+    expect(within(table).getByText("LOT-100")).toBeInTheDocument();
+    expect(within(table).queryByText("LOT-200")).not.toBeInTheDocument();
+  });
+
+  it("still matches on lot number and item name", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([barcodedLot, otherLot]);
+    renderDashboard();
+    await screen.findByText("LOT-100");
+
+    typeSearch("LOT-200");
+
+    const table = document.querySelector("table");
+    expect(within(table).getByText("LOT-200")).toBeInTheDocument();
+    expect(within(table).queryByText("LOT-100")).not.toBeInTheDocument();
+  });
+
+  it("does not match a barcodeless lot on an empty-ish query", async () => {
+    const noBarcode = { ...lotWithoutLocation, barcode: null };
+    InventoryLotAPI.getAll.mockResolvedValue([barcodedLot, noBarcode]);
+    renderDashboard();
+    await screen.findByText("LOT-100");
+
+    typeSearch("BC-");
+
+    const table = document.querySelector("table");
+    expect(within(table).getByText("LOT-100")).toBeInTheDocument();
+    expect(within(table).queryByText("LOT-200")).not.toBeInTheDocument();
+  });
+});
+
+describe("InventoryDashboard row-to-lot mapping", () => {
+  // The table is sortable, so Carbon's row order need not match the order of
+  // the lots array. Resolving the lot by row index made every row action —
+  // move, dispose, QC — target whichever lot happened to sit at that index.
+  it("keeps each row's actions bound to its own lot after sorting", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      lotWithLocation,
+      lotWithoutLocation,
+    ]);
+    renderDashboard();
+    await screen.findByText("LOT-100");
+
+    // Sort by lot number so the row order reverses: LOT-200 leads.
+    const lotNumberHeader = screen
+      .getAllByRole("columnheader")
+      .find((th) => th.textContent.match(/lot number/i));
+    fireEvent.click(lotNumberHeader.querySelector("button"));
+    fireEvent.click(lotNumberHeader.querySelector("button"));
+
+    const firstRow = document.querySelectorAll("table tbody tr")[0];
+    expect(within(firstRow).getByText("LOT-200")).toBeInTheDocument();
+
+    // LOT-200 has no location, so its menu must offer Assign, not Move.
+    fireEvent.click(firstRow.querySelector("button.cds--overflow-menu"));
+    expect(
+      await screen.findByText(/assign storage location/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/move storage location/i),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("InventoryDashboard print label", () => {
+  const barcodedLot = { ...lotWithLocation, barcode: "TEST_REAGENT_A_LOT_100" };
+
+  const openRowMenu = async () => {
+    await screen.findByText("LOT-100");
+    fireEvent.click(document.querySelector("button.cds--overflow-menu"));
+  };
+
+  it("downloads the generated PDF when Print label is chosen", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([barcodedLot]);
+    InventoryLotAPI.printLabel.mockResolvedValue({
+      data: new Blob(["%PDF-1.4"], { type: "application/pdf" }),
+      contentType: "application/pdf",
+      filename: "lot-TEST_REAGENT_A_LOT_100.pdf",
+    });
+    const createObjectURL = vi.fn(() => "blob:mock");
+    const revokeObjectURL = vi.fn();
+    window.URL.createObjectURL = createObjectURL;
+    window.URL.revokeObjectURL = revokeObjectURL;
+
+    renderDashboard();
+    await openRowMenu();
+    fireEvent.click(await screen.findByText(/print label/i));
+
+    await waitFor(() =>
+      expect(InventoryLotAPI.printLabel).toHaveBeenCalledWith(1),
+    );
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(revokeObjectURL).toHaveBeenCalled();
+  });
+
+  it("disables Print label for a lot that has no barcode", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithLocation, barcode: null },
+    ]);
+    renderDashboard();
+    await openRowMenu();
+
+    const item = (await screen.findByText(/print label/i)).closest("button");
+    expect(item).toBeDisabled();
+  });
+
+  it("notifies rather than failing silently when label generation fails", async () => {
+    InventoryLotAPI.getAll.mockResolvedValue([barcodedLot]);
+    InventoryLotAPI.printLabel.mockRejectedValue(new Error("boom"));
+
+    renderDashboard();
+    await openRowMenu();
+    fireEvent.click(await screen.findByText(/print label/i));
+
+    await waitFor(() =>
+      expect(mockNotificationContext.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Could not generate the label. Please try again.",
+        }),
+      ),
+    );
   });
 });

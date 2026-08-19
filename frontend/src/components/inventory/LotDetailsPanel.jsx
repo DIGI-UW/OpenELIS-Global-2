@@ -115,6 +115,16 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                       </StructuredListRow>
                       <StructuredListRow>
                         <StructuredListCell>
+                          <FormattedMessage id="lot.barcode" />
+                        </StructuredListCell>
+                        <StructuredListCell>
+                          <code className="lot-details-barcode">
+                            {lot.barcode}
+                          </code>
+                        </StructuredListCell>
+                      </StructuredListRow>
+                      <StructuredListRow>
+                        <StructuredListCell>
                           <FormattedMessage id="catalog.item.name" />
                         </StructuredListCell>
                         <StructuredListCell>

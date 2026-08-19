@@ -1,7 +1,10 @@
 package org.openelisglobal.inventory.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.List;
 import lombok.Getter;
@@ -9,6 +12,7 @@ import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
+import org.openelisglobal.inventory.service.InventoryLotLabelService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
@@ -41,6 +45,9 @@ public class InventoryLotRestController extends BaseRestController {
 
     @Autowired
     private SampleStorageService sampleStorageService;
+
+    @Autowired
+    private InventoryLotLabelService inventoryLotLabelService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getAll() {
@@ -148,6 +155,63 @@ public class InventoryLotRestController extends BaseRestController {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @GetMapping(value = "/barcode/{barcode}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<InventoryLot> getByBarcode(@PathVariable String barcode) {
+        try {
+            InventoryLot lot = inventoryLotService.getByBarcode(barcode);
+            if (lot == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(lot);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Render the lot's barcode as a printable PDF label. POST rather than GET
+     * because printing is an action the lab takes, matching the storage location
+     * print-label endpoint.
+     */
+    @PostMapping(value = "/{id}/print-label", produces = MediaType.APPLICATION_PDF_VALUE)
+    public void printLabel(@PathVariable String id, HttpServletResponse response) throws IOException {
+        try {
+            InventoryLot lot = inventoryLotService.get(Long.valueOf(id));
+            if (lot == null) {
+                writeJsonError(response, HttpStatus.NOT_FOUND, "Lot not found");
+                return;
+            }
+
+            ByteArrayOutputStream pdfStream = inventoryLotLabelService.generateLabel(lot);
+            if (pdfStream == null || pdfStream.size() == 0) {
+                writeJsonError(response, HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate label PDF");
+                return;
+            }
+
+            byte[] pdfBytes = pdfStream.toByteArray();
+            response.setContentType(MediaType.APPLICATION_PDF_VALUE);
+            response.setHeader("Content-Disposition", "attachment; filename=lot-" + lot.getBarcode() + ".pdf");
+            response.setContentLength(pdfBytes.length);
+            response.getOutputStream().write(pdfBytes);
+            response.getOutputStream().flush();
+        } catch (NumberFormatException e) {
+            writeJsonError(response, HttpStatus.BAD_REQUEST, "Invalid lot id");
+        } catch (IllegalArgumentException e) {
+            // A lot with no barcode cannot be labelled; say so rather than 500.
+            writeJsonError(response, HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            writeJsonError(response, HttpStatus.INTERNAL_SERVER_ERROR, "Error generating label");
+        }
+    }
+
+    private void writeJsonError(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write("{\"error\":\"" + message + "\"}");
     }
 
     @GetMapping(value = "/item/{itemId}/total-quantity", produces = MediaType.APPLICATION_JSON_VALUE)

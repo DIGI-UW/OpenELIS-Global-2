@@ -123,3 +123,15 @@
   visibility: visible;
 }
 */
+
+/*
+ * The barcode is meant to be read off the screen and matched against a
+ * printed label, so it is set in mono with the digits and letters spaced
+ * enough to tell 0 from O at a glance.
+ */
+.lot-details-barcode {
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  word-break: break-all;
+}
