@@ -30,12 +30,11 @@ import {
   Settings,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, hasQaPermission } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ProgramForm from "./ProgramForm";
 import ParticipantsTab from "./ParticipantsTab";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
-import { canManageEqaProvider } from "../eqaAccess";
 import SystemSettingsTab from "./SystemSettingsTab";
 
 const breadcrumbs = [
@@ -50,7 +49,7 @@ const breadcrumbs = [
 const ProgramManagement = () => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const canManage = canManageEqaProvider(userSessionDetails);
+  const canManage = hasQaPermission(userSessionDetails, "qa.eqa.provider");
   const [programs, setPrograms] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingProgram, setEditingProgram] = useState(null);

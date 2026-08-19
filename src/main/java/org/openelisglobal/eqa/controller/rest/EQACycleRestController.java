@@ -49,7 +49,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')")
+@PreAuthorize(EQAGuards.READ)
 public class EQACycleRestController extends BaseRestController {
 
     private final EQACycleService cycleService;
@@ -229,7 +229,7 @@ public class EQACycleRestController extends BaseRestController {
      * session user (FR-V2.1-21).
      */
     @PatchMapping(value = "/cycles/{id}/transition", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.eqa') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.MANAGE)
     public ResponseEntity<Map<String, Object>> transition(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         String newState = stringField(body, "newState");

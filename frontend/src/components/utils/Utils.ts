@@ -737,6 +737,18 @@ export const Roles = {
   REPORTS: "Reports",
 } as const;
 
+/**
+ * True when the session holds a qa.* permission, with Global Administrator as
+ * the standing fallback. The real gate is @PreAuthorize on the endpoint; this
+ * only hides controls from callers who would get a 403 anyway.
+ */
+export const hasQaPermission = (
+  userSessionDetails: { permissions?: string[]; roles?: string[] } | undefined,
+  permission: string,
+): boolean =>
+  !!userSessionDetails?.permissions?.includes(permission) ||
+  !!userSessionDetails?.roles?.includes(Roles.GLOBAL_ADMIN);
+
 export const toBase64 = (file: Blob): Promise<string> =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

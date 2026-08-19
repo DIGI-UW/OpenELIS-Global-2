@@ -45,14 +45,6 @@ const renderTab = ({
     </IntlProvider>,
   );
 
-test("hides the enroll control from a reader without the provider grant", () => {
-  const { container } = renderTab({ permissions: ["qa.view.eqa"] });
-  selectProgram(container);
-  expect(
-    screen.queryByRole("button", { name: "Enroll Participant" }),
-  ).toBeNull();
-});
-
 const jsonResponse = (ok, status, body) => ({
   ok,
   status,
@@ -83,6 +75,14 @@ describe("ParticipantsTab enrollment", () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
       callback(url.includes("/enrollments") ? [] : organizations);
     });
+  });
+
+  test("hides the enroll control from a reader without the provider grant", () => {
+    const { container } = renderTab({ permissions: ["qa.view.eqa"] });
+    selectProgram(container);
+    expect(
+      screen.queryByRole("button", { name: "Enroll Participant" }),
+    ).toBeNull();
   });
 
   test("sends numeric organization ids", () => {

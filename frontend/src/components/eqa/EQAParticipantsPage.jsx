@@ -30,11 +30,11 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
+  hasQaPermission,
 } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import WithdrawModal from "./WithdrawModal";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { canManageEqaProvider } from "./eqaAccess";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -51,7 +51,7 @@ const ENROLLMENT_STATUS_TAG = {
 const EQAParticipantsPage = () => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const canManage = canManageEqaProvider(userSessionDetails);
+  const canManage = hasQaPermission(userSessionDetails, "qa.eqa.provider");
   const [programs, setPrograms] = useState([]);
   const [selectedProgramId, setSelectedProgramId] = useState("");
   const [enrollments, setEnrollments] = useState([]);
@@ -441,14 +441,15 @@ const EQAParticipantsPage = () => {
                               const enrollment = rawRow?._raw;
                               return (
                                 <TableCell key={cell.id}>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: "0.25rem",
-                                    }}
-                                  >
-                                    {canManage &&
-                                      rawRow?.status === "Active" && (
+                                  {/* Every control here is a provider-lane write. */}
+                                  {canManage && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "0.25rem",
+                                      }}
+                                    >
+                                      {rawRow?.status === "Active" && (
                                         <Button
                                           kind="ghost"
                                           size="sm"
@@ -465,23 +466,22 @@ const EQAParticipantsPage = () => {
                                           }
                                         />
                                       )}
-                                    {rawRow?.status !== "Withdrawn" && (
-                                      <Button
-                                        kind="ghost"
-                                        size="sm"
-                                        hasIconOnly
-                                        iconDescription={intl.formatMessage({
-                                          id: "eqa.enrollment.withdraw",
-                                        })}
-                                        renderIcon={StopOutline}
-                                        onClick={() => {
-                                          setSelectedEnrollment(enrollment);
-                                          setWithdrawModalOpen(true);
-                                        }}
-                                      />
-                                    )}
-                                    {canManage &&
-                                      rawRow?.status === "Suspended" && (
+                                      {rawRow?.status !== "Withdrawn" && (
+                                        <Button
+                                          kind="ghost"
+                                          size="sm"
+                                          hasIconOnly
+                                          iconDescription={intl.formatMessage({
+                                            id: "eqa.enrollment.withdraw",
+                                          })}
+                                          renderIcon={StopOutline}
+                                          onClick={() => {
+                                            setSelectedEnrollment(enrollment);
+                                            setWithdrawModalOpen(true);
+                                          }}
+                                        />
+                                      )}
+                                      {rawRow?.status === "Suspended" && (
                                         <Button
                                           kind="ghost"
                                           size="sm"
@@ -498,7 +498,8 @@ const EQAParticipantsPage = () => {
                                           }
                                         />
                                       )}
-                                  </div>
+                                    </div>
+                                  )}
                                 </TableCell>
                               );
                             }

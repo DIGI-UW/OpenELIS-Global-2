@@ -88,7 +88,13 @@ describe("ProgramManagement", () => {
     // controls that would answer 403.
     renderWithIntl(<ProgramManagement />, { permissions: ["qa.view.eqa"] });
     expect(screen.queryByText("Add Program")).toBeNull();
-    expect(screen.queryByLabelText("Edit program")).toBeNull();
+    // byRole, not byLabelText: Carbon icon-only buttons name themselves through
+    // aria-labelledby, which queryByLabelText does not resolve — the assertion
+    // would pass with the gate removed.
+    expect(
+      screen.queryAllByRole("button", { name: /edit program/i }),
+    ).toHaveLength(0);
+    expect(screen.getAllByText("Chemistry PT").length).toBeGreaterThan(0);
   });
 
   test("renders program list from API", () => {

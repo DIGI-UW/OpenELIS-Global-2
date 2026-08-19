@@ -3,6 +3,7 @@ package org.openelisglobal.eqa.controller;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.InputStream;
@@ -10,7 +11,6 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,6 +18,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.Test;
+import org.openelisglobal.eqa.controller.rest.EQAGuards;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -29,79 +30,71 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * OGC-609 — the EQA authorization model as invariants rather than an endpoint
- * census. Three rules hold across the package:
+ * census. Four rules hold across the package:
  *
  * <ol>
- * <li>Every controller carries the {@code qa.view.eqa} read umbrella at class
+ * <li>Every controller carries the {@link EQAGuards#READ} umbrella at class
  * level, with one documented exception.
  * <li>Every state-mutating handler declares its own guard. Spring replaces the
  * class annotation rather than ANDing it, so a write that omits a method-level
  * guard silently runs under the read umbrella.
+ * <li>No read declares its own guard, for the same reason: it would opt out of
+ * the umbrella instead of tightening it.
  * <li>Every authority named in a guard is registered <em>and</em> granted by a
- * liquibase changeset, so a guard cannot reference a permission no migration
- * creates — which fails closed and looks identical to a working guard.
+ * liquibase changeset that base-changelog.xml includes, so a guard cannot
+ * reference a permission no migration creates — which fails closed and looks
+ * identical to a working guard.
  * </ol>
  *
- * Write guards are still enumerated, because a downgrade from the provider tier
- * to the participant tier is a real regression that no invariant would catch.
- * Reads are asserted by rule, so adding a GET does not mean editing this test.
+ * Expected values come from {@link EQAGuards}, so this test pins which lane
+ * each endpoint belongs to — a downgrade from the provider tier to the
+ * participant tier is a real regression no invariant would catch — without
+ * re-typing the expressions and drifting from them.
  */
 public class EQARestGuardMatrixTest {
 
     private static final String EQA_REST_PACKAGE = "org.openelisglobal.eqa.controller.rest";
 
-    private static final String READ = "hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')";
-    private static final String PARTICIPANT = "hasAuthority('qa.eqa.participant') or hasAnyRole('RECEPTION',"
-            + " 'RESULTS', 'GLOBAL_ADMIN')";
-    private static final String PROVIDER = "hasAuthority('qa.eqa.provider') or hasRole('GLOBAL_ADMIN')";
-    private static final String MANAGE = "hasAuthority('qa.manage.eqa') or hasRole('GLOBAL_ADMIN')";
-    private static final String UNBLIND = "hasAuthority('qa.eqa.inhouse.unblind') or hasRole('GLOBAL_ADMIN')";
-    private static final String LEGACY_ROLES = "hasAnyRole('RECEPTION', 'RESULTS')";
-
     /**
-     * EQAAlertRestController is mapped at /rest, not /rest/eqa, and both of its
-     * GETs return alertService.getAll() unfiltered — it is the lab-wide alerts
-     * dashboard that happens to live in this package. It keeps the legacy role
-     * guard so an EQA permission is not required to read freezer or cold-chain
-     * alerts. Its sibling AlertRestController serves the same list at GET
-     * /rest/alerts with no guard at all, so tightening only this class would change
-     * nothing an attacker cares about.
+     * Encoded so it cannot be "corrected" by accident; rationale on the class
+     * itself.
      */
-    private static final Map<String, String> CLASS_GUARD_EXCEPTIONS = Map.of("EQAAlertRestController", LEGACY_ROLES);
+    private static final Map<String, String> CLASS_GUARD_EXCEPTIONS = Map.of("EQAAlertRestController",
+            EQAGuards.LAB_WIDE_ALERTS);
 
     /** Every state-mutating handler and the guard it must declare. */
     private static final Map<String, String> WRITE_GUARDS = new HashMap<>();
     static {
         // Lab-wide alert acknowledgement rides the exception above.
-        WRITE_GUARDS.put("EQAAlertRestController#acknowledgeAlert", LEGACY_ROLES);
+        WRITE_GUARDS.put("EQAAlertRestController#acknowledgeAlert", EQAGuards.LAB_WIDE_ALERTS);
         // Cycle lifecycle
-        WRITE_GUARDS.put("EQACycleRestController#transition", MANAGE);
+        WRITE_GUARDS.put("EQACycleRestController#transition", EQAGuards.MANAGE);
         // Provider-round management
-        WRITE_GUARDS.put("EQADistributionRestController#createDistribution", PROVIDER);
-        WRITE_GUARDS.put("EQADistributionRestController#updateDistribution", PROVIDER);
-        WRITE_GUARDS.put("EQADistributionRestController#advanceStatus", PROVIDER);
-        WRITE_GUARDS.put("EQADistributionRestController#generateBarcodes", PROVIDER);
-        WRITE_GUARDS.put("EQAEnrollmentRestController#createEnrollments", PROVIDER);
-        WRITE_GUARDS.put("EQAEnrollmentRestController#updateEnrollmentStatus", PROVIDER);
-        WRITE_GUARDS.put("EQAProgramRestController#createProgram", PROVIDER);
-        WRITE_GUARDS.put("EQAProgramRestController#updateProgram", PROVIDER);
-        WRITE_GUARDS.put("EQAProgramRestController#updateTestAssignments", PROVIDER);
-        WRITE_GUARDS.put("EQASubmissionRestController#approveLateSubmission", PROVIDER);
+        WRITE_GUARDS.put("EQADistributionRestController#createDistribution", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQADistributionRestController#updateDistribution", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQADistributionRestController#advanceStatus", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQADistributionRestController#generateBarcodes", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAEnrollmentRestController#createEnrollments", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAEnrollmentRestController#updateEnrollmentStatus", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAProgramRestController#createProgram", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAProgramRestController#updateProgram", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAProgramRestController#updateTestAssignments", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQASubmissionRestController#approveLateSubmission", EQAGuards.PROVIDER);
         // Participant lane — bench work, so the legacy roles still admit it
-        WRITE_GUARDS.put("EQAMyProgramsRestController#createMyProgram", PARTICIPANT);
-        WRITE_GUARDS.put("EQAMyProgramsRestController#updateMyProgram", PARTICIPANT);
-        WRITE_GUARDS.put("EQAMyProgramsRestController#deleteMyProgram", PARTICIPANT);
-        WRITE_GUARDS.put("EQAPanelReceiptRestController#recordReceipt", PARTICIPANT);
-        WRITE_GUARDS.put("EQAParticipantResultRestController#createDraft", PARTICIPANT);
-        WRITE_GUARDS.put("EQAParticipantResultRestController#transition", PARTICIPANT);
-        WRITE_GUARDS.put("EQAResultRestController#submitResult", PARTICIPANT);
-        WRITE_GUARDS.put("EQAResultRestController#batchImportResults", PARTICIPANT);
-        WRITE_GUARDS.put("EQASubmissionRestController#submitViaFhir", PARTICIPANT);
+        WRITE_GUARDS.put("EQAMyProgramsRestController#createMyProgram", EQAGuards.PARTICIPANT);
+        WRITE_GUARDS.put("EQAMyProgramsRestController#updateMyProgram", EQAGuards.PARTICIPANT);
+        WRITE_GUARDS.put("EQAMyProgramsRestController#deleteMyProgram", EQAGuards.PARTICIPANT);
+        WRITE_GUARDS.put("EQAPanelReceiptRestController#recordReceipt", EQAGuards.PARTICIPANT);
+        WRITE_GUARDS.put("EQAParticipantResultRestController#createDraft", EQAGuards.PARTICIPANT);
+        WRITE_GUARDS.put("EQAParticipantResultRestController#transition", EQAGuards.PARTICIPANT);
+        WRITE_GUARDS.put("EQAResultRestController#submitResult", EQAGuards.PARTICIPANT);
+        WRITE_GUARDS.put("EQAResultRestController#batchImportResults", EQAGuards.PARTICIPANT);
+        WRITE_GUARDS.put("EQASubmissionRestController#submitViaFhir", EQAGuards.PARTICIPANT);
         // Panel lifecycle, and the separate privilege that reveals sealed targets
-        WRITE_GUARDS.put("EQAPanelRestController#seal", MANAGE);
-        WRITE_GUARDS.put("EQAPanelRestController#distribute", MANAGE);
-        WRITE_GUARDS.put("EQAPanelRestController#unblind", UNBLIND);
-        WRITE_GUARDS.put("EQAParticipantResultRestController#score", MANAGE);
+        WRITE_GUARDS.put("EQAPanelRestController#seal", EQAGuards.MANAGE);
+        WRITE_GUARDS.put("EQAPanelRestController#distribute", EQAGuards.MANAGE);
+        WRITE_GUARDS.put("EQAPanelRestController#unblind", EQAGuards.UNBLIND);
+        WRITE_GUARDS.put("EQAParticipantResultRestController#score", EQAGuards.MANAGE);
     }
 
     /** Authority → the changeset that must both register and grant it. */
@@ -111,6 +104,11 @@ public class EQARestGuardMatrixTest {
             "liquibase/qa/019-add-eqa-v2-menus-permissions.xml", "qa.eqa.inhouse.unblind",
             "liquibase/qa/019-add-eqa-v2-menus-permissions.xml", "qa.manage.eqa",
             "liquibase/qa/023-add-eqa-manage-permission.xml");
+
+    /**
+     * Compat grant that replaced the legacy-role clause in the participant guard.
+     */
+    private static final String BENCH_ROLE_GRANT = "liquibase/qa/026-grant-eqa-participant-to-bench-roles.xml";
 
     private List<Class<?>> eqaRestControllers() throws Exception {
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
@@ -137,7 +135,7 @@ public class EQARestGuardMatrixTest {
         for (Class<?> controller : controllers) {
             PreAuthorize guard = controller.getAnnotation(PreAuthorize.class);
             assertNotNull(controller.getSimpleName() + " must carry a class-level guard", guard);
-            String expected = CLASS_GUARD_EXCEPTIONS.getOrDefault(controller.getSimpleName(), READ);
+            String expected = CLASS_GUARD_EXCEPTIONS.getOrDefault(controller.getSimpleName(), EQAGuards.READ);
             assertEquals(controller.getSimpleName() + " class-level guard", expected, guard.value());
         }
     }
@@ -182,48 +180,86 @@ public class EQARestGuardMatrixTest {
                     continue;
                 }
                 // A GET that declares its own guard silently opts out of the
-                // class umbrella; EQAPanelRestController#getSamples proves the
-                // sealed-target rule belongs in the service, not in a per-GET
-                // annotation.
-                assertNotNull(controller.getSimpleName() + "#" + m.getName() + " is a read and should rely on the"
-                        + " class-level guard", controller.getAnnotation(PreAuthorize.class));
+                // class umbrella, because Spring replaces rather than ANDs.
+                // EQAPanelRestController#getSamples is the precedent: a read
+                // whose visibility varies by privilege resolves that in the
+                // service, not in a per-GET annotation.
+                assertNull(
+                        controller.getSimpleName() + "#" + m.getName() + " is a read and must rely on the"
+                                + " class-level guard instead of declaring its own",
+                        m.getAnnotation(PreAuthorize.class));
             }
         }
     }
 
     @Test
-    public void everyGuardedAuthorityIsRegisteredAndGrantedByItsMigration() throws Exception {
+    public void everyGuardedAuthorityIsRegisteredGrantedAndWiredIntoTheChangelog() throws Exception {
+        // Read off the annotations themselves, not off this test's maps: the
+        // failure mode is a guard naming a permission no migration creates,
+        // which fails closed and looks identical to a working guard.
+        Set<String> named = new TreeSet<>();
+        for (Class<?> controller : eqaRestControllers()) {
+            named.addAll(authoritiesIn(controller.getAnnotation(PreAuthorize.class)));
+            for (Method m : controller.getDeclaredMethods()) {
+                named.addAll(authoritiesIn(m.getAnnotation(PreAuthorize.class)));
+            }
+        }
+        assertEquals("every authority a guard names needs a migration mapped here",
+                new TreeSet<>(AUTHORITY_CHANGESETS.keySet()), named);
+
         // Asserted against the changeset SOURCE, not system_module rows: dbUnit
         // fixtures truncate that table in full-suite runs, so row assertions are
         // suite-order coin flips.
-        Pattern authorityPattern = Pattern.compile("hasAuthority\\('([^']+)'\\)");
-        Set<String> named = new HashSet<>();
-        List<String> allGuards = new ArrayList<>(WRITE_GUARDS.values());
-        allGuards.add(READ);
-        for (String guard : allGuards) {
-            Matcher matcher = authorityPattern.matcher(guard);
-            while (matcher.find()) {
-                named.add(matcher.group(1));
-            }
-        }
-        assertEquals("the guards should use exactly the registered EQA authorities", AUTHORITY_CHANGESETS.keySet(),
-                named);
-
+        String changelog = classpathResource("liquibase/base-changelog.xml");
         for (Map.Entry<String, String> entry : AUTHORITY_CHANGESETS.entrySet()) {
             String authority = entry.getKey();
-            String changeset;
-            try (InputStream in = getClass().getClassLoader().getResourceAsStream(entry.getValue())) {
-                assertNotNull(entry.getValue() + " must exist on the classpath", in);
-                changeset = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            }
-            assertTrue(authority + " is not registered by " + entry.getValue(),
+            String file = entry.getValue();
+            String changeset = classpathResource(file);
+            assertTrue(authority + " is not registered by " + file,
                     changeset.contains("value=\"" + authority + "\"/>"));
-            // The grant is an INSERT into system_role_module selecting the module
-            // by name, so require the SQL shape rather than any quoted mention —
-            // the registration insert itself would satisfy a bare contains().
-            assertTrue(authority + " is registered but no role grant selects it in " + entry.getValue(),
-                    changeset.contains("m.name = '" + authority + "'")
-                            || changeset.matches("(?s).*m\\.name IN \\([^)]*'" + Pattern.quote(authority) + "'.*"));
+            assertTrue(authority + " is registered but no role grant selects it in " + file,
+                    grantsAuthority(changeset, authority));
+            // A changeset nobody includes never runs, and the guard above then
+            // refuses every caller in a fresh deployment.
+            assertTrue(file + " is not included by base-changelog.xml", changelog.contains(file));
+        }
+
+        // EQAGuards.PARTICIPANT dropped its legacy-role clause, so bench access
+        // to the participant lane is now this grant and nothing else.
+        String benchGrant = classpathResource(BENCH_ROLE_GRANT);
+        assertTrue(BENCH_ROLE_GRANT + " is not included by base-changelog.xml", changelog.contains(BENCH_ROLE_GRANT));
+        assertTrue("the bench grant must select the participant tier",
+                benchGrant.contains("m.name =" + " 'qa.eqa.participant'"));
+        assertTrue("the bench grant must name Reception and Results",
+                benchGrant.contains("r.name IN ('Reception', 'Results')"));
+    }
+
+    private Set<String> authoritiesIn(PreAuthorize guard) {
+        Set<String> found = new TreeSet<>();
+        if (guard == null) {
+            return found;
+        }
+        Matcher matcher = Pattern.compile("hasAuthority\\('([^']+)'\\)").matcher(guard.value());
+        while (matcher.find()) {
+            found.add(matcher.group(1));
+        }
+        return found;
+    }
+
+    /**
+     * The grant is an INSERT into system_role_module that selects the module by
+     * name, either singly or as part of an IN list. Requiring that SQL shape keeps
+     * the registration insert in the same file from satisfying the assertion.
+     */
+    private boolean grantsAuthority(String changeset, String authority) {
+        return changeset.contains("m.name = '" + authority + "'")
+                || changeset.matches("(?s).*m\\.name IN \\([^)]*'" + Pattern.quote(authority) + "'.*");
+    }
+
+    private String classpathResource(String path) throws Exception {
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(path)) {
+            assertNotNull(path + " must exist on the classpath", in);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
 }

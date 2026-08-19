@@ -1,12 +1,15 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import EQAParticipantsPage from "../EQAParticipantsPage";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
-vi.mock("../../utils/Utils", () => ({
+// Spread the real module: the permission predicate under test must not be
+// mocked, or the gate assertions below pass against a stub.
+vi.mock("../../utils/Utils", async () => ({
+  ...(await vi.importActual("../../utils/Utils")),
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
   putToOpenElisServer: vi.fn(),
@@ -167,6 +170,14 @@ describe("EQAParticipantsPage", () => {
     const select = screen.getByTestId("program-selector");
     fireEvent.change(select, { target: { value: "1" } });
     expect(screen.queryByTestId("enroll-button")).toBeNull();
+    // Scoped to the table: WithdrawModal keeps its own Withdraw button in the
+    // DOM while closed.
+    const rows = within(screen.getByRole("table"));
+    for (const control of ["suspend", "withdraw", "reactivate"]) {
+      expect(
+        rows.queryAllByRole("button", { name: new RegExp(control, "i") }),
+      ).toHaveLength(0);
+    }
     expect(screen.getByText("Enrollment Date")).toBeTruthy();
   });
 

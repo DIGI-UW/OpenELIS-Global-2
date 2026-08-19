@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/*
+/**
  * Deliberately NOT on the qa.view.eqa umbrella. Despite living in the eqa
  * package, this controller is mapped at /rest and serves the lab-wide alerts
  * dashboard: both GETs read alertService.getAll() with no EQA filter, so the
@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize(EQAGuards.LAB_WIDE_ALERTS)
 public class EQAAlertRestController extends ControllerUtills {
 
     @Autowired

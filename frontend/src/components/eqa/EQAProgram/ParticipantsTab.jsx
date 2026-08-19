@@ -29,12 +29,12 @@ import {
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
-import { canManageEqaProvider } from "../eqaAccess";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
   resolveApiErrorMessage,
+  hasQaPermission,
 } from "../../utils/Utils";
 
 const ENROLLMENT_STATUS_TAG = {
@@ -46,7 +46,7 @@ const ENROLLMENT_STATUS_TAG = {
 const ParticipantsTab = ({ programs }) => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const canManage = canManageEqaProvider(userSessionDetails);
+  const canManage = hasQaPermission(userSessionDetails, "qa.eqa.provider");
   const [selectedProgramId, setSelectedProgramId] = useState("");
   const [enrollments, setEnrollments] = useState([]);
   const [organizations, setOrganizations] = useState([]);
@@ -419,14 +419,15 @@ const ParticipantsTab = ({ programs }) => {
                               const enrollment = rawRow?._raw;
                               return (
                                 <TableCell key={cell.id}>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: "0.25rem",
-                                    }}
-                                  >
-                                    {canManage &&
-                                      rawRow?.status === "Active" && (
+                                  {/* Every control here is a provider-lane write. */}
+                                  {canManage && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "0.25rem",
+                                      }}
+                                    >
+                                      {rawRow?.status === "Active" && (
                                         <Button
                                           kind="ghost"
                                           size="sm"
@@ -443,8 +444,7 @@ const ParticipantsTab = ({ programs }) => {
                                           }
                                         />
                                       )}
-                                    {canManage &&
-                                      rawRow?.status !== "Withdrawn" && (
+                                      {rawRow?.status !== "Withdrawn" && (
                                         <Button
                                           kind="ghost"
                                           size="sm"
@@ -459,8 +459,7 @@ const ParticipantsTab = ({ programs }) => {
                                           }}
                                         />
                                       )}
-                                    {canManage &&
-                                      rawRow?.status === "Suspended" && (
+                                      {rawRow?.status === "Suspended" && (
                                         <Button
                                           kind="ghost"
                                           size="sm"
@@ -477,7 +476,8 @@ const ParticipantsTab = ({ programs }) => {
                                           }
                                         />
                                       )}
-                                  </div>
+                                    </div>
+                                  )}
                                 </TableCell>
                               );
                             }

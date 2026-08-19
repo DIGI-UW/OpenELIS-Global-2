@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')")
+@PreAuthorize(EQAGuards.READ)
 public class EQAEnrollmentRestController extends ControllerUtills {
 
     @Autowired
@@ -43,7 +43,7 @@ public class EQAEnrollmentRestController extends ControllerUtills {
     }
 
     @PostMapping(value = "/programs/{programId}/enrollments", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.eqa.provider') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> createEnrollments(HttpServletRequest request, @PathVariable Long programId,
             @RequestBody Map<String, Object> body) {
         try {
@@ -73,7 +73,7 @@ public class EQAEnrollmentRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/programs/{programId}/enrollments/{enrollmentId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.eqa.provider') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> updateEnrollmentStatus(HttpServletRequest request, @PathVariable Long programId,
             @PathVariable Long enrollmentId, @RequestBody Map<String, Object> body) {
         try {

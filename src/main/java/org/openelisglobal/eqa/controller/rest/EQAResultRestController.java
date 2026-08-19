@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')")
+@PreAuthorize(EQAGuards.READ)
 public class EQAResultRestController {
 
     @Autowired
@@ -32,7 +32,7 @@ public class EQAResultRestController {
     private EQAStatisticsService statisticsService;
 
     @PostMapping(value = "/distributions/{distributionId}/results", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.eqa.participant') or hasAnyRole('RECEPTION', 'RESULTS', 'GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<?> submitResult(@PathVariable Long distributionId, @RequestBody Map<String, Object> body) {
         try {
             Number orgId = (Number) body.get("organizationId");
@@ -54,7 +54,7 @@ public class EQAResultRestController {
     }
 
     @PostMapping(value = "/distributions/{distributionId}/results/import", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.eqa.participant') or hasAnyRole('RECEPTION', 'RESULTS', 'GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<?> batchImportResults(@PathVariable Long distributionId,
             @RequestBody List<Map<String, Object>> rows) {
         try {

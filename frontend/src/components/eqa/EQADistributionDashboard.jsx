@@ -23,10 +23,13 @@ import {
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
-import { getFromOpenElisServer, formatDateOnly } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  formatDateOnly,
+  hasQaPermission,
+} from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { canManageEqaProvider } from "./eqaAccess";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -44,7 +47,7 @@ const STATUS_TAG_MAP = {
 const EQADistributionDashboard = () => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const canManage = canManageEqaProvider(userSessionDetails);
+  const canManage = hasQaPermission(userSessionDetails, "qa.eqa.provider");
   const history = useHistory();
   const [shipments, setShipments] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
@@ -205,15 +208,18 @@ const EQADistributionDashboard = () => {
         </Button>
       );
     }
-    // Ship and Continue are provider-lane writes; View Report and Track read.
+    // Everything below is a provider-lane write; View Report and Track are reads.
+    if (!canManage) {
+      return null;
+    }
     if (row.status === "PREPARED") {
-      return canManage ? (
+      return (
         <Button kind="primary" size="sm" renderIcon={SendFilled}>
           {intl.formatMessage({ id: "eqa.distribution.action.ship" })}
         </Button>
-      ) : null;
+      );
     }
-    return canManage ? (
+    return (
       <Button
         kind="primary"
         size="sm"
@@ -221,7 +227,7 @@ const EQADistributionDashboard = () => {
       >
         {intl.formatMessage({ id: "eqa.distribution.action.continue" })}
       </Button>
-    ) : null;
+    );
   };
 
   return (

@@ -28,6 +28,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
+  hasQaPermission,
 } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import QAEmptyState from "../common/QAEmptyState";
@@ -120,11 +121,10 @@ const Accreditation = () => {
   const intl = useIntl();
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  // The real gate is @PreAuthorize on the write endpoints; this only hides controls
-  // from users who would get a 403 anyway.
-  const canManage =
-    userSessionDetails?.permissions?.includes("qa.manage.accreditation") ||
-    userSessionDetails?.roles?.includes("Global Administrator");
+  const canManage = hasQaPermission(
+    userSessionDetails,
+    "qa.manage.accreditation",
+  );
 
   // undefined = loading, null = fetch yielded no data / error
   const [summary, setSummary] = useState();

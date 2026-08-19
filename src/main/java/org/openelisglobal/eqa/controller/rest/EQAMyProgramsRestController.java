@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/my-programs")
-@PreAuthorize("hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')")
+@PreAuthorize(EQAGuards.READ)
 public class EQAMyProgramsRestController extends ControllerUtills {
 
     @Autowired
@@ -50,7 +50,7 @@ public class EQAMyProgramsRestController extends ControllerUtills {
     }
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.eqa.participant') or hasAnyRole('RECEPTION', 'RESULTS', 'GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<?> createMyProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String programName = (String) body.get("programName");
@@ -83,7 +83,7 @@ public class EQAMyProgramsRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.eqa.participant') or hasAnyRole('RECEPTION', 'RESULTS', 'GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<?> updateMyProgram(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         try {
@@ -119,7 +119,7 @@ public class EQAMyProgramsRestController extends ControllerUtills {
     }
 
     @DeleteMapping(value = "/{id}")
-    @PreAuthorize("hasAuthority('qa.eqa.participant') or hasAnyRole('RECEPTION', 'RESULTS', 'GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<Void> deleteMyProgram(@PathVariable Long id) {
         try {
             enrollmentService.softDelete(id);

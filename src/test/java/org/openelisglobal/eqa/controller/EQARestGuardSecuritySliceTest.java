@@ -46,11 +46,11 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * OGC-609 — behavioral proof of the four EQA guard shapes through the real
  * filter chain and method security, one representative endpoint per shape:
  * reads on the {@code qa.view.eqa} umbrella, participant-lane writes on the
- * tier or the legacy bench roles, provider-lane writes on the tier alone, and
- * unblinding on its dedicated tier. The exhaustive per-endpoint matrix is
- * covered by {@link EQARestGuardMatrixTest}; this slice proves the expressions
- * those annotations use actually admit and refuse the right callers, in the
- * right order (authorization before handler logic).
+ * participant tier, provider-lane writes on the provider tier, and unblinding
+ * on its dedicated tier. The exhaustive per-endpoint matrix is covered by
+ * {@link EQARestGuardMatrixTest}; this slice proves the expressions those
+ * annotations use actually admit and refuse the right callers, in the right
+ * order (authorization before handler logic).
  */
 @WebAppConfiguration
 @ContextConfiguration(classes = { EQARestGuardSecuritySliceTest.TestConfig.class })
@@ -112,12 +112,14 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
     }
 
     @Test
-    public void participantWrite_benchRoleStillWorks() throws Exception {
-        // Participant-lane actions (self-enrollment, receipt, result entry) are
-        // bench work today; the legacy RECEPTION/RESULTS roles keep them until a
-        // deployment chooses tier-only grants.
+    public void participantWrite_legacyRoleAloneNoLongerAdmits() throws Exception {
+        // Participant-lane actions stay open to the bench, but as a grant
+        // (qa/026 gives Reception and Results the tier) rather than a role clause
+        // in nine annotations. A principal holding only the role name — an SSO
+        // login whose grants have not been applied — is refused, which is the
+        // same rule the read umbrella follows.
         mockMvc.perform(delete("/rest/eqa/my-programs/9").with(user("bench").roles("RESULTS")))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isForbidden());
     }
 
     // ---- provider-lane writes ----

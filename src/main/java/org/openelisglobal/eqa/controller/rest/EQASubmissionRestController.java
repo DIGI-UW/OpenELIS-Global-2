@@ -15,14 +15,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')")
+@PreAuthorize(EQAGuards.READ)
 public class EQASubmissionRestController {
 
     @Autowired
     private EQAFhirSubmissionService fhirSubmissionService;
 
     @PostMapping(value = "/distributions/{distributionId}/submit/{organizationId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.eqa.participant') or hasAnyRole('RECEPTION', 'RESULTS', 'GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<?> submitViaFhir(@PathVariable Long distributionId, @PathVariable Long organizationId) {
         try {
             if (fhirSubmissionService.isSubmissionLate(distributionId)) {
@@ -42,7 +42,7 @@ public class EQASubmissionRestController {
     }
 
     @PostMapping(value = "/distributions/{distributionId}/submit/{organizationId}/approve-late", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.eqa.provider') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> approveLateSubmission(@PathVariable Long distributionId, @PathVariable Long organizationId,
             @RequestBody Map<String, String> body) {
         try {

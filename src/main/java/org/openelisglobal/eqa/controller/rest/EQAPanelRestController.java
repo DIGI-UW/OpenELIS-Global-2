@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAuthority('qa.view.eqa') or hasRole('GLOBAL_ADMIN')")
+@PreAuthorize(EQAGuards.READ)
 public class EQAPanelRestController extends BaseRestController {
 
     private final EQAPanelService panelService;
@@ -60,19 +60,19 @@ public class EQAPanelRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/panels/{id}/seal", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.eqa') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.MANAGE)
     public Map<String, Object> seal(HttpServletRequest request, @PathVariable Long id) {
         return panelService.toPanelDto(panelService.seal(id, getSysUserId(request)));
     }
 
     @PostMapping(value = "/panels/{id}/distribute", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.eqa') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.MANAGE)
     public Map<String, Object> distribute(HttpServletRequest request, @PathVariable Long id) {
         return panelService.toPanelDto(panelService.distribute(id, getSysUserId(request)));
     }
 
     @PostMapping(value = "/panels/{id}/unblind", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.eqa.inhouse.unblind') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.UNBLIND)
     public Map<String, Object> unblind(HttpServletRequest request, @PathVariable Long id) {
         return panelService.toPanelDto(panelService.unblind(id, getSysUserId(request)));
     }
@@ -88,7 +88,7 @@ public class EQAPanelRestController extends BaseRestController {
             return false;
         }
         for (GrantedAuthority authority : auth.getAuthorities()) {
-            if ("qa.eqa.inhouse.unblind".equals(authority.getAuthority())
+            if (EQAGuards.UNBLIND_AUTHORITY.equals(authority.getAuthority())
                     || "ROLE_GLOBAL_ADMIN".equals(authority.getAuthority())) {
                 return true;
             }
