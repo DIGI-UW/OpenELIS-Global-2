@@ -37,11 +37,19 @@ import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioForm;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+import org.openelisglobal.microbiology.valueholder.MicroAstReading;
+import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
+import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
@@ -91,6 +99,7 @@ public class MicrobiologyUatScenarioService {
     private static final String REFERENCE_ADMIN_SCENARIO = "M3";
     private static final String WHONET_EXPORT_SCENARIO = "M4";
     private static final String CLASSIFICATION_SCENARIO = "R1";
+    private static final String REVIEWED_AST_SCENARIO = "AST_REVIEWED";
     private static final String UAT_METHOD_NAME = "UAT micro culture";
     private static final String UAT_METHOD_DESCRIPTION = "UAT microbiology culture method";
     private static final String UAT_ALTERNATE_METHOD_NAME = "UAT alt culture";
@@ -137,6 +146,8 @@ public class MicrobiologyUatScenarioService {
     private final MicroBreakpointImportService breakpointImportService;
     private final NceCategoryService nceCategoryService;
     private final NceTypeService nceTypeService;
+    private final MicroIsolateService isolateService;
+    private final MicroAstService astService;
 
     public MicrobiologyUatScenarioService(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, PatientService patientService, PersonService personService,
@@ -150,7 +161,8 @@ public class MicrobiologyUatScenarioService {
             InventoryLotService inventoryLotService, InventoryManagementService inventoryManagementService,
             TestReagentLinkService testReagentLinkService, MicrobiologyReferenceAdminService referenceAdminService,
             MicroBreakpointAdminService breakpointAdminService, MicroBreakpointImportService breakpointImportService,
-            NceCategoryService nceCategoryService, NceTypeService nceTypeService) {
+            NceCategoryService nceCategoryService, NceTypeService nceTypeService, MicroIsolateService isolateService,
+            MicroAstService astService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -180,6 +192,8 @@ public class MicrobiologyUatScenarioService {
         this.breakpointImportService = breakpointImportService;
         this.nceCategoryService = nceCategoryService;
         this.nceTypeService = nceTypeService;
+        this.isolateService = isolateService;
+        this.astService = astService;
     }
 
     @Transactional
@@ -249,6 +263,9 @@ public class MicrobiologyUatScenarioService {
             sibling = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.MYCOBACTERIOLOGY_TB,
                     method.getId(), performedBy);
         }
+        AstScenarioData astScenarioData = REVIEWED_AST_SCENARIO.equals(scenario)
+                ? ensureReviewedAstScenario(microCase, astReferenceData, performedBy)
+                : null;
 
         MicrobiologyUatScenarioForm form = new MicrobiologyUatScenarioForm();
         form.scenario = scenario;
@@ -260,6 +277,8 @@ public class MicrobiologyUatScenarioService {
         form.patientExternalId = patient.getExternalId();
         form.caseId = microCase.getId();
         form.siblingCaseId = sibling == null ? null : sibling.getId();
+        form.isolateId = astScenarioData == null ? null : astScenarioData.isolateId();
+        form.astRunId = astScenarioData == null ? null : astScenarioData.runId();
         form.analysisId = analysis.getId();
         form.reportableTestAnalyteId = reportableTestAnalyte.getId();
         form.methodId = method.getId();
@@ -279,6 +298,47 @@ public class MicrobiologyUatScenarioService {
         form.loadedBreakpointStandardId = referenceAdminData == null ? null : referenceAdminData.loadedStandardId();
         form.unmappedOrganismId = unmappedOrganism == null ? null : unmappedOrganism.getId();
         return form;
+    }
+
+    private AstScenarioData ensureReviewedAstScenario(MicroCase microCase, AstReferenceData referenceData,
+            String performedBy) {
+        MicroIsolate isolate = isolateService.getIsolatesForCase(microCase.getId()).stream()
+                .filter(candidate -> "ISO-1".equals(candidate.getIsolateLabel())).findFirst().orElse(null);
+        if (isolate == null) {
+            isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                    "Synthetic lactose-fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                    performedBy);
+        }
+        if (!referenceData.organism().getId().equals(isolate.getOrganismId())
+                || !MicroIsolateIdentificationStatus.CONFIRMED.name().equals(isolate.getIdentificationStatus())) {
+            isolate = isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),
+                    "Escherichia coli", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                    MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new BigDecimal("99.5"), performedBy);
+        }
+
+        List<MicroAstRun> runs = astService.getRunsForIsolate(isolate.getId());
+        MicroAstRun run = runs.stream()
+                .filter(candidate -> MicroAstRunStatus.REVIEWED.name().equals(candidate.getStatus())).findFirst()
+                .orElse(null);
+        if (run == null) {
+            run = runs.stream().filter(candidate -> MicroAstRunStatus.IN_PROGRESS.name().equals(candidate.getStatus()))
+                    .findFirst().orElse(null);
+        }
+        if (run == null) {
+            run = astService.startRun(isolate.getId(), referenceData.panel().getId(), referenceData.standard().getId(),
+                    "Deterministic reviewed AST fixture uses one panel drug", MicroAstTechnique.BROTH_MICRODILUTION,
+                    List.of(), List.of(referenceData.antibiotic().getId()), performedBy);
+        }
+        if (!MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
+            boolean hasReading = astService.getReadingsForRun(run.getId()).stream()
+                    .map(MicroAstReading::getAntibioticId).anyMatch(referenceData.antibiotic().getId()::equals);
+            if (!hasReading) {
+                astService.recordReading(run.getId(), referenceData.antibiotic().getId(), MicroAstMethod.MIC,
+                        new BigDecimal("4"), performedBy);
+            }
+            run = astService.reviewRun(run.getId(), performedBy);
+        }
+        return new AstScenarioData(isolate.getId(), run.getId());
     }
 
     private boolean isReferenceScenario(String scenario) {
@@ -897,8 +957,8 @@ public class MicrobiologyUatScenarioService {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
         if (!"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
                 && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)
-                && !CLASSIFICATION_SCENARIO.equals(normalized)) {
-            throw new IllegalArgumentException("scenario must be CASE, MVP, WORKLIST, M3, M4, or R1");
+                && !CLASSIFICATION_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)) {
+            throw new IllegalArgumentException("scenario must be CASE, MVP, WORKLIST, M3, M4, R1, or AST_REVIEWED");
         }
         return normalized;
     }
@@ -921,5 +981,8 @@ public class MicrobiologyUatScenarioService {
 
     private record ReferenceAdminData(String organismId, String antibioticId, String astPanelId,
             String activeStandardId, String loadedStandardId) {
+    }
+
+    private record AstScenarioData(String isolateId, String runId) {
     }
 }

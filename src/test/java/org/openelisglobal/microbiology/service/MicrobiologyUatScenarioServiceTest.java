@@ -12,6 +12,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Locale;
@@ -50,8 +51,13 @@ import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioForm;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
@@ -179,6 +185,12 @@ public class MicrobiologyUatScenarioServiceTest {
     private MicroBreakpointImportService breakpointImportService;
 
     @Mock
+    private MicroIsolateService isolateService;
+
+    @Mock
+    private MicroAstService astService;
+
+    @Mock
     private AutowireCapableBeanFactory beanFactory;
 
     @Mock
@@ -218,7 +230,7 @@ public class MicrobiologyUatScenarioServiceTest {
                 testResultService, testMethodService, statusService, configurationService, caseService,
                 orderRoutingService, inventoryItemService, inventoryLotService, inventoryManagementService,
                 testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
-                nceCategoryService, nceTypeService);
+                nceCategoryService, nceTypeService, isolateService, astService);
     }
 
     @After
@@ -508,6 +520,62 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), setupCaptor.getAllValues().get(1).getWorkflowType());
         assertEquals("method-alternate", setupCaptor.getAllValues().get(2).getMethodId());
         assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), setupCaptor.getAllValues().get(2).getWorkflowType());
+    }
+
+    @Test
+    public void provisionsReviewedAstScenarioThroughServices() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("isolate-1");
+        isolate.setCaseId(microCase.getId());
+        isolate.setIsolateLabel("ISO-1");
+        when(isolateService.getIsolatesForCase(microCase.getId())).thenReturn(List.of());
+        when(isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Synthetic lactose-fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1"))
+                .thenReturn(isolate);
+        when(isolateService.updateIdentification(isolate.getId(), "organism-1", "Escherichia coli",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                "MALDI_TOF", new BigDecimal("99.5"), "1")).thenAnswer(invocation -> {
+                    isolate.setOrganismId("organism-1");
+                    isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.CONFIRMED.name());
+                    return isolate;
+                });
+
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId(isolate.getId());
+        when(astService.getRunsForIsolate(isolate.getId())).thenReturn(List.of());
+        when(astService.startRun(isolate.getId(), "panel-1", "standard-1",
+                "Deterministic reviewed AST fixture uses one panel drug",
+                org.openelisglobal.microbiology.valueholder.MicroAstTechnique.BROTH_MICRODILUTION, List.of(),
+                List.of("antibiotic-cip"), "1")).thenReturn(run);
+        when(astService.getReadingsForRun(run.getId())).thenReturn(List.of());
+        when(astService.reviewRun(run.getId(), "1")).thenAnswer(invocation -> {
+            run.setStatus(MicroAstRunStatus.REVIEWED.name());
+            return run;
+        });
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "AST_REVIEWED";
+        request.scenarioKey = "playwright-reviewed-ast";
+
+        MicrobiologyUatScenarioForm result = service.provision(request, "1");
+
+        assertEquals("isolate-1", result.isolateId);
+        assertEquals("run-1", result.astRunId);
+        verify(isolateService).createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Synthetic lactose-fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1");
+        verify(astService).recordReading(run.getId(), "antibiotic-cip",
+                org.openelisglobal.microbiology.valueholder.MicroAstMethod.MIC, new BigDecimal("4"), "1");
+        verify(astService).reviewRun(run.getId(), "1");
     }
 
     @Test
