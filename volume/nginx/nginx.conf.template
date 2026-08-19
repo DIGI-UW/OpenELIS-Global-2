@@ -15,6 +15,10 @@ worker_processes 1;
 events { worker_connections 1024; }
 
 http {
+    # Docker service containers can be replaced independently in development.
+    # Resolve their aliases per request so nginx never retains a stale container IP.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
     # HTTP server — handles ACME challenges and redirects to HTTPS for both
     # the primary domain and the bridge subdomain. Certbot writes challenge
     # tokens into /var/www/certbot on ANY domain being validated, so both
@@ -67,14 +71,16 @@ http {
         # (server.allowedHosts, strict since Vite 5) accepts forwarded requests
         # regardless of the public hostname — keeps nginx hostname-agnostic.
         location / {
-            proxy_pass http://frontend.openelis.org;
+            set $frontend_upstream "frontend.openelis.org";
+            proxy_pass http://$frontend_upstream;
             proxy_redirect off;
             proxy_set_header Host localhost;
         }
 
         # Backend API
         location /api/ {
-            proxy_pass https://oe.openelis.org:8443/api/;
+            set $oe_upstream "oe.openelis.org";
+            proxy_pass https://$oe_upstream:8443;
             proxy_redirect off;
             proxy_ssl_verify off;
             proxy_ssl_server_name on;
@@ -86,7 +92,8 @@ http {
 
         # REST API
         location /rest/ {
-            proxy_pass https://oe.openelis.org:8443/rest/;
+            set $oe_upstream "oe.openelis.org";
+            proxy_pass https://$oe_upstream:8443;
             proxy_redirect off;
             proxy_ssl_verify off;
             proxy_ssl_server_name on;
@@ -136,7 +143,8 @@ http {
         }
 
         location / {
-            proxy_pass https://bridge.openelis.org:8443;
+            set $bridge_upstream "bridge.openelis.org";
+            proxy_pass https://$bridge_upstream:8443;
             proxy_redirect off;
             proxy_ssl_verify off;
             proxy_ssl_server_name on;
@@ -168,14 +176,16 @@ http {
 
         # Frontend — same Vite host-rewrite rationale as the named-host block.
         location / {
-            proxy_pass http://frontend.openelis.org;
+            set $frontend_upstream "frontend.openelis.org";
+            proxy_pass http://$frontend_upstream;
             proxy_redirect off;
             proxy_set_header Host localhost;
         }
 
         # Backend API
         location /api/ {
-            proxy_pass https://oe.openelis.org:8443/api/;
+            set $oe_upstream "oe.openelis.org";
+            proxy_pass https://$oe_upstream:8443;
             proxy_redirect off;
             proxy_ssl_verify off;
             proxy_ssl_server_name on;
@@ -187,7 +197,8 @@ http {
 
         # REST API
         location /rest/ {
-            proxy_pass https://oe.openelis.org:8443/rest/;
+            set $oe_upstream "oe.openelis.org";
+            proxy_pass https://$oe_upstream:8443;
             proxy_redirect off;
             proxy_ssl_verify off;
             proxy_ssl_server_name on;
