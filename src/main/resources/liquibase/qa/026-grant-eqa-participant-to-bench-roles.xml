@@ -17,10 +17,11 @@
 
     qa/019 registers qa.eqa.participant and grants it to QA Officer and Global
     Administrator; this only adds roles against that module, with the same NOT
-    EXISTS shape so re-runs are no-ops. qa/025 is already claimed.
+    EXISTS shape so re-runs are no-ops. qa/025 and the qa-046 to qa-050 ids
+    are already claimed elsewhere.
     -->
 
-    <changeSet author="openelisglobal" id="qa-046-grant-eqa-participant-to-bench-roles">
+    <changeSet author="openelisglobal" id="qa-051-grant-eqa-participant-to-bench-roles">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_role_module" schemaName="clinlims" />
             <sqlCheck expectedResult="1">SELECT count(*) FROM clinlims.system_module WHERE name =
