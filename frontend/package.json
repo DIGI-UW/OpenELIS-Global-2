@@ -45,6 +45,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:analyzer-profile-compatibility": "vitest run scripts/analyzer-profile-compatibility.test.js",
     "typecheck": "tsc --noEmit",
     "format": "prettier ./ --write",
     "check-format": "prettier ./ --check",
