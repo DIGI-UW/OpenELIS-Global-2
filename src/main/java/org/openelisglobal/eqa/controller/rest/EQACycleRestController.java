@@ -13,6 +13,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
+import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
@@ -57,14 +58,34 @@ public class EQACycleRestController extends BaseRestController {
     private final SampleService sampleService;
     private final AnalysisService analysisService;
     private final ResultService resultService;
+    private final EQAPerformanceReportPDFService performanceReportService;
 
     public EQACycleRestController(EQACycleService cycleService, SampleEQAService sampleEQAService,
-            SampleService sampleService, AnalysisService analysisService, ResultService resultService) {
+            SampleService sampleService, AnalysisService analysisService, ResultService resultService,
+            EQAPerformanceReportPDFService performanceReportService) {
         this.cycleService = cycleService;
         this.sampleEQAService = sampleEQAService;
         this.sampleService = sampleService;
         this.analysisService = analysisService;
         this.resultService = resultService;
+        this.performanceReportService = performanceReportService;
+    }
+
+    /**
+     * OGC-933: the printed CPHL-format performance report. Streams a PDF rather
+     * than JSON, so the browser can open it straight from a link.
+     *
+     * @param labEnrollmentId provider-side per-participant variant; omit for the
+     *                        whole cycle
+     */
+    @GetMapping(value = "/cycles/{cycleId}/performance-report", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> performanceReport(@PathVariable Long cycleId,
+            @RequestParam(required = false) Long labEnrollmentId) {
+        byte[] pdf = performanceReportService.generatePerformanceReport(cycleId, labEnrollmentId);
+        String filename = "eqa-performance-report-cycle-" + cycleId
+                + (labEnrollmentId == null ? "" : "-participant-" + labEnrollmentId) + ".pdf";
+        return ResponseEntity.ok().header("Content-Disposition", "inline; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_PDF).body(pdf);
     }
 
     /**
