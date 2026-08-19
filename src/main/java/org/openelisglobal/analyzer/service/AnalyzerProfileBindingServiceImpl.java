@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
@@ -58,6 +59,17 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
             }
             return existing;
         }).orElseGet(() -> createBinding(normalizedProfileId, profileRevision, fingerprint, sysUserId));
+    }
+
+    @Override
+    public AnalyzerProfileBinding assignProfile(Analyzer analyzer, String profileId, int profileRevision,
+            String sysUserId) {
+        if (analyzer == null) {
+            throw new AnalyzerProfileBindingException("Analyzer is required");
+        }
+        AnalyzerProfileBinding binding = resolveActiveRevision(profileId, profileRevision, sysUserId);
+        analyzer.setProfileBinding(binding);
+        return binding;
     }
 
     @Override

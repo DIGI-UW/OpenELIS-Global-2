@@ -101,6 +101,7 @@
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerQcRule</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>

@@ -2,10 +2,6 @@ package org.openelisglobal.analyzer.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,12 +14,13 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
+import org.openelisglobal.analyzer.service.AnalyzerProfileBindingException;
+import org.openelisglobal.analyzer.service.AnalyzerProfileBindingService;
 import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.service.BridgeHttpClient;
 import org.openelisglobal.analyzer.service.BridgeRegistrationService;
-import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.analyzer.service.QcRuleDto;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
@@ -66,9 +63,6 @@ public class AnalyzerRestController extends BaseRestController {
     private AnalyzerFieldService analyzerFieldService;
 
     @Autowired
-    private FileImportService fileImportService;
-
-    @Autowired
     private SerialPortService serialPortService;
 
     @Autowired
@@ -82,6 +76,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
+
+    @Autowired
+    private AnalyzerProfileBindingService analyzerProfileBindingService;
 
     @Autowired
     private PluginMenuService pluginService;
@@ -123,9 +120,6 @@ public class AnalyzerRestController extends BaseRestController {
      */
     @Value("${analyzer.bridge.url:}")
     private String analyzerBridgeUrl;
-
-    @Value("${analyzer.profiles.dir:}")
-    private String analyzerProfilesDir;
 
     /**
      * GET /rest/analyzer/analyzers Retrieve all analyzers with their
@@ -219,6 +213,9 @@ public class AnalyzerRestController extends BaseRestController {
                 validationErrors.add("Invalid communication mode: " + form.getCommunicationMode() + ". Valid values: "
                         + validValues);
             }
+            if ((form.getProfileId() == null) != (form.getProfileRevision() == null)) {
+                validationErrors.add("Profile ID and profile revision must be provided together");
+            }
             if (!validationErrors.isEmpty()) {
                 Map<String, Object> error = AnalyzerControllerHelper.wrapError(String.join("; ", validationErrors));
                 error.put("validationErrors", validationErrors);
@@ -287,43 +284,14 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setSkipRows(form.getSkipRows());
             }
 
+            if (form.getProfileId() != null) {
+                analyzerProfileBindingService.assignProfile(analyzer, form.getProfileId(), form.getProfileRevision(),
+                        getSysUserId(request));
+            }
+
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
             pluginService.registerAnalyzerMenuAndPermission(analyzer.getName(), analyzerId);
-
-            // Auto-create test mappings and file import config from default profile if
-            // provided
-            if (form.getDefaultConfigId() != null && !form.getDefaultConfigId().isEmpty()) {
-                Map<String, Object> configData = loadDefaultConfigFile(form.getDefaultConfigId());
-                if (configData != null) {
-                    analyzerService.autoCreateTestMappings(analyzerId, configData, getSysUserId(request));
-
-                    // For FILE protocol profiles, auto-fill any file import fields not already set
-                    // by the form
-                    if (isFileProtocol(configData)) {
-                        fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName(),
-                                getSysUserId(request));
-                    }
-
-                    // The profile is the source of truth for a profile-created analyzer's
-                    // communication mode, so apply it whenever the profile declares one —
-                    // overriding the form's value. We can't gate on "form left it null": the
-                    // SPA only reads the legacy flat `communication_mode` (profiles carry the
-                    // nested `communication.mode` block), so it always falls back to the
-                    // ANALYZER_INITIATED default and submits a non-null mode. Without this
-                    // override, profile-created analyzers stay non-dispatchable (effective
-                    // ANALYZER_INITIATED) and never appear in the LIS-initiated dispatch UI.
-                    CommunicationMode profileMode = communicationModeFromProfile(configData);
-                    if (profileMode != null) {
-                        analyzer.setCommunicationMode(profileMode);
-                        analyzer.setSysUserId(getSysUserId(request));
-                        analyzerService.update(analyzer);
-                    }
-                } else {
-                    logger.warn("Could not load default config '{}' for test mapping auto-creation",
-                            form.getDefaultConfigId());
-                }
-            }
 
             // Use getWithType() to eagerly fetch AnalyzerType within the service
             // transaction — prevents LazyInitializationException in analyzerToMap()
@@ -339,6 +307,9 @@ public class AnalyzerRestController extends BaseRestController {
             Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
             response.put("bridgeRegistered", bridgeRegistered);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (AnalyzerProfileBindingException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         } catch (LIMSRuntimeException e) {
             logger.error("Error creating analyzer: {}", e.getMessage(), e);
             return AnalyzerControllerHelper.mapExceptionToResponse(e);
@@ -491,6 +462,10 @@ public class AnalyzerRestController extends BaseRestController {
                 error.put("error", "Port must be between 1 and 65535");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
+            if ((form.getProfileId() == null) != (form.getProfileRevision() == null)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AnalyzerControllerHelper
+                        .wrapError("Profile ID and profile revision must be provided together"));
+            }
 
             // Update analyzer fields (2-table model: all fields on Analyzer directly)
             if (form.getName() != null && !form.getName().trim().isEmpty()) {
@@ -564,6 +539,10 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getSkipRows() != null) {
                 analyzer.setSkipRows(form.getSkipRows());
             }
+            if (form.getProfileId() != null) {
+                analyzerProfileBindingService.assignProfile(analyzer, form.getProfileId(), form.getProfileRevision(),
+                        getSysUserId(request));
+            }
             // Update lifecycle status if provided (SETUP → ACTIVE → INACTIVE → DELETED)
             if (form.getStatus() != null) {
                 try {
@@ -577,11 +556,15 @@ public class AnalyzerRestController extends BaseRestController {
             analyzerService.update(analyzer);
 
             // Re-register transport mapping with bridge synchronously.
-            Analyzer updatedAnalyzer = analyzerService.get(id);
+            Analyzer updatedAnalyzer = analyzerService.getWithType(id)
+                    .orElseThrow(() -> new LIMSRuntimeException("Failed to retrieve updated analyzer"));
             boolean bridgeRegistered = registerWithBridge(updatedAnalyzer);
             Map<String, Object> response = analyzerToMap(updatedAnalyzer, getLoadedPluginClassNames());
             response.put("bridgeRegistered", bridgeRegistered);
             return ResponseEntity.ok(response);
+        } catch (AnalyzerProfileBindingException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         } catch (LIMSRuntimeException e) {
             logger.error("Error updating analyzer: {}", e.getMessage(), e);
             return AnalyzerControllerHelper.mapExceptionToResponse(e);
@@ -678,6 +661,18 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("effectiveCommunicationMode", analyzer.getEffectiveCommunicationMode().name());
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
+
+        if (analyzer.getProfileBinding() == null) {
+            map.put("profileId", null);
+            map.put("profileRevision", null);
+            map.put("profileFingerprint", null);
+            map.put("profileBindingStatus", "UNBOUND");
+        } else {
+            map.put("profileId", analyzer.getProfileBinding().getProfileId());
+            map.put("profileRevision", analyzer.getProfileBinding().getProfileRevision());
+            map.put("profileFingerprint", analyzer.getProfileBinding().getProfileFingerprint());
+            map.put("profileBindingStatus", "PINNED");
+        }
 
         // FILE transport fields (unified on analyzer table — same as TCP fields above).
         // The bridge is strictly read-only with respect to watched directories since
@@ -1234,122 +1229,6 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/profiles List available analyzer profile templates from
-     * filesystem.
-     *
-     * <p>
-     * Returns minimal metadata for each template: id (e.g., "astm/mindray-ba88a"),
-     * protocol ("ASTM" or "HL7"), analyzer_name (from JSON).
-     *
-     * <p>
-     * Built-in profiles are intentionally immutable and exposed via read-only GET
-     * endpoints. There are no write endpoints for /profiles/**.
-     */
-    @GetMapping({ "/profiles", "/defaults" })
-    public ResponseEntity<?> getDefaults() {
-        try {
-            String defaultsDir = System.getenv("ANALYZER_PROFILES_DIR");
-            if (defaultsDir == null || defaultsDir.isEmpty()) {
-                defaultsDir = "/data/analyzer-profiles";
-            }
-
-            Path baseDir = Path.of(defaultsDir);
-            if (!Files.exists(baseDir) || !Files.isDirectory(baseDir)) {
-                logger.warn("Analyzer defaults directory not found: {}", defaultsDir);
-                return ResponseEntity.ok(new ArrayList<>());
-            }
-
-            List<Map<String, Object>> templates = new ArrayList<>();
-
-            // Scan ASTM directory
-            Path astmDir = baseDir.resolve("astm");
-            if (Files.exists(astmDir) && Files.isDirectory(astmDir)) {
-                scanTemplates(astmDir, "astm", templates);
-            }
-
-            // Scan HL7 directory
-            Path hl7Dir = baseDir.resolve("hl7");
-            if (Files.exists(hl7Dir) && Files.isDirectory(hl7Dir)) {
-                scanTemplates(hl7Dir, "hl7", templates);
-            }
-
-            // Scan FILE directory
-            Path fileDir = baseDir.resolve("file");
-            if (Files.exists(fileDir) && Files.isDirectory(fileDir)) {
-                scanTemplates(fileDir, "file", templates);
-            }
-
-            return ResponseEntity.ok(templates);
-        } catch (Exception e) {
-            logger.error("Error listing default configs", e);
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", "Failed to list default configurations: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-    /**
-     * GET /rest/analyzer/profiles/{protocol}/{name} Load specific profile
-     * configuration template from filesystem.
-     *
-     * <p>
-     * Implements strict security controls:
-     * <ul>
-     * <li>Protocol allowlist: only "astm" or "hl7" (case-insensitive)</li>
-     * <li>Filename regex: {@code ^[a-zA-Z0-9\-_.]+$} — rejects path separators,
-     * {@code ..}, and special characters to prevent path traversal</li>
-     * <li>Normalized path verification: resolved path must start with the defaults
-     * base directory</li>
-     * </ul>
-     */
-    @GetMapping({ "/profiles/{protocol}/{name}", "/defaults/{protocol}/{name}" })
-    @SuppressWarnings("unchecked")
-    public ResponseEntity<Map<String, Object>> getDefaultConfig(@PathVariable String protocol,
-            @PathVariable String name) {
-        try {
-            Path templateFile = resolveConfigFilePath(protocol, name);
-            if (templateFile == null) {
-                // Determine specific error for HTTP response
-                if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")
-                        && !protocol.equalsIgnoreCase("file")) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                            AnalyzerControllerHelper.wrapError("Invalid protocol: must be 'astm', 'hl7', or 'file'"));
-                }
-                if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AnalyzerControllerHelper
-                            .wrapError("Invalid filename: only alphanumeric, dash, underscore, and period allowed"));
-                }
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(AnalyzerControllerHelper.wrapError("Template not found: " + protocol + "/" + name));
-            }
-
-            String jsonContent = Files.readString(templateFile, StandardCharsets.UTF_8);
-            Map<String, Object> config = objectMapper.readValue(jsonContent, Map.class);
-            String schemaValidationError = validateProfileMeta(config, protocol + "/" + name);
-            if (schemaValidationError != null) {
-                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                        .body(AnalyzerControllerHelper.wrapError(schemaValidationError));
-            }
-            return ResponseEntity.ok(config);
-
-        } catch (IOException e) {
-            logger.error("Error reading default config: {}/{}", protocol, name, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AnalyzerControllerHelper.wrapError("Failed to read template: " + e.getMessage()));
-        } catch (Exception e) {
-            logger.error("Error loading default config", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AnalyzerControllerHelper.wrapError("Failed to load template: " + e.getMessage()));
-        }
-    }
-
-    // NOTE: a profile is a one-time bootstrap applied at analyzer CREATE (see the
-    // create endpoint's defaultConfigId block). There is intentionally no
-    // "re-apply profile to existing analyzer" endpoint: re-applying would clobber
-    // analyzer-specific config (IP/port/local tweaks) vs profile-derived config in
-    // a surprising way. Existing analyzers are changed via the normal update (PUT).
-
-    /**
      * Resolve a pluginTypeId that may be numeric (database ID) or a well-known
      * alias like "generic-astm". Returns null if unresolvable.
      *
@@ -1392,183 +1271,6 @@ public class AnalyzerRestController extends BaseRestController {
             logger.warn("Could not resolve pluginTypeId '{}' (tried name '{}')", pluginTypeId, lookupName);
         }
         return type;
-    }
-
-    /**
-     * Resolve and validate a config template file path. Shared validation logic
-     * used by both the HTTP endpoint ({@code getDefaultConfig}) and internal
-     * callers ({@code loadDefaultConfigFile}).
-     *
-     * @param protocol Protocol name ("astm" or "hl7")
-     * @param name     Template filename (with or without .json extension)
-     * @return Validated Path to the template file, or null if validation fails or
-     *         file not found
-     */
-    private Path resolveConfigFilePath(String protocol, String name) {
-        if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")
-                && !protocol.equalsIgnoreCase("file")) {
-            return null;
-        }
-        if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
-            return null;
-        }
-
-        String filename = name.endsWith(".json") ? name : name + ".json";
-        Path baseDir = getAnalyzerProfilesBaseDir();
-        Path templateFile = baseDir.resolve(protocol).resolve(filename).normalize();
-        if (!templateFile.startsWith(baseDir.normalize())) {
-            return null;
-        }
-
-        if (!Files.exists(templateFile) || !Files.isRegularFile(templateFile)) {
-            return null;
-        }
-
-        return templateFile;
-    }
-
-    /**
-     * Resolve the communication mode declared by a profile (the top-level
-     * {@code communication.mode} block, or legacy {@code communication_mode}), or
-     * null if absent/unrecognized.
-     */
-    static CommunicationMode communicationModeFromProfile(Map<String, Object> configData) {
-        String mode = null;
-        Object comm = configData.get("communication");
-        if (comm instanceof Map) {
-            Object m = ((Map<?, ?>) comm).get("mode");
-            if (m != null) {
-                mode = String.valueOf(m);
-            }
-        } else if (configData.get("communication_mode") != null) {
-            mode = String.valueOf(configData.get("communication_mode"));
-        }
-        return mode != null ? CommunicationMode.fromValue(mode) : null;
-    }
-
-    /**
-     * Load a default config JSON file from the filesystem. Returns null if
-     * validation fails or file not found.
-     *
-     * @param configId Config ID in "protocol/name" format (e.g.,
-     *                 "astm/genexpert-astm")
-     * @return Parsed JSON as Map, or null
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> loadDefaultConfigFile(String configId) {
-        if (configId == null || !configId.contains("/")) {
-            return null;
-        }
-
-        String[] parts = configId.split("/", 2);
-        Path templateFile = resolveConfigFilePath(parts[0], parts[1]);
-        if (templateFile == null) {
-            return null;
-        }
-
-        try {
-            String jsonContent = Files.readString(templateFile, StandardCharsets.UTF_8);
-            return objectMapper.readValue(jsonContent, Map.class);
-        } catch (IOException e) {
-            logger.error("Error reading default config file: {}", configId, e);
-            return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private boolean isFileProtocol(Map<String, Object> configData) {
-        Object protocol = configData.get("protocol");
-        if (protocol instanceof Map) {
-            Object name = ((Map<String, Object>) protocol).get("name");
-            return "FILE".equalsIgnoreCase(name instanceof String ? (String) name : null);
-        }
-        return false;
-    }
-
-    private Path getAnalyzerProfilesBaseDir() {
-        String configuredDir = analyzerProfilesDir;
-        if (configuredDir == null || configuredDir.isBlank()) {
-            configuredDir = System.getenv("ANALYZER_PROFILES_DIR");
-        }
-        if (configuredDir == null || configuredDir.isBlank()) {
-            configuredDir = "/data/analyzer-profiles";
-        }
-        return Path.of(configuredDir);
-    }
-
-    /**
-     * Scan directory for JSON template files and add to list.
-     *
-     * @param directory Protocol directory (astm/ or hl7/)
-     * @param protocol  Protocol name ("astm" or "hl7")
-     * @param templates List to populate with template metadata
-     */
-    private void scanTemplates(Path directory, String protocol, List<Map<String, Object>> templates) {
-        try (java.util.stream.Stream<Path> paths = Files.list(directory)) {
-            paths.filter(p -> p.toString().endsWith(".json")).forEach(file -> {
-                try {
-                    String jsonContent = Files.readString(file, StandardCharsets.UTF_8);
-                    Map<String, Object> config = objectMapper.readValue(jsonContent, Map.class);
-                    String schemaValidationError = validateProfileMeta(config, protocol + "/" + file.getFileName());
-                    if (schemaValidationError != null) {
-                        logger.warn("Skipping profile template due to invalid schema: {}", schemaValidationError);
-                        return;
-                    }
-
-                    Map<String, Object> template = new LinkedHashMap<>();
-                    String filename = file.getFileName().toString().replace(".json", "");
-                    template.put("id", protocol + "/" + filename);
-                    template.put("protocol", protocol.toUpperCase());
-
-                    // Top-level keys (ASTM/HL7 profiles)
-                    String analyzerName = (String) config.get("analyzer_name");
-                    String manufacturer = (String) config.get("manufacturer");
-                    String category = (String) config.get("category");
-
-                    // Fallback to profileMeta (FILE profiles store data there)
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> profileMeta = (Map<String, Object>) config.get("profileMeta");
-                    if (profileMeta != null) {
-                        if (analyzerName == null) {
-                            analyzerName = (String) profileMeta.get("displayName");
-                        }
-                        if (manufacturer == null) {
-                            manufacturer = (String) profileMeta.get("manufacturer");
-                        }
-                    }
-
-                    template.put("analyzerName", analyzerName);
-                    template.put("manufacturer", manufacturer);
-                    template.put("category", category);
-
-                    templates.add(template);
-                } catch (Exception e) {
-                    logger.warn("Failed to parse template file: {}", file.getFileName(), e);
-                }
-            });
-        } catch (IOException e) {
-            logger.warn("Failed to list template files in {}: {}", directory, e.getMessage());
-        }
-    }
-
-    private String validateProfileMeta(Map<String, Object> config, String templateId) {
-        if (config == null) {
-            return "Invalid profile template '" + templateId + "': content is empty";
-        }
-        Object profileMetaObj = config.get("profileMeta");
-        if (!(profileMetaObj instanceof Map<?, ?> profileMeta)) {
-            return "Invalid profile template '" + templateId + "': missing required profileMeta object";
-        }
-        if (isBlank(profileMeta.get("id")) || isBlank(profileMeta.get("version"))
-                || isBlank(profileMeta.get("displayName"))) {
-            return "Invalid profile template '" + templateId
-                    + "': profileMeta must include non-empty id, version, and displayName";
-        }
-        return null;
-    }
-
-    private boolean isBlank(Object value) {
-        return value == null || String.valueOf(value).trim().isEmpty();
     }
 
     /**

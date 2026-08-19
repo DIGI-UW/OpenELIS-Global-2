@@ -43,8 +43,9 @@ public class AnalyzerForm {
 
     private String pluginTypeId; // FK to analyzer_type table (the plugin that handles messages)
 
-    private String defaultConfigId; // Transient: e.g. "astm/genexpert-astm" — hints controller to auto-create test
-                                    // mappings
+    private String profileId;
+
+    private Integer profileRevision;
 
     private String communicationMode; // ANALYZER_INITIATED, LIS_INITIATED, BOTH (nullable = infer from protocol)
 
@@ -144,12 +145,20 @@ public class AnalyzerForm {
         this.pluginTypeId = pluginTypeId;
     }
 
-    public String getDefaultConfigId() {
-        return defaultConfigId;
+    public String getProfileId() {
+        return profileId;
     }
 
-    public void setDefaultConfigId(String defaultConfigId) {
-        this.defaultConfigId = defaultConfigId;
+    public void setProfileId(String profileId) {
+        this.profileId = profileId;
+    }
+
+    public Integer getProfileRevision() {
+        return profileRevision;
+    }
+
+    public void setProfileRevision(Integer profileRevision) {
+        this.profileRevision = profileRevision;
     }
 
     public String getCommunicationMode() {
