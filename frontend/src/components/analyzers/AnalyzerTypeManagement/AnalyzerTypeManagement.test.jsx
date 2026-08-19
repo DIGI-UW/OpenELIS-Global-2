@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
@@ -7,7 +7,10 @@ import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import { vi } from "vitest";
 import messages from "../../../languages/en.json";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
 import AnalyzerTypeManagement from "./AnalyzerTypeManagement";
 
 vi.mock("../../utils/Utils", () => ({
@@ -108,6 +111,11 @@ describe("AnalyzerTypeManagement", () => {
       expect(endpoint).toBe("/rest/analyzer-types");
       callback(catalog);
     });
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (endpoint, payload, callback) => {
+        callback({ profile: { profileId: "site.created" } });
+      },
+    );
   });
 
   it("renders the lab-facing profile catalog and removes developer plugin fields", async () => {
@@ -210,5 +218,173 @@ describe("AnalyzerTypeManagement", () => {
       ),
     );
     expect(screen.getByText("Tecan Infinite F50")).toBeVisible();
+  });
+
+  it("creates a site profile only after explicit control-recognition affirmation", async () => {
+    renderPage();
+    await screen.findByText("Cepheid GeneXpert MTB/RIF");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create Profile" }),
+    );
+
+    await waitFor(() =>
+      expect(window.location.search).toContain("action=create"),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Create Profile" });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Profile name" }),
+      "Sysmex XN Series",
+    );
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Manufacturer" }),
+      "Sysmex",
+    );
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Model" }),
+      "XN",
+    );
+
+    const publish = within(dialog).getByRole("button", {
+      name: "Create Profile",
+    });
+    expect(publish).toBeDisabled();
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", {
+        name: "I confirm this interface does not transmit control results",
+      }),
+    );
+    expect(publish).toBeEnabled();
+    await userEvent.click(publish);
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    const [endpoint, rawPayload] =
+      postToOpenElisServerJsonResponse.mock.calls[0];
+    expect(endpoint).toBe("/rest/analyzer-types");
+    const payload = JSON.parse(rawPayload);
+    expect(payload.profile).toMatchObject({
+      schemaVersion: "1.0",
+      profileId: "site.sysmex-xn-series",
+      displayName: "Sysmex XN Series",
+      protocol: "ASTM",
+      capabilities: {
+        inboundResults: true,
+        outboundOrders: false,
+        connectionTest: false,
+      },
+      identity: {
+        manufacturer: "Sysmex",
+        model: "XN",
+      },
+      tests: [],
+      controlResultRecognition: {
+        mode: "NONE",
+        affirmedNoControlResults: true,
+      },
+    });
+    expect(payload.profile).not.toHaveProperty("pluginClassName");
+    expect(payload.profile).not.toHaveProperty("identifierPattern");
+  });
+
+  it("duplicates an active profile with a unique identity and visible lineage source", async () => {
+    renderPage();
+    await screen.findByText("Cepheid GeneXpert MTB/RIF");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Duplicate Profile" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Duplicate Profile" });
+    await userEvent.selectOptions(
+      within(dialog).getByRole("combobox", {
+        name: "Source analyzer type",
+      }),
+      "shipped.genexpert",
+    );
+
+    expect(
+      within(dialog).getByRole("textbox", { name: "New profile name" }),
+    ).toHaveValue("Cepheid GeneXpert MTB/RIF -1");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Duplicate Profile" }),
+    );
+
+    const [endpoint, rawPayload] =
+      postToOpenElisServerJsonResponse.mock.calls[0];
+    expect(endpoint).toBe("/rest/analyzer-types/shipped.genexpert/duplicate");
+    expect(JSON.parse(rawPayload)).toEqual({
+      sourceRevision: 2,
+      targetProfileId: "shipped.genexpert-1",
+      displayName: "Cepheid GeneXpert MTB/RIF -1",
+    });
+  });
+
+  it("deactivates a site profile through a confirmation dialog and exposes no delete action", async () => {
+    renderPage();
+    await screen.findByText("Mindray BC-5380");
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Actions for Mindray BC-5380",
+      }),
+    );
+    await userEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
+
+    const dialog = screen.getByRole("dialog", {
+      name: "Deactivate Mindray BC-5380",
+    });
+    expect(within(dialog).queryByText(/delete/i)).not.toBeInTheDocument();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Deactivate" }),
+    );
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
+      "/rest/analyzer-types/site.mindray/deactivate",
+      "{}",
+      expect.any(Function),
+    );
+    expect(screen.queryByRole("menuitem", { name: /delete/i })).toBeNull();
+  });
+
+  it("loads revision history through the profile history action", async () => {
+    getFromOpenElisServer.mockImplementation((endpoint, callback) => {
+      if (endpoint === "/rest/analyzer-types") {
+        callback(catalog);
+        return;
+      }
+      expect(endpoint).toBe("/rest/analyzer-types/site.mindray/history");
+      callback([
+        {
+          profile: {
+            profileId: "site.mindray",
+            revision: 1,
+            displayName: "Mindray BC-5380",
+            status: "ACTIVE",
+          },
+          publication: {
+            action: "DUPLICATED",
+            actor: "17",
+            publishedAt: "2026-08-18T13:00:00Z",
+          },
+        },
+      ]);
+    });
+    renderPage();
+    await screen.findByText("Mindray BC-5380");
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Actions for Mindray BC-5380",
+      }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "View history" }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Mindray BC-5380 history",
+    });
+    expect(within(dialog).getByText("Revision 1")).toBeVisible();
+    expect(within(dialog).getByText("Duplicated")).toBeVisible();
+    expect(within(dialog).getByText("17")).toBeVisible();
   });
 });
