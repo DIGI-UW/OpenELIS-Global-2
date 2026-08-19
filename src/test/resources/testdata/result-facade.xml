@@ -152,7 +152,7 @@
         scriptlet_id="1" sort_order="1" is_quantifiable="true"
         is_active="true" is_normal="true" />
     <test_result id="2" test_id="2" result_group="2"
-        flags="FLAG2" tst_rslt_type="N" value="14.5" significant_digits="0"
+        flags="FLAG2" tst_rslt_type="D" value="4" significant_digits="0"
         quant_limit="15.1" cont_level="High" lastupdated="2025-04-01 12:30:00"
         scriptlet_id="2" sort_order="2" is_quantifiable="true"
         is_active="true" is_normal="true" />
@@ -250,8 +250,6 @@
     <sample_human id="2" provider_id="1" samp_id="2"
         patient_id="2" lastupdated="2023-11-01 12:00:00" />
 
-    <sample_human id="2" samp_id="2" patient_id="2"
-        lastupdated="2023-11-01 12:00:00" />
 
     <reference_tables id="1" name="SAMPLE"
         keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
@@ -287,6 +285,10 @@
         dict_entry="Free sample request form or vice versa. Please submit another sample."
         local_Abbrev="DE1" dictionary_category_id="1" sort_order="1"
         lastUpdated="2023-11-01 12:00:00" />
+
+    <dictionary id="4" is_active="Y" dict_entry="Positive"
+        local_Abbrev="POS" dictionary_category_id="1" sort_order="4"
+        loinc_code="LA9663-1" lastUpdated="2023-11-02 12:00:00" />
 
 
 
