@@ -763,7 +763,8 @@ export default function App() {
                   path="/qa/eqa/orders"
                   exact
                   component={() => <EQAOrdersPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
                 />
                 {/* qa/019 menu row (T-12) ships the FRS path; page lives in the
                     /qa/eqa/* family with its V1 siblings (T-24 card note). */}
@@ -776,43 +777,50 @@ export default function App() {
                   path="/qa/eqa/my-cycles"
                   exact
                   component={() => <MyCyclesPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
                 />
                 <SecureRoute
                   path="/qa/eqa/my-programs"
                   exact
                   component={() => <MyProgramsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
                 />
                 <SecureRoute
                   path="/qa/eqa/management"
                   exact
                   component={() => <EQAProgramManagement />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
                 />
                 <SecureRoute
                   path="/qa/eqa/results"
                   exact
                   component={() => <EQAResultsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
                 />
                 <SecureRoute
                   path="/qa/eqa/participants"
                   exact
                   component={() => <EQAParticipantsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
                 />
                 <SecureRoute
                   path="/qa/eqa/distribution/create"
                   exact
                   component={() => <CreateDistribution />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
                 />
                 <SecureRoute
                   path="/qa/eqa/distribution"
                   exact
                   component={() => <EQADistributionDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
                 />
                 {/* QA menu (OGC-688): Overview shell + placeholder leaves.
                     No pillar-landing routes: sidenav parents expand-only

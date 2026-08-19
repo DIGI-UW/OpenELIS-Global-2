@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize(EQAGuards.READ)
 public class EQAPanelReceiptRestController extends BaseRestController {
 
     private final EQAPanelReceiptService receiptService;
@@ -39,6 +39,7 @@ public class EQAPanelReceiptRestController extends BaseRestController {
 
     /** Idempotent: 201 on first record, 200 with the existing row afterwards. */
     @PostMapping(value = "/cycles/{cycleId}/receipt", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<Map<String, Object>> recordReceipt(HttpServletRequest request, @PathVariable Long cycleId,
             @RequestBody Map<String, Object> body) {
         Long labEnrollmentId = longField(body, "labEnrollmentId");

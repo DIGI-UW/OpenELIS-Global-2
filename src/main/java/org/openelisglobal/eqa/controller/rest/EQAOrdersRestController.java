@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/orders")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize(EQAGuards.READ)
 public class EQAOrdersRestController extends ControllerUtills {
 
     @Autowired

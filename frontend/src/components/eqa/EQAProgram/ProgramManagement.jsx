@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -30,10 +30,11 @@ import {
   Settings,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, hasQaPermission } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ProgramForm from "./ProgramForm";
 import ParticipantsTab from "./ParticipantsTab";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import SystemSettingsTab from "./SystemSettingsTab";
 
 const breadcrumbs = [
@@ -47,6 +48,8 @@ const breadcrumbs = [
 
 const ProgramManagement = () => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canManage = hasQaPermission(userSessionDetails, "qa.eqa.provider");
   const [programs, setPrograms] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingProgram, setEditingProgram] = useState(null);
@@ -293,9 +296,11 @@ const ProgramManagement = () => {
                     {intl.formatMessage({ id: "eqa.admin.programs.subtitle" })}
                   </p>
                 </div>
-                <Button renderIcon={Add} onClick={handleCreate}>
-                  {intl.formatMessage({ id: "eqa.admin.addProgram" })}
-                </Button>
+                {canManage && (
+                  <Button renderIcon={Add} onClick={handleCreate}>
+                    {intl.formatMessage({ id: "eqa.admin.addProgram" })}
+                  </Button>
+                )}
               </div>
 
               {programs.length === 0 ? (
@@ -357,25 +362,31 @@ const ProgramManagement = () => {
                                           gap: "0.5rem",
                                         }}
                                       >
-                                        <Button
-                                          kind="ghost"
-                                          size="sm"
-                                          hasIconOnly
-                                          iconDescription={intl.formatMessage({
-                                            id: "eqa.program.edit",
-                                          })}
-                                          renderIcon={Edit}
-                                          onClick={() => handleEdit(rawProgram)}
-                                        />
-                                        <Button
-                                          kind="ghost"
-                                          size="sm"
-                                          hasIconOnly
-                                          iconDescription={intl.formatMessage({
-                                            id: "eqa.admin.delete",
-                                          })}
-                                          renderIcon={TrashCan}
-                                        />
+                                        {canManage && (
+                                          <>
+                                            <Button
+                                              kind="ghost"
+                                              size="sm"
+                                              hasIconOnly
+                                              iconDescription={intl.formatMessage(
+                                                { id: "eqa.program.edit" },
+                                              )}
+                                              renderIcon={Edit}
+                                              onClick={() =>
+                                                handleEdit(rawProgram)
+                                              }
+                                            />
+                                            <Button
+                                              kind="ghost"
+                                              size="sm"
+                                              hasIconOnly
+                                              iconDescription={intl.formatMessage(
+                                                { id: "eqa.admin.delete" },
+                                              )}
+                                              renderIcon={TrashCan}
+                                            />
+                                          </>
+                                        )}
                                       </div>
                                     </TableCell>
                                   );

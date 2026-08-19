@@ -27,13 +27,14 @@ import org.springframework.web.bind.annotation.RestController;
  * the caller holds the unblind privilege.
  *
  * <p>
- * Class-level roles are the V1 placeholder (dedicated tiers tighten them under
- * OGC-609); the lifecycle writes and the unblind privilege are gated on
- * {@code qa.manage.eqa} now because sealing integrity cannot wait.
+ * Reads sit under the {@code qa.view.eqa} umbrella; lifecycle writes stay on
+ * {@code qa.manage.eqa}; unblinding — the endpoint and the sealed-target reveal
+ * alike — requires the dedicated {@code qa.eqa.inhouse.unblind} tier (OGC-609
+ * permission model).
  */
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize(EQAGuards.READ)
 public class EQAPanelRestController extends BaseRestController {
 
     private final EQAPanelService panelService;
@@ -59,27 +60,27 @@ public class EQAPanelRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/panels/{id}/seal", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.eqa') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.MANAGE)
     public Map<String, Object> seal(HttpServletRequest request, @PathVariable Long id) {
         return panelService.toPanelDto(panelService.seal(id, getSysUserId(request)));
     }
 
     @PostMapping(value = "/panels/{id}/distribute", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.eqa') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.MANAGE)
     public Map<String, Object> distribute(HttpServletRequest request, @PathVariable Long id) {
         return panelService.toPanelDto(panelService.distribute(id, getSysUserId(request)));
     }
 
     @PostMapping(value = "/panels/{id}/unblind", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.eqa') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.UNBLIND)
     public Map<String, Object> unblind(HttpServletRequest request, @PathVariable Long id) {
         return panelService.toPanelDto(panelService.unblind(id, getSysUserId(request)));
     }
 
     /**
-     * The unblind privilege, evaluated per call: the cycle-transition grant
-     * (qa.manage.eqa) doubles as the sealed-target read grant until the dedicated
-     * permission tiers land (OGC-609).
+     * The unblind privilege, evaluated per call: sealed targets are revealed only
+     * to holders of the dedicated unblind tier (qa.eqa.inhouse.unblind) or a global
+     * admin.
      */
     private boolean callerCanUnblind() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -87,7 +88,7 @@ public class EQAPanelRestController extends BaseRestController {
             return false;
         }
         for (GrantedAuthority authority : auth.getAuthorities()) {
-            if ("qa.manage.eqa".equals(authority.getAuthority())
+            if (EQAGuards.UNBLIND_AUTHORITY.equals(authority.getAuthority())
                     || "ROLE_GLOBAL_ADMIN".equals(authority.getAuthority())) {
                 return true;
             }

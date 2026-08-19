@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize(EQAGuards.READ)
 public class EQADistributionRestController extends ControllerUtills {
 
     @Autowired
@@ -43,7 +43,7 @@ public class EQADistributionRestController extends ControllerUtills {
     private SystemUserService systemUserService;
 
     @PostMapping(value = "/distributions", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('EQA Coordinator')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> createDistribution(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String name = (String) body.get("distributionName");
@@ -155,7 +155,7 @@ public class EQADistributionRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/distributions/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('EQA Coordinator')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> updateDistribution(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         EQADistribution distribution;
@@ -205,7 +205,7 @@ public class EQADistributionRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/distributions/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('EQA Coordinator')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> advanceStatus(@PathVariable Long id) {
         try {
             EQADistribution distribution = distributionService.advanceStatus(id);
@@ -221,7 +221,7 @@ public class EQADistributionRestController extends ControllerUtills {
     }
 
     @PostMapping(value = "/distributions/{id}/barcodes", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('EQA Coordinator')")
+    @PreAuthorize(EQAGuards.PROVIDER)
     public ResponseEntity<?> generateBarcodes(@PathVariable Long id) {
         try {
             distributionService.get(id);

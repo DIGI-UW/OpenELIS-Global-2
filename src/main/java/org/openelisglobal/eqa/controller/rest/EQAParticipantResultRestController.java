@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
+@PreAuthorize(EQAGuards.READ)
 public class EQAParticipantResultRestController extends BaseRestController {
 
     private final EQAParticipantResultService resultService;
@@ -50,6 +50,7 @@ public class EQAParticipantResultRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/participant-results", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<Map<String, Object>> createDraft(HttpServletRequest request,
             @RequestBody Map<String, Object> body) {
         Long cycleId = longField(body, "cycleId");
@@ -81,6 +82,7 @@ public class EQAParticipantResultRestController extends BaseRestController {
     }
 
     @PatchMapping(value = "/participant-results/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PARTICIPANT)
     public ResponseEntity<Map<String, Object>> transition(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         String target = stringField(body, "target");
@@ -101,7 +103,7 @@ public class EQAParticipantResultRestController extends BaseRestController {
 
     /** Score intake is a provider/officer act, so it takes the manage grant. */
     @PatchMapping(value = "/participant-results/{id}/score", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAuthority('qa.manage.eqa') or hasRole('GLOBAL_ADMIN')")
+    @PreAuthorize(EQAGuards.MANAGE)
     public ResponseEntity<Map<String, Object>> score(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         String performance = stringField(body, "performance");

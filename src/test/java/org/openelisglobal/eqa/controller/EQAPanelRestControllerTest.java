@@ -20,7 +20,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
  * OGC-609 [EQA V2.1] — the unblind privilege the controller hands the DTO
  * mapper comes from the caller's authorities, nothing else. The mapping itself
  * (null targets vs values) is covered by EQAPanelLifecycleIntegrationTest
- * against the real converter.
+ * against the real converter. The privilege is the qa.eqa.inhouse.unblind tier,
+ * not the lifecycle grant.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class EQAPanelRestControllerTest {
@@ -51,12 +52,24 @@ public class EQAPanelRestControllerTest {
     }
 
     @Test
-    public void manageGrant_unlocksTargets() {
-        authenticateWith("ROLE_RESULTS", "qa.manage.eqa");
+    public void unblindTierGrant_unlocksTargets() {
+        authenticateWith("ROLE_RESULTS", "qa.eqa.inhouse.unblind");
 
         controller.getSamples(5L);
 
         verify(panelService).getSampleDtos(eq(5L), eq(true));
+    }
+
+    @Test
+    public void manageGrantAlone_noLongerUnlocksTargets() {
+        // Lifecycle control (qa.manage.eqa) and target visibility
+        // (qa.eqa.inhouse.unblind) are separate privileges under the OGC-609
+        // permission tiers.
+        authenticateWith("ROLE_RESULTS", "qa.manage.eqa");
+
+        controller.getSamples(5L);
+
+        verify(panelService).getSampleDtos(eq(5L), eq(false));
     }
 
     @Test

@@ -94,4 +94,7 @@
 
   <!-- EQA V2.1 T-13 — OGC-610: optional cycle-review gate flag (FR-V2.1-09) -->
   <include file="liquibase/qa/025-add-eqa-scheme-review-gate.xml" />
+
+  <!-- EQA V2.1 — OGC-609: bench roles keep participant-lane writes as a grant -->
+  <include file="liquibase/qa/026-grant-eqa-participant-to-bench-roles.xml" />
 </databaseChangeLog>

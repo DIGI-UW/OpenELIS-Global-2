@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -30,9 +30,11 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
+  hasQaPermission,
 } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import WithdrawModal from "./WithdrawModal";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -48,6 +50,8 @@ const ENROLLMENT_STATUS_TAG = {
 
 const EQAParticipantsPage = () => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canManage = hasQaPermission(userSessionDetails, "qa.eqa.provider");
   const [programs, setPrograms] = useState([]);
   const [selectedProgramId, setSelectedProgramId] = useState("");
   const [enrollments, setEnrollments] = useState([]);
@@ -329,17 +333,19 @@ const EQAParticipantsPage = () => {
               </Select>
             </Column>
             <Column lg={3} md={2} sm={4}>
-              <Button
-                renderIcon={Add}
-                onClick={handleEnrollOrg}
-                disabled={!selectedOrgId}
-                data-testid="enroll-button"
-                size="md"
-              >
-                {intl.formatMessage({
-                  id: "eqa.enrollment.enroll",
-                })}
-              </Button>
+              {canManage && (
+                <Button
+                  renderIcon={Add}
+                  onClick={handleEnrollOrg}
+                  disabled={!selectedOrgId}
+                  data-testid="enroll-button"
+                  size="md"
+                >
+                  {intl.formatMessage({
+                    id: "eqa.enrollment.enroll",
+                  })}
+                </Button>
+              )}
             </Column>
           </Grid>
 
@@ -435,62 +441,65 @@ const EQAParticipantsPage = () => {
                               const enrollment = rawRow?._raw;
                               return (
                                 <TableCell key={cell.id}>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: "0.25rem",
-                                    }}
-                                  >
-                                    {rawRow?.status === "Active" && (
-                                      <Button
-                                        kind="ghost"
-                                        size="sm"
-                                        hasIconOnly
-                                        iconDescription={intl.formatMessage({
-                                          id: "eqa.enrollment.suspend",
-                                        })}
-                                        renderIcon={PauseOutline}
-                                        onClick={() =>
-                                          handleStatusChange(
-                                            enrollment?.id,
-                                            "Suspended",
-                                          )
-                                        }
-                                      />
-                                    )}
-                                    {rawRow?.status !== "Withdrawn" && (
-                                      <Button
-                                        kind="ghost"
-                                        size="sm"
-                                        hasIconOnly
-                                        iconDescription={intl.formatMessage({
-                                          id: "eqa.enrollment.withdraw",
-                                        })}
-                                        renderIcon={StopOutline}
-                                        onClick={() => {
-                                          setSelectedEnrollment(enrollment);
-                                          setWithdrawModalOpen(true);
-                                        }}
-                                      />
-                                    )}
-                                    {rawRow?.status === "Suspended" && (
-                                      <Button
-                                        kind="ghost"
-                                        size="sm"
-                                        hasIconOnly
-                                        iconDescription={intl.formatMessage({
-                                          id: "eqa.enrollment.reactivate",
-                                        })}
-                                        renderIcon={Renew}
-                                        onClick={() =>
-                                          handleStatusChange(
-                                            enrollment?.id,
-                                            "Active",
-                                          )
-                                        }
-                                      />
-                                    )}
-                                  </div>
+                                  {/* Every control here is a provider-lane write. */}
+                                  {canManage && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: "0.25rem",
+                                      }}
+                                    >
+                                      {rawRow?.status === "Active" && (
+                                        <Button
+                                          kind="ghost"
+                                          size="sm"
+                                          hasIconOnly
+                                          iconDescription={intl.formatMessage({
+                                            id: "eqa.enrollment.suspend",
+                                          })}
+                                          renderIcon={PauseOutline}
+                                          onClick={() =>
+                                            handleStatusChange(
+                                              enrollment?.id,
+                                              "Suspended",
+                                            )
+                                          }
+                                        />
+                                      )}
+                                      {rawRow?.status !== "Withdrawn" && (
+                                        <Button
+                                          kind="ghost"
+                                          size="sm"
+                                          hasIconOnly
+                                          iconDescription={intl.formatMessage({
+                                            id: "eqa.enrollment.withdraw",
+                                          })}
+                                          renderIcon={StopOutline}
+                                          onClick={() => {
+                                            setSelectedEnrollment(enrollment);
+                                            setWithdrawModalOpen(true);
+                                          }}
+                                        />
+                                      )}
+                                      {rawRow?.status === "Suspended" && (
+                                        <Button
+                                          kind="ghost"
+                                          size="sm"
+                                          hasIconOnly
+                                          iconDescription={intl.formatMessage({
+                                            id: "eqa.enrollment.reactivate",
+                                          })}
+                                          renderIcon={Renew}
+                                          onClick={() =>
+                                            handleStatusChange(
+                                              enrollment?.id,
+                                              "Active",
+                                            )
+                                          }
+                                        />
+                                      )}
+                                    </div>
+                                  )}
                                 </TableCell>
                               );
                             }
