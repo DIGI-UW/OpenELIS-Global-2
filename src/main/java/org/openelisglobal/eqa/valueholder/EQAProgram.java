@@ -64,6 +64,15 @@ public class EQAProgram extends BaseObject<Long> {
     @Column(name = "scheme_type", nullable = false, length = 30)
     private EQASchemeType schemeType = EQASchemeType.INTERNATIONAL_PT;
 
+    /**
+     * FR-V2.1-09. When true the participant cycle stops at ready_to_submit for a QA
+     * officer's single confirmation on the Review &amp; Submit panel (FR-V2.2-07)
+     * and T-14's auto-submit stands down. Off by default, so schemes that predate
+     * the flag keep auto-submitting.
+     */
+    @Column(name = "requires_cycle_review", nullable = false)
+    private Boolean requiresCycleReview = false;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 

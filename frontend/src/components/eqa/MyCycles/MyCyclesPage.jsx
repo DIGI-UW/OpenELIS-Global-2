@@ -80,6 +80,44 @@ const ENTRY_TAG = {
 const resultEntryUrl = (labNo) =>
   `/result?type=order&doRange=false&accessionNumber=${encodeURIComponent(labNo)}`;
 
+// FR-V2.2-07: the pre-submission summary and its Submit action appear together,
+// only while a review-gated scheme sits at ready_to_submit.
+const reviewGateOpen = (cycle) =>
+  cycle.requiresCycleReview && cycle.status === "ready_to_submit";
+
+// A validation is a real instant, so it renders in the viewer's timezone —
+// unlike deadlines, which are end-of-day values read as UTC (formatDateOnly).
+const validatedAtLabel = (value) =>
+  value ? new Date(value).toLocaleString() : "—";
+
+/**
+ * Table rows for a cycle's samples. Normally one row per sample with the
+ * analytes collapsed into a cell; under the review gate one row per analyte, so
+ * each reported value can be checked on its own line (FR-V2.2-07). Only the
+ * first row of a sample repeats its identity columns.
+ */
+const sampleRows = (cycle) => {
+  if (!reviewGateOpen(cycle)) {
+    return cycle.samples.map((sample) => ({
+      key: sample.id,
+      sample,
+      firstOfSample: true,
+      analyteLabel: sample.analytes.map((a) => a.name).join(", "),
+    }));
+  }
+  return cycle.samples.flatMap((sample) =>
+    sample.analytes.length === 0
+      ? [{ key: sample.id, sample, firstOfSample: true, analyteLabel: "—" }]
+      : sample.analytes.map((analyte, i) => ({
+          key: `${sample.id}-${analyte.name}-${i}`,
+          sample,
+          analyte,
+          firstOfSample: i === 0,
+          analyteLabel: analyte.name,
+        })),
+  );
+};
+
 const kpiValueStyle = { fontSize: "1.75rem", fontWeight: 600 };
 const kpiLabelStyle = { fontSize: "0.75rem", color: "#525252" };
 const hintStyle = { fontSize: "0.75rem", color: "#525252" };
@@ -213,7 +251,7 @@ const MyCyclesPage = () => {
           )}
         />
       )}
-      {cycle.requiresCycleReview && cycle.status === "ready_to_submit" && (
+      {reviewGateOpen(cycle) && (
         <ActionableNotification
           kind="success"
           lowContrast
@@ -235,8 +273,18 @@ const MyCyclesPage = () => {
       {cycle.samples.length > 0 ? (
         <>
           <h5 style={{ margin: "0.75rem 0 0.5rem" }}>
-            {t("eqa.progress.title", "Sample progress")}
+            {reviewGateOpen(cycle)
+              ? t("eqa.review.title", "Pre-submission summary")
+              : t("eqa.progress.title", "Sample progress")}
           </h5>
+          {reviewGateOpen(cycle) && (
+            <p style={{ ...hintStyle, margin: "0 0 0.5rem" }}>
+              {t(
+                "eqa.review.subtitle",
+                "Read-only summary of every validated result, grouped by sample. This is what will be submitted to the provider.",
+              )}
+            </p>
+          )}
           <Table size="sm">
             <TableHead>
               <TableRow>
@@ -245,8 +293,20 @@ const MyCyclesPage = () => {
                   {t("eqa.sample.providerId", "Provider sample ID")}
                 </TableHeader>
                 <TableHeader>
-                  {t("eqa.sample.analytes", "Analytes")}
+                  {reviewGateOpen(cycle)
+                    ? t("eqa.sample.analyte", "Analyte")
+                    : t("eqa.sample.analytes", "Analytes")}
                 </TableHeader>
+                {reviewGateOpen(cycle) && (
+                  <>
+                    <TableHeader>
+                      {t("eqa.sample.reportedValue", "Reported value")}
+                    </TableHeader>
+                    <TableHeader>
+                      {t("eqa.sample.validatedAt", "Validated")}
+                    </TableHeader>
+                  </>
+                )}
                 {cycle.perAnalyst && (
                   <TableHeader>
                     {t("eqa.sample.analyst", "Assigned analyst")}
@@ -258,37 +318,64 @@ const MyCyclesPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {cycle.samples.map((s) => (
-                <TableRow key={s.id}>
+              {sampleRows(cycle).map((row) => (
+                <TableRow key={row.key}>
                   <TableCell>
-                    <RouterLink
-                      to={resultEntryUrl(s.labNo)}
-                      title={t(
-                        "eqa.labNo.tooltip",
-                        "Open results entry for this lab number",
-                      )}
-                      style={{ fontFamily: "monospace" }}
-                    >
-                      {s.labNo}
-                    </RouterLink>
+                    {row.firstOfSample ? (
+                      <RouterLink
+                        to={resultEntryUrl(row.sample.labNo)}
+                        title={t(
+                          "eqa.labNo.tooltip",
+                          "Open results entry for this lab number",
+                        )}
+                        style={{ fontFamily: "monospace" }}
+                      >
+                        {row.sample.labNo}
+                      </RouterLink>
+                    ) : null}
                   </TableCell>
-                  <TableCell>{s.id}</TableCell>
-                  <TableCell>{s.analytes.join(", ")}</TableCell>
+                  <TableCell>
+                    {row.firstOfSample ? row.sample.id : null}
+                  </TableCell>
+                  <TableCell>{row.analyteLabel}</TableCell>
+                  {reviewGateOpen(cycle) && (
+                    <>
+                      <TableCell>{row.analyte?.value || "—"}</TableCell>
+                      <TableCell>
+                        {validatedAtLabel(row.analyte?.validatedAt)}
+                      </TableCell>
+                    </>
+                  )}
                   {cycle.perAnalyst && (
-                    <TableCell>{s.analyst || "—"}</TableCell>
+                    <TableCell>
+                      {row.firstOfSample ? row.sample.analyst || "—" : null}
+                    </TableCell>
                   )}
                   <TableCell>
-                    <Tag type={ENTRY_TAG[s.entryStatus] || "gray"} size="sm">
-                      {t(
-                        `eqa.entry.${s.entryStatus}`,
-                        s.entryStatus.replace(/_/g, " "),
-                      )}
-                    </Tag>
+                    {row.firstOfSample ? (
+                      <Tag
+                        type={ENTRY_TAG[row.sample.entryStatus] || "gray"}
+                        size="sm"
+                      >
+                        {t(
+                          `eqa.entry.${row.sample.entryStatus}`,
+                          row.sample.entryStatus.replace(/_/g, " "),
+                        )}
+                      </Tag>
+                    ) : null}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          {reviewGateOpen(cycle) && (
+            <p style={{ ...hintStyle, marginTop: "0.5rem" }}>
+              {t(
+                "eqa.review.auditFootnote",
+                "Every value above was validated in the standard pipeline, which captured the validating user in the audit trail. Submitting records the acknowledgement only — no separate sign-off.",
+              )}
+            </p>
+          )}
         </>
       ) : (
         <div style={{ fontStyle: "italic", color: "#525252" }}>

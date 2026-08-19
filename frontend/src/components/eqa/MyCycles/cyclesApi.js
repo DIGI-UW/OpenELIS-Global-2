@@ -1,9 +1,9 @@
-// Data seam for My Cycles (T-13). Phase 2: reads the real cycle API
-// (PR #4070 contract, enriched with schemeName/provider/schemeType/progress/
+// Data seam for My Cycles (T-13). Reads the real cycle API (PR #4070 contract,
+// enriched with schemeName/provider/schemeType/requiresCycleReview/progress/
 // samples). MOCK_CYCLES remains only as the test fixture. schemeType arrives
 // as the enum name (INTERNATIONAL_PT); the view model lower-cases it to match
-// i18n keys. perAnalyst/requiresCycleReview/hasNce have no backing schema yet
-// (scheme-level config lands with T-24/G3c) — they default false here.
+// i18n keys. perAnalyst and hasNce still have no backing schema (per-analyst
+// mapping is T-19, the NCE link is T-17) — they default false here.
 import {
   getFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
@@ -11,7 +11,6 @@ import {
 
 const toViewModel = (dto) => ({
   perAnalyst: false,
-  requiresCycleReview: false,
   hasNce: false,
   ...dto,
   schemeName: dto.schemeName || dto.cycleName || "",

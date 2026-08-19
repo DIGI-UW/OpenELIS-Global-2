@@ -8146,5 +8146,11 @@
   "eqa.cycle.plannedCopy": "Panel has not yet been received at this lab. Open Add Order with the EQA box checked to record the receipt.",
   "eqa.btn.receivePanel": "Receive panel — open Add Order",
   "eqa.uncycled.title": "Uncycled EQA orders",
-  "eqa.uncycled.subtitle": "EQA orders not linked to any cycle. They stay visible here so nothing is lost."
+  "eqa.uncycled.subtitle": "EQA orders not linked to any cycle. They stay visible here so nothing is lost.",
+  "eqa.review.title": "Pre-submission summary",
+  "eqa.review.subtitle": "Read-only summary of every validated result, grouped by sample. This is what will be submitted to the provider.",
+  "eqa.review.auditFootnote": "Every value above was validated in the standard pipeline, which captured the validating user in the audit trail. Submitting records the acknowledgement only — no separate sign-off.",
+  "eqa.sample.analyte": "Analyte",
+  "eqa.sample.reportedValue": "Reported value",
+  "eqa.sample.validatedAt": "Validated"
 }
