@@ -1,6 +1,7 @@
 import importlib.machinery
 import importlib.util
 import pathlib
+import re
 import unittest
 from unittest.mock import patch
 
@@ -154,6 +155,46 @@ class DevStackContractTest(unittest.TestCase):
             self.dev_stack.frontend_dependencies_changed(
                 context, {"DEV_STACK_BUILD_FRONTEND": "false"}
             )
+        )
+
+    def test_proxy_resolves_replaceable_services_through_docker_dns(self):
+        for config_name in ("nginx.conf.template", "nginx.conf"):
+            with self.subTest(config_name=config_name):
+                proxy = (REPO_ROOT / "volume" / "nginx" / config_name).read_text()
+
+                self.assertIn("resolver 127.0.0.11", proxy)
+                self.assertEqual(proxy.count('set $frontend_upstream "frontend.openelis.org";'), 2)
+                self.assertEqual(len(re.findall(r"proxy_pass\s+http://\$frontend_upstream;", proxy)), 2)
+                self.assertEqual(proxy.count('set $oe_upstream "oe.openelis.org";'), 4)
+                self.assertEqual(len(re.findall(r"proxy_pass\s+https://\$oe_upstream:8443;", proxy)), 4)
+                if config_name == "nginx.conf.template":
+                    self.assertIn('set $bridge_upstream "bridge.openelis.org";', proxy)
+                    self.assertIn("proxy_pass https://$bridge_upstream:8443;", proxy)
+
+    def test_proxy_configuration_is_validated_and_reloaded(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = self.dev_stack.build_environment(context)
+
+        with patch.object(self.dev_stack, "run") as run:
+            self.dev_stack.reload_proxy(context, environment)
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(commands[0][-5:], ["exec", "-T", "proxy", "nginx", "-t"])
+        self.assertEqual(
+            commands[1][-6:], ["exec", "-T", "proxy", "nginx", "-s", "reload"]
+        )
+
+    def test_backend_is_recreated_to_remount_the_current_war(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = self.dev_stack.build_environment(context)
+
+        with patch.object(self.dev_stack, "run") as run:
+            self.dev_stack.remount_application_artifact(context, environment)
+
+        command = run.call_args.args[0]
+        self.assertEqual(
+            command[-5:],
+            ["up", "-d", "--no-deps", "--force-recreate", "oe.openelis.org"],
         )
 
     def test_full_harness_scenarios_cover_each_transport_without_ids(self):
