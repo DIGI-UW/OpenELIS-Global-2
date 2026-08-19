@@ -75,6 +75,11 @@
         rule_type="SPECIMEN_ID_PREFIX" operand="QC-" is_active="true"
         display_order="1" description="Exact profile rule" sys_user_id="1"
         last_updated="2026-08-18 12:00:00" />
+    <analyzer_qc_rule id="rule-inactive"
+        analyzer_id="9701" rule_type="FIELD_CONTAINS" target_field="O.12"
+        operand="ARCHIVED" is_active="false" display_order="2"
+        description="Inactive rule retained for migration audit"
+        sys_user_id="1" last_updated="2026-08-18 12:00:00" />
     <analyzer_qc_rule id="rule-divergent"
         analyzer_id="9702" rule_type="FIELD_EQUALS" target_field="O.12"
         operand="Q" is_active="true" display_order="1"
