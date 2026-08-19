@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
 
 public interface EQAPanelService extends BaseObjectService<EQAPanel, Long> {
 
@@ -23,6 +24,14 @@ public interface EQAPanelService extends BaseObjectService<EQAPanel, Long> {
 
     /** DISTRIBUTED → UNBLINDED (AC-V2.4-03's reveal point). */
     EQAPanel unblind(Long panelId, String sysUserId);
+
+    /**
+     * DISTRIBUTED → UNBLINDED taken under a row lock, recording how the panel was
+     * unblinded (FR-V2.4-10). The lock is what makes the edge check a real
+     * idempotency guard: without it a manual and a scheduled unblind can both read
+     * DISTRIBUTED and both proceed to score.
+     */
+    EQAPanel unblindForUpdate(Long panelId, String sysUserId, EQAUnblindMethod method);
 
     /** Panels bound to a cycle, without samples. */
     List<Map<String, Object>> getPanelDtos(Long cycleId);

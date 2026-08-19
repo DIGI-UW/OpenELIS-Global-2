@@ -1,5 +1,6 @@
 package org.openelisglobal.eqa.service;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -15,6 +16,7 @@ import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPanelStatus;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
+import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,6 +90,23 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
     public EQAPanel unblind(Long panelId, String sysUserId) {
         EQAPanel panel = get(panelId);
         requireEdge(panel, EQAPanelStatus.UNBLINDED);
+        return move(panel, EQAPanelStatus.UNBLINDED, sysUserId);
+    }
+
+    @Override
+    public EQAPanel unblindForUpdate(Long panelId, String sysUserId, EQAUnblindMethod method) {
+        if (method == null) {
+            throw new IllegalArgumentException("An unblind must record whether it was scheduled or manual");
+        }
+        EQAPanel panel = eqaPanelDAO.getForUpdate(panelId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown panel " + panelId));
+        // The loser of a race re-reads the committed status here and fails the
+        // edge check, rather than both callers passing it against the same
+        // pre-lock read and scoring twice.
+        requireEdge(panel, EQAPanelStatus.UNBLINDED);
+        panel.setUnblindMethod(method);
+        panel.setUnblindedBy(GenericValidator.isBlankOrNull(sysUserId) ? null : Long.valueOf(sysUserId));
+        panel.setUnblindedAt(new Timestamp(System.currentTimeMillis()));
         return move(panel, EQAPanelStatus.UNBLINDED, sysUserId);
     }
 

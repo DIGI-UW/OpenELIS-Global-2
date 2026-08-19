@@ -15,6 +15,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.UUID;
 import lombok.Getter;
@@ -70,6 +71,14 @@ public class EQAParticipantResult extends BaseObject<Long> {
     @Column(name = "analysis_id")
     private Long analysisId;
 
+    /**
+     * The exact aliquot this result answers, for in-house panels (FR-V2.4-02). Null
+     * for external PT, where the analyte alone identifies the result — the partial
+     * unique indexes in qa/027 enforce one rule per case.
+     */
+    @Column(name = "panel_sample_id")
+    private Long panelSampleId;
+
     @Column(name = "result_value", length = 255)
     private String resultValue;
 
@@ -91,6 +100,15 @@ public class EQAParticipantResult extends BaseObject<Long> {
 
     @Column(name = "submitted_at")
     private Timestamp submittedAt;
+
+    /** The scoring verdict (FR-V2.4-07); null until the result is scored. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "performance_status", length = 20)
+    private EQAPerformanceStatus performanceStatus;
+
+    /** Null for in-house, which has no consensus SD by construction. */
+    @Column(name = "z_score", precision = 10, scale = 5)
+    private BigDecimal zScore;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "submission_channel", length = 10)

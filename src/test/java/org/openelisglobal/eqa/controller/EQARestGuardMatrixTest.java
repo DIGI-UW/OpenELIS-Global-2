@@ -93,6 +93,7 @@ public class EQARestGuardMatrixTest {
         // Panel lifecycle, and the separate privilege that reveals sealed targets
         WRITE_GUARDS.put("EQAPanelRestController#seal", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAPanelRestController#distribute", EQAGuards.MANAGE);
+        WRITE_GUARDS.put("EQAPanelRestController#sealAndDistribute", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAPanelRestController#unblind", EQAGuards.UNBLIND);
         WRITE_GUARDS.put("EQAParticipantResultRestController#score", EQAGuards.MANAGE);
     }

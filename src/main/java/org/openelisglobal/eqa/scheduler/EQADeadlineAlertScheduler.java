@@ -17,11 +17,17 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQARoundDAO;
 import org.openelisglobal.eqa.dao.SampleEQADAO;
+import org.openelisglobal.eqa.service.EQABlindingService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAPanelStatus;
 import org.openelisglobal.eqa.valueholder.EQARound;
+import org.openelisglobal.eqa.valueholder.EQASchemeType;
+import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +42,8 @@ public class EQADeadlineAlertScheduler {
     private static final String ENTITY_TYPE_SAMPLE_EQA = "SampleEQA";
     private static final String ENTITY_TYPE_EQA_ROUND = "EQARound";
     private static final ObjectMapper CONTEXT_MAPPER = new ObjectMapper();
+    /** System actor for scheduler-initiated writes (admin user id). */
+    private static final String SCHEDULER_USER = "1";
     private static final long HOURS_72 = 72;
     private static final long HOURS_24 = 24;
     private static final long HOURS_4 = 4;
@@ -56,8 +64,9 @@ public class EQADeadlineAlertScheduler {
             EQACycleStatus.DELIVERED, EQACycleStatus.SUBMISSIONS_OPEN);
 
     /**
-     * Only the digest reads this; the older jobs keep their inline Instant.now().
-     * Package-private setter exists for tests to pin the day the digest sees.
+     * Read by the digest and the auto-unblind pass; the older jobs keep their
+     * inline Instant.now(). Package-private setter exists for tests to pin the day
+     * the digest sees.
      */
     private Clock clock = Clock.systemDefaultZone();
 
@@ -69,6 +78,12 @@ public class EQADeadlineAlertScheduler {
 
     @Autowired
     private EQARoundDAO eqaRoundDAO;
+
+    @Autowired
+    private EQAPanelDAO eqaPanelDAO;
+
+    @Autowired
+    private EQABlindingService blindingService;
 
     @Scheduled(fixedDelay = 300000)
     public void checkEQADeadlines() {
@@ -213,6 +228,30 @@ public class EQADeadlineAlertScheduler {
                         return false;
                     }
                 });
+    }
+
+    /**
+     * FR-V2.4-06 automatic unblind: any distributed in-house panel whose unblind
+     * date has arrived is unblinded and scored. Idempotent — a scored panel is no
+     * longer DISTRIBUTED, so a re-run finds nothing (AC-V2.4-11); a per-panel
+     * failure is logged and never blocks the other panels.
+     */
+    @Scheduled(fixedDelay = 300000)
+    public void unblindDueInHousePanels() {
+        LocalDate today = LocalDate.now(clock);
+        for (EQAPanel panel : eqaPanelDAO.getAllMatching("status", EQAPanelStatus.DISTRIBUTED)) {
+            if (panel.getUnblindDate() == null || panel.getScheme() == null
+                    || panel.getScheme().getSchemeType() != EQASchemeType.IN_HOUSE
+                    || panel.getUnblindDate().toLocalDate().isAfter(today)) {
+                continue;
+            }
+            try {
+                blindingService.unblindAndScore(panel.getId(), SCHEDULER_USER, EQAUnblindMethod.SCHEDULED);
+                logger.info("Auto-unblinded in-house panel {}", panel.getId());
+            } catch (RuntimeException e) {
+                logger.error("Auto-unblind failed for panel {}", panel.getId(), e);
+            }
+        }
     }
 
     void setClock(Clock clock) {

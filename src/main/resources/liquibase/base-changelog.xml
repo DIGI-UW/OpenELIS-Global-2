@@ -97,4 +97,7 @@
 
   <!-- EQA V2.1 — OGC-609: bench roles keep participant-lane writes as a grant -->
   <include file="liquibase/qa/026-grant-eqa-participant-to-bench-roles.xml" />
+
+  <!-- EQA V2.4 — OGC-612: scoring verdict, per-aliquot result grain, unblind provenance -->
+  <include file="liquibase/qa/027-add-eqa-scoring-and-unblind-provenance.xml" />
 </databaseChangeLog>

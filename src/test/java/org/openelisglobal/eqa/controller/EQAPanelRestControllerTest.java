@@ -11,6 +11,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.eqa.controller.rest.EQAPanelRestController;
+import org.openelisglobal.eqa.service.EQABlindingService;
+import org.openelisglobal.eqa.service.EQALabelPDFService;
 import org.openelisglobal.eqa.service.EQAPanelService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -28,6 +30,12 @@ public class EQAPanelRestControllerTest {
 
     @Mock
     private EQAPanelService panelService;
+
+    @Mock
+    private EQABlindingService blindingService;
+
+    @Mock
+    private EQALabelPDFService labelPDFService;
 
     @InjectMocks
     private EQAPanelRestController controller;

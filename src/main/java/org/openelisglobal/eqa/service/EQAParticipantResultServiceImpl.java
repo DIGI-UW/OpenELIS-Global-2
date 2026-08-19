@@ -114,6 +114,7 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
         }
 
         result.setSubmissionStatus(EQASubmissionStatus.SCORED);
+        result.setPerformanceStatus(performance);
         result.setScoreReceivedAt(now());
         result.setEqaResultId(eqaResultId);
         result.setSysUserId(sysUserId);
@@ -205,6 +206,10 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
             dto.put("scoreReceivedAt",
                     result.getScoreReceivedAt() == null ? null : result.getScoreReceivedAt().toString());
             dto.put("eqaResultId", result.getEqaResultId());
+            dto.put("panelSampleId", result.getPanelSampleId());
+            dto.put("performanceStatus",
+                    result.getPerformanceStatus() == null ? null : result.getPerformanceStatus().name());
+            dto.put("zScore", result.getZScore());
             rows.add(dto);
         }
         return rows;
