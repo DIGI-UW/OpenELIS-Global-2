@@ -6,9 +6,6 @@ import {
   NAV_TIMEOUT,
 } from "../../../helpers/timeouts";
 
-const username = process.env.TEST_USER || "admin";
-const password = process.env.TEST_PASS || "adminADMIN!";
-
 /**
  * AccessionValidation Save UX — covers issue #3541 bugs A, C, D:
  * - Bug A: Save with 0 rows selected must show error, not silent page reload
