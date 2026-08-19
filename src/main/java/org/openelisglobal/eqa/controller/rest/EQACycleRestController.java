@@ -6,15 +6,26 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
+import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
+import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -42,21 +53,34 @@ import org.springframework.web.bind.annotation.RestController;
 public class EQACycleRestController extends BaseRestController {
 
     private final EQACycleService cycleService;
+    private final SampleEQAService sampleEQAService;
+    private final SampleService sampleService;
+    private final AnalysisService analysisService;
+    private final ResultService resultService;
 
-    public EQACycleRestController(EQACycleService cycleService) {
+    public EQACycleRestController(EQACycleService cycleService, SampleEQAService sampleEQAService,
+            SampleService sampleService, AnalysisService analysisService, ResultService resultService) {
         this.cycleService = cycleService;
+        this.sampleEQAService = sampleEQAService;
+        this.sampleService = sampleService;
+        this.analysisService = analysisService;
+        this.resultService = resultService;
     }
 
     /**
      * Cycles this lab takes part in. OpenELIS runs single-tenant, so every cycle in
      * the database belongs to this lab; passing a labEnrollmentId adds that
-     * enrollment's derived participant state to each row.
+     * enrollment's derived participant state to each row. Rows carry the display
+     * fields My Cycles renders (T-13): scheme name/provider/type, progress and
+     * per-sample entry state, computed from the orders linked via
+     * sample_eqa.cycle_id (wired at receipt by T-15).
      */
     @GetMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Map<String, Object>> myCycles(@RequestParam(required = false) Long labEnrollmentId) {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (EQACycle cycle : cycleService.getAll()) {
             Map<String, Object> dto = toCycleDto(cycle);
+            addSampleProgress(dto, cycle.getId());
             if (labEnrollmentId != null) {
                 dto.put("participantState", cycleService.deriveParticipantState(cycle, labEnrollmentId).name());
             }
@@ -67,7 +91,102 @@ public class EQACycleRestController extends BaseRestController {
 
     @GetMapping(value = "/cycles/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> getCycle(@PathVariable Long id) {
-        return toCycleDto(cycleService.get(id));
+        Map<String, Object> dto = toCycleDto(cycleService.get(id));
+        addSampleProgress(dto, id);
+        return dto;
+    }
+
+    /**
+     * Progress and per-sample entry state for a cycle, at analysis grain: an
+     * analyte counts as entered once its analysis is finalized in the standard
+     * pipeline — the same gate T-14 will auto-submit on.
+     *
+     * <p>
+     * When the scheme's review gate is on, each analyte also carries what the lab
+     * is about to submit — reported value and validation timestamp — because
+     * FR-V2.2-07 requires the officer to see the validated results before the
+     * single Submit click. Reading the flag off the DTO keeps that decision with
+     * the scheme without re-fetching it; both callers run {@link #toCycleDto}
+     * first.
+     *
+     * <p>
+     * ponytail: one query per linked order, plus one per analysis only when the
+     * gate is on; fine at lab scale (a cycle carries a handful of panel samples).
+     * Batch it if a deployment ever links hundreds.
+     */
+    private void addSampleProgress(Map<String, Object> dto, Long cycleId) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        String finalizedId = statusService.getStatusID(AnalysisStatus.Finalized);
+        String notStartedId = statusService.getStatusID(AnalysisStatus.NotStarted);
+        boolean withReportedValues = Boolean.TRUE.equals(dto.get("requiresCycleReview"));
+
+        int entered = 0;
+        int total = 0;
+        List<Map<String, Object>> sampleDtos = new ArrayList<>();
+        for (SampleEQA link : sampleEQAService.getAllMatching("cycleId", cycleId)) {
+            if (link.getSampleId() == null) {
+                continue;
+            }
+            Sample order = sampleService.get(String.valueOf(link.getSampleId()));
+            if (order == null) {
+                continue;
+            }
+            List<Analysis> analyses = analysisService.getAnalysesBySampleId(order.getId());
+            List<Map<String, Object>> analytes = new ArrayList<>();
+            boolean allFinalized = !analyses.isEmpty();
+            boolean anyStarted = false;
+            for (Analysis analysis : analyses) {
+                total++;
+                boolean finalized = finalizedId.equals(analysis.getStatusId());
+                if (finalized) {
+                    entered++;
+                } else {
+                    allFinalized = false;
+                }
+                if (!notStartedId.equals(analysis.getStatusId())) {
+                    anyStarted = true;
+                }
+                if (analysis.getTest() != null) {
+                    analytes.add(toAnalyteDto(analysis, finalized, withReportedValues));
+                }
+            }
+
+            Map<String, Object> sampleDto = new LinkedHashMap<>();
+            sampleDto.put("id", link.getEqaProviderSampleId());
+            sampleDto.put("labNo", order.getAccessionNumber());
+            sampleDto.put("analytes", analytes);
+            sampleDto.put("entryStatus", allFinalized ? "entered" : anyStarted ? "in_progress" : "empty");
+            sampleDtos.add(sampleDto);
+        }
+        dto.put("progress", Map.of("entered", entered, "total", total));
+        dto.put("samples", sampleDtos);
+    }
+
+    /**
+     * One analyte row. The reported value comes from the standard pipeline rather
+     * than eqa_participant_result: validation there is the authoritative gate
+     * (FR-V2.2-07), and nothing writes participant results until T-14. Dictionary
+     * and numeric results are rendered by the shared
+     * {@link ResultService#getSimpleResultValue} so a coded answer shows its text,
+     * not its dictionary id. Only a finalized analysis reports a value — an
+     * unvalidated one is not part of what would be submitted.
+     */
+    private Map<String, Object> toAnalyteDto(Analysis analysis, boolean finalized, boolean withReportedValues) {
+        Map<String, Object> analyte = new LinkedHashMap<>();
+        analyte.put("name", analysis.getTest().getName());
+        if (!withReportedValues || !finalized) {
+            return analyte;
+        }
+        StringBuilder value = new StringBuilder();
+        for (Result result : resultService.getResultsByAnalysis(analysis)) {
+            String rendered = resultService.getSimpleResultValue(result);
+            if (rendered != null && !rendered.isBlank()) {
+                value.append(value.length() == 0 ? "" : ", ").append(rendered);
+            }
+        }
+        analyte.put("value", value.toString());
+        analyte.put("validatedAt", analysis.getReleasedDate() == null ? null : analysis.getReleasedDate().toString());
+        return analyte;
     }
 
     /** Computed, never stored (FR-V2.1-18). */
@@ -161,6 +280,15 @@ public class EQACycleRestController extends BaseRestController {
         dto.put("cycleName", cycle.getCycleName());
         dto.put("status", cycle.getStatus() == null ? null : cycle.getStatus().name());
         dto.put("schemeId", cycle.getScheme() == null ? null : cycle.getScheme().getId());
+        if (cycle.getScheme() != null) {
+            dto.put("schemeName", cycle.getScheme().getName());
+            dto.put("provider", cycle.getScheme().getProvider());
+            dto.put("schemeType",
+                    cycle.getScheme().getSchemeType() == null ? null : cycle.getScheme().getSchemeType().name());
+            // FR-V2.1-09: drives the Review & Submit gate on My Cycles (FR-V2.2-07)
+            // and stands T-14's auto-submit down.
+            dto.put("requiresCycleReview", Boolean.TRUE.equals(cycle.getScheme().getRequiresCycleReview()));
+        }
         dto.put("plannedStartDate",
                 cycle.getPlannedStartDate() == null ? null : cycle.getPlannedStartDate().toString());
         dto.put("plannedEndDate", cycle.getPlannedEndDate() == null ? null : cycle.getPlannedEndDate().toString());

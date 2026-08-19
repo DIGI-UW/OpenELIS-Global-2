@@ -91,4 +91,7 @@
 
   <!-- EQA V2.1 — OGC-609: PANEL_RECEIPT trigger event for receipt-driven transitions -->
   <include file="liquibase/qa/024-extend-eqa-trigger-event-check.xml" />
+
+  <!-- EQA V2.1 T-13 — OGC-610: optional cycle-review gate flag (FR-V2.1-09) -->
+  <include file="liquibase/qa/025-add-eqa-scheme-review-gate.xml" />
 </databaseChangeLog>

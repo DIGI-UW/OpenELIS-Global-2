@@ -30,6 +30,7 @@ import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement"
 import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
 import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
 import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
+import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import EQAResultsPage from "./components/eqa/EQAResultsPage";
@@ -762,6 +763,19 @@ export default function App() {
                   path="/qa/eqa/orders"
                   exact
                   component={() => <EQAOrdersPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                />
+                {/* qa/019 menu row (T-12) ships the FRS path; page lives in the
+                    /qa/eqa/* family with its V1 siblings (T-24 card note). */}
+                <Redirect
+                  exact
+                  from="/eqa/participant/cycles"
+                  to="/qa/eqa/my-cycles"
+                />
+                <SecureRoute
+                  path="/qa/eqa/my-cycles"
+                  exact
+                  component={() => <MyCyclesPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
