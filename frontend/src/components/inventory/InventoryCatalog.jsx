@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import {
   DataTable,
   TableContainer,
@@ -45,6 +51,14 @@ const InventoryCatalog = () => {
   );
 
   const [items, setItems] = useState([]);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [itemTypes, setItemTypes] = useState([
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
@@ -106,6 +120,7 @@ const InventoryCatalog = () => {
     const loadItemTypes = async () => {
       try {
         const types = await InventoryItemAPI.getItemTypes();
+        if (!isMountedRef.current) return;
         const formattedTypes = [
           {
             id: "ALL",
@@ -143,6 +158,7 @@ const InventoryCatalog = () => {
     setLoading(true);
     try {
       const response = await InventoryItemAPI.getAll();
+      if (!isMountedRef.current) return;
       const processedItems = (response || []).map((item) => ({
         ...item,
         isActive: item.isActive === "Y" || item.isActive === true,
@@ -157,7 +173,7 @@ const InventoryCatalog = () => {
         subtitle: "Error loading catalog items",
       });
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
@@ -304,7 +320,9 @@ const InventoryCatalog = () => {
                   label={intl.formatMessage({ id: "inventory.filter.type" })}
                   items={itemTypes}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
+                  selectedItem={
+                    itemTypes.find((t) => t.id === typeFilter) ?? null
+                  }
                   onChange={({ selectedItem }) =>
                     setTypeFilter(selectedItem.id)
                   }
@@ -317,9 +335,9 @@ const InventoryCatalog = () => {
                   label={intl.formatMessage({ id: "inventory.filter.status" })}
                   items={statusOptions}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={statusOptions.find(
-                    (s) => s.id === statusFilter,
-                  )}
+                  selectedItem={
+                    statusOptions.find((s) => s.id === statusFilter) ?? null
+                  }
                   onChange={({ selectedItem }) =>
                     setStatusFilter(selectedItem.id)
                   }

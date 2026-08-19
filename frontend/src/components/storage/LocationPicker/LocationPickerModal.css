@@ -63,6 +63,14 @@
   position: relative;
 }
 
+.storage-location-picker-browse-label {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .storage-location-picker-search-results {
   position: absolute;
   top: 100%;

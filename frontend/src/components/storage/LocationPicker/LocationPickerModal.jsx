@@ -8,7 +8,6 @@ import {
   TextInput,
   TextArea,
 } from "@carbon/react";
-import { Search, Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import useLocationPicker from "./useLocationPicker";
 import {
@@ -70,9 +69,6 @@ export default function LocationPickerModal({
   const setLevel = (level, value) =>
     dispatch({ type: "SET_LEVEL", level, value });
 
-  // Flat search returns a single leaf; replacing the whole selection
-  // keeps the state consistent (no stale ancestors from a different
-  // branch of the hierarchy).
   const handleSearchSelect = (result) => {
     const action = searchResultToReplaceAction(result);
     if (action) dispatch(action);
@@ -169,51 +165,25 @@ export default function LocationPickerModal({
               {summary}
             </div>
           )}
-          {state.mode === "search" ? (
-            <>
-              <SearchField
-                query={state.searchQuery}
-                results={state.searchResults}
-                onQueryChange={(q) =>
-                  dispatch({ type: "SET_SEARCH_QUERY", query: q })
-                }
-                onResultsChange={(r) =>
-                  dispatch({ type: "SET_SEARCH_RESULTS", results: r })
-                }
-                onSelect={handleSearchSelect}
-                selectedSelection={state.selection}
-              />
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={Add}
-                onClick={() => dispatch({ type: "SET_MODE", mode: "create" })}
-              >
-                {intl.formatMessage({
-                  id: "storage.picker.createNewLocation",
-                  defaultMessage: "Create new location",
-                })}
-              </Button>
-            </>
-          ) : (
-            <>
-              <CreateForm
-                selection={state.selection}
-                onLevelChange={setLevel}
-              />
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={Search}
-                onClick={() => dispatch({ type: "SET_MODE", mode: "search" })}
-              >
-                {intl.formatMessage({
-                  id: "storage.picker.backToSearch",
-                  defaultMessage: "Back to search",
-                })}
-              </Button>
-            </>
-          )}
+          <SearchField
+            query={state.searchQuery}
+            results={state.searchResults}
+            onQueryChange={(q) =>
+              dispatch({ type: "SET_SEARCH_QUERY", query: q })
+            }
+            onResultsChange={(r) =>
+              dispatch({ type: "SET_SEARCH_RESULTS", results: r })
+            }
+            onSelect={handleSearchSelect}
+            selectedSelection={state.selection}
+          />
+          <p className="storage-location-picker-browse-label">
+            {intl.formatMessage({
+              id: "storage.picker.orBrowse",
+              defaultMessage: "Or pick level by level",
+            })}
+          </p>
+          <CreateForm selection={state.selection} onLevelChange={setLevel} />
         </section>
 
         {isMovement && (
