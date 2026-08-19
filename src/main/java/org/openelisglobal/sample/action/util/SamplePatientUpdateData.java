@@ -109,6 +109,10 @@ public class SamplePatientUpdateData {
     private String eqaParticipantId;
     private String eqaDeadline;
     private String eqaPriority;
+    private String eqaCycleId;
+    private String eqaReceivedTempC;
+    private Boolean eqaIntegrityOk;
+    private String eqaIntegrityNotes;
 
     private boolean customNotificationLogic;
     private List<String> patientEmailNotificationTestIds;
@@ -936,6 +940,38 @@ public class SamplePatientUpdateData {
 
     public void setEqaPriority(String eqaPriority) {
         this.eqaPriority = eqaPriority;
+    }
+
+    public String getEqaCycleId() {
+        return eqaCycleId;
+    }
+
+    public void setEqaCycleId(String eqaCycleId) {
+        this.eqaCycleId = eqaCycleId;
+    }
+
+    public String getEqaReceivedTempC() {
+        return eqaReceivedTempC;
+    }
+
+    public void setEqaReceivedTempC(String eqaReceivedTempC) {
+        this.eqaReceivedTempC = eqaReceivedTempC;
+    }
+
+    public Boolean getEqaIntegrityOk() {
+        return eqaIntegrityOk;
+    }
+
+    public void setEqaIntegrityOk(Boolean eqaIntegrityOk) {
+        this.eqaIntegrityOk = eqaIntegrityOk;
+    }
+
+    public String getEqaIntegrityNotes() {
+        return eqaIntegrityNotes;
+    }
+
+    public void setEqaIntegrityNotes(String eqaIntegrityNotes) {
+        this.eqaIntegrityNotes = eqaIntegrityNotes;
     }
 
     /**

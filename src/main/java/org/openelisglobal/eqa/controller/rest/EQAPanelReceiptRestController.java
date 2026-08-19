@@ -13,10 +13,12 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -75,15 +77,32 @@ public class EQAPanelReceiptRestController extends BaseRestController {
         EQAPanelReceipt receipt = receiptService.recordReceipt(cycleId, labEnrollmentId, shipmentId, receivedTempC,
                 integrityOk, stringField(body, "integrityNotes"), receivedBy, sysUserId);
 
+        return ResponseEntity.status(existedBefore ? HttpStatus.OK : HttpStatus.CREATED).body(toDto(cycleId, receipt));
+    }
+
+    /**
+     * The already-recorded receipt for this cycle and enrollment, so order entry
+     * can render it read-only instead of re-offering the fields. 404 when none.
+     */
+    @GetMapping(value = "/cycles/{cycleId}/receipt", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getReceipt(@PathVariable Long cycleId,
+            @RequestParam Long labEnrollmentId) {
+        return receiptService.getAllMatching(Map.of("cycle.id", cycleId, "labEnrollmentId", labEnrollmentId)).stream()
+                .findFirst().map(receipt -> ResponseEntity.ok(toDto(cycleId, receipt)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private Map<String, Object> toDto(Long cycleId, EQAPanelReceipt receipt) {
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("id", receipt.getId());
         dto.put("cycleId", cycleId);
         dto.put("labEnrollmentId", receipt.getLabEnrollmentId());
         dto.put("shipmentId", receipt.getShipmentId());
         dto.put("receivedDate", receipt.getReceivedDate() == null ? null : receipt.getReceivedDate().toString());
+        dto.put("receivedTempC", receipt.getReceivedTempC());
         dto.put("integrityOk", receipt.getIntegrityOk());
-
-        return ResponseEntity.status(existedBefore ? HttpStatus.OK : HttpStatus.CREATED).body(dto);
+        dto.put("integrityNotes", receipt.getIntegrityNotes());
+        return dto;
     }
 
     private String stringField(Map<String, Object> body, String key) {

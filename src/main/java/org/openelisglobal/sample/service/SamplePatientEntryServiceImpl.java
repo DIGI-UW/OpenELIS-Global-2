@@ -1,6 +1,7 @@
 package org.openelisglobal.sample.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -27,6 +28,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.eqa.service.EQAPanelReceiptService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
@@ -126,6 +128,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private ProgramSampleService programSampleService;
     @Autowired
     private SampleEQAService sampleEQAService;
+    @Autowired
+    private EQAPanelReceiptService eqaPanelReceiptService;
     @Autowired
     private BarcodeInfoService barcodeInfoService;
     @Autowired
@@ -459,16 +463,28 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
     }
 
-    private void persistSampleEQAData(SamplePatientUpdateData updateData) {
+    // Package-private so the EQA order/receipt wiring can be exercised directly
+    // (same reason as persistOrderSpecimenBarcodeCounts below).
+    void persistSampleEQAData(SamplePatientUpdateData updateData) {
         SampleEQA sampleEQA = new SampleEQA();
         sampleEQA.setSampleId(Long.parseLong(updateData.getSample().getId()));
         sampleEQA.setIsEqaSample(true);
         sampleEQA.setSysUserId(updateData.getCurrentUserId());
 
+        Long enrollmentId = null;
         if (!GenericValidator.isBlankOrNull(updateData.getEqaProgramId())) {
-            sampleEQA.setEqaEnrollmentId(Long.parseLong(updateData.getEqaProgramId()));
+            enrollmentId = Long.parseLong(updateData.getEqaProgramId());
+            sampleEQA.setEqaEnrollmentId(enrollmentId);
         }
         sampleEQA.setEqaProviderSampleId(updateData.getEqaProviderSampleId());
+
+        // The cycle link is optional (FR-V2.1-03): an order without one stays
+        // visible in the uncycled bucket rather than being rejected outright.
+        Long cycleId = null;
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaCycleId())) {
+            cycleId = Long.parseLong(updateData.getEqaCycleId());
+            sampleEQA.setCycleId(cycleId);
+        }
 
         if (!GenericValidator.isBlankOrNull(updateData.getEqaDeadline())) {
             java.sql.Date deadlineDate = DateUtil.convertStringDateToSqlDate(updateData.getEqaDeadline());
@@ -481,6 +497,17 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
 
         sampleEQAService.insert(sampleEQA);
+
+        // FR-V2.1-20: the panel receipt rides this order's transaction on purpose —
+        // a receipt that cannot be recorded must take the whole order down with it.
+        // recordReceipt is idempotent, so re-saving the same cycle is a read.
+        if (cycleId != null && enrollmentId != null) {
+            BigDecimal receivedTempC = GenericValidator.isBlankOrNull(updateData.getEqaReceivedTempC()) ? null
+                    : new BigDecimal(updateData.getEqaReceivedTempC());
+            eqaPanelReceiptService.recordReceipt(cycleId, enrollmentId, null, receivedTempC,
+                    updateData.getEqaIntegrityOk(), updateData.getEqaIntegrityNotes(),
+                    Long.valueOf(updateData.getCurrentUserId()), updateData.getCurrentUserId());
+        }
     }
 
     void persistOrderSpecimenBarcodeCounts(org.openelisglobal.sample.valueholder.Sample sample, Integer numOrderLabels,
