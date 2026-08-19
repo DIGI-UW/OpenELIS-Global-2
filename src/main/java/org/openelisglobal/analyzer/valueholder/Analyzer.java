@@ -86,6 +86,10 @@ public class Analyzer extends BaseObject<String> {
     @JoinColumn(name = "analyzer_type_id")
     private AnalyzerType analyzerType;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "profile_binding_id")
+    private AnalyzerProfileBinding profileBinding;
+
     // --- Configuration fields (merged from analyzer_configuration) ---
 
     @Column(name = "ip_address", length = 15)
@@ -233,6 +237,14 @@ public class Analyzer extends BaseObject<String> {
 
     public void setAnalyzerType(AnalyzerType analyzerType) {
         this.analyzerType = analyzerType;
+    }
+
+    public AnalyzerProfileBinding getProfileBinding() {
+        return profileBinding;
+    }
+
+    public void setProfileBinding(AnalyzerProfileBinding profileBinding) {
+        this.profileBinding = profileBinding;
     }
 
     // --- Configuration field accessors (merged from analyzer_configuration) ---
