@@ -140,8 +140,8 @@
         organization_name="African Health Org"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="1"
-        referral_type_id="1" requester_name="Doctor" Status="SENT"
-        lastUpdated="2018-02-16 23:45:59" canceled="false"
+        referral_type_id="1" requester_name="Doctor" status="SENT"
+        lastupdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
         fhir_uuid="436a353f-8ac9-4a30-86db-bb6eda979b57" />
     <referral id="102" analysis_id="702" organization_id="402"
@@ -149,15 +149,15 @@
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="2"
         referral_type_id="2" requester_name="Doctor" status="RECEIVED"
-        lastUpdated="2018-02-16 23:45:59" canceled="false"
+        lastupdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
         fhir_uuid="386e3e0c-013b-425b-ab5f-46f40278c5d3" />
     <referral id="103" analysis_id="701" organization_id="402"
         organization_name="African Health Org"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="1"
-        referral_type_id="1" requester_name="Doctor" Status="CREATED"
-        lastUpdated="2018-02-16 23:45:59" canceled="false"
+        referral_type_id="1" requester_name="Doctor" status="CREATED"
+        lastupdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
         fhir_uuid="436a393f-8ac9-4a30-86db-bb6eda979b57" />
 

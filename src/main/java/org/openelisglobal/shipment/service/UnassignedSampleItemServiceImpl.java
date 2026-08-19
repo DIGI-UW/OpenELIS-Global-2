@@ -76,10 +76,7 @@ public class UnassignedSampleItemServiceImpl implements UnassignedSampleItemServ
     @Transactional(readOnly = true)
     public SampleItemDTO getSampleItemById(String sampleItemId) {
         try {
-            // Get all referrals for this sample item
-            Integer sampleItemIdInt = Integer.parseInt(sampleItemId);
-
-            List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItemIdInt);
+            List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItemId);
 
             if (referrals.isEmpty()) {
                 logger.warn("No referrals found for sample item: {}", sampleItemId);
@@ -174,8 +171,7 @@ public class UnassignedSampleItemServiceImpl implements UnassignedSampleItemServ
                     collectionDate);
 
             // Get all referrals for this sample item
-            Integer sampleItemIdInt = Integer.parseInt(sampleItemId);
-            List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItemIdInt);
+            List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItemId);
 
             List<ReferralTestDTO> referralTests = new ArrayList<>();
             for (Referral referral : referrals) {
