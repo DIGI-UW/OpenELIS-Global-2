@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -182,6 +183,22 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<IdValuePair> getUserTestSections(String systemUserId, String roleId) {
+        // This resolves the CURRENT user's own test sections — a self-service
+        // lookup whose access is already authorized by this method's own
+        // @PreAuthorize(PRIV_RESULT_VIEW) gate. Internally it reads the user's own
+        // lab-unit roles / role names / test-section cache, which are gated with
+        // ADMIN privileges (PRIV_USER_ROLE_VIEW, PRIV_ROLE_VIEW, ...) that ordinary
+        // Results/Reports/Validation users do not hold. Run the body in system
+        // context (restore, not clear) so those self-identity reads are not denied.
+        boolean systemWasSet = SystemInitFlag.enter();
+        try {
+            return doGetUserTestSections(systemUserId, roleId);
+        } finally {
+            SystemInitFlag.exit(systemWasSet);
+        }
+    }
+
+    private List<IdValuePair> doGetUserTestSections(String systemUserId, String roleId) {
         Authentication authentication = null;
         // see filter org.openelisglobal.security.AjaxFilter to handle
         // RequestContextHolder for Ajax calls via servlets

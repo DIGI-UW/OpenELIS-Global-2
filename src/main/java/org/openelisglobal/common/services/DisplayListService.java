@@ -26,6 +26,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressHierarchyConfigurationHandler;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
@@ -180,6 +181,23 @@ public class DisplayListService implements LocaleChangeListener {
             }
         });
         return testResults;
+    }
+
+    // Assembling a test reference list is infrastructure that reads across
+    // several gated services — refreshTestNames() (PRIV_TEST_CONFIGURE),
+    // per-test sample-type augmentation (PRIV_SAMPLE_TYPE_VIEW), etc. Ordinary
+    // users who legitimately need the list (e.g. order:view listing orderable
+    // tests) hold none of those, so a cold-cache build would 500 and crash the
+    // calling screen. Run the whole build in system context (restore, not clear)
+    // so reference-data assembly is never blocked by the admin-scoped reads it
+    // makes internally — the CALLER's own access is already gated at its endpoint.
+    private void buildTestListAsSystem(Runnable build) {
+        boolean wasSet = SystemInitFlag.enter();
+        try {
+            build.run();
+        } finally {
+            SystemInitFlag.exit(wasSet);
+        }
     }
 
     @Override
@@ -585,18 +603,24 @@ public class DisplayListService implements LocaleChangeListener {
             break;
         }
         case ALL_TESTS: {
-            testService.refreshTestNames();
-            typeToListMap.put(ListType.ALL_TESTS, createTestList());
+            buildTestListAsSystem(() -> {
+                testService.refreshTestNames();
+                typeToListMap.put(ListType.ALL_TESTS, createTestList());
+            });
             break;
         }
         case IMMUNOHISTOCHEMISTRY_MARKERS_TESTS: {
-            testService.refreshTestNames();
-            typeToListMap.put(ListType.IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, createImmunoHistoChemistryTestList());
+            buildTestListAsSystem(() -> {
+                testService.refreshTestNames();
+                typeToListMap.put(ListType.IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, createImmunoHistoChemistryTestList());
+            });
             break;
         }
         case ORDERABLE_TESTS: {
-            testService.refreshTestNames();
-            typeToListMap.put(ListType.ORDERABLE_TESTS, createOrderableTestList());
+            buildTestListAsSystem(() -> {
+                testService.refreshTestNames();
+                typeToListMap.put(ListType.ORDERABLE_TESTS, createOrderableTestList());
+            });
             break;
         }
         case SAMPLE_TYPE: {
