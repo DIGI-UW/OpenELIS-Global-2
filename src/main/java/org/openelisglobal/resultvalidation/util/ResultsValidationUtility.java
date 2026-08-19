@@ -67,6 +67,7 @@ import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.statusofsample.util.StatusRules;
 import org.openelisglobal.test.service.TestSectionService;
@@ -107,6 +108,8 @@ public class ResultsValidationUtility {
     protected ResultLimitService resultLimitService;
     @Autowired
     protected org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
+    @Autowired
+    protected SampleHumanService sampleHumanService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -275,6 +278,9 @@ public class ResultsValidationUtility {
         List<ResultValidationItem> selectedTestList = new ArrayList<>();
         Dictionary dictionary;
 
+        // Cache patient info per sample to avoid repeated DB lookups (N+1 prevention)
+        Map<String, String[]> samplePatientInfoCache = new HashMap<>();
+
         for (Analysis analysis : filteredAnalysisList) {
 
             if (ignoreRecordStatus || sampleReadyForValidation(analysis.getSampleItem().getSample())) {
@@ -303,12 +309,51 @@ public class ResultsValidationUtility {
                     validationItem.setAnalysis(analysis);
                     validationItem.setNonconforming(QAService.isAnalysisParentNonConforming(analysis) || StatusService
                             .getInstance().matches(analysis.getStatusId(), AnalysisStatus.TechnicalRejected));
+
+                    populatePatientInfo(validationItem, analysis, samplePatientInfoCache);
+
                     selectedTestList.add(validationItem);
                 }
             }
         }
 
         return selectedTestList;
+    }
+
+    /**
+     * Populates patientName and patientInfo on the given validation item, using a
+     * per-sample cache to avoid N+1 DB lookups. Respects the depersonalize flag.
+     */
+    private void populatePatientInfo(ResultValidationItem validationItem, Analysis analysis,
+            Map<String, String[]> samplePatientInfoCache) {
+        Sample sample = analysis.getSampleItem().getSample();
+        String sampleId = sample.getId();
+
+        String[] cached = samplePatientInfoCache.get(sampleId);
+        if (cached == null) {
+            Patient patient = sampleHumanService.getPatientForSample(sample);
+            String patientName = "";
+            String patientInfo = "";
+            if (patient != null) {
+                String nationalId = patientService.getNationalId(patient);
+                if (depersonalize) {
+                    if (GenericValidator.isBlankOrNull(nationalId)) {
+                        patientInfo = patientService.getExternalId(patient);
+                    } else {
+                        patientInfo = nationalId;
+                    }
+                } else {
+                    patientName = patientService.getLastFirstName(patient);
+                    patientInfo = nationalId + ", " + patientService.getGender(patient) + ", "
+                            + patientService.getBirthdayForDisplay(patient);
+                }
+            }
+            cached = new String[] { patientName, patientInfo };
+            samplePatientInfoCache.put(sampleId, cached);
+        }
+
+        validationItem.setPatientName(cached[0]);
+        validationItem.setPatientInfo(cached[1]);
     }
 
     public final int getCountGroupedTestsForAnalysisList(Collection<Analysis> filteredAnalysisList,
@@ -661,6 +706,7 @@ public class ResultsValidationUtility {
                 condensedItem.setHasQualifiedResult(true);
                 condensedItem.setNormalRange(testResultItem.getNormalRange());
                 condensedItem.setPatientName(testResultItem.getPatientName());
+                condensedItem.setPatientInfo(testResultItem.getPatientInfo());
             }
         }
 
@@ -708,6 +754,7 @@ public class ResultsValidationUtility {
                 : testResultItem.getHigherCritical());
         analysisResultItem.setNormalRange(testResultItem.getNormalRange());
         analysisResultItem.setPatientName(testResultItem.getPatientName());
+        analysisResultItem.setPatientInfo(testResultItem.getPatientInfo());
         analysisResultItem.setTestName(testName);
         analysisResultItem.setUnits(testUnits);
         analysisResultItem.setAnalysisId(testResultItem.getAnalysis().getId());
