@@ -20,6 +20,7 @@ import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzerimport.action.AnalyzerFhirImportController;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -88,6 +89,15 @@ public class AnalyzerProfileCutoverContractTest {
                 assertFalse("Legacy filesystem profile route remains: " + path,
                         path.startsWith("/profiles") || path.startsWith("/defaults"));
             }
+        }
+    }
+
+    @Test
+    public void fhirImportDoesNotInferOrApplyProfilesFromFilesystem() {
+        for (Method method : AnalyzerFhirImportController.class.getDeclaredMethods()) {
+            String name = method.getName();
+            assertFalse("FHIR import still owns profile selection: " + name, name.equals("applyMatchedProfile")
+                    || name.equals("matchProfileFromDevice") || name.equals("resolveProfilesBaseDir"));
         }
     }
 
