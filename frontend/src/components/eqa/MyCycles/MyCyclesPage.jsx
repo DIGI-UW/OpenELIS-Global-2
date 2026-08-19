@@ -20,9 +20,10 @@ import {
   TableCell,
   Loading,
 } from "@carbon/react";
-import { ChevronDown, ChevronUp } from "@carbon/react/icons";
+import { ChevronDown, ChevronUp, Download } from "@carbon/react/icons";
 import { useIntl } from "react-intl";
 import { Link as RouterLink, useHistory } from "react-router-dom";
+import config from "../../../config.json";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import {
@@ -113,6 +114,12 @@ const sampleRows = (cycle) => {
         })),
   );
 };
+
+const openPerformanceReport = (cycleId) =>
+  window.open(
+    `${config.serverBaseUrl}/rest/eqa/cycles/${cycleId}/performance-report`,
+    "_blank",
+  );
 
 const MyCyclesPage = () => {
   const intl = useIntl();
@@ -209,6 +216,16 @@ const MyCyclesPage = () => {
 
   const renderExpanded = (cycle) => (
     <div style={{ padding: "0.5rem 0" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={Download}
+          onClick={() => openPerformanceReport(cycle.id)}
+        >
+          {t("eqa.report.download", "Download performance report")}
+        </Button>
+      </div>
       {cycle.hasNce && (
         <InlineNotification
           kind="error"
