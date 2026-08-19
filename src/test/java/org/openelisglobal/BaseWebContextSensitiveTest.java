@@ -286,6 +286,14 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                     + "is_active, is_employee, lastupdated) "
                     + "SELECT nextval('system_user_seq'), 'TEST_ADMIN', 'admin', 'Doe', 'John', 'JD', 'Y', 'Y', now() "
                     + "WHERE NOT EXISTS (SELECT 1 FROM system_user WHERE login_name = 'admin')");
+            // A fixture that declares system_user without lastupdated leaves the
+            // Hibernate version null, and an entity with a null version reads as
+            // transient — so stamping a loaded SystemUser onto another entity's
+            // not-null association throws TransientPropertyValueException even
+            // though the row exists. Only ever seen in full-suite runs, because
+            // the DB-init rows all carry a version. Repairing the version changes
+            // no row count and no field a test asserts on.
+            stmt.execute("UPDATE system_user SET lastupdated = now() WHERE lastupdated IS NULL");
         }
     }
 

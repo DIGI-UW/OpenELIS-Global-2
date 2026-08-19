@@ -1,21 +1,20 @@
 package org.openelisglobal.eqa.service;
 
-import java.sql.Date;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
-import org.openelisglobal.eqa.dao.EQAAnalystCompetencyEventDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.dao.EQARoundDAO;
-import org.openelisglobal.eqa.valueholder.EQAAnalystCompetencyEvent;
 import org.openelisglobal.eqa.valueholder.EQACompetencyEventType;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAPerformanceStatus;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
+import org.openelisglobal.qaevent.service.EqaScoreNceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +32,10 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
     private EQAParticipantResultDAO eqaParticipantResultDAO;
 
     @Autowired
-    private EQAAnalystCompetencyEventDAO eqaAnalystCompetencyEventDAO;
+    private EQAAnalystCompetencyService competencyService;
+
+    @Autowired
+    private EqaScoreNceService eqaScoreNceService;
 
     @Autowired
     private EQARoundDAO eqaRoundDAO;
@@ -104,6 +106,12 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
     @Override
     public EQAParticipantResult recordScore(Long resultId, EQAPerformanceStatus performance, Long eqaResultId,
             String sysUserId) {
+        return recordScore(resultId, performance, null, eqaResultId, sysUserId);
+    }
+
+    @Override
+    public EQAParticipantResult recordScore(Long resultId, EQAPerformanceStatus performance, BigDecimal zScore,
+            Long eqaResultId, String sysUserId) {
         EQAParticipantResult result = get(resultId);
         if (result.getSubmissionStatus() != EQASubmissionStatus.SUBMITTED) {
             throw new IllegalStateException(
@@ -115,16 +123,19 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
 
         result.setSubmissionStatus(EQASubmissionStatus.SCORED);
         result.setPerformanceStatus(performance);
+        if (zScore != null) {
+            result.setZScore(zScore);
+        }
         result.setScoreReceivedAt(now());
         result.setEqaResultId(eqaResultId);
         result.setSysUserId(sysUserId);
         EQAParticipantResult scored = eqaParticipantResultDAO.update(result);
 
         if (performance != EQAPerformanceStatus.ACCEPTABLE) {
-            recordCompetencyEvent(scored,
+            competencyService.record(scored,
                     performance == EQAPerformanceStatus.UNACCEPTABLE ? EQACompetencyEventType.UNACCEPTABLE_SCORE
                             : EQACompetencyEventType.QUESTIONABLE_SCORE,
-                    sysUserId);
+                    null, null, null, sysUserId);
         }
 
         onResultScored(scored, performance);
@@ -145,39 +156,20 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
 
         boolean inHouse = missed.getCycle() != null && missed.getCycle().getScheme() != null
                 && missed.getCycle().getScheme().getSchemeType() == EQASchemeType.IN_HOUSE;
-        recordCompetencyEvent(missed, inHouse ? EQACompetencyEventType.IN_HOUSE_MISSED_DEADLINE
-                : EQACompetencyEventType.EXTERNAL_MISSED_DEADLINE, sysUserId);
+        competencyService.record(missed, inHouse ? EQACompetencyEventType.IN_HOUSE_MISSED_DEADLINE
+                : EQACompetencyEventType.EXTERNAL_MISSED_DEADLINE, null, null, null, sysUserId);
 
         return missed;
     }
 
     /**
-     * eqa_analyst_competency_event.analyst_id is NOT NULL by design — competency is
-     * an analyst log, so a result with nobody assigned produces no event.
+     * Applies the tiered EQA to NCE rules (OGC-611, FR-V2.3-01) to a freshly scored
+     * result: non-conformity, Follow-Up Queue entry, or nothing. Fired after the
+     * score and any competency event are written to the session, inside the same
+     * transaction, because the adapter stamps the NCE onto that competency event.
      */
-    private void recordCompetencyEvent(EQAParticipantResult result, EQACompetencyEventType type, String sysUserId) {
-        if (result.getAssignedAnalystId() == null) {
-            return;
-        }
-        EQAAnalystCompetencyEvent event = new EQAAnalystCompetencyEvent();
-        event.setAnalystId(result.getAssignedAnalystId());
-        event.setEventType(type);
-        event.setEventDate(new Date(System.currentTimeMillis()));
-        event.setScheme(result.getCycle() == null ? null : result.getCycle().getScheme());
-        event.setCycleId(result.getCycle() == null ? null : result.getCycle().getId());
-        event.setParticipantResultId(result.getId());
-        event.setAnalyteId(result.getAnalyteId());
-        event.setSysUserId(sysUserId);
-        eqaAnalystCompetencyEventDAO.insert(event);
-    }
-
-    /**
-     * Hook for the tiered EQA→NCE trigger adapter (OGC-609): the adapter replaces
-     * this body. Fired after the score and any competency event are committed to
-     * the session, inside the same transaction.
-     */
-    protected void onResultScored(EQAParticipantResult result, EQAPerformanceStatus performance) {
-        // Intentionally empty until the NCE adapter is wired (OGC-609).
+    private void onResultScored(EQAParticipantResult result, EQAPerformanceStatus performance) {
+        eqaScoreNceService.onResultScored(result, performance);
     }
 
     @Override
