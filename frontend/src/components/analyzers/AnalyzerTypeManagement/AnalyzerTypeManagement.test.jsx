@@ -378,7 +378,7 @@ describe("AnalyzerTypeManagement", () => {
           publication: {
             action: "DUPLICATED",
             actor: "17",
-            publishedAt: "2026-08-18T13:00:00Z",
+            markedAt: "2026-08-18T13:00:00Z",
           },
         },
       ]);
@@ -401,5 +401,16 @@ describe("AnalyzerTypeManagement", () => {
     expect(within(dialog).getByText("Revision 1")).toBeVisible();
     expect(within(dialog).getByText("Duplicated")).toBeVisible();
     expect(within(dialog).getByText("17")).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        new Intl.DateTimeFormat("en", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date("2026-08-18T13:00:00Z")),
+      ),
+    ).toBeVisible();
   });
 });
