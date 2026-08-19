@@ -20,6 +20,7 @@ test.describe("Microbiology no-growth review and release", () => {
         `/Microbiology/cases/${seeded.caseId}\\?q=${seeded.accessionNumber}&sort=newest&section=setup$`,
       ),
     );
+    const caseView = page.getByTestId("microbiology-case-view");
     await expect(
       page
         .getByRole("navigation", { name: "Breadcrumb" })
@@ -30,7 +31,6 @@ test.describe("Microbiology no-growth review and release", () => {
     );
 
     const caseHeader = page.locator("header");
-    const caseView = page.getByTestId("microbiology-case-view");
     const nextStep = page.getByTestId("microbiology-next-step");
     await expect(caseHeader.getByTitle("Received")).toBeVisible();
     await nextStep.getByRole("button", { name: "Start inoculation" }).click();
