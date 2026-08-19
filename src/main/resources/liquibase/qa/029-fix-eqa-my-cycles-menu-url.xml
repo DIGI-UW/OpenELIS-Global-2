@@ -13,8 +13,9 @@
     route in App.jsx, so the menu entry has been a dead click since the page landed.
 
     The remaining V2 rows (lab performance, follow-up queue, analyst competency,
-    provider schemes) still point at FRS paths and stay that way here: their pages
-    are not built yet, and each one should set its own route as it ships.
+    provider schemes) are deactivated for the same reason in reverse: their pages do
+    not exist, so every one of them is a dead click today. Each is switched back on
+    by the card that builds its page, which is also the card that knows its route.
     -->
 
     <changeSet author="openelisglobal" id="qa-054-fix-menu-eqa-my-cycles-url">
@@ -35,6 +36,36 @@
             <update tableName="menu" schemaName="clinlims">
                 <column name="action_url" value="/eqa/participant/cycles" />
                 <where>element_id = 'menu_eqa_my_cycles'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-055-hide-eqa-v2-menu-rows-without-pages">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="4">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id IN ('menu_eqa_lab_performance', 'menu_eqa_follow_up_queue',
+                                     'menu_eqa_analyst_competency', 'menu_eqa_provider')
+                  AND is_active = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Hide the V2 menu rows whose pages are not built yet — each card re-activates its own</comment>
+
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false" />
+            <where>
+                element_id IN ('menu_eqa_lab_performance', 'menu_eqa_follow_up_queue',
+                               'menu_eqa_analyst_competency', 'menu_eqa_provider')
+            </where>
+        </update>
+
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="is_active" valueBoolean="true" />
+                <where>
+                    element_id IN ('menu_eqa_lab_performance', 'menu_eqa_follow_up_queue',
+                                   'menu_eqa_analyst_competency', 'menu_eqa_provider')
+                </where>
             </update>
         </rollback>
     </changeSet>

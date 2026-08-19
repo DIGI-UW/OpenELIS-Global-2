@@ -18,11 +18,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveTest {
 
-    private static final String[][] MENUS = { { "menu_eqa_my_cycles", "/qa/eqa/my-cycles", "banner.menu.eqa.myCycles" },
-            { "menu_eqa_lab_performance", "/eqa/oversight/lab-performance/coverage", "banner.menu.eqa.labPerformance" },
-            { "menu_eqa_follow_up_queue", "/eqa/oversight/follow-up-queue", "banner.menu.eqa.followUpQueue" },
-            { "menu_eqa_analyst_competency", "/eqa/oversight/analyst-track", "banner.menu.eqa.analystCompetency" },
-            { "menu_eqa_provider", "/eqa/management/provider/schemes", "banner.menu.eqa.provider" } };
+    /**
+     * Element id, route, display key, and whether the row is switched on. Only My
+     * Cycles has a page: the rest stay hidden until the card that builds each page
+     * re-activates its row with the route that page actually serves (qa/029).
+     */
+    private static final String[][] MENUS = {
+            { "menu_eqa_my_cycles", "/qa/eqa/my-cycles", "banner.menu.eqa.myCycles", "true" },
+            { "menu_eqa_lab_performance", "/eqa/oversight/lab-performance/coverage", "banner.menu.eqa.labPerformance",
+                    "false" },
+            { "menu_eqa_follow_up_queue", "/eqa/oversight/follow-up-queue", "banner.menu.eqa.followUpQueue", "false" },
+            { "menu_eqa_analyst_competency", "/eqa/oversight/analyst-track", "banner.menu.eqa.analystCompetency",
+                    "false" },
+            { "menu_eqa_provider", "/eqa/management/provider/schemes", "banner.menu.eqa.provider", "false" } };
 
     private static final String[] TIERS = { "qa.eqa.participant", "qa.eqa.oversight", "qa.eqa.provider",
             "qa.eqa.inhouse.unblind" };
@@ -77,7 +85,7 @@ public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveT
             assertEquals(menu[0] + " route", menu[1], row.get("action_url"));
             assertEquals(menu[0] + " label key", menu[2], row.get("display_key"));
             assertEquals(menu[0] + " parent", "menu_eqa", row.get("parent"));
-            assertEquals(menu[0] + " active", Boolean.TRUE, row.get("is_active"));
+            assertEquals(menu[0] + " active", Boolean.valueOf(menu[3]), row.get("is_active"));
         }
     }
 
