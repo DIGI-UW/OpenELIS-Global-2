@@ -50,8 +50,8 @@ public class AnalyzerSiteBindingModelTest {
         analyzer.setSiteBindingRevision(revision);
 
         assertSame(revision, analyzer.getSiteBindingRevision());
-        assertEquals("site.mock-hematology", revision.getSiteBinding().getProfileBinding().getProfileId());
-        assertEquals(3, revision.getSiteBinding().getProfileBinding().getProfileRevision());
+        assertEquals("site.mock-hematology", analyzer.getPinnedProfileBinding().getProfileId());
+        assertEquals(3, analyzer.getPinnedProfileBinding().getProfileRevision());
     }
 
     private static AnalyzerSiteBindingRevision revision() {

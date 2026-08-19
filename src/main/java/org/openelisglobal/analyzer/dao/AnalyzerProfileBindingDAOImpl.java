@@ -42,7 +42,8 @@ public class AnalyzerProfileBindingDAOImpl extends BaseDAOImpl<AnalyzerProfileBi
             return 0;
         }
 
-        String hql = "SELECT COUNT(a) FROM Analyzer a WHERE a.profileBinding.id = :bindingId";
+        String hql = "SELECT COUNT(a) FROM Analyzer a WHERE "
+                + "a.siteBindingRevision.siteBinding.profileBinding.id = :bindingId";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
         query.setParameter("bindingId", bindingId.trim());
         Long count = query.uniqueResult();

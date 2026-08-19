@@ -3,6 +3,8 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,6 +22,8 @@ import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.analyzerimport.action.AnalyzerFhirImportController;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -36,11 +40,14 @@ public class AnalyzerProfileCutoverContractTest {
     @Mock
     private BridgeProfileCatalogService catalogService;
 
+    @Mock
+    private AnalyzerSiteBindingService siteBindingService;
+
     private AnalyzerProfileBindingServiceImpl service;
 
     @Before
     public void setUp() throws Exception {
-        service = new AnalyzerProfileBindingServiceImpl(bindingDAO, catalogService);
+        service = new AnalyzerProfileBindingServiceImpl(bindingDAO, catalogService, siteBindingService);
         when(catalogService.getCatalog()).thenReturn(new BridgeProfileCatalog("1.0", FINGERPRINT,
                 java.util.List.of(new BridgeProfileCatalog.ProfileRevision(
                         new ObjectMapper().readTree(
@@ -65,7 +72,14 @@ public class AnalyzerProfileCutoverContractTest {
     @Test
     public void assignmentPinsTheResolvedRevisionWithoutCopyingProfileContent() throws Exception {
         AnalyzerProfileBinding binding = binding();
+        AnalyzerSiteBinding siteBinding = new AnalyzerSiteBinding();
+        siteBinding.setProfileBinding(binding);
+        AnalyzerSiteBindingRevision siteBindingRevision = new AnalyzerSiteBindingRevision();
+        siteBindingRevision.setSiteBinding(siteBinding);
         when(bindingDAO.findByProfileIdAndRevision(PROFILE_ID, PROFILE_REVISION)).thenReturn(Optional.of(binding));
+        when(siteBindingService.resolveInitialRevision(eq(binding), any(), eq("17")))
+                .thenReturn(new AnalyzerSiteBindingSnapshot(siteBinding, siteBindingRevision, java.util.List.of(),
+                        java.util.List.of()));
         Analyzer analyzer = new Analyzer();
 
         Method assign = AnalyzerProfileBindingServiceImpl.class.getMethod("assignProfile", Analyzer.class, String.class,
@@ -73,7 +87,8 @@ public class AnalyzerProfileCutoverContractTest {
         Object result = invoke(assign, service, analyzer, PROFILE_ID, PROFILE_REVISION, "17");
 
         assertSame(binding, result);
-        assertSame(binding, analyzer.getProfileBinding());
+        assertSame(siteBindingRevision, analyzer.getSiteBindingRevision());
+        assertSame(null, analyzer.getProfileBinding());
         assertFalse(Arrays.stream(Analyzer.class.getDeclaredFields())
                 .anyMatch(field -> field.getName().toLowerCase().contains("profilesnapshot")));
     }

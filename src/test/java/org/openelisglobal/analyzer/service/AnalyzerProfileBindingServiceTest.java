@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,6 +22,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerProfileBindingServiceTest {
@@ -38,11 +41,14 @@ public class AnalyzerProfileBindingServiceTest {
     @Mock
     private BridgeProfileCatalogService catalogService;
 
+    @Mock
+    private AnalyzerSiteBindingService siteBindingService;
+
     private AnalyzerProfileBindingService service;
 
     @Before
     public void setUp() {
-        service = new AnalyzerProfileBindingServiceImpl(bindingDAO, catalogService);
+        service = new AnalyzerProfileBindingServiceImpl(bindingDAO, catalogService, siteBindingService);
     }
 
     @Test
@@ -114,14 +120,37 @@ public class AnalyzerProfileBindingServiceTest {
     public void assignProfilePreservesAnUnchangedPinnedRevisionWithoutConsultingLatestCatalog() {
         Analyzer analyzer = new Analyzer();
         AnalyzerProfileBinding existing = binding(FINGERPRINT);
-        analyzer.setProfileBinding(existing);
+        AnalyzerSiteBindingRevision existingRevision = siteBindingRevision(existing);
+        analyzer.setSiteBindingRevision(existingRevision);
 
         AnalyzerProfileBinding result = service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
 
         assertSame(existing, result);
-        assertSame(existing, analyzer.getProfileBinding());
+        assertSame(existingRevision, analyzer.getSiteBindingRevision());
+        assertEquals(null, analyzer.getProfileBinding());
         verify(catalogService, never()).getCatalog();
         verify(bindingDAO, never()).insert(any(AnalyzerProfileBinding.class));
+        verify(siteBindingService, never()).resolveInitialRevision(any(), any(), any());
+    }
+
+    @Test
+    public void assignProfilePinsTheSharedLocalBindingRevisionWithoutWritingLegacyProfileReference() {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setProfileBinding(binding(FINGERPRINT));
+        AnalyzerProfileBinding selected = binding(FINGERPRINT);
+        JsonNode portableProfile = catalog("ACTIVE", FINGERPRINT).profiles().get(0).profile();
+        AnalyzerSiteBindingRevision siteBindingRevision = siteBindingRevision(selected);
+        when(catalogService.getCatalog()).thenReturn(catalog("ACTIVE", FINGERPRINT));
+        when(bindingDAO.findByProfileIdAndRevision(PROFILE_ID, REVISION)).thenReturn(Optional.of(selected));
+        when(siteBindingService.resolveInitialRevision(eq(selected), eq(portableProfile), eq("oe-user-17")))
+                .thenReturn(new AnalyzerSiteBindingSnapshot(siteBindingRevision.getSiteBinding(), siteBindingRevision,
+                        List.of(), List.of()));
+
+        AnalyzerProfileBinding result = service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
+
+        assertSame(selected, result);
+        assertSame(siteBindingRevision, analyzer.getSiteBindingRevision());
+        assertEquals(null, analyzer.getProfileBinding());
     }
 
     @Test
@@ -147,5 +176,16 @@ public class AnalyzerProfileBindingServiceTest {
         binding.setProfileRevision(REVISION);
         binding.setProfileFingerprint(fingerprint);
         return binding;
+    }
+
+    private static AnalyzerSiteBindingRevision siteBindingRevision(AnalyzerProfileBinding profileBinding) {
+        AnalyzerSiteBinding siteBinding = new AnalyzerSiteBinding();
+        siteBinding.setId("51");
+        siteBinding.setProfileBinding(profileBinding);
+        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        revision.setId("61");
+        revision.setSiteBinding(siteBinding);
+        revision.setRevisionNumber(1);
+        return revision;
     }
 }

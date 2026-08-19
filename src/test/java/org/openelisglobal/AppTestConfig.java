@@ -15,6 +15,8 @@ import org.itech.fhir.dataexport.core.dao.DataExportTaskDAO;
 import org.itech.fhir.dataexport.core.service.DataExportTaskService;
 import org.jasypt.util.text.TextEncryptor;
 import org.mockito.Mockito;
+import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
+import org.openelisglobal.analyzer.service.BridgeProfileCatalogService;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
@@ -51,6 +53,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.http.MediaType;
@@ -150,6 +153,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.compliance.controller.rest.ComplianceReportReissueSecurityTest.*") })
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
+
+    @Bean
+    @Primary
+    @Profile("test")
+    public BridgeProfileCatalogService bridgeProfileCatalogService() {
+        return AnalyzerTestProfileCatalog::catalog;
+    }
 
     @Bean
     @Profile("test")

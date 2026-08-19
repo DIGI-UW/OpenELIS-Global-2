@@ -13,6 +13,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.common.action.IActionConstants;
@@ -104,8 +105,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String uniqueName = "TEST-Fields-" + System.currentTimeMillis();
         String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(createBody))).andExpect(status().isCreated());
 
         // Both fields must appear on every analyzer entry in the response.
         // qcRules is always emitted (existing FR-15 contract); controlLots is
@@ -130,9 +131,25 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         // Act & Assert: Endpoint should create analyzer
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        MvcResult result = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(requestBody)))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value(uniqueName));
+                .andExpect(jsonPath("$.name").value(uniqueName))
+                .andExpect(jsonPath("$.profileId").value(AnalyzerTestProfileCatalog.PROFILE_ID))
+                .andExpect(jsonPath("$.profileRevision").value(AnalyzerTestProfileCatalog.PROFILE_REVISION))
+                .andExpect(jsonPath("$.profileBindingStatus").value("PINNED")).andReturn();
+
+        Map<String, Object> created = objectMapper.readValue(result.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        Map<String, Object> profileReferences = jdbcTemplate.queryForMap(
+                "SELECT profile_binding_id, site_binding_revision_id FROM analyzer WHERE id = ?",
+                Integer.valueOf(String.valueOf(created.get("id"))));
+        assertNull("Configured analyzer must not write the legacy profile reference",
+                profileReferences.get("profile_binding_id"));
+        assertNotNull("Configured analyzer must pin a site-binding revision",
+                profileReferences.get("site_binding_revision_id"));
     }
 
     /**
@@ -145,8 +162,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+        MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
+                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andReturn(); // Don't assert status yet - we'll check it
 
         int status = createResult.getResponse().getStatus();
@@ -178,7 +195,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
@@ -215,7 +233,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
@@ -253,7 +272,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
@@ -380,8 +400,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(createBody))).andExpect(status().isCreated());
 
         // Act
         MvcResult listResult = mockMvc.perform(get("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON))
@@ -415,7 +435,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
@@ -447,9 +468,9 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
         // Should return 201 (gracefully ignoring unresolvable pluginTypeId)
         // instead of 500 NumberFormatException
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value(uniqueName));
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(requestBody))).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists()).andExpect(jsonPath("$.name").value(uniqueName));
     }
 
     /**
@@ -466,7 +487,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\",\"port\":1200}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
@@ -495,8 +517,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + "\"," + "\"port\":5380,\"protocolVersion\":\"HL7_V2_3_1\","
                 + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
 
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+        MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
+                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andReturn();
         assertEquals("HL7 analyzer creation should succeed", 201, createResult.getResponse().getStatus());
 
@@ -525,8 +547,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String createBody = "{\"name\":\"" + uniqueName
                 + "\",\"analyzerType\":\"HEMATOLOGY\",\"protocolVersion\":\"HL7_V2_3_1\",\"testUnitIds\":[]}";
 
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+        MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
+                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andReturn();
         assertEquals(201, createResult.getResponse().getStatus());
 
@@ -552,7 +574,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
 
         MvcResult result = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
@@ -574,7 +597,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\",\"testUnitIds\":[]}";
 
         MvcResult result = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();

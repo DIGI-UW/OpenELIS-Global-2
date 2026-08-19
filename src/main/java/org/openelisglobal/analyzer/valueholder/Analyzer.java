@@ -259,6 +259,13 @@ public class Analyzer extends BaseObject<String> {
         this.siteBindingRevision = siteBindingRevision;
     }
 
+    public AnalyzerProfileBinding getPinnedProfileBinding() {
+        if (siteBindingRevision == null || siteBindingRevision.getSiteBinding() == null) {
+            return null;
+        }
+        return siteBindingRevision.getSiteBinding().getProfileBinding();
+    }
+
     // --- Configuration field accessors (merged from analyzer_configuration) ---
 
     public String getIpAddress() {

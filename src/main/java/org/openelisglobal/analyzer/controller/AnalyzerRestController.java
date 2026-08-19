@@ -27,6 +27,7 @@ import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
@@ -213,8 +214,9 @@ public class AnalyzerRestController extends BaseRestController {
                 validationErrors.add("Invalid communication mode: " + form.getCommunicationMode() + ". Valid values: "
                         + validValues);
             }
-            if ((form.getProfileId() == null) != (form.getProfileRevision() == null)) {
-                validationErrors.add("Profile ID and profile revision must be provided together");
+            if (form.getProfileId() == null || form.getProfileId().trim().isEmpty()
+                    || form.getProfileRevision() == null) {
+                validationErrors.add("Profile ID and profile revision are required");
             }
             if (!validationErrors.isEmpty()) {
                 Map<String, Object> error = AnalyzerControllerHelper.wrapError(String.join("; ", validationErrors));
@@ -284,10 +286,8 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setSkipRows(form.getSkipRows());
             }
 
-            if (form.getProfileId() != null) {
-                analyzerProfileBindingService.assignProfile(analyzer, form.getProfileId(), form.getProfileRevision(),
-                        getSysUserId(request));
-            }
+            analyzerProfileBindingService.assignProfile(analyzer, form.getProfileId(), form.getProfileRevision(),
+                    getSysUserId(request));
 
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
@@ -662,15 +662,16 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
 
-        if (analyzer.getProfileBinding() == null) {
+        AnalyzerProfileBinding pinnedProfile = analyzer.getPinnedProfileBinding();
+        if (pinnedProfile == null) {
             map.put("profileId", null);
             map.put("profileRevision", null);
             map.put("profileFingerprint", null);
             map.put("profileBindingStatus", "UNBOUND");
         } else {
-            map.put("profileId", analyzer.getProfileBinding().getProfileId());
-            map.put("profileRevision", analyzer.getProfileBinding().getProfileRevision());
-            map.put("profileFingerprint", analyzer.getProfileBinding().getProfileFingerprint());
+            map.put("profileId", pinnedProfile.getProfileId());
+            map.put("profileRevision", pinnedProfile.getProfileRevision());
+            map.put("profileFingerprint", pinnedProfile.getProfileFingerprint());
             map.put("profileBindingStatus", "PINNED");
         }
 

@@ -56,8 +56,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
         String body = "{\"name\":\"TEST-SEC-Loopback\",\"analyzerType\":\"Chemistry Analyzer\","
                 + "\"ipAddress\":\"127.0.0.1\",\"port\":5000,\"testUnitIds\":[]}";
 
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(body))).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Connection to this address is not permitted"));
     }
 
@@ -66,8 +66,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
         String body = "{\"name\":\"TEST-SEC-LinkLocal\",\"analyzerType\":\"Chemistry Analyzer\","
                 + "\"ipAddress\":\"169.254.169.254\",\"port\":80,\"testUnitIds\":[]}";
 
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(body))).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Connection to this address is not permitted"));
     }
 
@@ -76,8 +76,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
         String body = "{\"name\":\"TEST-SEC-Multicast\",\"analyzerType\":\"Chemistry Analyzer\","
                 + "\"ipAddress\":\"224.0.0.1\",\"port\":5000,\"testUnitIds\":[]}";
 
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(body))).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Connection to this address is not permitted"));
     }
 
@@ -86,8 +86,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
         String body = "{\"name\":\"TEST-SEC-AnyLocal\",\"analyzerType\":\"Chemistry Analyzer\","
                 + "\"ipAddress\":\"0.0.0.0\",\"port\":5000,\"testUnitIds\":[]}";
 
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(body))).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Connection to this address is not permitted"));
     }
 
@@ -99,8 +99,9 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
         String body = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\"," + "\"ipAddress\":\""
                 + AnalyzerTestCleanup.uniqueIp() + "\",\"port\":5000,\"testUnitIds\":[]}";
 
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists());
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(body))).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists());
     }
 
     // ── SSRF: Update analyzer with blocked IP ───────────────────────────
@@ -113,7 +114,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
                 + "\"ipAddress\":\"" + AnalyzerTestCleanup.uniqueIp() + "\",\"port\":5000,\"testUnitIds\":[]}";
 
         String createResponse = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
         String analyzerId = extractId(createResponse);

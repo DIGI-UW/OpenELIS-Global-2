@@ -61,8 +61,9 @@ public class AnalyzerProfileBindingDAOImplTest {
     }
 
     @Test
-    public void countAnalyzersByBindingIdUsesAnalyzerReference() {
-        String hql = "SELECT COUNT(a) FROM Analyzer a WHERE a.profileBinding.id = :bindingId";
+    public void countAnalyzersByBindingIdUsesAuthoritativeSiteBindingReference() {
+        String hql = "SELECT COUNT(a) FROM Analyzer a WHERE "
+                + "a.siteBindingRevision.siteBinding.profileBinding.id = :bindingId";
         when(session.createQuery(eq(hql), eq(Long.class))).thenReturn(countQuery);
         when(countQuery.setParameter("bindingId", "41")).thenReturn(countQuery);
         when(countQuery.uniqueResult()).thenReturn(2L);
