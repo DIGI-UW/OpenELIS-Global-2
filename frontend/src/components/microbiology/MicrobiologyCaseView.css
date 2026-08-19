@@ -170,6 +170,10 @@
   min-width: 0;
 }
 
+.microbiology-workbench__content :is(button, a, input, select, textarea) {
+  scroll-margin-block-end: 5rem;
+}
+
 .microbiology-workbench__section-focus:focus-visible {
   outline: 2px solid var(--cds-focus);
   outline-offset: 2px;
