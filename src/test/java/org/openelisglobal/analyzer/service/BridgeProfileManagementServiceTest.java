@@ -101,4 +101,15 @@ public class BridgeProfileManagementServiceTest {
         assertEquals(400, exception.getStatus());
         assertEquals("profile is already active", exception.getMessage());
     }
+
+    @Test
+    public void missingBridgeUrlProducesDeterministicServiceUnavailableFailure() {
+        service = new BridgeProfileManagementServiceImpl(bridgeHttpClient, " ");
+
+        BridgeProfileManagementException exception = assertThrows(BridgeProfileManagementException.class,
+                () -> service.history("site.mock"));
+
+        assertEquals(503, exception.getStatus());
+        assertEquals("Bridge URL is not configured", exception.getMessage());
+    }
 }
