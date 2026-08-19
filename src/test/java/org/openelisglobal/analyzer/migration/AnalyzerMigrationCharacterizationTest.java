@@ -46,7 +46,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 
-/** Executable inventory of OpenELIS state that E0 must migrate without loss. */
+/**
+ * Executable inventory of representative persisted OpenELIS state that E0 must
+ * migrate without loss.
+ *
+ * <p>
+ * This proves the migration dispositions against a real PostgreSQL schema and
+ * deterministic fixture. It does not perform the later M1-M4 production
+ * migration.
+ */
 public class AnalyzerMigrationCharacterizationTest extends BaseWebContextSensitiveTest {
 
     private static final String EXACT_ANALYZER_ID = "9701";
@@ -170,8 +178,10 @@ public class AnalyzerMigrationCharacterizationTest extends BaseWebContextSensiti
                 .readTree(BRIDGE_CONTRACT_ROOT.resolve("fixtures/portable-profile.json").toFile());
         assertEquals(canonicalProfileRules(selectedProfile),
                 canonicalLegacyRules(analyzerQcRuleService.getActiveRulesForAnalyzer(EXACT_ANALYZER_ID)));
-        assertTrue(profileValidationMessages(profileWithLegacyRules(selectedProfile,
-                analyzerQcRuleService.getActiveRulesForAnalyzer(DIVERGENT_ANALYZER_ID))).isEmpty());
+        List<AnalyzerQcRule> divergentRules = analyzerQcRuleService.getActiveRulesForAnalyzer(DIVERGENT_ANALYZER_ID);
+        assertFalse("the site-profile disposition requires actual semantic divergence",
+                canonicalProfileRules(selectedProfile).equals(canonicalLegacyRules(divergentRules)));
+        assertTrue(profileValidationMessages(profileWithLegacyRules(selectedProfile, divergentRules)).isEmpty());
         assertFalse(profileValidationMessages(profileWithLegacyRules(selectedProfile,
                 analyzerQcRuleService.getActiveRulesForAnalyzer(INVALID_ANALYZER_ID))).isEmpty());
     }

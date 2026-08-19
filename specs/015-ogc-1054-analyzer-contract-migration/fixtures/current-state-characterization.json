@@ -36,10 +36,11 @@
           "selectedProfileId": "site.mock-hematology",
           "selectedProfileRevision": 1,
           "persistedRuleIds": [
-            "rule-exact"
+            "rule-exact",
+            "rule-inactive"
           ],
           "disposition": "DISCARD_AFTER_EXACT_PROFILE_PIN",
-          "reason": "The complete active rule set is canonically identical to the explicitly selected profile revision.",
+          "reason": "The complete active rule set is canonically identical to the explicitly selected profile revision; the inactive rule is retained in the export and audit only.",
           "prerequisites": [
             "Validate exact canonical equivalence",
             "Pin and synchronize the selected profile revision",

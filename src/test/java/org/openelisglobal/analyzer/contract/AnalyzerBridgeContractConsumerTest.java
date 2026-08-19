@@ -20,7 +20,14 @@ import java.util.stream.StreamSupport;
 import org.hl7.fhir.r4.model.Bundle;
 import org.junit.Test;
 
-/** Consumer-side executable contract for Bridge-owned OGC-1054 v1 artifacts. */
+/**
+ * Consumer-side executable contract for Bridge-owned OGC-1054 v1 artifacts.
+ *
+ * <p>
+ * This validates schemas and compatibility fixtures. It does not claim that the
+ * current Bridge runtime emits them; BR-M1, BR-M2, and BR-M4 own that
+ * production conformance.
+ */
 public class AnalyzerBridgeContractConsumerTest {
 
     private static final Path CONTRACT_ROOT = Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer",
