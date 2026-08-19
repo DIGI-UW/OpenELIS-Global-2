@@ -69,6 +69,8 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAAlertRestController#acknowledgeAlert", EQAGuards.LAB_WIDE_ALERTS);
         // Cycle lifecycle
         WRITE_GUARDS.put("EQACycleRestController#transition", EQAGuards.MANAGE);
+        WRITE_GUARDS.put("EQAFollowupRestController#escalate", EQAGuards.MANAGE);
+        WRITE_GUARDS.put("EQAFollowupRestController#dismiss", EQAGuards.MANAGE);
         // Provider-round management
         WRITE_GUARDS.put("EQADistributionRestController#createDistribution", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQADistributionRestController#updateDistribution", EQAGuards.PROVIDER);

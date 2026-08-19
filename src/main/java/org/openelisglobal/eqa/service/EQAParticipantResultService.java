@@ -1,5 +1,6 @@
 package org.openelisglobal.eqa.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -33,6 +34,15 @@ public interface EQAParticipantResultService extends BaseObjectService<EQAPartic
      */
     EQAParticipantResult recordScore(Long resultId, EQAPerformanceStatus performance, Long eqaResultId,
             String sysUserId);
+
+    /**
+     * The same transition carrying the provider's Z-score, which the FR-V2.3-01
+     * tiers read to choose between a non-conformity and the Follow-Up Queue.
+     * In-house scoring has no Z by construction (FR-V2.4-07) and uses the overload
+     * above.
+     */
+    EQAParticipantResult recordScore(Long resultId, EQAPerformanceStatus performance, BigDecimal zScore,
+            Long eqaResultId, String sysUserId);
 
     /**
      * DRAFT/VALIDATED_PARTIAL → MISSED_DEADLINE (timer terminal). Writes the

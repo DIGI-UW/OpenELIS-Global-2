@@ -1,7 +1,5 @@
 package org.openelisglobal.eqa.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -14,7 +12,6 @@ import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -23,16 +20,13 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
-import org.openelisglobal.eqa.dao.EQAParticipantFollowupDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.dao.EQARoundDAO;
 import org.openelisglobal.eqa.dao.EQASchemeAnalystDAO;
-import org.openelisglobal.eqa.valueholder.EQAFollowupStatus;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPanelStatus;
-import org.openelisglobal.eqa.valueholder.EQAParticipantFollowup;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAPerformanceStatus;
 import org.openelisglobal.eqa.valueholder.EQARound;
@@ -41,8 +35,6 @@ import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
-import org.openelisglobal.organization.service.OrganizationService;
-import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
@@ -77,7 +69,6 @@ public class EQABlindingServiceImpl implements EQABlindingService {
     private static final String IN_HOUSE_PROVIDER = "In-house";
     /** sample.accession_number is VARCHAR(25); blind_code allows 50. */
     private static final int ACCESSION_NUMBER_MAX = 25;
-    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Autowired
     private EQAPanelService panelService;
@@ -91,8 +82,6 @@ public class EQABlindingServiceImpl implements EQABlindingService {
     private EQASchemeAnalystDAO schemeAnalystDAO;
     @Autowired
     private EQAParticipantResultService participantResultService;
-    @Autowired
-    private EQAParticipantFollowupDAO followupDAO;
     @Autowired
     private EQAParticipantResultDAO participantResultDAO;
     @Autowired
@@ -117,8 +106,6 @@ public class EQABlindingServiceImpl implements EQABlindingService {
     private TestService testService;
     @Autowired
     private TypeOfSampleService typeOfSampleService;
-    @Autowired
-    private OrganizationService organizationService;
     @Autowired
     private IStatusService statusService;
 
@@ -185,18 +172,13 @@ public class EQABlindingServiceImpl implements EQABlindingService {
             samplesById.put(sample.getId(), sample);
         }
 
-        List<Map<String, Object>> unacceptable = new ArrayList<>();
         for (EQAParticipantResult result : participantResultService.getAllMatching("cycle.id",
                 panel.getCycle().getId())) {
             EQAPanelSample target = samplesById.get(result.getPanelSampleId());
             if (target == null) {
                 continue; // belongs to another panel in this cycle, or to external PT
             }
-            resolveResult(result, target, sysUserId, unacceptable);
-        }
-
-        if (!unacceptable.isEmpty()) {
-            openInHouseFollowup(panel, unacceptable, sysUserId);
+            resolveResult(result, target, sysUserId);
         }
 
         panel.setStatus(EQAPanelStatus.SCORED);
@@ -422,8 +404,7 @@ public class EQABlindingServiceImpl implements EQABlindingService {
 
     // ---- unblind helpers ----
 
-    private void resolveResult(EQAParticipantResult result, EQAPanelSample target, String sysUserId,
-            List<Map<String, Object>> unacceptable) {
+    private void resolveResult(EQAParticipantResult result, EQAPanelSample target, String sysUserId) {
         if (result.getSubmissionStatus() == EQASubmissionStatus.SCORED
                 || result.getSubmissionStatus() == EQASubmissionStatus.MISSED_DEADLINE) {
             return; // already resolved — keeps re-runs from double-scoring
@@ -448,7 +429,7 @@ public class EQABlindingServiceImpl implements EQABlindingService {
         if (result.getSubmissionStatus() != EQASubmissionStatus.SUBMITTED) {
             promoteToSubmitted(result, sysUserId);
         }
-        score(result, target, sysUserId, unacceptable);
+        score(result, target, sysUserId);
     }
 
     /**
@@ -484,20 +465,15 @@ public class EQABlindingServiceImpl implements EQABlindingService {
         participantResultService.transitionStatus(result.getId(), EQASubmissionStatus.SUBMITTED, sysUserId);
     }
 
-    private void score(EQAParticipantResult result, EQAPanelSample target, String sysUserId,
-            List<Map<String, Object>> unacceptable) {
-        EQAPerformanceStatus verdict = verdictFor(target, result.getResultValue());
-
-        participantResultService.recordScore(result.getId(), verdict, null, sysUserId);
-        if (verdict == EQAPerformanceStatus.UNACCEPTABLE) {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("participantResultId", result.getId());
-            row.put("analyteId", result.getAnalyteId());
-            row.put("reported", result.getResultValue());
-            row.put("target", target.getTargetValue());
-            row.put("analystId", result.getAssignedAnalystId());
-            unacceptable.add(row);
-        }
+    /**
+     * In-house has no Z by construction (FR-V2.4-07), so the verdict is the whole
+     * score. Routing an unacceptable one to the Follow-Up Queue (FR-V2.4-08) is the
+     * tiered adapter's job, fired by recordScore — this method deliberately does
+     * not enqueue, or the failure would be registered twice.
+     */
+    private void score(EQAParticipantResult result, EQAPanelSample target, String sysUserId) {
+        participantResultService.recordScore(result.getId(), verdictFor(target, result.getResultValue()), null,
+                sysUserId);
     }
 
     /**
@@ -543,79 +519,4 @@ public class EQABlindingServiceImpl implements EQABlindingService {
         }
     }
 
-    /**
-     * One register row per cycle (schema: unique on cycle+org). The
-     * participant_org_id FK demands a real organization; for in-house the
-     * "participant" is the lab itself, materialized once from the configured site
-     * name.
-     */
-    private void openInHouseFollowup(EQAPanel panel, List<Map<String, Object>> unacceptable, String sysUserId) {
-        Organization selfOrg = selfOrganization(sysUserId);
-        Long orgId = Long.parseLong(selfOrg.getId());
-        for (EQAParticipantFollowup existing : followupDAO.getAllMatching("cycle.id", panel.getCycle().getId())) {
-            if (orgId.equals(existing.getParticipantOrgId())) {
-                // A cycle can hold several panels and the register is unique on
-                // cycle + org, so merge rather than return: dropping the second
-                // panel's failures would lose them silently.
-                existing.setParticipantResultSummaryJson(
-                        mergeSummary(existing.getParticipantResultSummaryJson(), unacceptable));
-                existing.setSysUserId(sysUserId);
-                followupDAO.update(existing);
-                return;
-            }
-        }
-        EQAParticipantFollowup followup = new EQAParticipantFollowup();
-        followup.setScheme(panel.getScheme());
-        followup.setCycle(panel.getCycle());
-        followup.setParticipantOrgId(orgId);
-        followup.setFollowupStatus(EQAFollowupStatus.NOTIFIED);
-        followup.setNotifiedAt(DateUtil.getNowAsTimestamp());
-        followup.setParticipantResultSummaryJson(mergeSummary(null, unacceptable));
-        followup.setSysUserId(sysUserId);
-        followupDAO.insert(followup);
-    }
-
-    private String mergeSummary(String existingJson, List<Map<String, Object>> unacceptable) {
-        List<Object> rows = new ArrayList<>();
-        if (!GenericValidator.isBlankOrNull(existingJson)) {
-            try {
-                JsonNode parsed = JSON.readTree(existingJson).get("unacceptable");
-                if (parsed != null && parsed.isArray()) {
-                    for (JsonNode node : parsed) {
-                        rows.add(JSON.convertValue(node, Map.class));
-                    }
-                }
-            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-                LogEvent.logError(e);
-            }
-        }
-        rows.addAll(unacceptable);
-        try {
-            return JSON.writeValueAsString(Map.of("source", "In-house", "unacceptable", rows));
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            LogEvent.logError(e);
-            return existingJson;
-        }
-    }
-
-    private Organization selfOrganization(String sysUserId) {
-        String siteName = ConfigurationProperties.getInstance()
-                .getPropertyValue(ConfigurationProperties.Property.SiteName);
-        if (GenericValidator.isBlankOrNull(siteName)) {
-            siteName = "This laboratory";
-        }
-        Organization lookup = new Organization();
-        lookup.setOrganizationName(siteName);
-        Organization existing = organizationService.getOrganizationByName(lookup, true);
-        if (existing != null) {
-            return existing;
-        }
-        Organization self = new Organization();
-        self.setOrganizationName(siteName);
-        self.setIsActive("Y");
-        self.setMlsSentinelLabFlag("N");
-        self.setSysUserId(sysUserId);
-        organizationService.insert(self);
-        return self;
-    }
 }
