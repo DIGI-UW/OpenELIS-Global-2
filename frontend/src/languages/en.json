@@ -8152,5 +8152,11 @@
   "eqa.review.auditFootnote": "Every value above was validated in the standard pipeline, which captured the validating user in the audit trail. Submitting records the acknowledgement only — no separate sign-off.",
   "eqa.sample.analyte": "Analyte",
   "eqa.sample.reportedValue": "Reported value",
-  "eqa.sample.validatedAt": "Validated"
+  "eqa.sample.validatedAt": "Validated",
+  "eqa.order.cycle": "EQA Cycle",
+  "eqa.order.receipt.title": "Panel Receipt",
+  "eqa.order.receipt.tempC": "Temperature on arrival (°C)",
+  "eqa.order.receipt.integrityOk": "Panel arrived intact",
+  "eqa.order.receipt.notes": "Integrity notes",
+  "eqa.order.receipt.recorded": "Panel receipt already recorded on {date}."
 }
