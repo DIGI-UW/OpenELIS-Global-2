@@ -2,7 +2,7 @@
 
 **Feature:** OGC-1054 analyzer management
 **Roadmap:** [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
-**Updated:** 2026-08-17
+**Updated:** 2026-08-19
 
 ## Source Contract
 
@@ -20,12 +20,14 @@ Technical-looking content in `openelis-work` is also non-normative.
 ## Problem
 
 Laboratories can connect generic ASTM, HL7, and FILE analyzers, but the current
-configuration experience still depends on developer-oriented profile files,
-incomplete mapping surfaces, copied analyzer configuration, and fragmented
-setup pages. A laboratory administrator cannot reliably establish what an
-analyzer code means, verify qualitative values and control-result recognition,
-activate an instrument from one coherent workflow, or safely resolve new
-traffic without developer intervention.
+Bridge-owned profile system is packaged and managed through developer-oriented
+files, and the experience still has incomplete mapping surfaces, copied
+configuration, and fragmented setup pages. The profile-driven GeneXpert and
+FluoroCycler flows prove the underlying model; this feature must make that model
+manageable without replacing it. A laboratory administrator cannot yet
+reliably establish what an analyzer code means, verify qualitative values and
+control-result recognition, activate an instrument from one coherent workflow,
+or safely resolve new traffic without developer intervention.
 
 ## Personas
 
@@ -145,6 +147,26 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
 
 ## Functional Rules
 
+### Analyzer Profiles
+
+- The established Bridge-owned analyzer profile model is the feature baseline.
+  A profile has exactly two jobs: define communication with one analyzer type,
+  and supply the defaults used to create a new OpenELIS instance of that type.
+- Communication includes the supported protocol/version, transport and
+  direction, analyzer identity, emitted test/result vocabulary, parsing or
+  extraction behavior, and control-result recognition required for that type.
+- Instance defaults include the applicable connection/file choices and
+  portable catalog-binding hints. Analyzer name, lab units, site address,
+  credentials, and watch directory remain site-entered instance values.
+- Profile lifecycle and revisioning extend this model. They do not create a
+  second profile shape, remove established defaults, or move analyzer runtime
+  behavior into OpenELIS.
+- Published revisions are immutable. A configured analyzer remains pinned until
+  a user explicitly reviews and adopts another revision.
+- Existing profile content is curated from instrument evidence. Rows are not
+  retained merely because they exist or share a LOINC; the accepted revision
+  contains only valid emitted concepts and proven aliases.
+
 ### Analyzer Types
 
 - An Analyzer Type is the lab-facing reusable configuration concept. The UI
@@ -176,8 +198,10 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
   Verify reviews and confirms the selected revision; Resolve/Edit actions open
   that same editor with a return URL. There is no analyzer-specific or duplicate
   mapping editor.
-- Every profile source row remains independently visible even when two rows
-  share normalized coding or one local Test.
+- Every accepted profile result definition remains independently visible when
+  it is a distinct emitted concept, even when two definitions share normalized
+  coding or one local Test. Proven alternate spellings are presented as aliases,
+  not duplicate rows.
 - Test search covers the complete active catalog by name, code, or LOINC.
 - A deterministic suggestion is allowed only when there is exactly one valid
   candidate. Ambiguous or absent candidates remain explicit.
@@ -215,8 +239,11 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
 - Instrument selection is searchable and selects an existing Analyzer Type.
   An unlisted instrument links to the separate Analyzer Types create/duplicate
   workflow and returns to analyzer setup with the new type selectable.
-- Results only is the safe default. Two-way is offered only when supported and
-  visibly degrades to Results only when a round-trip probe fails.
+- Setup begins with the selected profile revision's declared communication and
+  data-flow defaults. Only modes supported by that profile are offered. A
+  failed round-trip probe is shown visibly and may support an explicit user
+  choice to use a supported results-only mode; it never silently rewrites the
+  profile or instance configuration.
 - Connection testing reports success, failure, timeout, and missing
   configuration in plain language and shows the endpoint the lab must configure.
 - Binding/control-recognition verification and operational-QC state are distinct.

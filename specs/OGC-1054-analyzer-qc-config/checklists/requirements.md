@@ -24,6 +24,12 @@ It validates the specification, not implementation progress.
 ## Architecture
 
 - [x] Bridge exclusively owns profiles and analyzer-facing runtime.
+- [x] The established working profile system is the implementation baseline;
+      revision/catalog work evolves it rather than introducing a second model.
+- [x] A profile's two jobs are explicit: analyzer-type communication/runtime
+      behavior and defaults for a new OpenELIS analyzer instance.
+- [x] GeneXpert ASTM and FluoroCycler are blocking, unabridged compatibility
+      fixtures for profile-contract changes.
 - [x] Bridge profiles explicitly own control-result recognition with
       deterministic `RULES`/affirmed-`NONE` semantics, no undocumented-as-`NONE`
       shortcut, and no hidden fallback.
@@ -37,6 +43,8 @@ It validates the specification, not implementation progress.
 - [x] Analyzer mock proves real ASTM, HL7, and FILE transport through Bridge.
 - [x] No OpenELIS FILE poller, raw protocol parser, `QcRun`, dual writer,
       duplicate editor, or duplicate pending queue is permitted.
+- [x] Existing profile content is curated by evidence; current rows and equal
+      LOINCs create no preserve-every-row or `LEGACY_UNBOUND` requirement.
 
 ## Acceptance
 
@@ -47,6 +55,8 @@ It validates the specification, not implementation progress.
 - [x] The 17 UAT steps cover the complete MVP without API-driven user actions,
       including live reconciliation and draft-type learning.
 - [x] G0 binds human UAT and MP4 to one exact deployment and checklist.
+- [x] Schema/catalog existence cannot prove profile compatibility; the matrix
+      requires OE defaults, Bridge runtime, mock transport, and assembled parity.
 
 ## Iterations
 

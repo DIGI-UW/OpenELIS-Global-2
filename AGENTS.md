@@ -39,6 +39,22 @@ orchestration, local clinical catalog bindings, audit, operational QC,
 activation, held results, and review. Do not recreate Bridge runtime behavior in
 OpenELIS.
 
+The established working analyzer profile system is the implementation baseline,
+not a disposable legacy model. A profile has exactly two jobs: define
+communication/runtime behavior for one analyzer type, and supply defaults for
+creating a new instance of that type in OpenELIS. Moving catalog packaging to
+Bridge, making revisions immutable, and adding lifecycle/management UX must
+evolve those semantics additively. Do not introduce a second profile contract,
+replace profile-owned defaults with frontend/server constants, or accept a
+profile-contract change without unabridged GeneXpert ASTM and FluoroCycler
+compatibility tests across OE setup, Bridge runtime, and analyzer mock traffic.
+
+Existing profile content is curated from instrument evidence. A current row is
+retained, corrected, represented as a proven alias, split, or removed according
+to its semantics; current storage or equal LOINC values never create a
+preservation obligation. Do not introduce `LEGACY_UNBOUND`, a legacy profile-row
+domain, or a runtime compatibility path for superseded profile/config storage.
+
 Control-result recognition is Analyzer Type behavior owned by the pinned Bridge
 profile revision. Bridge must use only the profile's explicit recognition mode
 and rules; it must not use an OpenELIS-pushed classifier or a hard-coded

@@ -3,7 +3,7 @@
 **Control:** Governed by the single active marker in the
 [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 **Spec:** [spec.md](./spec.md)
-**Updated:** 2026-08-18
+**Updated:** 2026-08-19
 
 ## Planning Rules
 
@@ -50,12 +50,18 @@ and downloadable UAT report. It does not own application fixtures or behavior.
 ## Durable Engineering Decisions
 
 1. Bridge is the only portable profile authority and analyzer runtime.
-2. OpenELIS composes Bridge profile metadata with local catalog bindings and
-   operational state; it does not copy profiles into a second authority.
-3. Existing OpenELIS profile files and copied plugin JSON are migration inputs
-   only.
-4. Distinct source rows remain distinct even when normalized coding or the
-   selected local Test is shared.
+2. The established Bridge-owned profile system is the implementation baseline.
+   A profile defines communication/runtime for one analyzer type and the
+   defaults used to create an OpenELIS analyzer instance. The strict versioned
+   contract and lifecycle evolve those semantics; they do not replace them.
+3. OpenELIS composes the selected profile revision with site instance values,
+   local catalog bindings, verification, and operational state. It stores a pin
+   and never becomes a second profile authority.
+4. The existing profile corpus is curated profile by profile. A semantically
+   valid emitted result remains distinct; a proven alternate spelling becomes
+   an alias; incorrect, unsupported, or duplicate content is corrected or
+   removed. Current rows and equal LOINCs do not create preservation rules, and
+   no `LEGACY_UNBOUND` configuration concept exists.
 5. Qualitative mappings bind to active Result Options belonging to the mapped
    local Test.
 6. Every active Bridge profile revision declares explicit control-result
@@ -101,22 +107,26 @@ feature commits or preserve legacy writers as compatibility paths.
 ### E0 - Contracts And Migration
 
 Complete the Bridge-profile/OpenELIS-binding ADR and versioned producer/consumer
-contracts. Characterize legacy profiles, copied configuration, mappings, raw
-ingestion, existing analyzers, and every `AnalyzerQcRule` set. Define the
-`controlResultRecognition` contract, no-loss profile conversion or visible
-preflight failure, rollback, anomaly handling, and one-writer cutover before M1
-production migration. The ADR must define immutable revision retention,
-revision-scoped site bindings, activation-candidate fingerprints, and exact
-Bridge acknowledgment semantics without choosing persistence from product
-mock annotations.
+contracts as a strict additive evolution of the established profile system.
+Use GeneXpert ASTM and FluoroCycler as blocking compatibility fixtures for both
+profile jobs. Curate all 20 profiles from protocol/vendor/capture/mock evidence;
+define `controlResultRecognition`, revision retention, revision-scoped site
+bindings, activation-candidate fingerprints, exact Bridge acknowledgment, and
+the one-way removal of copied configuration, `defaultConfigId`, OE profile
+serving/application, `AnalyzerQcRule`, and hidden Bridge fallbacks. Do not add a
+runtime legacy adapter, mechanical row preservation, or product-mock-derived
+persistence.
 
 ### M1 - Profile Lifecycle And Analyzer Types
 
 Implement Bridge profile lifecycle and the composed OpenELIS Analyzer Types
-experience. Migrate existing analyzers without heuristic profile inference or
-silent row collapse. Complete URL-backed search/filter state, breadcrumbs,
-lifecycle, usage, completeness, audit, and lab-safe Create/Duplicate Profile
-behavior with existing analyzers pinned to their selected revision.
+experience around the accepted established contract. Ship the curated catalog
+from Bridge, fetch complete profile defaults in OE setup, and persist explicit
+revision pins plus site values without copied profile authority. Complete
+URL-backed search/filter state, breadcrumbs, lifecycle, usage, completeness,
+audit, and lab-safe Create/Duplicate/Update/Publish behavior. GeneXpert and
+Fluoro form defaults, Bridge registration/runtime, and mock traffic must retain
+assembled parity before the OE-hosted path is removed.
 
 ### M2 - Safe Mapping
 
@@ -173,16 +183,16 @@ For each acceptance slice:
 5. Add broader coverage only where the behavior crosses a real boundary.
 6. Run the active iteration's complete exit gate before review.
 
-| Layer                      | Owns                                                                                     |
-| -------------------------- | ---------------------------------------------------------------------------------------- |
-| Bridge unit/service        | Profile lifecycle, `RULES`/`NONE`, rule OR semantics, no fallback, protocol runtime, probes, registration |
+| Layer                      | Owns                                                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Bridge unit/service        | Profile lifecycle, `RULES`/`NONE`, rule OR semantics, no fallback, protocol runtime, probes, registration   |
 | OpenELIS unit/service/DAO  | Catalog constraints, bindings, audit, migration, exact activation, independent operational QC, hold/resolve |
-| Producer/consumer contract | Pinned profile, registration without operational QC, normalized patient/control FHIR, raw context, FILE |
-| Analyzer mock              | Deterministic patient, recognized-control, nonmatch, `NONE`, unknown, failure, and two-way fixtures |
-| Harness integration        | Assembled OE/Bridge/mock behavior through real transport and persistence                 |
-| RTL with real router       | Carbon interactions, validation, breadcrumbs, URL/query state, reload/history            |
-| Playwright                 | Complete visible user story only; no API-driven acceptance                               |
-| Grist UAT                  | Human functional and visual acceptance of one exact remote build                         |
+| Producer/consumer contract | Pinned profile, registration without operational QC, normalized patient/control FHIR, raw context, FILE     |
+| Analyzer mock              | Deterministic patient, recognized-control, nonmatch, `NONE`, unknown, failure, and two-way fixtures         |
+| Harness integration        | Assembled OE/Bridge/mock behavior through real transport and persistence                                    |
+| RTL with real router       | Carbon interactions, validation, breadcrumbs, URL/query state, reload/history                               |
+| Playwright                 | Complete visible user story only; no API-driven acceptance                                                  |
+| Grist UAT                  | Human functional and visual acceptance of one exact remote build                                            |
 
 ## PR And Merge Rules
 

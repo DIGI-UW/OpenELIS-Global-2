@@ -27,11 +27,14 @@ state bookkeeping.
 7. Record the resolved QC boundary: Bridge profile control recognition,
    independent OpenELIS operational QC, exact non-QC activation predicates, and
    one-way `AnalyzerQcRule`/fallback removal.
-8. Run the requirements checklist, cross-artifact consistency analysis,
-   formatting, and link checks; mark R0 `[x]` and F0 `[*]` when R0 is
-   review-ready.
-9. Keep R0 current and address review. After R0 merges, rebase F0 on current
-   `develop`, record R0 as `[✓]`, and rerun F0 gates before F0 review.
+8. Add the grounded profile-system remediation report and freeze the
+   established two-job Bridge profile model, profile curation rules, and
+   GeneXpert/Fluoro compatibility gates across every canonical artifact.
+9. Run the requirements checklist, cross-artifact consistency analysis,
+   formatting, and link checks; advance markers one checkpoint at a time under
+   the roadmap rule while preserving exactly one `[*]` active checkpoint.
+10. Keep R0 current and address review. After R0 merges, rebase F0 on current
+    `develop`, record R0 as `[✓]`, and rerun F0 gates before F0 review.
 
 ## F0 - Foundation Salvage
 
@@ -42,24 +45,32 @@ state bookkeeping.
    lab-facing workflow.
 4. Guard Playwright against API-driven acceptance and remove stale evidence
    claims.
-5. Run the F0 exit gate and submit the PR for review.
+5. Add established GeneXpert ASTM and FluoroCycler fixtures that fail when a
+   contract loses profile-owned communication or OE instance defaults.
+6. Add guards against a second profile model, selected-profile frontend
+   defaults, `AnalyzerQcRule`, and an OE FILE poller.
+7. Run the F0 exit gate and submit the PR for review.
 
 ## E0 - Contracts And Migration
 
-1. Complete the ownership/persistence ADR from current OE/Bridge code.
-2. Write failing producer/consumer fixtures for pinned profiles,
-   `controlResultRecognition` `RULES`/`NONE`, registration without operational
-   QC, patient/control/nonmatch, unknown, and FILE messages.
-3. Characterize all legacy readers/writers and existing data shapes, including
-   every persisted `AnalyzerQcRule` set and Bridge hard-coded classifier.
-4. Define no-loss conversion to an equivalent or new site profile, visible
-   preflight failure for invalid/untransformable rules, rollback, anomaly
-   handling, and one-writer cutover without fallback or dual runtime.
-5. Define immutable profile-revision retention, revision-scoped site bindings,
-   activation-candidate fingerprints, and exact Bridge acknowledgment matching;
-   prove OpenELIS stores a revision pin rather than an authoritative profile
-   snapshot.
-6. Run the paired Bridge/OE exit gate and submit the checkpoint PRs for review.
+1. Complete the ownership/persistence ADR from the working OE/Bridge/mock flow,
+   explicitly preserving the established profile's communication and instance-
+   default jobs.
+2. Write failing producer/consumer fixtures for complete GeneXpert ASTM and
+   FluoroCycler profiles, pinned revisions, `controlResultRecognition`
+   `RULES`/`NONE`, registration without operational QC, known/unknown traffic,
+   and FILE messages.
+3. Replace the thin profile schema with a strict additive evolution of the
+   established contract and semantic validation.
+4. Produce evidence-based retain/correct/alias/split/remove dispositions for all
+   20 profiles; do not mechanically preserve rows or create `LEGACY_UNBOUND`.
+5. Define immutable revision retention, revision-scoped site bindings,
+   activation fingerprints, exact Bridge acknowledgment, and a clean OE
+   consumer that stores a pin rather than a profile snapshot.
+6. Define and test one-way removal of `defaultConfigId`, copied plugin/profile
+   state, OE profile serving/application, `AnalyzerQcRule`, and hidden Bridge
+   fallbacks after parity. Add no runtime migration adapter or dual writer.
+7. Run the paired Bridge/OE exit gate and submit the corrected checkpoint PRs.
 
 ## M1 - Analyzer Types
 
@@ -67,17 +78,24 @@ state bookkeeping.
 `MVP-011` and `MVP-022`.
 
 1. Complete Bridge profile lifecycle tests before lifecycle implementation.
-2. Complete OE composition, persistence, and migration tests before production
+2. Complete OE composition, persistence, defaults, and removal tests before production
    changes.
-3. Prove distinct source rows never collapse during migration.
-4. Implement lab-safe Create/Duplicate Profile, lineage, pinned revisions,
+3. Rewire the catalog to the corrected E0 contract and ship the curated 20
+   profiles from Bridge.
+4. Prove GeneXpert/Fluoro profile defaults, registration/runtime, and mock
+   traffic retain parity; accepted distinct results remain distinct and proven
+   aliases are not duplicated.
+5. Implement lab-safe Create/Duplicate/Update/Publish, lineage, pinned revisions,
    lifecycle, completeness, usage, and attention state, including the explainer
    and aggregate counts.
-5. Implement URL-backed list/detail state and breadcrumbs using reusable Carbon
+6. Fetch and apply the selected revision's actual defaults in OE; frontend
+   protocol/communication constants cannot act as profile defaults.
+7. Implement URL-backed list/detail state and breadcrumbs using reusable Carbon
    components.
-6. Remove or disable authoritative OpenELIS filesystem/copy writers.
-7. Run focused, broad, runtime, RTL real-router, and visible browser gates.
-8. Run the paired Bridge/OE exit gate and submit the checkpoint PRs for review.
+8. Remove the authoritative OE filesystem/copy/application path after assembled
+   parity.
+9. Run focused, broad, runtime, RTL real-router, and visible browser gates.
+10. Run the paired Bridge/OE exit gate and submit the checkpoint PRs for review.
 
 ## M2 - Mapping
 
@@ -98,8 +116,7 @@ state bookkeeping.
    queues.
 6. Remove the `AnalyzerQcRule` production editor/routes/controller/service/DAO
    callers, profile seeding, registration fields, readiness checks,
-   translations, and writes; retain only an unreachable migration reader until
-   M4 schema deletion.
+   translations, writes, entity, tests for superseded behavior, and schema.
 7. Prove an explicit exclusion does not block independent rows or pretend to be
    a mapped result.
 8. Run the ASTM, HL7, and FILE exit gate and submit the checkpoint PRs for
@@ -140,9 +157,9 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
 4. Write failing integration and UI tests for live Verify reconciliation and
    draft-type population from held traffic.
 5. Implement live capture plus the visible Alerts/Needs attention flow.
-6. Remove every legacy raw reader, copied-profile writer, dual writer, duplicate
-   editor/queue, Bridge classifier fallback, final `AnalyzerQcRule` migration
-   adapter/class/schema, and alternate acceptance path.
+6. Remove every remaining raw reader, copied-profile writer, dual writer,
+   duplicate editor/queue, Bridge classifier fallback, and alternate acceptance
+   path. `AnalyzerQcRule` must already be absent from M2.
 7. Write and audit the complete UI-only Playwright story.
 8. Run the M4 exit gate and submit the checkpoint PRs for review.
 

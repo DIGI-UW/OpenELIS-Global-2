@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec/011-madagascar-analyzer-integration`  
 **Created**: 2026-01-22  
-**Updated**: 2026-08-13 (Bridge ownership alignment)
+**Updated**: 2026-08-19 (established profile-system alignment)
 **Status**: **In Progress** — protocol-specific foundations exist across
 HL7/ASTM/FILE; the full OGC-1054 analyzer MVP, site validation, and rollout
 remain open.
@@ -29,10 +29,12 @@ target architecture is the Bridge-owned analyzer runtime defined in
 Bridge owns portable analyzer profiles, listeners, parsing, protocol execution,
 connection probes, FILE watching/transport, and normalized FHIR delivery.
 OpenELIS owns lab-facing orchestration, local clinical catalog bindings, audit,
-operational QC, activation, held results, and review. Existing OpenELIS generic
-plugins and distro-mounted profile files are transitional code to characterize
-and migrate; do not extend them into a second analyzer runtime or profile
-authority.
+operational QC, activation, held results, and review. The established profile
+system and generic Bridge runtimes are the implementation baseline: a profile
+defines communication for one analyzer type and defaults for creating its
+OpenELIS instance. The current OE/distro packaging and copied-configuration
+application are transitional; the profile semantics are not. Evolve and move
+that system without creating a second contract or OpenELIS profile authority.
 
 ### How an analyzer gets integrated
 
@@ -40,7 +42,7 @@ Adding a new analyzer on an already-supported protocol is profile work in the
 Bridge-owned catalog, not a new OpenELIS code path per instrument. The three
 supported integration patterns are:
 
-| Pattern      | Runtime transport                      | Transitional profile mirror        | Target add-analyzer workflow                                                                                      |
+| Pattern      | Runtime transport                      | Current profile package            | Target add-analyzer workflow                                                                                      |
 | ------------ | -------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | **A2** (HL7) | Bridge MLLP listener (OGC-325)         | `projects/analyzer-profiles/hl7/`  | Add/version a Bridge profile; configure the instance through OpenELIS                                             |
 | **A** (ASTM) | Bridge ASTM listener                   | `projects/analyzer-profiles/astm/` | Add/version a Bridge profile; configure the instance through OpenELIS                                             |
@@ -60,10 +62,11 @@ enumerate per-instrument status. That lives here:
   spec/companion confidence rating (`VALIDATED` / `HIGH` / `MEDIUM-HIGH` /
   `MEDIUM` / `LOW` / `N/A`), vendor docs, real-file availability, deployment
   status.
-- **Transitional profile JSON mirror:**
+- **Established profile JSON baseline:**
   [`projects/analyzer-profiles/{astm,hl7,file}/*.json`](../../projects/analyzer-profiles/)
-  and the current distro mount. These describe the deployed baseline to migrate;
-  they are not the target authority for new work.
+  and the current distro mount. Their Bridge-owned communication/default
+  semantics are the baseline; M1 relocates catalog authority and adds strict
+  revisions/lifecycle without replacing those jobs.
 - **Protocol fixtures, captures, and mock flows:**
   `projects/analyzer-mock-server/` + `tools/openelis-analyzer-bridge` — those
   projects own the instrument-technical details (ASTM/HL7 captures, file
