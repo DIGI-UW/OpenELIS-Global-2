@@ -173,6 +173,22 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
     }
 
     @Test
+    public void aCycleWithNoPlannedDatesPrintsOneDashNotThree() throws IOException {
+        // Re-read: the fixture updated this row in an earlier transaction, so the
+        // field's copy carries a stale version.
+        EQACycle fresh = readBack(cycle.getId());
+        fresh.setPlannedStartDate(null);
+        fresh.setPlannedEndDate(null);
+        fresh.setSysUserId(USER);
+        eqaCycleDAO.update(fresh);
+
+        String text = reportText(null);
+
+        assertFalse("three dashes in a row read as a rendering fault", text.contains("— — —"));
+        assertTrue("the period label still prints with a single placeholder", rowIn(text, "Planned period", "—"));
+    }
+
+    @Test
     public void anUnknownCycleIsRejected() {
         try {
             reportService.generatePerformanceReport(987654L, null);

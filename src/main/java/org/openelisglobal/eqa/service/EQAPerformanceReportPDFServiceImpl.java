@@ -256,6 +256,11 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
     }
 
     private String period(EQACycle cycle) {
+        // A cycle with neither date renders one dash, not "— — —": three dashes in
+        // a row read as a rendering fault on a document someone signs.
+        if (cycle.getPlannedStartDate() == null && cycle.getPlannedEndDate() == null) {
+            return "—";
+        }
         String start = cycle.getPlannedStartDate() == null ? "—" : cycle.getPlannedStartDate().toString();
         String end = cycle.getPlannedEndDate() == null ? "—" : cycle.getPlannedEndDate().toString();
         return start + " — " + end;
