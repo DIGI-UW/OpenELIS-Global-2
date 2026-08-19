@@ -1,9 +1,11 @@
 import React from "react";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
+import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import AnalyzerTypeManagement from "./AnalyzerTypeManagement";
