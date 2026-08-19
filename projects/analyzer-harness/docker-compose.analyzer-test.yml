@@ -129,6 +129,8 @@ services:
   oe.openelis.org:
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
+      - ANALYZER_BRIDGE_USERNAME=admin
+      - ANALYZER_BRIDGE_PASSWORD=adminADMIN!
     networks:
       default:
       analyzer-net:
