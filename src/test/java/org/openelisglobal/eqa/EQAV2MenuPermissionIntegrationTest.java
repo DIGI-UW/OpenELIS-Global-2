@@ -18,8 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveTest {
 
-    private static final String[][] MENUS = {
-            { "menu_eqa_my_cycles", "/eqa/participant/cycles", "banner.menu.eqa.myCycles" },
+    private static final String[][] MENUS = { { "menu_eqa_my_cycles", "/qa/eqa/my-cycles", "banner.menu.eqa.myCycles" },
             { "menu_eqa_lab_performance", "/eqa/oversight/lab-performance/coverage", "banner.menu.eqa.labPerformance" },
             { "menu_eqa_follow_up_queue", "/eqa/oversight/follow-up-queue", "banner.menu.eqa.followUpQueue" },
             { "menu_eqa_analyst_competency", "/eqa/oversight/analyst-track", "banner.menu.eqa.analystCompetency" },

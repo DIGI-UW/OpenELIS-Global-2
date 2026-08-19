@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-610 — point the My Cycles menu row at the route the SPA actually serves.
+
+    qa/019 seeded the V2 menu rows at the paths the FRS uses, before any of those
+    pages existed. My Cycles shipped at /qa/eqa/my-cycles, matching every other EQA
+    route in App.jsx, so the menu entry has been a dead click since the page landed.
+
+    The remaining V2 rows (lab performance, follow-up queue, analyst competency,
+    provider schemes) still point at FRS paths and stay that way here: their pages
+    are not built yet, and each one should set its own route as it ships.
+    -->
+
+    <changeSet author="openelisglobal" id="qa-054-fix-menu-eqa-my-cycles-url">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_eqa_my_cycles' AND action_url = '/eqa/participant/cycles'
+            </sqlCheck>
+        </preConditions>
+        <comment>My Cycles menu row: /eqa/participant/cycles -> /qa/eqa/my-cycles</comment>
+
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/qa/eqa/my-cycles" />
+            <where>element_id = 'menu_eqa_my_cycles'</where>
+        </update>
+
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="action_url" value="/eqa/participant/cycles" />
+                <where>element_id = 'menu_eqa_my_cycles'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
