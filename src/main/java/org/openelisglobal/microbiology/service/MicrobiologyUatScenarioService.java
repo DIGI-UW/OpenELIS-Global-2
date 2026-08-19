@@ -12,6 +12,8 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
@@ -100,6 +102,8 @@ public class MicrobiologyUatScenarioService {
     private static final String WHONET_EXPORT_SCENARIO = "M4";
     private static final String CLASSIFICATION_SCENARIO = "R1";
     private static final String REVIEWED_AST_SCENARIO = "AST_REVIEWED";
+    private static final String ANALYZER_REVIEW_SCENARIO = "AST_ANALYZER_REVIEW";
+    private static final String UAT_AST_ANALYZER_NAME = "UAT microbiology AST analyzer";
     private static final String UAT_METHOD_NAME = "UAT micro culture";
     private static final String UAT_METHOD_DESCRIPTION = "UAT microbiology culture method";
     private static final String UAT_ALTERNATE_METHOD_NAME = "UAT alt culture";
@@ -148,6 +152,7 @@ public class MicrobiologyUatScenarioService {
     private final NceTypeService nceTypeService;
     private final MicroIsolateService isolateService;
     private final MicroAstService astService;
+    private final AnalyzerService analyzerService;
 
     public MicrobiologyUatScenarioService(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, PatientService patientService, PersonService personService,
@@ -162,7 +167,7 @@ public class MicrobiologyUatScenarioService {
             TestReagentLinkService testReagentLinkService, MicrobiologyReferenceAdminService referenceAdminService,
             MicroBreakpointAdminService breakpointAdminService, MicroBreakpointImportService breakpointImportService,
             NceCategoryService nceCategoryService, NceTypeService nceTypeService, MicroIsolateService isolateService,
-            MicroAstService astService) {
+            MicroAstService astService, AnalyzerService analyzerService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -194,6 +199,7 @@ public class MicrobiologyUatScenarioService {
         this.nceTypeService = nceTypeService;
         this.isolateService = isolateService;
         this.astService = astService;
+        this.analyzerService = analyzerService;
     }
 
     @Transactional
@@ -263,9 +269,12 @@ public class MicrobiologyUatScenarioService {
             sibling = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.MYCOBACTERIOLOGY_TB,
                     method.getId(), performedBy);
         }
-        AstScenarioData astScenarioData = REVIEWED_AST_SCENARIO.equals(scenario)
-                ? ensureReviewedAstScenario(microCase, astReferenceData, performedBy)
-                : null;
+        AstScenarioData astScenarioData = null;
+        if (REVIEWED_AST_SCENARIO.equals(scenario)) {
+            astScenarioData = ensureReviewedAstScenario(microCase, astReferenceData, performedBy);
+        } else if (ANALYZER_REVIEW_SCENARIO.equals(scenario)) {
+            astScenarioData = ensureAnalyzerReviewScenario(microCase, astReferenceData, suffix, performedBy);
+        }
 
         MicrobiologyUatScenarioForm form = new MicrobiologyUatScenarioForm();
         form.scenario = scenario;
@@ -279,6 +288,8 @@ public class MicrobiologyUatScenarioService {
         form.siblingCaseId = sibling == null ? null : sibling.getId();
         form.isolateId = astScenarioData == null ? null : astScenarioData.isolateId();
         form.astRunId = astScenarioData == null ? null : astScenarioData.runId();
+        form.analyzerInstrumentId = astScenarioData == null ? null : astScenarioData.analyzerInstrumentId();
+        form.analyzerCardId = astScenarioData == null ? null : astScenarioData.analyzerCardId();
         form.analysisId = analysis.getId();
         form.reportableTestAnalyteId = reportableTestAnalyte.getId();
         form.methodId = method.getId();
@@ -302,19 +313,7 @@ public class MicrobiologyUatScenarioService {
 
     private AstScenarioData ensureReviewedAstScenario(MicroCase microCase, AstReferenceData referenceData,
             String performedBy) {
-        MicroIsolate isolate = isolateService.getIsolatesForCase(microCase.getId()).stream()
-                .filter(candidate -> "ISO-1".equals(candidate.getIsolateLabel())).findFirst().orElse(null);
-        if (isolate == null) {
-            isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
-                    "Synthetic lactose-fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
-                    performedBy);
-        }
-        if (!referenceData.organism().getId().equals(isolate.getOrganismId())
-                || !MicroIsolateIdentificationStatus.CONFIRMED.name().equals(isolate.getIdentificationStatus())) {
-            isolate = isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),
-                    "Escherichia coli", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
-                    MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new BigDecimal("99.5"), performedBy);
-        }
+        MicroIsolate isolate = ensureConfirmedAstIsolate(microCase, referenceData, performedBy);
 
         List<MicroAstRun> runs = astService.getRunsForIsolate(isolate.getId());
         MicroAstRun run = runs.stream()
@@ -338,7 +337,62 @@ public class MicrobiologyUatScenarioService {
             }
             run = astService.reviewRun(run.getId(), performedBy);
         }
-        return new AstScenarioData(isolate.getId(), run.getId());
+        return new AstScenarioData(isolate.getId(), run.getId(), null, null);
+    }
+
+    private AstScenarioData ensureAnalyzerReviewScenario(MicroCase microCase, AstReferenceData referenceData,
+            String suffix, String performedBy) {
+        MicroIsolate isolate = ensureConfirmedAstIsolate(microCase, referenceData, performedBy);
+        Analyzer analyzer = getOrCreateUatAstAnalyzer(performedBy);
+        String cardId = "UAT-AST-CARD-" + suffix;
+        MicroAstRun run = astService.getRunsForIsolate(isolate.getId()).stream()
+                .filter(candidate -> analyzer.getId().equals(candidate.getAnalyzerInstrumentId())
+                        && cardId.equals(candidate.getAnalyzerCardId()))
+                .findFirst().orElse(null);
+        if (run == null) {
+            MicroAstRunSetupCommand command = new MicroAstRunSetupCommand(isolate.getId(),
+                    referenceData.panel().getId(), referenceData.standard().getId(),
+                    "Deterministic analyzer fixture uses one panel drug", MicroAstTechnique.VITEK_2, List.of(),
+                    List.of(referenceData.antibiotic().getId()), true, analyzer.getId(), cardId);
+            run = astService.startRun(command, performedBy);
+        }
+        return new AstScenarioData(isolate.getId(), run.getId(), analyzer.getId(), cardId);
+    }
+
+    private MicroIsolate ensureConfirmedAstIsolate(MicroCase microCase, AstReferenceData referenceData,
+            String performedBy) {
+        MicroIsolate isolate = isolateService.getIsolatesForCase(microCase.getId()).stream()
+                .filter(candidate -> "ISO-1".equals(candidate.getIsolateLabel())).findFirst().orElse(null);
+        if (isolate == null) {
+            isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                    "Synthetic lactose-fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                    performedBy);
+        }
+        if (!referenceData.organism().getId().equals(isolate.getOrganismId())
+                || !MicroIsolateIdentificationStatus.CONFIRMED.name().equals(isolate.getIdentificationStatus())) {
+            isolate = isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),
+                    "Escherichia coli", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                    MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new BigDecimal("99.5"), performedBy);
+        }
+        return isolate;
+    }
+
+    private Analyzer getOrCreateUatAstAnalyzer(String performedBy) {
+        Analyzer analyzer = analyzerService.getByName(UAT_AST_ANALYZER_NAME).orElse(null);
+        if (analyzer != null) {
+            return analyzer;
+        }
+        analyzer = new Analyzer();
+        analyzer.setName(UAT_AST_ANALYZER_NAME);
+        analyzer.setDescription("Property-gated microbiology analyzer review fixture");
+        analyzer.setMachineId("UAT-MICRO-AST");
+        analyzer.setType("AST");
+        analyzer.setLocation("Microbiology UAT bench");
+        analyzer.setActive(true);
+        analyzer.setFhirUuid(UUID.randomUUID());
+        analyzer.setSysUserId(performedBy);
+        analyzer.setId(analyzerService.insert(analyzer));
+        return analyzer;
     }
 
     private boolean isReferenceScenario(String scenario) {
@@ -957,8 +1011,10 @@ public class MicrobiologyUatScenarioService {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
         if (!"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
                 && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)
-                && !CLASSIFICATION_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)) {
-            throw new IllegalArgumentException("scenario must be CASE, MVP, WORKLIST, M3, M4, R1, or AST_REVIEWED");
+                && !CLASSIFICATION_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
+                && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
+            throw new IllegalArgumentException(
+                    "scenario must be CASE, MVP, WORKLIST, M3, M4, R1, AST_REVIEWED, or AST_ANALYZER_REVIEW");
         }
         return normalized;
     }
@@ -983,6 +1039,6 @@ public class MicrobiologyUatScenarioService {
             String activeStandardId, String loadedStandardId) {
     }
 
-    private record AstScenarioData(String isolateId, String runId) {
+    private record AstScenarioData(String isolateId, String runId, String analyzerInstrumentId, String analyzerCardId) {
     }
 }

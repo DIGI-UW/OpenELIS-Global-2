@@ -27,6 +27,8 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -191,6 +193,9 @@ public class MicrobiologyUatScenarioServiceTest {
     private MicroAstService astService;
 
     @Mock
+    private AnalyzerService analyzerService;
+
+    @Mock
     private AutowireCapableBeanFactory beanFactory;
 
     @Mock
@@ -230,7 +235,7 @@ public class MicrobiologyUatScenarioServiceTest {
                 testResultService, testMethodService, statusService, configurationService, caseService,
                 orderRoutingService, inventoryItemService, inventoryLotService, inventoryManagementService,
                 testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
-                nceCategoryService, nceTypeService, isolateService, astService);
+                nceCategoryService, nceTypeService, isolateService, astService, analyzerService);
     }
 
     @After
@@ -576,6 +581,61 @@ public class MicrobiologyUatScenarioServiceTest {
         verify(astService).recordReading(run.getId(), "antibiotic-cip",
                 org.openelisglobal.microbiology.valueholder.MicroAstMethod.MIC, new BigDecimal("4"), "1");
         verify(astService).reviewRun(run.getId(), "1");
+    }
+
+    @Test
+    public void provisionsAnalyzerAwaitingAstScenarioThroughServices() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("isolate-1");
+        isolate.setCaseId(microCase.getId());
+        isolate.setIsolateLabel("ISO-1");
+        when(isolateService.getIsolatesForCase(microCase.getId())).thenReturn(List.of());
+        when(isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Synthetic lactose-fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1"))
+                .thenReturn(isolate);
+        when(isolateService.updateIdentification(isolate.getId(), "organism-1", "Escherichia coli",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                "MALDI_TOF", new BigDecimal("99.5"), "1")).thenAnswer(invocation -> {
+                    isolate.setOrganismId("organism-1");
+                    isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.CONFIRMED.name());
+                    return isolate;
+                });
+
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId(isolate.getId());
+        run.setStatus(MicroAstRunStatus.AWAITING_RESULTS.name());
+        when(astService.getRunsForIsolate(isolate.getId())).thenReturn(List.of());
+        when(astService.startRun(any(MicroAstRunSetupCommand.class), org.mockito.ArgumentMatchers.eq("1")))
+                .thenReturn(run);
+        when(analyzerService.getByName("UAT microbiology AST analyzer")).thenReturn(java.util.Optional.empty());
+        when(analyzerService.insert(any(Analyzer.class))).thenReturn("analyzer-1");
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "AST_ANALYZER_REVIEW";
+        request.scenarioKey = "playwright-analyzer-ast";
+
+        MicrobiologyUatScenarioForm result = service.provision(request, "1");
+
+        assertEquals("isolate-1", result.isolateId);
+        assertEquals("run-1", result.astRunId);
+        assertEquals("analyzer-1", result.analyzerInstrumentId);
+        assertTrue(result.analyzerCardId.startsWith("UAT-AST-CARD-"));
+        ArgumentCaptor<MicroAstRunSetupCommand> command = ArgumentCaptor.forClass(MicroAstRunSetupCommand.class);
+        verify(astService).startRun(command.capture(), org.mockito.ArgumentMatchers.eq("1"));
+        assertTrue(command.getValue().awaitAnalyzerResults());
+        assertEquals("analyzer-1", command.getValue().analyzerInstrumentId());
+        assertTrue(command.getValue().analyzerCardId().startsWith("UAT-AST-CARD-"));
+        assertEquals(List.of("antibiotic-cip"), command.getValue().orderedAntibioticIds());
     }
 
     @Test

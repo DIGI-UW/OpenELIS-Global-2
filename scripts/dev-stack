@@ -419,21 +419,6 @@ def reload_proxy(context: StackContext, environment: dict[str, str]) -> None:
         )
 
 
-def remount_application_artifact(context: StackContext, environment: dict[str, str]) -> None:
-    run(
-        compose_command(
-            context,
-            "up",
-            "-d",
-            "--no-deps",
-            "--force-recreate",
-            "oe.openelis.org",
-        ),
-        cwd=context.project_dir,
-        environment=environment,
-    )
-
-
 def print_endpoints(context: StackContext, environment: dict[str, str], shell_exports: bool = False) -> None:
     endpoints = endpoint_environment(context, environment)
     for name, value in endpoints.items():
@@ -655,7 +640,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             cwd=context.project_dir,
             environment=environment,
         )
-        remount_application_artifact(context, environment)
         reload_proxy(context, environment)
         configure_tls(context, environment)
         if not args.no_wait:

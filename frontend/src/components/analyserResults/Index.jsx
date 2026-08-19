@@ -13,12 +13,24 @@ import {
   Loading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import ImportIssuesPanel from "./ImportIssuesPanel";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+const defaultBreadcrumbs = [{ label: "home.label", link: "/" }];
+const importIssuesBreadcrumbs = [
+  ...defaultBreadcrumbs,
+  {
+    label: "analyzer.importIssues.title",
+    link: "/AnalyzerResults?view=import-issues",
+  },
+];
+
+export const getAnalyzerResultsView = (search) =>
+  new URLSearchParams(search).get("view") || "";
 
 const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -37,6 +49,8 @@ const Index = () => {
   const [sampleGroup, setSampleGroup] = useState([]);
   const [searchTermToPage, setSearchTermToPage] = useState({});
   const [labNumber, setLabNumber] = useState("");
+  const location = useLocation();
+  const view = getAnalyzerResultsView(location.search);
   const intl = useIntl();
 
   useEffect(() => {
@@ -123,9 +137,17 @@ const Index = () => {
       }
     }
   };
+  if (view === "import-issues") {
+    return (
+      <>
+        <PageBreadCrumb breadcrumbs={importIssuesBreadcrumbs} />
+        <ImportIssuesPanel />
+      </>
+    );
+  }
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <PageBreadCrumb breadcrumbs={defaultBreadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <Section>
