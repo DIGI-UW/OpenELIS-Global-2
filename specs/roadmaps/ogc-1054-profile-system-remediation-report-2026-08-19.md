@@ -346,20 +346,26 @@ PR #4049 description identifies the correction.
 
 ### F0 - Make the acceptance foundation detect this regression
 
-- [ ] Add fixtures representing the established GeneXpert ASTM and
+- [x] Add fixtures representing the established GeneXpert ASTM and
       FluoroCycler profiles without translating them into a second semantic
       model or adding analyzer-specific validator/consumer branches.
-- [ ] Add contract checks that require both profile jobs: runtime communication
+- [x] Add contract checks that require both profile jobs: runtime communication
       and OE instance defaults.
-- [ ] Add a generic production guard rejecting hard-coded
+- [x] Add a generic production guard rejecting hard-coded
       profile/model/manufacturer/code special cases and duplicated profile-owned
       defaults; fixture names may occur only in parameterized test data.
-- [ ] Add stack guards proving no accepted profile path depends on an OE FILE
+- [x] Add stack guards proving no accepted profile path depends on an OE FILE
       poller, `AnalyzerQcRule`, copied profile authority, or hidden classifier.
-- [ ] Document the exact layered parity matrix used by E0/M1.
+- [x] Document the exact layered parity matrix used by E0/M1.
 
 **F0 exit evidence:** each new guard is demonstrated red against the current
 wrong BR-E0/OE-M1 assumptions and green only against the corrected contract.
+The focused compatibility suite passes 10 tests, the complete F0 policy suite
+passes 64 tests, and the Playwright bucket/dependency guard passes. Applying the
+guard to the actual stack rejects Bridge E0's metadata-only profile and OE M1's
+source-owned selected-profile defaults. Both established full profile documents
+pass through one parameterized path with no analyzer-specific implementation
+branch.
 
 ### BR-E0 - Evolve the established contract
 
