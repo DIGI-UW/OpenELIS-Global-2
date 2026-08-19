@@ -25,13 +25,22 @@ import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { InventoryItemAPI, InventoryLotAPI } from "./InventoryService";
+import {
+  InventoryItemAPI,
+  InventoryLotAPI,
+  InventoryLotStorageAPI,
+} from "./InventoryService";
 import LotEntryModal from "./LotEntryModal";
 import RecordUsageModal from "./RecordUsageModal";
 import LotAdjustmentModal from "./LotAdjustmentModal";
 import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import LotDetailsPanel from "./LotDetailsPanel";
+import LocationPickerModal from "../storage/LocationPicker/LocationPickerModal";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../storage/LocationPicker/locationSelectionMapper";
 import "./InventoryList.css";
 
 const InventoryDashboard = () => {
@@ -77,13 +86,12 @@ const InventoryDashboard = () => {
   const [qcStatusModalOpen, setQcStatusModalOpen] = useState(false);
   const [detailsPanelOpen, setDetailsPanelOpen] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  const [movingLot, setMovingLot] = useState(null);
 
-  const itemTypes = [
+  const [itemTypes, setItemTypes] = useState([
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
-    { id: "REAGENT", text: "Reagent" },
-    { id: "RDT", text: "RDT" },
-    { id: "CARTRIDGE", text: "Cartridge" },
-  ];
+  ]);
 
   const statusOptions = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
@@ -112,6 +120,10 @@ const InventoryDashboard = () => {
       header: intl.formatMessage({ id: "lot.currentQuantity" }),
     },
     {
+      key: "location",
+      header: intl.formatMessage({ id: "lot.storageLocation" }),
+    },
+    {
       key: "expirationDate",
       header: intl.formatMessage({ id: "lot.expirationDate" }),
     },
@@ -128,6 +140,38 @@ const InventoryDashboard = () => {
       header: intl.formatMessage({ id: "label.button.action" }),
     },
   ];
+
+  useEffect(() => {
+    const loadItemTypes = async () => {
+      try {
+        const types = await InventoryItemAPI.getItemTypes();
+        setItemTypes([
+          {
+            id: "ALL",
+            text: intl.formatMessage({ id: "inventory.filter.all" }),
+          },
+          ...types.map((type) => ({
+            id: type,
+            text: getItemTypeLabel(type),
+          })),
+        ]);
+      } catch (err) {
+        console.error("Error loading item types:", err);
+      }
+    };
+    loadItemTypes();
+  }, [intl]);
+
+  const getItemTypeLabel = (type) => {
+    const labels = {
+      REAGENT: "Reagent",
+      RDT: "RDT (Rapid Diagnostic Test)",
+      CARTRIDGE: "Analyzer Cartridge",
+      HIV_KIT: "HIV Test Kit",
+      SYPHILIS_KIT: "Syphilis Test Kit",
+    };
+    return labels[type] || type;
+  };
 
   useEffect(() => {
     fetchLots();
@@ -303,6 +347,12 @@ const InventoryDashboard = () => {
       lotNumber: lot.lotNumber,
       itemType: item?.itemType || "",
       currentQuantity: `${lot.currentQuantity || 0} ${item?.units || ""}`,
+      location:
+        lot.location?.hierarchicalPath ||
+        intl.formatMessage({
+          id: "storage.location.notAssigned",
+          defaultMessage: "Not assigned",
+        }),
       expirationDate: lot.expirationDate
         ? new Date(lot.expirationDate).toLocaleDateString()
         : "N/A",
@@ -374,6 +424,70 @@ const InventoryDashboard = () => {
   const handleViewDetails = (lot) => {
     setSelectedLot(lot);
     setDetailsPanelOpen(true);
+  };
+
+  const handleMoveLocation = (lot) => {
+    setMovingLot(lot);
+    setLocationPickerOpen(true);
+  };
+
+  const movingLotCurrentLocation = movingLot?.location?.hierarchicalPath
+    ? {
+        selection: {},
+        hierarchicalPath: movingLot.location.hierarchicalPath,
+        position: movingLot.location.positionCoordinate
+          ? { mode: "text", value: movingLot.location.positionCoordinate }
+          : null,
+      }
+    : null;
+
+  const handleLocationConfirm = async ({ selection, position, notes }) => {
+    if (!movingLot) return;
+    try {
+      const deepest = getDeepestLocationSelection(selection, {
+        requireAssignable: true,
+      });
+      const payload = {
+        inventoryLotId: String(movingLot.id),
+        locationId: deepest ? String(deepest.value.id) : null,
+        locationType: deepest ? deepest.type : null,
+        positionCoordinate: positionToCoordinate(position, {
+          emptyValue: null,
+        }),
+        notes: notes || "",
+      };
+      if (movingLotCurrentLocation) {
+        await InventoryLotStorageAPI.moveLocation({
+          ...payload,
+          reason: notes || "",
+        });
+      } else {
+        await InventoryLotStorageAPI.assignLocation(payload);
+      }
+      setLocationPickerOpen(false);
+      setMovingLot(null);
+      fetchLots();
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage({
+          id: "storage.location.assigned.success",
+          defaultMessage: "Storage location updated successfully",
+        }),
+      });
+    } catch (error) {
+      console.error("Error updating lot location:", error);
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        message:
+          error.message ||
+          intl.formatMessage({
+            id: "storage.location.assigned.error",
+            defaultMessage: "Error updating storage location",
+          }),
+      });
+    }
   };
 
   return (
@@ -519,6 +633,22 @@ const InventoryDashboard = () => {
                             );
                           }
 
+                          if (cell.info.header === "location") {
+                            return (
+                              <TableCell key={cell.id}>
+                                <Tag
+                                  type={
+                                    lot.location?.hierarchicalPath
+                                      ? "blue"
+                                      : "gray"
+                                  }
+                                >
+                                  {cell.value}
+                                </Tag>
+                              </TableCell>
+                            );
+                          }
+
                           if (cell.info.header === "actions") {
                             return (
                               <TableCell key={cell.id}>
@@ -567,6 +697,18 @@ const InventoryDashboard = () => {
                                       setSelectedLot(lot);
                                       setQcStatusModalOpen(true);
                                     }}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: lot.location?.hierarchicalPath
+                                        ? "storage.location.move"
+                                        : "storage.location.assign",
+                                      defaultMessage: lot.location
+                                        ?.hierarchicalPath
+                                        ? "Move storage location"
+                                        : "Assign storage location",
+                                    })}
+                                    onClick={() => handleMoveLocation(lot)}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
@@ -686,6 +828,23 @@ const InventoryDashboard = () => {
           setSelectedLot(null);
         }}
         lot={selectedLot}
+      />
+
+      {/* Move/Assign Storage Location Modal */}
+      <LocationPickerModal
+        isOpen={locationPickerOpen}
+        occupantType="INVENTORY_LOT"
+        occupant={{
+          label: movingLot?.lotNumber || "",
+          type: items[movingLot?.inventoryItem?.id]?.name || "",
+          status: movingLot?.status || "",
+        }}
+        currentLocation={movingLotCurrentLocation}
+        onConfirm={handleLocationConfirm}
+        onCancel={() => {
+          setLocationPickerOpen(false);
+          setMovingLot(null);
+        }}
       />
     </>
   );

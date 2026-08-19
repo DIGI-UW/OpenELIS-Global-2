@@ -429,4 +429,52 @@ describe("SearchField", () => {
     );
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
+
+  test("testSearchField_NewCallbackIdentityEachRender_DoesNotRefetch", () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([
+        {
+          id: 1,
+          type: "ROOM",
+          name: "Cold Room",
+          hierarchicalPath: "Cold Room",
+        },
+      ]),
+    );
+
+    // The real parent passes these as inline arrows, so every render hands the
+    // component a fresh identity. That must not retrigger the search, or each
+    // response re-renders and refetches forever.
+    const { rerender } = render(
+      <SearchField
+        query="col"
+        results={[]}
+        onQueryChange={() => {}}
+        onResultsChange={() => {}}
+        onSelect={() => {}}
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(Utils.getFromOpenElisServer).toHaveBeenCalledTimes(1);
+
+    for (let i = 0; i < 3; i++) {
+      rerender(
+        <SearchField
+          query="col"
+          results={[]}
+          onQueryChange={() => {}}
+          onResultsChange={() => {}}
+          onSelect={() => {}}
+        />,
+      );
+    }
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(Utils.getFromOpenElisServer).toHaveBeenCalledTimes(1);
+  });
 });

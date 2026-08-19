@@ -113,10 +113,66 @@ public interface SampleStorageService {
 
     /**
      * Get paginated sample storage assignments for dashboard display (OGC-150).
-     * 
+     *
      * @param pageable Pagination parameters (page number, page size, sorting)
      * @return Page of SampleStorageAssignment entities
      */
     org.springframework.data.domain.Page<org.openelisglobal.storage.valueholder.SampleStorageAssignment> getSampleAssignments(
             org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * Assign an InventoryLot to a location using the same polymorphic
+     * locationId+locationType model and audit trail as sample assignments
+     * (OGC-657).
+     *
+     * @param inventoryLotId     InventoryLot ID
+     * @param locationId         Location ID (room, device, shelf, rack, or box ID)
+     * @param locationType       Location type: 'room', 'device', 'shelf', 'rack',
+     *                           or 'box'
+     * @param positionCoordinate Optional text-based coordinate
+     * @param notes              Optional assignment notes
+     * @param sysUserId          The user performing the assignment
+     * @return Map containing assignmentId, hierarchicalPath, assignedDate, and
+     *         shelfCapacityWarning if applicable
+     */
+    java.util.Map<String, Object> assignInventoryLotWithLocation(String inventoryLotId, String locationId,
+            String locationType, String positionCoordinate, String notes, String sysUserId);
+
+    /**
+     * Move an InventoryLot to a new location (OGC-657).
+     *
+     * @param inventoryLotId     InventoryLot ID
+     * @param locationId         Target location ID
+     * @param locationType       Target location type
+     * @param positionCoordinate Optional text-based coordinate
+     * @param reason             Optional reason for movement
+     * @param notes              Optional notes
+     * @param sysUserId          The user performing the move
+     * @return Movement ID
+     */
+    String moveInventoryLotWithLocation(String inventoryLotId, String locationId, String locationType,
+            String positionCoordinate, String reason, String notes, String sysUserId);
+
+    /**
+     * Get storage location for a specific InventoryLot (OGC-657).
+     *
+     * @param inventoryLotId InventoryLot ID
+     * @return Map with location details including hierarchicalPath, or empty map if
+     *         not assigned
+     */
+    java.util.Map<String, Object> getInventoryLotLocation(String inventoryLotId);
+
+    /**
+     * List storage movements for an InventoryLot with the acting user's display
+     * name resolved (OGC-657).
+     */
+    java.util.List<java.util.Map<String, Object>> getInventoryLotMovementsWithUserNames(String inventoryLotId);
+
+    /**
+     * Bulk lookup of current locations for many InventoryLots, keyed by lot id (as
+     * String), to avoid N+1 queries when rendering the Inventory dashboard
+     * (OGC-657). Only lots that have an assignment appear in the result.
+     */
+    java.util.Map<String, java.util.Map<String, Object>> getLocationsForInventoryLots(
+            java.util.List<Long> inventoryLotIds);
 }

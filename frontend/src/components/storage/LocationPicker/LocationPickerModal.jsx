@@ -18,22 +18,26 @@ import {
 import { searchResultToReplaceAction } from "./searchResultToAction";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
+import "./LocationPickerModal.css";
 
 /**
  * LocationPickerModal — wraps the picker in a Carbon ComposedModal for
  * sites where page navigation would be jarring (e.g. a deeply-nested
  * expandable row).
  *
- * Layout: sample info → optional current-location → mode-toggle picker
+ * Layout: occupant info → optional current-location → mode-toggle picker
  * → reason (movement only) → notes → Cancel/Confirm footer.
  *
  * onConfirm receives { selection, position, reason, notes }; the caller
  * translates that into the appropriate REST call. The modal is
- * workflow-agnostic.
+ * workflow- and occupant-agnostic — `occupant` is display-only (identifier,
+ * type, status) and `occupantType` (e.g. "SAMPLE_ITEM" | "INVENTORY_LOT")
+ * is passed straight through so the caller can pick the right endpoint.
  */
 export default function LocationPickerModal({
   isOpen,
-  sample,
+  occupant,
+  occupantType,
   currentLocation,
   onConfirm,
   onCancel,
@@ -93,47 +97,49 @@ export default function LocationPickerModal({
     : "";
 
   return (
-    <ComposedModal open={isOpen} onClose={onCancel}>
+    <ComposedModal
+      open={isOpen}
+      onClose={onCancel}
+      data-occupant-type={occupantType}
+    >
       <ModalHeader
         title={intl.formatMessage({
           id: isMovement
-            ? "storage.picker.heading.moveSample"
+            ? "storage.picker.heading.move"
             : "storage.picker.heading.assignLocation",
-          defaultMessage: isMovement
-            ? "Move Sample"
-            : "Assign Storage Location",
+          defaultMessage: isMovement ? "Move Item" : "Assign Storage Location",
         })}
       />
       <ModalBody>
-        <section className="storage-location-picker-modal-sample-info">
+        <section className="storage-location-picker-modal-occupant-info">
           <h4>
             {intl.formatMessage({
-              id: "storage.picker.sample.heading",
-              defaultMessage: "Sample",
+              id: "storage.picker.occupant.heading",
+              defaultMessage: "Item",
             })}
           </h4>
           <dl>
             <dt>
               {intl.formatMessage({
-                id: "storage.picker.sample.accession",
-                defaultMessage: "Accession",
+                id: "storage.picker.occupant.identifier",
+                defaultMessage: "Identifier",
               })}
             </dt>
-            <dd>{sample.sampleAccessionNumber}</dd>
+            <dd>{occupant.label}</dd>
             <dt>
               {intl.formatMessage({
-                id: "storage.picker.sample.type",
+                id: "storage.picker.occupant.type",
                 defaultMessage: "Type",
               })}
             </dt>
-            <dd>{sample.sampleType}</dd>
+            <dd>{occupant.type}</dd>
             <dt>
               {intl.formatMessage({
-                id: "storage.picker.sample.status",
+                id: "storage.picker.occupant.status",
                 defaultMessage: "Status",
               })}
             </dt>
-            <dd>{sample.status}</dd>
+            <dd>{occupant.status}</dd>
           </dl>
         </section>
 
