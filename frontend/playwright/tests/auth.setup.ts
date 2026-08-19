@@ -151,6 +151,12 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/, {
     timeout: LONG_TIMEOUT,
   });
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("CSRF")), {
+      timeout: LONG_TIMEOUT,
+      message: "Waiting for the authenticated app to persist its CSRF token",
+    })
+    .not.toBeNull();
 
   // ── Step 5: Save session ──────────────────────────────────────
   await page.context().storageState({ path: AUTH_FILE });
