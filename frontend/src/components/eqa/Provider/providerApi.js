@@ -1,5 +1,6 @@
 // Data seam for the provider scheme list and cycle wizard (OGC-613).
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { asList } from "../eqaApi";
 
 /**
  * Schemes this lab runs for other laboratories. In-house schemes are left out:
@@ -7,10 +8,10 @@ import { getFromOpenElisServer } from "../../utils/Utils";
  */
 export const fetchProviderSchemes = (callback) =>
   getFromOpenElisServer("/rest/eqa/programs", (data) =>
-    callback((data || []).filter((scheme) => scheme.schemeType !== "IN_HOUSE")),
+    callback(asList(data).filter((scheme) => scheme.schemeType !== "IN_HOUSE")),
   );
 
 export const fetchEnrollments = (schemeId, callback) =>
   getFromOpenElisServer(`/rest/eqa/programs/${schemeId}/enrollments`, (data) =>
-    callback(data || []),
+    callback(asList(data)),
   );

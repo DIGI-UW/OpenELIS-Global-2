@@ -55,12 +55,14 @@ const CYCLES = [
   },
 ];
 
-const renderPage = () => {
-  getFromOpenElisServer.mockImplementation((url, cb) => {
-    if (url === "/rest/eqa/programs") cb(SCHEMES);
-    else if (url === "/rest/eqa/provider/cycles") cb(CYCLES);
-    else cb([]);
-  });
+const goodReads = (url, cb) => {
+  if (url === "/rest/eqa/programs") cb(SCHEMES);
+  else if (url === "/rest/eqa/provider/cycles") cb(CYCLES);
+  else cb([]);
+};
+
+const renderPage = (reads = goodReads) => {
+  getFromOpenElisServer.mockImplementation(reads);
   return render(
     <IntlProvider locale="en" messages={messages}>
       <MemoryRouter>
@@ -111,5 +113,11 @@ describe("SchemesPage", () => {
     expect(
       screen.getByText("No cycles yet for this scheme."),
     ).toBeInTheDocument();
+  });
+
+  test("a refused read leaves an empty page instead of crashing on the error body", () => {
+    renderPage((url, cb) => cb({ error: "403" }));
+
+    expect(screen.getByText("No schemes yet")).toBeInTheDocument();
   });
 });

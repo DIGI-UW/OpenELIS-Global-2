@@ -12,6 +12,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { asList } from "./eqaApi";
 import { CycleStatusTag, hintStyle } from "./eqaCommon";
 
 /**
@@ -32,7 +33,7 @@ const CycleStateBanner = ({ cycleId, status, hint }) => {
       return;
     }
     getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/transitions`, (rows) =>
-      setTransitions(rows || []),
+      setTransitions(asList(rows)),
     );
   };
 
