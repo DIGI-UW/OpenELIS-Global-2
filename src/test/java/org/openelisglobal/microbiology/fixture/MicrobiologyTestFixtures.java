@@ -15,6 +15,8 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.service.MicrobiologyConfigurationService;
@@ -66,13 +68,15 @@ public class MicrobiologyTestFixtures {
     private final PersonService personService;
     private final PatientService patientService;
     private final TypeOfSampleService typeOfSampleService;
+    private final LocalizationService localizationService;
 
     public MicrobiologyTestFixtures(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, AnalysisService analysisService, TestService testService,
             TestMethodService testMethodService, IStatusService statusService,
             StatusOfSampleService statusOfSampleService, SystemUserService systemUserService,
             MicrobiologyConfigurationService configurationService, PersonService personService,
-            PatientService patientService, TypeOfSampleService typeOfSampleService) {
+            PatientService patientService, TypeOfSampleService typeOfSampleService,
+            LocalizationService localizationService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -86,6 +90,7 @@ public class MicrobiologyTestFixtures {
         this.personService = personService;
         this.patientService = patientService;
         this.typeOfSampleService = typeOfSampleService;
+        this.localizationService = localizationService;
     }
 
     public String defaultUserId() {
@@ -149,10 +154,39 @@ public class MicrobiologyTestFixtures {
         return patient;
     }
 
-    public TypeOfSample firstActiveSampleType() {
-        return typeOfSampleService.getAllTypeOfSamples().stream().filter(TypeOfSample::getIsActive)
-                .sorted(Comparator.comparing(TypeOfSample::getId)).findFirst()
-                .orElseThrow(() -> new IllegalStateException("No active specimen type is available for tests"));
+    public TypeOfSample getOrCreateActiveSampleType() {
+        List<TypeOfSample> sampleTypes = typeOfSampleService.getAllTypeOfSamples();
+        TypeOfSample existing = sampleTypes == null ? null
+                : sampleTypes.stream().filter(TypeOfSample::getIsActive)
+                        .sorted(Comparator.comparing(TypeOfSample::getId)).findFirst().orElse(null);
+        if (existing != null) {
+            return existing;
+        }
+
+        String userId = defaultUserId();
+        Localization localization = new Localization();
+        localization.setDescription("Microbiology integration specimen");
+        localization.setEnglish("Microbiology integration specimen");
+        localization.setSysUserId(userId);
+        String localizationId = localizationService.insert(localization);
+        if (localization.getId() == null) {
+            localization.setId(localizationId);
+        }
+
+        TypeOfSample sampleType = new TypeOfSample();
+        sampleType.setDescription("Microbiology integration specimen");
+        sampleType.setDomain("H");
+        sampleType.setLocalAbbreviation("MICROIT");
+        sampleType.setActive(true);
+        sampleType.setSortOrder(999);
+        sampleType.setWhonetCode("");
+        sampleType.setLocalization(localization);
+        sampleType.setSysUserId(userId);
+        String generatedId = typeOfSampleService.insert(sampleType);
+        if (sampleType.getId() == null) {
+            sampleType.setId(generatedId);
+        }
+        return sampleType;
     }
 
     public ReferenceData createReferenceData(String methodId) {

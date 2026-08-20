@@ -66,7 +66,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         fixtures.createReferenceData(methodId);
         cultureTest = fixtures.createCatalogCultureTest(methodId, MicroWorkflowType.BACTERIOLOGY);
         patient = fixtures.createPatient("OGC782M4");
-        sampleType = fixtures.firstActiveSampleType();
+        sampleType = fixtures.getOrCreateActiveSampleType();
     }
 
     /**

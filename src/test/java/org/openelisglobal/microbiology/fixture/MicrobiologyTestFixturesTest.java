@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.fixture;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -18,6 +19,8 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.service.MicrobiologyConfigurationService;
@@ -32,6 +35,7 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicrobiologyTestFixturesTest {
@@ -62,6 +66,8 @@ public class MicrobiologyTestFixturesTest {
     private PatientService patientService;
     @Mock
     private TypeOfSampleService typeOfSampleService;
+    @Mock
+    private LocalizationService localizationService;
 
     private MicrobiologyTestFixtures fixtures;
 
@@ -70,7 +76,7 @@ public class MicrobiologyTestFixturesTest {
         when(systemUserService.getAllSystemUsers()).thenReturn(List.of(systemUser("7")));
         fixtures = new MicrobiologyTestFixtures(methodService, sampleService, sampleItemService, analysisService,
                 testService, testMethodService, statusService, statusOfSampleService, systemUserService,
-                configurationService, personService, patientService, typeOfSampleService);
+                configurationService, personService, patientService, typeOfSampleService, localizationService);
     }
 
     @Test
@@ -199,6 +205,21 @@ public class MicrobiologyTestFixturesTest {
         assertEquals("Microbiology test", methodCaptor.getValue().getMethodName());
         assertEquals("Y", methodCaptor.getValue().getIsActive());
         assertEquals("7", methodCaptor.getValue().getSysUserId());
+    }
+
+    @Test
+    public void provisionsActiveSampleTypeThroughServicesWhenNoneExists() {
+        when(typeOfSampleService.getAllTypeOfSamples()).thenReturn(List.of());
+        when(typeOfSampleService.insert(any(TypeOfSample.class))).thenReturn("generated-sample-type");
+
+        TypeOfSample sampleType = fixtures.getOrCreateActiveSampleType();
+
+        assertEquals("generated-sample-type", sampleType.getId());
+        assertEquals("Microbiology integration specimen", sampleType.getDescription());
+        assertTrue(sampleType.getIsActive());
+        assertEquals("7", sampleType.getSysUserId());
+        verify(localizationService).insert(any(Localization.class));
+        verify(typeOfSampleService).insert(sampleType);
     }
 
     private SystemUser systemUser(String id) {

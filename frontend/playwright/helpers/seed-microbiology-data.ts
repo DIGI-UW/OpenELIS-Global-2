@@ -88,12 +88,14 @@ interface MicrobiologyIsolateFixture {
   isolateLabel: string;
   organismId: string;
   identificationStatus: string;
+  significance?: string;
 }
 
 interface MicrobiologyCaseFixture {
   closedAt?: number | string;
   finalReleaseState: string;
   isolates: MicrobiologyIsolateFixture[];
+  orderDetail?: { patientOrigin?: string };
 }
 
 interface MicrobiologyAstRunFixture {
@@ -229,6 +231,7 @@ async function ensureReviewedAstIsolate(
   organismText: string,
   antibiotics: MicrobiologyReferenceOption[],
   existing?: MicrobiologyIsolateFixture,
+  significance = "CLINICALLY_SIGNIFICANT",
 ) {
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
   const isolate =
@@ -242,13 +245,14 @@ async function ensureReviewedAstIsolate(
           isolateLabel,
           gramStain: "Gram negative rods",
           colonyMorphology: "Lactose fermenting colonies",
-          significance: "CLINICALLY_SIGNIFICANT",
+          significance,
         },
       }),
     ));
   if (
     isolate.organismId !== organismId ||
-    isolate.identificationStatus !== "CONFIRMED"
+    isolate.identificationStatus !== "CONFIRMED" ||
+    isolate.significance !== significance
   ) {
     await requireJsonResponse(
       `Confirm ${isolateLabel}`,
@@ -259,7 +263,7 @@ async function ensureReviewedAstIsolate(
           data: {
             organismId,
             preliminaryOrganismText: organismText,
-            significance: "CLINICALLY_SIGNIFICANT",
+            significance,
             identificationStatus: "CONFIRMED",
             identificationMethod: "MALDI_TOF",
             identificationConfidence: 99.5,
@@ -323,14 +327,21 @@ async function ensureReviewedAstIsolate(
   );
 }
 
-export async function seedMicrobiologyWhonetExport(
+interface WhonetExportScenarioOptions {
+  scenarioKey: string;
+  patientOrigin?: string;
+  unmappedSignificance?: string;
+}
+
+async function seedMicrobiologyWhonetExportScenario(
   page: Page,
+  {
+    scenarioKey,
+    patientOrigin,
+    unmappedSignificance = "CLINICALLY_SIGNIFICANT",
+  }: WhonetExportScenarioOptions,
 ): Promise<SeededMicrobiologyWhonetExport> {
-  const seeded = await provisionMicrobiologyScenario(
-    page,
-    "M4",
-    "playwright-m4-whonet-export",
-  );
+  const seeded = await provisionMicrobiologyScenario(page, "M4", scenarioKey);
   const required = [
     "organismId",
     "unmappedOrganismId",
@@ -376,9 +387,39 @@ export async function seedMicrobiologyWhonetExport(
 
   if (
     caseDetail.finalReleaseState === "FINAL_RELEASED" &&
-    (!mappedExisting || !unmappedExisting)
+    (!mappedExisting ||
+      !unmappedExisting ||
+      unmappedExisting.significance !== unmappedSignificance ||
+      (patientOrigin &&
+        caseDetail.orderDetail?.patientOrigin !== patientOrigin))
   ) {
-    throw new Error("Final M4 fixture is missing its expected isolates");
+    throw new Error(
+      "Final WHONET fixture does not match its expected population",
+    );
+  }
+
+  if (
+    patientOrigin &&
+    caseDetail.finalReleaseState !== "FINAL_RELEASED" &&
+    caseDetail.orderDetail?.patientOrigin !== patientOrigin
+  ) {
+    await requireJsonResponse(
+      "Set WHONET fixture patient origin",
+      await page.request.put(
+        `${API_PREFIX}/rest/microbiology/cases/${reference.caseId}/order-detail`,
+        {
+          headers: { "X-CSRF-Token": await getCsrfToken(page) },
+          data: {
+            cultureMethodId: reference.methodId,
+            patientOrigin,
+            admissionDate: "2026-08-17",
+            numberOfSets: 1,
+            clinicalHistory: "Synthetic WHONET export filter fixture",
+            antibioticExposure: false,
+          },
+        },
+      ),
+    );
   }
 
   await ensureReviewedAstIsolate(
@@ -398,6 +439,7 @@ export async function seedMicrobiologyWhonetExport(
     "WHONET mapping pending (UAT)",
     antibiotics,
     unmappedExisting,
+    unmappedSignificance,
   );
   let closedAt = caseDetail.closedAt;
   if (caseDetail.finalReleaseState !== "FINAL_RELEASED") {
@@ -420,6 +462,24 @@ export async function seedMicrobiologyWhonetExport(
     ...reference,
     exportDate,
   };
+}
+
+export function seedMicrobiologyWhonetExport(
+  page: Page,
+): Promise<SeededMicrobiologyWhonetExport> {
+  return seedMicrobiologyWhonetExportScenario(page, {
+    scenarioKey: "playwright-m4-whonet-export",
+  });
+}
+
+export function seedMicrobiologyWhonetExportFilters(
+  page: Page,
+): Promise<SeededMicrobiologyWhonetExport> {
+  return seedMicrobiologyWhonetExportScenario(page, {
+    scenarioKey: "playwright-r9-whonet-export-filters",
+    patientOrigin: "INPATIENT",
+    unmappedSignificance: "CONTAMINANT",
+  });
 }
 
 export async function seedMicrobiologyWorklistCases(

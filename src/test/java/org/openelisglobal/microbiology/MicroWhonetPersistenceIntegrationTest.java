@@ -85,6 +85,11 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         request.scenarioKey = "integration-m4-" + UUID.randomUUID();
         MicrobiologyUatScenarioForm scenario = uatScenarioService.provision(request, performedBy);
 
+        TypeOfSample sampleType = typeOfSampleService.get(scenario.sampleTypeId);
+        sampleType.setWhonetCode("BLD");
+        sampleType.setSysUserId(performedBy);
+        typeOfSampleService.update(sampleType);
+
         MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "WHONET-INTEGRATION", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, performedBy);
         isolateService.updateIdentification(isolate.getId(), scenario.organismId, "Reference organism (integration)",

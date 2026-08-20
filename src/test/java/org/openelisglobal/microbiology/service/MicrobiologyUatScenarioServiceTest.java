@@ -31,6 +31,7 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -77,6 +78,8 @@ import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.statusofsample.service.StatusOfSampleService;
+import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
@@ -149,6 +152,9 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Mock
     private IStatusService statusService;
+
+    @Mock
+    private StatusOfSampleService statusOfSampleService;
 
     @Mock
     private MicrobiologyConfigurationService configurationService;
@@ -232,10 +238,42 @@ public class MicrobiologyUatScenarioServiceTest {
         service = new MicrobiologyUatScenarioService(methodService, sampleService, sampleItemService, patientService,
                 personService, sampleHumanService, typeOfSampleService, typeOfSampleTestService, testService,
                 testSectionService, localizationService, analyteService, testAnalyteService, analysisService,
-                testResultService, testMethodService, statusService, configurationService, caseService,
-                orderRoutingService, inventoryItemService, inventoryLotService, inventoryManagementService,
+                testResultService, testMethodService, statusService, statusOfSampleService, configurationService,
+                caseService, orderRoutingService, inventoryItemService, inventoryLotService, inventoryManagementService,
                 testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
                 nceCategoryService, nceTypeService, isolateService, astService, analyzerService);
+    }
+
+    @Test
+    public void provisionsMissingSampleEnteredStatusThroughServices() {
+        when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("-1");
+        when(statusOfSampleService.getAllStatusOfSamples()).thenReturn(List.of());
+        when(statusOfSampleService.insert(any(StatusOfSample.class))).thenReturn("generated-status");
+
+        assertEquals("generated-status", service.ensureSampleEnteredStatus("7"));
+
+        ArgumentCaptor<StatusOfSample> statusCaptor = ArgumentCaptor.forClass(StatusOfSample.class);
+        verify(statusOfSampleService).insert(statusCaptor.capture());
+        assertEquals("SampleEntered", statusCaptor.getValue().getStatusOfSampleName());
+        assertEquals("SAMPLE", statusCaptor.getValue().getStatusType());
+        assertEquals("7", statusCaptor.getValue().getSysUserId());
+        verify(statusService, times(2)).refreshCache();
+    }
+
+    @Test
+    public void provisionsMissingReportTestSectionThroughServices() {
+        when(testSectionService.getAllActiveTestSections()).thenReturn(List.of());
+        when(testSectionService.getAllTestSections()).thenReturn(List.of());
+        when(testSectionService.insert(any(TestSection.class))).thenReturn("generated-section");
+
+        TestSection section = service.getOrCreateUatReportTestSection("7");
+
+        assertEquals("generated-section", section.getId());
+        assertEquals("UAT Microbiology", section.getTestSectionName());
+        assertEquals(IActionConstants.YES, section.getIsActive());
+        assertEquals("7", section.getSysUserId());
+        verify(localizationService).insert(any(org.openelisglobal.localization.valueholder.Localization.class));
+        verify(testSectionService).insert(section);
     }
 
     @After
