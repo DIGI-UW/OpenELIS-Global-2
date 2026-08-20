@@ -72,15 +72,16 @@ an explicit product or engineering ruling:
 
 ## Iteration Status
 
-This roadmap uses three visible iteration markers:
+This roadmap uses four simple iteration markers:
 
-- `[x]` means the repository iteration is finished.
-- `[*]` means the single iteration currently being worked.
 - `[ ]` means a future iteration that has not started.
+- `[*]` means the single iteration currently being worked.
+- `[x]` means implementation is complete and ready for user validation.
+- `[✓]` means the iteration has been validated by the user.
 
-Change a marker only when an iteration starts or finishes. There is no parallel
-status table. Merge, deployment, and human-UAT state stay in GitHub, the review
-host, and Grist respectively.
+Keep only these durable markers in the roadmap. Detailed PR and CI state stays
+in GitHub, deployment state stays on the review host, and UAT results stay in
+Grist.
 
 ### Finished Iterations
 
@@ -177,7 +178,7 @@ capability is available; it does not own macro authoring or administration.
   events path.
 - [x] Complete WHONET specimen-code validation, export projection, and exact
   repair navigation through the owning sample-type administration workflow.
-- [x] Complete M-09 export population filters already supported by authoritative
+- [*] Complete M-09 export population filters already supported by authoritative
   case data: specimen, organism, patient origin, and significance. Apply the
   same selection to server-side preview and generation, preserve canonical URL
   state, place the single export navigation entry under Reports, and compact the
