@@ -3,7 +3,6 @@ package org.openelisglobal.microbiology.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -16,6 +15,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -254,7 +254,6 @@ public class MicrobiologyUatScenarioServiceTest {
         Analysis analysis = analysis("analysis-1");
         MicroCase microCase = microCase("case-1");
         configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
-
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
         request.scenario = "WORKLIST";
         request.scenarioKey = "playwright-worklist-7bd4adf1";
@@ -692,6 +691,12 @@ public class MicrobiologyUatScenarioServiceTest {
         Analysis analysis = analysis("analysis-1");
         MicroCase microCase = microCase("case-1");
         configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+        AtomicInteger sampleTypeSequence = new AtomicInteger();
+        doAnswer(invocation -> {
+            TypeOfSample sampleType = invocation.getArgument(0);
+            sampleType.setId("sample-type-" + sampleTypeSequence.incrementAndGet());
+            return null;
+        }).when(typeOfSampleService).insert(any(TypeOfSample.class));
 
         MicroAstPanelAdminForm panel = new MicroAstPanelAdminForm();
         panel.id = "panel-1";
@@ -731,20 +736,28 @@ public class MicrobiologyUatScenarioServiceTest {
         request.scenario = "M4";
         request.scenarioKey = "playwright-whonet-export";
         MicrobiologyUatScenarioForm result = service.provision(request, "1");
+        request.scenarioKey = "review-amr-whonet-export";
+        MicrobiologyUatScenarioForm secondResult = service.provision(request, "1");
 
         assertEquals("organism-mapped", result.organismId);
         assertEquals("organism-unmapped", result.unmappedOrganismId);
         ArgumentCaptor<TypeOfSample> sampleTypeCaptor = ArgumentCaptor.forClass(TypeOfSample.class);
-        verify(typeOfSampleService).insert(sampleTypeCaptor.capture());
-        assertEquals(result.sampleTypeId, sampleTypeCaptor.getValue().getId());
-        assertTrue(sampleTypeCaptor.getValue().getDescription().startsWith("UAT WHONET specimen "));
-        assertEquals("", sampleTypeCaptor.getValue().getWhonetCode());
-        verify(sampleItemService).update(sampleItem);
+        verify(typeOfSampleService, times(2)).insert(sampleTypeCaptor.capture());
+        List<TypeOfSample> sampleTypes = sampleTypeCaptor.getAllValues();
+        assertEquals(result.sampleTypeId, sampleTypes.get(0).getId());
+        assertEquals(secondResult.sampleTypeId, sampleTypes.get(1).getId());
+        assertTrue(sampleTypes.stream()
+                .allMatch(candidate -> candidate.getDescription().startsWith("UAT WHONET specimen ")));
+        assertTrue(sampleTypes.stream().allMatch(candidate -> "".equals(candidate.getWhonetCode())));
+        assertFalse(sampleTypes.get(0).getLocalAbbreviation().equals(sampleTypes.get(1).getLocalAbbreviation()));
+        verify(sampleItemService, times(2)).update(sampleItem);
         ArgumentCaptor<MicroOrganism> organismCaptor = ArgumentCaptor.forClass(MicroOrganism.class);
-        verify(configurationService).createOrganism(organismCaptor.capture());
-        assertTrue(organismCaptor.getValue().getDisplayName().startsWith("WHONET mapping pending (UAT "));
-        assertNull(organismCaptor.getValue().getWhonetCode());
-        assertEquals("1", organismCaptor.getValue().getLastUpdatedBy());
+        verify(configurationService, times(2)).createOrganism(organismCaptor.capture());
+        assertTrue(organismCaptor.getAllValues().stream()
+                .allMatch(candidate -> candidate.getDisplayName().startsWith("WHONET mapping pending (UAT ")));
+        assertTrue(organismCaptor.getAllValues().stream().allMatch(candidate -> candidate.getWhonetCode() == null));
+        assertTrue(
+                organismCaptor.getAllValues().stream().allMatch(candidate -> "1".equals(candidate.getLastUpdatedBy())));
     }
 
     private void configureHappyPath(Sample sample, SampleItem sampleItem, Method method,
