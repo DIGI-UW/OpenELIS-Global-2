@@ -259,6 +259,8 @@ Fields:
 - `sampleId` (nullable after routing; unique while draft-owned)
 - `cultureMethodId`
 - `patientOrigin`
+- `culturePurpose` (`CLINICAL_DIAGNOSTIC` or `ACTIVE_SCREENING`; nullable only
+  for historical records created before purpose capture)
 - `admissionDate` (nullable date-only value; cleared for Outpatient context)
 - `numberOfSets` (1-10)
 - `clinicalHistory` (maximum 1000 characters)
@@ -277,6 +279,10 @@ Relationships and constraints:
   order entry and the case panel obtain labels and WHONET identity from the
   reference service. This preserves existing order-detail compatibility without
   making the product contract depend on a particular foreign-key layout.
+- `culturePurpose` records the reason for this culture order. It is required for
+  new microbiology order details, defaults visibly to `CLINICAL_DIAGNOSTIC`, and
+  is never inferred from Program, patient origin, specimen, organism, requesting
+  location, or test-level AMR eligibility. Existing nulls remain Unspecified.
 - `criticalNotificationPreference` remains a nullable legacy column only so
   historical rows can still be read. New forms and submission contracts omit
   it; critical behavior is owned by the Test Catalog and M-11 workflow.

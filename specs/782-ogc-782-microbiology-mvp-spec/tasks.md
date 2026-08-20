@@ -177,9 +177,16 @@ capability is available; it does not own macro authoring or administration.
   events path.
 - [x] Complete WHONET specimen-code validation, export projection, and exact
   repair navigation through the owning sample-type administration workflow.
-- [*] Complete M-09 export population filters for specimen, organism, patient
-  origin, significance, and screening/surveillance status, with server-side
-  selection and canonical URL state.
+- [*] Complete M-09 export population filters already supported by authoritative
+  case data: specimen, organism, patient origin, and significance. Apply the
+  same selection to server-side preview and generation, preserve canonical URL
+  state, place the single export navigation entry under Reports, and compact the
+  touched page toward the M-09 operational layout.
+- [ ] Capture Culture purpose on microbiology orders as Clinical
+  diagnosis/treatment or Active screening/carriage, show it with the case, audit
+  pre-release corrections, and complete the M-09 screening filter. New orders
+  default visibly to clinical purpose; historical missing values remain
+  Unspecified; screening and unspecified records require explicit inclusion.
 - [ ] Complete M-09 reporting-period presets and enable the AST-worklist Export
   to WHONET deep link so its active scope pre-fills the generator and can be
   cleared.

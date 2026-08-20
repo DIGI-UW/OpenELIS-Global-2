@@ -355,6 +355,13 @@ or missing mapping for export.
 2. **Given** export is not part of the current release slice, **When** a user
    encounters export actions, **Then** the system makes the planned status clear
    without pretending the capability is complete.
+3. **Given** finalized clinical diagnostic cultures, **When** a user selects an
+   export population, **Then** specimen, organism, patient origin, and
+   significance filters are applied consistently to preview and generation.
+4. **Given** clinical diagnostic, active screening/carriage, and historical
+   cultures with unspecified purpose, **When** export is previewed, **Then** the
+   populations remain distinguishable and screening or unspecified cultures are
+   included only by an explicit user choice.
 
 ### Edge Cases
 
@@ -390,7 +397,7 @@ or missing mapping for export.
   preference appears in order entry; notification policy remains in the
   existing catalog and critical-result workflow. Date of Admission MUST remain
   visible but disabled for Outpatient, MUST round-trip without deriving a
-  stored surveillance classification, and MUST remain optional. Patient Origin
+  stored infection-origin classification, and MUST remain optional. Patient Origin
   SHOULD default from the requesting location when that mapping is available.
   Clinical History MUST offer managed clinical macros when the separately owned
   Macro Library is enabled. The system MUST confirm before discarding entered
@@ -472,7 +479,12 @@ or missing mapping for export.
   later deployment need.
 - **FR-020**: The system MUST prepare finalized microbiology data for WHONET
   surveillance export by tracking export-relevant organism, specimen,
-  antibiotic, breakpoint, and interpretation information.
+  antibiotic, breakpoint, interpretation, patient-origin, significance, and
+  culture-purpose information.
+- **FR-020A**: A microbiology order MUST distinguish a culture collected for
+  clinical diagnosis/treatment from active screening/carriage. This purpose is
+  independent of Program and AMR-export eligibility, is visible with the case,
+  and is not silently inferred for historical records.
 - **FR-021**: Phase 1A MUST support manual bacteriology workflow end-to-end;
   analyzer automation, expert rules, authoritative WHONET interoperability, TB
   workflow, and GLASS reporting may be planned extensions unless included in an
@@ -580,6 +592,10 @@ shape during planning.
   and AST work requiring attention.
 - **Surveillance Export Readiness**: The finalized result and mapping state
   needed to produce surveillance output for WHONET import validation.
+- **Culture Purpose**: The order-time distinction between a culture collected
+  for clinical diagnosis/treatment and active screening of colonization or
+  carriage. It is not the same as using clinical results for routine AMR
+  surveillance.
 
 ## Authoritative Alignment Stories
 
