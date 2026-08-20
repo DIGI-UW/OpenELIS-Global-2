@@ -175,11 +175,14 @@ capability is available; it does not own macro authoring or administration.
 - [x] Complete analyzer-result review and QC with representative instrument
   traffic and reconciliation through the configured Admin -> Stuck analyzer
   events path.
-- [*] Complete WHONET specimen-code validation, export projection, and exact
+- [x] Complete WHONET specimen-code validation, export projection, and exact
   repair navigation through the owning sample-type administration workflow.
-- [ ] Complete M-09 export selection: date presets, specimen, organism, patient
-  origin, significance, and screening/surveillance filters, including the
-  AST-worklist pre-filled deep-link contract and canonical URL state.
+- [*] Complete M-09 export population filters for specimen, organism, patient
+  origin, significance, and screening/surveillance status, with server-side
+  selection and canonical URL state.
+- [ ] Complete M-09 reporting-period presets and enable the AST-worklist Export
+  to WHONET deep link so its active scope pre-fills the generator and can be
+  cleared.
 - [ ] Complete M-09 advanced first-isolate behavior behind a progressive
   disclosure: window length and basis, source scope, contaminant handling,
   repeat-row handling, and susceptibility-profile sensitivity.
