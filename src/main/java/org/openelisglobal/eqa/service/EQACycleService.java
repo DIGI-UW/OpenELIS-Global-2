@@ -6,6 +6,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
@@ -22,6 +23,14 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
      */
     EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate, Date plannedEndDate,
             String sysUserId);
+
+    /**
+     * The same create, carrying the provider wizard's distribution method
+     * (FR-V2.5-02 step 4). The in-house wizard has no participants to distribute
+     * to, so it keeps the shorter form.
+     */
+    EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate, Date plannedEndDate,
+            EQADistributionMethod distributionMethod, String sysUserId);
 
     /**
      * Move a cycle to a new state and record why, atomically (FR-V2.1-04 /

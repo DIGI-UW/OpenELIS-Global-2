@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.5 (OGC-613): what the provider cycle wizard needs beyond what the
+    cycle and panel endpoints already ship — the distribution method the
+    wizard's fourth step settles, and a menu row that lands on a page that
+    exists.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-060-add-eqa-cycle-distribution-method">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="eqa_cycle" columnName="distribution_method" />
+            </not>
+        </preConditions>
+        <comment>FR-V2.5-02 step 4: how a cycle reaches its participants and returns their scores</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_cycle">
+            <column name="distribution_method" type="VARCHAR(10)" />
+        </addColumn>
+        <!-- Nullable on purpose: cycles created before the wizard (in-house
+             rounds, existing fixtures) never chose one, and an invented default
+             would read as a decision somebody made. -->
+        <sql>
+            ALTER TABLE clinlims.eqa_cycle
+            ADD CONSTRAINT eqa_cycle_distribution_method_chk
+            CHECK (distribution_method IS NULL OR distribution_method IN ('FHIR', 'CSV', 'MIXED'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.eqa_cycle DROP CONSTRAINT eqa_cycle_distribution_method_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="eqa_cycle" columnName="distribution_method" />
+        </rollback>
+    </changeSet>
+
+    <!--
+        qa/019 seeded this row with the FRS path, which the SPA has never served,
+        and qa/029 switched it off for exactly that reason — "each is switched back
+        on by the card that builds its page". This is that card, so the row gets the
+        route the SPA serves and comes back on.
+    -->
+    <changeSet author="openelisglobal" id="qa-061-activate-eqa-provider-menu-row">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_provider'
+            </sqlCheck>
+        </preConditions>
+        <comment>Provider schemes menu row: point it at /qa/eqa/provider/schemes and switch it back on</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/qa/eqa/provider/schemes" />
+            <column name="is_active" valueBoolean="true" />
+            <where>element_id = 'menu_eqa_provider'</where>
+        </update>
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="action_url" value="/eqa/management/provider/schemes" />
+                <column name="is_active" valueBoolean="false" />
+                <where>element_id = 'menu_eqa_provider'</where>
+            </update>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

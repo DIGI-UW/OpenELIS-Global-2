@@ -18,6 +18,7 @@ import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
@@ -131,7 +132,7 @@ public class EQACycleRestController extends BaseRestController {
         }
         EQACycle cycle = cycleService.create(schemeId, integerField(body, "cycleNumber"),
                 stringField(body, "cycleName"), dateField(body, "plannedStartDate"), dateField(body, "plannedEndDate"),
-                getSysUserId(request));
+                distributionMethod(body.get("distributionMethod")), getSysUserId(request));
         return toCycleDto(cycle);
     }
 
@@ -314,6 +315,22 @@ public class EQACycleRestController extends BaseRestController {
         }
     }
 
+    /**
+     * FR-V2.5-02 step 4. An unknown value is bad input rather than a silent null:
+     * the wizard offers a fixed list, so anything else means the client and the
+     * server disagree about what the choices are.
+     */
+    private EQADistributionMethod distributionMethod(Object raw) {
+        if (raw == null || String.valueOf(raw).isBlank()) {
+            return null;
+        }
+        try {
+            return EQADistributionMethod.valueOf(String.valueOf(raw).toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown distribution method " + raw);
+        }
+    }
+
     private Map<String, Object> toCycleDto(EQACycle cycle) {
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("id", cycle.getId());
@@ -330,6 +347,8 @@ public class EQACycleRestController extends BaseRestController {
             // and stands T-14's auto-submit down.
             dto.put("requiresCycleReview", Boolean.TRUE.equals(cycle.getScheme().getRequiresCycleReview()));
         }
+        dto.put("distributionMethod",
+                cycle.getDistributionMethod() == null ? null : cycle.getDistributionMethod().name());
         dto.put("plannedStartDate",
                 cycle.getPlannedStartDate() == null ? null : cycle.getPlannedStartDate().toString());
         dto.put("plannedEndDate", cycle.getPlannedEndDate() == null ? null : cycle.getPlannedEndDate().toString());

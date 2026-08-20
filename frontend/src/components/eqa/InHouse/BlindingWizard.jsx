@@ -25,14 +25,12 @@ import {
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { createCycle, createPanel, failed, fetchTests } from "../eqaApi";
 import {
-  createCycle,
-  createPanel,
   downloadLabelSheet,
   fetchAnalysts,
   fetchInHouseSchemes,
   fetchLabUsers,
-  fetchTests,
   saveAnalystRoster,
   sealAndDistribute,
 } from "./inHouseApi";
@@ -71,9 +69,6 @@ const emptySample = (index) => ({
   rangeHigh: "",
   analystId: null,
 });
-
-const failed = (response) =>
-  !response || response.error || (response.status && response.status >= 400);
 
 const BlindingWizard = () => {
   const intl = useIntl();

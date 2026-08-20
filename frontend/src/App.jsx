@@ -32,6 +32,8 @@ import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribut
 import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderWorkbenchPage from "./components/eqa/Provider/Workbench/ProviderWorkbenchPage";
+import ProviderSchemesPage from "./components/eqa/Provider/SchemesPage";
+import ProviderCycleWizard from "./components/eqa/Provider/CycleWizard";
 import InHousePanelsPage from "./components/eqa/InHouse/InHousePanelsPage";
 import BlindingWizard from "./components/eqa/InHouse/BlindingWizard";
 import MyProgramsPage from "./components/eqa/MyProgramsPage";
@@ -825,19 +827,39 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Provider prep + shipping workbenches (T-25). Same page with
-                    and without a cycle: without one it lists provider cycles,
-                    which is what makes it reachable until T-24 ships the
-                    scheme list qa/019's menu row points at. */}
-                <SecureRoute
-                  path="/qa/eqa/provider/cycles/:cycleId/workbench"
+                {/* Provider lane: the scheme list is the way in, the wizard
+                    creates a cycle, the workbench runs the one in its URL. The
+                    menu row was seeded at the FRS path, so that path redirects
+                    here rather than 404ing for anyone who kept a link. */}
+                <Redirect
                   exact
-                  component={() => <ProviderWorkbenchPage />}
+                  from="/eqa/management/provider/schemes"
+                  to="/qa/eqa/provider/schemes"
+                />
+                <Redirect
+                  exact
+                  from="/qa/eqa/provider/workbench"
+                  to="/qa/eqa/provider/schemes"
+                />
+                <SecureRoute
+                  path="/qa/eqa/provider/schemes"
+                  exact
+                  component={() => <ProviderSchemesPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* The wizard's writes carry their own qa.manage.eqa guard
+                    server-side, so the route sits on the read umbrella — same as
+                    the in-house wizard below. */}
+                <SecureRoute
+                  path="/qa/eqa/provider/cycles/new"
+                  exact
+                  component={() => <ProviderCycleWizard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
                 <SecureRoute
-                  path="/qa/eqa/provider/workbench"
+                  path="/qa/eqa/provider/cycles/:cycleId/workbench"
                   exact
                   component={() => <ProviderWorkbenchPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}

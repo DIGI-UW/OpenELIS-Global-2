@@ -91,9 +91,12 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
             }
             // The blind code becomes an accession number at distribution, so it has
             // to be unique lab-wide: the panel id is the only identifier in hand
-            // that already is.
+            // that already is. Provider panels get a neutral prefix — their codes
+            // are printed on labels another laboratory reads, and "IH" would tell
+            // that laboratory the panel is our own internal one.
             if (GenericValidator.isBlankOrNull(sample.getBlindCode())) {
-                sample.setBlindCode(String.format("IH-%d-%02d", panel.getId(), position));
+                String prefix = panel.getScheme().getSchemeType() == EQASchemeType.IN_HOUSE ? "IH" : "EQA";
+                sample.setBlindCode(String.format("%s-%d-%02d", prefix, panel.getId(), position));
             }
             sample.setId(eqaPanelSampleDAO.insert(sample));
             position++;

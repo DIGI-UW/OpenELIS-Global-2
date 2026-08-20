@@ -66,8 +66,9 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getProviderCycles() {
         List<Map<String, Object>> rows = new ArrayList<>();
-        // Newest first; the picker is a stopgap until T-24 owns the scheme list, so it
-        // does not earn a bespoke ordering of its own.
+        // Newest first. The active-enrollment test is what separates the cycles this
+        // lab provides from the ones it takes part in: an externally provided scheme
+        // has no participants of ours, so its cycles belong on My Cycles instead.
         for (EQACycle cycle : eqaCycleDAO.getAllOrdered("id", true)) {
             if (cycle.getScheme() == null) {
                 continue;
@@ -81,7 +82,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             dto.put("cycleNumber", cycle.getCycleNumber());
             dto.put("cycleName", cycle.getCycleName());
             dto.put("status", cycle.getStatus() == null ? null : cycle.getStatus().name());
+            dto.put("schemeId", cycle.getScheme().getId());
             dto.put("schemeName", cycle.getScheme().getName());
+            dto.put("distributionMethod",
+                    cycle.getDistributionMethod() == null ? null : cycle.getDistributionMethod().name());
             dto.put("participantCount", (int) participants);
             dto.put("panelCount", panelsOf(cycle.getId()).size());
             rows.add(dto);

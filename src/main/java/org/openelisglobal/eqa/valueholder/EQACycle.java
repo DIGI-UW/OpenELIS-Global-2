@@ -72,6 +72,11 @@ public class EQACycle extends BaseObject<Long> {
     @Column(name = "status", nullable = false, length = 30)
     private EQACycleStatus status = EQACycleStatus.PLANNED;
 
+    /** FR-V2.5-02 step 4; null on cycles created before the provider wizard. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "distribution_method", length = 10)
+    private EQADistributionMethod distributionMethod;
+
     @Column(name = "created_at", nullable = false)
     private Timestamp createdAt;
 

@@ -36,6 +36,7 @@ import org.openelisglobal.eqa.service.EQAPrepGate.PanelRequirement;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
@@ -123,6 +124,13 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     @Override
     public EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate,
             Date plannedEndDate, String sysUserId) {
+        return create(schemeId, cycleNumber, cycleName, plannedStartDate, plannedEndDate, null, sysUserId);
+    }
+
+    @Override
+    @Transactional
+    public EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate,
+            Date plannedEndDate, EQADistributionMethod distributionMethod, String sysUserId) {
         EQAProgram scheme = eqaProgramService.get(schemeId);
         List<EQACycle> existing = eqaCycleDAO.getAllMatchingOrdered("scheme.id", schemeId, "cycleNumber", true);
         int number = cycleNumber == null ? (existing.isEmpty() ? 1 : existing.get(0).getCycleNumber() + 1)
@@ -140,6 +148,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         cycle.setPlannedStartDate(plannedStartDate);
         cycle.setPlannedEndDate(plannedEndDate);
         cycle.setStatus(EQACycleStatus.PLANNED);
+        cycle.setDistributionMethod(distributionMethod);
         cycle.setCreatedBy(systemUserService.get(sysUserId));
         cycle.setSysUserId(sysUserId);
         cycle.setId(eqaCycleDAO.insert(cycle));
