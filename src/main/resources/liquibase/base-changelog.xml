@@ -112,4 +112,7 @@
 
   <!-- EQA V2.2 — OGC-610: automatic-submission retry bookkeeping (FR-V2.2-05) -->
   <include file="liquibase/qa/030-add-eqa-cycle-submission-retry.xml" />
+
+  <!-- EQA V2 — OGC-934: pre-approved interpretive comments for the performance report -->
+  <include file="liquibase/qa/032-eqa-report-comments.xml" />
 </databaseChangeLog>

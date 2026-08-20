@@ -15,6 +15,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.eqa.controller.rest.EQACycleRestController;
 import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
+import org.openelisglobal.eqa.service.EQAReportCommentService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
@@ -59,6 +60,9 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
     @Autowired
     private EQAPerformanceReportPDFService performanceReportService;
 
+    @Autowired
+    private EQAReportCommentService reportCommentService;
+
     // eqa.controller.* is excluded from the test component scan — construct it
     private EQACycleRestController controller;
 
@@ -67,7 +71,7 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
     public void setUp() throws Exception {
         super.setUp();
         controller = new EQACycleRestController(cycleService, sampleEQAService, sampleService, analysisService,
-                resultService, performanceReportService);
+                resultService, performanceReportService, reportCommentService);
         ensureStatusRows();
         cleanupSeed();
     }

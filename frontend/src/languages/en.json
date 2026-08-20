@@ -8311,5 +8311,19 @@
   "eqa.inhouse.cancel": "Cancel",
   "eqa.enrollment.testAnalytes": "Reporting analyte per test",
   "eqa.enrollment.testAnalytes.help": "Set which analyte each test reports for this scheme. Results are submitted to the provider under this analyte; a test left unset is not submitted automatically.",
-  "eqa.enrollment.selectAnalyte": "Choose an analyte"
+  "eqa.enrollment.selectAnalyte": "Choose an analyte",
+  "eqa.report.comments.tab": "Report comments",
+  "eqa.report.comments.hint": "Only pre-approved comments can be printed. Edit the wording under Administration → Dictionary Management.",
+  "eqa.report.comments.picker": "Approved comments",
+  "eqa.report.comments.pickerLabel": "Select comments",
+  "eqa.report.comments.add": "Add to report",
+  "eqa.report.comments.added": "{count} comment(s) added to the report",
+  "eqa.report.comments.comment": "Comment",
+  "eqa.report.comments.attribution": "Added by",
+  "eqa.report.comments.none": "No comments on this cycle's report yet.",
+  "eqa.report.comments.remove": "Remove",
+  "eqa.report.comments.emptyLibrary.title": "No approved comments configured",
+  "eqa.report.comments.emptyLibrary.body": "Add entries to the EQA Report Comment dictionary category to make them selectable here.",
+  "eqa.report.comments.addFailed": "The comment could not be added to the report.",
+  "eqa.report.comments.removeFailed": "The comment could not be removed from the report."
 }

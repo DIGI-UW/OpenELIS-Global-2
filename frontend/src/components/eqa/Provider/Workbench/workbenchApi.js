@@ -3,6 +3,7 @@
 // box state) or 422 (bad input) reaches the operator verbatim — a JSON-only
 // helper would swallow the reason, which is the D-LIVE-1 mistake.
 import {
+  deleteFromOpenElisServerFullResponse,
   getFromOpenElisServer,
   patchToOpenElisServerFullResponse,
   postToOpenElisServerFullResponse,
@@ -84,3 +85,30 @@ export const requestReadyToShip = (cycleId, callback) =>
  */
 export const fetchPanelSamples = (panelId, callback) =>
   getFromOpenElisServer(`/rest/eqa/panels/${panelId}/samples`, callback);
+
+// --- OGC-934 report comments ---
+
+/** The pre-approved library the picker offers. */
+export const fetchCommentLibrary = (callback) =>
+  getFromOpenElisServer("/rest/eqa/report-comments", (data) =>
+    callback(data || []),
+  );
+
+export const fetchCycleComments = (cycleId, callback) =>
+  getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/report-comments`, (data) =>
+    callback(data || []),
+  );
+
+/** Ids only: the endpoint has no text field, so nothing unapproved can be sent. */
+export const attachComments = (cycleId, commentIds, callback) =>
+  postToOpenElisServerFullResponse(
+    `/rest/eqa/cycles/${cycleId}/report-comments`,
+    JSON.stringify({ commentIds }),
+    withBody(callback),
+  );
+
+export const detachComment = (cycleId, commentId, callback) =>
+  deleteFromOpenElisServerFullResponse(
+    `/rest/eqa/cycles/${cycleId}/report-comments/${commentId}`,
+    withBody(callback),
+  );
