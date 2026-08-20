@@ -17,6 +17,7 @@ import {
   getAnalyzerTypeCatalog,
   getAnalyzerTypeDraft,
   publishAnalyzerTypeDraft,
+  updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
 import AnalyzerTypeManagement from "./AnalyzerTypeManagement";
 
@@ -30,6 +31,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzerTypeCatalog: vi.fn(),
   getAnalyzerTypeDraft: vi.fn(),
   publishAnalyzerTypeDraft: vi.fn(),
+  updateSharedAnalyzerType: vi.fn(),
 }));
 
 const catalog = {
@@ -165,23 +167,52 @@ describe("AnalyzerTypeManagement", () => {
         });
       },
     );
+    updateSharedAnalyzerType.mockImplementation(
+      (profileId, sourceRevision, callback) => {
+        callback({
+          draftId: "draft-update",
+          kind: "UPDATE",
+          baseProfileId: profileId,
+          baseRevision: sourceRevision,
+          profile: {
+            profileMeta: {
+              id: profileId,
+              displayName: "Mindray BC-5380",
+            },
+          },
+          validationIssues: [],
+        });
+      },
+    );
     getAnalyzerTypeDraft.mockImplementation((draftId, callback) => {
+      const kind =
+        draftId === "draft-create"
+          ? "CREATE"
+          : draftId === "draft-update"
+            ? "UPDATE"
+            : "DUPLICATE";
       callback({
         draftId,
-        kind: draftId === "draft-create" ? "CREATE" : "DUPLICATE",
-        baseProfileId: draftId === "draft-create" ? null : "shipped.genexpert",
-        baseRevision: draftId === "draft-create" ? null : 2,
+        kind,
+        baseProfileId:
+          kind === "CREATE"
+            ? null
+            : kind === "UPDATE"
+              ? "site.mindray"
+              : "shipped.genexpert",
+        baseRevision: kind === "CREATE" ? null : kind === "UPDATE" ? 1 : 2,
         profile: {
           profileMeta: {
             id: `site.${draftId}`,
             displayName:
-              draftId === "draft-create"
+              kind === "CREATE"
                 ? "Sysmex XN Series"
-                : "Cepheid GeneXpert MTB/RIF -1",
+                : kind === "UPDATE"
+                  ? "Mindray BC-5380"
+                  : "Cepheid GeneXpert MTB/RIF -1",
           },
         },
-        validationIssues:
-          draftId === "draft-create" ? ["protocol is required"] : [],
+        validationIssues: kind === "CREATE" ? ["protocol is required"] : [],
       });
     });
     publishAnalyzerTypeDraft.mockImplementation((draftId, callback) => {
@@ -413,7 +444,34 @@ describe("AnalyzerTypeManagement", () => {
     ).toBeEnabled();
   });
 
-  it("deactivates a site profile through a confirmation dialog and exposes no delete action", async () => {
+  it("deactivates a shipped profile through a confirmation dialog and exposes no delete action", async () => {
+    renderPage();
+    await screen.findByText("Cepheid GeneXpert MTB/RIF");
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Actions for Cepheid GeneXpert MTB/RIF",
+      }),
+    );
+    await userEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
+
+    const dialog = screen.getByRole("dialog", {
+      name: "Deactivate Cepheid GeneXpert MTB/RIF",
+    });
+    expect(within(dialog).queryByText(/delete/i)).not.toBeInTheDocument();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Deactivate$/ }),
+    );
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
+      "/rest/analyzer-types/shipped.genexpert/deactivate",
+      "{}",
+      expect.any(Function),
+    );
+    expect(screen.queryByRole("menuitem", { name: /delete/i })).toBeNull();
+  });
+
+  it("starts an immutable shared-profile update from the exact revision and preserves URL state", async () => {
     renderPage();
     await screen.findByText("Mindray BC-5380");
 
@@ -422,22 +480,27 @@ describe("AnalyzerTypeManagement", () => {
         name: "Actions for Mindray BC-5380",
       }),
     );
-    await userEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Update shared" }),
+    );
 
     const dialog = screen.getByRole("dialog", {
-      name: "Deactivate Mindray BC-5380",
+      name: "Update Mindray BC-5380",
     });
-    expect(within(dialog).queryByText(/delete/i)).not.toBeInTheDocument();
+    expect(within(dialog).getByText(/0 analyzers/)).toBeVisible();
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /Deactivate$/ }),
+      within(dialog).getByRole("button", { name: "Start update" }),
     );
 
-    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
-      "/rest/analyzer-types/site.mindray/deactivate",
-      "{}",
+    expect(updateSharedAnalyzerType).toHaveBeenCalledWith(
+      "site.mindray",
+      1,
       expect.any(Function),
     );
-    expect(screen.queryByRole("menuitem", { name: /delete/i })).toBeNull();
+    await waitFor(() =>
+      expect(window.location.search).toContain("draft=draft-update"),
+    );
+    expect(screen.getByText("Profile update draft created")).toBeVisible();
   });
 
   it("loads revision history through the profile history action", async () => {
@@ -446,10 +509,11 @@ describe("AnalyzerTypeManagement", () => {
       callback([
         {
           profile: {
-            profileId: "site.mindray",
-            revision: 1,
-            displayName: "Mindray BC-5380",
-            status: "ACTIVE",
+            profileMeta: {
+              id: "site.mindray",
+              displayName: "Mindray BC-5380",
+            },
+            catalog: { revision: 1, status: "ACTIVE" },
           },
           publication: {
             action: "DUPLICATED",
