@@ -81,37 +81,42 @@ public class AnalyzerTypeCatalogServiceTest {
     }
 
     private BridgeProfileCatalog catalog() throws Exception {
-        JsonNode active = objectMapper.readTree("""
-                {
-                  "schemaVersion":"1.0",
-                  "profileId":"site.mock-hematology",
-                  "revision":3,
-                  "revisionFingerprint":"sha256:1111111111111111111111111111111111111111111111111111111111111111",
-                  "displayName":"Mock Hematology",
-                  "source":"SHIPPED",
-                  "status":"ACTIVE",
-                  "protocol":"ASTM",
-                  "identity":{"manufacturer":"OpenELIS","model":"Mock H"},
-                  "tests":[
-                    {"sourceRowKey":"wbc","resultType":"NUMERIC","resultValues":[]},
-                    {"sourceRowKey":"flag","resultType":"QUALITATIVE","resultValues":[{},{}]}
-                  ]
-                }
-                """);
-        JsonNode inactive = objectMapper.readTree("""
-                {
-                  "schemaVersion":"1.0",
-                  "profileId":"site.retired-file",
-                  "revision":2,
-                  "revisionFingerprint":"sha256:2222222222222222222222222222222222222222222222222222222222222222",
-                  "displayName":"Retired File Analyzer",
-                  "source":"SITE",
-                  "status":"INACTIVE",
-                  "protocol":"FILE",
-                  "lineage":{"parentProfileId":"site.file-base","parentRevision":1},
-                  "tests":[{"sourceRowKey":"result","resultType":"NUMERIC","resultValues":[]}]
-                }
-                """);
+        JsonNode active = objectMapper.readTree(
+                """
+                        {
+                          "schemaVersion":"1.0",
+                          "profileMeta":{"id":"site.mock-hematology","version":"1.0.0","displayName":"Mock Hematology","confidence":"VALIDATED"},
+                          "manufacturer":"OpenELIS",
+                          "model":"Mock H",
+                          "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                          "default_test_mappings":[
+                            {"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"},
+                            {"test_code":"FLAG","loinc":"58410-2","result_type":"qualitative","values":["POS","NEG"]}
+                          ],
+                          "catalog":{
+                            "revision":3,
+                            "revisionFingerprint":"sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                            "source":"SHIPPED",
+                            "status":"ACTIVE"
+                          }
+                        }
+                        """);
+        JsonNode inactive = objectMapper.readTree(
+                """
+                        {
+                          "schemaVersion":"1.0",
+                          "profileMeta":{"id":"site.retired-file","version":"2.0.0","displayName":"Retired File Analyzer","confidence":"HIGH"},
+                          "protocol":{"name":"FILE","format":"XLSX"},
+                          "default_test_mappings":[{"test_code":"RESULT","loinc":"94500-6","result_type":"quantitative"}],
+                          "catalog":{
+                            "revision":2,
+                            "revisionFingerprint":"sha256:2222222222222222222222222222222222222222222222222222222222222222",
+                            "source":"SITE",
+                            "status":"INACTIVE",
+                            "lineage":{"parentProfileId":"site.file-base","parentRevision":1}
+                          }
+                        }
+                        """);
         JsonNode publication = objectMapper.createObjectNode().put("action", "CREATED");
         return new BridgeProfileCatalog("1.0",
                 "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

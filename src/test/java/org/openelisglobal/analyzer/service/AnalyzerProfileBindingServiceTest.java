@@ -24,6 +24,8 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerProfileBindingServiceTest {
@@ -154,6 +156,34 @@ public class AnalyzerProfileBindingServiceTest {
     }
 
     @Test
+    public void assignProfileAppliesSelectedRevisionDefaultsOnceAndPreservesSiteOverrides() {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setName("Hematology bench 1");
+        AnalyzerProfileBinding selected = binding(FINGERPRINT);
+        JsonNode profile = catalog("ACTIVE", FINGERPRINT).profiles().get(0).profile();
+        AnalyzerSiteBindingRevision siteBindingRevision = siteBindingRevision(selected);
+        when(catalogService.getCatalog()).thenReturn(catalog("ACTIVE", FINGERPRINT));
+        when(bindingDAO.findByProfileIdAndRevision(PROFILE_ID, REVISION)).thenReturn(Optional.of(selected));
+        when(siteBindingService.resolveInitialRevision(eq(selected), eq(profile), eq("oe-user-17")))
+                .thenReturn(new AnalyzerSiteBindingSnapshot(siteBindingRevision.getSiteBinding(), siteBindingRevision,
+                        List.of(), List.of()));
+
+        service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
+
+        assertEquals("Hematology bench 1", analyzer.getName());
+        assertEquals("ASTM", analyzer.getType());
+        assertEquals(ProtocolVersion.ASTM_LIS2_A2, analyzer.getProtocolVersion());
+        assertEquals(CommunicationMode.BOTH, analyzer.getCommunicationMode());
+        assertEquals(Integer.valueOf(9100), analyzer.getPort());
+
+        analyzer.setPort(9200);
+        service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
+
+        assertEquals(Integer.valueOf(9200), analyzer.getPort());
+        verify(catalogService).getCatalog();
+    }
+
+    @Test
     public void getAnalyzerUsageCountUsesProfileBindingReferences() {
         when(bindingDAO.countAnalyzersByBindingId("41")).thenReturn(2L);
 
@@ -161,8 +191,24 @@ public class AnalyzerProfileBindingServiceTest {
     }
 
     private BridgeProfileCatalog catalog(String status, String fingerprint) {
-        JsonNode profile = objectMapper.createObjectNode().put("profileId", PROFILE_ID).put("revision", REVISION)
-                .put("revisionFingerprint", fingerprint).put("status", status);
+        JsonNode profile;
+        try {
+            profile = objectMapper.readTree(
+                    """
+                            {
+                              "schemaVersion":"1.0",
+                              "profileMeta":{"id":"%s","version":"1.0.0","displayName":"Mock Hematology","confidence":"VALIDATED"},
+                              "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                              "communication":{"mode":"BOTH","supports_lis_initiated":true},
+                              "default_test_mappings":[{"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"}],
+                              "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP","defaultPort":9100,"aggregationMode":"PER_MESSAGE"},
+                              "catalog":{"revision":%d,"revisionFingerprint":"%s","source":"SITE","status":"%s"}
+                            }
+                            """
+                            .formatted(PROFILE_ID, REVISION, fingerprint, status));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
         JsonNode publication = objectMapper.createObjectNode().put("action", "CREATED");
         return new BridgeProfileCatalog("1.0",
                 "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

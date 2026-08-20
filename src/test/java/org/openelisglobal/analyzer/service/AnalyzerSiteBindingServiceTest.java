@@ -67,7 +67,7 @@ public class AnalyzerSiteBindingServiceTest {
     }
 
     @Test
-    public void resolveInitialRevisionCreatesEveryPortableRowUnresolvedAndAudits() throws Exception {
+    public void resolveInitialRevisionCreatesEveryProfileMappingUnresolvedAndAudits() throws Exception {
         AnalyzerProfileBinding profileBinding = profileBinding();
         when(bindingDAO.findByProfileBindingId("41")).thenReturn(Optional.empty());
 
@@ -77,7 +77,7 @@ public class AnalyzerSiteBindingServiceTest {
         assertSame(profileBinding, created.binding().getProfileBinding());
         assertEquals(1, created.revision().getRevisionNumber());
         assertEquals(2, created.tests().size());
-        assertEquals(List.of("hiv-interpretation", "wbc"),
+        assertEquals(List.of("HIV", "WBC"),
                 created.tests().stream().map(row -> row.getId().getSourceRowKey()).toList());
         assertEquals(2, created.results().size());
         assertEquals(List.of("NEG", "POS"), created.results().stream().map(row -> row.getId().getRawValue()).toList());
@@ -119,8 +119,8 @@ public class AnalyzerSiteBindingServiceTest {
 
     @Test
     public void resolveInitialRevisionRejectsMismatchedPortableIdentityBeforeWriting() throws Exception {
-        JsonNode wrongRevision = ((com.fasterxml.jackson.databind.node.ObjectNode) portableProfile()).put("revision",
-                4);
+        JsonNode wrongRevision = portableProfile().deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) wrongRevision.path("catalog")).put("revision", 4);
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> service.resolveInitialRevision(profileBinding(), wrongRevision, "17"));
@@ -196,26 +196,22 @@ public class AnalyzerSiteBindingServiceTest {
     private JsonNode portableProfile() throws Exception {
         return objectMapper.readTree("""
                 {
-                  "profileId":"site.mock-hematology",
-                  "revision":3,
-                  "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                  "tests":[
+                  "profileMeta":{"id":"site.mock-hematology"},
+                  "catalog":{
+                    "revision":3,
+                    "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  },
+                  "default_test_mappings":[
                     {
-                      "sourceRowKey":"wbc",
-                      "analyzerCode":"WBC",
-                      "displayName":"White blood cells",
-                      "resultType":"NUMERIC",
-                      "resultValues":[]
+                      "test_code":"WBC",
+                      "loinc":"6690-2",
+                      "result_type":"quantitative"
                     },
                     {
-                      "sourceRowKey":"hiv-interpretation",
-                      "analyzerCode":"HIV",
-                      "displayName":"HIV interpretation",
-                      "resultType":"QUALITATIVE",
-                      "resultValues":[
-                        {"rawValue":"POS","displayName":"Positive"},
-                        {"rawValue":"NEG","displayName":"Negative"}
-                      ]
+                      "test_code":"HIV",
+                      "loinc":"20447-9",
+                      "result_type":"qualitative",
+                      "values":["POS","NEG"]
                     }
                   ]
                 }

@@ -81,8 +81,10 @@ public class AnalyzerBridgeContractConsumerTest {
         assertTrue(response.path("catalogFingerprint").asText().matches(FINGERPRINT_PATTERN));
 
         JsonNode entry = response.path("profiles").path(0);
-        assertEquals("DUPLICATED", entry.path("publication").path("action").asText());
-        assertTrue(entry.path("profile").path("revisionFingerprint").asText().matches(FINGERPRINT_PATTERN));
+        assertEquals("SHIPPED", entry.path("publication").path("action").asText());
+        assertEquals("fluorocycler-xt", entry.path("profile").path("profileMeta").path("id").asText());
+        assertTrue(entry.path("profile").path("catalog").path("revisionFingerprint").asText()
+                .matches(FINGERPRINT_PATTERN));
         assertFalse(entry.path("profile").has("openelisTestId"));
         assertFalse(entry.path("profile").has("qcIdentification"));
     }
