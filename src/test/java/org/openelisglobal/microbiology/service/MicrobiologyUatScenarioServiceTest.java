@@ -706,6 +706,7 @@ public class MicrobiologyUatScenarioServiceTest {
                 .allMatch(candidate -> candidate.getDescription().startsWith("UAT WHONET specimen ")));
         assertTrue(sampleTypes.stream().allMatch(candidate -> "".equals(candidate.getWhonetCode())));
         assertFalse(sampleTypes.get(0).getLocalAbbreviation().equals(sampleTypes.get(1).getLocalAbbreviation()));
+        assertTrue(sampleTypes.stream().allMatch(candidate -> candidate.getLocalAbbreviation().length() <= 10));
         verify(sampleItemService, times(2)).update(sampleItem);
         ArgumentCaptor<MicroOrganism> organismCaptor = ArgumentCaptor.forClass(MicroOrganism.class);
         verify(configurationService, times(2)).createOrganism(organismCaptor.capture());
