@@ -80,7 +80,7 @@ Configure, Preview, and Generate workflow.
 **Acceptance scenarios**
 
 1. The page has a linkable Dashboard-to-Reports-to-WHONET breadcrumb path and a
-   Microbiology navigation entry.
+   Reports navigation entry.
 2. Date, inclusion, preview, mapping repair, generation, table, and pagination
    controls have accessible names and logical keyboard order.
 3. Preview and generation status are announced without moving focus
@@ -182,3 +182,66 @@ ambiguous surveillance value.
   and MUST block generation only when no valid row remains.
 - **FR-016**: Mapping repair and return navigation MUST preserve the canonical
   export preview state and remain keyboard accessible.
+
+## Follow-on Story - Select The Export Population
+
+As a surveillance or laboratory reporting user, I can narrow an export to the
+patient and laboratory population required for the reporting activity without
+manually editing the generated file.
+
+**Acceptance scenarios**
+
+1. The user can filter finalized cases by one or more specimen types, organisms,
+   patient origins, and isolate-significance values.
+2. Every filter is enforced by preview and generation, and the preview counts
+   explain how the selected population was reduced.
+3. Refreshing or sharing the canonical URL restores the same filters and
+   results; changing a filter resets pagination without discarding the other
+   selections.
+4. The canonical export page is discoverable under Reports and retains its
+   stable URL for existing links and saved previews.
+
+**Requirements**
+
+- **FR-017**: Population filters MUST be combinable and MUST use values present
+  in the selected reporting period rather than requiring users to know internal
+  codes.
+- **FR-018**: Preview, generation, pagination, and canonical URL state MUST use
+  the same normalized filter selection.
+- **FR-019**: Reports MUST contain the single navigation entry for the canonical
+  export page; the system MUST NOT expose competing menu destinations for the
+  same workflow.
+
+## Follow-on Story - Distinguish Clinical And Screening Cultures
+
+As an ordering user, I can state whether a culture is being collected for
+clinical diagnosis or for active screening of carriage so that surveillance
+exports do not mix unlike populations.
+
+**Acceptance scenarios**
+
+1. A new microbiology order visibly records Culture purpose as either Clinical
+   diagnosis/treatment or Active screening/carriage; the routine default is
+   Clinical diagnosis/treatment.
+2. The selected purpose remains visible with the case and may be corrected with
+   an audited reason before final release; final release locks ordinary changes.
+3. Export defaults include clinical diagnostic cultures and exclude active
+   screening/carriage cultures. The user may explicitly include active
+   screening/carriage cultures.
+4. Historical cases without a recorded purpose remain visibly Unspecified and
+   are never silently reclassified. Preview reports their count and excludes
+   them unless the user explicitly includes them.
+5. The workflow does not infer culture purpose from Program, Patient Origin,
+   specimen type, organism, requesting location, or the test's AMR-export flag.
+
+**Requirements**
+
+- **FR-020**: Culture purpose MUST describe the reason for this culture order,
+  independently of whether the ordered test is eligible for AMR export.
+- **FR-021**: Active screening/carriage MUST mean testing intended to identify
+  colonization or carriage for infection-control action, not routine AMR
+  surveillance based on clinical diagnostic specimens.
+- **FR-022**: New microbiology orders MUST carry an explicit purpose while
+  historical missing values remain distinguishable as Unspecified.
+- **FR-023**: Purpose selection and export inclusion MUST be bookmarkable,
+  accessible, auditable, and enforced consistently by preview and generation.

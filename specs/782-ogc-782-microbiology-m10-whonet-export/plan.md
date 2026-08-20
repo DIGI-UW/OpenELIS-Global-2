@@ -2,8 +2,8 @@
 
 ## Technical Context
 
-M4 stacks on M3 commit `5c3937e6727ed7902cb354a6c7748caa69d94f84`.
-The repo already contains the legacy Reports-to-WHONET path,
+M4 stacks on the completed M3 reference-data foundation. The repo already
+contains the legacy Reports-to-WHONET path,
 `WHONetReportService`, `WHONETCSVRoutineColumnBuilder`, finalized microbiology
 cases, service-created UAT fixtures, organism and antibiotic WHONET codes, and
 case-level readiness. The new slice reuses the existing renderer and service
@@ -32,10 +32,11 @@ boundary rather than introducing a second export implementation.
    `significance`, `dedup`, `step`, `page`, and `pageSize` query state.
 9. Mapping repair uses the M3 admin `edit` query state to open the exact organism
    or antibiotic record. Browser history returns to the preview.
-10. The config-backed Microbiology menu gains the canonical WHONET Export child
-    and removes the competing legacy Reports navigation entry; no database
-    migration is used for navigation. Removing the remaining legacy report
-    implementation is separately tracked in
+10. The config-backed Reports menu owns the single navigation entry for the
+    canonical export page. The stable `/Microbiology/whonet` route is retained
+    for links and saved previews, while the competing Microbiology menu entry is
+    removed; no database migration is used for navigation. Removing the
+    remaining legacy report implementation is separately tracked in
     [GitHub #3983](https://github.com/DIGI-UW/OpenELIS-Global-2/issues/3983)
     because direct callers may still exist.
 
@@ -101,3 +102,31 @@ return destination. The sample-type editor focuses the WHONET control on entry
 and exposes an explicit return action after save. The service-created WHONET
 scenario supplies both mapped and unmapped sample types through existing
 services. No migration is added because no data model changes.
+
+## R9 Engineering Addendum - Population And Culture Purpose
+
+Research distinguishes routine AMR surveillance of clinical diagnostic
+specimens from active screening intended to detect colonization or carriage.
+Program selection, patient origin, specimen type, organism, requesting location,
+and the test-level AMR flag do not reliably encode that order-specific intent.
+
+R9 is therefore divided into two coherent behavior slices:
+
+1. Filter by data already captured authoritatively: specimen, organism, patient
+   origin, and significance. Apply the same normalized filters on the server to
+   preview and generation, preserve them in the canonical URL, move the single
+   navigation entry to Reports, and compact the touched page toward the M-09
+   operational layout.
+2. Add Culture purpose to microbiology order context with Clinical
+   diagnosis/treatment and Active screening/carriage choices. New orders default
+   visibly to clinical purpose; historical missing values remain Unspecified.
+   The case displays the value, corrections before final release are audited,
+   and export excludes screening and unspecified records by default unless the
+   user explicitly includes them.
+
+The second slice is an actual data-model change and therefore receives one
+Liquibase migration with rollback. It extends the existing microbiology order
+detail and case workflow rather than introducing a separate surveillance record.
+FHIR projection, when implemented, should carry the order-specific context in
+the laboratory ServiceRequest; it is not required to complete these local
+workflow slices.
