@@ -985,8 +985,12 @@ accepted against a second or incomplete profile contract.
 ### M1 - Bridge profile lifecycle and Analyzer Types (OGC-1055)
 
 1. In BR-M1, put the versioned profile catalog and lifecycle around the
-   established profile system using the accepted BR-E0 contract. Ship the
-   curated profiles from Bridge; OE is not the catalog source.
+   established profile system using the accepted BR-E0 contract. Ship only
+   priority profiles whose complete contract, analyzer-mock transport, Bridge
+   behavior, and assembled visible result flow are proven together; OE is not
+   the catalog source. The 20-file E0 disposition is not a 20-profile M1
+   publication gate, and an unproven source file is never loaded as a runtime
+   profile or served through an OE fallback.
 2. In OE-M1, compose one lab-facing Analyzer Types view from Bridge profile
    metadata plus OpenELIS local completeness/readiness/usage, with the
    plain-language explainer and aggregate counts shown by the functional mock.
@@ -1003,9 +1007,11 @@ accepted against a second or incomplete profile contract.
    referenced revision and never persist an authoritative copied profile.
 
 **Exit:** MVP-001 through MVP-004, MVP-011, and applicable MVP-022 criteria pass;
-GeneXpert/Fluoro setup and runtime parity pass, a type is reusable by multiple
-analyzers, and no OpenELIS filesystem catalog, hardcoded selected-profile
-default, or create-only copied snapshot remains authoritative.
+GeneXpert/Fluoro setup and runtime parity pass, every profile published in the
+M1 seed catalog passes the same-version contract/mock/assembled-flow gate, a
+type is reusable by multiple analyzers, and no OpenELIS filesystem catalog,
+hardcoded selected-profile default, or create-only copied snapshot remains
+authoritative. No profile-count target can substitute for this evidence.
 
 ### M2 - Safe mapping editor (OGC-1056)
 
@@ -1177,7 +1183,10 @@ in order and remain `[ ]` while R0-G0 is active:
    to its analyzer/type/mapping context.
    **Exit:** integration and UI tests prove no alert is lost, double-resolved,
    or detached from its held result.
-2. **R1.2 - Profile revision and distribution operations.** Show revision
+2. **R1.2 - Profile catalog, revision, and distribution operations.** Curate the
+   remaining established source profiles in bounded profile-data PRs and add
+   each to the Bridge catalog only after its contract, mock transport, Bridge
+   behavior, and assembled visible result flow pass together. Show revision
    differences and impact, apply updates to selected analyzers, preserve an
    audited rollback path, provide backup/support export, and harden distribution
    of shipped/site profiles. Import/community sharing remains outside this
@@ -1400,5 +1409,7 @@ continues, while its `AnalyzerQcRule` classifier is superseded. Bridge PR #33's
 OE-pushed classifier and hard-coded fallback behavior are superseded by the
 versioned profile contract. Prepared Bridge PR #46 must use the additive
 established-profile contract, preserve both profile jobs, adopt
-`controlResultRecognition` with explicit `RULES`/`NONE`, ship the curated
-catalog, and remove fallback before its checkpoint can be accepted.
+`controlResultRecognition` with explicit `RULES`/`NONE`, ship the priority
+evidence-backed catalog, and remove fallback before its checkpoint can be
+accepted. The remaining established files are later curation inputs, not a
+legacy runtime catalog and not an M1 publication-count gate.

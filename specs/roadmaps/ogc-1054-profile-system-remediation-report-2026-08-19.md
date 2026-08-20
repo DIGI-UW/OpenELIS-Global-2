@@ -287,7 +287,7 @@ configuration, a compatibility reader, or a legacy rule representation.
 | OE #4053 F0   | Keep acceptance infrastructure; add established-contract and GeneXpert/Fluoro parity fixtures                  |
 | Bridge #45 E0 | Substantially rewrite the profile contract; keep versioned contract-test infrastructure                        |
 | OE #4055 E0   | Delete preservation-oriented migration semantics; rewrite as consumer/parity contract and removal plan         |
-| Bridge #46 M1 | Keep lifecycle engine; rewire it to the evolved established contract and ship curated profiles                 |
+| Bridge #46 M1 | Keep lifecycle engine; rewire it to the evolved contract and ship the priority evidence-backed profiles        |
 | OE #4056 M1   | Keep linkable Analyzer Types UI/pin scaffolding; rewrite profile loading, defaults, counts, and setup behavior |
 
 Preserve the current commits as Git provenance. Correct the open PRs with
@@ -433,18 +433,25 @@ profile defaults; analyzer-specific values remain profile/spec data only.
 - [ ] Reuse the append-only catalog, immutable revisions, fingerprints,
       authentication, audit, and Duplicate/Update lifecycle.
 - [ ] Rewire catalog validation and APIs to the corrected E0 contract.
-- [ ] Convert all 20 profiles with an explicit evidence-based disposition; do
-      not restore the mechanical safety-branch conversion.
-- [ ] Ship the curated profiles from Bridge and expose complete profile detail
-      and defaults.
+- [ ] Keep the evidence-based disposition for all 20 source profiles, but do
+      not turn that inventory into an M1 publication-count gate or restore the
+      mechanical safety-branch conversion.
+- [ ] Ship only priority profiles whose complete contract, mock transport,
+      Bridge behavior, and assembled visible result flow pass together; expose
+      their complete detail and defaults from Bridge.
+- [ ] Keep every unproven source file outside runtime until a later bounded
+      profile-data iteration standardizes it to the same valid contract. Do not
+      serve it from OE or invent a placeholder/draft compatibility state.
 - [ ] Make Duplicate create an editable draft and Publish create an immutable
       selectable revision; existing analyzers remain pinned.
 - [ ] Remove model-name/code classifier behavior once the corresponding profile
       data and tests are present.
 
-**BR-M1 exit evidence:** fresh Bridge startup exposes the curated catalog;
-GeneXpert/Fluoro profile/runtime tests pass; no profile resource is required
-from OE; published revisions cannot mutate or disappear while referenced.
+**BR-M1 exit evidence:** fresh Bridge startup exposes the priority catalog;
+GeneXpert/Fluoro profile/runtime tests pass; each additional published profile
+passes the same-version contract/mock/assembled-flow gate; no profile resource
+is required from OE; published revisions cannot mutate or disappear while
+referenced. There is no minimum profile-count gate.
 
 ### OE-M1 - Restore profile-driven setup and Analyzer Types UX
 

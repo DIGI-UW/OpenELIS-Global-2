@@ -109,24 +109,29 @@ feature commits or preserve legacy writers as compatibility paths.
 Complete the Bridge-profile/OpenELIS-binding ADR and versioned producer/consumer
 contracts as a strict additive evolution of the established profile system.
 Use GeneXpert ASTM and FluoroCycler as blocking compatibility fixtures for both
-profile jobs. Curate all 20 profiles from protocol/vendor/capture/mock evidence;
-define `controlResultRecognition`, revision retention, revision-scoped site
-bindings, activation-candidate fingerprints, exact Bridge acknowledgment, and
-the one-way removal of copied configuration, `defaultConfigId`, OE profile
+profile jobs. Record an evidence-based disposition for all 20 source profiles,
+but publish only priority profiles whose contract, mock transport, Bridge
+behavior, and assembled visible result flow pass together. Define
+`controlResultRecognition`, revision retention, revision-scoped site bindings,
+activation-candidate fingerprints, exact Bridge acknowledgment, and the one-way
+removal of copied configuration, `defaultConfigId`, OE profile
 serving/application, `AnalyzerQcRule`, and hidden Bridge fallbacks. Do not add a
-runtime legacy adapter, mechanical row preservation, or product-mock-derived
-persistence.
+runtime legacy adapter, mechanical row preservation, unproven runtime profile,
+or product-mock-derived persistence.
 
 ### M1 - Profile Lifecycle And Analyzer Types
 
 Implement Bridge profile lifecycle and the composed OpenELIS Analyzer Types
-experience around the accepted established contract. Ship the curated catalog
-from Bridge, fetch complete profile defaults in OE setup, and persist explicit
-revision pins plus site values without copied profile authority. Complete
+experience around the accepted established contract. Ship the evidence-backed
+priority catalog from Bridge, fetch complete profile defaults in OE setup, and
+persist explicit revision pins plus site values without copied profile
+authority. Complete
 URL-backed search/filter state, breadcrumbs, lifecycle, usage, completeness,
 audit, and lab-safe Create/Duplicate/Update/Publish behavior. GeneXpert and
 Fluoro form defaults, Bridge registration/runtime, and mock traffic must retain
-assembled parity before the OE-hosted path is removed.
+assembled parity before the OE-hosted path is removed. Remaining source profiles
+are standardized in later bounded profile-data iterations and never remain as
+an OE runtime fallback.
 
 ### M2 - Safe Mapping
 

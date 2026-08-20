@@ -82,11 +82,15 @@ state bookkeeping.
 1. Complete Bridge profile lifecycle tests before lifecycle implementation.
 2. Complete OE composition, persistence, defaults, and removal tests before production
    changes.
-3. Rewire the catalog to the corrected E0 contract and ship the curated 20
-   profiles from Bridge.
+3. Rewire the catalog to the corrected E0 contract and ship only priority
+   profiles whose complete contract, mock transport, Bridge behavior, and
+   assembled visible result flow pass together. The 20 E0 dispositions are not
+   a publication-count gate; unproven files remain outside runtime and receive
+   no OE fallback.
 4. Prove GeneXpert/Fluoro profile defaults, registration/runtime, and mock
-   traffic retain parity; accepted distinct results remain distinct and proven
-   aliases are not duplicated.
+   traffic retain parity; apply the same gate to every additional M1 seed
+   profile. Accepted distinct results remain distinct and proven aliases are
+   not duplicated.
 5. Implement lab-safe Create/Duplicate/Update/Publish, lineage, pinned revisions,
    lifecycle, completeness, usage, and attention state, including the explainer
    and aggregate counts.
