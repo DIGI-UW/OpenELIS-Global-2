@@ -1073,7 +1073,7 @@ public class MicrobiologyUatScenarioService {
             sampleType = new TypeOfSample();
             sampleType.setDescription(description);
             sampleType.setDomain("H");
-            sampleType.setLocalAbbreviation("UATWH" + suffix);
+            sampleType.setLocalAbbreviation("W" + suffix.substring(0, 9));
             sampleType.setActive(true);
             sampleType.setSortOrder(998);
             sampleType.setWhonetCode("");
