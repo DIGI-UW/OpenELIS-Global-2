@@ -56,16 +56,42 @@ public class AnalyzerTypeRestControllerTest {
 
     @Test
     public void duplicateUsesAuthenticatedUserAsBridgeActor() throws Exception {
-        JsonNode response = objectMapper.readTree("{\"profile\":{\"profileId\":\"site.mock-1\"}}");
-        when(managementService.duplicate("site.mock", 3, "site.mock-1", "Mock Analyzer -1", "17")).thenReturn(response);
+        JsonNode response = objectMapper.readTree("{\"draftId\":\"draft-1\",\"kind\":\"DUPLICATE\"}");
+        when(managementService.duplicate("site.mock", 3, "Mock Analyzer -1", "17")).thenReturn(response);
         AnalyzerTypeRestController.DuplicateProfileRequest request = new AnalyzerTypeRestController.DuplicateProfileRequest(
-                3, "site.mock-1", "Mock Analyzer -1");
+                3, "Mock Analyzer -1");
 
         ResponseEntity<JsonNode> result = controller.duplicate("site.mock", request, authenticatedRequest(17));
 
         assertEquals(HttpStatus.CREATED, result.getStatusCode());
         assertSame(response, result.getBody());
-        verify(managementService).duplicate("site.mock", 3, "site.mock-1", "Mock Analyzer -1", "17");
+        verify(managementService).duplicate("site.mock", 3, "Mock Analyzer -1", "17");
+    }
+
+    @Test
+    public void createDraftUsesAuthenticatedUserAndBridgeGeneratedIdentity() throws Exception {
+        JsonNode response = objectMapper.readTree("{\"draftId\":\"draft-1\",\"kind\":\"CREATE\"}");
+        when(managementService.createDraft("Site Mock Analyzer", "17")).thenReturn(response);
+
+        ResponseEntity<JsonNode> result = controller.createDraft(
+                new AnalyzerTypeRestController.CreateDraftRequest("Site Mock Analyzer"), authenticatedRequest(17));
+
+        assertEquals(HttpStatus.CREATED, result.getStatusCode());
+        assertSame(response, result.getBody());
+        verify(managementService).createDraft("Site Mock Analyzer", "17");
+    }
+
+    @Test
+    public void updateSharedStartsFromAnExplicitSourceRevision() throws Exception {
+        JsonNode response = objectMapper.readTree("{\"draftId\":\"draft-2\",\"kind\":\"UPDATE\"}");
+        when(managementService.updateShared("site.mock", 3, "17")).thenReturn(response);
+
+        ResponseEntity<JsonNode> result = controller.updateShared("site.mock",
+                new AnalyzerTypeRestController.SourceRevisionRequest(3), authenticatedRequest(17));
+
+        assertEquals(HttpStatus.CREATED, result.getStatusCode());
+        assertSame(response, result.getBody());
+        verify(managementService).updateShared("site.mock", 3, "17");
     }
 
     @Test

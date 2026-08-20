@@ -33,27 +33,30 @@ public class BridgeProfileManagementServiceTest {
     }
 
     @Test
-    public void createSuppliesAuthenticatedActorWithoutCopyingProfileLocally() throws Exception {
-        JsonNode profile = objectMapper.readTree("{\"profileId\":\"site.mock\"}");
-        when(bridgeHttpClient.post(eq("https://bridge.example/api/profiles"), any(String.class), any(Duration.class)))
-                .thenReturn(new BridgeHttpClient.BridgeResponse(201, "{\"profile\":{\"profileId\":\"site.mock\"}}"));
+    public void createDraftSuppliesAuthenticatedActorAndLetsBridgeGenerateIdentity() throws Exception {
+        when(bridgeHttpClient.post(eq("https://bridge.example/api/profiles/drafts"), any(String.class),
+                any(Duration.class))).thenReturn(new BridgeHttpClient.BridgeResponse(201,
+                        "{\"draftId\":\"draft-1\",\"profile\":{\"profileMeta\":{\"id\":\"site.generated\"}}}"));
 
-        service.create(profile, "17");
+        service.createDraft("Site Mock Analyzer", "17");
 
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
-        verify(bridgeHttpClient).post(eq("https://bridge.example/api/profiles"), body.capture(), any(Duration.class));
+        verify(bridgeHttpClient).post(eq("https://bridge.example/api/profiles/drafts"), body.capture(),
+                any(Duration.class));
         JsonNode forwarded = objectMapper.readTree(body.getValue());
         assertEquals("17", forwarded.path("actor").asText());
-        assertEquals("site.mock", forwarded.path("profile").path("profileId").asText());
+        assertEquals("Site Mock Analyzer", forwarded.path("displayName").asText());
+        assertEquals(false, forwarded.has("profileId"));
+        assertEquals(false, forwarded.has("profile"));
     }
 
     @Test
-    public void duplicateForwardsExplicitSourceRevisionAndNewIdentity() throws Exception {
+    public void duplicateForwardsExplicitSourceRevisionAndLetsBridgeGenerateIdentity() throws Exception {
         when(bridgeHttpClient.post(eq("https://bridge.example/api/profiles/site.mock/duplicate"), any(String.class),
                 any(Duration.class))).thenReturn(new BridgeHttpClient.BridgeResponse(201,
-                        "{\"profile\":{\"profileId\":\"site.mock-1\"}}"));
+                        "{\"draftId\":\"draft-2\",\"profile\":{\"profileMeta\":{\"id\":\"site.generated\"}}}"));
 
-        service.duplicate("site.mock", 3, "site.mock-1", "Mock Analyzer -1", "17");
+        service.duplicate("site.mock", 3, "Mock Analyzer -1", "17");
 
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
         verify(bridgeHttpClient).post(eq("https://bridge.example/api/profiles/site.mock/duplicate"), body.capture(),
@@ -61,8 +64,51 @@ public class BridgeProfileManagementServiceTest {
         JsonNode forwarded = objectMapper.readTree(body.getValue());
         assertEquals("17", forwarded.path("actor").asText());
         assertEquals(3, forwarded.path("sourceRevision").asInt());
-        assertEquals("site.mock-1", forwarded.path("targetProfileId").asText());
         assertEquals("Mock Analyzer -1", forwarded.path("displayName").asText());
+        assertEquals(false, forwarded.has("targetProfileId"));
+    }
+
+    @Test
+    public void updateSharedStartsFromTheExactPublishedRevision() throws Exception {
+        when(bridgeHttpClient.post(eq("https://bridge.example/api/profiles/site.mock/update"), any(String.class),
+                any(Duration.class))).thenReturn(new BridgeHttpClient.BridgeResponse(201,
+                        "{\"draftId\":\"draft-3\",\"kind\":\"UPDATE\"}"));
+
+        service.updateShared("site.mock", 3, "17");
+
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(bridgeHttpClient).post(eq("https://bridge.example/api/profiles/site.mock/update"), body.capture(),
+                any(Duration.class));
+        JsonNode forwarded = objectMapper.readTree(body.getValue());
+        assertEquals("17", forwarded.path("actor").asText());
+        assertEquals(3, forwarded.path("sourceRevision").asInt());
+        assertEquals(false, forwarded.has("profile"));
+    }
+
+    @Test
+    public void updateAndPublishDraftUseTheBridgeDraftLifecycle() throws Exception {
+        JsonNode profile = objectMapper.readTree("{\"profileMeta\":{\"displayName\":\"Site Mock Analyzer\"}}");
+        when(bridgeHttpClient.put(eq("https://bridge.example/api/profiles/drafts/draft-1"), any(String.class),
+                any(Duration.class))).thenReturn(
+                        new BridgeHttpClient.BridgeResponse(200, "{\"draftId\":\"draft-1\",\"validationIssues\":[]}"));
+        when(bridgeHttpClient.post(eq("https://bridge.example/api/profiles/drafts/draft-1/publish"), any(String.class),
+                any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(201, "{\"profile\":{\"catalog\":{\"revision\":1}}}"));
+
+        service.updateDraft("draft-1", profile, "17");
+        service.publishDraft("draft-1", "17");
+
+        ArgumentCaptor<String> updateBody = ArgumentCaptor.forClass(String.class);
+        verify(bridgeHttpClient).put(eq("https://bridge.example/api/profiles/drafts/draft-1"), updateBody.capture(),
+                any(Duration.class));
+        JsonNode update = objectMapper.readTree(updateBody.getValue());
+        assertEquals("17", update.path("actor").asText());
+        assertEquals("Site Mock Analyzer", update.path("profile").path("profileMeta").path("displayName").asText());
+
+        ArgumentCaptor<String> publishBody = ArgumentCaptor.forClass(String.class);
+        verify(bridgeHttpClient).post(eq("https://bridge.example/api/profiles/drafts/draft-1/publish"),
+                publishBody.capture(), any(Duration.class));
+        assertEquals("17", objectMapper.readTree(publishBody.getValue()).path("actor").asText());
     }
 
     @Test
