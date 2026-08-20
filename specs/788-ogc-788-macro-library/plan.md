@@ -43,6 +43,17 @@ adapter, while microbiology supplies only the field context.
    migration is permitted.
 10. Liquibase is used only for the phrase data model. Routes, UI, tests,
     fixtures, and navigation receive no migration.
+11. M2 export is a deterministic UTF-8 CSV of the effective library, ordered by
+    canonical code. Contexts and package provenance are preserved so the file is
+    useful for review and future import without exposing audit actors or database
+    identifiers.
+12. M2 bulk administration is an explicit, confirmed operation over at most 100
+    selected phrases. Activation and deactivation apply to local or packaged
+    phrases; irreversible removal is limited to local phrases. The service loads
+    and validates the complete selection before changing any row.
+13. Package import remains blocked until its clinical source and collision policy
+    are approved. Export and bulk administration use the M1 model and therefore
+    require no Liquibase migration.
 
 ## Milestones
 
@@ -59,7 +70,7 @@ adapter, while microbiology supplies only the field context.
 M1 deliberately proves the end-to-end behavior without claiming the draft 85
 clinical defaults are approved.
 
-### M2 - Reviewed Package And Broader Administration
+### M2 - Broader Administration; Reviewed Package Gated
 
 - Import or restore a versioned, clinically reviewed default package.
 - Preserve and visibly distinguish local phrases.
@@ -69,6 +80,12 @@ clinical defaults are approved.
 
 M2 cannot start its default-package task until the phrase source, exact content,
 version, and clinical approver are recorded.
+
+The current M2 stack delivers the independent broader-administration slice:
+deterministic export, explicit bulk activation/deactivation, and local-only
+removal. Reviewed package import/restore and additional field consumers remain
+undelivered because their product inputs are not approved. This is a partial M2
+delivery, not evidence that those gated outcomes are complete.
 
 ## Data Flow
 
@@ -111,6 +128,19 @@ not be inserted as an unreviewed test fixture.
 - Performance evidence: active-context lookup and a 500-phrase admin list are
   measured under a reproducible fixture, with results recorded rather than a
   mock-derived implementation promise.
+
+### Reusable Test Boundaries
+
+- Service tests own CSV ordering/escaping and all-or-nothing bulk rules; controller
+  tests own media headers, authorization, and authenticated actor propagation.
+- A shared attachment helper owns browser download lifecycle. A shared Carbon
+  confirmation modal owns focus-safe confirmation content for batch actions.
+- Admin component tests use Carbon checkboxes, buttons, and dialogs by accessible
+  role/name. Playwright composes the existing text-macro fixture and navigation
+  helpers, waits on observable responses/UI state, and contains no time-based
+  functional waits.
+- M2 visual and accessibility evidence reuses the M1 screenshot, WCAG, and titled
+  video helpers so milestone proof has one format rather than a custom recorder.
 
 ## Constitution Check
 

@@ -82,6 +82,9 @@ public class TextMacroRestControllerSecurityTest extends SecuritySliceMockMvcTes
             when(service.findActive(any(), any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of());
             when(service.searchAdmin(any())).thenReturn(new TextMacroPageForm());
             when(service.save(any(), any(), any())).thenReturn(new TextMacroAdminForm());
+            when(service.exportCsv()).thenReturn("code\r\n");
+            when(service.bulk(any(), any()))
+                    .thenReturn(new org.openelisglobal.textmacro.form.TextMacroBulkResultForm());
             return service;
         }
 

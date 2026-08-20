@@ -1,15 +1,24 @@
 package org.openelisglobal.textmacro.service;
 
+import java.io.IOException;
+import java.io.StringWriter;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.textmacro.dao.TextMacroDAO;
 import org.openelisglobal.textmacro.form.TextMacroAdminForm;
 import org.openelisglobal.textmacro.form.TextMacroAdminQueryForm;
+import org.openelisglobal.textmacro.form.TextMacroBulkRequestForm;
+import org.openelisglobal.textmacro.form.TextMacroBulkResultForm;
 import org.openelisglobal.textmacro.form.TextMacroPageForm;
 import org.openelisglobal.textmacro.form.TextMacroSummaryForm;
 import org.openelisglobal.textmacro.valueholder.TextMacro;
@@ -24,11 +33,17 @@ public class TextMacroServiceImpl implements TextMacroService {
     private static final Set<String> STATUSES = Set.of("ACTIVE", "INACTIVE", "ALL");
     private static final Set<String> SORTS = Set.of("code:asc", "code:desc", "updated:asc", "updated:desc");
     private static final Set<Integer> PAGE_SIZES = Set.of(10, 20, 50, 100);
+    private static final Set<String> BULK_ACTIONS = Set.of("ACTIVATE", "DEACTIVATE", "DELETE_LOCAL");
+    private static final int MAX_BULK_SELECTION = 100;
+    private static final String[] CSV_HEADERS = { "code", "expansion_text", "contexts", "active", "provenance",
+            "source_key", "source_version" };
 
     private final TextMacroDAO macroDAO;
+    private final AuditTrailService auditTrailService;
 
-    public TextMacroServiceImpl(TextMacroDAO macroDAO) {
+    public TextMacroServiceImpl(TextMacroDAO macroDAO, AuditTrailService auditTrailService) {
         this.macroDAO = macroDAO;
+        this.auditTrailService = auditTrailService;
     }
 
     @Override
@@ -98,6 +113,69 @@ public class TextMacroServiceImpl implements TextMacroService {
         return toAdmin(macro);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public String exportCsv() {
+        List<TextMacro> macros = macroDAO.findAllWithContexts().stream()
+                .sorted(java.util.Comparator.comparing(TextMacro::getCode)).toList();
+        try (StringWriter writer = new StringWriter();
+                CSVPrinter printer = new CSVPrinter(writer,
+                        CSVFormat.DEFAULT.builder().setHeader(CSV_HEADERS).setRecordSeparator("\r\n").build())) {
+            for (TextMacro macro : macros) {
+                String contexts = macro.getContexts().stream().map(Enum::name).sorted()
+                        .collect(java.util.stream.Collectors.joining("|"));
+                printer.printRecord(macro.getCode(), macro.getExpansionText(), contexts, macro.isActive(),
+                        macro.getProvenance(), nullToEmpty(macro.getSourceKey()),
+                        nullToEmpty(macro.getSourceVersion()));
+            }
+            printer.flush();
+            return writer.toString();
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to export text macros", exception);
+        }
+    }
+
+    @Override
+    @Transactional
+    public TextMacroBulkResultForm bulk(TextMacroBulkRequestForm request, String actorId) {
+        String actor = requireText(actorId, "AUTHENTICATED_ACTOR_REQUIRED", "Authenticated actor is required");
+        if (request == null) {
+            throw new TextMacroRequestException("INVALID_MACRO_REQUEST", "Bulk request is required");
+        }
+        List<String> requestedIds = normalizeBulkIds(request.ids);
+        String action = normalizeBulkAction(request.action);
+        Set<String> uniqueIds = new LinkedHashSet<>(requestedIds);
+        List<TextMacro> macros = macroDAO.findByIdsWithContexts(uniqueIds).stream()
+                .sorted(java.util.Comparator.comparing(TextMacro::getCode)).toList();
+        if (macros.size() != uniqueIds.size()) {
+            throw new TextMacroRequestException("MACRO_NOT_FOUND", "One or more selected macros were not found");
+        }
+        if ("DELETE_LOCAL".equals(action)
+                && macros.stream().anyMatch(macro -> !"LOCAL".equalsIgnoreCase(macro.getProvenance()))) {
+            throw new TextMacroRequestException("PACKAGED_MACRO_REMOVAL_NOT_ALLOWED",
+                    "Packaged macros cannot be removed");
+        }
+
+        for (TextMacro macro : macros) {
+            if ("DELETE_LOCAL".equals(action)) {
+                macro.setSysUserId(actor);
+                auditTrailService.saveHistory(null, macro, actor, IActionConstants.AUDIT_TRAIL_DELETE,
+                        macroDAO.getTableName());
+                macroDAO.delete(macro);
+            } else {
+                macro.setActive("ACTIVATE".equals(action));
+                macro.setLastUpdatedBy(actor);
+                macroDAO.update(macro);
+            }
+        }
+
+        TextMacroBulkResultForm result = new TextMacroBulkResultForm();
+        result.action = action;
+        result.affectedCount = macros.size();
+        result.affectedCodes = macros.stream().map(TextMacro::getCode).toList();
+        return result;
+    }
+
     private TextMacro requireExisting(String id) {
         return macroDAO.get(id)
                 .orElseThrow(() -> new TextMacroRequestException("MACRO_NOT_FOUND", "Macro not found: " + id));
@@ -152,6 +230,35 @@ public class TextMacroServiceImpl implements TextMacroService {
 
     private String normalizeSearch(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private List<String> normalizeBulkIds(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            throw new TextMacroRequestException("MACRO_SELECTION_REQUIRED", "Select at least one macro");
+        }
+        if (values.size() > MAX_BULK_SELECTION) {
+            throw new TextMacroRequestException("MACRO_SELECTION_LIMIT_EXCEEDED",
+                    "No more than " + MAX_BULK_SELECTION + " macros can be changed at once");
+        }
+        List<String> ids = values.stream()
+                .map(value -> requireText(value, "MACRO_NOT_FOUND", "Selected macro ID is required")).toList();
+        if (new HashSet<>(ids).size() != ids.size()) {
+            throw new TextMacroRequestException("DUPLICATE_MACRO_IDS", "Selected macro IDs must be unique");
+        }
+        return ids;
+    }
+
+    private String normalizeBulkAction(String value) {
+        String action = requireText(value, "INVALID_MACRO_BULK_ACTION", "Bulk action is required")
+                .toUpperCase(Locale.ROOT);
+        if (!BULK_ACTIONS.contains(action)) {
+            throw new TextMacroRequestException("INVALID_MACRO_BULK_ACTION", "Unsupported macro bulk action: " + value);
+        }
+        return action;
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private String requireText(String value, String code, String message) {

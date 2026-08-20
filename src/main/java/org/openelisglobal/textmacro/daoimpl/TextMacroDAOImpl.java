@@ -3,6 +3,7 @@ package org.openelisglobal.textmacro.daoimpl;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -66,6 +67,28 @@ public class TextMacroDAOImpl extends BaseDAOImpl<TextMacro, String> implements 
                 "select count(distinct m.id) from TextMacro m" + where(search, context, status), Long.class);
         setParameters(query, search, context, status);
         return query.getSingleResult();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TextMacro> findAllWithContexts() {
+        return entityManager.unwrap(Session.class)
+                .createQuery("select distinct m from TextMacro m left join fetch m.contexts order by m.code asc",
+                        TextMacro.class)
+                .list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TextMacro> findByIdsWithContexts(Set<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        Query<TextMacro> query = entityManager.unwrap(Session.class).createQuery(
+                "select distinct m from TextMacro m left join fetch m.contexts where m.id in :ids order by m.code asc",
+                TextMacro.class);
+        query.setParameter("ids", ids);
+        return query.list();
     }
 
     private String where(String search, TextMacroContext context, String status) {

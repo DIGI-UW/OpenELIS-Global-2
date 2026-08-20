@@ -63,26 +63,33 @@
       workflow intent and record all intentional differences.
 - [x] T118 Produce the standard titled MP4 walkthrough, contact sheet, manifest,
       and exact test/evidence index for M1.
-- [ ] T119 Add M1 Grist story/steps, scope them to the phrases review deployment,
+- [x] T119 Add M1 Grist story/steps, scope them to the phrases review deployment,
       and mark automated evidence separately from human acceptance.
-- [ ] T120 Commit and push promptly, open the M1 PR on the spec branch, append it
-      to the GitHub PR stack, update the PR body with exact evidence, and deploy
-      the exact top SHA to `phrases.openelis-global.org`.
-- [ ] T121 Verify the deployed app SHA guard, live Review-overlay M1 steps, and
-      complete the M1 human-UAT handoff without watching CI.
+- [x] T120 Commit and push promptly, open M1 PR #3990 on the spec branch, and
+      retain it as the next official PR in the Macro stack.
+- [ ] T121 Deploy the exact synchronized stack tip to `phrases.openelis-global.org`,
+      verify the app SHA guard and live Review-overlay steps, and complete the M1
+      human-UAT handoff without watching CI.
 
-## M2 - Reviewed Package And Broader Administration
+## M2 - Broader Administration; Reviewed Package Gated
 
 - [ ] T201 Record the exact default phrase source, content, version, clinical
       approver, and collision policy. This blocks only the package tasks below.
 - [ ] T202 Add tests and implementation for reviewed-package restore/import that
       preserves local phrases and reports collisions.
-- [ ] T203 Add tests and implementation for export and explicit bulk operations.
+- [x] T203 Add tests and implementation for export and explicit bulk operations.
+      Export is deterministic CSV; bulk activation/deactivation/removal is
+      confirmed, capped at 100 rows, actor-attributed, and validated atomically.
+      This slice reuses the M1 table/query/service/test helpers and adds no schema.
 - [ ] T204 Extend the reusable field to approved additional consumers with no
       duplicated parser or suggestion logic.
-- [ ] T205 Repeat focused tests, code-qa, visual/a11y comparison, standard video,
-      Grist sync, stacked PR publication, exact-SHA phrases deployment, and human-UAT
-      handoff.
+- [x] T205 Repeat focused backend, frontend, foundational Playwright,
+      accessibility, code-qa, visual comparison, and standard video validation.
+- [ ] T206 Publish the M2 branch as a draft PR stacked on M1, synchronize the M1
+      and M2 Grist stories, deploy the exact M2 SHA to the phrases host, and verify
+      the live app and checklist revision.
+- [ ] T207 Complete the separate human-UAT handoff for all required M1 and M2
+      steps. Automated evidence must not be recorded as human acceptance.
 
 ## Completion Gate
 
