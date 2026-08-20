@@ -1,7 +1,12 @@
 export const MICROBIOLOGY_WHONET_PATH = "/Microbiology/whonet";
 export const WHONET_PAGE_SIZES = [20, 50, 100];
 
-const SIGNIFICANCE_POLICIES = new Set(["CLINICALLY_SIGNIFICANT", "ALL"]);
+const SIGNIFICANCE_VALUES = new Set([
+  "CLINICALLY_SIGNIFICANT",
+  "CONTAMINANT",
+  "NORMAL_FLORA",
+  "UNKNOWN",
+]);
 const DEDUP_POLICIES = new Set(["FIRST_ISOLATE_7_DAY", "NONE"]);
 const STEPS = new Set(["configure", "preview"]);
 
@@ -29,19 +34,37 @@ const positiveInteger = (value, fallback) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const values = (value) =>
+  (Array.isArray(value) ? value : value == null ? [] : [value])
+    .map((item) => String(item).trim())
+    .filter(Boolean);
+
+const normalizedValues = (value, allowed) =>
+  [
+    ...new Set(values(value).filter((item) => !allowed || allowed.has(item))),
+  ].sort();
+
+const repeatedValues = (params, key, allowed) =>
+  normalizedValues(params.getAll(key), allowed);
+
 export const parseWhonetSearch = (search = "", now = new Date()) => {
   const params = new URLSearchParams(search);
   const defaults = previousCompleteMonth(now);
-  const significance = params.get("significance");
+  const requestedSignificance = params.getAll("significance");
+  const significance = requestedSignificance.includes("ALL")
+    ? [...SIGNIFICANCE_VALUES]
+    : normalizedValues(requestedSignificance, SIGNIFICANCE_VALUES);
   const dedup = params.get("dedup");
   const step = params.get("step");
   const requestedPageSize = positiveInteger(params.get("pageSize"), 20);
   return {
     from: validIsoDate(params.get("from")) ? params.get("from") : defaults.from,
     to: validIsoDate(params.get("to")) ? params.get("to") : defaults.to,
-    significance: SIGNIFICANCE_POLICIES.has(significance)
-      ? significance
-      : "CLINICALLY_SIGNIFICANT",
+    specimen: repeatedValues(params, "specimen"),
+    organism: repeatedValues(params, "organism"),
+    origin: repeatedValues(params, "origin"),
+    significance:
+      significance.length > 0 ? significance : ["CLINICALLY_SIGNIFICANT"],
     dedup: DEDUP_POLICIES.has(dedup) ? dedup : "FIRST_ISOLATE_7_DAY",
     step: STEPS.has(step) ? step : "configure",
     page: positiveInteger(params.get("page"), 1),
@@ -52,13 +75,21 @@ export const parseWhonetSearch = (search = "", now = new Date()) => {
 };
 
 export const buildWhonetSearch = (state, now = new Date()) => {
-  const normalized = parseWhonetSearch(
-    new URLSearchParams(state).toString(),
-    now,
+  const draft = new URLSearchParams();
+  ["from", "to", "dedup", "step", "page", "pageSize"].forEach((key) => {
+    if (state[key] != null) draft.set(key, String(state[key]));
+  });
+  ["specimen", "organism", "origin", "significance"].forEach((key) =>
+    values(state[key]).forEach((value) => draft.append(key, value)),
   );
+  const normalized = parseWhonetSearch(draft.toString(), now);
   const params = new URLSearchParams();
-  ["from", "to", "significance", "dedup", "step", "page", "pageSize"].forEach(
-    (key) => params.set(key, String(normalized[key])),
+  ["from", "to"].forEach((key) => params.set(key, String(normalized[key])));
+  ["specimen", "organism", "origin", "significance"].forEach((key) =>
+    normalized[key].forEach((value) => params.append(key, value)),
+  );
+  ["dedup", "step", "page", "pageSize"].forEach((key) =>
+    params.set(key, String(normalized[key])),
   );
   return params.toString();
 };
@@ -91,7 +122,10 @@ export const getWhonetMappingRepairUrl = (
 export const toWhonetRequest = (state) => ({
   from: state.from,
   to: state.to,
-  significance: state.significance,
+  specimen: [...state.specimen],
+  organism: [...state.organism],
+  origin: [...state.origin],
+  significance: [...state.significance],
   dedup: state.dedup,
   page: state.page,
   pageSize: state.pageSize,

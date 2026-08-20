@@ -1,5 +1,6 @@
 @use "@carbon/react/scss/spacing" as *;
 @use "@carbon/react/scss/theme" as *;
+@use "@carbon/styles/scss/type";
 
 .whonet-export {
   min-inline-size: 0;
@@ -18,6 +19,8 @@
     }
 
     h1 {
+      @include type.type-style("heading-04");
+
       margin-block-end: $spacing-03;
     }
 
@@ -67,7 +70,7 @@
 
   &__controls {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: $spacing-05;
 
     .cds--date-picker,
@@ -76,6 +79,13 @@
     .cds--date-picker__input {
       inline-size: 100%;
     }
+  }
+
+  &__filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: $spacing-05;
+    margin-block-start: $spacing-05;
   }
 
   &__configure-actions {
@@ -107,14 +117,14 @@
 
   &__metric {
     display: grid;
-    min-block-size: 6rem;
+    min-block-size: 4.5rem;
     align-content: center;
     gap: $spacing-02;
     border-block-start: 1px solid $border-subtle-01;
     border-inline-start: 1px solid $border-subtle-01;
 
     strong {
-      font-size: 2rem;
+      font-size: 1.5rem;
       font-weight: 400;
       line-height: 1;
     }
@@ -167,6 +177,10 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    &__filter-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     &__metrics {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -176,6 +190,7 @@
 @media (max-width: 42rem) {
   .whonet-export {
     &__controls,
+    &__filter-grid,
     &__metrics {
       grid-template-columns: minmax(0, 1fr);
     }

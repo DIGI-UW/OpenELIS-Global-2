@@ -22,9 +22,12 @@ import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
+import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
@@ -32,9 +35,11 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -49,6 +54,8 @@ public class MicroWhonetDatasetServiceTest {
     @Mock
     private MicroCaseDAO caseDAO;
     @Mock
+    private MicroCaseOrderDetailDAO caseOrderDetailDAO;
+    @Mock
     private MicroIsolateDAO isolateDAO;
     @Mock
     private MicroAstRunDAO astRunDAO;
@@ -56,6 +63,8 @@ public class MicroWhonetDatasetServiceTest {
     private MicroAstReadingDAO astReadingDAO;
     @Mock
     private MicroOrganismDAO organismDAO;
+    @Mock
+    private MicroPatientOriginDAO patientOriginDAO;
     @Mock
     private MicroAntibioticDAO antibioticDAO;
     @Mock
@@ -67,8 +76,8 @@ public class MicroWhonetDatasetServiceTest {
 
     @Before
     public void setUp() {
-        service = new MicroWhonetDatasetServiceImpl(caseDAO, isolateDAO, astRunDAO, astReadingDAO, organismDAO,
-                antibioticDAO, sampleItemService, sampleHumanService);
+        service = new MicroWhonetDatasetServiceImpl(caseDAO, caseOrderDetailDAO, isolateDAO, astRunDAO, astReadingDAO,
+                organismDAO, patientOriginDAO, antibioticDAO, sampleItemService, sampleHumanService);
     }
 
     @Test
@@ -276,6 +285,82 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
+    public void previewAppliesEveryPopulationFilterBeforeDeduplication() {
+        MicroCase bloodClinicalCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
+        MicroCase urineFloraCase = finalizedCase("case-2", "item-2", "2026-07-13 10:00:00");
+        MicroCase bloodContaminantCase = finalizedCase("case-3", "item-3", "2026-07-14 10:00:00");
+        MicroIsolate bloodClinical = isolate("isolate-1", "case-1", "organism-1");
+        MicroIsolate urineFlora = isolate("isolate-2", "case-2", "organism-2");
+        urineFlora.setSignificance(MicroIsolateSignificance.NORMAL_FLORA.name());
+        MicroIsolate bloodContaminant = isolate("isolate-3", "case-3", "organism-2");
+        bloodContaminant.setSignificance(MicroIsolateSignificance.CONTAMINANT.name());
+        MicroAstRun selectedRun = reviewedRun("run-3", "isolate-3");
+
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of(bloodClinicalCase, urineFloraCase, bloodContaminantCase));
+        when(caseOrderDetailDAO.getByCaseIds(List.of("case-1", "case-2", "case-3")))
+                .thenReturn(List.of(orderDetail("case-1", "OUTPATIENT"), orderDetail("case-2", "INPATIENT"),
+                        orderDetail("case-3", "INPATIENT")));
+        when(isolateDAO.getByCaseIds(List.of("case-1", "case-2", "case-3")))
+                .thenReturn(List.of(bloodClinical, urineFlora, bloodContaminant));
+        when(astRunDAO.getByIsolateIds(List.of("isolate-3"))).thenReturn(List.of(selectedRun));
+        when(astReadingDAO.getByRunIds(List.of("run-3")))
+                .thenReturn(List.of(reading("reading-3", "run-3", "antibiotic-1", "R")));
+        when(organismDAO.get("organism-2")).thenReturn(Optional.of(organism("organism-2", "sau", "S. aureus")));
+        when(antibioticDAO.get("antibiotic-1"))
+                .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "sample-type-blood", "BLD");
+        stubPatientContext("item-2", "sample-2", "patient-2", "LAB-002", "sample-type-urine", "URI");
+        stubPatientContext("item-3", "sample-3", "patient-3", "LAB-003", "sample-type-blood", "BLD");
+
+        MicroWhonetExportQueryForm query = query("NONE");
+        query.specimen = List.of("sample-type-blood");
+        query.organism = List.of("organism-2");
+        query.origin = List.of("INPATIENT");
+        query.significance = List.of(MicroIsolateSignificance.CONTAMINANT.name());
+        MicroWhonetPreviewForm preview = service.compile(query).getPreview();
+
+        assertEquals(2, preview.afterSpecimen);
+        assertEquals(1, preview.afterOrganism);
+        assertEquals(1, preview.afterPatientOrigin);
+        assertEquals(1, preview.afterSignificance);
+        assertEquals(1, preview.afterDeduplication);
+        assertEquals(1, preview.exportedRows);
+        assertEquals("case-3", preview.rows.get(0).caseId);
+    }
+
+    @Test
+    public void filterOptionsContainOnlyValuesPresentInTheReportingPeriod() {
+        MicroCase bloodCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
+        MicroCase urineCase = finalizedCase("case-2", "item-2", "2026-07-13 10:00:00");
+        MicroIsolate clinical = isolate("isolate-1", "case-1", "organism-1");
+        MicroIsolate flora = isolate("isolate-2", "case-2", "organism-2");
+        flora.setSignificance(MicroIsolateSignificance.NORMAL_FLORA.name());
+
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of(bloodCase, urineCase));
+        when(caseOrderDetailDAO.getByCaseIds(List.of("case-1", "case-2")))
+                .thenReturn(List.of(orderDetail("case-1", "OUTPATIENT"), orderDetail("case-2", "INPATIENT")));
+        when(isolateDAO.getByCaseIds(List.of("case-1", "case-2"))).thenReturn(List.of(clinical, flora));
+        when(organismDAO.getByIds(List.of("organism-1", "organism-2"))).thenReturn(
+                List.of(organism("organism-1", "eco", "E. coli"), organism("organism-2", "sau", "S. aureus")));
+        when(patientOriginDAO.getByCodes(List.of("INPATIENT", "OUTPATIENT"))).thenReturn(
+                List.of(patientOrigin("INPATIENT", "Inpatient"), patientOrigin("OUTPATIENT", "Outpatient")));
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "sample-type-blood", "BLD");
+        stubPatientContext("item-2", "sample-2", "patient-2", "LAB-002", "sample-type-urine", "URI");
+
+        MicroWhonetFilterOptionsForm options = service.getFilterOptions(query("NONE"));
+
+        assertEquals(List.of("sample-type-blood", "sample-type-urine"),
+                options.specimenTypes.stream().map(option -> option.id).toList());
+        assertEquals(List.of("organism-1", "organism-2"), options.organisms.stream().map(option -> option.id).toList());
+        assertEquals(List.of("INPATIENT", "OUTPATIENT"),
+                options.patientOrigins.stream().map(option -> option.id).toList());
+        assertEquals(List.of("CLINICALLY_SIGNIFICANT", "NORMAL_FLORA"),
+                options.significance.stream().map(option -> option.id).toList());
+    }
+
+    @Test
     public void previewUsesOnlyReviewedAndExplicitlyReportableAstRuns() {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
@@ -387,7 +472,7 @@ public class MicroWhonetDatasetServiceTest {
         MicroWhonetExportQueryForm query = new MicroWhonetExportQueryForm();
         query.from = LocalDate.of(2026, 7, 1).toString();
         query.to = LocalDate.of(2026, 7, 31).toString();
-        query.significance = MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name();
+        query.significance = List.of(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
         query.dedup = dedup;
         query.page = 1;
         query.pageSize = 20;
@@ -448,6 +533,20 @@ public class MicroWhonetDatasetServiceTest {
         antibiotic.setWhonetCode(code);
         antibiotic.setDisplayName(name);
         return antibiotic;
+    }
+
+    private MicroCaseOrderDetail orderDetail(String caseId, String patientOrigin) {
+        MicroCaseOrderDetail detail = new MicroCaseOrderDetail();
+        detail.setCaseId(caseId);
+        detail.setPatientOrigin(patientOrigin);
+        return detail;
+    }
+
+    private MicroPatientOrigin patientOrigin(String code, String displayName) {
+        MicroPatientOrigin origin = new MicroPatientOrigin();
+        origin.setCode(code);
+        origin.setDisplayName(displayName);
+        return origin;
     }
 
     private void stubPatientContext(String sampleItemId, String sampleId, String patientId, String accession) {

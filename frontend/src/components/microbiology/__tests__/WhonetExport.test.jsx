@@ -15,6 +15,9 @@ const preview = {
   dedup: "FIRST_ISOLATE_7_DAY",
   totalCases: 1,
   totalIsolates: 1,
+  afterSpecimen: 1,
+  afterOrganism: 1,
+  afterPatientOrigin: 1,
   afterSignificance: 1,
   afterDeduplication: 1,
   exportableIsolates: 1,
@@ -57,6 +60,32 @@ const preview = {
 const previewUrl =
   "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=preview&page=1&pageSize=20";
 
+const filterOptions = {
+  specimenTypes: [
+    { id: "sample-type-blood", label: "Blood" },
+    { id: "sample-type-urine", label: "Urine" },
+  ],
+  organisms: [
+    { id: "organism-1", label: "E. coli" },
+    { id: "organism-2", label: "S. aureus" },
+  ],
+  patientOrigins: [
+    { id: "INPATIENT", label: "Inpatient" },
+    { id: "OUTPATIENT", label: "Outpatient" },
+  ],
+  significance: [
+    { id: "CLINICALLY_SIGNIFICANT", label: "CLINICALLY_SIGNIFICANT" },
+    { id: "NORMAL_FLORA", label: "NORMAL_FLORA" },
+  ],
+};
+
+const createService = (overrides = {}) => ({
+  getWhonetFilterOptions: vi.fn().mockResolvedValue(filterOptions),
+  getWhonetPreview: vi.fn().mockResolvedValue(preview),
+  generateWhonetExport: vi.fn(),
+  ...overrides,
+});
+
 const renderExport = (service, initialEntry = previewUrl) =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
@@ -80,10 +109,7 @@ describe("WhonetExport", () => {
   });
 
   it("renders the preview counts, all AST rows, and an exact mapping repair link", async () => {
-    const service = {
-      getWhonetPreview: vi.fn().mockResolvedValue(preview),
-      generateWhonetExport: vi.fn(),
-    };
+    const service = createService();
 
     renderExport(service);
 
@@ -93,7 +119,10 @@ describe("WhonetExport", () => {
     expect(service.getWhonetPreview).toHaveBeenCalledWith({
       from: "2026-07-01",
       to: "2026-07-31",
-      significance: "CLINICALLY_SIGNIFICANT",
+      specimen: [],
+      organism: [],
+      origin: [],
+      significance: ["CLINICALLY_SIGNIFICANT"],
       dedup: "FIRST_ISOLATE_7_DAY",
       page: 1,
       pageSize: 20,
@@ -123,7 +152,7 @@ describe("WhonetExport", () => {
   });
 
   it("links an unmapped specimen to its owning editor with the exact preview return", async () => {
-    const service = {
+    const service = createService({
       getWhonetPreview: vi.fn().mockResolvedValue({
         ...preview,
         warnings: [
@@ -136,8 +165,7 @@ describe("WhonetExport", () => {
           },
         ],
       }),
-      generateWhonetExport: vi.fn(),
-    };
+    });
 
     renderExport(service);
 
@@ -151,30 +179,41 @@ describe("WhonetExport", () => {
 
   it("updates Carbon controls through canonical URL state before previewing", async () => {
     const user = userEvent.setup();
-    const service = {
-      getWhonetPreview: vi.fn().mockResolvedValue(preview),
-      generateWhonetExport: vi.fn(),
-    };
+    const service = createService();
 
     renderExport(
       service,
       "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
     );
 
-    await user.selectOptions(screen.getByLabelText("Inclusion"), "ALL");
+    const specimenFilter = await screen.findByRole("combobox", {
+      name: /^Specimen types/,
+    });
+    await user.click(specimenFilter);
+    await user.click(screen.getByRole("option", { name: "Blood" }));
+    await user.keyboard("{Escape}");
+    const significanceFilter = screen.getByRole("combobox", {
+      name: /^Inclusion/,
+    });
+    await user.click(significanceFilter);
+    await user.click(screen.getByRole("option", { name: "Normal flora" }));
+    await user.keyboard("{Escape}");
     await user.selectOptions(screen.getByLabelText("De-duplication"), "NONE");
     await user.click(screen.getByRole("button", { name: "Preview export" }));
 
     await waitFor(() =>
       expect(screen.getByTestId("whonet-current-url")).toHaveTextContent(
-        "significance=ALL&dedup=NONE&step=preview&page=1&pageSize=20",
+        "specimen=sample-type-blood&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&dedup=NONE&step=preview&page=1&pageSize=20",
       ),
     );
     await waitFor(() =>
       expect(service.getWhonetPreview).toHaveBeenCalledWith({
         from: "2026-07-01",
         to: "2026-07-31",
-        significance: "ALL",
+        specimen: ["sample-type-blood"],
+        organism: [],
+        origin: [],
+        significance: ["CLINICALLY_SIGNIFICANT", "NORMAL_FLORA"],
         dedup: "NONE",
         page: 1,
         pageSize: 20,
@@ -184,13 +223,12 @@ describe("WhonetExport", () => {
 
   it("downloads the generated CSV through an intentional user action", async () => {
     const user = userEvent.setup();
-    const service = {
-      getWhonetPreview: vi.fn().mockResolvedValue(preview),
+    const service = createService({
       generateWhonetExport: vi.fn().mockResolvedValue({
         blob: new Blob(["csv-content"], { type: "text/csv" }),
         filename: "WHONET_2026-07-01_to_2026-07-31.csv",
       }),
-    };
+    });
     const createObjectURL = vi
       .spyOn(URL, "createObjectURL")
       .mockReturnValue("blob:whonet");
@@ -222,10 +260,9 @@ describe("WhonetExport", () => {
       canGenerate: false,
       rows: [],
     };
-    const service = {
+    const service = createService({
       getWhonetPreview: vi.fn().mockResolvedValue(blockedPreview),
-      generateWhonetExport: vi.fn(),
-    };
+    });
 
     renderExport(service);
 
@@ -237,12 +274,11 @@ describe("WhonetExport", () => {
 
   it("uses Carbon pagination to preserve the preview policy on the next page", async () => {
     const user = userEvent.setup();
-    const service = {
+    const service = createService({
       getWhonetPreview: vi
         .fn()
         .mockResolvedValue({ ...preview, exportedRows: 42 }),
-      generateWhonetExport: vi.fn(),
-    };
+    });
 
     renderExport(service);
     await screen.findByRole("cell", { name: "CIP" });
@@ -257,7 +293,10 @@ describe("WhonetExport", () => {
       expect(service.getWhonetPreview).toHaveBeenLastCalledWith({
         from: "2026-07-01",
         to: "2026-07-31",
-        significance: "CLINICALLY_SIGNIFICANT",
+        specimen: [],
+        organism: [],
+        origin: [],
+        significance: ["CLINICALLY_SIGNIFICANT"],
         dedup: "FIRST_ISOLATE_7_DAY",
         page: 2,
         pageSize: 20,

@@ -20,6 +20,7 @@ import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.microbiology.dao.MicroWhonetExportRunDAO;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
+import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.service.MicroWhonetDataset;
 import org.openelisglobal.microbiology.service.MicroWhonetDatasetService;
@@ -183,6 +184,12 @@ public class WHONetReportServiceImpl implements WHONetReportService {
     @Transactional(readOnly = true)
     public MicroWhonetPreviewForm previewMicrobiologyExport(MicroWhonetExportQueryForm query) {
         return microWhonetDatasetService.compile(query).getPreview();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroWhonetFilterOptionsForm getMicrobiologyExportFilterOptions(MicroWhonetExportQueryForm query) {
+        return microWhonetDatasetService.getFilterOptions(query);
     }
 
     @Override

@@ -82,7 +82,7 @@ public class WHONetReportServiceMicrobiologyTest {
         MicroWhonetExportQueryForm query = new MicroWhonetExportQueryForm();
         query.from = "2026-07-01";
         query.to = "2026-07-31";
-        query.significance = "CLINICALLY_SIGNIFICANT";
+        query.significance = List.of("CLINICALLY_SIGNIFICANT");
         query.dedup = "FIRST_ISOLATE_7_DAY";
         return query;
     }

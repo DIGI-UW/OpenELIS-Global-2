@@ -2,7 +2,13 @@ import config from "../../config.json";
 
 const requestSearch = (query) => {
   const params = new URLSearchParams();
-  ["from", "to", "significance", "dedup", "page", "pageSize"].forEach((key) =>
+  ["from", "to"].forEach((key) => params.set(key, String(query[key])));
+  ["specimen", "organism", "origin", "significance"].forEach((key) =>
+    [...(query[key] || [])]
+      .sort()
+      .forEach((value) => params.append(key, String(value))),
+  );
+  ["dedup", "page", "pageSize"].forEach((key) =>
     params.set(key, String(query[key])),
   );
   return params.toString();
@@ -39,6 +45,14 @@ const request = async (path, options = {}) => {
 export const getWhonetPreview = async (query) => {
   const response = await request(
     `/rest/microbiology/whonet/preview?${requestSearch(query)}`,
+  );
+  return response.json();
+};
+
+export const getWhonetFilterOptions = async (query) => {
+  const params = new URLSearchParams({ from: query.from, to: query.to });
+  const response = await request(
+    `/rest/microbiology/whonet/filter-options?${params.toString()}`,
   );
   return response.json();
 };

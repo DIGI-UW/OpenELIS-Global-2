@@ -13,7 +13,10 @@ describe("WhonetRoutes", () => {
     expect(state).toEqual({
       from: "2026-07-01",
       to: "2026-07-31",
-      significance: "CLINICALLY_SIGNIFICANT",
+      specimen: [],
+      organism: [],
+      origin: [],
+      significance: ["CLINICALLY_SIGNIFICANT"],
       dedup: "FIRST_ISOLATE_7_DAY",
       step: "configure",
       page: 1,
@@ -24,16 +27,50 @@ describe("WhonetRoutes", () => {
     );
   });
 
+  it("round-trips sorted repeated population filters without dropping selections", () => {
+    const search =
+      "?from=2026-06-01&to=2026-06-30&specimen=urine&specimen=blood&organism=org-2&organism=org-1&origin=OUTPATIENT&significance=NORMAL_FLORA&significance=CLINICALLY_SIGNIFICANT&dedup=NONE&step=preview&page=3&pageSize=50";
+
+    const state = parseWhonetSearch(search, now);
+
+    expect(state).toMatchObject({
+      specimen: ["blood", "urine"],
+      organism: ["org-1", "org-2"],
+      origin: ["OUTPATIENT"],
+      significance: ["CLINICALLY_SIGNIFICANT", "NORMAL_FLORA"],
+    });
+    expect(buildWhonetSearch(state, now)).toBe(
+      "from=2026-06-01&to=2026-06-30&specimen=blood&specimen=urine&organism=org-1&organism=org-2&origin=OUTPATIENT&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&dedup=NONE&step=preview&page=3&pageSize=50",
+    );
+  });
+
+  it("preserves the meaning of legacy all-isolate links", () => {
+    const state = parseWhonetSearch("?significance=ALL", now);
+
+    expect(state.significance).toEqual([
+      "CLINICALLY_SIGNIFICANT",
+      "CONTAMINANT",
+      "NORMAL_FLORA",
+      "UNKNOWN",
+    ]);
+    expect(buildWhonetSearch(state, now)).toContain(
+      "significance=CLINICALLY_SIGNIFICANT&significance=CONTAMINANT&significance=NORMAL_FLORA&significance=UNKNOWN",
+    );
+  });
+
   it("normalizes unsupported values without dropping a valid reporting period", () => {
     expect(
       parseWhonetSearch(
-        "?from=2026-06-01&to=2026-06-30&significance=UNKNOWN&dedup=UNKNOWN&step=preview&page=3&pageSize=50",
+        "?from=2026-06-01&to=2026-06-30&significance=INVALID&dedup=UNKNOWN&step=preview&page=3&pageSize=50",
         now,
       ),
     ).toEqual({
       from: "2026-06-01",
       to: "2026-06-30",
-      significance: "CLINICALLY_SIGNIFICANT",
+      specimen: [],
+      organism: [],
+      origin: [],
+      significance: ["CLINICALLY_SIGNIFICANT"],
       dedup: "FIRST_ISOLATE_7_DAY",
       step: "preview",
       page: 3,
