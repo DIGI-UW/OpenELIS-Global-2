@@ -125,10 +125,12 @@ public class AnalyzerContractCutoverTest {
     @Test
     public void cutoverRollbackCannotDiscardAcceptedAnalyzerWrites() throws Exception {
         String cutover = Files.readString(CUTOVER);
+        String normalizedCutover = cutover.replaceAll("\\s+", " ");
 
-        assertTrue(cutover.contains("quiesce analyzer ingress and analyzer-configuration writes"));
-        assertTrue(cutover.contains("No target-only write may be accepted before the rollback window closes"));
-        assertTrue(cutover.contains("restoring the pre-deployment backup is forbidden"));
+        assertTrue(normalizedCutover.contains("quiesce analyzer ingress and analyzer-configuration writes"));
+        assertTrue(
+                normalizedCutover.contains("No target-only write may be accepted before the rollback window closes"));
+        assertTrue(normalizedCutover.contains("restoring the pre-deployment backup is forbidden"));
     }
 
     private Map<String, String> sourceProfiles() throws IOException {

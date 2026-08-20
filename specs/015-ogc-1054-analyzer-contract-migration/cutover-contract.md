@@ -58,6 +58,15 @@ application.
 ## Rollback
 
 Before merge, rollback is ordinary Git provenance. Before a deployment cutover,
-capture a coordinated OpenELIS database backup and Bridge catalog backup. A
-failed cutover restores the coordinated pre-deployment pair or rolls forward;
-it does not re-enable deleted product pathways or reverse-write target state.
+quiesce analyzer ingress and analyzer-configuration writes, then capture a
+coordinated OpenELIS database backup and Bridge catalog backup. No target-only
+write may be accepted before the rollback window closes. A failed validation
+restores the coordinated pre-deployment pair while the system remains quiesced,
+or rolls forward; it does not re-enable deleted product pathways or reverse-write
+target state.
+
+After the rollback window closes and analyzer ingress or configuration writes
+resume, restoring the pre-deployment backup is forbidden because it would discard
+accepted clinical or configuration state. Any later recovery must roll forward or
+use an independently reviewed replay procedure that preserves every accepted
+write.
