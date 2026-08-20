@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Checkbox,
   InlineNotification,
   Loading,
   Modal,
@@ -19,25 +18,11 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-
-const slugify = (value) =>
-  value
-    .normalize("NFKD")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-const nextAvailableIdentity = (base, types, startAtOne = false) => {
-  const existing = new Set(types.map((type) => type.profileId));
-  if (!startAtOne && !existing.has(base)) {
-    return base;
-  }
-  let suffix = 1;
-  while (existing.has(`${base}-${suffix}`)) {
-    suffix += 1;
-  }
-  return `${base}-${suffix}`;
-};
+import {
+  createAnalyzerTypeDraft,
+  duplicateAnalyzerType,
+  publishAnalyzerTypeDraft,
+} from "../../../services/analyzerService";
 
 const nextDuplicateName = (displayName, types) => {
   const existing = new Set(types.map((type) => type.displayName));
@@ -50,99 +35,59 @@ const nextDuplicateName = (displayName, types) => {
 
 const hasError = (response) => !response || Boolean(response.error);
 
-const CreateProfileModal = ({ types, onClose, onSuccess, onError }) => {
+const CreateProfileModal = ({ types, onClose, onError, onDraftCreated }) => {
   const intl = useIntl();
   const [displayName, setDisplayName] = useState("");
-  const [manufacturer, setManufacturer] = useState("");
-  const [model, setModel] = useState("");
-  const [protocol, setProtocol] = useState("ASTM");
-  const [dataFlow, setDataFlow] = useState("RESULTS_ONLY");
-  const [connectionTest, setConnectionTest] = useState(false);
-  const [affirmedNoControls, setAffirmedNoControls] = useState(false);
-  const [fileFormat, setFileFormat] = useState("CSV");
-  const [filePattern, setFilePattern] = useState("");
-  const [sampleColumn, setSampleColumn] = useState("");
-  const [testColumn, setTestColumn] = useState("");
-  const [resultColumn, setResultColumn] = useState("");
+  const [draft, setDraft] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const normalizedName = displayName.trim();
   const duplicateName = types.some(
     (type) => type.displayName.toLowerCase() === normalizedName.toLowerCase(),
   );
-  const fileColumns = [
-    sampleColumn.trim(),
-    testColumn.trim(),
-    resultColumn.trim(),
-  ];
-  const fileFieldsValid =
-    protocol !== "FILE" ||
-    (filePattern.trim() &&
-      fileColumns.every(Boolean) &&
-      new Set(fileColumns).size === fileColumns.length);
-  const valid =
-    normalizedName &&
-    manufacturer.trim() &&
-    model.trim() &&
-    !duplicateName &&
-    affirmedNoControls &&
-    fileFieldsValid;
+  const valid = Boolean(normalizedName) && !duplicateName;
 
   const submit = () => {
     if (!valid || submitting) {
       return;
     }
     setSubmitting(true);
-    const profile = {
-      schemaVersion: "1.0",
-      profileId: nextAvailableIdentity(
-        `site.${slugify(normalizedName) || "profile"}`,
-        types,
-      ),
-      displayName: normalizedName,
-      protocol,
-      capabilities: {
-        inboundResults: true,
-        outboundOrders: dataFlow === "TWO_WAY",
-        connectionTest,
-      },
-      identity: {
-        manufacturer: manufacturer.trim(),
-        model: model.trim(),
-      },
-      tests: [],
-      controlResultRecognition: {
-        mode: "NONE",
-        affirmedNoControlResults: true,
-      },
-    };
-    if (protocol === "FILE") {
-      profile.file = {
-        format: fileFormat,
-        filePattern: filePattern.trim(),
-        columnMappings: {
-          [sampleColumn.trim()]: "sampleId",
-          [testColumn.trim()]: "testCode",
-          [resultColumn.trim()]: "result",
-        },
-      };
-      if (fileFormat === "CSV" || fileFormat === "TSV") {
-        profile.file.delimiter = fileFormat === "CSV" ? "," : "\t";
+    createAnalyzerTypeDraft(normalizedName, (response) => {
+      setSubmitting(false);
+      if (hasError(response) || !response.draftId) {
+        onError(response?.error);
+        return;
       }
-    }
-    postToOpenElisServerJsonResponse(
-      "/rest/analyzer-types",
-      JSON.stringify({ profile }),
-      (response) => {
-        setSubmitting(false);
-        if (hasError(response)) {
-          onError(response?.error);
-          return;
-        }
-        onSuccess("create");
-      },
-    );
+      setDraft(response);
+      onDraftCreated(response.draftId);
+    });
   };
+
+  if (draft) {
+    return (
+      <Modal
+        open
+        passiveModal
+        modalHeading={intl.formatMessage({
+          id: "analyzerType.button.create",
+        })}
+        onRequestClose={onClose}
+        size="sm"
+      >
+        <InlineNotification
+          kind="success"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "analyzerType.draft.created.title",
+          })}
+          subtitle={intl.formatMessage({
+            id: "analyzerType.draft.created.subtitle",
+          })}
+        />
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -161,7 +106,7 @@ const CreateProfileModal = ({ types, onClose, onSuccess, onError }) => {
       onSecondarySubmit={onClose}
       onRequestSubmit={submit}
       selectorPrimaryFocus="#analyzer-type-create-name"
-      size="md"
+      size="sm"
     >
       <div className="analyzer-type-modal__form">
         <TextInput
@@ -176,156 +121,6 @@ const CreateProfileModal = ({ types, onClose, onSuccess, onError }) => {
           })}
           onChange={(event) => setDisplayName(event.target.value)}
         />
-        <div className="analyzer-type-modal__two-column">
-          <TextInput
-            id="analyzer-type-create-manufacturer"
-            labelText={intl.formatMessage({
-              id: "analyzerType.field.manufacturer",
-            })}
-            value={manufacturer}
-            onChange={(event) => setManufacturer(event.target.value)}
-          />
-          <TextInput
-            id="analyzer-type-create-model"
-            labelText={intl.formatMessage({
-              id: "analyzerType.field.model",
-            })}
-            value={model}
-            onChange={(event) => setModel(event.target.value)}
-          />
-        </div>
-        <div className="analyzer-type-modal__two-column">
-          <Select
-            id="analyzer-type-create-protocol"
-            aria-label={intl.formatMessage({
-              id: "analyzerType.field.protocol",
-            })}
-            labelText={intl.formatMessage({
-              id: "analyzerType.field.protocol",
-            })}
-            value={protocol}
-            onChange={(event) => setProtocol(event.target.value)}
-          >
-            <SelectItem value="ASTM" text="ASTM" />
-            <SelectItem value="HL7" text="HL7" />
-            <SelectItem
-              value="FILE"
-              text={intl.formatMessage({
-                id: "analyzerType.protocol.file",
-              })}
-            />
-          </Select>
-          <Select
-            id="analyzer-type-create-data-flow"
-            aria-label={intl.formatMessage({
-              id: "analyzerType.field.dataFlow",
-            })}
-            labelText={intl.formatMessage({
-              id: "analyzerType.field.dataFlow",
-            })}
-            value={dataFlow}
-            onChange={(event) => setDataFlow(event.target.value)}
-          >
-            <SelectItem
-              value="RESULTS_ONLY"
-              text={intl.formatMessage({
-                id: "analyzerType.dataFlow.resultsOnly",
-              })}
-            />
-            <SelectItem
-              value="TWO_WAY"
-              text={intl.formatMessage({
-                id: "analyzerType.dataFlow.twoWay",
-              })}
-            />
-          </Select>
-        </div>
-        <Checkbox
-          id="analyzer-type-create-connection-test"
-          aria-label={intl.formatMessage({
-            id: "analyzerType.field.connectionTest",
-          })}
-          labelText={intl.formatMessage({
-            id: "analyzerType.field.connectionTest",
-          })}
-          checked={connectionTest}
-          onChange={(_, state) => setConnectionTest(state.checked)}
-        />
-        {protocol === "FILE" && (
-          <div className="analyzer-type-modal__file-fields">
-            <Select
-              id="analyzer-type-create-file-format"
-              aria-label={intl.formatMessage({
-                id: "analyzerType.field.fileFormat",
-              })}
-              labelText={intl.formatMessage({
-                id: "analyzerType.field.fileFormat",
-              })}
-              value={fileFormat}
-              onChange={(event) => setFileFormat(event.target.value)}
-            >
-              {["CSV", "TSV", "XLS", "XLSX", "ODS"].map((format) => (
-                <SelectItem key={format} value={format} text={format} />
-              ))}
-            </Select>
-            <TextInput
-              id="analyzer-type-create-file-pattern"
-              labelText={intl.formatMessage({
-                id: "analyzerType.field.filePattern",
-              })}
-              value={filePattern}
-              onChange={(event) => setFilePattern(event.target.value)}
-            />
-            <div className="analyzer-type-modal__three-column">
-              <TextInput
-                id="analyzer-type-create-sample-column"
-                labelText={intl.formatMessage({
-                  id: "analyzerType.field.sampleColumn",
-                })}
-                value={sampleColumn}
-                onChange={(event) => setSampleColumn(event.target.value)}
-              />
-              <TextInput
-                id="analyzer-type-create-test-column"
-                labelText={intl.formatMessage({
-                  id: "analyzerType.field.testColumn",
-                })}
-                value={testColumn}
-                onChange={(event) => setTestColumn(event.target.value)}
-              />
-              <TextInput
-                id="analyzer-type-create-result-column"
-                labelText={intl.formatMessage({
-                  id: "analyzerType.field.resultColumn",
-                })}
-                value={resultColumn}
-                onChange={(event) => setResultColumn(event.target.value)}
-              />
-            </div>
-          </div>
-        )}
-        <InlineNotification
-          kind="warning"
-          lowContrast
-          hideCloseButton
-          title={intl.formatMessage({
-            id: "analyzerType.recognition.none.title",
-          })}
-          subtitle={intl.formatMessage({
-            id: "analyzerType.recognition.none.subtitle",
-          })}
-        />
-        <Checkbox
-          id="analyzer-type-create-no-controls"
-          aria-label={intl.formatMessage({
-            id: "analyzerType.recognition.none.affirmation",
-          })}
-          labelText={intl.formatMessage({
-            id: "analyzerType.recognition.none.affirmation",
-          })}
-          checked={affirmedNoControls}
-          onChange={(_, state) => setAffirmedNoControls(state.checked)}
-        />
       </div>
     </Modal>
   );
@@ -337,6 +132,7 @@ const DuplicateProfileModal = ({
   onClose,
   onSuccess,
   onError,
+  onDraftCreated,
 }) => {
   const intl = useIntl();
   const activeTypes = useMemo(
@@ -350,13 +146,18 @@ const DuplicateProfileModal = ({
   const [displayName, setDisplayName] = useState(
     initialSource ? nextDuplicateName(initialSource.displayName, types) : "",
   );
+  const [draft, setDraft] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const source = activeTypes.find((type) => type.profileId === sourceId);
   const normalizedName = displayName.trim();
   const duplicateName = types.some(
     (type) => type.displayName.toLowerCase() === normalizedName.toLowerCase(),
   );
-  const valid = source && normalizedName && !duplicateName;
+  const publishable =
+    Boolean(draft) && (draft.validationIssues || []).length === 0;
+  const valid = draft
+    ? publishable
+    : Boolean(source) && Boolean(normalizedName) && !duplicateName;
 
   const changeSource = (profileId) => {
     const nextSource = activeTypes.find((type) => type.profileId === profileId);
@@ -371,25 +172,29 @@ const DuplicateProfileModal = ({
       return;
     }
     setSubmitting(true);
-    const targetProfileId = nextAvailableIdentity(
-      source.profileId,
-      types,
-      true,
-    );
-    postToOpenElisServerJsonResponse(
-      `/rest/analyzer-types/${encodeURIComponent(source.profileId)}/duplicate`,
-      JSON.stringify({
-        sourceRevision: source.revision,
-        targetProfileId,
-        displayName: normalizedName,
-      }),
-      (response) => {
+    if (draft) {
+      publishAnalyzerTypeDraft(draft.draftId, (response) => {
         setSubmitting(false);
         if (hasError(response)) {
           onError(response?.error);
           return;
         }
         onSuccess("duplicate");
+      });
+      return;
+    }
+    duplicateAnalyzerType(
+      source.profileId,
+      source.revision,
+      normalizedName,
+      (response) => {
+        setSubmitting(false);
+        if (hasError(response) || !response.draftId) {
+          onError(response?.error);
+          return;
+        }
+        setDraft(response);
+        onDraftCreated(response.draftId);
       },
     );
   };
@@ -401,7 +206,9 @@ const DuplicateProfileModal = ({
         id: "analyzerType.button.duplicate",
       })}
       primaryButtonText={intl.formatMessage({
-        id: "analyzerType.button.duplicate",
+        id: draft
+          ? "analyzerType.button.publish"
+          : "analyzerType.button.duplicate",
       })}
       secondaryButtonText={intl.formatMessage({
         id: "analyzerType.button.cancel",
@@ -413,44 +220,61 @@ const DuplicateProfileModal = ({
       size="sm"
     >
       <div className="analyzer-type-modal__form">
-        <Select
-          id="analyzer-type-duplicate-source"
-          aria-label={intl.formatMessage({
-            id: "analyzerType.field.sourceProfile",
-          })}
-          labelText={intl.formatMessage({
-            id: "analyzerType.field.sourceProfile",
-          })}
-          value={sourceId}
-          onChange={(event) => changeSource(event.target.value)}
-        >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "analyzerType.field.sourceProfile.placeholder",
+        {draft ? (
+          <InlineNotification
+            kind="success"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "analyzerType.draft.publish.ready.title",
             })}
+            subtitle={intl.formatMessage(
+              { id: "analyzerType.draft.publish.ready.subtitle" },
+              { name: normalizedName },
+            )}
           />
-          {activeTypes.map((type) => (
-            <SelectItem
-              key={type.profileId}
-              value={type.profileId}
-              text={`${type.displayName} · ${type.protocol}`}
+        ) : (
+          <>
+            <Select
+              id="analyzer-type-duplicate-source"
+              aria-label={intl.formatMessage({
+                id: "analyzerType.field.sourceProfile",
+              })}
+              labelText={intl.formatMessage({
+                id: "analyzerType.field.sourceProfile",
+              })}
+              value={sourceId}
+              onChange={(event) => changeSource(event.target.value)}
+            >
+              <SelectItem
+                value=""
+                text={intl.formatMessage({
+                  id: "analyzerType.field.sourceProfile.placeholder",
+                })}
+              />
+              {activeTypes.map((type) => (
+                <SelectItem
+                  key={type.profileId}
+                  value={type.profileId}
+                  text={`${type.displayName} · ${type.protocol}`}
+                />
+              ))}
+            </Select>
+            <TextInput
+              id="analyzer-type-duplicate-name"
+              labelText={intl.formatMessage({
+                id: "analyzerType.field.newProfileName",
+              })}
+              value={displayName}
+              invalid={Boolean(normalizedName) && duplicateName}
+              invalidText={intl.formatMessage({
+                id: "analyzerType.error.nameUnique",
+              })}
+              onChange={(event) => setDisplayName(event.target.value)}
             />
-          ))}
-        </Select>
-        <TextInput
-          id="analyzer-type-duplicate-name"
-          labelText={intl.formatMessage({
-            id: "analyzerType.field.newProfileName",
-          })}
-          value={displayName}
-          invalid={Boolean(normalizedName) && duplicateName}
-          invalidText={intl.formatMessage({
-            id: "analyzerType.error.nameUnique",
-          })}
-          onChange={(event) => setDisplayName(event.target.value)}
-        />
-        {source && (
+          </>
+        )}
+        {!draft && source && (
           <InlineNotification
             kind="info"
             lowContrast
@@ -649,6 +473,7 @@ const AnalyzerTypeLifecycleModals = ({
   onClose,
   onSuccess,
   onError,
+  onDraftCreated,
 }) => {
   const profile = types.find((type) => type.profileId === profileId);
 
@@ -657,8 +482,8 @@ const AnalyzerTypeLifecycleModals = ({
       <CreateProfileModal
         types={types}
         onClose={onClose}
-        onSuccess={onSuccess}
         onError={onError}
+        onDraftCreated={onDraftCreated}
       />
     );
   }
@@ -670,6 +495,7 @@ const AnalyzerTypeLifecycleModals = ({
         onClose={onClose}
         onSuccess={onSuccess}
         onError={onError}
+        onDraftCreated={onDraftCreated}
       />
     );
   }

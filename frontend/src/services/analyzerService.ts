@@ -87,6 +87,25 @@ export interface AnalyzerTypeCatalog {
   types: AnalyzerTypeSummary[];
 }
 
+export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
+  draftId?: string;
+  kind?: "CREATE" | "DUPLICATE" | "UPDATE" | string;
+  baseProfileId?: string | null;
+  baseRevision?: number | null;
+  profile?: {
+    profileMeta?: {
+      id?: string;
+      displayName?: string;
+    };
+    catalog?: {
+      revision?: number;
+      source?: string;
+      status?: string;
+    };
+  };
+  validationIssues?: string[];
+}
+
 /**
  * Preview mapping for analyzer
  * @param {String} analyzerId - Analyzer ID
@@ -794,6 +813,41 @@ export const getAnalyzerTypeCatalog = (
   callback: DataCallback<AnalyzerTypeCatalog | undefined>,
 ) => {
   getFromOpenElisServer("/rest/analyzer-types", callback);
+};
+
+export const createAnalyzerTypeDraft = (
+  displayName: string,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  postToOpenElisServerJsonResponse(
+    "/rest/analyzer-types/drafts",
+    JSON.stringify({ displayName }),
+    callback,
+  );
+};
+
+export const duplicateAnalyzerType = (
+  profileId: string,
+  sourceRevision: number,
+  displayName: string,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  postToOpenElisServerJsonResponse(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/duplicate`,
+    JSON.stringify({ sourceRevision, displayName }),
+    callback,
+  );
+};
+
+export const publishAnalyzerTypeDraft = (
+  draftId: string,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  postToOpenElisServerJsonResponse(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}/publish`,
+    "{}",
+    callback,
+  );
 };
 
 /**

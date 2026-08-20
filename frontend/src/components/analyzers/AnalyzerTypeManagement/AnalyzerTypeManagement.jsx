@@ -86,6 +86,7 @@ const AnalyzerTypeManagement = () => {
     return {
       action: params.get("action"),
       profileId: params.get("profile"),
+      draftId: params.get("draft"),
     };
   }, [location.search]);
 
@@ -115,11 +116,24 @@ const AnalyzerTypeManagement = () => {
     const params = new URLSearchParams(location.search);
     params.delete("action");
     params.delete("profile");
+    params.delete("draft");
     history.push({
       pathname: location.pathname,
       search: params.toString() ? `?${params.toString()}` : "",
     });
   }, [history, location.pathname, location.search]);
+
+  const handleDraftCreated = useCallback(
+    (draftId) => {
+      const params = new URLSearchParams(location.search);
+      params.set("draft", draftId);
+      history.push({
+        pathname: location.pathname,
+        search: `?${params.toString()}`,
+      });
+    },
+    [history, location.pathname, location.search],
+  );
 
   const handleActionSuccess = useCallback(
     (action) => {
@@ -741,6 +755,7 @@ const AnalyzerTypeManagement = () => {
           onClose={closeAction}
           onSuccess={handleActionSuccess}
           onError={handleActionError}
+          onDraftCreated={handleDraftCreated}
         />
       )}
     </>
