@@ -33,6 +33,7 @@ import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderWorkbenchPage from "./components/eqa/Provider/Workbench/ProviderWorkbenchPage";
 import InHousePanelsPage from "./components/eqa/InHouse/InHousePanelsPage";
+import FollowUpQueuePage from "./components/eqa/FollowUp/FollowUpQueuePage";
 import BlindingWizard from "./components/eqa/InHouse/BlindingWizard";
 import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
@@ -840,6 +841,22 @@ export default function App() {
                   path="/qa/eqa/provider/workbench"
                   exact
                   component={() => <ProviderWorkbenchPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Oversight lane (T-18): the follow-up queue. qa/019 seeded
+                    its menu row at the FRS path, so that path redirects here
+                    the way My Cycles does. Triage writes carry their own
+                    qa.manage.eqa guard server-side. */}
+                <Redirect
+                  exact
+                  from="/eqa/oversight/follow-up-queue"
+                  to="/qa/eqa/follow-up-queue"
+                />
+                <SecureRoute
+                  path="/qa/eqa/follow-up-queue"
+                  exact
+                  component={() => <FollowUpQueuePage />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />

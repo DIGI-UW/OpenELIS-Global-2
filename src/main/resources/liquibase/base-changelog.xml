@@ -115,4 +115,7 @@
 
   <!-- EQA V2 — OGC-934: pre-approved interpretive comments for the performance report -->
   <include file="liquibase/qa/032-eqa-report-comments.xml" />
+  <!-- EQA V2.3 — OGC-611: oversight menu rows, re-activated as their pages ship.
+       Must follow 029, which hid them. -->
+  <include file="liquibase/qa/033-eqa-oversight-menu-rows.xml" />
 </databaseChangeLog>

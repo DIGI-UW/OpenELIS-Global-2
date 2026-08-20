@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.analyte.dao.AnalyteDAO;
+import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -51,6 +53,9 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
     @Autowired
     private OrganizationService organizationService;
 
+    @Autowired
+    private AnalyteDAO analyteDAO;
+
     public EQAParticipantFollowupServiceImpl() {
         super(EQAParticipantFollowup.class);
     }
@@ -76,6 +81,15 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
                 // later failures would be dropped silently.
                 existing.setParticipantResultSummaryJson(
                         mergeSummary(existing.getParticipantResultSummaryJson(), rows, source));
+                // A closed row merged into is a new failure arriving after triage
+                // finished, and the queue only shows open rows — leaving it closed
+                // hides that failure from the reviewer for good.
+                if (existing.getFollowupStatus() == EQAFollowupStatus.ESCALATED
+                        || existing.getFollowupStatus() == EQAFollowupStatus.RESOLVED) {
+                    existing.setFollowupStatus(EQAFollowupStatus.NOTIFIED);
+                    existing.setNotifiedAt(DateUtil.getNowAsTimestamp());
+                    existing.setResponseReceivedAt(null);
+                }
                 existing.setSysUserId(sysUserId);
                 return followupDAO.update(existing);
             }
@@ -116,6 +130,10 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
             dto.put("cycleNumber", followup.getCycle() == null ? null : followup.getCycle().getCycleNumber());
             dto.put("cycleName", followup.getCycle() == null ? null : followup.getCycle().getCycleName());
             dto.put("source", sourceLabel(followup.getScheme()));
+            // The queue tags the source through i18n, so it needs the enum as well
+            // as the label the register and its CSV export print.
+            dto.put("schemeType", followup.getScheme() == null || followup.getScheme().getSchemeType() == null ? null
+                    : followup.getScheme().getSchemeType().name());
             dto.put("followupStatus",
                     followup.getFollowupStatus() == null ? null : followup.getFollowupStatus().name());
             dto.put("notifiedAt", followup.getNotifiedAt() == null ? null : followup.getNotifiedAt().toString());
@@ -123,7 +141,40 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
             dto.put("results", summaryRows(followup));
             rows.add(dto);
         }
+        nameAnalytes(rows);
         return rows;
+    }
+
+    /**
+     * The queue's Analyte column reads a name, and the snapshot only holds the id —
+     * resolved here in one query for the whole queue rather than one per row. An id
+     * that no longer resolves keeps the id as its label, so a data fault stays
+     * visible instead of rendering as a blank cell.
+     */
+    @SuppressWarnings("unchecked")
+    private void nameAnalytes(List<Map<String, Object>> queueRows) {
+        List<String> ids = new ArrayList<>();
+        for (Map<String, Object> queueRow : queueRows) {
+            for (Map<String, Object> result : (List<Map<String, Object>>) queueRow.get("results")) {
+                Object analyteId = result.get("analyteId");
+                if (analyteId != null && !ids.contains(String.valueOf(analyteId))) {
+                    ids.add(String.valueOf(analyteId));
+                }
+            }
+        }
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<String, String> names = new LinkedHashMap<>();
+        for (Analyte analyte : analyteDAO.get(ids)) {
+            names.put(analyte.getId(), analyte.getAnalyteName());
+        }
+        for (Map<String, Object> queueRow : queueRows) {
+            for (Map<String, Object> result : (List<Map<String, Object>>) queueRow.get("results")) {
+                String analyteId = result.get("analyteId") == null ? null : String.valueOf(result.get("analyteId"));
+                result.put("analyteName", analyteId == null ? null : names.getOrDefault(analyteId, analyteId));
+            }
+        }
     }
 
     @Override
