@@ -1,9 +1,10 @@
 package org.openelisglobal.analyzer.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,8 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<AnalyzerProfileBinding, String>
         implements AnalyzerProfileBindingService {
-
-    private static final String FINGERPRINT_PATTERN = "sha256:[0-9a-f]{64}";
 
     private final AnalyzerProfileBindingDAO bindingDAO;
     private final BridgeProfileCatalogService catalogService;
@@ -46,18 +45,13 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
             throw new AnalyzerProfileBindingException("Profile revision must be at least 1");
         }
 
-        JsonNode profile = findProfile(normalizedProfileId, profileRevision);
-        if (!"ACTIVE".equals(profile.path("status").asText())) {
+        BridgeAnalyzerProfile profile = findProfile(normalizedProfileId, profileRevision);
+        if (!"ACTIVE".equals(profile.status())) {
             throw new AnalyzerProfileBindingException(
                     profileLabel(normalizedProfileId, profileRevision) + " is not active");
         }
 
-        String fingerprint = profile.path("revisionFingerprint").asText();
-        if (!fingerprint.matches(FINGERPRINT_PATTERN)) {
-            throw new AnalyzerProfileBindingException(
-                    profileLabel(normalizedProfileId, profileRevision) + " has an invalid fingerprint");
-        }
-
+        String fingerprint = profile.revisionFingerprint();
         AnalyzerProfileBinding binding = bindingDAO.findByProfileIdAndRevision(normalizedProfileId, profileRevision)
                 .map(existing -> {
                     if (!fingerprint.equals(existing.getProfileFingerprint())) {
@@ -83,8 +77,9 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
         }
 
         ResolvedProfile resolved = resolveActiveProfile(normalizedProfileId, profileRevision, sysUserId);
+        applyInitialDefaults(analyzer, resolved.profile());
         AnalyzerSiteBindingSnapshot siteBinding = siteBindingService.resolveInitialRevision(resolved.binding(),
-                resolved.profile(), sysUserId);
+                resolved.profile().document(), sysUserId);
         analyzer.setSiteBindingRevision(siteBinding.revision());
         analyzer.setProfileBinding(null);
         return resolved.binding();
@@ -96,12 +91,57 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
         return bindingDAO.countAnalyzersByBindingId(bindingId);
     }
 
-    private JsonNode findProfile(String profileId, int profileRevision) {
-        return catalogService.getCatalog().profiles().stream().map(BridgeProfileCatalog.ProfileRevision::profile)
-                .filter(profile -> profileId.equals(profile.path("profileId").asText())
-                        && profileRevision == profile.path("revision").asInt(-1))
+    private BridgeAnalyzerProfile findProfile(String profileId, int profileRevision) {
+        return catalogService.getCatalog().profiles().stream()
+                .map(revision -> BridgeAnalyzerProfile.from(revision.profile()))
+                .filter(profile -> profileId.equals(profile.profileId()) && profileRevision == profile.revision())
                 .findFirst().orElseThrow(() -> new AnalyzerProfileBindingException(
                         profileLabel(profileId, profileRevision) + " was not found"));
+    }
+
+    private static void applyInitialDefaults(Analyzer analyzer, BridgeAnalyzerProfile profile) {
+        if (analyzer.getType() == null || analyzer.getType().isBlank()) {
+            analyzer.setType(profile.protocol());
+        }
+        if (analyzer.getProtocolVersion() == null && !"FILE".equals(profile.protocol())) {
+            ProtocolVersion protocolVersion = ProtocolVersion.fromValue(profile.protocolVersion());
+            if (protocolVersion == null) {
+                protocolVersion = ProtocolVersion.fromValue(profile.protocol());
+            }
+            if (protocolVersion == null) {
+                throw new AnalyzerProfileBindingException(
+                        "Bridge profile " + profile.profileId() + " has an unsupported protocol version");
+            }
+            analyzer.setProtocolVersion(protocolVersion);
+        }
+        if (analyzer.getCommunicationMode() == null && profile.communicationMode() != null) {
+            CommunicationMode communicationMode = CommunicationMode.fromValue(profile.communicationMode());
+            if (communicationMode == null) {
+                throw new AnalyzerProfileBindingException(
+                        "Bridge profile " + profile.profileId() + " has an unsupported communication mode");
+            }
+            analyzer.setCommunicationMode(communicationMode);
+        }
+
+        BridgeAnalyzerProfile.InstanceDefaults defaults = profile.instanceDefaults();
+        if (analyzer.getPort() == null) {
+            analyzer.setPort(defaults.port());
+        }
+        if (analyzer.getFileFormat() == null || analyzer.getFileFormat().isBlank()) {
+            analyzer.setFileFormat(defaults.fileFormat());
+        }
+        if (analyzer.getFilePattern() == null || analyzer.getFilePattern().isBlank()) {
+            analyzer.setFilePattern(defaults.filePattern());
+        }
+        if (analyzer.getHasHeader() == null) {
+            analyzer.setHasHeader(defaults.hasHeader());
+        }
+        if (analyzer.getDelimiter() == null || analyzer.getDelimiter().isBlank()) {
+            analyzer.setDelimiter(defaults.delimiter());
+        }
+        if (analyzer.getSkipRows() == null) {
+            analyzer.setSkipRows(defaults.skipRows());
+        }
     }
 
     private AnalyzerProfileBinding createBinding(String profileId, int profileRevision, String fingerprint,
@@ -126,6 +166,6 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
         return "Bridge profile " + profileId + " revision " + profileRevision;
     }
 
-    private record ResolvedProfile(AnalyzerProfileBinding binding, JsonNode profile) {
+    private record ResolvedProfile(AnalyzerProfileBinding binding, BridgeAnalyzerProfile profile) {
     }
 }

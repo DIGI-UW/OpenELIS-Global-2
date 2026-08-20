@@ -64,6 +64,11 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
             if (revision == null || revision.profile() == null || revision.publication() == null) {
                 throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid revision");
             }
+            try {
+                BridgeAnalyzerProfile.from(revision.profile());
+            } catch (IllegalArgumentException e) {
+                throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid profile", e);
+            }
         }
     }
 

@@ -37,8 +37,8 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 catalog.catalogFingerprint());
         assertEquals(1, catalog.profiles().size());
-        assertEquals("sysmex-xn", catalog.profiles().get(0).profile().path("profileId").asText());
-        assertEquals(3, catalog.profiles().get(0).profile().path("revision").asInt());
+        assertEquals("sysmex-xn", catalog.profiles().get(0).profile().path("profileMeta").path("id").asText());
+        assertEquals(3, catalog.profiles().get(0).profile().path("catalog").path("revision").asInt());
         assertEquals("SHIPPED", catalog.profiles().get(0).publication().path("action").asText());
     }
 
@@ -70,12 +70,15 @@ public class BridgeProfileCatalogServiceTest {
                   "profiles":[{
                     "profile":{
                       "schemaVersion":"1.0",
-                      "profileId":"sysmex-xn",
-                      "revision":3,
-                      "displayName":"Sysmex XN",
-                      "source":"SHIPPED",
-                      "status":"ACTIVE",
-                      "protocol":"ASTM"
+                      "profileMeta":{"id":"sysmex-xn","version":"1.0.0","displayName":"Sysmex XN","confidence":"HIGH"},
+                      "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                      "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
+                      "catalog":{
+                        "revision":3,
+                        "revisionFingerprint":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                        "source":"SHIPPED",
+                        "status":"ACTIVE"
+                      }
                     },
                     "publication":{
                       "action":"SHIPPED",

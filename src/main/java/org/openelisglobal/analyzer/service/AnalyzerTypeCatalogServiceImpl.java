@@ -56,29 +56,19 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
 
     private AnalyzerTypeCatalogView.TypeSummary summarize(BridgeProfileCatalog.ProfileRevision revision,
             Map<ProfileRevisionKey, AnalyzerProfileBinding> bindings, Map<String, Long> usageByBindingId) {
-        JsonNode profile = revision.profile();
-        String profileId = profile.path("profileId").asText();
-        int profileRevision = profile.path("revision").asInt();
-        AnalyzerProfileBinding binding = bindings.get(new ProfileRevisionKey(profileId, profileRevision));
-        int testTotal = profile.path("tests").size();
-        int resultTotal = 0;
-        for (JsonNode test : profile.path("tests")) {
-            resultTotal += test.path("resultValues").size();
-        }
-        String status = profile.path("status").asText();
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+        AnalyzerProfileBinding binding = bindings.get(new ProfileRevisionKey(profile.profileId(), profile.revision()));
+        int testTotal = profile.testDefinitions().size();
+        int resultTotal = profile.testDefinitions().stream().mapToInt(test -> test.resultValues().size()).sum();
+        String status = profile.status();
         String readiness = readiness(status, testTotal);
-        JsonNode identity = profile.path("identity");
-        JsonNode lineage = profile.path("lineage");
-        JsonNode publication = revision.publication();
-        return new AnalyzerTypeCatalogView.TypeSummary(profileId, profileRevision,
-                profile.path("revisionFingerprint").asText(), profile.path("displayName").asText(),
-                nullableText(identity, "manufacturer"), nullableText(identity, "model"),
-                profile.path("source").asText(), status, profile.path("protocol").asText(),
-                nullableText(lineage, "parentProfileId"), nullableInteger(lineage, "parentRevision"),
+        return new AnalyzerTypeCatalogView.TypeSummary(profile.profileId(), profile.revision(),
+                profile.revisionFingerprint(), profile.displayName(), profile.manufacturer(), profile.model(),
+                profile.source(), status, profile.protocol(), profile.parentProfileId(), profile.parentRevision(),
                 binding == null ? null : binding.getId(), mappingSummary(testTotal), mappingSummary(resultTotal),
                 binding == null ? 0 : usageByBindingId.getOrDefault(binding.getId(), 0L), readiness,
-                nullableText(publication, "action"), nullableText(publication, "actor"),
-                nullableText(publication, "markedAt"));
+                nullableText(revision.publication(), "action"), nullableText(revision.publication(), "actor"),
+                nullableText(revision.publication(), "markedAt"));
     }
 
     private static AnalyzerTypeCatalogView.MappingSummary mappingSummary(int total) {
@@ -98,11 +88,6 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     private static String nullableText(JsonNode node, String field) {
         JsonNode value = node.path(field);
         return value.isMissingNode() || value.isNull() || value.asText().isBlank() ? null : value.asText();
-    }
-
-    private static Integer nullableInteger(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        return value.canConvertToInt() ? value.asInt() : null;
     }
 
     private record ProfileRevisionKey(String profileId, int revision) {

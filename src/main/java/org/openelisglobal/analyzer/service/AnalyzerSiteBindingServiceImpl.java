@@ -48,9 +48,10 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
     public AnalyzerSiteBindingSnapshot resolveInitialRevision(AnalyzerProfileBinding profileBinding,
             JsonNode portableProfile, String actor) {
         String effectiveActor = requireText(actor, "actor");
-        validatePortableIdentity(profileBinding, portableProfile);
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(portableProfile);
+        validateProfileIdentity(profileBinding, profile);
         return bindingDAO.findByProfileBindingId(profileBinding.getId()).map(this::loadLatest)
-                .orElseGet(() -> createInitial(profileBinding, portableProfile, effectiveActor));
+                .orElseGet(() -> createInitial(profileBinding, profile, effectiveActor));
     }
 
     @Override
@@ -67,14 +68,14 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
         return persistRevision(binding, current, revisionNumber, draft, effectiveActor);
     }
 
-    private AnalyzerSiteBindingSnapshot createInitial(AnalyzerProfileBinding profileBinding, JsonNode portableProfile,
-            String actor) {
+    private AnalyzerSiteBindingSnapshot createInitial(AnalyzerProfileBinding profileBinding,
+            BridgeAnalyzerProfile profile, String actor) {
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setProfileBinding(profileBinding);
         binding.setCreatedBy(actor);
         binding.setSysUserId(actor);
         bindingDAO.insert(binding);
-        return persistRevision(binding, null, 1, unresolvedDraft(portableProfile), actor);
+        return persistRevision(binding, null, 1, unresolvedDraft(profile), actor);
     }
 
     private AnalyzerSiteBindingSnapshot loadLatest(AnalyzerSiteBinding binding) {
@@ -129,14 +130,14 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
         return entity;
     }
 
-    private static AnalyzerSiteBindingDraft unresolvedDraft(JsonNode portableProfile) {
+    private static AnalyzerSiteBindingDraft unresolvedDraft(BridgeAnalyzerProfile profile) {
         List<AnalyzerSiteBindingTestDraft> tests = new ArrayList<>();
         List<AnalyzerSiteBindingResultDraft> results = new ArrayList<>();
-        for (JsonNode test : portableProfile.path("tests")) {
-            String sourceRowKey = requireText(test.path("sourceRowKey").asText(null), "sourceRowKey");
+        for (BridgeAnalyzerProfile.TestDefinition test : profile.testDefinitions()) {
+            String sourceRowKey = requireText(test.analyzerCode(), "analyzer code");
             tests.add(new AnalyzerSiteBindingTestDraft(sourceRowKey, AnalyzerSiteBindingMappingState.UNRESOLVED, null));
-            for (JsonNode result : test.path("resultValues")) {
-                String rawValue = requireText(result.path("rawValue").asText(null), "rawValue");
+            for (String value : test.resultValues()) {
+                String rawValue = requireText(value, "result value");
                 results.add(new AnalyzerSiteBindingResultDraft(sourceRowKey, rawValue,
                         AnalyzerSiteBindingMappingState.UNRESOLVED, null));
             }
@@ -146,11 +147,11 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
         return draft;
     }
 
-    private static void validatePortableIdentity(AnalyzerProfileBinding selected, JsonNode portableProfile) {
-        if (selected == null || selected.getId() == null || portableProfile == null
-                || !selected.getProfileId().equals(portableProfile.path("profileId").asText())
-                || selected.getProfileRevision() != portableProfile.path("revision").asInt(-1)
-                || !selected.getProfileFingerprint().equals(portableProfile.path("revisionFingerprint").asText())) {
+    private static void validateProfileIdentity(AnalyzerProfileBinding selected, BridgeAnalyzerProfile profile) {
+        if (selected == null || selected.getId() == null || profile == null
+                || !selected.getProfileId().equals(profile.profileId())
+                || selected.getProfileRevision() != profile.revision()
+                || !selected.getProfileFingerprint().equals(profile.revisionFingerprint())) {
             throw new IllegalArgumentException("Portable profile does not match the selected profile reference");
         }
     }

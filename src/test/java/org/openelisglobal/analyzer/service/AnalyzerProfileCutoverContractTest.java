@@ -53,10 +53,17 @@ public class AnalyzerProfileCutoverContractTest {
                         new ObjectMapper().readTree(
                                 """
                                         {
-                                          "profileId":"site.mock-hematology",
-                                          "revision":3,
-                                          "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                                          "status":"ACTIVE"
+                                          "profileMeta":{"id":"site.mock-hematology","version":"1.0.0","displayName":"Mock Hematology","confidence":"VALIDATED"},
+                                          "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                                          "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
+                                          "default_test_mappings":[],
+                                          "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
+                                          "catalog":{
+                                            "revision":3,
+                                            "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                                            "source":"SITE",
+                                            "status":"ACTIVE"
+                                          }
                                         }
                                         """),
                         new ObjectMapper().createObjectNode()))));

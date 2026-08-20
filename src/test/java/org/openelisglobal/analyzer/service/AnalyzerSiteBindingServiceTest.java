@@ -196,10 +196,14 @@ public class AnalyzerSiteBindingServiceTest {
     private JsonNode portableProfile() throws Exception {
         return objectMapper.readTree("""
                 {
-                  "profileMeta":{"id":"site.mock-hematology"},
+                  "profileMeta":{"id":"site.mock-hematology","displayName":"Mock Hematology"},
+                  "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                  "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
                   "catalog":{
                     "revision":3,
-                    "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "source":"SITE",
+                    "status":"ACTIVE"
                   },
                   "default_test_mappings":[
                     {
