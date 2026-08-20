@@ -5,8 +5,10 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.eqa.dao.EQAProgramDAO;
 import org.openelisglobal.eqa.dao.EQAProgramTestDAO;
+import org.openelisglobal.eqa.dao.EQASchemeAnalystDAO;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
+import org.openelisglobal.eqa.valueholder.EQASchemeAnalyst;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,9 @@ public class EQAProgramServiceImpl extends BaseObjectServiceImpl<EQAProgram, Lon
 
     @Autowired
     private EQAProgramTestDAO eqaProgramTestDAO;
+
+    @Autowired
+    private EQASchemeAnalystDAO eqaSchemeAnalystDAO;
 
     public EQAProgramServiceImpl() {
         super(EQAProgram.class);
@@ -110,6 +115,38 @@ public class EQAProgramServiceImpl extends BaseObjectServiceImpl<EQAProgram, Lon
         programTest.setSysUserId(program.getSysUserId());
         eqaProgramTestDAO.insert(programTest);
         return programTest;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EQASchemeAnalyst> getAnalysts(Long programId) {
+        return eqaSchemeAnalystDAO.getAllMatching("scheme.id", programId);
+    }
+
+    @Override
+    public List<EQASchemeAnalyst> setAnalysts(Long programId, List<Long> systemUserIds, String sysUserId) {
+        EQAProgram program = eqaProgramDAO.get(programId)
+                .orElseThrow(() -> new IllegalArgumentException("EQA Program not found: " + programId));
+
+        // uq_eqa_scheme_analyst_scheme_user has no soft-delete column behind it, so
+        // "replace the roster" is a delete of what left plus an insert of what
+        // arrived — re-inserting a kept analyst would violate it.
+        List<EQASchemeAnalyst> existing = getAnalysts(programId);
+        for (EQASchemeAnalyst analyst : existing) {
+            if (!systemUserIds.contains(analyst.getSystemUserId())) {
+                eqaSchemeAnalystDAO.delete(analyst);
+            }
+        }
+        for (Long systemUserId : systemUserIds) {
+            if (existing.stream().noneMatch(analyst -> systemUserId.equals(analyst.getSystemUserId()))) {
+                EQASchemeAnalyst analyst = new EQASchemeAnalyst();
+                analyst.setScheme(program);
+                analyst.setSystemUserId(systemUserId);
+                analyst.setSysUserId(sysUserId);
+                eqaSchemeAnalystDAO.insert(analyst);
+            }
+        }
+        return getAnalysts(programId);
     }
 
     @Override

@@ -11,6 +11,9 @@ import org.openelisglobal.eqa.service.EQAProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
+import org.openelisglobal.eqa.valueholder.EQASchemeAnalyst;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +37,9 @@ public class EQAProgramRestController extends ControllerUtills {
 
     @Autowired
     private EQAProgramEnrollmentService enrollmentService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.PROVIDER)
@@ -173,12 +179,66 @@ public class EQAProgramRestController extends ControllerUtills {
         }
     }
 
+    /**
+     * FR-V2.4-03: the scheme's analyst roster, with the display names the wizard's
+     * assignment step shows. Rows come back even for a user since deactivated —
+     * hiding them would silently drop an assignment already made.
+     */
+    @GetMapping(value = "/{id}/analysts", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getAnalysts(@PathVariable Long id) {
+        try {
+            programService.get(id);
+            return ResponseEntity
+                    .ok(programService.getAnalysts(id).stream().map(this::toAnalystDto).collect(Collectors.toList()));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping(value = "/{id}/analysts", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PROVIDER)
+    public ResponseEntity<?> updateAnalysts(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            programService.get(id);
+
+            if (!(body.get("systemUserIds") instanceof List<?> rows)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "systemUserIds list is required"));
+            }
+            // Ids arrive as numbers or strings depending on the caller; reading each
+            // through String.valueOf is what keeps a JSON type mismatch from 500ing
+            // (the same cast bug qa/T-01 fixed on enrollment).
+            List<Long> systemUserIds = rows.stream().filter(row -> row != null)
+                    .map(row -> Long.valueOf(String.valueOf(row).trim())).collect(Collectors.toList());
+
+            return ResponseEntity.ok(programService.setAnalysts(id, systemUserIds, getSysUserId(request)).stream()
+                    .map(this::toAnalystDto).collect(Collectors.toList()));
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    private Map<String, Object> toAnalystDto(EQASchemeAnalyst analyst) {
+        Map<String, Object> dto = new HashMap<>();
+        dto.put("id", analyst.getId());
+        dto.put("systemUserId", analyst.getSystemUserId());
+        SystemUser user = systemUserService.get(String.valueOf(analyst.getSystemUserId()));
+        dto.put("displayName", user == null ? String.valueOf(analyst.getSystemUserId())
+                : (user.getFirstName() == null ? "" : user.getFirstName() + " ") + user.getLastName());
+        return dto;
+    }
+
     private Map<String, Object> toProgramDto(EQAProgram program) {
         Map<String, Object> dto = new HashMap<>();
         dto.put("id", program.getId());
         dto.put("name", program.getName());
         dto.put("description", program.getDescription());
         dto.put("provider", program.getProvider());
+        // G1's alter-in-place: scheme_type lives on eqa_program, and the in-house
+        // wizard filters on it, so it has to reach the client.
+        dto.put("schemeType", program.getSchemeType() == null ? null : program.getSchemeType().name());
         dto.put("isActive", program.getIsActive());
         dto.put("fhirUuid", program.getFhirUuid() != null ? program.getFhirUuid().toString() : null);
         dto.put("participantCount", enrollmentService.countActiveEnrollments(program.getId()));

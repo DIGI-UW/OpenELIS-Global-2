@@ -1,5 +1,6 @@
 package org.openelisglobal.eqa.service;
 
+import java.sql.Date;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
@@ -10,6 +11,17 @@ import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
 
 public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
+
+    /**
+     * A new cycle in PLANNED (FR-V2.4-01 step 1, and the same create the provider
+     * wizard needs). A null cycle number takes the scheme's next one, which is what
+     * the wizard suggests anyway.
+     *
+     * @throws IllegalArgumentException when the scheme already has that cycle
+     *                                  number (uq_eqa_cycle_scheme_number)
+     */
+    EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate, Date plannedEndDate,
+            String sysUserId);
 
     /**
      * Move a cycle to a new state and record why, atomically (FR-V2.1-04 /

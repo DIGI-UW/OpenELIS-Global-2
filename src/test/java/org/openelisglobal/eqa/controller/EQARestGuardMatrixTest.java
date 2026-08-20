@@ -68,6 +68,7 @@ public class EQARestGuardMatrixTest {
         // Lab-wide alert acknowledgement rides the exception above.
         WRITE_GUARDS.put("EQAAlertRestController#acknowledgeAlert", EQAGuards.LAB_WIDE_ALERTS);
         // Cycle lifecycle
+        WRITE_GUARDS.put("EQACycleRestController#createCycle", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQACycleRestController#transition", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAFollowupRestController#escalate", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAFollowupRestController#dismiss", EQAGuards.MANAGE);
@@ -81,6 +82,7 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAProgramRestController#createProgram", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAProgramRestController#updateProgram", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAProgramRestController#updateTestAssignments", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAProgramRestController#updateAnalysts", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQASubmissionRestController#approveLateSubmission", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#savePrep", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#saveShipment", EQAGuards.PROVIDER);
@@ -96,6 +98,7 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAResultRestController#batchImportResults", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQASubmissionRestController#submitViaFhir", EQAGuards.PARTICIPANT);
         // Panel lifecycle, and the separate privilege that reveals sealed targets
+        WRITE_GUARDS.put("EQAPanelRestController#createPanel", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAPanelRestController#seal", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAPanelRestController#distribute", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAPanelRestController#sealAndDistribute", EQAGuards.MANAGE);

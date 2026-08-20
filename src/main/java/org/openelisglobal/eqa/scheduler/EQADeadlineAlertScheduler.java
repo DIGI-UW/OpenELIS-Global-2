@@ -235,6 +235,15 @@ public class EQADeadlineAlertScheduler {
      * date has arrived is unblinded and scored. Idempotent — a scored panel is no
      * longer DISTRIBUTED, so a re-run finds nothing (AC-V2.4-11); a per-panel
      * failure is logged and never blocks the other panels.
+     *
+     * <p>
+     * Day granularity is deliberate (decided with the team, 2026-08-20):
+     * {@code eqa_panel.unblind_date} is a DATE, so a panel unblinds on the first
+     * run of this job once its date arrives — within five minutes of midnight
+     * server-time, not at an hour the supervisor chose. The mockup shows a
+     * date-and-time field; honouring that means widening the column to TIMESTAMP
+     * and is not what a lab has asked for yet. Until then, no caller should imply a
+     * time of day in the UI or in a label.
      */
     @Scheduled(fixedDelay = 300000)
     public void unblindDueInHousePanels() {

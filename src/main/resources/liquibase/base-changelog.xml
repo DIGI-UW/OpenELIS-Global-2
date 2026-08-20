@@ -103,4 +103,7 @@
 
   <!-- EQA V2.5 T-25 — OGC-613: shipping_box.eqa_cycle_id + FIRST_SHIPMENT_SENT -->
   <include file="liquibase/qa/028-eqa-shipment-workbench.xml" />
+
+  <!-- EQA V2.4 T-21 — OGC-612: In-House Blinding menu row (FR-V2.4-01) -->
+  <include file="liquibase/qa/031-add-eqa-in-house-menu.xml" />
 </databaseChangeLog>

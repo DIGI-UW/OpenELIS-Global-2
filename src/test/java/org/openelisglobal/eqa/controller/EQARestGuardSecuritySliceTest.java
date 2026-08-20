@@ -20,6 +20,7 @@ import org.openelisglobal.eqa.controller.rest.EQAMyProgramsRestController;
 import org.openelisglobal.eqa.controller.rest.EQAPanelRestController;
 import org.openelisglobal.eqa.controller.rest.EQAProgramRestController;
 import org.openelisglobal.eqa.service.EQABlindingService;
+import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQALabelPDFService;
 import org.openelisglobal.eqa.service.EQAPanelService;
@@ -29,6 +30,9 @@ import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -243,9 +247,35 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
         }
 
         @Bean
+        EQACycleService cycleService() {
+            return Mockito.mock(EQACycleService.class);
+        }
+
+        /**
+         * Read by the analyst-roster DTO and by panel create's test → analyte lookup;
+         * neither runs in the guard assertions, but the slice still has to be able to
+         * build the controllers.
+         */
+        @Bean
+        SystemUserService systemUserService() {
+            return Mockito.mock(SystemUserService.class);
+        }
+
+        @Bean
+        TestService testService() {
+            return Mockito.mock(TestService.class);
+        }
+
+        @Bean
+        TestAnalyteService testAnalyteService() {
+            return Mockito.mock(TestAnalyteService.class);
+        }
+
+        @Bean
         EQAPanelRestController panelRestController(EQAPanelService panelService, EQABlindingService blindingService,
-                EQALabelPDFService labelPDFService) {
-            return new EQAPanelRestController(panelService, blindingService, labelPDFService);
+                EQALabelPDFService labelPDFService, EQAProgramService programService, EQACycleService cycleService) {
+            return new EQAPanelRestController(panelService, blindingService, labelPDFService, programService,
+                    cycleService);
         }
 
         @Bean

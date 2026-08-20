@@ -1,7 +1,9 @@
 package org.openelisglobal.eqa.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
@@ -9,9 +11,20 @@ import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.eqa.service.EQABlindingService;
+import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQALabelPDFService;
 import org.openelisglobal.eqa.service.EQAPanelService;
+import org.openelisglobal.eqa.service.EQAProgramService;
+import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
+import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
+import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
 import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testanalyte.service.TestAnalyteService;
+import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -48,17 +61,119 @@ public class EQAPanelRestController extends BaseRestController {
     private final EQAPanelService panelService;
     private final EQABlindingService blindingService;
     private final EQALabelPDFService labelPDFService;
+    private final EQAProgramService programService;
+    private final EQACycleService cycleService;
+
+    // Field-injected: TestService sits in a bean graph that does not tolerate
+    // being pulled into another constructor (the EQA services hit the same
+    // cycle and resolved it the same way).
+    @Autowired
+    private TestService testService;
+
+    @Autowired
+    private TestAnalyteService testAnalyteService;
 
     public EQAPanelRestController(EQAPanelService panelService, EQABlindingService blindingService,
-            EQALabelPDFService labelPDFService) {
+            EQALabelPDFService labelPDFService, EQAProgramService programService, EQACycleService cycleService) {
         this.panelService = panelService;
         this.blindingService = blindingService;
         this.labelPDFService = labelPDFService;
+        this.programService = programService;
+        this.cycleService = cycleService;
     }
 
+    /** By cycle for a cycle page, by scheme for the in-house landing list. */
     @GetMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<Map<String, Object>> panelsByCycle(@RequestParam Long cycleId) {
-        return panelService.getPanelDtos(cycleId);
+    public List<Map<String, Object>> panels(@RequestParam(required = false) Long cycleId,
+            @RequestParam(required = false) Long schemeId) {
+        if (cycleId != null) {
+            return panelService.getPanelDtos(cycleId);
+        }
+        if (schemeId != null) {
+            return panelService.getPanelDtosByScheme(schemeId);
+        }
+        throw new IllegalArgumentException("Ask for panels by cycleId or by schemeId");
+    }
+
+    /**
+     * The ids of tests a panel sample can be built on: a target is stored against
+     * an analyte, so a test with no analyte behind it is a dead end the wizard must
+     * not offer — it would fail only at seal, with the whole panel already filled
+     * in. Ids only; the wizard already holds the display names from
+     * /rest/test-list.
+     */
+    @GetMapping(value = "/testable-tests", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<String> testableTests() {
+        return panelService.getTestableTestIds();
+    }
+
+    /**
+     * FR-V2.4-02: the wizard's panel + samples in one write, PREPARING. Targets
+     * arrive here in the clear over TLS and land encrypted (the column's
+     * converter); nothing reads them back out until the panel unblinds.
+     */
+    @PostMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createPanel(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        Long schemeId = longField(body, "schemeId");
+        if (schemeId == null) {
+            throw new IllegalArgumentException("A panel needs a scheme");
+        }
+
+        EQAPanel panel = new EQAPanel();
+        panel.setScheme(programService.get(schemeId));
+        Long cycleId = longField(body, "cycleId");
+        if (cycleId != null) {
+            panel.setCycle(cycleService.get(cycleId));
+        }
+        panel.setPanelName(stringField(body, "panelName"));
+        panel.setPanelType(stringField(body, "panelType"));
+        panel.setUnblindDate(dateField(body, "unblindDate"));
+        panel.setSourceType(enumOrNull(EQAPanelSourceType.class, body.get("sourceType")));
+        panel.setLotNumber(stringField(body, "lotNumber"));
+        panel.setStorageTemp(enumOrNull(EQAStorageTemp.class, body.get("storageTemp")));
+        panel.setExpirationDate(dateField(body, "expirationDate"));
+        Integer aliquots = integerField(body, "aliquotsProduced");
+        panel.setAliquotsProduced(aliquots == null ? 0 : aliquots);
+        panel.setHomogeneityQcPassed(Boolean.parseBoolean(String.valueOf(body.get("homogeneityQcPassed"))));
+        panel.setHomogeneityQcNotes(stringField(body, "homogeneityQcNotes"));
+
+        List<EQAPanelSample> samples = new ArrayList<>();
+        if (body.get("samples") instanceof List<?> rows) {
+            for (Object row : rows) {
+                if (row instanceof Map<?, ?> spec) {
+                    samples.add(toSample(spec));
+                }
+            }
+        }
+
+        EQAPanel created = panelService.create(panel, samples, getSysUserId(request));
+        Map<String, Object> dto = new LinkedHashMap<>(panelService.toPanelDto(created));
+        // The sample ids come back with the panel: the wizard's very next call is
+        // seal-and-distribute, which is keyed by panelSampleId.
+        dto.put("samples", panelService.getSampleDtos(created.getId(), callerCanUnblind()));
+        return dto;
+    }
+
+    private EQAPanelSample toSample(Map<?, ?> spec) {
+        EQAPanelSample sample = new EQAPanelSample();
+        sample.setSampleCode(stringOrNull(spec.get("sampleCode")));
+        sample.setBlindCode(stringOrNull(spec.get("blindCode")));
+        Long analyteId = longOrNull(spec.get("analyteId"));
+        if (analyteId == null) {
+            analyteId = analyteOfTest(stringOrNull(spec.get("testId")));
+        }
+        if (analyteId == null) {
+            throw new IllegalArgumentException("Every panel sample needs an analyte");
+        }
+        sample.setAnalyteId(analyteId);
+        sample.setTargetValue(stringOrNull(spec.get("targetValue")));
+        sample.setTargetUnit(stringOrNull(spec.get("targetUnit")));
+        sample.setAcceptanceRangeLow(decimalOrNull(spec.get("acceptanceRangeLow")));
+        sample.setAcceptanceRangeHigh(decimalOrNull(spec.get("acceptanceRangeHigh")));
+        sample.setSourceReference(stringOrNull(spec.get("sourceReference")));
+        return sample;
     }
 
     @GetMapping(value = "/panels/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -144,8 +259,47 @@ public class EQAPanelRestController extends BaseRestController {
         }
     }
 
+    /**
+     * The wizard picks the orderable test, not the analyte behind it — analyte is a
+     * catalog detail no bench user thinks in. A test with several analytes takes
+     * the first, which is the single-result shape every EQA analyte has today.
+     */
+    private Long analyteOfTest(String testId) {
+        if (testId == null) {
+            return null;
+        }
+        Test test = testService.get(testId);
+        if (test == null) {
+            throw new IllegalArgumentException("Unknown test " + testId);
+        }
+        List<TestAnalyte> analytes = testAnalyteService.getAllTestAnalytesPerTest(test);
+        if (analytes.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Test " + test.getName() + " has no analyte, so it cannot carry a panel target");
+        }
+        return Long.valueOf(analytes.get(0).getAnalyte().getId());
+    }
+
     private static String stringOrNull(Object value) {
         return value == null || GenericValidator.isBlankOrNull(String.valueOf(value)) ? null : String.valueOf(value);
+    }
+
+    private static BigDecimal decimalOrNull(Object value) {
+        String text = stringOrNull(value);
+        try {
+            return text == null ? null : new BigDecimal(text.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Not a number: " + value);
+        }
+    }
+
+    private static <E extends Enum<E>> E enumOrNull(Class<E> type, Object value) {
+        String text = stringOrNull(value);
+        try {
+            return text == null ? null : Enum.valueOf(type, text.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Not a " + type.getSimpleName() + ": " + value);
+        }
     }
 
     /**

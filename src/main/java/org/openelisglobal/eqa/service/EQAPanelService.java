@@ -4,9 +4,30 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
 
 public interface EQAPanelService extends BaseObjectService<EQAPanel, Long> {
+
+    /**
+     * FR-V2.4-02: a PREPARING panel and its samples in one write. Samples that
+     * arrive without a blind code get one derived from the panel id, which is what
+     * makes both wizard modes — split an existing pool, or define samples by hand —
+     * the same call.
+     *
+     * @throws IllegalArgumentException when the panel has no scheme or no samples
+     */
+    EQAPanel create(EQAPanel panel, List<EQAPanelSample> samples, String sysUserId);
+
+    /** Panels of one scheme, for the in-house landing list. */
+    List<Map<String, Object>> getPanelDtosByScheme(Long schemeId);
+
+    /**
+     * Ids of the tests that carry an analyte. A panel target is stored against an
+     * analyte, so a test without one cannot be blinded — the wizard filters its
+     * test picker with this rather than failing at seal.
+     */
+    List<String> getTestableTestIds();
 
     /**
      * PREPARING → SEALED (FR-V2.1-11). Refuses a panel with no samples, any sample
