@@ -122,6 +122,15 @@ public class AnalyzerContractCutoverTest {
         }
     }
 
+    @Test
+    public void cutoverRollbackCannotDiscardAcceptedAnalyzerWrites() throws Exception {
+        String cutover = Files.readString(CUTOVER);
+
+        assertTrue(cutover.contains("quiesce analyzer ingress and analyzer-configuration writes"));
+        assertTrue(cutover.contains("No target-only write may be accepted before the rollback window closes"));
+        assertTrue(cutover.contains("restoring the pre-deployment backup is forbidden"));
+    }
+
     private Map<String, String> sourceProfiles() throws IOException {
         Map<String, String> profiles = new LinkedHashMap<>();
         try (Stream<Path> paths = Files.walk(SOURCE_PROFILE_ROOT, 2)) {
