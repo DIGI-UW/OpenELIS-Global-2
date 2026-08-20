@@ -6,6 +6,8 @@ public interface BridgeProfileManagementService {
 
     JsonNode createDraft(String displayName, String actor);
 
+    JsonNode getDraft(String draftId);
+
     JsonNode updateDraft(String draftId, JsonNode profile, String actor);
 
     JsonNode publishDraft(String draftId, String actor);

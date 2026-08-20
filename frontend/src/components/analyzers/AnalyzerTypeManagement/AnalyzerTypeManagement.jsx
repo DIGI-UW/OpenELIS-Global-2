@@ -751,6 +751,7 @@ const AnalyzerTypeManagement = () => {
           key={`${actionState.action}:${actionState.profileId || ""}`}
           action={actionState.action}
           profileId={actionState.profileId}
+          draftId={actionState.draftId}
           types={catalog.types}
           onClose={closeAction}
           onSuccess={handleActionSuccess}

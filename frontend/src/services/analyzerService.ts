@@ -826,6 +826,16 @@ export const createAnalyzerTypeDraft = (
   );
 };
 
+export const getAnalyzerTypeDraft = (
+  draftId: string,
+  callback: DataCallback<AnalyzerProfileDraftResponse | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}`,
+    callback,
+  );
+};
+
 export const duplicateAnalyzerType = (
   profileId: string,
   sourceRevision: number,

@@ -36,6 +36,11 @@ public class BridgeProfileManagementServiceImpl implements BridgeProfileManageme
     }
 
     @Override
+    public JsonNode getDraft(String draftId) {
+        return get(draftUrl(draftId));
+    }
+
+    @Override
     public JsonNode updateDraft(String draftId, JsonNode profile, String actor) {
         requireProfile(profile);
         ObjectNode request = actorRequest(actor);
@@ -81,9 +86,13 @@ public class BridgeProfileManagementServiceImpl implements BridgeProfileManageme
 
     @Override
     public JsonNode history(String profileId) {
+        return get(profileUrl(profileId) + "/history");
+    }
+
+    private JsonNode get(String url) {
         requireConfigured();
         try {
-            return parse(bridgeHttpClient.get(profileUrl(profileId) + "/history", REQUEST_TIMEOUT));
+            return parse(bridgeHttpClient.get(url, REQUEST_TIMEOUT));
         } catch (IOException e) {
             throw unavailable(e);
         }

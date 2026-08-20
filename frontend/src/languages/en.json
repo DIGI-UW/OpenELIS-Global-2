@@ -527,6 +527,7 @@
   "analyzerType.duplicate.lineage.title": "New profile with preserved lineage",
   "analyzerType.draft.created.subtitle": "The draft is saved in Analyzer Bridge. It must be completed and validated before it can be published for analyzer setup.",
   "analyzerType.draft.created.title": "Profile draft created",
+  "analyzerType.draft.loading": "Loading profile draft",
   "analyzerType.draft.publish.ready.subtitle": "{name} has a unique Bridge-owned identity and preserves its source lineage.",
   "analyzerType.draft.publish.ready.title": "Ready to publish",
   "analyzerType.empty.subtitle": "Adjust the search or filters to see other analyzer types.",

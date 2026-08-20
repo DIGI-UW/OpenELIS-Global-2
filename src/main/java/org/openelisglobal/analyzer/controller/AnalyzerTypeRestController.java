@@ -49,6 +49,11 @@ public class AnalyzerTypeRestController extends BaseRestController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @GetMapping("/drafts/{draftId}")
+    public ResponseEntity<JsonNode> getDraft(@PathVariable String draftId) {
+        return ResponseEntity.ok(managementService.getDraft(draftId));
+    }
+
     @PutMapping("/drafts/{draftId}")
     public ResponseEntity<JsonNode> updateDraft(@PathVariable String draftId,
             @RequestBody ProfileMutationRequest request, HttpServletRequest httpRequest) {

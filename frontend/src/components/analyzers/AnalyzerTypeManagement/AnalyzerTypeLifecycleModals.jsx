@@ -21,6 +21,7 @@ import {
 import {
   createAnalyzerTypeDraft,
   duplicateAnalyzerType,
+  getAnalyzerTypeDraft,
   publishAnalyzerTypeDraft,
 } from "../../../services/analyzerService";
 
@@ -35,11 +36,53 @@ const nextDuplicateName = (displayName, types) => {
 
 const hasError = (response) => !response || Boolean(response.error);
 
-const CreateProfileModal = ({ types, onClose, onError, onDraftCreated }) => {
+const DraftLoadingModal = ({ headingId, onClose }) => {
+  const intl = useIntl();
+  return (
+    <Modal
+      open
+      passiveModal
+      modalHeading={intl.formatMessage({ id: headingId })}
+      onRequestClose={onClose}
+      size="sm"
+    >
+      <div className="analyzer-type-modal__loading">
+        <Loading
+          withOverlay={false}
+          description={intl.formatMessage({
+            id: "analyzerType.draft.loading",
+          })}
+        />
+      </div>
+    </Modal>
+  );
+};
+
+const CreateProfileModal = ({
+  types,
+  draftId,
+  onClose,
+  onError,
+  onDraftCreated,
+}) => {
   const intl = useIntl();
   const [displayName, setDisplayName] = useState("");
   const [draft, setDraft] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!draftId || draft?.draftId === draftId) {
+      return;
+    }
+    getAnalyzerTypeDraft(draftId, (response) => {
+      if (hasError(response) || response.kind !== "CREATE") {
+        onError(response?.error);
+        return;
+      }
+      setDraft(response);
+      setDisplayName(response.profile?.profileMeta?.displayName || "");
+    });
+  }, [draft?.draftId, draftId, onError]);
 
   const normalizedName = displayName.trim();
   const duplicateName = types.some(
@@ -63,7 +106,18 @@ const CreateProfileModal = ({ types, onClose, onError, onDraftCreated }) => {
     });
   };
 
-  if (draft) {
+  const activeDraft = draft?.draftId === draftId ? draft : null;
+
+  if (draftId && !activeDraft) {
+    return (
+      <DraftLoadingModal
+        headingId="analyzerType.button.create"
+        onClose={onClose}
+      />
+    );
+  }
+
+  if (activeDraft) {
     return (
       <Modal
         open
@@ -129,6 +183,7 @@ const CreateProfileModal = ({ types, onClose, onError, onDraftCreated }) => {
 const DuplicateProfileModal = ({
   types,
   initialProfileId,
+  draftId,
   onClose,
   onSuccess,
   onError,
@@ -148,14 +203,31 @@ const DuplicateProfileModal = ({
   );
   const [draft, setDraft] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!draftId || draft?.draftId === draftId) {
+      return;
+    }
+    getAnalyzerTypeDraft(draftId, (response) => {
+      if (hasError(response) || response.kind !== "DUPLICATE") {
+        onError(response?.error);
+        return;
+      }
+      setDraft(response);
+      setSourceId(response.baseProfileId || "");
+      setDisplayName(response.profile?.profileMeta?.displayName || "");
+    });
+  }, [draft?.draftId, draftId, onError]);
+
+  const activeDraft = draft?.draftId === draftId ? draft : null;
   const source = activeTypes.find((type) => type.profileId === sourceId);
   const normalizedName = displayName.trim();
   const duplicateName = types.some(
     (type) => type.displayName.toLowerCase() === normalizedName.toLowerCase(),
   );
   const publishable =
-    Boolean(draft) && (draft.validationIssues || []).length === 0;
-  const valid = draft
+    Boolean(activeDraft) && (activeDraft.validationIssues || []).length === 0;
+  const valid = activeDraft
     ? publishable
     : Boolean(source) && Boolean(normalizedName) && !duplicateName;
 
@@ -172,8 +244,8 @@ const DuplicateProfileModal = ({
       return;
     }
     setSubmitting(true);
-    if (draft) {
-      publishAnalyzerTypeDraft(draft.draftId, (response) => {
+    if (activeDraft) {
+      publishAnalyzerTypeDraft(activeDraft.draftId, (response) => {
         setSubmitting(false);
         if (hasError(response)) {
           onError(response?.error);
@@ -199,6 +271,15 @@ const DuplicateProfileModal = ({
     );
   };
 
+  if (draftId && !activeDraft) {
+    return (
+      <DraftLoadingModal
+        headingId="analyzerType.button.duplicate"
+        onClose={onClose}
+      />
+    );
+  }
+
   return (
     <Modal
       open
@@ -206,7 +287,7 @@ const DuplicateProfileModal = ({
         id: "analyzerType.button.duplicate",
       })}
       primaryButtonText={intl.formatMessage({
-        id: draft
+        id: activeDraft
           ? "analyzerType.button.publish"
           : "analyzerType.button.duplicate",
       })}
@@ -220,7 +301,7 @@ const DuplicateProfileModal = ({
       size="sm"
     >
       <div className="analyzer-type-modal__form">
-        {draft ? (
+        {activeDraft ? (
           <InlineNotification
             kind="success"
             lowContrast
@@ -274,7 +355,7 @@ const DuplicateProfileModal = ({
             />
           </>
         )}
-        {!draft && source && (
+        {!activeDraft && source && (
           <InlineNotification
             kind="info"
             lowContrast
@@ -469,6 +550,7 @@ const ProfileHistoryModal = ({ profile, onClose, onError }) => {
 const AnalyzerTypeLifecycleModals = ({
   action,
   profileId,
+  draftId,
   types,
   onClose,
   onSuccess,
@@ -481,6 +563,7 @@ const AnalyzerTypeLifecycleModals = ({
     return (
       <CreateProfileModal
         types={types}
+        draftId={draftId}
         onClose={onClose}
         onError={onError}
         onDraftCreated={onDraftCreated}
@@ -492,6 +575,7 @@ const AnalyzerTypeLifecycleModals = ({
       <DuplicateProfileModal
         types={types}
         initialProfileId={profileId}
+        draftId={draftId}
         onClose={onClose}
         onSuccess={onSuccess}
         onError={onError}
