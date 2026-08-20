@@ -174,10 +174,39 @@ public class MicrobiologyTestFixtures {
         return patient;
     }
 
-    public TypeOfSample firstActiveSampleType() {
-        return typeOfSampleService.getAllTypeOfSamples().stream().filter(TypeOfSample::getIsActive)
-                .sorted(Comparator.comparing(TypeOfSample::getId)).findFirst()
-                .orElseThrow(() -> new IllegalStateException("No active specimen type is available for tests"));
+    public TypeOfSample getOrCreateActiveSampleType() {
+        List<TypeOfSample> sampleTypes = typeOfSampleService.getAllTypeOfSamples();
+        TypeOfSample existing = sampleTypes == null ? null
+                : sampleTypes.stream().filter(TypeOfSample::getIsActive)
+                        .sorted(Comparator.comparing(TypeOfSample::getId)).findFirst().orElse(null);
+        if (existing != null) {
+            return existing;
+        }
+
+        String userId = defaultUserId();
+        Localization localization = new Localization();
+        localization.setDescription("Microbiology integration specimen");
+        localization.setEnglish("Microbiology integration specimen");
+        localization.setSysUserId(userId);
+        String localizationId = localizationService.insert(localization);
+        if (localization.getId() == null) {
+            localization.setId(localizationId);
+        }
+
+        TypeOfSample sampleType = new TypeOfSample();
+        sampleType.setDescription("Microbiology integration specimen");
+        sampleType.setDomain("H");
+        sampleType.setLocalAbbreviation("MICROIT");
+        sampleType.setActive(true);
+        sampleType.setSortOrder(999);
+        sampleType.setWhonetCode("");
+        sampleType.setLocalization(localization);
+        sampleType.setSysUserId(userId);
+        String generatedId = typeOfSampleService.insert(sampleType);
+        if (sampleType.getId() == null) {
+            sampleType.setId(generatedId);
+        }
+        return sampleType;
     }
 
     public ReferenceData createReferenceData(String methodId) {

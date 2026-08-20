@@ -1,17 +1,24 @@
 import { expect, test } from "../../../helpers/test-base";
 import type { Download } from "@playwright/test";
 import { Sidenav } from "../../../fixtures/sidenav";
-import { seedMicrobiologyWhonetExport } from "../../../helpers/seed-microbiology-data";
+import {
+  seedMicrobiologyWhonetExport,
+  seedMicrobiologyWhonetExportFilters,
+} from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const currentPeriodQuery = (
   exportDate: string,
-  filters: { specimen?: string[]; organism?: string[] } = {},
+  filters: {
+    specimen?: string[];
+    organism?: string[];
+    origin?: string[];
+    significance?: string[];
+  } = {},
 ) => {
   const params = new URLSearchParams({
     from: exportDate,
     to: exportDate,
-    significance: "CLINICALLY_SIGNIFICANT",
     dedup: "FIRST_ISOLATE_7_DAY",
     step: "configure",
     page: "1",
@@ -23,6 +30,12 @@ const currentPeriodQuery = (
   [...(filters.organism || [])]
     .sort()
     .forEach((id) => params.append("organism", id));
+  [...(filters.origin || [])]
+    .sort()
+    .forEach((id) => params.append("origin", id));
+  [...(filters.significance || ["CLINICALLY_SIGNIFICANT"])]
+    .sort()
+    .forEach((id) => params.append("significance", id));
   const canonical = new URLSearchParams();
   ["from", "to"].forEach((key) => canonical.set(key, params.get(key) || ""));
   params
@@ -31,7 +44,11 @@ const currentPeriodQuery = (
   params
     .getAll("organism")
     .forEach((value) => canonical.append("organism", value));
-  ["significance", "dedup", "step", "page", "pageSize"].forEach((key) =>
+  params.getAll("origin").forEach((value) => canonical.append("origin", value));
+  params
+    .getAll("significance")
+    .forEach((value) => canonical.append("significance", value));
+  ["dedup", "step", "page", "pageSize"].forEach((key) =>
     canonical.set(key, params.get(key) || ""),
   );
   return canonical.toString();
@@ -44,7 +61,12 @@ const selectFilterOption = async (
 ) => {
   const filter = page.getByRole("combobox", { name: filterName });
   await filter.click();
-  await filter.fill(optionName);
+  const supportsTextEntry = await filter.evaluate((element) =>
+    element.matches("input, textarea, [contenteditable='true']"),
+  );
+  if (supportsTextEntry) {
+    await filter.fill(optionName);
+  }
   await page.getByRole("option", { name: optionName, exact: true }).click();
 };
 
@@ -65,6 +87,88 @@ const parseCsvLine = (line: string) => {
 };
 
 test.describe("OGC-782 M4 WHONET manual export", () => {
+  test("preserves every R9 export population filter", async ({ page }) => {
+    const seeded = await seedMicrobiologyWhonetExportFilters(page);
+    const query = currentPeriodQuery(seeded.exportDate);
+    const optionsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/microbiology/whonet/filter-options?") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+    );
+
+    await page.goto(`/Microbiology/whonet?${query}`, {
+      waitUntil: "domcontentloaded",
+    });
+    const filterOptions = (await (await optionsResponse).json()) as {
+      specimenTypes: Array<{ id: string; label: string }>;
+      organisms: Array<{ id: string; label: string }>;
+      patientOrigins: Array<{ id: string; label: string }>;
+    };
+    const specimen = filterOptions.specimenTypes.find(
+      (option) => option.id === seeded.sampleTypeId,
+    );
+    const organisms = filterOptions.organisms.filter((option) =>
+      [seeded.organismId, seeded.unmappedOrganismId].includes(option.id),
+    );
+    const inpatient = filterOptions.patientOrigins.find(
+      (option) => option.id === "INPATIENT",
+    );
+    expect(specimen).toBeTruthy();
+    expect(organisms).toHaveLength(2);
+    expect(inpatient).toBeTruthy();
+
+    await selectFilterOption(page, /^Specimen types/, specimen!.label);
+    for (const organism of organisms) {
+      await selectFilterOption(page, /^Organisms/, organism.label);
+    }
+    await selectFilterOption(page, /^Patient origins/, inpatient!.label);
+    await selectFilterOption(page, /^Inclusion/, "Contaminant");
+
+    const filteredQuery = currentPeriodQuery(seeded.exportDate, {
+      specimen: [seeded.sampleTypeId],
+      organism: organisms.map((option) => option.id),
+      origin: ["INPATIENT"],
+      significance: ["CLINICALLY_SIGNIFICANT", "CONTAMINANT"],
+    });
+    await expect(page).toHaveURL(`/Microbiology/whonet?${filteredQuery}`);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(`/Microbiology/whonet?${filteredQuery}`);
+    await expect(
+      page.getByRole("combobox", { name: /^Specimen types/ }),
+    ).toHaveAccessibleName(/Total items selected: 1/);
+    await expect(
+      page.getByRole("combobox", { name: /^Organisms/ }),
+    ).toHaveAccessibleName(/Total items selected: 2/);
+    await expect(
+      page.getByRole("combobox", { name: /^Patient origins/ }),
+    ).toHaveAccessibleName(/Total items selected: 1/);
+    await expect(
+      page.getByRole("combobox", { name: /^Inclusion/ }),
+    ).toHaveAccessibleName(/Total items selected: 2/);
+
+    const previewResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/microbiology/whonet/preview?") &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+    );
+    await page.getByRole("button", { name: "Preview export" }).click();
+    await previewResponse;
+    const metric = (label: string) =>
+      page.locator(".whonet-export__metric").filter({ hasText: label });
+    await expect(metric("After specimen filter").locator("strong")).toHaveText(
+      "2",
+    );
+    await expect(metric("After organism filter").locator("strong")).toHaveText(
+      "2",
+    );
+    await expect(metric("After origin filter").locator("strong")).toHaveText(
+      "2",
+    );
+    await expect(metric("Isolates included").locator("strong")).toHaveText("2");
+  });
+
   test("previews mapped AST, links mapping repair, and downloads CSV", async ({
     page,
   }) => {

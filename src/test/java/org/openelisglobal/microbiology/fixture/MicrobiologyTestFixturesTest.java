@@ -229,6 +229,21 @@ public class MicrobiologyTestFixturesTest {
         assertEquals("7", typeCaptor.getValue().getSysUserId());
     }
 
+    @Test
+    public void provisionsActiveSampleTypeThroughServicesWhenNoneExists() {
+        when(typeOfSampleService.getAllTypeOfSamples()).thenReturn(List.of());
+        when(typeOfSampleService.insert(any(TypeOfSample.class))).thenReturn("generated-sample-type");
+
+        TypeOfSample sampleType = fixtures.getOrCreateActiveSampleType();
+
+        assertEquals("generated-sample-type", sampleType.getId());
+        assertEquals("Microbiology integration specimen", sampleType.getDescription());
+        assertTrue(sampleType.getIsActive());
+        assertEquals("7", sampleType.getSysUserId());
+        verify(localizationService).insert(any(Localization.class));
+        verify(typeOfSampleService).insert(sampleType);
+    }
+
     private SystemUser systemUser(String id) {
         SystemUser user = new SystemUser();
         user.setId(id);
