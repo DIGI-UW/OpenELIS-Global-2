@@ -705,6 +705,17 @@ const AnalyzerTypeManagement = () => {
                                         openAction("duplicate", type.profileId)
                                       }
                                     />
+                                    {type.source === "SITE" &&
+                                      type.status === "ACTIVE" && (
+                                        <OverflowMenuItem
+                                          itemText={intl.formatMessage({
+                                            id: "analyzerType.action.updateShared",
+                                          })}
+                                          onClick={() =>
+                                            openAction("update", type.profileId)
+                                          }
+                                        />
+                                      )}
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
                                         id: "analyzerType.action.history",
@@ -713,24 +724,22 @@ const AnalyzerTypeManagement = () => {
                                         openAction("history", type.profileId)
                                       }
                                     />
-                                    {type.source === "SITE" && (
-                                      <OverflowMenuItem
-                                        itemText={intl.formatMessage({
-                                          id:
-                                            type.status === "ACTIVE"
-                                              ? "analyzerType.action.deactivate"
-                                              : "analyzerType.action.reactivate",
-                                        })}
-                                        onClick={() =>
-                                          openAction(
-                                            type.status === "ACTIVE"
-                                              ? "deactivate"
-                                              : "reactivate",
-                                            type.profileId,
-                                          )
-                                        }
-                                      />
-                                    )}
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id:
+                                          type.status === "ACTIVE"
+                                            ? "analyzerType.action.deactivate"
+                                            : "analyzerType.action.reactivate",
+                                      })}
+                                      onClick={() =>
+                                        openAction(
+                                          type.status === "ACTIVE"
+                                            ? "deactivate"
+                                            : "reactivate",
+                                          type.profileId,
+                                        )
+                                      }
+                                    />
                                   </OverflowMenu>
                                 </TableCell>
                               </TableRow>

@@ -23,6 +23,7 @@ import {
   duplicateAnalyzerType,
   getAnalyzerTypeDraft,
   publishAnalyzerTypeDraft,
+  updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
 
 const nextDuplicateName = (displayName, types) => {
@@ -35,6 +36,11 @@ const nextDuplicateName = (displayName, types) => {
 };
 
 const hasError = (response) => !response || Boolean(response.error);
+
+const isExactUpdateDraft = (draft, profile) =>
+  draft?.kind === "UPDATE" &&
+  draft.baseProfileId === profile.profileId &&
+  draft.baseRevision === profile.revision;
 
 const DraftLoadingModal = ({ headingId, onClose }) => {
   const intl = useIntl();
@@ -377,6 +383,122 @@ const DuplicateProfileModal = ({
   );
 };
 
+const UpdateSharedProfileModal = ({
+  profile,
+  draftId,
+  onClose,
+  onError,
+  onDraftCreated,
+}) => {
+  const intl = useIntl();
+  const [draft, setDraft] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!draftId || draft?.draftId === draftId) {
+      return;
+    }
+    getAnalyzerTypeDraft(draftId, (response) => {
+      if (hasError(response) || !isExactUpdateDraft(response, profile)) {
+        onError(response?.error);
+        return;
+      }
+      setDraft(response);
+    });
+  }, [draft?.draftId, draftId, onError, profile]);
+
+  const activeDraft =
+    draft?.draftId === draftId && isExactUpdateDraft(draft, profile)
+      ? draft
+      : null;
+  const title = intl.formatMessage(
+    { id: "analyzerType.modal.update.title" },
+    { name: profile.displayName },
+  );
+
+  const submit = () => {
+    if (submitting) {
+      return;
+    }
+    setSubmitting(true);
+    updateSharedAnalyzerType(
+      profile.profileId,
+      profile.revision,
+      (response) => {
+        setSubmitting(false);
+        if (
+          hasError(response) ||
+          !response.draftId ||
+          !isExactUpdateDraft(response, profile)
+        ) {
+          onError(response?.error);
+          return;
+        }
+        setDraft(response);
+        onDraftCreated(response.draftId);
+      },
+    );
+  };
+
+  if (draftId && !activeDraft) {
+    return (
+      <DraftLoadingModal
+        headingId="analyzerType.draft.update.loading"
+        onClose={onClose}
+      />
+    );
+  }
+
+  if (activeDraft) {
+    return (
+      <Modal
+        open
+        passiveModal
+        modalHeading={title}
+        onRequestClose={onClose}
+        size="sm"
+      >
+        <InlineNotification
+          kind="success"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "analyzerType.draft.update.title",
+          })}
+          subtitle={intl.formatMessage({
+            id: "analyzerType.draft.update.subtitle",
+          })}
+        />
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      open
+      modalHeading={title}
+      primaryButtonText={intl.formatMessage({
+        id: "analyzerType.button.startUpdate",
+      })}
+      secondaryButtonText={intl.formatMessage({
+        id: "analyzerType.button.cancel",
+      })}
+      primaryButtonDisabled={submitting}
+      onRequestClose={onClose}
+      onSecondarySubmit={onClose}
+      onRequestSubmit={submit}
+      size="sm"
+    >
+      <p>
+        {intl.formatMessage(
+          { id: "analyzerType.modal.update.subtitle" },
+          { count: profile.usedBy, revision: profile.revision },
+        )}
+      </p>
+    </Modal>
+  );
+};
+
 const LifecycleConfirmationModal = ({
   action,
   profile,
@@ -516,30 +638,42 @@ const ProfileHistoryModal = ({ profile, onClose, onError }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {(history || []).map((revision) => (
-              <TableRow key={revision.profile.revision}>
-                <TableCell>
-                  {intl.formatMessage(
-                    { id: "analyzerType.history.revisionValue" },
-                    { revision: revision.profile.revision },
-                  )}
-                </TableCell>
-                <TableCell>{revision.profile.status}</TableCell>
-                <TableCell>
-                  {actionLabel(revision.publication.action)}
-                </TableCell>
-                <TableCell>{revision.publication.actor}</TableCell>
-                <TableCell>
-                  {intl.formatDate(new Date(revision.publication.markedAt), {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </TableCell>
-              </TableRow>
-            ))}
+            {(history || []).map((revision) => {
+              const revisionCatalog = revision.profile.catalog;
+              return (
+                <TableRow
+                  key={`${revision.profile.profileMeta.id}:${revisionCatalog.revision}`}
+                >
+                  <TableCell>
+                    {intl.formatMessage(
+                      { id: "analyzerType.history.revisionValue" },
+                      { revision: revisionCatalog.revision },
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {intl.formatMessage({
+                      id:
+                        revisionCatalog.status === "ACTIVE"
+                          ? "analyzerType.status.active"
+                          : "analyzerType.status.inactive",
+                    })}
+                  </TableCell>
+                  <TableCell>
+                    {actionLabel(revision.publication.action)}
+                  </TableCell>
+                  <TableCell>{revision.publication.actor}</TableCell>
+                  <TableCell>
+                    {intl.formatDate(new Date(revision.publication.markedAt), {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}
@@ -593,9 +727,21 @@ const AnalyzerTypeLifecycleModals = ({
     );
   }
   if (
-    (action === "deactivate" || action === "reactivate") &&
-    profile?.source === "SITE"
+    action === "update" &&
+    profile?.source === "SITE" &&
+    profile.status === "ACTIVE"
   ) {
+    return (
+      <UpdateSharedProfileModal
+        profile={profile}
+        draftId={draftId}
+        onClose={onClose}
+        onError={onError}
+        onDraftCreated={onDraftCreated}
+      />
+    );
+  }
+  if ((action === "deactivate" || action === "reactivate") && profile) {
     return (
       <LifecycleConfirmationModal
         action={action}

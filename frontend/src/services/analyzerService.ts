@@ -849,6 +849,18 @@ export const duplicateAnalyzerType = (
   );
 };
 
+export const updateSharedAnalyzerType = (
+  profileId: string,
+  sourceRevision: number,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  postToOpenElisServerJsonResponse(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/update`,
+    JSON.stringify({ sourceRevision }),
+    callback,
+  );
+};
+
 export const publishAnalyzerTypeDraft = (
   draftId: string,
   callback: ApiCallback<AnalyzerProfileDraftResponse>,

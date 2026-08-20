@@ -503,6 +503,28 @@ describe("AnalyzerTypeManagement", () => {
     expect(screen.getByText("Profile update draft created")).toBeVisible();
   });
 
+  it("restores the exact shared-profile update draft from a bookmarked URL", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=update&profile=site.mindray&draft=draft-update",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Update Mindray BC-5380",
+    });
+    expect(getAnalyzerTypeDraft).toHaveBeenCalledWith(
+      "draft-update",
+      expect.any(Function),
+    );
+    expect(
+      within(dialog).getByText("Profile update draft created"),
+    ).toBeVisible();
+    expect(updateSharedAnalyzerType).not.toHaveBeenCalled();
+  });
+
   it("loads revision history through the profile history action", async () => {
     getFromOpenElisServer.mockImplementation((endpoint, callback) => {
       expect(endpoint).toBe("/rest/analyzer-types/site.mindray/history");
