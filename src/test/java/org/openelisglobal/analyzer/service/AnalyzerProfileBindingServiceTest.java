@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -181,11 +182,48 @@ public class AnalyzerProfileBindingServiceTest {
         assertEquals(ProtocolVersion.ASTM_LIS2_A2, analyzer.getProtocolVersion());
         assertEquals(CommunicationMode.BOTH, analyzer.getCommunicationMode());
         assertEquals(Integer.valueOf(9100), analyzer.getPort());
+        assertEquals("MOCK-H|ACME", analyzer.getIdentifierPattern());
 
         analyzer.setPort(9200);
         service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
 
         assertEquals(Integer.valueOf(9200), analyzer.getPort());
+        verify(catalogService).getCatalog();
+    }
+
+    @Test
+    public void assignProfileAppliesCompleteFileRuntimeDefaultsFromThePinnedRevisionExactlyOnce() throws Exception {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setName("File bench 1");
+        analyzer.setImportDirectory("/data/analyzer-imports/file-bench-1");
+        AnalyzerProfileBinding selected = binding(FINGERPRINT);
+        JsonNode profile = fileCatalog().profiles().get(0).profile();
+        AnalyzerSiteBindingRevision siteBindingRevision = siteBindingRevision(selected);
+        when(catalogService.getCatalog()).thenReturn(fileCatalog());
+        when(bindingDAO.findByProfileIdAndRevision(PROFILE_ID, REVISION)).thenReturn(Optional.of(selected));
+        when(siteBindingService.resolveInitialRevision(eq(selected), eq(profile), eq("oe-user-17")))
+                .thenReturn(new AnalyzerSiteBindingSnapshot(siteBindingRevision.getSiteBinding(), siteBindingRevision,
+                        List.of(), List.of()));
+
+        service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
+
+        assertEquals("FILE", analyzer.getType());
+        assertNull(analyzer.getProtocolVersion());
+        assertNull(analyzer.getCommunicationMode());
+        assertEquals("/data/analyzer-imports/file-bench-1", analyzer.getImportDirectory());
+        assertEquals("XLSX", analyzer.getFileFormat());
+        assertEquals("(?i).*\\.(xlsx|xls)$", analyzer.getFilePattern());
+        assertEquals(Boolean.TRUE, analyzer.getHasHeader());
+        assertEquals(";", analyzer.getDelimiter());
+        assertEquals(Integer.valueOf(2), analyzer.getSkipRows());
+        assertEquals(Map.of("Sample ID", "sampleId", "Result", "result"), analyzer.getColumnMappings());
+
+        analyzer.setFilePattern("site-override-.*\\.xlsx");
+        analyzer.setColumnMappings(Map.of("Specimen", "sampleId"));
+        service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
+
+        assertEquals("site-override-.*\\.xlsx", analyzer.getFilePattern());
+        assertEquals(Map.of("Specimen", "sampleId"), analyzer.getColumnMappings());
         verify(catalogService).getCatalog();
     }
 
@@ -205,6 +243,7 @@ public class AnalyzerProfileBindingServiceTest {
                               "schemaVersion":"1.0",
                               "profileMeta":{"id":"%s","version":"1.0.0","displayName":"Mock Hematology","confidence":"VALIDATED"},
                               "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                              "identifier_pattern":"MOCK-H|ACME",
                               "communication":{"mode":"BOTH","supports_lis_initiated":true},
                               "default_test_mappings":[{"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"}],
                               "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP","defaultPort":9100,"aggregationMode":"PER_MESSAGE"},
@@ -215,6 +254,26 @@ public class AnalyzerProfileBindingServiceTest {
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
+        JsonNode publication = objectMapper.createObjectNode().put("action", "CREATED");
+        return new BridgeProfileCatalog("1.0",
+                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                List.of(new BridgeProfileCatalog.ProfileRevision(profile, publication)));
+    }
+
+    private BridgeProfileCatalog fileCatalog() throws Exception {
+        JsonNode profile = objectMapper.readTree(
+                """
+                        {
+                          "schemaVersion":"1.0",
+                          "profileMeta":{"id":"%s","version":"1.0.0","displayName":"Mock File Analyzer","confidence":"VALIDATED"},
+                          "protocol":{"name":"FILE","format":"XLSX"},
+                          "column_mapping":{"Sample ID":"sampleId","Result":"result"},
+                          "default_test_mappings":[{"test_code":"RESULT","loinc":"94500-6","result_type":"qualitative","values":["POS","NEG"]}],
+                          "configDefaults":{"fileFormat":"XLSX","filePattern":"(?i).*\\\\.(xlsx|xls)$","hasHeader":true,"delimiter":";","skipRows":2},
+                          "catalog":{"revision":%d,"revisionFingerprint":"%s","source":"SITE","status":"ACTIVE"}
+                        }
+                        """
+                        .formatted(PROFILE_ID, REVISION, FINGERPRINT));
         JsonNode publication = objectMapper.createObjectNode().put("action", "CREATED");
         return new BridgeProfileCatalog("1.0",
                 "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

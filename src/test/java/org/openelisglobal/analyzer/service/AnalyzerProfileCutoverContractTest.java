@@ -10,7 +10,10 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -120,6 +123,44 @@ public class AnalyzerProfileCutoverContractTest {
             String name = method.getName();
             assertFalse("FHIR import still owns profile selection: " + name, name.equals("applyMatchedProfile")
                     || name.equals("matchProfileFromDevice") || name.equals("resolveProfilesBaseDir"));
+        }
+    }
+
+    @Test
+    public void harnessAndPlaywrightPreconditionsUseBridgeProfilePinsWithoutFilesystemProfiles() throws Exception {
+        String seed = Files.readString(Path.of("projects/analyzer-harness/seed-analyzers.sh"));
+        String devCompose = Files.readString(Path.of("projects/analyzer-harness/docker-compose.dev.yml"));
+        String analyzerCompose = Files
+                .readString(Path.of("projects/analyzer-harness/docker-compose.analyzer-test.yml"));
+        String ciCompose = Files.readString(Path.of(".github/ci/ci.analyzer-harness.yml"));
+        String ciParity = Files.readString(Path.of("projects/analyzer-harness/ci-parity-test.sh"));
+        String ensureAnalyzer = Files.readString(Path.of("frontend/playwright/helpers/ensure-analyzer.ts"));
+
+        assertFalse("Harness still submits defaultConfigId", seed.contains("defaultConfigId"));
+        assertFalse("Playwright fixture still submits defaultConfigId", ensureAnalyzer.contains("defaultConfigId"));
+        assertTrue("Harness seed must submit an exact profile ID", seed.contains("profileId"));
+        assertTrue("Harness seed must submit an exact profile revision", seed.contains("profileRevision"));
+        assertFalse("Harness still reads the OpenELIS profile filesystem", seed.contains("projects/analyzer-profiles"));
+        assertFalse("Harness still treats analyzer_test_map as profile authority", seed.contains("analyzer_test_map"));
+        assertFalse("CI parity still treats analyzer_test_map as profile authority",
+                ciParity.contains("analyzer_test_map"));
+        assertFalse("Local harness still mounts OpenELIS profile files",
+                devCompose.contains("projects/analyzer-profiles"));
+        assertFalse("CI harness still mounts OpenELIS profile files", ciCompose.contains("projects/analyzer-profiles"));
+        assertFalse("Analyzer harness still mounts OpenELIS profile files",
+                analyzerCompose.contains("projects/analyzer-profiles"));
+        assertTrue("Local mock must consume the exact Bridge GeneXpert profile",
+                analyzerCompose.contains("analyzer-profile-astm.json"));
+        assertTrue("Local mock must consume the exact Bridge FluoroCycler profile",
+                analyzerCompose.contains("analyzer-profile-file.json"));
+        assertTrue("Local mock must consume the exact Bridge QuantStudio profile",
+                analyzerCompose.contains("analyzer-profile-quantstudio.json"));
+        for (String profileId : List.of("genexpert-astm", "fluorocycler-xt", "quantstudio")) {
+            assertTrue("Harness must seed priority profile " + profileId, seed.contains(profileId));
+        }
+        for (String obsoleteSeed : List.of("mindray-bc5380", "mindray-bs200", "wondfo-csv", "tecan-f50",
+                "multiskan-fc")) {
+            assertFalse("Harness still seeds non-priority profile " + obsoleteSeed, seed.contains(obsoleteSeed));
         }
     }
 
