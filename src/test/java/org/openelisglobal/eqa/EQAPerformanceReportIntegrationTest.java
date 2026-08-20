@@ -12,16 +12,19 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.eqa.controller.rest.EQACycleRestController;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQAParticipantResultService;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
+import org.openelisglobal.eqa.service.EQAReportCommentService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
@@ -33,6 +36,7 @@ import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQARound;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -40,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 /**
  * OGC-933 — the printed CPHL-format performance report against the real schema:
@@ -86,9 +91,17 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
     private static final String SECTION_SUMMARY = "Section summary";
     private static final String SCORING_DETAIL = "Scoring detail";
     private static final String SIGN_OFF = "Review and sign-off";
+    private static final String COMMENTS_TITLE = "Interpretive comments";
+    private static final String COMMENT_ONE = "Cycle reviewed against the scheme's acceptance limits.";
+    private static final String COMMENT_TWO = "Repeat the unacceptable analyte in the next cycle.";
+    private static final String UNRELATED_COMMENT = "Wording from another dictionary category.";
+    private static final String OTHER_CATEGORY = "EQA Report Comment Test Foil";
 
     @Autowired
     private EQAPerformanceReportPDFService reportService;
+
+    @Autowired
+    private EQAReportCommentService reportCommentService;
 
     @Autowired
     private SystemUserService systemUserService;
@@ -122,7 +135,7 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
     @Before
     public void seedCycleWithScores() {
         controller = new EQACycleRestController(cycleService, sampleEQAService, sampleService, analysisService,
-                resultService, reportService);
+                resultService, reportService, reportCommentService);
 
         jdbc.update("INSERT INTO clinlims.localization (id, description)"
                 + " SELECT ?, 'EQA Report Section' WHERE NOT EXISTS"
@@ -167,6 +180,16 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
      * Runs before the spine's own cleanup, so release the participant result's
      * reference to the analysis before dropping the row it points at.
      */
+    /** Comment attachments and the library rows this suite created. */
+    @After
+    public void dropCommentSeed() {
+        jdbc.update("DELETE FROM clinlims.note WHERE reference_table ="
+                + " (SELECT id FROM clinlims.reference_tables WHERE LOWER(name) = 'eqa_cycle')");
+        jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry IN (?, ?, ?)", COMMENT_ONE, COMMENT_TWO,
+                UNRELATED_COMMENT);
+        jdbc.update("DELETE FROM clinlims.dictionary_category WHERE name = ?", OTHER_CATEGORY);
+    }
+
     @After
     public void dropAnalysisLinkedSeed() {
         // Panel-backed results outlive the spine's delete order, which drops
@@ -442,7 +465,181 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
 
+    // ---- OGC-934 interpretive comments ----
+
+    @Test
+    public void attachedCommentsPrintUnderTheScoringTableWithTheirAttribution() throws IOException {
+        seedCommentLibrary();
+        String analyst = systemUserService.get(String.valueOf(ADMIN_USER_ID)).getNameForDisplay();
+
+        List<Map<String, Object>> added = controller.attachReportComments(requestForAdmin(), cycle.getId(),
+                Map.of("commentIds", List.of(libraryId(COMMENT_ONE), libraryId(COMMENT_TWO))));
+
+        assertEquals("both selections are attached", 2, added.size());
+        assertEquals(COMMENT_ONE, added.get(0).get("text"));
+        assertEquals(COMMENT_TWO, added.get(1).get("text"));
+        assertEquals("the comment is attributed to the user who attached it", analyst, added.get(0).get("attachedBy"));
+        assertEquals("the library entry stays traceable", libraryId(COMMENT_ONE), added.get(0).get("libraryEntryId"));
+
+        String comments = block(reportText(), COMMENTS_TITLE, SIGN_OFF);
+        assertTrue("the first comment prints", comments.contains(COMMENT_ONE));
+        assertTrue("the second comment prints", comments.contains(COMMENT_TWO));
+        assertTrue("the reviewer's name prints beside the comment", rowIn(comments, COMMENT_ONE, analyst));
+        assertTrue("comments print in the order they were attached",
+                comments.indexOf(COMMENT_ONE) < comments.indexOf(COMMENT_TWO));
+    }
+
+    /**
+     * The report carries no comment heading until a comment exists: an empty
+     * section reads as commentary that went missing.
+     */
+    @Test
+    public void aCycleWithNoCommentsPrintsNoCommentSection() throws IOException {
+        seedCommentLibrary();
+
+        String text = reportText();
+
+        assertFalse("no heading without a comment", text.contains(COMMENTS_TITLE));
+        assertEquals("nothing is attached", 0, reportCommentService.getComments(cycle.getId()).size());
+    }
+
+    /**
+     * FR: the picker is the only way in. The endpoint takes ids, and an id outside
+     * the pre-approved category is refused, so free text cannot reach the page.
+     */
+    @Test
+    public void onlyIdsFromTheApprovedLibraryCanBeAttached() throws IOException {
+        seedCommentLibrary();
+        String foreignId = dictionaryIdByEntry(UNRELATED_COMMENT);
+
+        try {
+            controller.attachReportComments(requestForAdmin(), cycle.getId(), Map.of("commentIds", List.of(foreignId)));
+            fail("an entry from another category is not pre-approved wording");
+        } catch (IllegalArgumentException expected) {
+            assertTrue("the message names the library", expected.getMessage().contains("EQA Report Comment"));
+        }
+
+        assertEquals("nothing was attached", 0, reportCommentService.getComments(cycle.getId()).size());
+        assertFalse("the foreign wording never reaches the page", reportText().contains(UNRELATED_COMMENT));
+    }
+
+    /**
+     * Deactivating a library entry stops new use without rewriting a report that
+     * already printed it — the reason the attachment stores the wording rather than
+     * a live reference to the dictionary row.
+     */
+    @Test
+    public void retiringALibraryEntryLeavesAlreadyAttachedTextIntact() throws IOException {
+        seedCommentLibrary();
+        String entryId = libraryId(COMMENT_ONE);
+        controller.attachReportComments(requestForAdmin(), cycle.getId(), Map.of("commentIds", List.of(entryId)));
+
+        jdbc.update("UPDATE clinlims.dictionary SET is_active = 'N' WHERE id = ?", Long.valueOf(entryId));
+
+        assertFalse("the retired entry is no longer offered",
+                controller.reportCommentLibrary().stream().anyMatch(row -> entryId.equals(row.get("id"))));
+        assertTrue("the wording already attached still prints",
+                block(reportText(), COMMENTS_TITLE, SIGN_OFF).contains(COMMENT_ONE));
+        try {
+            controller.attachReportComments(requestForAdmin(), cycle.getId(), Map.of("commentIds", List.of(entryId)));
+            fail("a retired entry cannot be attached again");
+        } catch (IllegalArgumentException expected) {
+            assertTrue("the message names the entry", expected.getMessage().contains(entryId));
+        }
+    }
+
+    @Test
+    public void reattachingAnAttachedCommentDoesNotPrintItTwice() throws IOException {
+        seedCommentLibrary();
+        String entryId = libraryId(COMMENT_ONE);
+        controller.attachReportComments(requestForAdmin(), cycle.getId(), Map.of("commentIds", List.of(entryId)));
+
+        List<Map<String, Object>> second = controller.attachReportComments(requestForAdmin(), cycle.getId(),
+                Map.of("commentIds", List.of(entryId)));
+
+        assertEquals("the resent id adds nothing", 0, second.size());
+        assertEquals("one attachment is stored", 1, reportCommentService.getComments(cycle.getId()).size());
+        assertEquals("the sentence prints once", 1, occurrences(reportText(), COMMENT_ONE));
+    }
+
+    @Test
+    public void detachedCommentsLeaveThePrintedReport() throws IOException {
+        seedCommentLibrary();
+        List<Map<String, Object>> added = controller.attachReportComments(requestForAdmin(), cycle.getId(),
+                Map.of("commentIds", List.of(libraryId(COMMENT_ONE), libraryId(COMMENT_TWO))));
+        String firstCommentId = String.valueOf(added.get(0).get("id"));
+
+        controller.detachReportComment(cycle.getId(), firstCommentId);
+
+        String text = reportText();
+        assertFalse("the removed comment is gone from the page", text.contains(COMMENT_ONE));
+        assertTrue("the comment left in place still prints", text.contains(COMMENT_TWO));
+        assertEquals("one attachment remains", 1, reportCommentService.getComments(cycle.getId()).size());
+        try {
+            controller.detachReportComment(cycle.getId(), firstCommentId);
+            fail("a comment that is not attached cannot be detached");
+        } catch (IllegalArgumentException expected) {
+            assertTrue("the message names the cycle", expected.getMessage().contains(String.valueOf(cycle.getId())));
+        }
+    }
+
     // ---- helpers ----
+    /**
+     * The library the service reads, ensured rather than assumed: other suites
+     * truncate dictionary, and a full-suite run must not depend on whether
+     * liquibase qa/032's seed survived. Rows are matched on wording, so this is
+     * idempotent whether or not the shipped category is already present.
+     */
+    private void seedCommentLibrary() {
+        jdbc.update("INSERT INTO clinlims.reference_tables (id, name, keep_history, lastupdated)"
+                + " SELECT nextval('clinlims.reference_tables_seq'), 'eqa_cycle', 'Y', now() WHERE NOT EXISTS"
+                + " (SELECT 1 FROM clinlims.reference_tables WHERE LOWER(name) = 'eqa_cycle')");
+        ensureCategory(EQAReportCommentService.CATEGORY_NAME, "EQARC");
+        ensureCategory(OTHER_CATEGORY, "EQARCF");
+        ensureEntry(EQAReportCommentService.CATEGORY_NAME, COMMENT_ONE, 910);
+        ensureEntry(EQAReportCommentService.CATEGORY_NAME, COMMENT_TWO, 920);
+        ensureEntry(OTHER_CATEGORY, UNRELATED_COMMENT, 930);
+    }
+
+    private void ensureCategory(String name, String abbreviation) {
+        jdbc.update(
+                "INSERT INTO clinlims.dictionary_category (id, name, description, local_abbrev, lastupdated)"
+                        + " SELECT nextval('clinlims.dictionary_category_seq'), ?, ?, ?, now() WHERE NOT EXISTS"
+                        + " (SELECT 1 FROM clinlims.dictionary_category WHERE name = ?)",
+                name, name, abbreviation, name);
+    }
+
+    private void ensureEntry(String category, String text, int sortOrder) {
+        jdbc.update(
+                "INSERT INTO clinlims.dictionary (id, dictionary_category_id, dict_entry, is_active,"
+                        + " sort_order, lastupdated) SELECT nextval('clinlims.dictionary_seq'),"
+                        + " (SELECT id FROM clinlims.dictionary_category WHERE name = ?), ?, 'Y', ?, now()"
+                        + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.dictionary WHERE dict_entry = ?)",
+                category, text, sortOrder, text);
+        jdbc.update("UPDATE clinlims.dictionary SET is_active = 'Y' WHERE dict_entry = ?", text);
+    }
+
+    /** The id the picker would send for this wording. */
+    private String libraryId(String text) {
+        for (Map<String, Object> entry : controller.reportCommentLibrary()) {
+            if (text.equals(entry.get("text"))) {
+                return String.valueOf(entry.get("id"));
+            }
+        }
+        throw new AssertionError("the library does not offer: " + text);
+    }
+
+    private String dictionaryIdByEntry(String text) {
+        return jdbc.queryForObject("SELECT id::text FROM clinlims.dictionary WHERE dict_entry = ?", String.class, text);
+    }
+
+    private MockHttpServletRequest requestForAdmin() {
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId((int) ADMIN_USER_ID);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true).setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
+        return request;
+    }
 
     private void scored(long analyteId, String value, String unit, BigDecimal zScore, EQAPerformanceStatus performance,
             long enrollmentId) {

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-934 — pre-approved interpretive comments for the EQA performance report.
+
+    No new table. The library is a dictionary category: dictionary already carries
+    dict_entry (4000 chars), is_active and sort_order, and the Dictionary
+    Management admin screen already maintains it, so retiring a phrase needs no
+    code. The attachment side reuses the note table, which is keyed by
+    (reference_table, reference_id) and records sys_user_id and lastupdated, so
+    attribution comes for free.
+
+    The seeded wording is operational QA guidance, not clinical interpretation,
+    and is a starting library CPHL is expected to edit in place.
+    -->
+
+    <changeSet author="openelisglobal" id="qa-060-seed-eqa-report-comment-library">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.dictionary_category WHERE name = 'EQA Report Comment'
+            </sqlCheck>
+        </preConditions>
+        <comment>Dictionary category + starter set of pre-approved EQA report comments</comment>
+
+        <insert schemaName="clinlims" tableName="dictionary_category">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="name" value="EQA Report Comment"/>
+            <column name="description" value="Pre-approved EQA report interpretive comments"/>
+            <column name="local_abbrev" value="EQARC"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+
+        <!-- sort_order drives the order the picker offers them in. -->
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="dictionary_category_id"
+                    valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'EQA Report Comment')"/>
+            <column name="dict_entry" value="Performance acceptable for this cycle. No corrective action required."/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="10"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="dictionary_category_id"
+                    valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'EQA Report Comment')"/>
+            <column name="dict_entry" value="Result outside the acceptable range. Review specimen handling and repeat the analysis."/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="20"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="dictionary_category_id"
+                    valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'EQA Report Comment')"/>
+            <column name="dict_entry" value="Review instrument calibration and maintenance records before the next cycle."/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="30"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="dictionary_category_id"
+                    valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'EQA Report Comment')"/>
+            <column name="dict_entry" value="Check the reagent lot, storage conditions and expiry dates used for this panel."/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="40"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="dictionary_category_id"
+                    valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'EQA Report Comment')"/>
+            <column name="dict_entry" value="Retrain the analyst on this procedure and file the competency assessment."/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="50"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="dictionary_category_id"
+                    valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'EQA Report Comment')"/>
+            <column name="dict_entry" value="Submit a corrective action plan to the scheme provider within 30 days."/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="60"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+
+        <rollback>
+            <delete schemaName="clinlims" tableName="dictionary">
+                <where>dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'EQA Report Comment')</where>
+            </delete>
+            <delete schemaName="clinlims" tableName="dictionary_category">
+                <where>name = 'EQA Report Comment'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- note.reference_table is a FK-by-convention into reference_tables; a note
+         whose table has no row here cannot be read back by name. -->
+    <changeSet author="openelisglobal" id="qa-061-register-eqa-cycle-ref-table">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'eqa_cycle'</sqlCheck>
+        </preConditions>
+        <comment>Register eqa_cycle so report comments can be stored as notes against a cycle</comment>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="eqa_cycle"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'eqa_cycle'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

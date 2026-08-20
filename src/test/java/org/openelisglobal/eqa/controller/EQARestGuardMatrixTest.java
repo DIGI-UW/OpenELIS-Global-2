@@ -70,6 +70,9 @@ public class EQARestGuardMatrixTest {
         // Cycle lifecycle
         WRITE_GUARDS.put("EQACycleRestController#createCycle", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQACycleRestController#transition", EQAGuards.MANAGE);
+        // OGC-934: commentary on a signed report is a scoring-lane act.
+        WRITE_GUARDS.put("EQACycleRestController#attachReportComments", EQAGuards.MANAGE);
+        WRITE_GUARDS.put("EQACycleRestController#detachReportComment", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAFollowupRestController#escalate", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQAFollowupRestController#dismiss", EQAGuards.MANAGE);
         // Provider-round management

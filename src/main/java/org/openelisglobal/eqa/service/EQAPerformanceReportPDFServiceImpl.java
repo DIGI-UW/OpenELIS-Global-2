@@ -87,6 +87,8 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
     private EQAPanelSampleDAO panelSampleDAO;
     @Autowired
     private NCEventService ncEventService;
+    @Autowired
+    private EQAReportCommentService reportCommentService;
 
     @Override
     public byte[] generatePerformanceReport(Long cycleId) {
@@ -107,6 +109,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
             addProgrammeSummary(document, rows);
             addSectionSummary(document, rows);
             addScoringTable(document, rows);
+            addInterpretiveComments(document, cycleId);
             addSignOff(document);
             document.close();
         } catch (DocumentException e) {
@@ -282,6 +285,39 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
             bodyRow(table, row.roundLabel(), row.analyteLabel(), row.reportedLabel(), row.targetLabel(), row.zLabel(),
                     row.performanceLabel(), dash(row.nceNumber()), dash(row.analyst()), dash(row.submittedAt()),
                     dash(row.scoredAt()));
+        }
+        document.add(table);
+    }
+
+    /**
+     * OGC-934: the reviewer's standardised commentary, printed under the scoring
+     * table it refers to. Wording comes from the pre-approved library, so a reader
+     * can hold two labs' reports side by side and compare the verdicts.
+     *
+     * <p>
+     * A cycle with no comment prints no heading: an empty section on a signed
+     * document reads as commentary that went missing.
+     */
+    private void addInterpretiveComments(Document document, Long cycleId) throws DocumentException {
+        List<EQAReportCommentService.AttachedComment> comments = reportCommentService.getComments(cycleId);
+        if (comments.isEmpty()) {
+            return;
+        }
+
+        document.add(paragraph(MessageUtil.getMessage("eqa.report.comments.title"), SECTION_FONT, 14f));
+        PdfPTable table = new PdfPTable(new float[] { 5f, 1.6f });
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        headerRow(table, MessageUtil.getMessage("eqa.report.comments.comment"),
+                MessageUtil.getMessage("eqa.report.comments.attribution"));
+        for (EQAReportCommentService.AttachedComment comment : comments) {
+            // Who added it and when, on the page rather than only in the audit
+            // trail: the comment is a judgement, and a judgement carries a name.
+            String attribution = dash(comment.attachedBy());
+            if (comment.attachedAt() != null) {
+                attribution = attribution + " — " + comment.attachedAt();
+            }
+            bodyRow(table, dash(comment.text()), attribution);
         }
         document.add(table);
     }
