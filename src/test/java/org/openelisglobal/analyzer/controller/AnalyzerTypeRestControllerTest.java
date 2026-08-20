@@ -95,6 +95,18 @@ public class AnalyzerTypeRestControllerTest {
     }
 
     @Test
+    public void getDraftReturnsTheExactBridgeOwnedDraft() throws Exception {
+        JsonNode response = objectMapper.readTree("{\"draftId\":\"draft-1\",\"kind\":\"DUPLICATE\"}");
+        when(managementService.getDraft("draft-1")).thenReturn(response);
+
+        ResponseEntity<JsonNode> result = controller.getDraft("draft-1");
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertSame(response, result.getBody());
+        verify(managementService).getDraft("draft-1");
+    }
+
+    @Test
     public void controllerExposesNoHardDeleteOrLegacyInstanceCrud() {
         for (Method method : AnalyzerTypeRestController.class.getDeclaredMethods()) {
             assertFalse(method.isAnnotationPresent(DeleteMapping.class));

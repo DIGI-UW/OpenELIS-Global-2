@@ -136,6 +136,18 @@ public class BridgeProfileManagementServiceTest {
     }
 
     @Test
+    public void getDraftReadsTheExactBridgeOwnedDraft() throws Exception {
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles/drafts/draft-1"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200,
+                        "{\"draftId\":\"draft-1\",\"kind\":\"DUPLICATE\"}"));
+
+        JsonNode draft = service.getDraft("draft-1");
+
+        assertEquals("draft-1", draft.path("draftId").asText());
+        assertEquals("DUPLICATE", draft.path("kind").asText());
+    }
+
+    @Test
     public void bridgeValidationFailureRemainsAClientVisibleFailure() throws Exception {
         when(bridgeHttpClient.post(eq("https://bridge.example/api/profiles/site.mock/reactivate"), any(String.class),
                 any(Duration.class))).thenReturn(new BridgeHttpClient.BridgeResponse(400,

@@ -15,6 +15,7 @@ import {
   createAnalyzerTypeDraft,
   duplicateAnalyzerType,
   getAnalyzerTypeCatalog,
+  getAnalyzerTypeDraft,
   publishAnalyzerTypeDraft,
 } from "../../../services/analyzerService";
 import AnalyzerTypeManagement from "./AnalyzerTypeManagement";
@@ -27,6 +28,7 @@ vi.mock("../../../services/analyzerService", () => ({
   createAnalyzerTypeDraft: vi.fn(),
   duplicateAnalyzerType: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
+  getAnalyzerTypeDraft: vi.fn(),
   publishAnalyzerTypeDraft: vi.fn(),
 }));
 
@@ -163,6 +165,25 @@ describe("AnalyzerTypeManagement", () => {
         });
       },
     );
+    getAnalyzerTypeDraft.mockImplementation((draftId, callback) => {
+      callback({
+        draftId,
+        kind: draftId === "draft-create" ? "CREATE" : "DUPLICATE",
+        baseProfileId: draftId === "draft-create" ? null : "shipped.genexpert",
+        baseRevision: draftId === "draft-create" ? null : 2,
+        profile: {
+          profileMeta: {
+            id: `site.${draftId}`,
+            displayName:
+              draftId === "draft-create"
+                ? "Sysmex XN Series"
+                : "Cepheid GeneXpert MTB/RIF -1",
+          },
+        },
+        validationIssues:
+          draftId === "draft-create" ? ["protocol is required"] : [],
+      });
+    });
     publishAnalyzerTypeDraft.mockImplementation((draftId, callback) => {
       callback({
         profile: {
@@ -368,6 +389,28 @@ describe("AnalyzerTypeManagement", () => {
     await waitFor(() =>
       expect(window.location.search).not.toContain("action=duplicate"),
     );
+  });
+
+  it("restores the exact duplicate draft from a bookmarked URL after reload", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=duplicate&profile=shipped.genexpert&draft=draft-duplicate",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    expect(getAnalyzerTypeDraft).toHaveBeenCalledWith(
+      "draft-duplicate",
+      expect.any(Function),
+    );
+    expect(within(dialog).getByText("Ready to publish")).toBeVisible();
+    expect(
+      within(dialog).getByRole("button", { name: "Publish Profile" }),
+    ).toBeEnabled();
   });
 
   it("deactivates a site profile through a confirmation dialog and exposes no delete action", async () => {
