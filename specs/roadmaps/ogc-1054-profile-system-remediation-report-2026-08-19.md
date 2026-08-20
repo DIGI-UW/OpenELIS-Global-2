@@ -413,7 +413,7 @@ pass. Analyzer-specific names occur only in the two profile fixture documents.
       copied profile JSON, and `AnalyzerQcRule` after parity.
 - [x] Prove no current analyzer is moved to another revision implicitly.
 
-**OE-E0 exit evidence:** eight focused JUnit contract tests pass against the
+**OE-E0 exit evidence:** nine focused JUnit contract tests pass against the
 established Bridge schema, all 20 actual profile files have an explicit
 evidence-based curation disposition, and absence tests reject the discarded
 portable-profile, preservation migration, copied-profile authority, and
@@ -421,11 +421,12 @@ compatibility-reader artifacts. The clean OE candidate contract requires an
 immutable profile ID/revision pin, local bindings, verification/audit, desired
 registration fingerprint, and exact Bridge acknowledgement; it contains no
 profile snapshot, `defaultConfigId`, `LEGACY_UNBOUND`, `AnalyzerQcRule`, or
-operational-QC payload. The scoped analyzer/analyzer-import suite passes 600
-tests with zero failures or errors, the frontend compatibility guard passes 10
-tests, and Spotless plus diff checks pass. This checkpoint adds no production
-Java or React profile defaults; analyzer-specific values remain profile/spec
-data only.
+operational-QC payload. The cutover contract requires a quiesced rollback window
+and forbids restoring the pre-deployment backup after analyzer/configuration
+writes resume. The scoped analyzer/analyzer-import suite passes 600 tests with
+zero failures or errors, the frontend compatibility guard passes 10 tests, and
+Spotless plus diff checks pass. This checkpoint adds no production Java or React
+profile defaults; analyzer-specific values remain profile/spec data only.
 
 ### BR-M1 - Put lifecycle around the real profiles
 
