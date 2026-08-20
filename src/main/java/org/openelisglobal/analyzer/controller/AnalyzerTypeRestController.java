@@ -41,26 +41,39 @@ public class AnalyzerTypeRestController extends BaseRestController {
         return ResponseEntity.ok(catalogService.getCatalog());
     }
 
-    @PostMapping
-    public ResponseEntity<JsonNode> create(@RequestBody ProfileMutationRequest request,
+    @PostMapping("/drafts")
+    public ResponseEntity<JsonNode> createDraft(@RequestBody CreateDraftRequest request,
             HttpServletRequest httpRequest) {
-        JsonNode created = managementService.create(request == null ? null : request.profile(),
+        JsonNode created = managementService.createDraft(request == null ? null : request.displayName(),
                 getSysUserId(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    @PutMapping("/{profileId}")
-    public ResponseEntity<JsonNode> updateShared(@PathVariable String profileId,
+    @PutMapping("/drafts/{draftId}")
+    public ResponseEntity<JsonNode> updateDraft(@PathVariable String draftId,
             @RequestBody ProfileMutationRequest request, HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(managementService.updateShared(profileId, request == null ? null : request.profile(),
+        return ResponseEntity.ok(managementService.updateDraft(draftId, request == null ? null : request.profile(),
                 getSysUserId(httpRequest)));
+    }
+
+    @PostMapping("/drafts/{draftId}/publish")
+    public ResponseEntity<JsonNode> publishDraft(@PathVariable String draftId, HttpServletRequest httpRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(managementService.publishDraft(draftId, getSysUserId(httpRequest)));
+    }
+
+    @PostMapping("/{profileId}/update")
+    public ResponseEntity<JsonNode> updateShared(@PathVariable String profileId,
+            @RequestBody SourceRevisionRequest request, HttpServletRequest httpRequest) {
+        JsonNode draft = managementService.updateShared(profileId, request.sourceRevision(), getSysUserId(httpRequest));
+        return ResponseEntity.status(HttpStatus.CREATED).body(draft);
     }
 
     @PostMapping("/{profileId}/duplicate")
     public ResponseEntity<JsonNode> duplicate(@PathVariable String profileId,
             @RequestBody DuplicateProfileRequest request, HttpServletRequest httpRequest) {
-        JsonNode duplicated = managementService.duplicate(profileId, request.sourceRevision(),
-                request.targetProfileId(), request.displayName(), getSysUserId(httpRequest));
+        JsonNode duplicated = managementService.duplicate(profileId, request.sourceRevision(), request.displayName(),
+                getSysUserId(httpRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(duplicated);
     }
 
@@ -94,7 +107,13 @@ public class AnalyzerTypeRestController extends BaseRestController {
     public record ProfileMutationRequest(JsonNode profile) {
     }
 
-    public record DuplicateProfileRequest(int sourceRevision, String targetProfileId, String displayName) {
+    public record CreateDraftRequest(String displayName) {
+    }
+
+    public record SourceRevisionRequest(int sourceRevision) {
+    }
+
+    public record DuplicateProfileRequest(int sourceRevision, String displayName) {
     }
 
     public record ErrorResponse(String error) {

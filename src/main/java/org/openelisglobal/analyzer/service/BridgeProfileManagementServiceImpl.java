@@ -29,30 +29,42 @@ public class BridgeProfileManagementServiceImpl implements BridgeProfileManageme
     }
 
     @Override
-    public JsonNode create(JsonNode profile, String actor) {
-        requireProfile(profile);
+    public JsonNode createDraft(String displayName, String actor) {
         ObjectNode request = actorRequest(actor);
-        request.set("profile", profile);
-        return post(profilesUrl, request);
+        request.put("displayName", requireText(displayName, "Display name"));
+        return post(profilesUrl + "/drafts", request);
     }
 
     @Override
-    public JsonNode updateShared(String profileId, JsonNode profile, String actor) {
+    public JsonNode updateDraft(String draftId, JsonNode profile, String actor) {
         requireProfile(profile);
         ObjectNode request = actorRequest(actor);
         request.set("profile", profile);
-        return put(profileUrl(profileId), request);
+        return put(draftUrl(draftId), request);
     }
 
     @Override
-    public JsonNode duplicate(String profileId, int sourceRevision, String targetProfileId, String displayName,
-            String actor) {
+    public JsonNode publishDraft(String draftId, String actor) {
+        return post(draftUrl(draftId) + "/publish", actorRequest(actor));
+    }
+
+    @Override
+    public JsonNode updateShared(String profileId, int sourceRevision, String actor) {
         if (sourceRevision < 1) {
             throw new BridgeProfileManagementException(400, "Source revision must be at least 1");
         }
         ObjectNode request = actorRequest(actor);
         request.put("sourceRevision", sourceRevision);
-        request.put("targetProfileId", requireText(targetProfileId, "Target profile ID"));
+        return post(profileUrl(profileId) + "/update", request);
+    }
+
+    @Override
+    public JsonNode duplicate(String profileId, int sourceRevision, String displayName, String actor) {
+        if (sourceRevision < 1) {
+            throw new BridgeProfileManagementException(400, "Source revision must be at least 1");
+        }
+        ObjectNode request = actorRequest(actor);
+        request.put("sourceRevision", sourceRevision);
         request.put("displayName", requireText(displayName, "Display name"));
         return post(profileUrl(profileId) + "/duplicate", request);
     }
@@ -118,6 +130,12 @@ public class BridgeProfileManagementServiceImpl implements BridgeProfileManageme
         requireConfigured();
         String normalized = requireText(profileId, "Profile ID");
         return profilesUrl + "/" + UriUtils.encodePathSegment(normalized, StandardCharsets.UTF_8);
+    }
+
+    private String draftUrl(String draftId) {
+        requireConfigured();
+        String normalized = requireText(draftId, "Draft ID");
+        return profilesUrl + "/drafts/" + UriUtils.encodePathSegment(normalized, StandardCharsets.UTF_8);
     }
 
     private void requireProfile(JsonNode profile) {
