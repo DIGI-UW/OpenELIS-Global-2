@@ -28,9 +28,9 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
             String sysUserId);
 
     /**
-     * The same create, carrying the provider wizard's distribution method
-     * (FR-V2.5-02 step 4). The in-house wizard has no participants to distribute
-     * to, so it keeps the shorter form.
+     * The same create, carrying the cycle's distribution method (FR-V2.5-02 step
+     * 4). Every HTTP create routes here — an in-house round simply has no method to
+     * carry, and passes null.
      */
     EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate, Date plannedEndDate,
             EQADistributionMethod distributionMethod, String sysUserId);

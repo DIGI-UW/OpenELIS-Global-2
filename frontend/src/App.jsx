@@ -837,6 +837,19 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
+                {/* Both of these 404'd after the provider lane moved: the FRS path is
+                    what qa/019 seeded into the menu, and /provider/workbench is the URL
+                    the cycle picker shipped at before the scheme list replaced it. */}
+                <Redirect
+                  exact
+                  from="/eqa/management/provider/schemes"
+                  to="/qa/eqa/provider/schemes"
+                />
+                <Redirect
+                  exact
+                  from="/qa/eqa/provider/workbench"
+                  to="/qa/eqa/provider/schemes"
+                />
                 <SecureRoute
                   path="/qa/eqa/provider/schemes"
                   exact

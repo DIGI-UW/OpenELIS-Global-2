@@ -83,6 +83,9 @@ const throughPanelStep = () => {
   fireEvent.change(screen.getByLabelText("Storage temperature"), {
     target: { value: "DRY_ICE" },
   });
+  fireEvent.change(screen.getByLabelText("Material expiry"), {
+    target: { value: "2027-01-31" },
+  });
 };
 
 describe("CycleWizard", () => {
@@ -190,6 +193,7 @@ describe("CycleWizard", () => {
     expect(body.schemeId).toBe(3);
     expect(body.cycleName).toBe("2026 Round 2");
     expect(body.panelName).toBe("HIV VL panel");
+    // Collected on the panel step now, and still reaching the same payload field.
     expect(body.storageTemp).toBe("DRY_ICE");
     expect(body.distributionMethod).toBe("CSV");
     // testId, not analyteId: the server resolves the analyte behind the test.

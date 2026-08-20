@@ -117,6 +117,8 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
                 // the list cannot show a count the prep gate disagrees with.
                 dto.put("participantCount", rosterCounts.getOrDefault(cycle.getId(), enrolled));
                 dto.put("panelCount", panelCounts.getOrDefault(cycle.getId(), 0));
+                dto.put("distributionMethod",
+                        cycle.getDistributionMethod() == null ? null : cycle.getDistributionMethod().name());
                 cycleDtos.add(dto);
             }
 
@@ -161,6 +163,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         status.put("cycleId", cycleId);
         status.put("cycleName", cycle.getCycleName());
         status.put("cycleStatus", cycle.getStatus() == null ? null : cycle.getStatus().name());
+        // FR-V2.5-02 step 4, read where the cycle is worked on: the operator packing a
+        // panel needs to know whether scores go back over FHIR or as a file.
+        status.put("distributionMethod",
+                cycle.getDistributionMethod() == null ? null : cycle.getDistributionMethod().name());
         status.put("participantCount", gate.participantCount());
         status.put("panels", panelDtos);
         status.put("blockers", gate.blockers());

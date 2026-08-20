@@ -266,6 +266,14 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
         assertEquals(EQADistributionMethod.MIXED, readBack(created.getId()).getDistributionMethod());
         assertEquals("MIXED", jdbc.queryForObject("SELECT distribution_method FROM clinlims.eqa_cycle WHERE id = ?",
                 String.class, created.getId()));
+        // Identity, not cardinality: a roster of the right size but the wrong labs
+        // would ship panels to laboratories that never enrolled.
+        assertEquals(List.of(ORG_A, ORG_B),
+                jdbc.queryForList("SELECT organization_id FROM clinlims.eqa_cycle_participant"
+                        + " WHERE cycle_id = ? ORDER BY organization_id", Long.class, created.getId()));
+        assertEquals("the cold chain the panel step collects reaches the panel", java.sql.Date.valueOf("2027-01-31"),
+                jdbc.queryForObject("SELECT expiration_date FROM clinlims.eqa_panel WHERE cycle_id = ?",
+                        java.sql.Date.class, created.getId()));
     }
 
     @Test

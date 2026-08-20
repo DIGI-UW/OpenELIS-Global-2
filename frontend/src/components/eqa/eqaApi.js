@@ -1,8 +1,7 @@
 // Calls more than one EQA page makes. Anything only one page needs stays in that
-// page's own api module (inHouseApi, providerApi, workbenchApi).
+// page's own api module (inHouseApi, workbenchApi).
 import {
   getFromOpenElisServer,
-  patchToOpenElisServerJsonResponse,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
 
@@ -46,19 +45,6 @@ export const createCycle = (payload, callback) => {
 export const createPanel = (payload, callback) => {
   postToOpenElisServerJsonResponse(
     "/rest/eqa/panels",
-    JSON.stringify(payload),
-    callback,
-  );
-};
-
-/**
- * Advance a cycle. An illegal edge answers 409 with the reason, which callers
- * show verbatim — the state machine is the one authority on what is allowed
- * on the server, never a second opinion in the client.
- */
-export const transitionCycle = (cycleId, payload, callback) => {
-  patchToOpenElisServerJsonResponse(
-    `/rest/eqa/cycles/${cycleId}/transition`,
     JSON.stringify(payload),
     callback,
   );

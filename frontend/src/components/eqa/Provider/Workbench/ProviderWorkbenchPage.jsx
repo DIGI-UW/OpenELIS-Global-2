@@ -11,7 +11,6 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
-  Tile,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
@@ -101,6 +100,7 @@ const ProviderWorkbenchPage = () => {
           <CycleStateBanner
             cycleId={cycleId}
             status={prep?.cycleStatus}
+            distributionMethod={prep?.distributionMethod}
             hint={t(
               "eqa.provider.workbench.stateHint",
               "Prep must clear the inventory and QC gate before any panel can be dispatched.",

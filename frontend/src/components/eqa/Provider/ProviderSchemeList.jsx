@@ -175,47 +175,63 @@ const SchemeRows = ({ scheme, t, onNewCycle }) => {
           </Button>
         </TableCell>
       </TableExpandRow>
-      <TableExpandedRow colSpan={7}>
-        {cycles.length === 0 ? (
-          <span style={hintStyle}>
-            {t(
-              "eqa.provider.schemes.noCycles",
-              "No cycles yet. Start one to define its panel and participants.",
-            )}
-          </span>
-        ) : (
-          <Table size="sm">
-            <TableHead>
-              <TableRow>
-                <TableHeader>{t("eqa.provider.cycle", "Cycle")}</TableHeader>
-                <TableHeader>{t("label.status", "Status")}</TableHeader>
-                <TableHeader>
-                  {t("eqa.prep.participants", "Participants")}
-                </TableHeader>
-                <TableHeader>{t("eqa.prep.panels", "Panels")}</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {cycles.map((cycle) => (
-                <TableRow key={cycle.id}>
-                  <TableCell>
-                    <RouterLink
-                      to={`/qa/eqa/provider/cycles/${cycle.id}/workbench`}
-                    >
-                      {cycle.cycleName || `#${cycle.cycleNumber}`}
-                    </RouterLink>
-                  </TableCell>
-                  <TableCell>
-                    <CycleStatusTag status={cycle.status} />
-                  </TableCell>
-                  <TableCell>{cycle.participantCount}</TableCell>
-                  <TableCell>{cycle.panelCount}</TableCell>
+      {/* Mounted only while open: Carbon leaves an always-rendered expanded row's
+          inner container at max-height 0, and the cycle table then paints over
+          the scheme row above it — covering its own links. */}
+      {expanded && (
+        <TableExpandedRow colSpan={7}>
+          {cycles.length === 0 ? (
+            <span style={hintStyle}>
+              {t(
+                "eqa.provider.schemes.noCycles",
+                "No cycles yet. Start one to define its panel and participants.",
+              )}
+            </span>
+          ) : (
+            <Table size="sm">
+              <TableHead>
+                <TableRow>
+                  <TableHeader>{t("eqa.provider.cycle", "Cycle")}</TableHeader>
+                  <TableHeader>{t("label.status", "Status")}</TableHeader>
+                  <TableHeader>
+                    {t("eqa.prep.participants", "Participants")}
+                  </TableHeader>
+                  <TableHeader>{t("eqa.prep.panels", "Panels")}</TableHeader>
+                  <TableHeader>
+                    {t("eqa.cycle.distributionMethod", "Distribution method")}
+                  </TableHeader>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </TableExpandedRow>
+              </TableHead>
+              <TableBody>
+                {cycles.map((cycle) => (
+                  <TableRow key={cycle.id}>
+                    <TableCell>
+                      <RouterLink
+                        to={`/qa/eqa/provider/cycles/${cycle.id}/workbench`}
+                      >
+                        {cycle.cycleName || `#${cycle.cycleNumber}`}
+                      </RouterLink>
+                    </TableCell>
+                    <TableCell>
+                      <CycleStatusTag status={cycle.status} />
+                    </TableCell>
+                    <TableCell>{cycle.participantCount}</TableCell>
+                    <TableCell>{cycle.panelCount}</TableCell>
+                    <TableCell>
+                      {cycle.distributionMethod
+                        ? t(
+                            `eqa.cycle.distributionMethod.${cycle.distributionMethod.toLowerCase()}`,
+                            cycle.distributionMethod,
+                          )
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TableExpandedRow>
+      )}
     </>
   );
 };

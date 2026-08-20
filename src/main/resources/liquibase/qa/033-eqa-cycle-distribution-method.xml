@@ -23,6 +23,21 @@
         <!-- Nullable on purpose: cycles created before the wizard (in-house
              rounds, existing fixtures) never chose one, and an invented default
              would read as a decision somebody made. -->
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="eqa_cycle" columnName="distribution_method" />
+        </rollback>
+    </changeSet>
+
+    <!-- Its own changeset, with its own precondition: a database that already
+         carries the column from an earlier variant of this work would otherwise
+         MARK_RAN the whole thing and silently never get the constraint. -->
+    <changeSet author="openelisglobal" id="qa-063-check-eqa-cycle-distribution-method">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM pg_constraint WHERE conname = 'eqa_cycle_distribution_method_chk'
+            </sqlCheck>
+        </preConditions>
+        <comment>Only the three methods EQADistributionMethod carries may reach the column</comment>
         <sql>
             ALTER TABLE clinlims.eqa_cycle
             ADD CONSTRAINT eqa_cycle_distribution_method_chk
@@ -30,7 +45,6 @@
         </sql>
         <rollback>
             <sql>ALTER TABLE clinlims.eqa_cycle DROP CONSTRAINT eqa_cycle_distribution_method_chk</sql>
-            <dropColumn schemaName="clinlims" tableName="eqa_cycle" columnName="distribution_method" />
         </rollback>
     </changeSet>
 
