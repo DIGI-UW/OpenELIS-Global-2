@@ -11,7 +11,12 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { getAnalyzerTypeCatalog } from "../../../services/analyzerService";
+import {
+  createAnalyzerTypeDraft,
+  duplicateAnalyzerType,
+  getAnalyzerTypeCatalog,
+  publishAnalyzerTypeDraft,
+} from "../../../services/analyzerService";
 import AnalyzerTypeManagement from "./AnalyzerTypeManagement";
 
 vi.mock("../../utils/Utils", () => ({
@@ -19,7 +24,10 @@ vi.mock("../../utils/Utils", () => ({
   postToOpenElisServerJsonResponse: vi.fn(),
 }));
 vi.mock("../../../services/analyzerService", () => ({
+  createAnalyzerTypeDraft: vi.fn(),
+  duplicateAnalyzerType: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
+  publishAnalyzerTypeDraft: vi.fn(),
 }));
 
 const catalog = {
@@ -124,6 +132,44 @@ describe("AnalyzerTypeManagement", () => {
     window.history.replaceState({}, "", "/analyzers/types");
     getAnalyzerTypeCatalog.mockImplementation((callback) => {
       callback(catalog);
+    });
+    createAnalyzerTypeDraft.mockImplementation((displayName, callback) => {
+      callback({
+        draftId: "draft-create",
+        kind: "CREATE",
+        profile: {
+          profileMeta: {
+            id: "site.bridge-generated",
+            displayName,
+          },
+        },
+        validationIssues: ["protocol is required"],
+      });
+    });
+    duplicateAnalyzerType.mockImplementation(
+      (profileId, sourceRevision, displayName, callback) => {
+        callback({
+          draftId: "draft-duplicate",
+          kind: "DUPLICATE",
+          baseProfileId: profileId,
+          baseRevision: sourceRevision,
+          profile: {
+            profileMeta: {
+              id: "site.bridge-generated-duplicate",
+              displayName,
+            },
+          },
+          validationIssues: [],
+        });
+      },
+    );
+    publishAnalyzerTypeDraft.mockImplementation((draftId, callback) => {
+      callback({
+        profile: {
+          profileMeta: { id: "site.bridge-generated-duplicate" },
+          catalog: { revision: 1, source: "SITE", status: "ACTIVE" },
+        },
+      });
     });
     postToOpenElisServerJsonResponse.mockImplementation(
       (endpoint, payload, callback) => {
@@ -238,7 +284,7 @@ describe("AnalyzerTypeManagement", () => {
     expect(screen.getByText("Tecan Infinite F50")).toBeVisible();
   });
 
-  it("creates a site profile only after explicit control-recognition affirmation", async () => {
+  it("starts a Bridge-owned site profile draft without fabricating a profile document", async () => {
     renderPage();
     await screen.findByText("Cepheid GeneXpert MTB/RIF");
 
@@ -254,57 +300,31 @@ describe("AnalyzerTypeManagement", () => {
       within(dialog).getByRole("textbox", { name: "Profile name" }),
       "Sysmex XN Series",
     );
-    await userEvent.type(
-      within(dialog).getByRole("textbox", { name: "Manufacturer" }),
-      "Sysmex",
-    );
-    await userEvent.type(
-      within(dialog).getByRole("textbox", { name: "Model" }),
-      "XN",
-    );
+    expect(
+      within(dialog).queryByRole("textbox", { name: "Manufacturer" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("combobox", { name: "Protocol" }),
+    ).not.toBeInTheDocument();
 
-    const publish = within(dialog).getByRole("button", {
+    const create = within(dialog).getByRole("button", {
       name: "Create Profile",
     });
-    expect(publish).toBeDisabled();
-    await userEvent.click(
-      within(dialog).getByRole("checkbox", {
-        name: "I confirm this interface does not transmit control results",
-      }),
-    );
-    expect(publish).toBeEnabled();
-    await userEvent.click(publish);
+    expect(create).toBeEnabled();
+    await userEvent.click(create);
 
-    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
-    const [endpoint, rawPayload] =
-      postToOpenElisServerJsonResponse.mock.calls[0];
-    expect(endpoint).toBe("/rest/analyzer-types");
-    const payload = JSON.parse(rawPayload);
-    expect(payload.profile).toMatchObject({
-      schemaVersion: "1.0",
-      profileId: "site.sysmex-xn-series",
-      displayName: "Sysmex XN Series",
-      protocol: "ASTM",
-      capabilities: {
-        inboundResults: true,
-        outboundOrders: false,
-        connectionTest: false,
-      },
-      identity: {
-        manufacturer: "Sysmex",
-        model: "XN",
-      },
-      tests: [],
-      controlResultRecognition: {
-        mode: "NONE",
-        affirmedNoControlResults: true,
-      },
-    });
-    expect(payload.profile).not.toHaveProperty("pluginClassName");
-    expect(payload.profile).not.toHaveProperty("identifierPattern");
+    expect(createAnalyzerTypeDraft).toHaveBeenCalledWith(
+      "Sysmex XN Series",
+      expect.any(Function),
+    );
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(window.location.search).toContain("draft=draft-create"),
+    );
+    expect(screen.getByText("Profile draft created")).toBeVisible();
   });
 
-  it("duplicates an active profile with a unique identity and visible lineage source", async () => {
+  it("duplicates and explicitly publishes an active profile without choosing its identity", async () => {
     renderPage();
     await screen.findByText("Cepheid GeneXpert MTB/RIF");
 
@@ -326,14 +346,28 @@ describe("AnalyzerTypeManagement", () => {
       within(dialog).getByRole("button", { name: "Duplicate Profile" }),
     );
 
-    const [endpoint, rawPayload] =
-      postToOpenElisServerJsonResponse.mock.calls[0];
-    expect(endpoint).toBe("/rest/analyzer-types/shipped.genexpert/duplicate");
-    expect(JSON.parse(rawPayload)).toEqual({
-      sourceRevision: 2,
-      targetProfileId: "shipped.genexpert-1",
-      displayName: "Cepheid GeneXpert MTB/RIF -1",
-    });
+    expect(duplicateAnalyzerType).toHaveBeenCalledWith(
+      "shipped.genexpert",
+      2,
+      "Cepheid GeneXpert MTB/RIF -1",
+      expect.any(Function),
+    );
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(window.location.search).toContain("draft=draft-duplicate"),
+    );
+    expect(within(dialog).getByText("Ready to publish")).toBeVisible();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Publish Profile" }),
+    );
+    expect(publishAnalyzerTypeDraft).toHaveBeenCalledWith(
+      "draft-duplicate",
+      expect.any(Function),
+    );
+    await waitFor(() =>
+      expect(window.location.search).not.toContain("action=duplicate"),
+    );
   });
 
   it("deactivates a site profile through a confirmation dialog and exposes no delete action", async () => {
