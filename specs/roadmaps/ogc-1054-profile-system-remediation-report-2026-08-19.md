@@ -21,8 +21,10 @@ settings from frontend constants.
 
 This was an unmerged stack defect; the established system remained intact on
 `develop`. BR-E0 has now removed the parallel contract and evolved the established
-two-job profile shape. BR-M1, OE-E0, and OE-M1 remain blocked on the unchecked
-remediation below and must not merge in their current form.
+two-job profile shape. OE-E0 now defines the clean consumer boundary, the
+profile-by-profile curation disposition, and the one-way removal contract. BR-M1
+and OE-M1 remain blocked on the unchecked remediation below and must not merge in
+their current form.
 
 ## 2. Evidence examined
 
@@ -316,12 +318,12 @@ current behavior or create a second permanent stack.
 
 ## 10. Immediate next action
 
-Amend R0 first with this corrected baseline and the parity gates. Then add the F0
-compatibility guards, correct Bridge #45 under those failing tests, flow the
-accepted contract through OE #4055, and rewire Bridge #46 and OE #4056 in that
-order. M1 remains the active roadmap checkpoint, but no M1 remediation is
-accepted until the corrected F0/E0 stack proves established GeneXpert and Fluoro
-behavior is preserved. No later milestone proceeds around the broken contract.
+R0, F0, Bridge E0, and OE E0 now establish the corrected baseline, regression
+guards, producer contract, clean OE consumer, curation disposition, and deletion
+boundary. Rewire Bridge #46 and OE #4056 in that order. M1 remains the active
+roadmap checkpoint, but no M1 remediation is accepted until the corrected F0/E0
+stack proves established GeneXpert and Fluoro behavior is preserved. No later
+milestone proceeds around the contract.
 
 ## 11. Executable remediation checklist
 
@@ -402,17 +404,28 @@ pass. Analyzer-specific names occur only in the two profile fixture documents.
 
 ### OE-E0 - Define the clean consumer and removal boundary
 
-- [ ] Replace legacy-row migration dispositions with profile-by-profile
+- [x] Replace legacy-row migration dispositions with profile-by-profile
       curation dispositions: retain, correct, alias, split, or remove with evidence.
-- [ ] Delete `LEGACY_UNBOUND` and preserve-every-row requirements.
-- [ ] Define the OE consumer contract: profile ID/revision, instance values,
+- [x] Delete `LEGACY_UNBOUND` and preserve-every-row requirements.
+- [x] Define the OE consumer contract: profile ID/revision, instance values,
       local catalog bindings, verification/audit, and desired Bridge registration.
-- [ ] Define one-way removal of `defaultConfigId`, OE profile serving/apply,
+- [x] Define one-way removal of `defaultConfigId`, OE profile serving/apply,
       copied profile JSON, and `AnalyzerQcRule` after parity.
-- [ ] Prove no current analyzer is moved to another revision implicitly.
+- [x] Prove no current analyzer is moved to another revision implicitly.
 
-**OE-E0 exit evidence:** JUnit/contract tests fail on heuristic inference,
-mechanical row preservation, copied authority, or an implicit revision move.
+**OE-E0 exit evidence:** eight focused JUnit contract tests pass against the
+established Bridge schema, all 20 actual profile files have an explicit
+evidence-based curation disposition, and absence tests reject the discarded
+portable-profile, preservation migration, copied-profile authority, and
+compatibility-reader artifacts. The clean OE candidate contract requires an
+immutable profile ID/revision pin, local bindings, verification/audit, desired
+registration fingerprint, and exact Bridge acknowledgement; it contains no
+profile snapshot, `defaultConfigId`, `LEGACY_UNBOUND`, `AnalyzerQcRule`, or
+operational-QC payload. The scoped analyzer/analyzer-import suite passes 600
+tests with zero failures or errors, the frontend compatibility guard passes 10
+tests, and Spotless plus diff checks pass. This checkpoint adds no production
+Java or React profile defaults; analyzer-specific values remain profile/spec
+data only.
 
 ### BR-M1 - Put lifecycle around the real profiles
 
