@@ -22,6 +22,10 @@ export const MICROBIOLOGY_REFERENCE_SECTIONS = [
     key: "breakpoints",
     label: "microbiology.admin.breakpoints.title",
   },
+  {
+    key: "patient-origins",
+    label: "microbiology.admin.patientOrigins.title",
+  },
 ];
 
 export const DEFAULT_MICROBIOLOGY_REFERENCE_SECTION = "organisms";

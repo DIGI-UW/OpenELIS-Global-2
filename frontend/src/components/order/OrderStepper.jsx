@@ -88,6 +88,7 @@ const OrderStepper = ({ currentStep, onStepClick, className = "" }) => {
       {ORDER_STEPS.map((step, index) => (
         <ProgressStep
           key={step.path}
+          data-testid={`order-step-${step.key}`}
           complete={isStepComplete(index)}
           current={index === activeStep}
           label={intl.formatMessage({ id: step.label })}

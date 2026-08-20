@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}/release")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroReportReleaseRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroReportReleaseService releaseService;
@@ -31,27 +32,25 @@ public class MicroReportReleaseRestController extends MicrobiologyRestController
     }
 
     @GetMapping("/preview")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroReportProjectionForm> preview(@PathVariable String caseId) {
         return ResponseEntity.ok(toProjectionForm(projectionService.preview(caseId)));
     }
 
     @PostMapping("/preliminary")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroReportReleaseForm> releasePreliminary(@PathVariable String caseId,
             @RequestBody MicroReportReleaseRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(releaseService.releasePreliminary(caseId, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/final")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroReportReleaseForm> releaseFinal(@PathVariable String caseId,
             @RequestBody MicroReportReleaseRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(releaseService.releaseFinal(caseId, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/amended")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS')")
+    @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroReportReleaseForm> releaseAmended(@PathVariable String caseId,
             @RequestBody MicroReportReleaseRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(releaseService.releaseAmended(caseId, authenticatedUserId(httpRequest))));

@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.daoimpl;
 
 import java.util.List;
+import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -46,6 +47,19 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
                 "from MicroAstRun r where r.amendmentId = :amendmentId order by r.startedAt", MicroAstRun.class);
         query.setParameter("amendmentId", amendmentId);
         return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MicroAstRun> getByAnalyzerAndCard(String analyzerId, String cardId) {
+        Query<MicroAstRun> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroAstRun r where r.analyzerInstrumentId = :analyzerId and r.analyzerCardId = :cardId "
+                        + "and r.status in ('AWAITING_RESULTS', 'RESULTS_IN', 'QC_FAILED') order by r.startedAt desc",
+                MicroAstRun.class);
+        query.setParameter("analyzerId", analyzerId);
+        query.setParameter("cardId", cardId);
+        query.setMaxResults(1);
+        return query.uniqueResultOptional();
     }
 
     @Override

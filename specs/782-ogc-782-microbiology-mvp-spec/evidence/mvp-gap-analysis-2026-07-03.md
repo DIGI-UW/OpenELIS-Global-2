@@ -3,11 +3,23 @@
 **Date:** 2026-07-03
 **Scope:** Cross-reference the as-built MVP (PR #3789, branch
 `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`) against
-the openelis-work M-* FRS bundle, the speckit
-[spec.md](../spec.md) functional requirements, and the Jira epic tree
-(`OGC-782` and its build stories). Each row records the FRS/spec source, the
-as-built code path, the cause of the gap, and the disposition decided for this
-session.
+the OpenELIS Work M-* FRS bundle and the speckit [spec.md](../spec.md)
+functional requirements. Each row records the FRS/spec source, the as-built
+code path, the cause of the gap, and the disposition decided for this session.
+
+**2026-08-05 correction:**
+[`openelis-work-authoritative-alignment-2026-08-05.md`](./openelis-work-authoritative-alignment-2026-08-05.md)
+supersedes this artifact where later evidence claimed that M-03/FR-002 was
+resolved. The current supported Add Order workflow does not implement the
+required visible Program/details behavior.
+
+**2026-08-06 M-12 correction:** the R1 branch now implements the shared
+culture/AST lot-consuming path, visible QC/FEFO guidance, exact scanner-style
+entry, locked race handling, actionable conflict messages, and Inventory usage
+provenance. Required/optional/substitute semantics remain blocked on a shared
+Test Catalog contract and are not inferred from `PRIMARY`/`SECONDARY`. The
+authoritative alignment record supersedes the historical “not built” wording
+below.
 
 ## Already satisfied: cross-cutting M-00 decisions
 
@@ -29,12 +41,13 @@ work:
 - **FRS source:** M-03 Order Entry hook (`m-03-order-entry-micro-hook.md`); spec [FR-002](../spec.md) ("Users MUST be able to capture microbiology order details ... including culture setup default, patient origin, number of sets, clinical history, antibiotic exposure, and critical notification preference").
 - **As-built at the July 3 checkpoint:** [`MicroOrderRoutingServiceImpl.routeAnalysesForSampleItem`](../../../../src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java) resolved workflow type and culture method but the generic order-entry page did not supply microbiology details.
 - **Cause:** unintended divergence. The speckit M3 task (`tasks.md` T040-T052) narrowed scope to pure routing and silently dropped the order-detail-capture requirement, even though FR-002 is a spec "MUST."
-- **Disposition: MVP. Resolved.** The order-detail model and workbench editor
-  landed first. The July 28 closure then added a culture-aware section to the
-  existing order form and passed its values through
-  `SamplePatientEntryServiceImpl` to the existing routing overload. Non-culture
-  tests do not reveal the fields. The closure reuses the existing model and
-  therefore adds no migration.
+- **Disposition: MVP. Open remediation.** The order-detail model and workbench
+  editor landed first. The July 28 closure added a partial culture-aware
+  section to legacy `/SamplePatientEntry`, but configured Add Order uses
+  `/order/enter`. The modern test selector discards culture workflow metadata,
+  Program is not derived, Culture Method is absent, and multiple controls do
+  not match the required behavior. The existing data model can still be reused;
+  no migration is expected unless implementation proves a real model gap.
 
 ### 2. Historical FR-016 amendment / reidentification report history
 
@@ -70,7 +83,9 @@ work:
 - **Cause:** deliberate simplification, flagged in [mock-comparison-2026-06-27.md](./mock-comparison-2026-06-27.md) as a feature-depth gap.
 - **Disposition: Split.**
   - **MVP (build this session):** per-run breakpoint-standard selection — let the tech pick an active standard when starting a run, snapshot it on `MicroAstRun`, and interpret against the chosen standard instead of the hardcoded default.
-  - **V2 (not built):** reagent/card lot linkage (M-12/OGC-784) and multi-row AST run metadata.
+  - **Follow-on:** reagent/card lot linkage and multi-row AST run metadata were
+    delivered in the clinical-completeness stack and tightened in R1; exact-SHA
+    qualification and the external catalog-policy dependency remain open.
 
 ### 6. Deferred by design (no action, already tracked)
 
@@ -112,10 +127,10 @@ see `microbiology-case-workbench.spec.ts` and
 
 | # | Gap | Disposition | Built this session? |
 | --- | --- | --- | --- |
-| 1 | FR-002 culture-aware order-entry detail capture | MVP | Yes (resolved) |
-| 2 | Amendment/reidentification history; MVP has final mutation lock only | V2 | No |
+| 1 | FR-002 culture-aware Program/order-entry detail capture | MVP | No at this checkpoint; implemented in R1, acceptance remains open |
+| 2 | Amendment/reidentification history; MVP has final mutation lock only | V2 | No at this checkpoint; follow-on implementation exists, R1 acceptance remains open |
 | 3 | M-11 Alerts Dashboard (FR-018) | MVP | Yes (resolved) |
 | 4 | M-09 WHONET export + mapping UI | Partial follow-on delivery in M3/M4; broader M-09 remains deferred | M4 implementation complete locally; acceptance open |
 | 5a | M-05 per-run breakpoint selection | MVP | Yes (resolved) |
-| 5b | M-05 reagent lot + multi-row AST metadata | V2 | No |
+| 5b | M-05 reagent lot + multi-row AST metadata | V2 | No at this checkpoint; consuming path implemented in follow-on/R1, qualification and catalog policy remain open |
 | 6 | M-06/M-13/M-14/M-15 | Deferred by design | No |

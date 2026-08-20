@@ -18,6 +18,9 @@ import org.springframework.web.server.ResponseStatusException;
 /** Shared authenticated-actor lookup for microbiology write endpoints. */
 abstract class MicrobiologyRestControllerSupport extends BaseRestController {
 
+    static final String BENCH_ACCESS = "hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')";
+    static final String SUPERVISOR_ACCESS = "hasAnyRole('ADMIN', 'VALIDATION')";
+
     @ExceptionHandler(MicroCaseLockedException.class)
     protected ResponseEntity<Map<String, Object>> handleLockedCase(MicroCaseLockedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",

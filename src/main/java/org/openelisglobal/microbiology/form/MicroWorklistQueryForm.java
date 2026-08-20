@@ -7,6 +7,8 @@ package org.openelisglobal.microbiology.form;
  */
 public class MicroWorklistQueryForm {
 
+    public String grain = "cultures";
+    public String status = "";
     public String workflow = "";
     public String stage = "";
     public String urgency = "";

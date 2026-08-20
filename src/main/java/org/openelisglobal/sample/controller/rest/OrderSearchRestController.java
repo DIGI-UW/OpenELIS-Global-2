@@ -148,6 +148,9 @@ public class OrderSearchRestController extends BaseRestController {
     @Autowired
     private SampleQaChecklistService sampleQaChecklistService;
 
+    @Autowired(required = false)
+    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
+
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
     private String ADDRESS_PART_DEPT_ID;
@@ -501,6 +504,8 @@ public class OrderSearchRestController extends BaseRestController {
             Map<String, Object> sampleOrderItems = buildSampleOrderItems(sample);
             response.put("sampleOrderItems", sampleOrderItems);
 
+            addMicrobiologyOrderDetail(response, sample);
+
             // Step progress - determine based on actual data
             Map<String, Boolean> stepProgress = new HashMap<>();
             stepProgress.put("enter", true); // If sample exists, enter is complete
@@ -548,6 +553,16 @@ public class OrderSearchRestController extends BaseRestController {
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "searchOrder", "Error searching for order: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    void addMicrobiologyOrderDetail(Map<String, Object> response, Sample sample) {
+        if (microCaseOrderDetailService == null) {
+            return;
+        }
+        var microbiologyOrderDetail = microCaseOrderDetailService.getOrderDraft(sample.getId());
+        if (microbiologyOrderDetail != null) {
+            response.put("microbiologyOrderDetail", microbiologyOrderDetail);
         }
     }
 

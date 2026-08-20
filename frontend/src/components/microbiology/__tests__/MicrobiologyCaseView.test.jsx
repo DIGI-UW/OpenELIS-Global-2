@@ -4,6 +4,7 @@ import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
+import { vi } from "vitest";
 import MicrobiologyCaseView from "../MicrobiologyCaseView";
 import messages from "../../../languages/en.json";
 
@@ -43,6 +44,8 @@ const astServiceStubs = {
   getAstPanels: vi.fn().mockResolvedValue([]),
   getAntibiotics: vi.fn().mockResolvedValue([]),
   getBreakpointStandards: vi.fn().mockResolvedValue([]),
+  getCultureMethods: vi.fn().mockResolvedValue([]),
+  changeCaseWorkflow: vi.fn(),
   getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
   saveOrderDetail: vi.fn().mockResolvedValue({}),
   getCaseReadiness: vi.fn().mockResolvedValue({
@@ -57,6 +60,9 @@ const astServiceStubs = {
   logCriticalCommunication: vi.fn(),
   acknowledgeCriticalCommunication: vi.fn(),
   closeCriticalCommunication: vi.fn(),
+  getNceCategories: vi.fn().mockResolvedValue([]),
+  getNceReportingUnits: vi.fn().mockResolvedValue([]),
+  reportCaseNonconformance: vi.fn(),
   getOrganisms: vi.fn().mockResolvedValue([]),
   getWhonetReadiness: vi.fn().mockResolvedValue({
     whonetReady: true,
@@ -72,6 +78,10 @@ const astServiceStubs = {
     requirements: [],
     usages: [],
   }),
+  getCaseInoculations: vi.fn().mockResolvedValue([]),
+  recordCaseInoculation: vi.fn(),
+  getCaseTimeline: vi.fn().mockResolvedValue(caseDetail.activities),
+  addCaseNote: vi.fn(),
   releasePreliminaryReport: vi.fn(),
   releaseFinalReport: vi.fn(),
   getCaseAmendments: vi.fn().mockResolvedValue([]),
@@ -97,7 +107,100 @@ const getAccordionButton = (name) => {
 };
 
 describe("MicrobiologyCaseView", () => {
-  it("loads case details and records setup activity", async () => {
+  it("mounts only the canonical active accordion body", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=setup");
+
+    expect(
+      await screen.findByTestId("microbiology-case-section-setup"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("microbiology-case-section-timeline"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("microbiology-case-section-isolates"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("microbiology-case-section-ast"),
+    ).not.toBeInTheDocument();
+    expect(service.getIdentificationHistory).not.toHaveBeenCalled();
+    expect(service.getAstRunsForIsolate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      action: "mark-positive",
+      buttonName: "Confirm positive signal",
+      nextStage: "POSITIVE_SIGNAL",
+      note: "Culture marked positive",
+    },
+    {
+      action: "mark-no-growth",
+      buttonName: "Confirm no growth",
+      nextStage: "NO_GROWTH_READY",
+      note: "Incubation complete with no growth",
+    },
+  ])(
+    "confirms $action from the case and clears the routed action",
+    async ({ action, buttonName, nextStage, note }) => {
+      const user = userEvent.setup();
+      const updatedCase = {
+        ...caseDetail,
+        stage: nextStage,
+      };
+      const service = {
+        ...astServiceStubs,
+        getCaseDetail: vi.fn().mockResolvedValue({
+          ...caseDetail,
+          stage: "INCUBATING",
+        }),
+        recordCaseActivity: vi.fn().mockResolvedValue(updatedCase),
+        createIsolate: vi.fn(),
+      };
+
+      renderCase(
+        service,
+        `/Microbiology/cases/case-1?section=setup&action=${action}`,
+      );
+
+      const section = await screen.findByTestId(
+        "microbiology-case-section-setup",
+      );
+      const transitionTitle = screen.getByRole("heading", {
+        name:
+          action === "mark-positive"
+            ? "Mark culture positive"
+            : "Mark culture as no growth",
+      });
+      await waitFor(() => expect(transitionTitle).toHaveFocus());
+      const confirm = screen.getByRole("button", { name: buttonName });
+      confirm.focus();
+      await user.keyboard("{Enter}");
+
+      await waitFor(() =>
+        expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
+          nextStage,
+          note,
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("microbiology-current-url"),
+        ).toHaveTextContent("/Microbiology/cases/case-1?section=setup"),
+      );
+      expect(
+        screen.getByTestId("microbiology-current-url"),
+      ).not.toHaveTextContent("action=");
+      await waitFor(() => expect(section).toHaveFocus());
+    },
+  );
+
+  it("records primary inoculation with a service-managed timeline and lot", async () => {
     const user = userEvent.setup();
     const requirement = {
       analysisId: "41",
@@ -124,19 +227,48 @@ describe("MicrobiologyCaseView", () => {
     };
     const service = {
       ...astServiceStubs,
-      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      getCaseDetail: vi
+        .fn()
+        .mockResolvedValueOnce(caseDetail)
+        .mockResolvedValue({
+          ...caseDetail,
+          stage: "INCUBATING",
+          activities: [
+            ...caseDetail.activities,
+            {
+              id: "a2",
+              activityType: "INOCULATION_RECORDED",
+              note: "BOTTLE-001 - Blood culture bottle",
+            },
+          ],
+        }),
+      getCaseTimeline: vi
+        .fn()
+        .mockResolvedValueOnce(caseDetail.activities)
+        .mockResolvedValue([
+          ...caseDetail.activities,
+          {
+            id: "a2",
+            activityType: "INOCULATION_RECORDED",
+            note: "BOTTLE-001 - Blood culture bottle",
+          },
+        ]),
       getReagentLotOverview: vi.fn().mockResolvedValue({
         requirements: [requirement],
         usages: [],
       }),
-      recordCaseActivity: vi.fn().mockResolvedValue({
-        ...caseDetail,
-        stage: "SETUP_RECORDED",
-        activities: [
-          ...caseDetail.activities,
-          { id: "a2", activityType: "STAGE_CHANGED", note: "setup complete" },
-        ],
-      }),
+      getCaseInoculations: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: "inoculation-1",
+            containerIdentifier: "BOTTLE-001",
+            media: "Blood culture bottle",
+            incubation: "35 C for 24 hours",
+          },
+        ]),
+      recordCaseInoculation: vi.fn().mockResolvedValue({ id: "inoculation-1" }),
       createIsolate: vi.fn(),
     };
 
@@ -146,23 +278,26 @@ describe("MicrobiologyCaseView", () => {
       await screen.findByRole("heading", { name: "Microbiology case" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Microbiology, UAT")).toBeInTheDocument();
-    expect(screen.getByText("UATMICRO001")).toBeInTheDocument();
+    expect(screen.getAllByText(/UATMICRO001/).length).toBeGreaterThan(0);
     expect(screen.getByText("Blood")).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Start inoculation" }));
+    await user.type(screen.getByLabelText("Bottle or plate ID"), "BOTTLE-001");
     await user.type(
       screen.getByLabelText("Media or bottle"),
       "Blood culture bottle",
     );
     await user.type(screen.getByLabelText("Incubation"), "35 C for 24 hours");
     await user.type(screen.getByLabelText("Atmosphere"), "Ambient");
-    await user.type(screen.getByLabelText("Activity note"), "setup complete");
-    await user.click(screen.getByLabelText(/MEDIA-FIFO/));
-    await user.click(screen.getByRole("button", { name: "Start inoculation" }));
+    await user.click(screen.getByText(/MEDIA-FIFO/).closest("label"));
+    await user.click(screen.getByRole("button", { name: "Save media" }));
 
     await waitFor(() =>
-      expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
-        nextStage: "SETUP_RECORDED",
-        note: "Media or bottle: Blood culture bottle; Incubation: 35 C for 24 hours; Atmosphere: Ambient; setup complete",
+      expect(service.recordCaseInoculation).toHaveBeenCalledWith("case-1", {
+        containerIdentifier: "BOTTLE-001",
+        media: "Blood culture bottle",
+        incubation: "35 C for 24 hours",
+        atmosphere: "Ambient",
         lotSelections: [
           {
             analysisId: "41",
@@ -172,10 +307,11 @@ describe("MicrobiologyCaseView", () => {
         ],
       }),
     );
-    await waitFor(() =>
-      expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0),
-    );
-    expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0);
+    expect(await screen.findByText("BOTTLE-001")).toBeInTheDocument();
+    expect(screen.getByText("Primary")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Inoculation recorded. Add significant growth/),
+    ).toBeInTheDocument();
   });
 
   it("links the report workflow to the patient results page", async () => {
@@ -213,6 +349,158 @@ describe("MicrobiologyCaseView", () => {
     expect(getAccordionButton("Critical communication")).toHaveAttribute(
       "aria-expanded",
       "true",
+    );
+  });
+
+  it("canonicalizes an unscoped case to its current AST step", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        stage: "AST_IN_PROGRESS",
+      }),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "section=ast",
+      ),
+    );
+    expect(getAccordionButton("Manual AST")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(
+      screen.getByTestId("microbiology-current-step-action"),
+    ).toHaveTextContent("Manual AST");
+  });
+
+  it("shows the latest activity actor and linked NCE count in the case header", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        lastActivityBy: "Amina Diallo",
+        lastActivityAt: "2026-08-05T09:00:00Z",
+        nonconformanceCount: 2,
+      }),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    expect(await screen.findByText(/Amina Diallo/)).toBeInTheDocument();
+    expect(screen.getByText("2 NCEs")).toBeInTheDocument();
+  });
+
+  it("preserves an explicitly bookmarked non-current section", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        stage: "AST_IN_PROGRESS",
+      }),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=timeline");
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=timeline",
+    );
+    expect(getAccordionButton("Timeline")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("moves focus into an expanded inline section and announces it", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    await user.click(getAccordionButton("Timeline"));
+
+    const timelineSection = await screen.findByTestId(
+      "microbiology-case-section-timeline",
+    );
+    await waitFor(() => expect(timelineSection).toHaveFocus());
+    expect(
+      screen.getByRole("status", { name: "Section status" }),
+    ).toHaveTextContent("Timeline expanded");
+  });
+
+  it("opens a case-targeted critical communication from the header", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Log critical notification",
+      }),
+    );
+
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=critical-communication&action=log-critical&targetType=CASE&targetId=case-1",
+    );
+    expect(screen.getByLabelText("Critical result target")).toBeDisabled();
+    expect(screen.getByLabelText("Target record")).toHaveValue("case-1");
+  });
+
+  it("opens each nonconformance action from a canonical header URL", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    const reportNce = await screen.findByRole("button", {
+      name: "Report NCE",
+    });
+    reportNce.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=nonconformance&action=report-nce",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Report nonconformance" }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Report nonconformance" }),
+      ).toHaveFocus(),
+    );
+
+    const markLost = screen.getByRole("button", { name: /Mark lost/ });
+    markLost.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=nonconformance&action=mark-lost",
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Mark specimen lost" }),
+      ).toHaveFocus(),
     );
   });
 
@@ -278,9 +566,15 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByRole("heading", { name: "Microbiology case" }),
     ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-case-section-isolates"),
+      ).toHaveFocus(),
+    );
+    await user.type(screen.getByLabelText("Gram stain"), "Gram negative rods");
     await user.type(
-      screen.getByLabelText("Preliminary organism"),
-      "Escherichia coli",
+      screen.getByLabelText("Colony morphology"),
+      "Lactose fermenting colonies",
     );
     await user.click(screen.getByRole("button", { name: "Create isolate" }));
 
@@ -288,7 +582,8 @@ describe("MicrobiologyCaseView", () => {
       expect(service.createIsolate).toHaveBeenCalledWith({
         caseId: "case-1",
         isolateLabel: "ISO-1",
-        preliminaryOrganismText: "Escherichia coli",
+        gramStain: "Gram negative rods",
+        colonyMorphology: "Lactose fermenting colonies",
         significance: "CLINICALLY_SIGNIFICANT",
       }),
     );
@@ -332,6 +627,44 @@ describe("MicrobiologyCaseView", () => {
     );
   });
 
+  it("holds profile-specific actions until an unassigned case is classified", async () => {
+    const unassignedCase = {
+      ...caseDetail,
+      workflowType: "UNASSIGNED",
+      siblingCases: [
+        {
+          id: "case-tb",
+          workflowType: "MYCOBACTERIOLOGY_TB",
+          stage: "RECEIVED",
+        },
+      ],
+    };
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(unassignedCase),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=ast");
+
+    expect(
+      await screen.findByText("Workflow classification required"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Change workflow")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start AST" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Mycobacteriology TB (Received)"),
+    ).toHaveAttribute("href", "/Microbiology/cases/case-tb?section=case-info");
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?section=case-info",
+      ),
+    );
+  });
+
   it("shows a final case as read-only and disables isolate mutation", async () => {
     const finalCase = {
       ...caseDetail,
@@ -359,9 +692,7 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByText("Final case is read-only"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Update identification" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Edit isolate" })).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Create isolate" }),
     ).toBeDisabled();

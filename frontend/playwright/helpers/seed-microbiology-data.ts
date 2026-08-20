@@ -9,6 +9,7 @@ export interface SeededMicrobiologyCase {
   sampleItemId: string;
   sampleId: string;
   patientId: string;
+  patientExternalId?: string;
   analysisId: string;
   siblingCaseId?: string;
   organismId?: string;
@@ -18,6 +19,10 @@ export interface SeededMicrobiologyCase {
   loadedBreakpointStandardId?: string;
   unmappedOrganismId?: string;
   methodId?: string;
+  sampleTypeId?: string;
+  cultureTestId?: string;
+  tbCultureTestId?: string;
+  nonCultureTestId?: string;
 }
 
 export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {
@@ -25,9 +30,12 @@ export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {
   astRunId: string;
 }
 
+export type SeededMicrobiologyAstWorklistCase = SeededReviewedMicrobiologyCase;
+
 export interface SeededDenseMicrobiologyCase extends SeededMicrobiologyCase {
   isolateIds: string[];
   astReadingCount: number;
+  timelineEventCount: number;
 }
 
 export interface SeededMicrobiologyReferenceAdmin extends SeededMicrobiologyCase {
@@ -46,7 +54,7 @@ export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyRefere
 
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
-type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST" | "M3" | "M4";
+type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST" | "M3" | "M4" | "R1";
 
 interface MicrobiologyReferenceOption {
   id: string;
@@ -141,6 +149,16 @@ export function seedMicrobiologyWorklistCase(
   return provisionMicrobiologyScenario(page, "WORKLIST");
 }
 
+export function seedMicrobiologyClassificationCase(
+  page: Page,
+): Promise<SeededMicrobiologyCase> {
+  return provisionMicrobiologyScenario(
+    page,
+    "R1",
+    `playwright-r1-classification-${randomUUID()}`,
+  );
+}
+
 export async function seedMicrobiologyReferenceAdmin(
   page: Page,
 ): Promise<SeededMicrobiologyReferenceAdmin> {
@@ -200,8 +218,8 @@ async function ensureReviewedAstIsolate(
         data: {
           caseId: seeded.caseId,
           isolateLabel,
-          organismId,
-          preliminaryOrganismText: organismText,
+          gramStain: "Gram negative rods",
+          colonyMorphology: "Lactose fermenting colonies",
           significance: "CLINICALLY_SIGNIFICANT",
         },
       }),
@@ -221,6 +239,8 @@ async function ensureReviewedAstIsolate(
             preliminaryOrganismText: organismText,
             significance: "CLINICALLY_SIGNIFICANT",
             identificationStatus: "CONFIRMED",
+            identificationMethod: "MALDI_TOF",
+            identificationConfidence: 99.5,
           },
         },
       ),
@@ -247,6 +267,8 @@ async function ensureReviewedAstIsolate(
           isolateId: isolate.id,
           panelId: seeded.astPanelId,
           breakpointStandardId: seeded.activeBreakpointStandardId,
+          panelAdjustmentReason: "Synthetic UAT fixture panel assignment",
+          technique: "BROTH_MICRODILUTION",
         },
       }),
     ));
@@ -393,6 +415,22 @@ export async function seedMicrobiologyWorklistCases(
   return cases;
 }
 
+export async function seedMicrobiologyAstWorklistCases(
+  page: Page,
+  count = 200,
+): Promise<SeededMicrobiologyAstWorklistCase[]> {
+  if (!Number.isInteger(count) || count < 1 || count > 500) {
+    throw new Error(
+      "Microbiology AST worklist seed count must be between 1 and 500",
+    );
+  }
+  const cases: SeededMicrobiologyAstWorklistCase[] = [];
+  for (let index = 0; index < count; index += 1) {
+    cases.push(await seedMicrobiologyAstWorklistCase(page));
+  }
+  return cases;
+}
+
 async function requireJsonResponse<T>(
   label: string,
   response: Awaited<ReturnType<Page["request"]["get"]>>,
@@ -406,15 +444,18 @@ async function requireJsonResponse<T>(
   return response.json() as Promise<T>;
 }
 
-/**
- * Creates a reviewed, reportable bacteriology case through authenticated HTTP
- * endpoints. Every persisted record is therefore created by application
- * services, with server-generated identifiers and normal validation/auditing.
- */
-export async function seedReviewedMicrobiologyCase(
+interface PreparedMicrobiologyAstCase extends SeededMicrobiologyAstWorklistCase {
+  antibioticId: string;
+  orderedAntibioticIds: string[];
+}
+
+async function prepareMicrobiologyAstCase(
   page: Page,
-): Promise<SeededReviewedMicrobiologyCase> {
+): Promise<PreparedMicrobiologyAstCase> {
   const seeded = await seedMicrobiologyMvpCase(page);
+  if (!seeded.organismId) {
+    throw new Error("Microbiology MVP scenario is missing organismId");
+  }
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
 
   const isolate = await requireJsonResponse<{ id: string }>(
@@ -424,6 +465,8 @@ export async function seedReviewedMicrobiologyCase(
       data: {
         caseId: seeded.caseId,
         isolateLabel: "ISO-1",
+        gramStain: "Gram negative rods",
+        colonyMorphology: "Synthetic lactose-fermenting colonies",
         preliminaryOrganismText: "Escherichia coli",
         significance: "CLINICALLY_SIGNIFICANT",
       },
@@ -436,9 +479,12 @@ export async function seedReviewedMicrobiologyCase(
       {
         headers,
         data: {
+          organismId: seeded.organismId,
           preliminaryOrganismText: "Escherichia coli",
           significance: "CLINICALLY_SIGNIFICANT",
           identificationStatus: "CONFIRMED",
+          identificationMethod: "MALDI_TOF",
+          identificationConfidence: 99.5,
         },
       },
     ),
@@ -476,6 +522,21 @@ export async function seedReviewedMicrobiologyCase(
   if (!panel || !standard || !antibiotic) {
     throw new Error("Microbiology UAT AST reference data is incomplete");
   }
+  const panelDetail = await requireJsonResponse<{
+    antibiotics: Array<{ antibioticId: string }>;
+  }>(
+    "Load selected AST panel",
+    await page.request.get(
+      `${API_PREFIX}/rest/microbiology/admin/reference/ast-panels/${encodeURIComponent(panel.id)}`,
+    ),
+  );
+  const panelAntibioticIds = panelDetail.antibiotics.map(
+    (row) => row.antibioticId,
+  );
+  if (!panelAntibioticIds.includes(antibiotic.id)) {
+    throw new Error("Microbiology UAT AST panel has no usable ordered drugs");
+  }
+  const orderedAntibioticIds = [antibiotic.id];
 
   const run = await requireJsonResponse<{ id: string }>(
     "Start AST run",
@@ -484,33 +545,69 @@ export async function seedReviewedMicrobiologyCase(
       data: {
         isolateId: isolate.id,
         panelId: panel.id,
+        panelAdjustmentReason:
+          "Reference-admin evidence uses the seeded single-drug breakpoint",
         breakpointStandardId: standard.id,
+        technique: "BROTH_MICRODILUTION",
+        orderedAntibioticIds,
       },
     }),
   );
-  await requireJsonResponse(
-    "Record AST reading",
-    await page.request.post(
-      `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/readings`,
-      {
-        headers,
-        data: {
-          antibioticId: antibiotic.id,
-          method: "MIC",
-          rawValue: 4,
+  return {
+    ...seeded,
+    isolateId: isolate.id,
+    astRunId: run.id,
+    antibioticId: antibiotic.id,
+    orderedAntibioticIds,
+  };
+}
+
+/**
+ * Creates one actionable in-progress AST worklist row through authenticated
+ * application endpoints. The run deliberately has no reading or review yet.
+ */
+export async function seedMicrobiologyAstWorklistCase(
+  page: Page,
+): Promise<SeededMicrobiologyAstWorklistCase> {
+  return prepareMicrobiologyAstCase(page);
+}
+
+/**
+ * Creates a reviewed, reportable bacteriology case through authenticated HTTP
+ * endpoints. Every persisted record is therefore created by application
+ * services, with server-generated identifiers and normal validation/auditing.
+ */
+export async function seedReviewedMicrobiologyCase(
+  page: Page,
+): Promise<SeededReviewedMicrobiologyCase> {
+  const seeded = await prepareMicrobiologyAstCase(page);
+  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
+
+  for (const antibioticId of seeded.orderedAntibioticIds) {
+    await requireJsonResponse(
+      "Record ordered AST reading",
+      await page.request.post(
+        `${API_PREFIX}/rest/microbiology/ast/runs/${seeded.astRunId}/readings`,
+        {
+          headers,
+          data: {
+            antibioticId,
+            method: "MIC",
+            rawValue: 4,
+          },
         },
-      },
-    ),
-  );
+      ),
+    );
+  }
   await requireJsonResponse(
     "Review AST run",
     await page.request.post(
-      `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/review`,
+      `${API_PREFIX}/rest/microbiology/ast/runs/${seeded.astRunId}/review`,
       { headers, data: {} },
     ),
   );
 
-  return { ...seeded, isolateId: isolate.id, astRunId: run.id };
+  return seeded;
 }
 
 export async function seedDenseMicrobiologyCase(
@@ -561,10 +658,28 @@ export async function seedDenseMicrobiologyCase(
         data: {
           caseId: seeded.caseId,
           isolateLabel: `QISO-${isolateIndex}`,
-          preliminaryOrganismText: `Qualification organism ${isolateIndex}`,
+          gramStain: "Gram negative rods",
+          colonyMorphology: `Qualification morphology ${isolateIndex}`,
           significance: "CLINICALLY_SIGNIFICANT",
         },
       }),
+    );
+    await requireJsonResponse(
+      "Identify dense-case isolate",
+      await page.request.put(
+        `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
+        {
+          headers,
+          data: {
+            organismId: seeded.organismId,
+            preliminaryOrganismText: `Qualification organism ${isolateIndex}`,
+            significance: "CLINICALLY_SIGNIFICANT",
+            identificationStatus: "CONFIRMED",
+            identificationMethod: "MALDI_TOF",
+            identificationConfidence: 99.5,
+          },
+        },
+      ),
     );
     isolateIds.push(isolate.id);
     for (let runIndex = 0; runIndex < 8; runIndex += 1) {
@@ -575,7 +690,10 @@ export async function seedDenseMicrobiologyCase(
           data: {
             isolateId: isolate.id,
             panelId: panel.id,
+            panelAdjustmentReason:
+              "Qualification fixture exercises the seeded two-drug panel",
             breakpointStandardId: standard.id,
+            technique: "BROTH_MICRODILUTION",
           },
         }),
       );
@@ -596,9 +714,27 @@ export async function seedDenseMicrobiologyCase(
         );
         astReadingCount += 1;
       }
+      await requireJsonResponse(
+        "Review dense-case AST run",
+        await page.request.post(
+          `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/review`,
+          { headers, data: {} },
+        ),
+      );
     }
   }
-  return { ...seeded, isolateIds, astReadingCount };
+  const timeline = await requireJsonResponse<unknown[]>(
+    "Load dense-case timeline",
+    await page.request.get(
+      `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/timeline`,
+    ),
+  );
+  return {
+    ...seeded,
+    isolateIds,
+    astReadingCount,
+    timelineEventCount: timeline.length,
+  };
 }
 
 export async function seedFinalizedMicrobiologyCase(

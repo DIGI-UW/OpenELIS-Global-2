@@ -48,6 +48,10 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.qaevent.service.NceCategoryService;
+import org.openelisglobal.qaevent.service.NceTypeService;
+import org.openelisglobal.qaevent.valueholder.NceCategory;
+import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -60,6 +64,8 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.testmethod.valueholder.TestMethod;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -84,9 +90,12 @@ public class MicrobiologyUatScenarioService {
     private static final String WORKLIST_SCENARIO = "WORKLIST";
     private static final String REFERENCE_ADMIN_SCENARIO = "M3";
     private static final String WHONET_EXPORT_SCENARIO = "M4";
+    private static final String CLASSIFICATION_SCENARIO = "R1";
     private static final String UAT_METHOD_NAME = "UAT micro culture";
     private static final String UAT_METHOD_DESCRIPTION = "UAT microbiology culture method";
     private static final String UAT_TEST_DESCRIPTION = "UAT microbiology culture";
+    private static final String UAT_TB_TEST_DESCRIPTION = "UAT microbiology TB culture";
+    private static final String UAT_NON_CULTURE_TEST_DESCRIPTION = "UAT routine non-culture test";
     private static final String UAT_ANALYTE_NAME = "UAT microbiology culture result";
     private static final String UAT_SAMPLE_TYPE_DESCRIPTION = "UAT micro specimen";
     private static final String UAT_PATIENT_EXTERNAL_ID_PREFIX = "UATMICRO-";
@@ -94,6 +103,8 @@ public class MicrobiologyUatScenarioService {
     private static final String UAT_PATIENT_BIRTH_DATE = "1990-03-13 00:00:00";
     private static final String UAT_MEDIA_NAME = "UAT microbiology blood agar";
     private static final String UAT_AST_CARD_NAME = "UAT microbiology AST card";
+    private static final String UAT_NCE_CATEGORY_NAME = "Pre-analytical";
+    private static final String UAT_NCE_TYPE_NAME = "Specimen lost";
 
     private final MethodService methodService;
     private final SampleService sampleService;
@@ -110,6 +121,7 @@ public class MicrobiologyUatScenarioService {
     private final TestAnalyteService testAnalyteService;
     private final AnalysisService analysisService;
     private final TestResultService testResultService;
+    private final TestMethodService testMethodService;
     private final IStatusService statusService;
     private final MicrobiologyConfigurationService configurationService;
     private final MicroCaseService caseService;
@@ -121,6 +133,8 @@ public class MicrobiologyUatScenarioService {
     private final MicrobiologyReferenceAdminService referenceAdminService;
     private final MicroBreakpointAdminService breakpointAdminService;
     private final MicroBreakpointImportService breakpointImportService;
+    private final NceCategoryService nceCategoryService;
+    private final NceTypeService nceTypeService;
 
     public MicrobiologyUatScenarioService(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, PatientService patientService, PersonService personService,
@@ -128,12 +142,13 @@ public class MicrobiologyUatScenarioService {
             TypeOfSampleTestService typeOfSampleTestService, TestService testService,
             TestSectionService testSectionService, LocalizationService localizationService,
             AnalyteService analyteService, TestAnalyteService testAnalyteService, AnalysisService analysisService,
-            TestResultService testResultService, IStatusService statusService,
+            TestResultService testResultService, TestMethodService testMethodService, IStatusService statusService,
             MicrobiologyConfigurationService configurationService, MicroCaseService caseService,
             MicroOrderRoutingService orderRoutingService, InventoryItemService inventoryItemService,
             InventoryLotService inventoryLotService, InventoryManagementService inventoryManagementService,
             TestReagentLinkService testReagentLinkService, MicrobiologyReferenceAdminService referenceAdminService,
-            MicroBreakpointAdminService breakpointAdminService, MicroBreakpointImportService breakpointImportService) {
+            MicroBreakpointAdminService breakpointAdminService, MicroBreakpointImportService breakpointImportService,
+            NceCategoryService nceCategoryService, NceTypeService nceTypeService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -149,6 +164,7 @@ public class MicrobiologyUatScenarioService {
         this.testAnalyteService = testAnalyteService;
         this.analysisService = analysisService;
         this.testResultService = testResultService;
+        this.testMethodService = testMethodService;
         this.statusService = statusService;
         this.configurationService = configurationService;
         this.caseService = caseService;
@@ -160,6 +176,8 @@ public class MicrobiologyUatScenarioService {
         this.referenceAdminService = referenceAdminService;
         this.breakpointAdminService = breakpointAdminService;
         this.breakpointImportService = breakpointImportService;
+        this.nceCategoryService = nceCategoryService;
+        this.nceTypeService = nceTypeService;
     }
 
     @Transactional
@@ -195,15 +213,30 @@ public class MicrobiologyUatScenarioService {
         ensureSampleType(sampleItem, performedBy);
         Method method = getOrCreateUatMethod(performedBy);
         Test test = getOrCreateUatTest(method, performedBy);
+        Test tbTest = null;
+        Test nonCultureTest = null;
+        if (CLASSIFICATION_SCENARIO.equals(scenario)) {
+            tbTest = getOrCreateUatTest(UAT_TB_TEST_DESCRIPTION, MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), true,
+                    method, performedBy);
+            nonCultureTest = getOrCreateUatTest(UAT_NON_CULTURE_TEST_DESCRIPTION, null, false, method, performedBy);
+            ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), tbTest, performedBy);
+            ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), nonCultureTest, performedBy);
+        }
         ensureInventoryTraceability(test, performedBy);
+        ensureSpecimenLostVocabulary(performedBy);
         ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), test, performedBy);
         ensureRemarkTestResult(test, performedBy);
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
         configureCultureSetup(method, reportableTestAnalyte);
         Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
-        MicroCase microCase = routeCultureAnalysis(sampleItem, analysis, performedBy);
+        MicroCase routedCase = routeCultureAnalysis(sampleItem, analysis, performedBy);
+        MicroCase microCase = routedCase;
         MicroCase sibling = null;
-        if (WORKLIST_SCENARIO.equals(scenario)) {
+        if (CLASSIFICATION_SCENARIO.equals(scenario)) {
+            microCase = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null,
+                    performedBy);
+            sibling = routedCase;
+        } else if (WORKLIST_SCENARIO.equals(scenario)) {
             sibling = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.MYCOBACTERIOLOGY_TB,
                     method.getId(), performedBy);
         }
@@ -215,18 +248,25 @@ public class MicrobiologyUatScenarioService {
         form.sampleId = sample.getId();
         form.sampleItemId = sampleItem.getId();
         form.patientId = patient.getId();
+        form.patientExternalId = patient.getExternalId();
         form.caseId = microCase.getId();
         form.siblingCaseId = sibling == null ? null : sibling.getId();
         form.analysisId = analysis.getId();
         form.reportableTestAnalyteId = reportableTestAnalyte.getId();
         form.methodId = method.getId();
-        if (referenceAdminData != null) {
-            form.organismId = referenceAdminData.organismId();
-            form.antibioticId = referenceAdminData.antibioticId();
-            form.astPanelId = referenceAdminData.astPanelId();
-            form.activeBreakpointStandardId = referenceAdminData.activeStandardId();
-            form.loadedBreakpointStandardId = referenceAdminData.loadedStandardId();
-        }
+        form.sampleTypeId = sampleItem.getTypeOfSample().getId();
+        form.cultureTestId = test.getId();
+        form.tbCultureTestId = tbTest == null ? null : tbTest.getId();
+        form.nonCultureTestId = nonCultureTest == null ? null : nonCultureTest.getId();
+        form.organismId = referenceAdminData == null ? astReferenceData.organism().getId()
+                : referenceAdminData.organismId();
+        form.antibioticId = referenceAdminData == null ? astReferenceData.antibiotic().getId()
+                : referenceAdminData.antibioticId();
+        form.astPanelId = referenceAdminData == null ? astReferenceData.panel().getId()
+                : referenceAdminData.astPanelId();
+        form.activeBreakpointStandardId = referenceAdminData == null ? astReferenceData.standard().getId()
+                : referenceAdminData.activeStandardId();
+        form.loadedBreakpointStandardId = referenceAdminData == null ? null : referenceAdminData.loadedStandardId();
         form.unmappedOrganismId = unmappedOrganism == null ? null : unmappedOrganism.getId();
         return form;
     }
@@ -246,6 +286,45 @@ public class MicrobiologyUatScenarioService {
         ensureLot(media, "UAT-MICRO-MEDIA-LATER", 90, 20.0, performedBy);
         ensureLot(astCard, "UAT-MICRO-CARD-FEFO", 45, 10.0, performedBy);
         ensureLot(astCard, "UAT-MICRO-CARD-LATER", 120, 10.0, performedBy);
+    }
+
+    private void ensureSpecimenLostVocabulary(String performedBy) {
+        NceCategory category = nceCategoryService.getAllNceCategories().stream()
+                .filter(candidate -> normalizedName(candidate.getName()).equals(normalizedName(UAT_NCE_CATEGORY_NAME)))
+                .findFirst().orElse(null);
+        if (category == null) {
+            category = new NceCategory();
+            category.setName(UAT_NCE_CATEGORY_NAME);
+            category.setDisplayKey("nce.category.preanalytical");
+            category.setActive(true);
+            category.setSysUserId(performedBy);
+            nceCategoryService.insert(category);
+        } else if (!Boolean.TRUE.equals(category.getActive())) {
+            category.setActive(true);
+            category.setSysUserId(performedBy);
+            nceCategoryService.update(category);
+        }
+
+        NceType type = nceTypeService.getAllNceTypes().stream()
+                .filter(candidate -> normalizedName(candidate.getName()).equals(normalizedName(UAT_NCE_TYPE_NAME)))
+                .findFirst().orElse(null);
+        if (type == null) {
+            type = new NceType();
+            type.setName(UAT_NCE_TYPE_NAME);
+            type.setDisplayKey("microbiology.uat.nce.specimenLost");
+            type.setCategoryId(category.getId());
+            type.setActive(true);
+            type.setSysUserId(performedBy);
+            nceTypeService.insert(type);
+        } else if (!Boolean.TRUE.equals(type.getActive())) {
+            type.setActive(true);
+            type.setSysUserId(performedBy);
+            nceTypeService.update(type);
+        }
+    }
+
+    private String normalizedName(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
     private InventoryItem getOrCreateInventoryItem(String name, ItemType itemType, String units, String performedBy) {
@@ -424,12 +503,14 @@ public class MicrobiologyUatScenarioService {
                 "GRAM_NEGATIVE");
         configurationService.getOrCreatePanelAntibiotic(panel.getId(), ciprofloxacin.getId(), 1);
         configurationService.getOrCreatePanelAntibiotic(panel.getId(), gentamicin.getId(), 2);
+        MicroOrganism organism = configurationService.getOrCreateOrganism("Escherichia coli (UAT)", "ECOUAT",
+                panel.getId());
 
         MicroBreakpointStandard standard = configurationService.getOrCreateBreakpointStandard("CLSI", "2026",
                 new Date(System.currentTimeMillis()));
         configurationService.getOrCreateBreakpointRule(micBreakpointRule(standard.getId(), ciprofloxacin.getId()));
         configurationService.getOrCreateBreakpointRule(micBreakpointRule(standard.getId(), gentamicin.getId()));
-        return new AstReferenceData(panel, standard);
+        return new AstReferenceData(organism, ciprofloxacin, panel, standard);
     }
 
     private ReferenceAdminData createReferenceAdminData(AstReferenceData astReferenceData, String performedBy) {
@@ -586,26 +667,31 @@ public class MicrobiologyUatScenarioService {
     }
 
     private Test getOrCreateUatTest(Method method, String performedBy) {
-        Test test = testService.getTestByDescription(UAT_TEST_DESCRIPTION);
+        return getOrCreateUatTest(UAT_TEST_DESCRIPTION, BACTERIOLOGY, true, method, performedBy);
+    }
+
+    private Test getOrCreateUatTest(String description, String workflowType, boolean antimicrobialResistance,
+            Method method, String performedBy) {
+        Test test = testService.getTestByDescription(description);
         if (test == null) {
             test = new Test();
-            test.setName(UAT_TEST_DESCRIPTION);
-            test.setDescription(UAT_TEST_DESCRIPTION);
-            test.setGuid(UUID.nameUUIDFromBytes(UAT_TEST_DESCRIPTION.getBytes(StandardCharsets.UTF_8)).toString());
+            test.setName(description);
+            test.setDescription(description);
+            test.setGuid(UUID.nameUUIDFromBytes(description.getBytes(StandardCharsets.UTF_8)).toString());
             test.setDomain("CLINICAL");
             test.setOrderable(true);
-            test.setAntimicrobialResistance(true);
+            test.setAntimicrobialResistance(antimicrobialResistance);
         }
         if (test.getLocalizedTestName() == null) {
-            test.setLocalizedTestName(createUatTestLocalization("UAT microbiology test name", performedBy));
+            test.setLocalizedTestName(createUatTestLocalization(description + " test name", description, performedBy));
         }
         if (test.getLocalizedReportingName() == null) {
             test.setLocalizedReportingName(
-                    createUatTestLocalization("UAT microbiology reporting test name", performedBy));
+                    createUatTestLocalization(description + " reporting test name", description, performedBy));
         }
         test.setMethod(method);
         test.setTestSection(getUatReportTestSection());
-        test.setCultureWorkflowType(BACTERIOLOGY);
+        test.setCultureWorkflowType(workflowType);
         test.setIsActive(IActionConstants.YES);
         test.setIsReportable(IActionConstants.YES);
         test.setSysUserId(performedBy);
@@ -614,19 +700,34 @@ public class MicrobiologyUatScenarioService {
         } else {
             testService.update(test);
         }
+        ensureTestMethodLink(test, method, performedBy);
         return test;
     }
 
-    private Localization createUatTestLocalization(String description, String performedBy) {
+    private void ensureTestMethodLink(Test test, Method method, String performedBy) {
+        if (testMethodService.testMethodLinkExists(test.getId(), method.getId())) {
+            return;
+        }
+        TestMethod link = new TestMethod();
+        link.setTestId(test.getId());
+        link.setMethodId(method.getId());
+        link.setIsDefaultMethod(true);
+        link.setEffectiveDate(new Date(System.currentTimeMillis()));
+        link.setIsActive(IActionConstants.YES);
+        link.setSysUserId(performedBy);
+        testMethodService.linkMethod(link);
+    }
+
+    private Localization createUatTestLocalization(String description, String displayName, String performedBy) {
         Localization localization = new Localization();
         localization.setDescription(description);
         localization.setSysUserId(performedBy);
         List<Locale> activeLocales = localizationService.getAllActiveLocales();
         if (activeLocales.isEmpty()) {
-            localization.setEnglish(UAT_TEST_DESCRIPTION);
+            localization.setEnglish(displayName);
         } else {
             for (Locale locale : activeLocales) {
-                localization.setLocalizedValue(locale.getLanguage(), UAT_TEST_DESCRIPTION);
+                localization.setLocalizedValue(locale.getLanguage(), displayName);
             }
         }
         localizationService.insert(localization);
@@ -700,10 +801,17 @@ public class MicrobiologyUatScenarioService {
     }
 
     private void configureCultureSetup(Method method, TestAnalyte reportableTestAnalyte) {
+        configureCultureSetup(method, reportableTestAnalyte, MicroWorkflowType.BACTERIOLOGY,
+                "UAT bacteriology culture");
+        configureCultureSetup(method, reportableTestAnalyte, MicroWorkflowType.MYCOBACTERIOLOGY_TB, "UAT TB culture");
+    }
+
+    private void configureCultureSetup(Method method, TestAnalyte reportableTestAnalyte, MicroWorkflowType workflowType,
+            String name) {
         MicroCultureSetup setup = new MicroCultureSetup();
         setup.setMethodId(method.getId());
-        setup.setName("UAT bacteriology culture");
-        setup.setWorkflowType(BACTERIOLOGY);
+        setup.setName(name);
+        setup.setWorkflowType(workflowType.name());
         setup.setMediaDefaults("Blood agar");
         setup.setIncubationDefaults("18-24h");
         setup.setAtmosphereDefaults("Ambient");
@@ -763,8 +871,9 @@ public class MicrobiologyUatScenarioService {
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
         if (!"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
-                && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)) {
-            throw new IllegalArgumentException("scenario must be CASE, MVP, WORKLIST, M3, or M4");
+                && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)
+                && !CLASSIFICATION_SCENARIO.equals(normalized)) {
+            throw new IllegalArgumentException("scenario must be CASE, MVP, WORKLIST, M3, M4, or R1");
         }
         return normalized;
     }
@@ -781,7 +890,8 @@ public class MicrobiologyUatScenarioService {
         return uuid.toString().replace("-", "").substring(0, 10).toUpperCase(Locale.ROOT);
     }
 
-    private record AstReferenceData(MicroAstPanel panel, MicroBreakpointStandard standard) {
+    private record AstReferenceData(MicroOrganism organism, MicroAntibiotic antibiotic, MicroAstPanel panel,
+            MicroBreakpointStandard standard) {
     }
 
     private record ReferenceAdminData(String organismId, String antibioticId, String astPanelId,

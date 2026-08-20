@@ -4,17 +4,20 @@
 
 - Flow: `microbiology-case-workbench`
 - Route: `/Microbiology/cases/:caseId`
-- Setup: seed one bacteriology `micro_case` with a `sample_item` and initial
-  `CASE_CREATED` activity through test-only Postgres setup.
+- Setup: provision one bacteriology case and its reference prerequisites through
+  the property-gated UAT scenario service.
 - User actions:
   - open the case workbench,
   - record setup activity with next stage `SETUP_RECORDED`,
-  - create isolate `ISO-1` with preliminary organism text.
+  - create isolate `ISO-1` from Gram stain and colony morphology,
+  - confirm AST remains unavailable,
+  - identify the organism with method, confidence, and significance.
 - Expected outcomes:
   - case header renders sample item, workflow, and current stage,
   - visible stage changes to `SETUP_RECORDED`,
   - timeline shows the setup note,
-  - isolate list shows `ISO-1: Escherichia coli`,
+  - isolate list first shows pending identification and then `Escherichia coli`,
+  - AST becomes available only after identification,
   - timeline shows the `ISOLATE_CREATED` activity after case refresh.
 - Project: `core-app`
 - Evidence command:
@@ -28,9 +31,9 @@
 
 - Flow: `ogc-782-microbiology-mvp`
 - Route: `/Microbiology/cases/:caseId`
-- Setup: seed one bacteriology `micro_case` with a `sample_item`, AST panel,
-  antibiotic, CLSI 2026 standard, and one MIC breakpoint rule through
-  test-only Postgres setup.
+- Setup: provision one bacteriology case, AST panel, antibiotic, CLSI 2026
+  standard, and one MIC breakpoint rule through the property-gated UAT scenario
+  service.
 - User actions:
   - open the case workbench,
   - record setup activity,
@@ -66,8 +69,9 @@
 
 - Flow: `microbiology-worklist-critical`
 - Routes: `/Microbiology/cases/:caseId`, `/Microbiology/worklist`
-- Setup: seed one bacteriology case with a sibling TB workflow on the same
-  sample item and AST reference prerequisites through test-only Postgres setup.
+- Setup: provision one bacteriology case with a sibling TB workflow on the same
+  sample item and AST reference prerequisites through the property-gated UAT
+  scenario service.
 - User actions:
   - open the bacteriology case,
   - log a critical communication with a free-text recipient and follow-up flag,
@@ -164,3 +168,32 @@
 - Deployment caveat: the checklist is live now, but AMR must be redeployed from
   the feature branch before the new navigation and canonical-route steps can
   pass.
+
+## R1 Case Nonconformance And Lost Specimen
+
+- Flow: `microbiology-case-workbench`
+- Route: `/Microbiology/cases/:caseId`
+- Setup: provision two independent cases through the property-gated UAT scenario
+  service. One is retained for flag-only NCE evidence; the other is disposable
+  because Mark Lost intentionally rejects its physical specimen and open work.
+- User actions:
+  - open Report NCE from the case header and verify canonical
+    `section=nonconformance&action=report-nce` state;
+  - choose configured category/reporting unit and severity, enter a description,
+    retain Flag only, submit, and verify the automatic timeline event;
+  - open a separate case, choose Mark Lost, verify configured category/type and
+    reject disposition are preset, submit, and verify the terminal case state and
+    automatic timeline event.
+- Expected outcomes:
+  - no specimen identity or actor is entered by the user;
+  - NCE reference choices come from active configuration rather than fixed IDs;
+  - missing lost-specimen type is a named blocker;
+  - the browser observes the saved timeline and terminal state without backend
+    inspection.
+- Project: `core-app`
+- Evidence commands:
+  `cd frontend && npx playwright test --project=core-app playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --list`
+  `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app`
+- Current result: project registration, targeted ESLint, selector-policy scan,
+  and 21-file/78-test frontend suite passed. Exact-SHA browser runtime is pending
+  because no local OpenELIS HTTPS stack is running.

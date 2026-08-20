@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}/whonet-readiness")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroWhonetReadinessRestController extends BaseRestController {
 
     private final MicroWhonetReadinessService whonetReadinessService;
@@ -21,7 +22,6 @@ public class MicroWhonetReadinessRestController extends BaseRestController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroWhonetReadinessForm> getReadiness(@PathVariable String caseId) {
         return ResponseEntity.ok(whonetReadinessService.getReadiness(caseId));
     }

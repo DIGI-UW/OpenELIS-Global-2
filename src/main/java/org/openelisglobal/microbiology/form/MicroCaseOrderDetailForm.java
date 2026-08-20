@@ -6,6 +6,6 @@ public class MicroCaseOrderDetailForm {
     public String patientOrigin;
     public Integer numberOfSets;
     public String clinicalHistory;
-    public String antibioticExposure;
-    public String criticalNotificationPreference;
+    public Boolean antibioticExposure;
+    public Boolean criticalNotificationPreference;
 }

@@ -1,7 +1,9 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
+import { vi } from "vitest";
 import OrderDetailPanel from "../OrderDetailPanel";
 import messages from "../../../languages/en.json";
 
@@ -12,62 +14,88 @@ const renderPanel = (props) =>
     </IntlProvider>,
   );
 
+const patientOrigins = [
+  { code: "INPATIENT", label: "Inpatient", whonetCode: "INP" },
+  { code: "EMERGENCY", label: "Emergency", whonetCode: "EME" },
+];
+
 describe("OrderDetailPanel", () => {
   it("saves captured order detail fields", async () => {
+    const user = userEvent.setup();
     const service = {
+      getPatientOrigins: vi.fn().mockResolvedValue({
+        defaultCode: null,
+        options: patientOrigins,
+      }),
       saveOrderDetail: vi.fn().mockResolvedValue({
         orderDetail: {
-          patientOrigin: "Emergency department",
+          cultureMethodId: "",
+          patientOrigin: "EMERGENCY",
           numberOfSets: 2,
           clinicalHistory: "Fever, suspected sepsis",
-          antibioticExposure: "",
-          criticalNotificationPreference: "",
+          antibioticExposure: true,
+          criticalNotificationPreference: true,
         },
       }),
     };
 
     renderPanel({ service });
 
-    fireEvent.change(screen.getByLabelText("Patient origin"), {
-      target: { value: "Emergency department" },
-    });
-    fireEvent.change(screen.getByLabelText("Number of sets"), {
-      target: { value: "2" },
-    });
-    fireEvent.change(screen.getByLabelText("Clinical history"), {
-      target: { value: "Fever, suspected sepsis" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save order detail" }));
+    await screen.findByRole("option", { name: "Emergency" });
+    await user.selectOptions(
+      screen.getByLabelText("Patient origin"),
+      "EMERGENCY",
+    );
+    await user.type(screen.getByLabelText("Number of sets"), "2");
+    await user.type(
+      screen.getByLabelText("Clinical history"),
+      "Fever, suspected sepsis",
+    );
+    await user.click(
+      screen.getByLabelText(/Patient has recent antibiotic exposure/i),
+    );
+    await user.click(screen.getByLabelText(/Notify clinician immediately/i));
+    await user.click(screen.getByRole("button", { name: "Save order detail" }));
 
     await waitFor(() =>
       expect(service.saveOrderDetail).toHaveBeenCalledWith("case-1", {
-        patientOrigin: "Emergency department",
+        cultureMethodId: "",
+        patientOrigin: "EMERGENCY",
         numberOfSets: 2,
         clinicalHistory: "Fever, suspected sepsis",
-        antibioticExposure: "",
-        criticalNotificationPreference: "",
+        antibioticExposure: true,
+        criticalNotificationPreference: true,
       }),
     );
   });
 
-  it("prefills fields from an existing captured order detail", () => {
+  it("prefills fields from an existing captured order detail", async () => {
     renderPanel({
       orderDetail: {
-        patientOrigin: "Inpatient ward 3",
+        cultureMethodId: "method-1",
+        patientOrigin: "INPATIENT",
         numberOfSets: 3,
         clinicalHistory: "",
-        antibioticExposure: "",
-        criticalNotificationPreference: "Call attending immediately",
+        antibioticExposure: true,
+        criticalNotificationPreference: true,
       },
-      service: { saveOrderDetail: vi.fn() },
+      service: {
+        getPatientOrigins: vi.fn().mockResolvedValue({
+          defaultCode: null,
+          options: patientOrigins,
+        }),
+        saveOrderDetail: vi.fn(),
+      },
     });
 
-    expect(screen.getByLabelText("Patient origin")).toHaveValue(
-      "Inpatient ward 3",
-    );
+    await screen.findByRole("option", { name: "Inpatient" });
+    expect(screen.getByLabelText("Patient origin")).toHaveValue("INPATIENT");
     expect(screen.getByLabelText("Number of sets")).toHaveValue(3);
     expect(
-      screen.getByLabelText("Critical notification preference"),
-    ).toHaveValue("Call attending immediately");
+      screen.getByLabelText(/Patient has recent antibiotic exposure/i),
+    ).toBeChecked();
+    expect(
+      screen.getByLabelText(/Notify clinician immediately/i),
+    ).toBeChecked();
   });
 });

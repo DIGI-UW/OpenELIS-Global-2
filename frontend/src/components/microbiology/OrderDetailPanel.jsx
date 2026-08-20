@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@carbon/react";
 import { useIntl } from "react-intl";
 import MicrobiologyService from "./MicrobiologyService";
@@ -18,6 +18,22 @@ const OrderDetailPanel = ({
     ...orderDetail,
   });
   const [saving, setSaving] = useState(false);
+  const [patientOrigins, setPatientOrigins] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!service.getPatientOrigins) {
+      return undefined;
+    }
+    service.getPatientOrigins().then((response) => {
+      if (active) {
+        setPatientOrigins(response?.options || []);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [service]);
 
   const setField = (name) => (value) =>
     setFields((current) => ({ ...current, [name]: value }));
@@ -63,6 +79,8 @@ const OrderDetailPanel = ({
         <MicrobiologyOrderDetailFields
           fields={fields}
           onChange={(name, value) => setField(name)(value)}
+          showCultureMethod={false}
+          patientOrigins={patientOrigins}
         />
         <div>
           <Button onClick={save} disabled={saving}>

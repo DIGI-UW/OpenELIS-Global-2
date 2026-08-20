@@ -63,7 +63,7 @@ const PatientSearchSection = ({
   const [pageSize, setPageSize] = useState(100);
 
   // Selected patient
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [locallySelectedPatient, setSelectedPatient] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -72,13 +72,9 @@ const PatientSearchSection = ({
     };
   }, []);
 
-  // Update selectedPatient when orderData.patientProperties changes (e.g., from barcode scan)
-  useEffect(() => {
-    if (orderData?.patientProperties?.patientPK) {
-      setSelectedPatient(orderData.patientProperties);
-      setActiveTab("search"); // Stay on search but show selected
-    }
-  }, [orderData?.patientProperties?.patientPK]);
+  const selectedPatient = orderData?.patientProperties?.patientPK
+    ? orderData.patientProperties
+    : locallySelectedPatient;
 
   // Handle search field changes
   const handleFieldChange = (field, value) => {
@@ -286,7 +282,10 @@ const PatientSearchSection = ({
   ];
 
   return (
-    <Tile className="order-section patient-search-section">
+    <Tile
+      className="order-section patient-search-section"
+      data-testid="patient-search-section"
+    >
       <h4 className="section-title">
         <FormattedMessage id="banner.menu.patient" defaultMessage="Patient" />
       </h4>
@@ -526,7 +525,7 @@ const PatientSearchSection = ({
                   getHeaderProps,
                   getRowProps,
                 }) => (
-                  <Table {...getTableProps()}>
+                  <Table {...getTableProps()} tabIndex={0}>
                     <TableHead>
                       <TableRow>
                         {headers.map((header) => (
@@ -549,7 +548,11 @@ const PatientSearchSection = ({
                           patient?.mergedIntoNationalId ||
                           patient?.mergedIntoPatientId;
                         return (
-                          <TableRow key={row.id} {...getRowProps({ row })}>
+                          <TableRow
+                            key={row.id}
+                            {...getRowProps({ row })}
+                            data-testid={`patient-search-result-${row.id}`}
+                          >
                             {row.cells.map((cell) => {
                               if (cell.info.header === "actions") {
                                 return (
@@ -612,6 +615,7 @@ const PatientSearchSection = ({
               </DataTable>
               <Pagination
                 totalItems={totalItems}
+                page={currentPage}
                 backwardText={intl.formatMessage({
                   id: "pagination.previous",
                   defaultMessage: "Previous page",

@@ -53,6 +53,42 @@ const expectActiveReference = async (
 };
 
 test.describe("OGC-782 M3 microbiology reference administration", () => {
+  test("lists deployment Patient Origins without Phase 1B mutation controls", async ({
+    page,
+  }) => {
+    await page.goto(
+      `${ADMIN_BASE}/patient-origins?${canonicalQuery({ q: "" })}`,
+      { waitUntil: "domcontentloaded" },
+    );
+
+    await expect(
+      page.getByRole("heading", { name: "Microbiology reference data" }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    const table = page.getByRole("table");
+    await expect(table).toContainText("Inpatient");
+    await expect(table).toContainText("Outpatient");
+    await expect(table).toContainText("ICU");
+    await expect(table).toContainText("Emergency");
+    await expect(table).toContainText("Long-term Care");
+    await expect(table).toContainText("Unknown");
+    await expect(table).toContainText("INP");
+    await expect(table).toContainText("LTC");
+    await expect(table).toContainText("UNK");
+    await expect(
+      page.getByRole("button", { name: /Add patient origin/i }),
+    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Options" })).toHaveCount(0);
+
+    await page.getByPlaceholder("Search reference data").fill("Long-term Care");
+    await expectQuery(page, "q", "Long-term Care");
+    await expect(table.getByRole("row")).toHaveCount(2);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(table).toContainText("Long-term Care", {
+      timeout: LONG_TIMEOUT,
+    });
+    await expect(table).not.toContainText("Inpatient");
+  });
+
   test("edits and safely deactivates service-created vocabulary", async ({
     page,
   }) => {

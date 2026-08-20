@@ -16,4 +16,7 @@ public interface MicroOrderRoutingService {
      */
     List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses, String performedBy,
             MicroCaseOrderDetailRequestForm orderDetail);
+
+    List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses, String performedBy,
+            MicroCaseOrderDetailRequestForm orderDetail, boolean microbiologyProgramSelected);
 }

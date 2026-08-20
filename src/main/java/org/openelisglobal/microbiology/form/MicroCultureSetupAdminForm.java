@@ -8,6 +8,9 @@ public class MicroCultureSetupAdminForm {
     public String workflowType;
     public String mediaDefaults;
     public String incubationDefaults;
+    public Integer incubationHours;
+    public Integer subcultureAtHours;
+    public Integer maxIncubationDays;
     public String atmosphereDefaults;
     public String reportableTestAnalyteId;
     public boolean active = true;

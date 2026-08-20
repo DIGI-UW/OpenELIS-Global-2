@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCriticalCommunicationRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCriticalCommunicationService communicationService;
@@ -29,7 +30,6 @@ public class MicroCriticalCommunicationRestController extends MicrobiologyRestCo
     }
 
     @GetMapping("/cases/{caseId}/critical-communications")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroCriticalCommunicationForm>> getCommunications(@PathVariable String caseId) {
         List<MicroCriticalCommunicationForm> forms = new ArrayList<>();
         for (MicroCriticalCommunication communication : communicationService.getByCaseId(caseId)) {
@@ -39,7 +39,6 @@ public class MicroCriticalCommunicationRestController extends MicrobiologyRestCo
     }
 
     @PostMapping("/cases/{caseId}/critical-communications")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCriticalCommunicationForm> logCommunication(@PathVariable String caseId,
             @RequestBody MicroCriticalCommunicationRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(communicationService.logCommunication(caseId, targetType(request.targetType),
@@ -48,7 +47,6 @@ public class MicroCriticalCommunicationRestController extends MicrobiologyRestCo
     }
 
     @PutMapping("/critical-communications/{communicationId}/acknowledge")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCriticalCommunicationForm> acknowledge(@PathVariable String communicationId,
             @RequestBody MicroCriticalCommunicationRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity
@@ -56,7 +54,6 @@ public class MicroCriticalCommunicationRestController extends MicrobiologyRestCo
     }
 
     @PutMapping("/critical-communications/{communicationId}/close")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCriticalCommunicationForm> close(@PathVariable String communicationId,
             @RequestBody MicroCriticalCommunicationRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(

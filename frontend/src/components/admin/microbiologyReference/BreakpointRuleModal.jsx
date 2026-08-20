@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Checkbox,
   ComposedModal,
@@ -31,7 +31,7 @@ const EMPTY_RULE = {
 const numericOrNull = (value) =>
   value === "" || value === null || value === undefined ? null : Number(value);
 
-const BreakpointRuleModal = ({
+const BreakpointRuleForm = ({
   value,
   organisms,
   organismGroups,
@@ -42,11 +42,7 @@ const BreakpointRuleModal = ({
   onSave,
 }) => {
   const intl = useIntl();
-  const [draft, setDraft] = useState(EMPTY_RULE);
-
-  useEffect(() => {
-    setDraft(value ? { ...EMPTY_RULE, ...value } : EMPTY_RULE);
-  }, [value]);
+  const [draft, setDraft] = useState(() => ({ ...EMPTY_RULE, ...value }));
 
   const hasContext = Boolean(draft.organismId) !== Boolean(draft.organismGroup);
   const hasThreshold = useMemo(
@@ -79,7 +75,7 @@ const BreakpointRuleModal = ({
     });
 
   return (
-    <ComposedModal open={Boolean(value)} size="lg" onClose={onClose}>
+    <>
       <ModalHeader
         title={intl.formatMessage({
           id: value?.id
@@ -254,8 +250,21 @@ const BreakpointRuleModal = ({
         onRequestSubmit={save}
         onRequestClose={onClose}
       />
-    </ComposedModal>
+    </>
   );
 };
+
+const BreakpointRuleModal = ({ value, onClose, ...formProps }) => (
+  <ComposedModal open={Boolean(value)} size="lg" onClose={onClose}>
+    {value ? (
+      <BreakpointRuleForm
+        key={value.id || "new"}
+        value={value}
+        onClose={onClose}
+        {...formProps}
+      />
+    ) : null}
+  </ComposedModal>
+);
 
 export default BreakpointRuleModal;

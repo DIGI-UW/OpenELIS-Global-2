@@ -15,6 +15,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
+import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
+import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -25,12 +27,16 @@ public class SamplePatientEntryServiceImplTest {
     @Mock
     private BarcodeInfoService barcodeInfoService;
 
+    @Mock
+    private MicroCaseOrderDetailService microCaseOrderDetailService;
+
     private SamplePatientEntryServiceImpl service;
 
     @Before
     public void setUp() {
         service = new SamplePatientEntryServiceImpl();
         ReflectionTestUtils.setField(service, "barcodeInfoService", barcodeInfoService);
+        ReflectionTestUtils.setField(service, "microCaseOrderDetailService", microCaseOrderDetailService);
     }
 
     @Test
@@ -75,5 +81,27 @@ public class SamplePatientEntryServiceImplTest {
 
         verify(barcodeInfoService, never()).saveBarcodeInfoForSampleAndSampleItems(isNull(), anyInt(),
                 org.mockito.ArgumentMatchers.anyMap());
+    }
+
+    @Test
+    public void persistMicrobiologyOrderDraftUsesTheAuthenticatedActorAndSavedSample() {
+        Sample sample = new Sample();
+        sample.setId("99");
+        MicroCaseOrderDetailRequestForm detail = new MicroCaseOrderDetailRequestForm();
+        detail.clinicalHistory = "Fever";
+
+        service.persistMicrobiologyOrderDraft(sample, detail, "7");
+
+        verify(microCaseOrderDetailService).saveOrderDraft(sample, detail, "7");
+    }
+
+    @Test
+    public void persistMicrobiologyOrderDraftSkipsAbsentDetail() {
+        Sample sample = new Sample();
+        sample.setId("99");
+
+        service.persistMicrobiologyOrderDraft(sample, null, "7");
+
+        verify(microCaseOrderDetailService, never()).saveOrderDraft(eq(sample), isNull(), eq("7"));
     }
 }

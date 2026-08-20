@@ -9,9 +9,14 @@ public class MicroAstRunRequestForm {
 
     public String isolateId;
     public String panelId;
+    public String panelAdjustmentReason;
     public String breakpointStandardId;
     public String attemptType;
     public String reason;
-    public String method;
+    public String technique;
+    public boolean awaitAnalyzerResults;
+    public String analyzerInstrumentId;
+    public String analyzerCardId;
+    public List<String> orderedAntibioticIds;
     public List<MicroLotSelectionRequestForm> lotSelections = new ArrayList<>();
 }

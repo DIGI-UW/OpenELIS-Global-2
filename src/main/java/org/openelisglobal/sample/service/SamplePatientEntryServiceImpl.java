@@ -135,6 +135,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private OrderLabelRequestService orderLabelRequestService;
     @Autowired(required = false)
     private MicroOrderRoutingService microOrderRoutingService;
+    @Autowired(required = false)
+    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
 
     @Transactional
     @Override
@@ -324,6 +326,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             sampleService.insertDataWithAccessionNumber(updateData.getSample());
         }
 
+        persistMicrobiologyOrderDraft(updateData.getSample(), microbiologyOrderDetail, updateData.getCurrentUserId());
+
         for (SampleAdditionalField field : updateData.getSampleFields()) {
             field.setSample(updateData.getSample());
             sampleService.saveSampleAdditionalField(field);
@@ -437,8 +441,11 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     persistAnalysisNotificationConfigs(analysis, updateData);
                 }
             }
+            boolean microbiologyProgramSelected = updateData.getProgramSample() != null
+                    && updateData.getProgramSample().getProgram() != null
+                    && "MICROBIOLOGY".equalsIgnoreCase(updateData.getProgramSample().getProgram().getCode());
             routeMicrobiologyCases(savedItem, sampleTestCollection, updateData.getCurrentUserId(),
-                    microbiologyOrderDetail);
+                    microbiologyOrderDetail, microbiologyProgramSelected);
         }
 
         persistOrderSpecimenBarcodeCounts(updateData.getSample(), orderLabelQuantity, specimenLabelQuantities);
@@ -513,14 +520,23 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         return quantity != null && quantity > 0 ? quantity : 1;
     }
 
+    void persistMicrobiologyOrderDraft(org.openelisglobal.sample.valueholder.Sample sample,
+            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm orderDetail, String performedBy) {
+        if (microCaseOrderDetailService == null || sample == null || sample.getId() == null || orderDetail == null) {
+            return;
+        }
+        microCaseOrderDetailService.saveOrderDraft(sample, orderDetail, performedBy);
+    }
+
     private void routeMicrobiologyCases(SampleItem sampleItem, SampleTestCollection sampleTestCollection,
             String currentUserId,
-            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm microbiologyOrderDetail) {
+            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm microbiologyOrderDetail,
+            boolean microbiologyProgramSelected) {
         if (microOrderRoutingService == null) {
             return;
         }
         microOrderRoutingService.routeAnalysesForSampleItem(sampleItem, sampleTestCollection.analysises, currentUserId,
-                microbiologyOrderDetail);
+                microbiologyOrderDetail, microbiologyProgramSelected);
     }
 
     /*

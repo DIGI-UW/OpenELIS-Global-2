@@ -1,6 +1,7 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
@@ -47,6 +48,7 @@ describe("ReportReadinessPanel", () => {
   });
 
   it("releases a final report when readiness passes", async () => {
+    const user = userEvent.setup();
     const service = {
       getCaseReadiness: vi.fn().mockResolvedValue({
         finalReleaseReady: true,
@@ -71,7 +73,8 @@ describe("ReportReadinessPanel", () => {
     const button = await screen.findByRole("button", {
       name: "Release final report",
     });
-    fireEvent.click(button);
+    button.focus();
+    await user.keyboard("{Enter}");
 
     await waitFor(() =>
       expect(service.releaseFinalReport).toHaveBeenCalledWith("case-1"),
@@ -80,6 +83,7 @@ describe("ReportReadinessPanel", () => {
   });
 
   it("releases a preliminary report and publishes its projected result targets", async () => {
+    const user = userEvent.setup();
     const onProjectionLoaded = vi.fn();
     const projection = {
       reportableContent: true,
@@ -109,11 +113,11 @@ describe("ReportReadinessPanel", () => {
 
     renderPanel(service, { onProjectionLoaded });
 
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Release preliminary report",
-      }),
-    );
+    const release = await screen.findByRole("button", {
+      name: "Release preliminary report",
+    });
+    release.focus();
+    await user.keyboard("{Enter}");
 
     await waitFor(() =>
       expect(service.releasePreliminaryReport).toHaveBeenCalledWith("case-1"),

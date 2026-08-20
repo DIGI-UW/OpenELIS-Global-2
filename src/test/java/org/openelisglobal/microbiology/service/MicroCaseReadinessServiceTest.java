@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -22,6 +23,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -153,10 +155,41 @@ public class MicroCaseReadinessServiceTest {
         assertTrue(readiness.blockers.contains("CRITICAL_FOLLOW_UP_REQUIRED"));
     }
 
+    @Test
+    public void astProgressIncludesAwaitingSetupAndPendingIdentification() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        MicroIsolate completed = significantIsolate();
+        MicroIsolate awaitingSetup = significantIsolate();
+        awaitingSetup.setId("iso-2");
+        MicroIsolate pendingIdentification = new MicroIsolate();
+        pendingIdentification.setId("iso-3");
+        pendingIdentification.setSignificance(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
+        MicroAstRun reviewed = reviewedRun(true);
+        MicroAstRun invalidated = new MicroAstRun();
+        invalidated.setStatus(MicroAstRunStatus.INVALIDATED.name());
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(completed, awaitingSetup, pendingIdentification));
+        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(reviewed, invalidated));
+        when(astRunDAO.getByIsolateId("iso-2")).thenReturn(List.of());
+        when(astRunDAO.getByIsolateId("iso-3")).thenReturn(List.of());
+
+        MicroCaseReadinessForm readiness = service.getReadiness("case-1");
+
+        assertEquals(1, readiness.astRunsComplete);
+        assertEquals(1, readiness.astRunsTotal);
+        assertEquals(1, readiness.significantIsolatesAwaitingAstSetup);
+        assertEquals(1, readiness.isolatesPendingIdentification);
+        assertTrue(readiness.blockers.contains("ISOLATE_IDENTIFICATION_REQUIRED"));
+    }
+
     private MicroIsolate significantIsolate() {
         MicroIsolate isolate = new MicroIsolate();
         isolate.setId("iso-1");
         isolate.setSignificance(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
+        isolate.setOrganismId("organism-1");
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.CONFIRMED.name());
         return isolate;
     }
 

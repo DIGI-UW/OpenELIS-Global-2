@@ -40,6 +40,21 @@ public class MicroAstReading extends BaseObject<String> {
     @Column(name = "breakpoint_rule_id", length = 36)
     private String breakpointRuleId;
 
+    @Column(name = "source", nullable = false, length = 40)
+    private String source = "MANUAL_ENTRY";
+
+    @Column(name = "matched_by", length = 40)
+    private String matchedBy;
+
+    @Column(name = "units", length = 40)
+    private String units;
+
+    @Column(name = "instrument_interpretation", length = 40)
+    private String instrumentInterpretation;
+
+    @Column(name = "analyzer_result_reference", length = 100)
+    private String analyzerResultReference;
+
     @Column(name = "override_interpretation", length = 40)
     private String overrideInterpretation;
 
@@ -116,6 +131,46 @@ public class MicroAstReading extends BaseObject<String> {
 
     public void setBreakpointRuleId(String breakpointRuleId) {
         this.breakpointRuleId = breakpointRuleId;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getMatchedBy() {
+        return matchedBy;
+    }
+
+    public void setMatchedBy(String matchedBy) {
+        this.matchedBy = matchedBy;
+    }
+
+    public String getUnits() {
+        return units;
+    }
+
+    public void setUnits(String units) {
+        this.units = units;
+    }
+
+    public String getInstrumentInterpretation() {
+        return instrumentInterpretation;
+    }
+
+    public void setInstrumentInterpretation(String instrumentInterpretation) {
+        this.instrumentInterpretation = instrumentInterpretation;
+    }
+
+    public String getAnalyzerResultReference() {
+        return analyzerResultReference;
+    }
+
+    public void setAnalyzerResultReference(String analyzerResultReference) {
+        this.analyzerResultReference = analyzerResultReference;
     }
 
     public String getOverrideInterpretation() {

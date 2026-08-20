@@ -36,6 +36,7 @@ import {
 } from "./api";
 import { buildReferenceRequestQuery } from "./queryState";
 import ReferenceEditModal from "./ReferenceEditModal";
+import useModalFocusReturn from "./useModalFocusReturn";
 
 const ReferenceDataPage = ({ definition, query, setQuery }) => {
   const intl = useIntl();
@@ -45,6 +46,8 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
   const [notice, setNotice] = useState("");
   const [detachedValue, setDetachedValue] = useState(null);
   const [optionLists, setOptionLists] = useState({});
+  const readOnly = definition.readOnly === true;
+  const { rememberReturnFocus, restoreReturnFocus } = useModalFocusReturn();
 
   const deactivationId = query.edit?.startsWith("deactivate:")
     ? query.edit.slice("deactivate:".length)
@@ -53,10 +56,11 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
 
   const load = useCallback(
     (signal) => {
-      setLoading(true);
-      setError("");
       return getReferencePage(definition.resource, requestQuery, signal)
-        .then((response) => setPage(response))
+        .then((response) => {
+          setPage(response);
+          setError("");
+        })
         .catch((requestError) => {
           if (requestError.name !== "AbortError")
             setError(requestError.message);
@@ -94,11 +98,12 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
   }, [definition.fields]);
 
   const requestedId =
-    query.edit && query.edit !== "new" ? deactivationId || query.edit : "";
+    !readOnly && query.edit && query.edit !== "new"
+      ? deactivationId || query.edit
+      : "";
 
   useEffect(() => {
     if (!requestedId || page.rows.some((row) => row.id === requestedId)) {
-      setDetachedValue(null);
       return undefined;
     }
     const controller = new AbortController();
@@ -115,7 +120,8 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
     if (query.edit === "new") return {};
     if (deactivationId) return null;
     return (
-      page.rows.find((row) => row.id === query.edit) || detachedValue || null
+      page.rows.find((row) => row.id === query.edit) ||
+      (detachedValue?.id === query.edit ? detachedValue : null)
     );
   }, [deactivationId, detachedValue, page.rows, query.edit]);
 
@@ -138,7 +144,7 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
     ...row,
     id: row.id,
     status: row.active ? "ACTIVE" : "INACTIVE",
-    actions: row.id,
+    ...(readOnly ? {} : { actions: row.id }),
   }));
 
   const headers = [
@@ -150,10 +156,13 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
       key: "status",
       header: intl.formatMessage({ id: "microbiology.admin.status" }),
     },
-    { key: "actions", header: "" },
+    ...(readOnly ? [] : [{ key: "actions", header: "" }]),
   ];
 
-  const closeEditor = () => setQuery({ edit: "" }, { replace: true });
+  const closeEditor = () => {
+    setQuery({ edit: "" }, { replace: true });
+    restoreReturnFocus();
+  };
 
   const save = async (value) => {
     await saveReference(definition.resource, value);
@@ -263,15 +272,20 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
                     })}
                   />
                 </Select>
-                <Button
-                  renderIcon={Add}
-                  onClick={() => setQuery({ edit: "new" })}
-                >
-                  {intl.formatMessage({ id: definition.addLabel })}
-                </Button>
+                {!readOnly && (
+                  <Button
+                    renderIcon={Add}
+                    onClick={(event) => {
+                      rememberReturnFocus(event.currentTarget);
+                      setQuery({ edit: "new" });
+                    }}
+                  >
+                    {intl.formatMessage({ id: definition.addLabel })}
+                  </Button>
+                )}
               </TableToolbarContent>
             </TableToolbar>
-            <Table size="lg" useZebraStyles>
+            <Table size="lg" useZebraStyles tabIndex={0}>
               <TableHead>
                 <TableRow>
                   {renderedHeaders.map((header) => (
@@ -287,44 +301,67 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
                       {row.cells.map((cell) => (
                         <TableCell key={cell.id}>
                           {cell.info.header === "status" ? (
-                            <Tag type={source.active ? "green" : "gray"}>
+                            <Tag
+                              type={cell.value === "ACTIVE" ? "green" : "gray"}
+                            >
                               {intl.formatMessage({
-                                id: source.active
-                                  ? "microbiology.admin.status.active"
-                                  : "microbiology.admin.status.inactive",
+                                id:
+                                  cell.value === "ACTIVE"
+                                    ? "microbiology.admin.status.active"
+                                    : "microbiology.admin.status.inactive",
                               })}
                             </Tag>
                           ) : cell.info.header === "actions" ? (
-                            <OverflowMenu
-                              aria-label={intl.formatMessage({
-                                id: "microbiology.admin.actions",
-                              })}
-                              flipped
-                            >
-                              <OverflowMenuItem
-                                itemText={intl.formatMessage({
-                                  id: "button.edit",
+                            source ? (
+                              <OverflowMenu
+                                aria-label={intl.formatMessage({
+                                  id: "microbiology.admin.actions",
                                 })}
-                                onClick={() => setQuery({ edit: source.id })}
-                              />
-                              {definition.canToggle !== false && (
+                                flipped
+                              >
                                 <OverflowMenuItem
-                                  isDelete={source.active}
                                   itemText={intl.formatMessage({
-                                    id: source.active
-                                      ? "microbiology.admin.action.deactivate"
-                                      : "microbiology.admin.action.reactivate",
+                                    id: "button.edit",
                                   })}
-                                  onClick={() =>
-                                    source.active
-                                      ? setQuery({
-                                          edit: `deactivate:${source.id}`,
-                                        })
-                                      : toggleActive(source)
-                                  }
+                                  onClick={(event) => {
+                                    const menuButton = event.currentTarget
+                                      .closest("td")
+                                      ?.querySelector(
+                                        ".cds--overflow-menu__trigger",
+                                      );
+                                    rememberReturnFocus(menuButton);
+                                    setQuery({ edit: source.id });
+                                  }}
                                 />
-                              )}
-                            </OverflowMenu>
+                                {definition.canToggle !== false && (
+                                  <OverflowMenuItem
+                                    isDelete={source.active}
+                                    itemText={intl.formatMessage({
+                                      id: source.active
+                                        ? "microbiology.admin.action.deactivate"
+                                        : "microbiology.admin.action.reactivate",
+                                    })}
+                                    onClick={(event) => {
+                                      const menuButton = event.currentTarget
+                                        .closest("td")
+                                        ?.querySelector(
+                                          ".cds--overflow-menu__trigger",
+                                        );
+                                      rememberReturnFocus(menuButton);
+                                      if (source.active) {
+                                        setQuery({
+                                          edit: `deactivate:${source.id}`,
+                                        });
+                                      } else {
+                                        toggleActive(source).then(
+                                          restoreReturnFocus,
+                                        );
+                                      }
+                                    }}
+                                  />
+                                )}
+                              </OverflowMenu>
+                            ) : null
                           ) : (
                             cell.value || "—"
                           )}
@@ -352,16 +389,19 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
           </TableContainer>
         )}
       </DataTable>
-      <ReferenceEditModal
-        open={!!query.edit && !!editedValue}
-        titleId={definition.editTitle}
-        fields={modalFields}
-        value={editedValue}
-        onClose={closeEditor}
-        onSave={save}
-      />
+      {!readOnly && (
+        <ReferenceEditModal
+          open={!!query.edit && !!editedValue}
+          editorKey={`${definition.resource}-${query.edit}`}
+          titleId={definition.editTitle}
+          fields={modalFields}
+          value={editedValue || {}}
+          onClose={closeEditor}
+          onSave={save}
+        />
+      )}
       <ComposedModal
-        open={!!deactivationTarget}
+        open={!readOnly && !!deactivationTarget}
         size="sm"
         danger
         onClose={closeEditor}

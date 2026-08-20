@@ -1,5 +1,12 @@
 # OGC-782 Worklist UX Follow-up
 
+> **Superseded scope note (2026-08-06):** This checkpoint predates the pinned
+> OpenELIS Work authority audit. M-07 explicitly requires one shared page with
+> Culture and AST grains plus the clinical context columns below. Those items
+> are requirements, not product questions or optional future scope. Current
+> implementation status is tracked in
+> `openelis-work-authoritative-alignment-2026-08-05.md`.
+
 Reviewed on 2026-07-28 against the current local OGC-782 stack and the
 [M-07 worklist prototype](https://digi-uw.github.io/openelis-work/designs/microbiology/m-07-worklists-prototype.html).
 
@@ -51,14 +58,14 @@ communication visibility, and breadcrumb return to the filtered worklist.
 
 ## M-07 Comparison And Scope Calls
 
-| M-07 element                                                                | Classification               | MVP decision                                                                                                                                                                                                                            |
-| --------------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared queue, counters, filtering, urgency, due action, and case navigation | Core workflow                | Implemented with the standard OpenELIS shell, Carbon DataTable, tags, filters, pagination, breadcrumbs, and stable URLs.                                                                                                                |
-| Entire-row navigation                                                       | Interaction-shape difference | The MVP exposes the sample-item link and an explicit case-action icon. This preserves clear keyboard and table semantics while satisfying the workflow outcome.                                                                         |
-| Cultures / AST-runs switch                                                  | Product decision needed      | The current MVP is case-grained. Product must decide whether separate culture- and AST-run-grained queues are a later workflow requirement before engineering designs their read models.                                                |
-| Patient, specimen, laboratory number, and last-activity columns             | Product gap                  | The current worklist data supports sample item, workflow, stage, due action, urgency, critical context, and sibling workflow context. Do not fabricate richer clinical context in the UI; scope it as a future product slice if needed. |
-| Resistance strip and folded recent activity                                 | Product gap, V2              | Useful operational views, but outside the agreed MVP workflow. They need independently stated user outcomes and acceptance criteria.                                                                                                    |
-| Fixed 30-second auto-refresh                                                | Implementation leakage       | The mock expresses freshness intent but must not mandate a timer, polling mechanism, or transport. A future product requirement should state when users need to know that queue information is current.                                 |
+| M-07 element                                                                | Classification               | MVP decision                                                                                                                                                                                            |
+| --------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared queue, counters, filtering, urgency, due action, and case navigation | Core workflow                | Implemented with the standard OpenELIS shell, Carbon DataTable, tags, filters, pagination, breadcrumbs, and stable URLs.                                                                                |
+| Entire-row navigation                                                       | Interaction-shape difference | The MVP exposes the sample-item link and an explicit case-action icon. This preserves clear keyboard and table semantics while satisfying the workflow outcome.                                         |
+| Cultures / AST-runs switch                                                  | Authoritative requirement    | Superseded: implemented in R1 as one shared page with Culture-case and AST-run grains.                                                                                                                  |
+| Patient, specimen, laboratory number, and last-activity columns             | Authoritative requirement    | Superseded: implemented in `b7b025f98` as bounded read-time projections from existing authoritative records; no clinical context is fabricated or copied into microbiology tables.                      |
+| Resistance strip and folded recent activity                                 | Authoritative requirement    | Superseded: `a99493671` implements dated analyzer-flag counts and bounded recent activity. The source's undefined manual-confirmation semantics remain explicitly open as T277.                         |
+| Fixed 30-second auto-refresh                                                | Implementation leakage       | The mock expresses freshness intent but must not mandate a timer, polling mechanism, or transport. A future product requirement should state when users need to know that queue information is current. |
 
 ## Issues Found
 

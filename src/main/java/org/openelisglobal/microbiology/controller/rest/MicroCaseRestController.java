@@ -7,11 +7,14 @@ import org.openelisglobal.microbiology.form.MicroCaseActivityRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
+import org.openelisglobal.microbiology.form.MicroCaseWorkflowChangeRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
+import org.openelisglobal.microbiology.service.MicroCaseWorkflowService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,21 +29,23 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases")
+@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseService caseService;
     private final MicroCaseStateService stateService;
     private final MicroCaseOrderDetailService orderDetailService;
+    private final MicroCaseWorkflowService workflowService;
 
     public MicroCaseRestController(MicroCaseService caseService, MicroCaseStateService stateService,
-            MicroCaseOrderDetailService orderDetailService) {
+            MicroCaseOrderDetailService orderDetailService, MicroCaseWorkflowService workflowService) {
         this.caseService = caseService;
         this.stateService = stateService;
         this.orderDetailService = orderDetailService;
+        this.workflowService = workflowService;
     }
 
     @GetMapping("/{caseId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseDetailForm> getCaseDetail(@PathVariable String caseId) {
         MicroCaseDetailForm detail = caseService.getCaseDetail(caseId);
         if (detail == null) {
@@ -50,7 +55,6 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<MicroCaseLookupForm>> getCasesForSampleItem(@RequestParam String sampleItemId) {
         List<MicroCaseLookupForm> rows = new ArrayList<>();
         for (MicroCase microCase : caseService.getSiblingCases(sampleItemId)) {
@@ -60,7 +64,6 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/{caseId}/activities")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseDetailForm> recordActivity(@PathVariable String caseId,
             @RequestBody MicroCaseActivityRequestForm request, HttpServletRequest httpRequest) {
         if (request.lotSelections == null || request.lotSelections.isEmpty()) {
@@ -74,10 +77,19 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PutMapping("/{caseId}/order-detail")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseDetailForm> saveOrderDetail(@PathVariable String caseId,
             @RequestBody MicroCaseOrderDetailRequestForm request, HttpServletRequest httpRequest) {
         orderDetailService.saveOrderDetail(caseId, request, authenticatedUserId(httpRequest));
+        return ResponseEntity.ok(caseService.getCaseDetail(caseId));
+    }
+
+    @PutMapping("/{caseId}/workflow")
+    public ResponseEntity<MicroCaseDetailForm> changeWorkflow(@PathVariable String caseId,
+            @RequestBody MicroCaseWorkflowChangeRequestForm request, HttpServletRequest httpRequest) {
+        MicroWorkflowType workflowType = request.workflowType == null ? null
+                : MicroWorkflowType.valueOf(request.workflowType);
+        workflowService.changeWorkflow(caseId, workflowType, request.cultureMethodId, request.reason,
+                request.preserveExistingWorkConfirmed, authenticatedUserId(httpRequest));
         return ResponseEntity.ok(caseService.getCaseDetail(caseId));
     }
 

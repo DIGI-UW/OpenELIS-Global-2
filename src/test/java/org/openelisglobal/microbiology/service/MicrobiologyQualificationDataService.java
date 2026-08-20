@@ -14,6 +14,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 
@@ -82,9 +83,12 @@ public class MicrobiologyQualificationDataService {
         List<String> isolateIds = new ArrayList<>(DENSE_ISOLATE_COUNT);
         int readingCount = 0;
         for (int isolateIndex = 1; isolateIndex <= DENSE_ISOLATE_COUNT; isolateIndex++) {
-            MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "QISO-" + isolateIndex, null,
+            MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "QISO-" + isolateIndex,
+                    "Gram negative rods", "Qualification colonies " + isolateIndex,
+                    MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, performedBy);
+            isolateService.updateIdentification(isolate.getId(), scenario.organismId,
                     "Qualification organism " + isolateIndex, MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
-                    performedBy);
+                    MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new BigDecimal("99.5"), performedBy);
             isolateIds.add(isolate.getId());
             MicroAstRun run = astService.startRun(isolate.getId(), panel.getId(), standard.getId(), performedBy);
             for (int readingIndex = 0; readingIndex < READINGS_PER_ISOLATE; readingIndex++) {

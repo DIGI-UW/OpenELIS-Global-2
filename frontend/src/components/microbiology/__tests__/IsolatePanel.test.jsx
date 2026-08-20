@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
+import { vi } from "vitest";
 import IsolatePanel from "../IsolatePanel";
 import messages from "../../../languages/en.json";
 
@@ -12,6 +13,7 @@ const renderPanel = ({
   onUpdateIdentification = vi.fn(),
   readOnly = false,
   amendmentOpen = false,
+  onLogCritical = vi.fn(),
   service = { getOrganisms: vi.fn().mockResolvedValue([]) },
 } = {}) =>
   render(
@@ -23,6 +25,7 @@ const renderPanel = ({
         onUpdateIdentification={onUpdateIdentification}
         readOnly={readOnly}
         amendmentOpen={amendmentOpen}
+        onLogCritical={onLogCritical}
         service={service}
         saving={false}
       />
@@ -35,9 +38,10 @@ describe("IsolatePanel", () => {
     const onCreateIsolate = vi.fn();
     renderPanel({ onCreateIsolate });
 
+    await user.type(screen.getByLabelText("Gram stain"), "Gram negative rods");
     await user.type(
-      screen.getByLabelText("Preliminary organism"),
-      "Escherichia coli",
+      screen.getByLabelText("Colony morphology"),
+      "Lactose fermenting colonies",
     );
     await user.click(screen.getByRole("button", { name: "Create isolate" }));
 
@@ -45,7 +49,8 @@ describe("IsolatePanel", () => {
       expect(onCreateIsolate).toHaveBeenCalledWith({
         caseId: "case-1",
         isolateLabel: "ISO-1",
-        preliminaryOrganismText: "Escherichia coli",
+        gramStain: "Gram negative rods",
+        colonyMorphology: "Lactose fermenting colonies",
         significance: "CLINICALLY_SIGNIFICANT",
       }),
     );
@@ -60,6 +65,8 @@ describe("IsolatePanel", () => {
           id: "isolate-1",
           isolateLabel: "ISO-1",
           preliminaryOrganismText: "Gram negative rod",
+          gramStain: "Gram negative rods",
+          colonyMorphology: "Lactose fermenting colonies",
           significance: "UNKNOWN",
           identificationStatus: "PRELIMINARY",
         },
@@ -73,22 +80,23 @@ describe("IsolatePanel", () => {
     });
 
     await user.click(
-      await screen.findByRole("button", { name: "Update identification" }),
+      await screen.findByRole("button", { name: "Identify organism" }),
     );
     await user.selectOptions(screen.getByLabelText("Organism"), "organism-1");
-    await user.selectOptions(
-      screen.getByLabelText("Identification status"),
-      "CONFIRMED",
-    );
+    await user.selectOptions(screen.getByLabelText("ID method"), "MALDI_TOF");
+    await user.clear(screen.getByLabelText("ID confidence (%)"));
+    await user.type(screen.getByLabelText("ID confidence (%)"), "99.5");
     await user.click(
       screen.getByRole("button", { name: "Save identification" }),
     );
 
     expect(onUpdateIdentification).toHaveBeenCalledWith("isolate-1", {
       organismId: "organism-1",
-      preliminaryOrganismText: "Gram negative rod",
+      preliminaryOrganismText: "Escherichia coli",
       significance: "UNKNOWN",
       identificationStatus: "CONFIRMED",
+      identificationMethod: "MALDI_TOF",
+      identificationConfidence: 99.5,
     });
   });
 
@@ -102,16 +110,22 @@ describe("IsolatePanel", () => {
           isolateLabel: "ISO-1",
           preliminaryOrganismText: "Gram negative rod",
           significance: "UNKNOWN",
-          identificationStatus: "PRELIMINARY",
+          organismId: "organism-1",
+          identificationStatus: "CONFIRMED",
+          identificationMethod: "MALDI_TOF",
+          identificationConfidence: 99.5,
         },
       ],
       amendmentOpen: true,
       onUpdateIdentification,
+      service: {
+        getOrganisms: vi
+          .fn()
+          .mockResolvedValue([{ id: "organism-1", label: "Escherichia coli" }]),
+      },
     });
 
-    await user.click(
-      await screen.findByRole("button", { name: "Update identification" }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Reidentify" }));
 
     const saveButton = screen.getByRole("button", {
       name: "Save identification",
@@ -125,10 +139,12 @@ describe("IsolatePanel", () => {
     await user.click(saveButton);
 
     expect(onUpdateIdentification).toHaveBeenCalledWith("isolate-1", {
-      organismId: "",
-      preliminaryOrganismText: "Gram negative rod",
+      organismId: "organism-1",
+      preliminaryOrganismText: "Escherichia coli",
       significance: "UNKNOWN",
-      identificationStatus: "PRELIMINARY",
+      identificationStatus: "CONFIRMED",
+      identificationMethod: "MALDI_TOF",
+      identificationConfidence: 99.5,
       identificationReason: "Corrected after confirmatory testing",
     });
   });
@@ -181,10 +197,32 @@ describe("IsolatePanel", () => {
     });
 
     expect(
-      await screen.findByRole("button", { name: "Update identification" }),
+      await screen.findByRole("button", { name: "Edit isolate" }),
     ).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Create isolate" }),
     ).toBeDisabled();
+  });
+
+  it("opens critical communication for the selected isolate", async () => {
+    const user = userEvent.setup();
+    const onLogCritical = vi.fn();
+    const isolate = {
+      id: "isolate-1",
+      isolateLabel: "ISO-1",
+      gramStain: "Gram negative rods",
+      significance: "UNKNOWN",
+      identificationStatus: "PRELIMINARY",
+    };
+
+    renderPanel({ isolates: [isolate], onLogCritical });
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Log critical notification for ISO-1",
+      }),
+    );
+
+    expect(onLogCritical).toHaveBeenCalledWith(isolate);
   });
 });

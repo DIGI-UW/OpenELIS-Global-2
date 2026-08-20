@@ -220,4 +220,54 @@
   <!-- OGC-782 M10: audited manual WHONET export -->
   <include relativeToChangelogFile="true" file="065-microbiology-whonet-export-run.xml"/>
 
+  <!-- OGC-782 R1: safe manual-Program fallback classification -->
+  <include relativeToChangelogFile="true" file="069-microbiology-unassigned-workflow.xml"/>
+
+  <!-- OGC-782 R1: inoculation records and subculture lineage -->
+  <include relativeToChangelogFile="true" file="070-microbiology-inoculation-lineage.xml"/>
+
+  <!-- OGC-782 R1: two-pass isolate workup -->
+  <include relativeToChangelogFile="true" file="071-microbiology-isolate-workup.xml"/>
+
+  <!-- OGC-782 R1: immutable AST panel and breakpoint provenance -->
+  <include relativeToChangelogFile="true" file="072-microbiology-ast-provenance.xml"/>
+
+  <!-- OGC-782 R1: AST reading source, match level, and units -->
+  <include relativeToChangelogFile="true" file="073-microbiology-ast-reading-provenance.xml"/>
+
+  <!-- OGC-782 R1: immutable AST override and revert history -->
+  <include relativeToChangelogFile="true" file="074-microbiology-ast-override-history.xml"/>
+
+  <!-- OGC-782 R1: AST technique distinct from derived measurement type -->
+  <include relativeToChangelogFile="true" file="075-microbiology-ast-technique.xml"/>
+
+  <!-- OGC-782 R1: immutable per-run ordered antibiotic set -->
+  <include relativeToChangelogFile="true" file="076-microbiology-ast-ordered-antibiotics.xml"/>
+
+  <!-- OGC-782 R1: analyzer AST lifecycle, provenance, and reading revisions -->
+  <include relativeToChangelogFile="true" file="077-microbiology-ast-analyzer-lifecycle.xml"/>
+
+  <!-- OGC-782 R1: durable analyzer event reconciliation envelope -->
+  <include relativeToChangelogFile="true" file="078-analyzer-event-reconciliation.xml"/>
+
+  <!-- OGC-782 R1: positive culture stage and complete stage constraint -->
+  <include relativeToChangelogFile="true" file="079-microbiology-positive-culture-stage.xml"/>
+
+  <!-- OGC-782 R1: structured Method-bound culture timing -->
+  <include relativeToChangelogFile="true" file="080-microbiology-culture-timing.xml"/>
+
+  <!-- OGC-782 R1: typed order-entry checkbox values -->
+  <include relativeToChangelogFile="true" file="081-microbiology-order-detail-booleans.xml"/>
+
+  <!-- OGC-782 R1: durable order detail across decoupled sample collection -->
+  <include relativeToChangelogFile="true" file="082-microbiology-order-detail-draft.xml"/>
+
+  <!-- OGC-782 R1: support the canonical MICROBIOLOGY program code -->
+  <include relativeToChangelogFile="true" file="083-program-code-length.xml"/>
+
+  <!-- OGC-782 R1: make activity actors real SystemUser references -->
+  <include relativeToChangelogFile="true" file="084-microbiology-activity-actor-reference.xml"/>
+
+  <include relativeToChangelogFile="true" file="085-microbiology-patient-origin-reference.xml"/>
+
 </databaseChangeLog>

@@ -101,24 +101,22 @@ const SampleCollectionCard = ({
     if (dateStr.includes("/")) {
       return dateStr;
     }
-    const parts = dateStr.split("-");
+    const parts = dateStr.slice(0, 10).split("-");
     if (parts.length === 3) {
       return `${parts[1]}/${parts[2]}/${parts[0]}`;
     }
     return dateStr;
   };
 
-  const parseDateFromPicker = (dateStr) => {
-    if (!dateStr) return "";
-    const parts = dateStr.split("/");
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
-    }
-    return dateStr;
-  };
+  const todayForPicker = formatDateForPicker(
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`,
+  );
 
   return (
-    <Tile className="sample-collection-card">
+    <Tile
+      className="sample-collection-card"
+      data-testid={`sample-collection-card-${sampleIndex}`}
+    >
       {/* Header */}
       <div className="sample-card-header">
         <h5>
@@ -278,7 +276,7 @@ const SampleCollectionCard = ({
         <Column lg={4} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
-            maxDate={new Date().toISOString()}
+            maxDate={todayForPicker}
             value={formatDateForPicker(sample.collectionDate)}
             onChange={(dates) => {
               if (dates && dates[0]) {
@@ -366,7 +364,11 @@ const SampleCollectionCard = ({
           <Column lg={4} md={4} sm={4}>
             <DatePicker
               datePickerType="single"
-              maxDate={new Date().toISOString()}
+              maxDate={todayForPicker}
+              value={formatDateForPicker(
+                sample.receivedDate ||
+                  (sample.sampleItemId ? "" : serverReceivedDate),
+              )}
               onChange={(dates) => {
                 if (dates && dates[0]) {
                   const month = String(dates[0].getMonth() + 1).padStart(
@@ -386,11 +388,6 @@ const SampleCollectionCard = ({
                   defaultMessage: "Received Date",
                 })}
                 placeholder="mm/dd/yyyy"
-                value={formatDateForPicker(
-                  // Use stored value if editing existing sample, otherwise use server time for new samples
-                  sample.receivedDate ||
-                    (sample.sampleItemId ? "" : serverReceivedDate),
-                )}
                 disabled={isReadOnly}
               />
             </DatePicker>

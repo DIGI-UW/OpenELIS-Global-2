@@ -8,9 +8,10 @@ import {
   SelectItem,
   Button,
   Checkbox,
-  Tag,
+  DismissibleTag,
   Search,
   Link,
+  Modal,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
@@ -45,20 +46,54 @@ const SampleTestSection = ({
   const [testSearchTerms, setTestSearchTerms] = useState({});
   const [panelSearchTerms, setPanelSearchTerms] = useState({});
 
-  // Loading state
-  const [isLoading, setIsLoading] = useState(true);
   const [loadingPerSample, setLoadingPerSample] = useState({});
+  const [pendingSamples, setPendingSamples] = useState(null);
+
+  const cloneSamples = () =>
+    samples.map((sample) => ({
+      ...sample,
+      panels: [...(sample.panels || [])],
+      tests: [...(sample.tests || [])],
+    }));
+
+  // Fetch tests and panels for a specific sample
+  const fetchTestsForSampleType = (sampleIndex, sampleTypeId) => {
+    if (!sampleTypeId) {
+      setTestsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
+      setPanelsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
+      return;
+    }
+
+    setLoadingPerSample((prev) => ({ ...prev, [sampleIndex]: true }));
+    getFromOpenElisServer(
+      `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
+      (response) => {
+        if (componentMounted.current && response) {
+          setPanelsPerSample((prev) => ({
+            ...prev,
+            [sampleIndex]: response.panels || [],
+          }));
+          setTestsPerSample((prev) => ({
+            ...prev,
+            [sampleIndex]: response.tests || [],
+          }));
+          setLoadingPerSample((prev) => ({
+            ...prev,
+            [sampleIndex]: false,
+          }));
+        }
+      },
+    );
+  };
 
   // Fetch sample types on mount
   useEffect(() => {
     componentMounted.current = true;
-    setIsLoading(true);
 
     // Fetch sample types
     getFromOpenElisServer("/rest/user-sample-types", (response) => {
       if (componentMounted.current && response) {
         setSampleTypes(response);
-        setIsLoading(false);
       }
     });
 
@@ -82,34 +117,7 @@ const SampleTestSection = ({
         fetchTestsForSampleType(index, sampleTypeId);
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [samples]);
-
-  // Fetch tests and panels for a specific sample
-  const fetchTestsForSampleType = (sampleIndex, sampleTypeId) => {
-    if (!sampleTypeId) {
-      setTestsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
-      setPanelsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
-      return;
-    }
-
-    setLoadingPerSample((prev) => ({ ...prev, [sampleIndex]: true }));
-    getFromOpenElisServer(
-      `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
-      (response) => {
-        if (componentMounted.current && response) {
-          // Set panels for this sample
-          const panels = response.panels || [];
-          setPanelsPerSample((prev) => ({ ...prev, [sampleIndex]: panels }));
-
-          // Set tests for this sample
-          const tests = response.tests || [];
-          setTestsPerSample((prev) => ({ ...prev, [sampleIndex]: tests }));
-          setLoadingPerSample((prev) => ({ ...prev, [sampleIndex]: false }));
-        }
-      },
-    );
-  };
 
   // Get filtered tests for a sample
   const getFilteredTests = (sampleIndex) => {
@@ -148,12 +156,60 @@ const SampleTestSection = ({
   // Remove sample
   const handleRemoveSample = (index) => {
     const updated = samples.filter((_, i) => i !== index);
+    applySamples(updated);
+  };
+
+  const hasCultureWorkflow = (candidateSamples) =>
+    candidateSamples.some((sample) =>
+      (sample.tests || []).some((test) => test.cultureWorkflowType),
+    );
+
+  const hasMicrobiologyDetail = Object.values(
+    orderData?.microbiologyOrderDetail || {},
+  ).some((value) => value !== "" && value !== null && value !== false);
+
+  const clearMicrobiologyState = () => {
+    setOrderData((previous) => ({
+      ...previous,
+      microbiologyOrderDetail: {
+        cultureMethodId: "",
+        patientOrigin: "",
+        numberOfSets: "",
+        clinicalHistory: "",
+        antibioticExposure: false,
+        criticalNotificationPreference: null,
+      },
+      sampleOrderItems: {
+        ...previous.sampleOrderItems,
+        programId:
+          previous.sampleOrderItems?.microbiologyPreviousProgramId || "",
+        microbiologyProgramId: undefined,
+        microbiologyPreviousProgramId: undefined,
+      },
+    }));
+  };
+
+  const applySamples = (updated) => {
+    if (
+      hasCultureWorkflow(samples) &&
+      !hasCultureWorkflow(updated) &&
+      hasMicrobiologyDetail
+    ) {
+      setPendingSamples(updated);
+      return;
+    }
     setSamples(updated);
+  };
+
+  const confirmDiscardMicrobiologyDetail = () => {
+    setSamples(pendingSamples);
+    clearMicrobiologyState();
+    setPendingSamples(null);
   };
 
   // Update sample type and fetch tests/panels
   const handleSampleTypeChange = (sampleIndex, sampleTypeId) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     const currentSampleType = updated[sampleIndex]?.sampleTypeId;
 
     // Only clear panels/tests if user is changing to a DIFFERENT sample type
@@ -163,10 +219,13 @@ const SampleTestSection = ({
     updated[sampleIndex] = {
       ...updated[sampleIndex],
       sampleTypeId,
+      sampleTypeName:
+        sampleTypes.find((type) => String(type.id) === String(sampleTypeId))
+          ?.value || "",
       // Clear previous selections only when sample type actually changes
       ...(shouldClearSelections ? { panels: [], tests: [] } : {}),
     };
-    setSamples(updated);
+    applySamples(updated);
 
     // Fetch tests and panels for the selected sample type (for this specific sample)
     if (sampleTypeId !== fetchedSampleTypesRef.current[sampleIndex]) {
@@ -177,7 +236,7 @@ const SampleTestSection = ({
 
   // Toggle panel selection - also adds/removes all tests from the panel
   const handlePanelToggle = (sampleIndex, panel, isSelected) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     const currentPanels = updated[sampleIndex].panels || [];
     const currentTests = updated[sampleIndex].tests || [];
     const availableTests = testsPerSample[sampleIndex] || [];
@@ -200,7 +259,7 @@ const SampleTestSection = ({
         .map((testId) => {
           // Find test name from available tests for this sample
           const test = availableTests.find((t) => t.id === testId);
-          return { id: testId, name: test?.name || testId };
+          return test || { id: testId, name: testId };
         });
 
       updated[sampleIndex].tests = [...currentTests, ...testsToAdd];
@@ -225,31 +284,28 @@ const SampleTestSection = ({
       );
     }
 
-    setSamples(updated);
+    applySamples(updated);
   };
 
   // Toggle test selection
   const handleTestToggle = (sampleIndex, test, isSelected) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     const currentTests = updated[sampleIndex].tests || [];
 
     if (isSelected) {
       // Add test
-      updated[sampleIndex].tests = [
-        ...currentTests,
-        { id: test.id, name: test.name },
-      ];
+      updated[sampleIndex].tests = [...currentTests, test];
     } else {
       // Remove test
       updated[sampleIndex].tests = currentTests.filter((t) => t.id !== test.id);
     }
 
-    setSamples(updated);
+    applySamples(updated);
   };
 
   // Remove panel tag - also removes tests from that panel
   const handleRemovePanel = (sampleIndex, panelId) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     const currentPanels = updated[sampleIndex].panels || [];
     const currentTests = updated[sampleIndex].tests || [];
 
@@ -277,21 +333,21 @@ const SampleTestSection = ({
       (t) => !panelTestIds.includes(t.id) || remainingPanelTestIds.has(t.id),
     );
 
-    setSamples(updated);
+    applySamples(updated);
   };
 
   // Remove test tag
   const handleRemoveTest = (sampleIndex, testId) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     updated[sampleIndex].tests = updated[sampleIndex].tests.filter(
       (t) => t.id !== testId,
     );
-    setSamples(updated);
+    applySamples(updated);
   };
 
   // Toggle referral
   const handleReferralToggle = (sampleIndex, enabled) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     updated[sampleIndex].requestReferralEnabled = enabled;
     setSamples(updated);
   };
@@ -307,7 +363,29 @@ const SampleTestSection = ({
   };
 
   return (
-    <Tile className="order-section sample-test-section">
+    <Tile
+      className="order-section sample-test-section"
+      data-testid="order-sample-test-section"
+    >
+      <Modal
+        open={pendingSamples !== null}
+        modalHeading={intl.formatMessage({
+          id: "microbiology.orderEntry.discardHeading",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "microbiology.orderEntry.discardConfirm",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
+        danger
+        onRequestSubmit={confirmDiscardMicrobiologyDetail}
+        onRequestClose={() => setPendingSamples(null)}
+      >
+        <p>
+          {intl.formatMessage({
+            id: "microbiology.orderEntry.discardMessage",
+          })}
+        </p>
+      </Modal>
       <h4 className="section-title">
         <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
       </h4>
@@ -371,15 +449,20 @@ const SampleTestSection = ({
                   {/* Selected Panels Tags */}
                   <div className="selected-tags">
                     {sample.panels?.map((panel) => (
-                      <Tag
+                      <DismissibleTag
                         key={panel.id}
                         type="blue"
-                        filter
+                        text={panel.name}
                         onClose={() => handleRemovePanel(sampleIndex, panel.id)}
                         disabled={isReadOnly}
-                      >
-                        {panel.name}
-                      </Tag>
+                        dismissTooltipLabel={intl.formatMessage(
+                          {
+                            id: "sample.removeSelection",
+                            defaultMessage: "Remove {name}",
+                          },
+                          { name: panel.name },
+                        )}
+                      />
                     ))}
                   </div>
 
@@ -448,15 +531,20 @@ const SampleTestSection = ({
                   {/* Selected Tests Tags */}
                   <div className="selected-tags">
                     {sample.tests?.map((test) => (
-                      <Tag
+                      <DismissibleTag
                         key={test.id}
                         type="teal"
-                        filter
+                        text={test.name}
                         onClose={() => handleRemoveTest(sampleIndex, test.id)}
                         disabled={isReadOnly}
-                      >
-                        {test.name}
-                      </Tag>
+                        dismissTooltipLabel={intl.formatMessage(
+                          {
+                            id: "sample.removeSelection",
+                            defaultMessage: "Remove {name}",
+                          },
+                          { name: test.name },
+                        )}
+                      />
                     ))}
                   </div>
 

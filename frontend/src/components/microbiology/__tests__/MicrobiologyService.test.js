@@ -1,4 +1,5 @@
 import MicrobiologyService, {
+  revertAstOverride,
   selectReportableAstRun,
   startRepeatAstRun,
 } from "../MicrobiologyService";
@@ -9,5 +10,6 @@ describe("MicrobiologyService", () => {
     expect(MicrobiologyService.selectReportableAstRun).toBe(
       selectReportableAstRun,
     );
+    expect(MicrobiologyService.revertAstOverride).toBe(revertAstOverride);
   });
 });

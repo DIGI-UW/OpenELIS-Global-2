@@ -2,7 +2,9 @@ package org.openelisglobal.microbiology.service;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.StringJoiner;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -10,6 +12,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
+import org.openelisglobal.microbiology.dao.MicroAstRunAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
@@ -19,6 +22,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
@@ -46,6 +50,7 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     private final MicroIsolateDAO isolateDAO;
     private final MicroAstRunDAO astRunDAO;
     private final MicroAstReadingDAO readingDAO;
+    private final MicroAstRunAntibioticDAO runAntibioticDAO;
     private final MicroOrganismDAO organismDAO;
     private final MicroAntibioticDAO antibioticDAO;
     private final AnalysisService analysisService;
@@ -56,14 +61,15 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
 
     public MicroReportProjectionServiceImpl(MicroCaseDAO caseDAO, MicroCaseAnalysisDAO caseAnalysisDAO,
             MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO, MicroAstReadingDAO readingDAO,
-            MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO, AnalysisService analysisService,
-            TestAnalyteService testAnalyteService, TestResultService testResultService, ResultService resultService,
-            IStatusService statusService) {
+            MicroAstRunAntibioticDAO runAntibioticDAO, MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
+            AnalysisService analysisService, TestAnalyteService testAnalyteService, TestResultService testResultService,
+            ResultService resultService, IStatusService statusService) {
         this.caseDAO = caseDAO;
         this.caseAnalysisDAO = caseAnalysisDAO;
         this.isolateDAO = isolateDAO;
         this.astRunDAO = astRunDAO;
         this.readingDAO = readingDAO;
+        this.runAntibioticDAO = runAntibioticDAO;
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
         this.analysisService = analysisService;
@@ -277,7 +283,7 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
             }
             StringJoiner readings = new StringJoiner(", ");
             for (MicroAstRun run : reportableRuns(isolate.getId())) {
-                for (MicroAstReading reading : readingDAO.getByRunId(run.getId())) {
+                for (MicroAstReading reading : currentOrderedReadings(run.getId())) {
                     readings.add(antibioticName(reading.getAntibioticId()) + " " + interpretation(reading));
                 }
             }
@@ -288,6 +294,46 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
             isolates.add(value);
         }
         return isolates.toString();
+    }
+
+    private List<MicroAstReading> currentOrderedReadings(String runId) {
+        Map<String, MicroAstReading> currentByAntibiotic = new HashMap<>();
+        for (MicroAstReading reading : readingDAO.getByRunId(runId)) {
+            MicroAstReading current = currentByAntibiotic.get(reading.getAntibioticId());
+            if (current == null || isLater(reading, current)) {
+                currentByAntibiotic.put(reading.getAntibioticId(), reading);
+            }
+        }
+        List<MicroAstRunAntibiotic> ordered = runAntibioticDAO.getByRunId(runId);
+        if (ordered.isEmpty()) {
+            throw new MicroAstConflictException("AST_ORDERED_RESULTS_INCOMPLETE");
+        }
+        List<MicroAstReading> currentOrdered = new ArrayList<>();
+        for (MicroAstRunAntibiotic orderedAntibiotic : ordered) {
+            MicroAstReading reading = currentByAntibiotic.get(orderedAntibiotic.getAntibioticId());
+            if (reading == null) {
+                throw new MicroAstConflictException("AST_ORDERED_RESULTS_INCOMPLETE");
+            }
+            currentOrdered.add(reading);
+        }
+        return currentOrdered;
+    }
+
+    private boolean isLater(MicroAstReading candidate, MicroAstReading current) {
+        Timestamp candidateTime = candidate.getCreatedAt();
+        Timestamp currentTime = current.getCreatedAt();
+        if (candidateTime != null && currentTime != null && !candidateTime.equals(currentTime)) {
+            return candidateTime.after(currentTime);
+        }
+        if (candidateTime != null && currentTime == null) {
+            return true;
+        }
+        if (candidateTime == null && currentTime != null) {
+            return false;
+        }
+        String candidateId = candidate.getId() == null ? "" : candidate.getId();
+        String currentId = current.getId() == null ? "" : current.getId();
+        return candidateId.compareTo(currentId) > 0;
     }
 
     private List<MicroAstRun> reportableRuns(String isolateId) {
@@ -306,6 +352,16 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     private String identificationFor(MicroIsolate isolate) {
         if (MicroIsolateIdentificationStatus.PENDING.name().equals(isolate.getIdentificationStatus())) {
             return null;
+        }
+        if (!MicroIsolateIdentificationStatus.CONFIRMED.name().equals(isolate.getIdentificationStatus())) {
+            if (!hasText(isolate.getGramStain())) {
+                return null;
+            }
+            String workup = "Gram stain: " + isolate.getGramStain().trim();
+            if (hasText(isolate.getColonyMorphology())) {
+                workup += "; Colony morphology: " + isolate.getColonyMorphology().trim();
+            }
+            return workup;
         }
         if (hasText(isolate.getOrganismId())) {
             MicroOrganism organism = organismDAO.get(isolate.getOrganismId()).orElse(null);

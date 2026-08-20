@@ -1,6 +1,18 @@
 const option = (value, label) => ({ value, label });
 
 export const REFERENCE_DEFINITIONS = {
+  "patient-origins": {
+    resource: "patient-origins",
+    title: "microbiology.admin.patientOrigins.title",
+    description: "microbiology.admin.patientOrigins.description",
+    readOnly: true,
+    columns: [
+      { key: "code", label: "microbiology.admin.field.code" },
+      { key: "displayName", label: "microbiology.admin.field.name" },
+      { key: "whonetCode", label: "microbiology.admin.field.whonetCode" },
+    ],
+    fields: [],
+  },
   organisms: {
     resource: "organisms",
     title: "microbiology.admin.organisms.title",
@@ -137,6 +149,10 @@ export const REFERENCE_DEFINITIONS = {
         key: "incubationDefaults",
         label: "microbiology.admin.field.incubation",
       },
+      {
+        key: "maxIncubationDays",
+        label: "microbiology.admin.field.maxIncubationDays",
+      },
     ],
     fields: [
       {
@@ -168,6 +184,27 @@ export const REFERENCE_DEFINITIONS = {
         key: "incubationDefaults",
         label: "microbiology.admin.field.incubation",
         type: "textarea",
+      },
+      {
+        key: "incubationHours",
+        label: "microbiology.admin.field.incubationHours",
+        type: "number",
+        min: 1,
+        max: 8760,
+      },
+      {
+        key: "subcultureAtHours",
+        label: "microbiology.admin.field.subcultureAtHours",
+        type: "number",
+        min: 1,
+        max: 8760,
+      },
+      {
+        key: "maxIncubationDays",
+        label: "microbiology.admin.field.maxIncubationDays",
+        type: "number",
+        min: 1,
+        max: 365,
       },
       {
         key: "atmosphereDefaults",

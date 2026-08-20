@@ -8,4 +8,8 @@ public class MicroCaseReadinessForm {
     public String caseId;
     public boolean finalReleaseReady;
     public List<String> blockers = new ArrayList<>();
+    public int astRunsComplete;
+    public int astRunsTotal;
+    public int significantIsolatesAwaitingAstSetup;
+    public int isolatesPendingIdentification;
 }

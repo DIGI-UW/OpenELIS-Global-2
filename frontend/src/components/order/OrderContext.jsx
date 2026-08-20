@@ -17,6 +17,10 @@ import {
   convertRequestsToSamples,
 } from "./api/sampleTypeRequestApi";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import {
+  buildLoadedOrderData,
+  buildSubmissionSampleOrderItems,
+} from "./orderDataUtils";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -254,27 +258,7 @@ export const OrderProvider = ({ children }) => {
             setOrderId(response.id);
             setLabNumber(response.labNumber);
 
-            // Build order data by merging response fields with defaults
-            // The backend returns patientProperties at top level and inside orderData
-            const loadedOrderData = {
-              ...SampleOrderFormValues,
-              ...(response.orderData || {}),
-              patientProperties: {
-                ...SampleOrderFormValues.patientProperties,
-                ...(response.patientProperties || {}),
-                ...(response.orderData?.patientProperties || {}),
-                // Keep patient status from response or default to NO_ACTION for subsequent saves
-                // Only set UPDATE when patient data has actually been modified
-                patientUpdateStatus:
-                  response.patientProperties?.patientUpdateStatus ||
-                  "NO_ACTION",
-              },
-              sampleOrderItems: {
-                ...SampleOrderFormValues.sampleOrderItems,
-                ...(response.sampleOrderItems || {}),
-                labNo: response.labNumber,
-              },
-            };
+            const loadedOrderData = buildLoadedOrderData(response);
 
             setOrderDataState(loadedOrderData);
 
@@ -497,34 +481,12 @@ export const OrderProvider = ({ children }) => {
         // Flag for decoupled workflow: samples not required when orderEntryOnly=true
         orderEntryOnly: orderEntryOnly,
         // Clean up display lists that shouldn't be sent
-        sampleOrderItems: {
-          ...orderData.sampleOrderItems,
-          priorityList: [],
-          programList: [],
-          referringSiteList: [],
-          providersList: [],
-          paymentOptions: [],
-          testLocationCodeList: [],
-        },
+        sampleOrderItems: buildSubmissionSampleOrderItems(
+          orderData.sampleOrderItems,
+        ),
         initialSampleConditionList: [],
         testSectionList: [],
       };
-
-      // Remove extra fields from sampleOrderItems that backend doesn't expect or that fail validation
-      if (submitData.sampleOrderItems.questionnaire) {
-        delete submitData.sampleOrderItems.questionnaire;
-      }
-      if (submitData.sampleOrderItems.vlProgramFields) {
-        delete submitData.sampleOrderItems.vlProgramFields;
-      }
-      if (submitData.sampleOrderItems.paymentStatus) {
-        delete submitData.sampleOrderItems.paymentStatus;
-      }
-      // Remove 'program' field - it contains the name (e.g., "Histopathology") but validation
-      // expects a numeric ID. The backend uses 'programId' instead.
-      if (submitData.sampleOrderItems.program) {
-        delete submitData.sampleOrderItems.program;
-      }
 
       return new Promise((resolve, reject) => {
         // Always use SamplePatientEntry endpoint - the backend handles both insert and update
@@ -636,9 +598,6 @@ export const OrderProvider = ({ children }) => {
       setSaveStatus(SaveStatus.SAVING);
       setError(null);
 
-      // For Step 1, we send empty sampleXML - sample types will be saved as requests
-      const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
-
       // Prepare order data WITHOUT sample items
       const submitData = {
         ...orderData,
@@ -646,32 +605,12 @@ export const OrderProvider = ({ children }) => {
         referralItems: [],
         useReferral: false,
         orderEntryOnly: true, // Flag for backend to skip sample validation
-        sampleOrderItems: {
-          ...orderData.sampleOrderItems,
-          priorityList: [],
-          programList: [],
-          referringSiteList: [],
-          providersList: [],
-          paymentOptions: [],
-          testLocationCodeList: [],
-        },
+        sampleOrderItems: buildSubmissionSampleOrderItems(
+          orderData.sampleOrderItems,
+        ),
         initialSampleConditionList: [],
         testSectionList: [],
       };
-
-      // Remove extra fields that fail validation
-      if (submitData.sampleOrderItems.questionnaire) {
-        delete submitData.sampleOrderItems.questionnaire;
-      }
-      if (submitData.sampleOrderItems.vlProgramFields) {
-        delete submitData.sampleOrderItems.vlProgramFields;
-      }
-      if (submitData.sampleOrderItems.paymentStatus) {
-        delete submitData.sampleOrderItems.paymentStatus;
-      }
-      if (submitData.sampleOrderItems.program) {
-        delete submitData.sampleOrderItems.program;
-      }
 
       return new Promise((resolve, reject) => {
         const endpoint = "/rest/SamplePatientEntry";
@@ -856,7 +795,8 @@ export const OrderProvider = ({ children }) => {
         (idx) => idx !== sampleIndex,
       );
       if (assignedToSamples.length === 0) {
-        const { [testId]: removed, ...rest } = prev;
+        const rest = { ...prev };
+        delete rest[testId];
         return rest;
       }
       return {

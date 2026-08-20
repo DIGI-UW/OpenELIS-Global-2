@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.form;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 public class MicroIdentificationEventForm {
@@ -11,10 +12,14 @@ public class MicroIdentificationEventForm {
     public String previousOrganismText;
     public String previousSignificance;
     public String previousIdentificationStatus;
+    public String previousIdentificationMethod;
+    public BigDecimal previousIdentificationConfidence;
     public String newOrganismId;
     public String newOrganismText;
     public String newSignificance;
     public String newIdentificationStatus;
+    public String newIdentificationMethod;
+    public BigDecimal newIdentificationConfidence;
     public String reason;
     public Timestamp changedAt;
     public String changedBy;

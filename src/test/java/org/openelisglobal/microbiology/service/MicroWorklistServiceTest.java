@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,13 +14,21 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
+import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
+import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
+import org.openelisglobal.microbiology.form.MicroWorklistInoculationContext;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
+import org.openelisglobal.microbiology.form.MicroWorklistRecentActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistRowForm;
+import org.openelisglobal.microbiology.form.MicroWorklistSpecimenContext;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -45,11 +54,83 @@ public class MicroWorklistServiceTest {
     @Mock
     private MicroCriticalCommunicationDAO communicationDAO;
 
+    @Mock
+    private MicroWorklistContextDAO contextDAO;
+
+    @Mock
+    private MicroAstPanelDAO panelDAO;
+
     private MicroWorklistService service;
 
     @Before
     public void setUp() {
-        service = new MicroWorklistServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO);
+        when(contextDAO.getSpecimenContexts(anyList())).thenReturn(List.of());
+        when(contextDAO.getLatestActivityContexts(anyList())).thenReturn(List.of());
+        when(contextDAO.getRecentActivityContexts(anyList(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(List.of());
+        when(contextDAO.getFirstInoculationContexts(anyList())).thenReturn(List.of());
+        when(contextDAO.getCultureTimingContexts(anyList())).thenReturn(List.of());
+        when(panelDAO.getByIds(anyList())).thenReturn(List.of());
+        service = new MicroWorklistServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO, contextDAO, panelDAO);
+    }
+
+    @Test
+    public void enrichesBothGrainsWithBoundedAuthoritativeContext() {
+        MicroCase microCase = microCase("case-1", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.REVIEW_READY, "ROUTINE");
+        MicroIsolate isolate = significantIsolate("isolate-1");
+        isolate.setCaseId("case-1");
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("isolate-1");
+        run.setPanelId("panel-1");
+        run.setStatus(MicroAstRunStatus.REVIEWED.name());
+        run.setAnalyzerExpertFlags("ESBL|MDR");
+        run.setAnalyzerCompletedAt(new java.sql.Timestamp(System.currentTimeMillis()));
+        MicroAstPanel panel = new MicroAstPanel();
+        panel.setId("panel-1");
+        panel.setName("Gram negative standard");
+        java.sql.Timestamp lastActivityAt = java.sql.Timestamp.valueOf("2026-08-06 09:15:00");
+        when(caseDAO.getOpenCases()).thenReturn(List.of(microCase));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(microCase));
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
+        when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
+        when(communicationDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+        when(contextDAO.getSpecimenContexts(List.of("sample-1"))).thenReturn(
+                List.of(new MicroWorklistSpecimenContext("sample-1", "LAB-1001", "Mendez, Olivia", "Blood")));
+        when(contextDAO.getLatestActivityContexts(List.of("case-1"))).thenReturn(
+                List.of(new MicroWorklistActivityContext("case-1", lastActivityAt, "7", "Olivia", "Mendez")));
+        when(contextDAO.getRecentActivityContexts(List.of("case-1"), 25))
+                .thenReturn(List.of(new MicroWorklistRecentActivityContext("case-1", lastActivityAt, "7", "Olivia",
+                        "Mendez", "AST_REVIEWED", "AST run reviewed")));
+        when(panelDAO.getByIds(List.of("panel-1"))).thenReturn(List.of(panel));
+
+        MicroWorklistQueryForm cultureQuery = new MicroWorklistQueryForm();
+        cultureQuery.q = "Mendez";
+        MicroWorklistPageForm culturePage = service.getWorklistPage(cultureQuery);
+        MicroWorklistRowForm cultureRow = culturePage.rows.get(0);
+        MicroWorklistQueryForm astQuery = new MicroWorklistQueryForm();
+        astQuery.grain = "ast";
+        astQuery.q = "Gram negative";
+        MicroWorklistRowForm astRow = service.getWorklistPage(astQuery).rows.get(0);
+
+        assertEquals("LAB-1001", cultureRow.accessionNumber);
+        assertEquals("Mendez, Olivia", cultureRow.patientDisplay);
+        assertEquals("Blood", cultureRow.specimenDisplay);
+        assertEquals(lastActivityAt, cultureRow.lastActivityAt);
+        assertEquals("Olivia Mendez", cultureRow.lastActivityBy);
+        assertEquals("Gram negative standard", astRow.panelName);
+        assertEquals("LAB-1001", astRow.accessionNumber);
+        assertEquals("Mendez, Olivia", astRow.patientDisplay);
+        assertEquals(1, culturePage.summary.resistanceHits.get("ESBL").intValue());
+        assertEquals(1, culturePage.summary.resistanceHits.get("MDR").intValue());
+        assertEquals(1, culturePage.recentActivity.size());
+        assertEquals("LAB-1001", culturePage.recentActivity.get(0).accessionNumber);
+        assertEquals("Olivia Mendez", culturePage.recentActivity.get(0).performedByDisplay);
+        verify(contextDAO, org.mockito.Mockito.times(2)).getSpecimenContexts(List.of("sample-1"));
+        verify(contextDAO, org.mockito.Mockito.times(2)).getLatestActivityContexts(List.of("case-1"));
+        verify(contextDAO, org.mockito.Mockito.times(2)).getRecentActivityContexts(List.of("case-1"), 25);
+        verify(panelDAO, org.mockito.Mockito.times(2)).getByIds(List.of("panel-1"));
     }
 
     @Test
@@ -105,6 +186,77 @@ public class MicroWorklistServiceTest {
 
         assertEquals("HIGH", row.urgency);
         assertTrue(row.hasOpenCriticalCommunication);
+    }
+
+    @Test
+    public void positiveSignalHasItsOwnSummaryAndSubcultureAction() {
+        MicroCase positive = microCase("case-positive", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.POSITIVE_SIGNAL, "STAT");
+        when(caseDAO.getOpenCases()).thenReturn(List.of(positive));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(positive));
+        when(isolateDAO.getByCaseIds(List.of("case-positive"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-positive"))).thenReturn(List.of());
+
+        MicroWorklistPageForm page = service.getWorklistPage(new MicroWorklistQueryForm());
+
+        assertEquals(1, page.summary.positiveSignals);
+        assertEquals("SUBCULTURE_GRAM_STAIN", page.rows.get(0).dueAction);
+        MicroWorklistQueryForm positiveQuery = new MicroWorklistQueryForm();
+        positiveQuery.status = "positive";
+        assertEquals(1, service.getWorklistPage(positiveQuery).total);
+    }
+
+    @Test
+    public void incubatingCaseShowsElapsedDayFromStructuredMethodTiming() {
+        MicroCase incubating = microCase("case-1", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.INCUBATING, "ROUTINE");
+        incubating.setCultureMethodId("method-1");
+        java.sql.Timestamp inoculatedAt = new java.sql.Timestamp(System.currentTimeMillis() - (30L * 60 * 60 * 1000));
+        when(caseDAO.getOpenCases()).thenReturn(List.of(incubating));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(incubating));
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+        when(contextDAO.getFirstInoculationContexts(List.of("case-1")))
+                .thenReturn(List.of(new MicroWorklistInoculationContext("case-1", inoculatedAt)));
+        when(contextDAO.getCultureTimingContexts(List.of("method-1")))
+                .thenReturn(List.of(new MicroWorklistCultureTimingContext("method-1", "BACTERIOLOGY", 5)));
+
+        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+
+        assertEquals("INCUBATING", row.dueAction);
+        assertEquals(Integer.valueOf(2), row.incubationDay);
+        assertEquals(Integer.valueOf(5), row.maxIncubationDays);
+    }
+
+    @Test
+    public void incubatingCaseUsesStageFallbackWhenTimingIsUnavailable() {
+        MicroCase incubating = microCase("case-1", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.INCUBATING, "ROUTINE");
+        incubating.setCultureMethodId("method-1");
+        when(caseDAO.getOpenCases()).thenReturn(List.of(incubating));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(incubating));
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+
+        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+
+        assertEquals("INCUBATING", row.dueAction);
+        assertEquals(null, row.incubationDay);
+        assertEquals(null, row.maxIncubationDays);
+    }
+
+    @Test
+    public void unassignedCaseIsSurfacedAsTheFirstRequiredAction() {
+        MicroCase unassigned = microCase("case-unassigned", "sample-1", MicroWorkflowType.UNASSIGNED,
+                MicroCaseStage.RECEIVED, "ROUTINE");
+        when(caseDAO.getOpenCases()).thenReturn(List.of(unassigned));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(unassigned));
+        when(isolateDAO.getByCaseIds(List.of("case-unassigned"))).thenReturn(List.of());
+        when(communicationDAO.getByCaseIds(List.of("case-unassigned"))).thenReturn(List.of());
+
+        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+
+        assertEquals("NEEDS_WORKFLOW", row.dueAction);
     }
 
     @Test
@@ -195,6 +347,49 @@ public class MicroWorklistServiceTest {
         assertEquals(1, page.summary.growthDetected);
         assertEquals(1, page.summary.needsAstReview);
         assertEquals(1, page.summary.readyForCaseReview);
+    }
+
+    @Test
+    public void astGrainProjectsOneRowPerRunAndFiltersByResultsInStatus() {
+        MicroCase microCase = microCase("case-ast", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.AST_IN_PROGRESS, "STAT");
+        MicroIsolate isolate = significantIsolate("iso-1");
+        isolate.setCaseId("case-ast");
+        isolate.setIsolateLabel("Isolate 1");
+        isolate.setPreliminaryOrganismText("E. coli");
+        MicroAstRun awaiting = astRun("run-awaiting", "iso-1", MicroAstRunStatus.AWAITING_RESULTS);
+        MicroAstRun resultsIn = astRun("run-results", "iso-1", MicroAstRunStatus.RESULTS_IN);
+        resultsIn.setPanelId("panel-1");
+
+        when(caseDAO.getOpenCases()).thenReturn(List.of(microCase));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(microCase));
+        when(isolateDAO.getByCaseIds(List.of("case-ast"))).thenReturn(List.of(isolate));
+        when(astRunDAO.getByIsolateIds(List.of("iso-1"))).thenReturn(List.of(awaiting, resultsIn));
+        when(communicationDAO.getByCaseIds(List.of("case-ast"))).thenReturn(List.of());
+
+        MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        query.grain = "ast";
+        query.status = "results-in";
+        MicroWorklistPageForm page = service.getWorklistPage(query);
+
+        assertEquals(1, page.total);
+        assertEquals(2, page.summary.astInQueue);
+        assertEquals(1, page.summary.astAwaitingResults);
+        assertEquals(1, page.summary.astResultsIn);
+        assertEquals("run-results", page.rows.get(0).rowId);
+        assertEquals("run-results", page.rows.get(0).astRunId);
+        assertEquals("iso-1", page.rows.get(0).isolateId);
+        assertEquals("Isolate 1", page.rows.get(0).isolateLabel);
+        assertEquals("E. coli", page.rows.get(0).organismDisplay);
+        assertEquals(MicroAstRunStatus.RESULTS_IN.name(), page.rows.get(0).astStatus);
+    }
+
+    private MicroAstRun astRun(String id, String isolateId, MicroAstRunStatus status) {
+        MicroAstRun run = new MicroAstRun();
+        run.setId(id);
+        run.setIsolateId(isolateId);
+        run.setStatus(status.name());
+        return run;
     }
 
     private MicroCase microCase(String id, String sampleItemId, MicroWorkflowType workflowType, MicroCaseStage stage,
