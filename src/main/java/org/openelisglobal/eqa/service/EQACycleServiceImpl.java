@@ -39,6 +39,7 @@ import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleParticipant;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
@@ -135,6 +136,13 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     @Override
     public EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate,
             Date plannedEndDate, String sysUserId) {
+        return create(schemeId, cycleNumber, cycleName, plannedStartDate, plannedEndDate, null, sysUserId);
+    }
+
+    @Override
+    @Transactional
+    public EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate,
+            Date plannedEndDate, EQADistributionMethod distributionMethod, String sysUserId) {
         EQAProgram scheme = eqaProgramService.get(schemeId);
         List<EQACycle> existing = eqaCycleDAO.getAllMatchingOrdered("scheme.id", schemeId, "cycleNumber", true);
         int number = cycleNumber == null ? (existing.isEmpty() ? 1 : existing.get(0).getCycleNumber() + 1)
@@ -152,6 +160,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         cycle.setPlannedStartDate(plannedStartDate);
         cycle.setPlannedEndDate(plannedEndDate);
         cycle.setStatus(EQACycleStatus.PLANNED);
+        cycle.setDistributionMethod(distributionMethod);
         cycle.setCreatedBy(systemUserService.get(sysUserId));
         cycle.setSysUserId(sysUserId);
         cycle.setId(eqaCycleDAO.insert(cycle));
@@ -336,7 +345,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         // makes the provider wizard's single POST all-or-nothing, which two client
         // calls could not be.
         EQACycle cycle = create(request.schemeId(), request.cycleNumber(), request.cycleName(),
-                request.plannedStartDate(), request.plannedEndDate(), sysUserId);
+                request.plannedStartDate(), request.plannedEndDate(), request.distributionMethod(), sysUserId);
 
         EQAPanel panel = new EQAPanel();
         panel.setScheme(scheme);

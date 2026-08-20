@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.5 (OGC-613): the distribution method the cycle wizard's fourth step
+    settles — FHIR, CSV export, or mixed where participants differ. The receipt
+    monitor and score distribution read it to decide how each participant is
+    served.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-062-add-eqa-cycle-distribution-method">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="eqa_cycle" columnName="distribution_method" />
+            </not>
+        </preConditions>
+        <comment>FR-V2.5-02 step 4: how a cycle reaches its participants and returns their scores</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_cycle">
+            <column name="distribution_method" type="VARCHAR(10)" />
+        </addColumn>
+        <!-- Nullable on purpose: cycles created before the wizard (in-house
+             rounds, existing fixtures) never chose one, and an invented default
+             would read as a decision somebody made. -->
+        <sql>
+            ALTER TABLE clinlims.eqa_cycle
+            ADD CONSTRAINT eqa_cycle_distribution_method_chk
+            CHECK (distribution_method IS NULL OR distribution_method IN ('FHIR', 'CSV', 'MIXED'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.eqa_cycle DROP CONSTRAINT eqa_cycle_distribution_method_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="eqa_cycle" columnName="distribution_method" />
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

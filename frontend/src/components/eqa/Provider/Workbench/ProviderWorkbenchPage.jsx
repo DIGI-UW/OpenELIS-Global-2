@@ -16,7 +16,7 @@ import {
 import { useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
-import { CycleStatusTag, hintStyle } from "../../eqaCommon";
+import CycleStateBanner from "../../CycleStateBanner";
 import { fetchPrepStatus, fetchShipmentRows } from "./workbenchApi";
 import PrepWorkbench from "./PrepWorkbench";
 import ShipmentWorkbench from "./ShipmentWorkbench";
@@ -98,15 +98,14 @@ const ProviderWorkbenchPage = () => {
 
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
-          <Tile style={{ marginBottom: "1rem" }}>
-            <CycleStatusTag status={prep?.cycleStatus} />
-            <span style={{ ...hintStyle, marginLeft: "0.5rem" }}>
-              {t(
-                "eqa.provider.workbench.stateHint",
-                "Prep must clear the inventory and QC gate before any panel can be dispatched.",
-              )}
-            </span>
-          </Tile>
+          <CycleStateBanner
+            cycleId={cycleId}
+            status={prep?.cycleStatus}
+            hint={t(
+              "eqa.provider.workbench.stateHint",
+              "Prep must clear the inventory and QC gate before any panel can be dispatched.",
+            )}
+          />
           <Tabs>
             <TabList
               aria-label={t("eqa.provider.workbench.tabs", "Workbenches")}

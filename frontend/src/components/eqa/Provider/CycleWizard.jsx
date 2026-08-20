@@ -11,6 +11,8 @@ import {
   Loading,
   NumberInput,
   ProgressIndicator,
+  RadioButton,
+  RadioButtonGroup,
   ProgressStep,
   Section,
   Select,
@@ -36,10 +38,13 @@ import { createProviderCycle } from "./Workbench/workbenchApi";
 // The same test list T-21's in-house wizard picks from: the standard catalog
 // narrowed to tests that carry an analyte, since a panel target is stored
 // against one. One seam for both wizards rather than a second copy.
-import { fetchTests } from "../InHouse/inHouseApi";
+import { fetchTests } from "../eqaApi";
 
 /** FR-V2.1-17's vocabularies, as the server spells them. */
 const SOURCE_TYPES = ["IN_HOUSE_ALIQUOTED", "VENDOR_SOURCED", "MIXED"];
+// Exactly EQADistributionMethod; the server refuses anything else.
+const DISTRIBUTION_METHODS = ["FHIR", "CSV", "MIXED"];
+
 const STORAGE_TEMPS = [
   "AMBIENT",
   "REFRIGERATED_2_8C",
@@ -59,7 +64,8 @@ const emptySample = () => ({
 
 /**
  * Panel definition + cycle creation wizard (FR-V2.5-02): cycle details → panel
- * samples + source → participants → distribution → confirm & begin prep.
+ * samples + source (with its cold chain) → participants → distribution method →
+ * confirm & begin prep.
  *
  * Nothing is written until the last step. The whole cycle — cycle row, panel,
  * panel samples, participant roster — is one POST, so a refusal leaves nothing
@@ -94,6 +100,7 @@ const CycleWizard = () => {
   const [samples, setSamples] = useState([emptySample()]);
   const [selectedOrgs, setSelectedOrgs] = useState([]);
   const [storageTemp, setStorageTemp] = useState("");
+  const [distributionMethod, setDistributionMethod] = useState("FHIR");
   const [expirationDate, setExpirationDate] = useState("");
 
   useEffect(() => {
@@ -166,6 +173,7 @@ const CycleWizard = () => {
         participantOrganizationIds: selectedOrgs.map((o) => Number(o.id)),
         storageTemp,
         expirationDate,
+        distributionMethod,
       },
       ({ ok, body }) => {
         setSaving(false);
@@ -238,7 +246,10 @@ const CycleWizard = () => {
               label={t("eqa.distribution.step.participants", "Participants")}
             />
             <ProgressStep
-              label={t("eqa.provider.wizard.step.distribution", "Distribution")}
+              label={t(
+                "eqa.provider.wizard.step.distribution",
+                "Distribution method",
+              )}
             />
             <ProgressStep
               label={t("eqa.distribution.step.confirmation", "Confirmation")}
@@ -542,7 +553,96 @@ const CycleWizard = () => {
                   "A target value is sealed and encrypted at rest; leave it blank when the target is only known at scoring time.",
                 )}
               </p>
+              <Grid condensed>
+                <Column lg={8} md={4} sm={4}>
+                  <Select
+                    id="panel-storage-temp"
+                    labelText={t(
+                      "eqa.provider.wizard.storageTemp",
+                      "Storage temperature",
+                    )}
+                    helperText={t(
+                      "eqa.provider.wizard.storageTemp.hint",
+                      "Becomes each shipping box's temperature requirement.",
+                    )}
+                    value={storageTemp}
+                    onChange={(e) => setStorageTemp(e.target.value)}
+                  >
+                    <SelectItem
+                      value=""
+                      text={t(
+                        "eqa.provider.wizard.storageTemp.select",
+                        "Select a temperature",
+                      )}
+                    />
+                    {STORAGE_TEMPS.map((value) => (
+                      <SelectItem
+                        key={value}
+                        value={value}
+                        text={t(
+                          `eqa.panel.storage.${value.toLowerCase()}`,
+                          value.replace(/_/g, " "),
+                        )}
+                      />
+                    ))}
+                  </Select>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <DatePicker
+                    datePickerType="single"
+                    dateFormat="d/m/Y"
+                    onChange={([date]) =>
+                      setExpirationDate(date ? toIsoDate(date) : "")
+                    }
+                  >
+                    <DatePickerInput
+                      id="panel-expiration"
+                      labelText={t(
+                        "eqa.provider.wizard.expiration",
+                        "Material expiry",
+                      )}
+                      placeholder="dd/mm/yyyy"
+                    />
+                  </DatePicker>
+                </Column>
+              </Grid>
             </>
+          )}
+
+          {/* FR-V2.5-02 step 4: how the cycle reaches its participants and
+              returns their scores. The receipt monitor and score distribution
+              read this to decide how each participant is served. */}
+          {step === 3 && (
+            <Tile>
+              <RadioButtonGroup
+                legendText={t(
+                  "eqa.cycle.distributionMethod",
+                  "Distribution method",
+                )}
+                name="distribution-method"
+                orientation="vertical"
+                valueSelected={distributionMethod}
+                onChange={setDistributionMethod}
+              >
+                {DISTRIBUTION_METHODS.map((method) => (
+                  <RadioButton
+                    key={method}
+                    id={`method-${method}`}
+                    value={method}
+                    labelText={t(
+                      `eqa.cycle.distributionMethod.${method.toLowerCase()}`,
+                      method,
+                    )}
+                  />
+                ))}
+              </RadioButtonGroup>
+              <p style={{ ...hintStyle, marginTop: "0.5rem" }}>
+                {t(
+                  "eqa.cycle.distributionMethod.hint",
+                  "Wired FHIR, exported files, or both where participants differ. The panel's cold chain is recorded with its source in step 2.",
+                )}
+              </p>
+            </Tile>
           )}
 
           {step === 2 && (
@@ -581,70 +681,6 @@ const CycleWizard = () => {
             </>
           )}
 
-          {step === 3 && (
-            <Grid condensed>
-              <Column lg={8} md={4} sm={4}>
-                <Select
-                  id="panel-storage-temp"
-                  labelText={t(
-                    "eqa.provider.wizard.storageTemp",
-                    "Storage temperature",
-                  )}
-                  helperText={t(
-                    "eqa.provider.wizard.storageTemp.hint",
-                    "Becomes each shipping box's temperature requirement.",
-                  )}
-                  value={storageTemp}
-                  onChange={(e) => setStorageTemp(e.target.value)}
-                >
-                  <SelectItem
-                    value=""
-                    text={t(
-                      "eqa.provider.wizard.storageTemp.select",
-                      "Select a temperature",
-                    )}
-                  />
-                  {STORAGE_TEMPS.map((value) => (
-                    <SelectItem
-                      key={value}
-                      value={value}
-                      text={t(
-                        `eqa.panel.storage.${value.toLowerCase()}`,
-                        value.replace(/_/g, " "),
-                      )}
-                    />
-                  ))}
-                </Select>
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <DatePicker
-                  datePickerType="single"
-                  dateFormat="d/m/Y"
-                  onChange={([date]) =>
-                    setExpirationDate(date ? toIsoDate(date) : "")
-                  }
-                >
-                  <DatePickerInput
-                    id="panel-expiration"
-                    labelText={t(
-                      "eqa.provider.wizard.expiration",
-                      "Material expiry",
-                    )}
-                    placeholder="dd/mm/yyyy"
-                  />
-                </DatePicker>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                <p style={{ ...hintStyle, marginTop: "0.5rem" }}>
-                  {t(
-                    "eqa.provider.wizard.reserve.hint",
-                    "Aliquots held back for repeat testing are recorded on the prep workbench, once the material exists.",
-                  )}
-                </p>
-              </Column>
-            </Grid>
-          )}
-
           {step === 4 && (
             <Tile>
               <Summary
@@ -679,6 +715,13 @@ const CycleWizard = () => {
                       )
                     : "—"
                 }
+              />
+              <Summary
+                label={t("eqa.cycle.distributionMethod", "Distribution method")}
+                value={t(
+                  `eqa.cycle.distributionMethod.${distributionMethod.toLowerCase()}`,
+                  distributionMethod,
+                )}
               />
               <p style={{ ...hintStyle, marginTop: "0.75rem" }}>
                 {t(

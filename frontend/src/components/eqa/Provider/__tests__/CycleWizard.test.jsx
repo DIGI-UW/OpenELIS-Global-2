@@ -80,6 +80,9 @@ const throughPanelStep = () => {
   fireEvent.change(screen.getByLabelText("Test"), {
     target: { value: "55" },
   });
+  fireEvent.change(screen.getByLabelText("Storage temperature"), {
+    target: { value: "DRY_ICE" },
+  });
 };
 
 describe("CycleWizard", () => {
@@ -173,9 +176,7 @@ describe("CycleWizard", () => {
     await userEvent.click(screen.getByRole("combobox"));
     await userEvent.click(screen.getByText("District Lab A"));
     next();
-    fireEvent.change(screen.getByLabelText("Storage temperature"), {
-      target: { value: "DRY_ICE" },
-    });
+    fireEvent.click(screen.getByLabelText("CSV export"));
     next();
 
     fireEvent.click(
@@ -190,6 +191,7 @@ describe("CycleWizard", () => {
     expect(body.cycleName).toBe("2026 Round 2");
     expect(body.panelName).toBe("HIV VL panel");
     expect(body.storageTemp).toBe("DRY_ICE");
+    expect(body.distributionMethod).toBe("CSV");
     // testId, not analyteId: the server resolves the analyte behind the test.
     expect(body.samples).toEqual([
       expect.objectContaining({ sampleCode: "PS-1", testId: "55" }),
@@ -228,5 +230,32 @@ describe("CycleWizard", () => {
     expect(
       screen.getByRole("button", { name: "Create cycle and begin prep" }),
     ).toBeInTheDocument();
+  });
+
+  test("the distribution method defaults to FHIR and is sent with the cycle", async () => {
+    renderWizard();
+    postToOpenElisServerFullResponse.mockImplementation((_url, _payload, cb) =>
+      cb({ ok: true, json: () => Promise.resolve({ id: 43 }) }),
+    );
+
+    throughPanelStep();
+    next();
+    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(screen.getByText("District Lab A"));
+    next();
+
+    // Step 4 is the method, not the cold chain: that moved to the panel step.
+    expect(screen.getByLabelText("FHIR")).toBeChecked();
+    expect(
+      screen.queryByLabelText("Storage temperature"),
+    ).not.toBeInTheDocument();
+
+    next();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create cycle and begin prep" }),
+    );
+
+    const [, payload] = postToOpenElisServerFullResponse.mock.calls[0];
+    expect(JSON.parse(payload).distributionMethod).toBe("FHIR");
   });
 });

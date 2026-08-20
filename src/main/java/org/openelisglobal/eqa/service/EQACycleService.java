@@ -7,6 +7,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
@@ -25,6 +26,14 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
      */
     EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate, Date plannedEndDate,
             String sysUserId);
+
+    /**
+     * The same create, carrying the provider wizard's distribution method
+     * (FR-V2.5-02 step 4). The in-house wizard has no participants to distribute
+     * to, so it keeps the shorter form.
+     */
+    EQACycle create(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate, Date plannedEndDate,
+            EQADistributionMethod distributionMethod, String sysUserId);
 
     /**
      * Move a cycle to a new state and record why, atomically (FR-V2.1-04 /
@@ -91,11 +100,13 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
      * source, 3 participants, 4 distribution (cold chain + expiry), 5 confirm.
      *
      * <p>
-     * There is no distribution-method field: the FRS names step 4 "distribution
-     * method", and what the rest of the system actually consumes from that step is
-     * the panel's storage temperature — which becomes the shipping box's
-     * temperature requirement — and its expiration date. Recording a free-text
-     * "method" alongside those would be a column nothing reads.
+     * Step 4 settles two different things and both are recorded: the cycle's
+     * distribution method (FHIR, CSV or mixed), which the receipt monitor and score
+     * distribution read to decide how each participant is served, and the panel's
+     * cold chain — storage temperature, which becomes the shipping box's
+     * temperature requirement, and expiration date. The cold-chain fields are
+     * collected in step 2 with the rest of the panel's source, where the FRS puts
+     * them.
      *
      * <p>
      * Nor is there a reserve: {@code eqa_panel_aliquots_chk} requires produced
@@ -106,7 +117,8 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
     record ProviderCycleRequest(Long schemeId, Integer cycleNumber, String cycleName, Date plannedStartDate,
             Date plannedEndDate, String panelName, EQAPanelSourceType sourceType, String lotNumber, String vendorName,
             String vendorLot, String vendorCertificateRef, List<PanelSampleRequest> samples,
-            List<Long> participantOrganizationIds, EQAStorageTemp storageTemp, Date expirationDate) {
+            List<Long> participantOrganizationIds, EQAStorageTemp storageTemp, Date expirationDate,
+            EQADistributionMethod distributionMethod) {
     }
 
     /**

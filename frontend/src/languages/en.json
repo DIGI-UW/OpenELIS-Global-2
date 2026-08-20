@@ -8360,5 +8360,17 @@
   "eqa.provider.wizard.reserve.hint": "Aliquots held back for repeat testing are recorded on the prep workbench, once the material exists.",
   "eqa.provider.wizard.confirm.hint": "Creating the cycle moves it straight into prep, where aliquot counts and homogeneity QC are recorded.",
   "eqa.provider.wizard.create": "Create cycle and begin prep",
-  "eqa.provider.wizard.failed": "The cycle was not created."
+  "eqa.provider.wizard.failed": "The cycle was not created.",
+  "eqa.cycle.distributionMethod": "Distribution method",
+  "eqa.cycle.distributionMethod.fhir": "FHIR",
+  "eqa.cycle.distributionMethod.csv": "CSV export",
+  "eqa.cycle.distributionMethod.mixed": "Mixed",
+  "eqa.cycle.distributionMethod.hint": "Wired FHIR, exported files, or both where participants differ. The panel's cold chain is recorded with its source in step 2.",
+  "eqa.cycle.history": "Cycle history",
+  "eqa.cycle.history.empty": "No state changes recorded for this cycle yet.",
+  "eqa.cycle.history.when": "When",
+  "eqa.cycle.history.state": "State",
+  "eqa.cycle.history.trigger": "Trigger",
+  "eqa.cycle.history.reason": "Reason",
+  "eqa.cycle.history.manual": "Manual override"
 }

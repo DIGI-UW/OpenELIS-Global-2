@@ -21,6 +21,7 @@ import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
@@ -136,7 +137,7 @@ public class EQACycleRestController extends BaseRestController {
         }
         EQACycle cycle = cycleService.create(schemeId, integerField(body, "cycleNumber"),
                 stringField(body, "cycleName"), dateField(body, "plannedStartDate"), dateField(body, "plannedEndDate"),
-                getSysUserId(request));
+                enumField(body, "distributionMethod", EQADistributionMethod.class), getSysUserId(request));
         return toCycleDto(cycle);
     }
 
@@ -261,7 +262,7 @@ public class EQACycleRestController extends BaseRestController {
                 stringField(body, "vendorName"), stringField(body, "vendorLot"),
                 stringField(body, "vendorCertificateRef"), sampleRequests(body.get("samples")),
                 longListField(body, "participantOrganizationIds"), enumField(body, "storageTemp", EQAStorageTemp.class),
-                dateField(body, "expirationDate"));
+                dateField(body, "expirationDate"), enumField(body, "distributionMethod", EQADistributionMethod.class));
 
         EQACycle created = cycleService.createProviderCycle(wizard, getSysUserId(request));
         return ResponseEntity.status(HttpStatus.CREATED).body(toCycleDto(created));
@@ -420,6 +421,8 @@ public class EQACycleRestController extends BaseRestController {
             // and stands T-14's auto-submit down.
             dto.put("requiresCycleReview", Boolean.TRUE.equals(cycle.getScheme().getRequiresCycleReview()));
         }
+        dto.put("distributionMethod",
+                cycle.getDistributionMethod() == null ? null : cycle.getDistributionMethod().name());
         dto.put("plannedStartDate",
                 cycle.getPlannedStartDate() == null ? null : cycle.getPlannedStartDate().toString());
         dto.put("plannedEndDate", cycle.getPlannedEndDate() == null ? null : cycle.getPlannedEndDate().toString());

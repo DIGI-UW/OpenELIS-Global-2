@@ -20,6 +20,7 @@ import org.openelisglobal.eqa.service.EQAShipmentService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
@@ -219,7 +220,7 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
     public void aVendorSourcedPanelWithoutAVendorIsRefused() {
         ProviderCycleRequest request = new ProviderCycleRequest(scheme.getId(), 4, "2026 Round 4", null, null,
                 "Vendor panel", EQAPanelSourceType.VENDOR_SOURCED, "LOT-1", null, null, null, twoSamples(),
-                List.of(ORG_A), null, null);
+                List.of(ORG_A), null, null, EQADistributionMethod.FHIR);
 
         try {
             cycleService.createProviderCycle(request, USER);
@@ -258,6 +259,37 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
 
     // ---- fixture helpers ----
 
+    @Test
+    public void theWizardsDistributionMethodIsRecordedOnTheCycle() {
+        EQACycle created = cycleService.createProviderCycle(request(List.of(ORG_A, ORG_B)), USER);
+
+        assertEquals(EQADistributionMethod.MIXED, readBack(created.getId()).getDistributionMethod());
+        assertEquals("MIXED", jdbc.queryForObject("SELECT distribution_method FROM clinlims.eqa_cycle WHERE id = ?",
+                String.class, created.getId()));
+    }
+
+    @Test
+    public void aCycleCreatedOutsideTheWizardHasNoDistributionMethod() {
+        EQACycle created = cycleService.create(scheme.getId(), 9, "Legacy round", null, null, USER);
+
+        assertNull("nothing may invent a method the provider never chose",
+                readBack(created.getId()).getDistributionMethod());
+    }
+
+    @Test
+    public void theDatabaseRefusesADistributionMethodOutsideTheEnum() {
+        EQACycle created = cycleService.createProviderCycle(request(List.of(ORG_A)), USER);
+
+        try {
+            // Short enough to reach the CHECK: a longer value trips VARCHAR(10) first
+            // and would pass this test for the wrong reason.
+            jdbc.update("UPDATE clinlims.eqa_cycle SET distribution_method = 'PIGEON' WHERE id = ?", created.getId());
+            fail("eqa_cycle_distribution_method_chk must reject values the enum does not carry");
+        } catch (Exception expected) {
+            assertConstraintViolation(expected, "eqa_cycle_distribution_method_chk");
+        }
+    }
+
     private ProviderCycleRequest request(List<Long> participants) {
         return with(twoSamples(), participants);
     }
@@ -265,13 +297,14 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
     private ProviderCycleRequest withCycleNumber(Integer cycleNumber) {
         return new ProviderCycleRequest(scheme.getId(), cycleNumber, "2026 Round", null, null, "HIV VL panel",
                 EQAPanelSourceType.IN_HOUSE_ALIQUOTED, "LOT-1", null, null, null, twoSamples(), List.of(ORG_A),
-                EQAStorageTemp.DRY_ICE, null);
+                EQAStorageTemp.DRY_ICE, null, EQADistributionMethod.FHIR);
     }
 
     private ProviderCycleRequest with(List<PanelSampleRequest> samples, List<Long> participants) {
         return new ProviderCycleRequest(scheme.getId(), 4, "2026 Round 4", Date.valueOf("2026-09-01"),
                 Date.valueOf("2026-10-01"), "HIV VL panel", EQAPanelSourceType.IN_HOUSE_ALIQUOTED, "LOT-1", null, null,
-                null, samples, participants, EQAStorageTemp.DRY_ICE, Date.valueOf("2027-01-31"));
+                null, samples, participants, EQAStorageTemp.DRY_ICE, Date.valueOf("2027-01-31"),
+                EQADistributionMethod.MIXED);
     }
 
     private List<PanelSampleRequest> twoSamples() {
