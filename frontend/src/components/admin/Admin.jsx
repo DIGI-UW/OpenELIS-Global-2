@@ -76,12 +76,14 @@ import ExternalConnectionAddModify from "./externalConnections/ExternalConnectio
 import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import AdminDashboard from "./AdminDashboard";
 import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
+import MacroLibraryPage from "./textMacro/MacroLibraryPage";
 
 function Admin() {
   const { path } = useRouteMatch();
 
   return (
     <Switch>
+      <Route path={`${path}/MacroLibrary`} component={MacroLibraryPage} />
       <Route
         path={`${path}/MicrobiologyReference/:section/:detailId?`}
         component={MicrobiologyReferenceAdmin}

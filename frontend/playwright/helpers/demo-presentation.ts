@@ -34,6 +34,24 @@ export type DemoPresentation = {
   ) => Promise<void>;
 };
 
+export async function captureEvidenceScreenshot(
+  page: Page,
+  testInfo: TestInfo,
+  name: string,
+  options: { fullPage?: boolean; locator?: Locator } = {},
+) {
+  const screenshot = options.locator
+    ? await options.locator.screenshot()
+    : await page.screenshot({ fullPage: options.fullPage ?? false });
+  await testInfo.attach(name, {
+    body: screenshot,
+    contentType: "image/png",
+  });
+  fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
+  const safeName = name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  fs.writeFileSync(path.join(EVIDENCE_DIR, `${safeName}.png`), screenshot);
+}
+
 export function createDemoPresentation(
   page: Page,
   testInfo: TestInfo,
@@ -64,18 +82,7 @@ export function createDemoPresentation(
       options: { fullPage?: boolean; locator?: Locator } = {},
     ) => {
       if (!isVideo) return;
-      const screenshot = options.locator
-        ? await options.locator.screenshot()
-        : await page.screenshot({ fullPage: options.fullPage ?? false });
-      // Attach to HTML report
-      await testInfo.attach(name, {
-        body: screenshot,
-        contentType: "image/png",
-      });
-      // Also save as loose file for direct viewing
-      fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
-      const safeName = name.replace(/[^a-zA-Z0-9._-]/g, "-");
-      fs.writeFileSync(path.join(EVIDENCE_DIR, `${safeName}.png`), screenshot);
+      await captureEvidenceScreenshot(page, testInfo, name, options);
     },
   };
 }

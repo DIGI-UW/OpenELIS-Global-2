@@ -24,4 +24,5 @@ public class MicrobiologyUatScenarioForm {
     public String cultureTestId;
     public String tbCultureTestId;
     public String nonCultureTestId;
+    public String textMacroCode;
 }

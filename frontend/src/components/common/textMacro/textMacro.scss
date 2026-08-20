@@ -1,0 +1,74 @@
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/theme" as *;
+
+.text-macro-field {
+  position: relative;
+
+  &__popover {
+    position: absolute;
+    z-index: 8000;
+    inset-block-start: 100%;
+    inset-inline: 0;
+    border: 1px solid $border-strong-01;
+    box-shadow: 0 $spacing-02 $spacing-04 rgb(0 0 0 / 20%);
+  }
+
+  &__options {
+    max-block-size: 14rem;
+    overflow-y: auto;
+    background: $layer-02;
+  }
+
+  &__option {
+    display: grid;
+    grid-template-columns: minmax(5rem, auto) minmax(0, 1fr);
+    gap: $spacing-04;
+    inline-size: 100%;
+    min-block-size: 3rem;
+    padding: $spacing-03 $spacing-05;
+    border: 0;
+    border-block-end: 1px solid $border-subtle-01;
+    background: $layer-02;
+    color: $text-primary;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &[aria-selected="true"],
+    &:hover {
+      background: $layer-hover-02;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $focus;
+      outline-offset: -2px;
+    }
+  }
+
+  &__code {
+    color: $text-primary;
+    font-weight: 600;
+  }
+
+  &__status {
+    padding: $spacing-04 $spacing-05;
+    color: $text-secondary;
+  }
+
+  &__announcement {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 42rem) {
+  .text-macro-field__popover {
+    position: static;
+    margin-block-end: $spacing-03;
+    box-shadow: none;
+  }
+}

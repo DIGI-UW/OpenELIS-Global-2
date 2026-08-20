@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="OGC-788-text-macro-library" author="OGC">
+    <createSequence sequenceName="text_macro_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+    <createTable tableName="text_macro" schemaName="clinlims">
+      <column name="id" type="bigint">
+        <constraints primaryKey="true" primaryKeyName="pk_text_macro" nullable="false"/>
+      </column>
+      <column name="code" type="varchar(64)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="expansion_text" type="varchar(4000)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="is_active" type="boolean" defaultValueBoolean="true">
+        <constraints nullable="false"/>
+      </column>
+      <column name="provenance" type="varchar(20)" defaultValue="LOCAL">
+        <constraints nullable="false"/>
+      </column>
+      <column name="source_key" type="varchar(100)"/>
+      <column name="source_version" type="varchar(50)"/>
+      <column name="last_updated_by" type="varchar(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="last_updated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <addUniqueConstraint schemaName="clinlims" tableName="text_macro" columnNames="code"
+      constraintName="uq_text_macro_code"/>
+
+    <createTable tableName="text_macro_context" schemaName="clinlims">
+      <column name="macro_id" type="bigint">
+        <constraints nullable="false"/>
+      </column>
+      <column name="context" type="varchar(80)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+
+    <addPrimaryKey schemaName="clinlims" tableName="text_macro_context"
+      columnNames="macro_id,context" constraintName="pk_text_macro_context"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="text_macro_context"
+      baseColumnNames="macro_id" referencedTableSchemaName="clinlims" referencedTableName="text_macro"
+      referencedColumnNames="id" constraintName="fk_text_macro_context_macro" onDelete="CASCADE"/>
+    <createIndex schemaName="clinlims" tableName="text_macro_context" indexName="idx_text_macro_context">
+      <column name="context"/>
+      <column name="macro_id"/>
+    </createIndex>
+
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="text_macro_context"/>
+      <dropTable schemaName="clinlims" tableName="text_macro"/>
+      <dropSequence sequenceName="text_macro_seq" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="OGC-788-register-text-macro-audit" author="OGC">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'text_macro'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="reference_tables">
+      <column name="id" valueSequenceNext="reference_tables_seq"/>
+      <column name="name" value="text_macro"/>
+      <column name="keep_history" value="Y"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="reference_tables">
+        <where>LOWER(name) = 'text_macro'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

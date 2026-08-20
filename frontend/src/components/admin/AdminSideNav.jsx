@@ -27,6 +27,7 @@ import {
   Calendar,
   TrashCan,
   Chemistry,
+  TextShortParagraph,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -180,6 +181,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
       </SideNavMenu>
+      <SideNavLink
+        data-testid="text-macro-library"
+        renderIcon={TextShortParagraph}
+        {...navProps(`${path}/MacroLibrary`)}
+      >
+        <FormattedMessage id="textMacro.admin.title" />
+      </SideNavLink>
       <SideNavMenu
         data-testid="microbiology-reference-menu"
         renderIcon={Chemistry}

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Add } from "@carbon/icons-react";
-import { Button, Stack, Tag, TextArea } from "@carbon/react";
+import { Button, Stack, Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 
 const RECENT_TIMELINE_EVENT_LIMIT = 30;
@@ -90,12 +91,13 @@ const CaseTimelinePanel = ({
           }}
         >
           <Stack gap={4}>
-            <TextArea
+            <MacroTextArea
               ref={noteFieldRef}
               id="microbiology-timeline-note"
               labelText={intl.formatMessage({
                 id: "microbiology.case.timeline.note",
               })}
+              context="MICROBIOLOGY_CULTURE_ACTIVITY"
               value={note}
               onChange={(event) => setNote(event.target.value)}
             />

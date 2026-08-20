@@ -16,52 +16,52 @@
 
 ## M1 Phase 1 - Tests First
 
-- [ ] T101 Add failing JUnit 4 service tests for normalization, uniqueness,
+- [x] T101 Add failing JUnit 4 service tests for normalization, uniqueness,
       context matching, active filtering, pagination, and authenticated actor.
-- [ ] T102 Add failing controller tests for authenticated lookup, admin writes,
+- [x] T102 Add failing controller tests for authenticated lookup, admin writes,
       invalid input, unauthorized writes, and absence of client actor control.
-- [ ] T103 Add failing ORM and Liquibase update/rollback tests for phrase and
+- [x] T103 Add failing ORM and Liquibase update/rollback tests for phrase and
       context persistence.
-- [ ] T104 Add failing Vitest/RTL tests for caret-aware replacement, surrounding
+- [x] T104 Add failing Vitest/RTL tests for caret-aware replacement, surrounding
       text preservation, keyboard behavior, announcements, contexts, and reusable
       controlled-field integration.
-- [ ] T105 Add failing admin-page tests for Carbon interactions and canonical
+- [x] T105 Add failing admin-page tests for Carbon interactions and canonical
       `q`, `context`, `status`, `sort`, `page`, `pageSize`, and create/edit state.
-- [ ] T106 Register a focused Playwright `core-app` journey before production
+- [x] T106 Register a focused Playwright `core-app` journey before production
       implementation; use accessible roles/labels and no arbitrary waits.
 
 ## M1 Phase 2 - Backend
 
-- [ ] T107 Add the Liquibase model and rollback for phrase definitions and
+- [x] T107 Add the Liquibase model and rollback for phrase definitions and
       applicable contexts, with generated IDs and normalized uniqueness.
-- [ ] T108 Add entity, DAO, service, and DTO layers with service transactions,
+- [x] T108 Add entity, DAO, service, and DTO layers with service transactions,
       eager response compilation, and server-derived audit actor.
-- [ ] T109 Add authenticated runtime lookup and admin-only management endpoints.
-- [ ] T110 Extend the property-gated UAT scenario through services only with a
+- [x] T109 Add authenticated runtime lookup and admin-only management endpoints.
+- [x] T110 Extend the property-gated UAT scenario through services only with a
       small safe demonstration set; use no SQL, DAO bypass, or fixed persisted IDs.
 
 ## M1 Phase 3 - Frontend
 
-- [ ] T111 Build the reusable controlled narrative field with discoverable
+- [x] T111 Build the reusable controlled narrative field with discoverable
       Carbon suggestions, keyboard selection, Escape, focus/caret restoration, and
       screen-reader announcements.
-- [ ] T112 Integrate it with culture activity notes and clinical history while
+- [x] T112 Integrate it with culture activity notes and clinical history while
       preserving existing form payloads and the binary Antibiotic Exposure choice.
-- [ ] T113 Build the Carbon administration workflow with linkable breadcrumb
+- [x] T113 Build the Carbon administration workflow with linkable breadcrumb
       path, stable query state, validation, pagination, and active-state controls.
-- [ ] T114 Add the administration route/navigation using existing patterns and
+- [x] T114 Add the administration route/navigation using existing patterns and
       add English React Intl source strings only.
 
 ## M1 Phase 4 - Validation And Publication
 
-- [ ] T115 Run focused backend, controller, ORM, Liquibase, frontend, a11y, and
+- [x] T115 Run focused backend, controller, ORM, Liquibase, frontend, a11y, and
       Playwright tests; review browser console output and failure artifacts. Record
       reproducible active-context lookup and 500-phrase administration evidence.
-- [ ] T116 Run pinned `tools/code-qa` alignment, coverage, simplicity, and
+- [x] T116 Run pinned `tools/code-qa` alignment, coverage, simplicity, and
       evidence checks; resolve or explicitly disposition every finding.
-- [ ] T117 Compare deterministic desktop/mobile screenshots against M-08
+- [x] T117 Compare deterministic desktop/mobile screenshots against M-08
       workflow intent and record all intentional differences.
-- [ ] T118 Produce the standard titled MP4 walkthrough, contact sheet, manifest,
+- [x] T118 Produce the standard titled MP4 walkthrough, contact sheet, manifest,
       and exact test/evidence index for M1.
 - [ ] T119 Add M1 Grist story/steps, scope them to the phrases review deployment,
       and mark automated evidence separately from human acceptance.

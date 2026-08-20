@@ -4,17 +4,17 @@ This is an engineering contract, not a product-spec requirement.
 
 ## Text Macro
 
-| Field           | Type                   | Rules                                                              |
-| --------------- | ---------------------- | ------------------------------------------------------------------ |
-| `id`            | generated UUID string  | Server generated; never supplied by fixtures or clients on create. |
-| `code`          | string, max 64         | Stored in canonical lower-case dot-prefixed form; unique.          |
-| `expansionText` | string, max 4000       | Trimmed, non-empty plain text.                                     |
-| `active`        | boolean                | Controls new runtime discovery/expansion only.                     |
-| `provenance`    | controlled value       | `LOCAL` in M1; `PACKAGED` reserved for reviewed M2 content.        |
-| `sourceKey`     | nullable string        | Package/source identifier; null for local phrases.                 |
-| `sourceVersion` | nullable string        | Version of the reviewed source; null for local phrases.            |
-| `lastUpdatedBy` | system-user identifier | Derived from the authenticated request.                            |
-| `lastupdated`   | timestamp              | Managed through existing persistence conventions.                  |
+| Field           | Type                     | Rules                                                               |
+| --------------- | ------------------------ | ------------------------------------------------------------------- |
+| `id`            | generated numeric string | Server generated from the OpenELIS sequence; never client supplied. |
+| `code`          | string, max 64           | Stored in canonical lower-case dot-prefixed form; unique.           |
+| `expansionText` | string, max 4000         | Trimmed, non-empty plain text.                                      |
+| `active`        | boolean                  | Controls new runtime discovery/expansion only.                      |
+| `provenance`    | controlled value         | `LOCAL` in M1; `PACKAGED` reserved for reviewed M2 content.         |
+| `sourceKey`     | nullable string          | Package/source identifier; null for local phrases.                  |
+| `sourceVersion` | nullable string          | Version of the reviewed source; null for local phrases.             |
+| `lastUpdatedBy` | system-user identifier   | Derived from the authenticated request.                             |
+| `lastupdated`   | timestamp                | Managed through existing persistence conventions.                   |
 
 ## Text Macro Context
 

@@ -5,9 +5,9 @@ import {
   NumberInput,
   Select,
   SelectItem,
-  TextArea,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 
 export const emptyMicrobiologyOrderDetail = {
   cultureMethodId: "",
@@ -87,11 +87,12 @@ const MicrobiologyOrderDetailFields = ({
         disabled={isReadOnly}
       />
       <div className="microbiology-form-grid__wide">
-        <TextArea
+        <MacroTextArea
           id={`${idPrefix}-clinical-history`}
           labelText={intl.formatMessage({
             id: "microbiology.orderDetail.clinicalHistory",
           })}
+          context="MICROBIOLOGY_CLINICAL_HISTORY"
           value={fields.clinicalHistory}
           onChange={(event) => onChange("clinicalHistory", event.target.value)}
           maxLength={1000}
