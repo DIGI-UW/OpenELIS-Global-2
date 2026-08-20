@@ -10,6 +10,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,11 +66,26 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         String readiness = readiness(status, testTotal);
         return new AnalyzerTypeCatalogView.TypeSummary(profile.profileId(), profile.revision(),
                 profile.revisionFingerprint(), profile.displayName(), profile.manufacturer(), profile.model(),
-                profile.source(), status, profile.protocol(), profile.parentProfileId(), profile.parentRevision(),
-                binding == null ? null : binding.getId(), mappingSummary(testTotal), mappingSummary(resultTotal),
-                binding == null ? 0 : usageByBindingId.getOrDefault(binding.getId(), 0L), readiness,
-                nullableText(revision.publication(), "action"), nullableText(revision.publication(), "actor"),
-                nullableText(revision.publication(), "markedAt"));
+                profile.source(), status, profile.protocol(), instanceDefaults(profile), profile.parentProfileId(),
+                profile.parentRevision(), binding == null ? null : binding.getId(), mappingSummary(testTotal),
+                mappingSummary(resultTotal), binding == null ? 0 : usageByBindingId.getOrDefault(binding.getId(), 0L),
+                readiness, nullableText(revision.publication(), "action"),
+                nullableText(revision.publication(), "actor"), nullableText(revision.publication(), "markedAt"));
+    }
+
+    private static AnalyzerTypeCatalogView.InstanceDefaults instanceDefaults(BridgeAnalyzerProfile profile) {
+        ProtocolVersion protocolVersion = profile.resolvedProtocolVersion();
+        if (!"FILE".equals(profile.protocol()) && protocolVersion == null) {
+            throw new IllegalArgumentException(
+                    "Bridge profile " + profile.profileId() + " has an unsupported protocol version");
+        }
+        CommunicationMode communicationMode = profile.resolvedCommunicationMode();
+        if (!"FILE".equals(profile.protocol()) && communicationMode == null) {
+            throw new IllegalArgumentException(
+                    "Bridge profile " + profile.profileId() + " has an unsupported communication mode");
+        }
+        return new AnalyzerTypeCatalogView.InstanceDefaults(protocolVersion == null ? null : protocolVersion.name(),
+                communicationMode == null ? null : communicationMode.name(), profile.instanceDefaults().port());
     }
 
     private static AnalyzerTypeCatalogView.MappingSummary mappingSummary(int total) {

@@ -526,12 +526,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testTestConnection_WithHl7Protocol_ReturnsExpectedFields() throws Exception {
         String uniqueName = "TEST-HL7-Connection-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"HEMATOLOGY\",\"ipAddress\":\"" + testIp
-                + "\"," + "\"port\":5380,\"protocolVersion\":\"HL7_V2_3_1\","
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + testIp + "\"," + "\"port\":5380,"
                 + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
-                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withProfile(createBody)))
+                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withHl7Profile(createBody)))
                 .andReturn();
         assertEquals("HL7 analyzer creation should succeed", 201, createResult.getResponse().getStatus());
 
@@ -557,11 +556,10 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testTestConnection_WithHl7Protocol_NoIpPort_ReturnsConfigError() throws Exception {
         String uniqueName = "TEST-HL7-NoIP-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"HEMATOLOGY\",\"protocolVersion\":\"HL7_V2_3_1\",\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
-                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withProfile(createBody)))
+                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withHl7Profile(createBody)))
                 .andReturn();
         assertEquals(201, createResult.getResponse().getStatus());
 

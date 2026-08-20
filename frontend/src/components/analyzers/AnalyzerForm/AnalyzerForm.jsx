@@ -19,13 +19,7 @@ import {
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import {
-  PLUGIN_PROTOCOL_DEFAULTS,
-  DEFAULT_PROTOCOL_VERSION,
-  COMMUNICATION_MODES,
-  DEFAULT_COMMUNICATION_MODE,
-  resolveAnalyzerApiMessage,
-} from "../constants";
+import { COMMUNICATION_MODES, resolveAnalyzerApiMessage } from "../constants";
 import "./AnalyzerForm.css";
 
 const AnalyzerForm = () => {
@@ -39,13 +33,12 @@ const AnalyzerForm = () => {
 
   const [formData, setFormData] = useState({
     name: "",
-    analyzerType: "",
     profileId: "",
     profileRevision: null,
     ipAddress: "",
-    port: "",
-    protocolVersion: DEFAULT_PROTOCOL_VERSION,
-    communicationMode: DEFAULT_COMMUNICATION_MODE,
+    port: null,
+    protocolVersion: null,
+    communicationMode: null,
     testUnitIds: [],
     status: "SETUP",
     importDirectory: "",
@@ -99,13 +92,12 @@ const AnalyzerForm = () => {
         setAnalyzer(a);
         setFormData({
           name: a.name || "",
-          analyzerType: a.analyzerType || a.type || "",
           profileId: a.profileId || "",
           profileRevision: a.profileRevision || null,
           ipAddress: a.ipAddress || "",
-          port: a.port ? String(a.port) : "",
-          protocolVersion: a.protocolVersion || DEFAULT_PROTOCOL_VERSION,
-          communicationMode: a.communicationMode || DEFAULT_COMMUNICATION_MODE,
+          port: a.port == null ? null : String(a.port),
+          protocolVersion: a.protocolVersion || null,
+          communicationMode: a.communicationMode || null,
           testUnitIds: a.testUnitIds || [],
           status: a.status || "SETUP",
           importDirectory: a.importDirectory || "",
@@ -159,7 +151,7 @@ const AnalyzerForm = () => {
   );
 
   const requestedPin = useMemo(() => {
-    if (isEditMode || formData.profileId) {
+    if (isEditMode) {
       return null;
     }
     const params = new URLSearchParams(location.search);
@@ -172,7 +164,7 @@ const AnalyzerForm = () => {
       profileId,
       revision: Number(revisionText),
     };
-  }, [formData.profileId, isEditMode, location.search]);
+  }, [isEditMode, location.search]);
 
   const requestedProfile = useMemo(
     () =>
@@ -187,6 +179,9 @@ const AnalyzerForm = () => {
   );
 
   const selectedProfile = useMemo(() => {
+    if (!isEditMode && requestedProfile) {
+      return requestedProfile;
+    }
     const exact = (profileCatalog?.types || []).find(
       (profile) =>
         profile.profileId === formData.profileId &&
@@ -194,9 +189,6 @@ const AnalyzerForm = () => {
     );
     if (exact) {
       return exact;
-    }
-    if (requestedProfile) {
-      return requestedProfile;
     }
     if (!isEditMode || !formData.profileId || !formData.profileRevision) {
       return null;
@@ -214,6 +206,27 @@ const AnalyzerForm = () => {
     profileCatalog,
     requestedProfile,
   ]);
+
+  const formMatchesSelectedProfile =
+    Boolean(selectedProfile) &&
+    (isEditMode ||
+      (formData.profileId === selectedProfile.profileId &&
+        formData.profileRevision === selectedProfile.revision));
+  const selectedDefaults = selectedProfile?.instanceDefaults || {};
+  const effectiveProtocolVersion =
+    (formMatchesSelectedProfile && formData.protocolVersion) ||
+    selectedDefaults.protocolVersion ||
+    null;
+  const effectiveCommunicationMode =
+    (formMatchesSelectedProfile && formData.communicationMode) ||
+    selectedDefaults.communicationMode ||
+    "";
+  const effectivePort =
+    formMatchesSelectedProfile && formData.port != null
+      ? formData.port
+      : selectedDefaults.port == null
+        ? ""
+        : String(selectedDefaults.port);
 
   const isFileProtocol = selectedProfile?.protocol?.toUpperCase() === "FILE";
   const invalidProfileSelection =
@@ -258,7 +271,16 @@ const AnalyzerForm = () => {
   };
 
   const handleFieldChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((previous) => ({
+      ...previous,
+      ...(!isEditMode && selectedProfile
+        ? {
+            profileId: selectedProfile.profileId,
+            profileRevision: selectedProfile.revision,
+          }
+        : {}),
+      [field]: value,
+    }));
     if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -274,11 +296,11 @@ const AnalyzerForm = () => {
     }
     setFormData((previous) => ({
       ...previous,
-      analyzerType: profile.protocol,
       profileId: profile.profileId,
       profileRevision: profile.revision,
-      protocolVersion:
-        PLUGIN_PROTOCOL_DEFAULTS[profile.protocol] || previous.protocolVersion,
+      protocolVersion: null,
+      communicationMode: null,
+      port: null,
     }));
     setErrors((previous) => {
       const next = { ...previous };
@@ -324,8 +346,8 @@ const AnalyzerForm = () => {
       }
     }
 
-    if (!isFileProtocol && formData.port) {
-      const portNum = parseInt(formData.port, 10);
+    if (!isFileProtocol && effectivePort) {
+      const portNum = parseInt(effectivePort, 10);
       if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
         newErrors.port = intl.formatMessage({
           id: "analyzer.form.validation.port.invalid",
@@ -347,13 +369,11 @@ const AnalyzerForm = () => {
 
     const submitData = {
       ...formData,
-      analyzerType: selectedProfile.protocol,
       profileId: selectedProfile.profileId,
       profileRevision: selectedProfile.revision,
-      protocolVersion:
-        PLUGIN_PROTOCOL_DEFAULTS[selectedProfile.protocol] ||
-        formData.protocolVersion,
-      port: formData.port ? parseInt(formData.port, 10) : null,
+      protocolVersion: effectiveProtocolVersion,
+      communicationMode: effectiveCommunicationMode || null,
+      port: effectivePort ? parseInt(effectivePort, 10) : null,
       // Clear network/protocol fields for FILE protocol — not applicable
       ...(isFileProtocol && {
         ipAddress: null,
@@ -551,7 +571,7 @@ const AnalyzerForm = () => {
                 items={communicationModeItems}
                 selectedItem={
                   communicationModeItems.find(
-                    (opt) => opt.value === formData.communicationMode,
+                    (opt) => opt.value === effectiveCommunicationMode,
                   ) || null
                 }
                 itemToString={(item) => (item ? item.label : "")}
@@ -592,7 +612,7 @@ const AnalyzerForm = () => {
                   placeholder={intl.formatMessage({
                     id: "analyzer.form.port.placeholder",
                   })}
-                  value={formData.port}
+                  value={effectivePort}
                   onChange={(e) => handleFieldChange("port", e.target.value)}
                   invalid={!!errors.port}
                   invalidText={errors.port}
@@ -660,11 +680,11 @@ const AnalyzerForm = () => {
       </div>
       <TestConnectionModal
         analyzer={
-          formData.ipAddress && formData.port
+          formData.ipAddress && effectivePort
             ? {
                 id: analyzer?.id || "test",
                 ipAddress: formData.ipAddress,
-                port: parseInt(formData.port, 10),
+                port: parseInt(effectivePort, 10),
               }
             : null
         }

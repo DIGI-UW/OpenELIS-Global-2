@@ -107,7 +107,7 @@ public class Analyzer extends BaseObject<String> {
 
     @Column(name = "protocol_version", length = 20)
     @Enumerated(EnumType.STRING)
-    private ProtocolVersion protocolVersion = ProtocolVersion.ASTM_LIS2_A2;
+    private ProtocolVersion protocolVersion;
 
     @Column(name = "communication_mode", length = 25)
     @Enumerated(EnumType.STRING)

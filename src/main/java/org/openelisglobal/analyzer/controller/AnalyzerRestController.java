@@ -187,9 +187,6 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getName() == null || form.getName().trim().isEmpty()) {
                 validationErrors.add("Analyzer name is required");
             }
-            if (form.getAnalyzerType() == null || form.getAnalyzerType().trim().isEmpty()) {
-                validationErrors.add("Analyzer type is required");
-            }
             if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
                     && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
                 validationErrors.add("Invalid IPv4 address format");
@@ -200,12 +197,6 @@ public class AnalyzerRestController extends BaseRestController {
             }
             if (form.getPort() != null && (form.getPort() < 1 || form.getPort() > 65535)) {
                 validationErrors.add("Port must be between 1 and 65535");
-            }
-            if (form.getProtocolVersion() != null && ProtocolVersion.fromValue(form.getProtocolVersion()) == null) {
-                String validValues = java.util.Arrays.stream(ProtocolVersion.values()).map(ProtocolVersion::name)
-                        .collect(Collectors.joining(", "));
-                validationErrors.add(
-                        "Invalid protocol version: " + form.getProtocolVersion() + ". Valid values: " + validValues);
             }
             if (form.getCommunicationMode() != null && !form.getCommunicationMode().trim().isEmpty()
                     && CommunicationMode.fromValue(form.getCommunicationMode()) == null) {
@@ -230,14 +221,9 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.ensureFhirUuid();
             analyzer.setActive(true);
             analyzer.setName(form.getName());
-            analyzer.setType(form.getAnalyzerType());
             analyzer.setIpAddress(
                     form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty() ? form.getIpAddress() : null);
             analyzer.setPort(form.getPort());
-            if (form.getProtocolVersion() != null && !form.getProtocolVersion().trim().isEmpty()) {
-                ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
-                analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
-            }
             if (form.getCommunicationMode() != null && !form.getCommunicationMode().trim().isEmpty()) {
                 CommunicationMode cm = CommunicationMode.fromValue(form.getCommunicationMode());
                 analyzer.setCommunicationMode(cm);

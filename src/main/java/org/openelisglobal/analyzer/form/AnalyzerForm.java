@@ -26,14 +26,13 @@ public class AnalyzerForm {
     @Size(min = 1, max = 100, message = "Analyzer name must be between 1 and 100 characters")
     private String name;
 
-    @NotBlank(message = "Analyzer type is required")
     private String analyzerType;
 
     private String ipAddress; // Optional - validated in controller if provided
 
     private Integer port; // Optional - validated in controller if provided (1-65535)
 
-    private String protocolVersion = "ASTM LIS2-A2";
+    private String protocolVersion;
 
     private List<String> testUnitIds;
 

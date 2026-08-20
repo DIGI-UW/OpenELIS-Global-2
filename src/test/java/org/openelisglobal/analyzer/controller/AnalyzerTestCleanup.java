@@ -37,10 +37,20 @@ public final class AnalyzerTestCleanup {
     }
 
     public static String withProfile(String requestJson) {
+        return withProfile(requestJson, AnalyzerTestProfileCatalog.PROFILE_ID,
+                AnalyzerTestProfileCatalog.PROFILE_REVISION);
+    }
+
+    public static String withHl7Profile(String requestJson) {
+        return withProfile(requestJson, AnalyzerTestProfileCatalog.HL7_PROFILE_ID,
+                AnalyzerTestProfileCatalog.HL7_PROFILE_REVISION);
+    }
+
+    private static String withProfile(String requestJson, String profileId, int profileRevision) {
         try {
             ObjectNode request = (ObjectNode) new ObjectMapper().readTree(requestJson);
-            request.put("profileId", AnalyzerTestProfileCatalog.PROFILE_ID);
-            request.put("profileRevision", AnalyzerTestProfileCatalog.PROFILE_REVISION);
+            request.put("profileId", profileId);
+            request.put("profileRevision", profileRevision);
             return request.toString();
         } catch (Exception exception) {
             throw new IllegalArgumentException("Invalid analyzer test request JSON", exception);

@@ -104,10 +104,7 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
             analyzer.setType(profile.protocol());
         }
         if (analyzer.getProtocolVersion() == null && !"FILE".equals(profile.protocol())) {
-            ProtocolVersion protocolVersion = ProtocolVersion.fromValue(profile.protocolVersion());
-            if (protocolVersion == null) {
-                protocolVersion = ProtocolVersion.fromValue(profile.protocol());
-            }
+            ProtocolVersion protocolVersion = profile.resolvedProtocolVersion();
             if (protocolVersion == null) {
                 throw new AnalyzerProfileBindingException(
                         "Bridge profile " + profile.profileId() + " has an unsupported protocol version");
@@ -115,7 +112,7 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
             analyzer.setProtocolVersion(protocolVersion);
         }
         if (analyzer.getCommunicationMode() == null && profile.communicationMode() != null) {
-            CommunicationMode communicationMode = CommunicationMode.fromValue(profile.communicationMode());
+            CommunicationMode communicationMode = profile.resolvedCommunicationMode();
             if (communicationMode == null) {
                 throw new AnalyzerProfileBindingException(
                         "Bridge profile " + profile.profileId() + " has an unsupported communication mode");
