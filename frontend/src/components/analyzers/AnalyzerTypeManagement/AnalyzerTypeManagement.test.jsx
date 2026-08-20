@@ -287,6 +287,23 @@ describe("AnalyzerTypeManagement", () => {
     ).toBeVisible();
   });
 
+  it("shows a Carbon action when the catalog fails and retries visibly", async () => {
+    getAnalyzerTypeCatalog
+      .mockImplementationOnce((callback) => callback(undefined))
+      .mockImplementationOnce((callback) => callback(catalog));
+
+    renderPage();
+
+    const retry = await screen.findByRole("button", { name: "Retry" });
+    expect(
+      screen.getByText("Analyzer types could not be loaded"),
+    ).toBeVisible();
+    await userEvent.click(retry);
+
+    expect(getAnalyzerTypeCatalog).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
+  });
+
   it("restores filters from the URL and round-trips changes through browser history", async () => {
     window.history.replaceState(
       {},

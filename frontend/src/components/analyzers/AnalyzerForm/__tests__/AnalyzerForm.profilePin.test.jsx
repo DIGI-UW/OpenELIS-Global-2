@@ -76,6 +76,27 @@ describe("AnalyzerForm profile revision pin", () => {
     });
   });
 
+  it("renders one semantic heading with a linkable setup breadcrumb", async () => {
+    renderNewAnalyzer("/analyzers/new");
+
+    await waitFor(() => {
+      expect(analyzerService.getAnalyzerTypeCatalog).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Add New Analyzer",
+    );
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(screen.getByRole("link", { name: "Analyzers" })).toHaveAttribute(
+      "href",
+      "/analyzers",
+    );
+    expect(breadcrumb.querySelector('[aria-current="page"]')).toHaveTextContent(
+      "Add New Analyzer",
+    );
+  });
+
   it("restores an active Analyzer Type revision from the URL and submits that exact pin", async () => {
     renderNewAnalyzer(
       "/analyzers/new?profile=shipped.validated-hl7-v25&revision=2",

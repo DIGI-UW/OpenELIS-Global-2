@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActionableNotification,
   Button,
   Checkbox,
   Column,
@@ -509,7 +510,8 @@ const AnalyzerTypeManagement = () => {
           </div>
 
           {loadError && (
-            <InlineNotification
+            <ActionableNotification
+              inline
               kind="error"
               lowContrast
               title={intl.formatMessage({

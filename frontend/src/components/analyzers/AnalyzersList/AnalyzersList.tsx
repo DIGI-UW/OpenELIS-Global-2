@@ -24,8 +24,10 @@ import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import {
   getAnalyzers,
+  getAnalyzerTypeCatalog,
   type AnalyzerFilters,
   type AnalyzersResponse,
+  type AnalyzerTypeCatalog,
 } from "../../../services/analyzerService";
 // AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
@@ -33,7 +35,6 @@ import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 // QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 
-import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
 import "./AnalyzersList.css";
@@ -68,6 +69,12 @@ interface AnalyzerTableRow {
   _analyzer: Analyzer;
 }
 
+const profileRevisionKey = (profileId: string, revision: number) =>
+  `${profileId}@${revision}`;
+
+const hasPluginWarning = (analyzer: Analyzer) =>
+  analyzer.profileBindingStatus !== "PINNED" && analyzer.pluginLoaded === false;
+
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -75,6 +82,7 @@ const AnalyzersList = () => {
 
   const [, setAnalyzers] = useState<Analyzer[]>([]);
   const [filteredAnalyzers, setFilteredAnalyzers] = useState<Analyzer[]>([]);
+  const [profileNames, setProfileNames] = useState<Record<string, string>>({});
   const [, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<AnalyzerFilters>({
@@ -128,9 +136,7 @@ const AnalyzersList = () => {
           const inactiveCount = list.filter(
             (a) => a.status === "INACTIVE",
           ).length;
-          const pluginWarningCount = list.filter(
-            (a) => a.pluginLoaded === false,
-          ).length;
+          const pluginWarningCount = list.filter(hasPluginWarning).length;
           setStats({
             total: list.length,
             active: activeCount,
@@ -147,6 +153,15 @@ const AnalyzersList = () => {
 
   useEffect(() => {
     const controller = new AbortController();
+    getAnalyzerTypeCatalog((data: AnalyzerTypeCatalog | undefined) => {
+      const names = Object.fromEntries(
+        (data?.types || []).map((type) => [
+          profileRevisionKey(type.profileId, type.revision),
+          type.displayName,
+        ]),
+      );
+      setProfileNames(names);
+    });
     const params = new URLSearchParams(window.location.search);
     const initialSearch = params.get("search") || "";
     const initialStatus = params.get("status") || "";
@@ -268,11 +283,22 @@ const AnalyzersList = () => {
           : "-";
 
     const unifiedStatus = analyzer.status || "SETUP";
+    const profileName =
+      analyzer.profileId && analyzer.profileRevision
+        ? profileNames[
+            profileRevisionKey(analyzer.profileId, analyzer.profileRevision)
+          ]
+        : undefined;
 
     return {
       id: analyzer.id || "",
       name: analyzer.name || "-",
-      type: analyzer.analyzerType || analyzer.type || "-",
+      type:
+        profileName ||
+        analyzer.profileId ||
+        analyzer.analyzerType ||
+        analyzer.type ||
+        "-",
       connection: connection,
       testUnits:
         analyzer.testUnitIds && analyzer.testUnitIds.length > 0
@@ -297,25 +323,17 @@ const AnalyzersList = () => {
           <PageBreadCrumb
             breadcrumbs={[
               { label: "home.label", link: "/" },
-              { label: "analyzer.page.hierarchy.root", link: "" },
-              { label: "analyzer.page.hierarchy.list", link: "" },
-            ]}
-          />
-          <PageTitle
-            breadcrumbs={[
               {
-                label: intl.formatMessage({
-                  id: "analyzer.page.hierarchy.root",
-                }),
-              },
-              {
-                label: intl.formatMessage({
-                  id: "analyzer.page.hierarchy.list",
-                }),
+                label: "analyzer.page.hierarchy.root",
+                link: "/analyzers",
+                isCurrentPage: true,
               },
             ]}
-            subtitle={intl.formatMessage({ id: "analyzer.list.subtitle" })}
           />
+          <h1>{intl.formatMessage({ id: "analyzer.list.title" })}</h1>
+          <p className="analyzers-list-subtitle">
+            {intl.formatMessage({ id: "analyzer.list.subtitle" })}
+          </p>
         </div>
         <Button
           kind="primary"
@@ -534,7 +552,7 @@ const AnalyzersList = () => {
 
                             if (headerKey === "name") {
                               testId = `analyzer-name-${row.id}`;
-                              if (analyzer?.pluginLoaded === false) {
+                              if (analyzer && hasPluginWarning(analyzer)) {
                                 cellContent = (
                                   <span>
                                     {cell.value}{" "}

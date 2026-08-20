@@ -37,8 +37,9 @@ public enum ProtocolVersion {
             LOOKUP.put(pv.name(), pv);
             LOOKUP.put(pv.label.toUpperCase(), pv);
         }
-        // Legacy aliases
+        // Accepted standards labels and API spellings.
         LOOKUP.put("LIS2-A2", ASTM_LIS2_A2);
+        LOOKUP.put("E-1394-97", ASTM_LIS2_A2);
         LOOKUP.put("ASTM", ASTM_LIS2_A2);
         LOOKUP.put("HL7", HL7_V2_3_1);
         LOOKUP.put("HL7 V2.3.1", HL7_V2_3_1);
@@ -55,7 +56,8 @@ public enum ProtocolVersion {
     }
 
     /**
-     * Resolve a protocol version from an enum name, label, or legacy alias.
+     * Resolve a protocol version from an enum name, label, or accepted standards
+     * spelling.
      *
      * @param value the string to resolve (case-insensitive)
      * @return the matching {@code ProtocolVersion}, or {@code null} if unrecognized

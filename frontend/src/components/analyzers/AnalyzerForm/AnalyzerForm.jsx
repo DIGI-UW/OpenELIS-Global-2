@@ -17,7 +17,6 @@ import {
   getAnalyzerTypeCatalog,
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
-import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { COMMUNICATION_MODES, resolveAnalyzerApiMessage } from "../constants";
 import "./AnalyzerForm.css";
@@ -446,23 +445,16 @@ const AnalyzerForm = () => {
               },
             ]}
           />
-          <PageTitle
-            breadcrumbs={[
-              {
-                label: intl.formatMessage({
-                  id: "analyzer.page.hierarchy.root",
-                }),
-                link: "/analyzers",
-              },
-              {
-                label: intl.formatMessage({
-                  id: isEditMode
-                    ? "analyzer.form.editTitle"
-                    : "analyzer.form.addTitle",
-                }),
-              },
-            ]}
-          />
+          <div className="analyzer-form-heading">
+            <h1>
+              {intl.formatMessage({
+                id: isEditMode
+                  ? "analyzer.form.editTitle"
+                  : "analyzer.form.addTitle",
+              })}
+            </h1>
+            <p>{intl.formatMessage({ id: "analyzer.form.subtitle" })}</p>
+          </div>
         </div>
         <div className="analyzer-form-content">
           {visibleNotification && (

@@ -20,6 +20,9 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.hl7.fhir.r4.model.Bundle;
 import org.junit.Test;
+import org.openelisglobal.analyzer.service.BridgeAnalyzerProfile;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 
 /**
  * Consumer-side executable contract for Bridge-owned OGC-1054 v1 artifacts.
@@ -86,6 +89,15 @@ public class AnalyzerBridgeContractConsumerTest {
         assertMappingValues(geneXpert, "COVID19", Set.of("POSITIVE", "NEGATIVE", "INDETERMINATE", "ERROR"));
         assertMappingCodes(fluoroCycler, Set.of("VIH-1"));
         assertMappingCodes(quantStudio, Set.of("VIH-1", "IC"));
+    }
+
+    @Test
+    public void priorityProfilesResolveTheirExactOpenElisInstanceDefaults() throws IOException {
+        BridgeAnalyzerProfile geneXpert = BridgeAnalyzerProfile.from(fixture("analyzer-profile-astm.json"));
+
+        assertEquals("E-1394-97", geneXpert.protocolVersion());
+        assertEquals(ProtocolVersion.ASTM_LIS2_A2, geneXpert.resolvedProtocolVersion());
+        assertEquals(CommunicationMode.BOTH, geneXpert.resolvedCommunicationMode());
     }
 
     @Test

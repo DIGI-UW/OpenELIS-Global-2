@@ -14,6 +14,7 @@
 
 vi.mock("../../../services/analyzerService", () => ({
   getAnalyzers: vi.fn(),
+  getAnalyzerTypeCatalog: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
 
@@ -55,7 +56,10 @@ import { BrowserRouter } from "react-router-dom";
 import AnalyzersList from "./AnalyzersList";
 
 // 8. Utilities (import functions, not just for mocking)
-import { getAnalyzers } from "../../../services/analyzerService";
+import {
+  getAnalyzers,
+  getAnalyzerTypeCatalog,
+} from "../../../services/analyzerService";
 
 // 9. Messages/translations
 import messages from "../../../languages/en.json";
@@ -93,6 +97,19 @@ describe("AnalyzersList", () => {
     vi.clearAllMocks();
     mockHistory.push.mockClear();
     mockHistory.replace.mockClear();
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        schemaVersion: "1.0",
+        catalogFingerprint: `sha256:${"a".repeat(64)}`,
+        summary: {
+          total: 0,
+          inUse: 0,
+          needsAttention: 0,
+          deactivated: 0,
+        },
+        types: [],
+      }),
+    );
   });
 
   /**

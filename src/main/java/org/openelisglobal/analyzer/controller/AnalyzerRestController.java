@@ -617,26 +617,27 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("description", analyzer.getDescription());
         map.put("location", analyzer.getLocation());
 
-        // Plugin loaded check — O(1) via pre-computed Set
-        boolean pluginLoaded;
-        if (analyzer.getAnalyzerType() != null) {
-            String className = analyzer.getAnalyzerType().getPluginClassName();
-            pluginLoaded = className != null && loadedPlugins.contains(className);
-        } else {
-            pluginLoaded = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId()) != null;
-            if (!pluginLoaded) {
-                // Fallback: match analyzer name against loaded plugin class simple names.
-                // Handles analyzers not yet linked to an AnalyzerType (e.g., fixture data
-                // inserted after startup, or multi-analyzer plugins like Cobas4800).
-                String analyzerName = analyzer.getName();
-                pluginLoaded = loadedPlugins.stream().anyMatch(cn -> {
-                    String simpleName = cn.substring(cn.lastIndexOf('.') + 1);
-                    return simpleName.equals(analyzerName) || simpleName.equals(analyzerName + "Analyzer")
-                            || analyzerName.startsWith(simpleName.replaceAll("Analyzer$", ""));
-                });
+        AnalyzerProfileBinding pinnedProfile = analyzer.getPinnedProfileBinding();
+        if (pinnedProfile == null) {
+            // Plugin availability only applies to unbound analyzers that still use the
+            // OpenELIS plugin runtime. Profile-pinned analyzers run through Bridge.
+            boolean pluginLoaded;
+            if (analyzer.getAnalyzerType() != null) {
+                String className = analyzer.getAnalyzerType().getPluginClassName();
+                pluginLoaded = className != null && loadedPlugins.contains(className);
+            } else {
+                pluginLoaded = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId()) != null;
+                if (!pluginLoaded) {
+                    String analyzerName = analyzer.getName();
+                    pluginLoaded = loadedPlugins.stream().anyMatch(cn -> {
+                        String simpleName = cn.substring(cn.lastIndexOf('.') + 1);
+                        return simpleName.equals(analyzerName) || simpleName.equals(analyzerName + "Analyzer")
+                                || analyzerName.startsWith(simpleName.replaceAll("Analyzer$", ""));
+                    });
+                }
             }
+            map.put("pluginLoaded", pluginLoaded);
         }
-        map.put("pluginLoaded", pluginLoaded);
 
         // Configuration fields (stored directly on Analyzer in 2-table model)
         map.put("ipAddress", analyzer.getIpAddress());
@@ -648,7 +649,6 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
 
-        AnalyzerProfileBinding pinnedProfile = analyzer.getPinnedProfileBinding();
         if (pinnedProfile == null) {
             map.put("profileId", null);
             map.put("profileRevision", null);

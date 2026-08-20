@@ -1,3 +1,22 @@
+.analyzer-form-heading {
+  margin: 1.5rem 0;
+}
+
+.analyzer-form-heading h1 {
+  color: var(--cds-text-primary);
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.analyzer-form-heading p {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.4286;
+  margin: 0.5rem 0 0;
+}
+
 .connection-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
