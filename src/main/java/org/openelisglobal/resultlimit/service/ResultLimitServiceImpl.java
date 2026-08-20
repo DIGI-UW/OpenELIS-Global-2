@@ -28,8 +28,8 @@ import org.openelisglobal.compliance.valueholder.ThresholdType;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.resultlimits.dao.ResultLimitDAO;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
@@ -43,6 +43,7 @@ import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,8 +72,17 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     private SampleComplianceStandardService sampleComplianceStandardService;
     @Autowired
     private ComplianceThresholdService complianceThresholdService;
+    // Lazy breaks a constructor-time cycle: ResultServiceImpl still resolves
+    // this service through a SpringContext.getBean field initializer, and the
+    // anchor service reaches back to ResultService through Sample and Analysis
+    // (resultService -> resultLimitService -> analysisAnchorService ->
+    // sampleService -> analysisService -> resultService). Which bean enters the
+    // loop first depends on context build order, so an eager reference here
+    // boots or dies by luck.
+    @Lazy
     @Autowired
     private org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
+    @Autowired
     private TestResultComponentService testResultComponentService;
 
     @PostConstruct
