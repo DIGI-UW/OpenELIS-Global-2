@@ -135,7 +135,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
                         .content(AnalyzerTestCleanup.withProfile(requestBody)))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value(uniqueName))
+                .andExpect(jsonPath("$.name").value(uniqueName)).andExpect(jsonPath("$.type").value("ASTM"))
                 .andExpect(jsonPath("$.profileId").value(AnalyzerTestProfileCatalog.PROFILE_ID))
                 .andExpect(jsonPath("$.profileRevision").value(AnalyzerTestProfileCatalog.PROFILE_REVISION))
                 .andExpect(jsonPath("$.profileBindingStatus").value("PINNED")).andReturn();
@@ -150,6 +150,19 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 profileReferences.get("profile_binding_id"));
         assertNotNull("Configured analyzer must pin a site-binding revision",
                 profileReferences.get("site_binding_revision_id"));
+    }
+
+    @Test
+    public void testCreateAnalyzer_DerivesTypeAndDefaultsFromExactProfileRevision() throws Exception {
+        String uniqueName = "TEST-Profile-Defaults-" + System.currentTimeMillis();
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[]}";
+
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(requestBody))).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value(uniqueName)).andExpect(jsonPath("$.type").value("ASTM"))
+                .andExpect(jsonPath("$.protocolVersion").value("ASTM_LIS2_A2"))
+                .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
+                .andExpect(jsonPath("$.port").value(9100));
     }
 
     /**

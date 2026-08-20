@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -51,6 +52,11 @@ public class AnalyzerProfileBindingServiceTest {
     @Before
     public void setUp() {
         service = new AnalyzerProfileBindingServiceImpl(bindingDAO, catalogService, siteBindingService);
+    }
+
+    @Test
+    public void newAnalyzerHasNoProtocolBeforeAnExactProfileRevisionIsApplied() {
+        assertNull(new Analyzer().getProtocolVersion());
     }
 
     @Test

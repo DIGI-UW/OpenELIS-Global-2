@@ -25,7 +25,8 @@ public final class AnalyzerTestProfileCatalog {
         profile.putObject("protocol").put("name", "ASTM").put("version", "LIS2-A2");
         profile.putObject("communication").put("mode", "ANALYZER_INITIATED").put("supports_lis_initiated", false);
         profile.putArray("default_test_mappings");
-        profile.putObject("configDefaults").put("connectionRole", "SERVER").put("aggregationMode", "PER_MESSAGE");
+        profile.putObject("configDefaults").put("connectionRole", "SERVER").put("defaultTransport", "TCP/IP")
+                .put("defaultPort", 9100).put("aggregationMode", "PER_MESSAGE");
         ObjectNode catalog = profile.putObject("catalog");
         catalog.put("revision", PROFILE_REVISION);
         catalog.put("revisionFingerprint", PROFILE_FINGERPRINT);

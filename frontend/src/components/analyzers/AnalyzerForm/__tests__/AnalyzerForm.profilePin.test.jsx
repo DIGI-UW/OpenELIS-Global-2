@@ -23,13 +23,18 @@ const catalog = {
   summary: { total: 2, inUse: 0, needsAttention: 1, deactivated: 1 },
   types: [
     {
-      profileId: "shipped.genexpert",
+      profileId: "shipped.validated-hl7-v25",
       revision: 2,
-      revisionFingerprint: "sha256:genexpert",
-      displayName: "Cepheid GeneXpert MTB/RIF",
+      revisionFingerprint: "sha256:validated-hl7-v25",
+      displayName: "Validated HL7 v2.5 Analyzer",
       source: "SHIPPED",
       status: "ACTIVE",
-      protocol: "ASTM",
+      protocol: "HL7",
+      instanceDefaults: {
+        protocolVersion: "HL7_V2_5",
+        communicationMode: "BOTH",
+        port: 9111,
+      },
     },
     {
       profileId: "shipped.retired",
@@ -72,7 +77,9 @@ describe("AnalyzerForm profile revision pin", () => {
   });
 
   it("restores an active Analyzer Type revision from the URL and submits that exact pin", async () => {
-    renderNewAnalyzer("/analyzers/new?profile=shipped.genexpert&revision=2");
+    renderNewAnalyzer(
+      "/analyzers/new?profile=shipped.validated-hl7-v25&revision=2",
+    );
 
     await waitFor(() => {
       expect(analyzerService.getAnalyzerTypeCatalog).toHaveBeenCalledTimes(1);
@@ -80,10 +87,14 @@ describe("AnalyzerForm profile revision pin", () => {
 
     expect(
       screen.getByRole("combobox", { name: "Analyzer Type" }),
-    ).toHaveTextContent("Cepheid GeneXpert MTB/RIF");
+    ).toHaveTextContent("Validated HL7 v2.5 Analyzer");
     expect(screen.getByTestId("location")).toHaveTextContent(
-      "?profile=shipped.genexpert&revision=2",
+      "?profile=shipped.validated-hl7-v25&revision=2",
     );
+    expect(screen.getByTestId("analyzer-form-port-input")).toHaveValue("9111");
+    expect(
+      screen.getByTestId("analyzer-form-communication-mode-dropdown"),
+    ).toHaveTextContent("Bidirectional (both directions)");
     expect(screen.queryByText("Plugin Type")).not.toBeInTheDocument();
     expect(screen.queryByText("Load Analyzer Profile")).not.toBeInTheDocument();
 
@@ -99,10 +110,13 @@ describe("AnalyzerForm profile revision pin", () => {
     const submitted = analyzerService.createAnalyzer.mock.calls[0][0];
     expect(submitted).toMatchObject({
       name: "GeneXpert Bench 1",
-      analyzerType: "ASTM",
-      profileId: "shipped.genexpert",
+      profileId: "shipped.validated-hl7-v25",
       profileRevision: 2,
+      protocolVersion: "HL7_V2_5",
+      communicationMode: "BOTH",
+      port: 9111,
     });
+    expect(submitted).not.toHaveProperty("analyzerType");
     expect(submitted).not.toHaveProperty("defaultConfigId");
     expect(submitted).not.toHaveProperty("pluginTypeId");
   });

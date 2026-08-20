@@ -60,6 +60,10 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("SHIPPED", active.source());
         assertEquals("ACTIVE", active.status());
         assertEquals("ASTM", active.protocol());
+        JsonNode serializedActive = objectMapper.valueToTree(active);
+        assertEquals("ASTM_LIS2_A2", serializedActive.at("/instanceDefaults/protocolVersion").asText());
+        assertEquals("BOTH", serializedActive.at("/instanceDefaults/communicationMode").asText());
+        assertEquals(9100, serializedActive.at("/instanceDefaults/port").asInt());
         assertEquals(2, active.testMappings().total());
         assertEquals(0, active.testMappings().mapped());
         assertEquals("NOT_STARTED", active.testMappings().state());
@@ -89,10 +93,12 @@ public class AnalyzerTypeCatalogServiceTest {
                           "manufacturer":"OpenELIS",
                           "model":"Mock H",
                           "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                          "communication":{"mode":"BOTH","supports_lis_initiated":true},
                           "default_test_mappings":[
                             {"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"},
                             {"test_code":"FLAG","loinc":"58410-2","result_type":"qualitative","values":["POS","NEG"]}
                           ],
+                          "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP","defaultPort":9100,"aggregationMode":"PER_MESSAGE"},
                           "catalog":{
                             "revision":3,
                             "revisionFingerprint":"sha256:1111111111111111111111111111111111111111111111111111111111111111",
