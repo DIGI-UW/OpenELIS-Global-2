@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -151,7 +152,7 @@ public class EQAMyProgramsRestControllerTest {
     @Test
     public void testCreateMyProgram_Success() {
         when(enrollmentService.createEnrollment(
-                        any(EQALabProgramEnrollment.class), anyList(), anyList(), anyList()))
+                        any(EQALabProgramEnrollment.class), anyList(), anyList(), anyList(), anyMap()))
                 .thenReturn(enrollment1);
 
         Map<String, Object> body = new HashMap<>();
@@ -193,7 +194,7 @@ public class EQAMyProgramsRestControllerTest {
     @Test
     public void testUpdateMyProgram_Success() {
         when(enrollmentService.updateEnrollment(
-                        eq(1L), any(EQALabProgramEnrollment.class), anyList(), anyList(), anyList()))
+                        eq(1L), any(EQALabProgramEnrollment.class), anyList(), anyList(), anyList(), anyMap()))
                 .thenReturn(enrollment1);
 
         Map<String, Object> body = new HashMap<>();
@@ -211,7 +212,7 @@ public class EQAMyProgramsRestControllerTest {
     @Test
     public void testUpdateMyProgram_NotFound() {
         when(enrollmentService.updateEnrollment(
-                        eq(999L), any(EQALabProgramEnrollment.class), any(), any(), any()))
+                        eq(999L), any(EQALabProgramEnrollment.class), any(), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("Not found"));
 
         Map<String, Object> body = new HashMap<>();

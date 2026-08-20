@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.2 (OGC-610): retry bookkeeping for automatic FHIR submission.
+
+    FR-V2.2-05 caps automatic submission at five attempts with exponential
+    backoff, so the sweep has to know how many times it has already tried and
+    when. Neither fact can be derived from what already ships:
+
+    - eqa_cycle_state_transition cannot hold it. A failed attempt leaves the
+      cycle in ready_to_submit, and the participant machine has no
+      ready_to_submit -> ready_to_submit edge, so EQACycleService.transition
+      refuses the write. The FHIR_SUBMIT_FAILURE_RETRY trigger event exists for
+      the audit row that cannot be written.
+    - The alert table cannot hold it either: alerts are user-facing and
+      acknowledgeable, so counting them would make a technician's acknowledgement
+      change the retry schedule.
+
+    The submission window itself is deliberately not a column: FR-V2.2-05 makes it
+    a deployment setting (org.openelisglobal.eqa.submission.windowHours, default 1).
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-056-add-eqa-cycle-submission-retry">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="eqa_cycle" schemaName="clinlims"/>
+                <not>
+                    <columnExists tableName="eqa_cycle" columnName="submission_attempts" schemaName="clinlims"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Attempt counter and backoff anchor for automatic submission (FR-V2.2-05)</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_cycle">
+            <column name="submission_attempts" type="numeric(2,0)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_submission_attempt_at" type="TIMESTAMP WITHOUT TIME ZONE"/>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.eqa_cycle
+            ADD CONSTRAINT eqa_cycle_submission_attempts_chk
+            CHECK (submission_attempts >= 0 AND submission_attempts &lt;= 5)
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.eqa_cycle DROP CONSTRAINT IF EXISTS eqa_cycle_submission_attempts_chk;
+            </sql>
+            <dropColumn schemaName="clinlims" tableName="eqa_cycle" columnName="last_submission_attempt_at"/>
+            <dropColumn schemaName="clinlims" tableName="eqa_cycle" columnName="submission_attempts"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-057-extend-alert-type-check-for-eqa-submission">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="alert" schemaName="clinlims"/>
+        </preConditions>
+        <comment>
+            Extend the alert_type CHECK with EQA_SUBMISSION_FAILED. The Java enum alone is
+            not enough: alert_type is guarded by a DB CHECK (last set by
+            3.5.x.x/070-critical-result-alert-type.xml), so the insert that reports a failed
+            submission would itself fail — the one alert a lab must not miss.
+        </comment>
+        <sql>
+            ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+            ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+            CHECK (alert_type IN (
+            'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+            'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+            'CRITICAL_RESULT', 'EQA_SUBMISSION_FAILED'
+            ));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+                ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+                CHECK (alert_type IN (
+                'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+                'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+                'CRITICAL_RESULT'
+                ));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-058-add-enrollment-test-map-analyte">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="eqa_lab_enrollment_test_map" schemaName="clinlims"/>
+                <not>
+                    <columnExists tableName="eqa_lab_enrollment_test_map" columnName="analyte_id"
+                        schemaName="clinlims"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>
+            Which analyte a mapped test reports for this scheme (FR-V2.2-05). Auto-submission
+            has to name an analyte because eqa_participant_result.analyte_id is a NOT NULL FK,
+            and nothing else in the schema can supply one for an external scheme: eqa_panel_sample
+            carries analytes only for in-house panels a supervisor built, eqa_program_test maps
+            program to test, and this table mapped enrollment to test/panel. The clinical catalog
+            cannot stand in either — result.analyte_id is filled from test_analyte, which most
+            test configurations do not have, so it is null in practice.
+
+            Nullable: an enrollment predating this column, or one whose scheme is scored by hand,
+            stays valid. The bridge holds such a cycle short of submission rather than guessing.
+        </comment>
+        <addColumn schemaName="clinlims" tableName="eqa_lab_enrollment_test_map">
+            <column name="analyte_id" type="numeric(10,0)"/>
+        </addColumn>
+        <addForeignKeyConstraint
+            constraintName="fk_test_map_analyte"
+            baseTableSchemaName="clinlims" baseTableName="eqa_lab_enrollment_test_map"
+            baseColumnNames="analyte_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyte" referencedColumnNames="id"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims"
+                baseTableName="eqa_lab_enrollment_test_map" constraintName="fk_test_map_analyte"/>
+            <dropColumn schemaName="clinlims" tableName="eqa_lab_enrollment_test_map" columnName="analyte_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -101,7 +101,12 @@ public class EQAParticipantResultRestController extends BaseRestController {
                 .ok(Map.of("id", updated.getId(), "submissionStatus", updated.getSubmissionStatus().name()));
     }
 
-    /** Score intake is a provider/officer act, so it takes the manage grant. */
+    /**
+     * Score intake is a provider/officer act, so it takes the manage grant. An
+     * external scheme's Z-score is passed through to the Z-carrying overload: the
+     * FR-V2.3-01 tiers read z_score, so dropping it here would silently downgrade
+     * every external unacceptable to the no-Z path.
+     */
     @PatchMapping(value = "/participant-results/{id}/score", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.MANAGE)
     public ResponseEntity<Map<String, Object>> score(HttpServletRequest request, @PathVariable Long id,
@@ -117,9 +122,25 @@ public class EQAParticipantResultRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("error", "Unknown performance status"));
         }
 
-        EQAParticipantResult scored = resultService.recordScore(id, verdict, longField(body, "eqaResultId"),
-                getSysUserId(request));
+        EQAParticipantResult scored = resultService.recordScore(id, verdict, decimalField(body, "zScore"),
+                longField(body, "eqaResultId"), getSysUserId(request));
         return ResponseEntity.ok(Map.of("id", scored.getId(), "submissionStatus", scored.getSubmissionStatus().name()));
+    }
+
+    /**
+     * No inherited equivalent: BaseRestController hoists the string, long and
+     * integer readers, and a z-score is the first decimal any EQA body carries.
+     */
+    private java.math.BigDecimal decimalField(Map<String, Object> body, String key) {
+        Object value = body.get(key);
+        if (value == null || String.valueOf(value).isBlank()) {
+            return null;
+        }
+        try {
+            return new java.math.BigDecimal(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(key + " must be a number");
+        }
     }
 
     private Long longOrNull(String value) {

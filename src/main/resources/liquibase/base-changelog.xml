@@ -109,4 +109,7 @@
 
   <!-- EQA V2 — OGC-610: point My Cycles at its real route, hide the rows with no page -->
   <include file="liquibase/qa/029-fix-eqa-my-cycles-menu-url.xml" />
+
+  <!-- EQA V2.2 — OGC-610: automatic-submission retry bookkeeping (FR-V2.2-05) -->
+  <include file="liquibase/qa/030-add-eqa-cycle-submission-retry.xml" />
 </databaseChangeLog>

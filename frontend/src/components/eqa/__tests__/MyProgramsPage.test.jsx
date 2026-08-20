@@ -85,6 +85,11 @@ describe("MyProgramsPage", () => {
         ]);
       } else if (url === "/rest/displayList/PANELS") {
         callback([{ id: 200, value: "Basic Metabolic Panel" }]);
+      } else if (url === "/rest/eqa/my-programs/analytes") {
+        callback([
+          { id: 900, value: "Glucose (serum)" },
+          { id: 901, value: "Creatinine (serum)" },
+        ]);
       }
     });
   });

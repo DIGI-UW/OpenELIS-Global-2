@@ -80,8 +80,37 @@ public class EQACycle extends BaseObject<Long> {
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private SystemUser createdBy;
 
+    /**
+     * How many automatic FHIR submissions have been tried for this cycle
+     * (FR-V2.2-05, capped at 5). A failed attempt leaves the cycle in
+     * READY_TO_SUBMIT, and the participant machine has no self-edge, so the attempt
+     * cannot be recorded as a state transition.
+     */
+    @Column(name = "submission_attempts", nullable = false)
+    private Integer submissionAttempts = 0;
+
+    /** Backoff anchor: when the last automatic attempt ran. */
+    @Column(name = "last_submission_attempt_at")
+    private Timestamp lastSubmissionAttemptAt;
+
     @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
+
+    public Integer getSubmissionAttempts() {
+        return submissionAttempts;
+    }
+
+    public void setSubmissionAttempts(Integer submissionAttempts) {
+        this.submissionAttempts = submissionAttempts;
+    }
+
+    public Timestamp getLastSubmissionAttemptAt() {
+        return lastSubmissionAttemptAt;
+    }
+
+    public void setLastSubmissionAttemptAt(Timestamp lastSubmissionAttemptAt) {
+        this.lastSubmissionAttemptAt = lastSubmissionAttemptAt;
+    }
 
     @Override
     public String getSysUserId() {

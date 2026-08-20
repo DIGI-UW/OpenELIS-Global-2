@@ -55,5 +55,11 @@ public enum AlertType {
      * A saved result outside its authored critical bounds (OGC-1022 R3); entity is
      * the ANALYSIS carrying the value
      */
-    CRITICAL_RESULT
+    CRITICAL_RESULT,
+
+    /**
+     * Automatic EQA result submission exhausted its retries (FR-V2.2-05); entity is
+     * the EQA CYCLE that could not be submitted
+     */
+    EQA_SUBMISSION_FAILED
 }

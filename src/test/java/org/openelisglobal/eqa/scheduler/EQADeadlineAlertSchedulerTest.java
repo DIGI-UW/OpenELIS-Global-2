@@ -25,6 +25,7 @@ import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.eqa.dao.SampleEQADAO;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 
@@ -36,6 +37,9 @@ public class EQADeadlineAlertSchedulerTest {
 
     @Mock
     private SampleEQADAO sampleEQADAO;
+
+    @Mock
+    private EQACycleSubmissionService cycleSubmissionService;
 
     @InjectMocks
     private EQADeadlineAlertScheduler scheduler;
@@ -218,6 +222,24 @@ public class EQADeadlineAlertSchedulerTest {
                 eq(AlertSeverity.CRITICAL), anyString(), anyString());
         verify(alertService).createAlert(eq(AlertType.EQA_DEADLINE), eq("SampleEQA"), eq(21L),
                 eq(AlertSeverity.WARNING), anyString(), anyString());
+    }
+
+    /**
+     * FR-V2.2-05: the submission sweep visits every candidate even when one of them
+     * throws. Without the per-cycle catch, a single unreachable cycle would stop
+     * every other lab's submission for as long as it stayed broken — and the
+     * scheduler would look like it was running fine.
+     */
+    @Test
+    public void advanceEQASubmissions_survivesAFailingCycle() {
+        when(cycleSubmissionService.findAdvanceCandidates()).thenReturn(Arrays.asList(1L, 2L, 3L));
+        when(cycleSubmissionService.advanceCycle(2L)).thenThrow(new IllegalStateException("boom"));
+
+        scheduler.advanceEQASubmissions();
+
+        verify(cycleSubmissionService).advanceCycle(1L);
+        verify(cycleSubmissionService).advanceCycle(2L);
+        verify(cycleSubmissionService).advanceCycle(3L);
     }
 
     private SampleEQA createSampleEQA(Long id, Long sampleId, Timestamp deadline) {

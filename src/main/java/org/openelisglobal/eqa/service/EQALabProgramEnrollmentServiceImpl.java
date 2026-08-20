@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.eqa.dao.EQALabProgramEnrollmentDAO;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentLabUnit;
@@ -48,12 +49,12 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
 
     @Override
     public EQALabProgramEnrollment createEnrollment(EQALabProgramEnrollment enrollment, List<Long> labUnitIds,
-            List<Long> testIds, List<Long> panelIds) {
+            List<Long> testIds, List<Long> panelIds, Map<Long, Long> testAnalytes) {
 
         enrollment.setCreatedDate(new Date());
         enrollment.setIsActive(enrollment.getIsActive() != null ? enrollment.getIsActive() : true);
 
-        setMappings(enrollment, labUnitIds, testIds, panelIds);
+        setMappings(enrollment, labUnitIds, testIds, panelIds, testAnalytes);
 
         Long id = enrollmentDAO.insert(enrollment);
         return enrollmentDAO.get(id)
@@ -62,7 +63,7 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
 
     @Override
     public EQALabProgramEnrollment updateEnrollment(Long id, EQALabProgramEnrollment updated, List<Long> labUnitIds,
-            List<Long> testIds, List<Long> panelIds) {
+            List<Long> testIds, List<Long> panelIds, Map<Long, Long> testAnalytes) {
 
         EQALabProgramEnrollment existing = enrollmentDAO.get(id)
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found: " + id));
@@ -79,7 +80,7 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
         existing = enrollmentDAO.update(existing);
         entityManager.flush();
 
-        setMappings(existing, labUnitIds, testIds, panelIds);
+        setMappings(existing, labUnitIds, testIds, panelIds, testAnalytes);
         enrollmentDAO.update(existing);
         entityManager.flush();
         entityManager.clear();
@@ -103,7 +104,7 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
     }
 
     private void setMappings(EQALabProgramEnrollment enrollment, List<Long> labUnitIds, List<Long> testIds,
-            List<Long> panelIds) {
+            List<Long> panelIds, Map<Long, Long> testAnalytes) {
 
         if (labUnitIds != null) {
             for (Long unitId : labUnitIds) {
@@ -121,6 +122,9 @@ public class EQALabProgramEnrollmentServiceImpl extends BaseObjectServiceImpl<EQ
                 EQALabEnrollmentTestMap map = new EQALabEnrollmentTestMap();
                 map.setEnrollment(enrollment);
                 map.setTestId(testId);
+                if (testAnalytes != null) {
+                    map.setAnalyteId(testAnalytes.get(testId));
+                }
                 map.setSysUserId(enrollment.getSysUserId());
                 testMaps.add(map);
             }
