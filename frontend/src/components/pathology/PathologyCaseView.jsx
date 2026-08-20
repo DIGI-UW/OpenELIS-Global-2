@@ -216,6 +216,7 @@ function PathologyCaseView() {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "pathology.label.dashboard", link: "/PathologyDashboard" },
+    { label: "breadcrumb.caseView", link: "" },
   ];
 
   const setInitialPathologySampleInfo = (e) => {

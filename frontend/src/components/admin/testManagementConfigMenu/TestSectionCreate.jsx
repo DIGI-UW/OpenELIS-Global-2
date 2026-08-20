@@ -6,30 +6,12 @@ import {
   Grid,
   Column,
   Section,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableBody,
-  TableHeader,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
-  TableContainer,
-  Pagination,
-  Search,
-  Select,
-  SelectItem,
-  Stack,
   TextInput,
   RadioButtonGroup,
   RadioButton,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
@@ -39,8 +21,6 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import CustomCheckBox from "../../common/CustomCheckBox";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 

@@ -1,7 +1,8 @@
 import React from "react";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import messages from "../../../languages/en.json";
 import AlertsDashboard from "../AlertsDashboard";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -21,7 +22,7 @@ vi.mock("../../utils/Utils", async (importOriginal) => {
 const renderWithIntl = (component) => {
   return render(
     <IntlProvider locale="en" messages={messages}>
-      {component}
+      <MemoryRouter>{component}</MemoryRouter>
     </IntlProvider>,
   );
 };
@@ -77,7 +78,22 @@ describe("AlertsDashboard", () => {
 
   test("renders dashboard title", () => {
     renderWithIntl(<AlertsDashboard />);
-    expect(screen.getByText("Alerts Dashboard")).toBeTruthy();
+    // the page name also appears as the current breadcrumb, so scope to the heading
+    expect(
+      screen.getByRole("heading", { name: "Alerts Dashboard" }),
+    ).toBeTruthy();
+  });
+
+  test("renders the full breadcrumb path with Home clickable", () => {
+    renderWithIntl(<AlertsDashboard />);
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(breadcrumb).toBeTruthy();
+    expect(breadcrumb.querySelector('a[href="/"]')?.textContent).toBe("Home");
+    // the current page is named but not a link
+    expect(breadcrumb.textContent).toContain("Alerts Dashboard");
+    expect(
+      Array.from(breadcrumb.querySelectorAll("a")).map((a) => a.textContent),
+    ).toEqual(["Home"]);
   });
 
   test("renders summary tiles with counts", async () => {

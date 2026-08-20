@@ -15,25 +15,35 @@ import amET from "./am_ET.json";
 import sw from "./sw.json";
 
 /**
+ * A bundle layered over English, so a key a translation has not caught up with
+ * yet renders its English text rather than the raw key id. New keys are added
+ * to en.json only — Transifex is the source of truth for every other bundle —
+ * so between an English release and its translation round every locale would
+ * otherwise show identifiers like `label.patientHistory.filterByCategory` to
+ * the user.
+ */
+const withEnglishFallback = (messages) => ({ ...en, ...messages });
+
+/**
  * All available language message bundles.
  * These are bundled at build time and contain UI translations.
  */
 export const languageMessages = {
   en: en,
-  "en-GB": enGB,
-  "en-LK": enLK,
-  "en-US": enUS,
-  es: es,
-  fr: fr,
-  id: id,
-  mg: mg,
-  ro: ro,
-  si: si,
-  "si-LK": siLK,
-  ta: ta,
-  "ta-LK": taLK,
-  sw: sw,
-  "am-ET": amET,
+  "en-GB": withEnglishFallback(enGB),
+  "en-LK": withEnglishFallback(enLK),
+  "en-US": withEnglishFallback(enUS),
+  es: withEnglishFallback(es),
+  fr: withEnglishFallback(fr),
+  id: withEnglishFallback(id),
+  mg: withEnglishFallback(mg),
+  ro: withEnglishFallback(ro),
+  si: withEnglishFallback(si),
+  "si-LK": withEnglishFallback(siLK),
+  ta: withEnglishFallback(ta),
+  "ta-LK": withEnglishFallback(taLK),
+  sw: withEnglishFallback(sw),
+  "am-ET": withEnglishFallback(amET),
 };
 
 /**
@@ -41,8 +51,8 @@ export const languageMessages = {
  * The actual enabled languages are fetched from /rest/supportedlocales/active.
  */
 export const defaultLanguages = {
-  en: { label: "English", messages: en },
-  fr: { label: "Français", messages: fr },
+  en: { label: "English", messages: languageMessages.en },
+  fr: { label: "Français", messages: languageMessages.fr },
 };
 
 /**
@@ -51,21 +61,24 @@ export const defaultLanguages = {
  * @deprecated Use ConfigurationContext.supportedLocales instead
  */
 export const languages = {
-  en: { label: "English", messages: en },
-  "en-GB": { label: "English (UK)", messages: enGB },
-  "en-LK": { label: "English (Sri Lanka)", messages: enLK },
-  "en-US": { label: "English (US)", messages: enUS },
-  es: { label: "Español", messages: es },
-  fr: { label: "Français", messages: fr },
-  id: { label: "Indonesia", messages: id },
-  mg: { label: "Malagasy", messages: mg },
-  ro: { label: "Română", messages: ro },
-  si: { label: "සිංහල", messages: si },
-  "si-LK": { label: "සිංහල (Sri Lanka)", messages: siLK },
-  ta: { label: "தமிழ்", messages: ta },
-  "ta-LK": { label: "தமிழ் (Sri Lanka)", messages: taLK },
-  sw: { label: "Swahili", messages: sw },
-  "am-ET": { label: "Amharic", messages: amET },
+  en: { label: "English", messages: languageMessages["en"] },
+  "en-GB": { label: "English (UK)", messages: languageMessages["en-GB"] },
+  "en-LK": {
+    label: "English (Sri Lanka)",
+    messages: languageMessages["en-LK"],
+  },
+  "en-US": { label: "English (US)", messages: languageMessages["en-US"] },
+  es: { label: "Español", messages: languageMessages["es"] },
+  fr: { label: "Français", messages: languageMessages["fr"] },
+  id: { label: "Indonesia", messages: languageMessages["id"] },
+  mg: { label: "Malagasy", messages: languageMessages["mg"] },
+  ro: { label: "Română", messages: languageMessages["ro"] },
+  si: { label: "සිංහල", messages: languageMessages["si"] },
+  "si-LK": { label: "සිංහල (Sri Lanka)", messages: languageMessages["si-LK"] },
+  ta: { label: "தமிழ்", messages: languageMessages["ta"] },
+  "ta-LK": { label: "தமிழ் (Sri Lanka)", messages: languageMessages["ta-LK"] },
+  sw: { label: "Swahili", messages: languageMessages["sw"] },
+  "am-ET": { label: "Amharic", messages: languageMessages["am-ET"] },
 };
 
 /**

@@ -29,11 +29,7 @@ import { BrowserRouter } from "react-router-dom";
 import ValidationRuleEditor from "./ValidationRuleEditor";
 
 // Utilities (import functions, not just for mocking)
-import {
-  getValidationRules,
-  createValidationRule,
-  updateValidationRule,
-} from "../../../services/analyzerService";
+import { createValidationRule } from "../../../services/analyzerService";
 
 // Messages/translations
 import messages from "../../../languages/en.json";

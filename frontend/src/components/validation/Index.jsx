@@ -1,13 +1,16 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState } from "react";
 import SearchForm from "./SearchForm";
 import Validation from "./Validation";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { Heading, Grid, Column, Section } from "@carbon/react";
-import { injectIntl, FormattedMessage } from "react-intl";
+import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "sidenav.label.validation", link: "/validation" },
+];
 
 const Index = () => {
   const { notificationVisible } = useContext(NotificationContext);

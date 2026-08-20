@@ -65,5 +65,11 @@ public enum AlertType {
     /**
      * Reference lab referral was rejected — lab-side acknowledgment (OGC-804)
      */
-    REFERRAL_REJECTED
+    REFERRAL_REJECTED,
+
+    /**
+     * A saved result outside its authored critical bounds (OGC-1022 R3); entity is
+     * the ANALYSIS carrying the value
+     */
+    CRITICAL_RESULT
 }

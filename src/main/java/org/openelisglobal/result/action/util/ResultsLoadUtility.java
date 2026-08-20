@@ -48,6 +48,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -57,6 +58,7 @@ import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory.ValueType;
@@ -921,15 +923,9 @@ public class ResultsLoadUtility {
         // Multi-component rows take their reference range from their own component's
         // limits (chosen for the patient's age/gender); other rows use the test-level
         // limits. Either way the selection is patient-conditional (OGC-1127/OGC-949).
-        // OGC-1145 Phase 2: the analysis's specimen selects a scoped limit over
-        // the shared set when the test carries per-sample-type overrides.
-        String limitSampleTypeId = analysis.getSampleItem() != null ? analysis.getSampleItem().getTypeOfSampleId()
-                : null;
         ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
-        ResultLimit resultLimit = component != null
-                ? resultLimitService.getResultLimitForComponentAndPatient(component.getId(), currentPatient,
-                        limitSampleTypeId)
-                : resultLimitService.getResultLimitForTestAndPatient(test.getId(), currentPatient, limitSampleTypeId);
+        ResultLimit resultLimit = resultLimitService.getResultLimitForResult(analysis, result, currentPatient,
+                component == null ? null : component.getId());
 
         String receivedDate = currSample == null ? getCurrentDate() : currSample.getReceivedDateForDisplay();
         String testMethodName = testService.getTestMethodName(test);
@@ -1069,7 +1065,10 @@ public class ResultsLoadUtility {
         testItem.setResultDisplayType(resultDisplayType);
         testItem.setAnalysisMethod(analysisService.getAnalysisType(analysis));
         testItem.setTestMethod(analysisService.getMethodId(analysis));
+        testItem.setAnalyzerId(analysis.getAnalyzerId());
         testItem.setResult(result);
+        testItem.setResultValue(getFormattedResultValue(result));
+        testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getValue()));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
         testItem.setAnalysisStatusId(analysisService.getStatusId(analysis));
         // Display type selection:
@@ -1100,6 +1099,13 @@ public class ResultsLoadUtility {
         }
         setDictionaryResults(testItem, isConclusion, result, testResults);
 
+        // OGC-1022 (R3, FR-L1): computed here, after the value and result type are
+        // both on the item — setResultLimitDependencies runs before the value is
+        // set, so its valid/normal booleans can't see the saved value
+        testItem.setResultFlag(computeResultFlag(testItem.getResultValue(), testItem.getResultType(), resultLimit));
+        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
+                testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
+
         testItem.setTechnician(techSignature);
         testItem.setTechnicianSignatureId(techSignatureId);
         testItem.setTestKitId(testKitId);
@@ -1122,6 +1128,7 @@ public class ResultsLoadUtility {
         testItem.setChildReflex(
                 analysisService.getTriggeredReflex(analysis) && analysisService.resultIsConclusion(result, analysis));
         testItem.setPastNotes(notes);
+        testItem.setAnalysisNotes(buildAnalysisNotes(analysis));
         testItem.setDisplayResultAsLog(hasLogValue(test));
         testItem.setResultFile(form);
         testItem.setNonconforming(
@@ -1358,6 +1365,41 @@ public class ResultsLoadUtility {
         return valid;
     }
 
+    /**
+     * OGC-1022 (R3, FR-L1) — one flag per numeric value, judged against the
+     * patient-conditional limit: INVALID outside the valid range, CRITICAL outside
+     * an authored critical bound, ABNORMAL outside the reference range, NORMAL
+     * inside it. {@code Double.POSITIVE_INFINITY} is the editor's "not authored"
+     * sentinel for both critical bounds (see TestCatalogEditorRestController), so
+     * an unset bound never fires.
+     */
+    private String computeResultFlag(String resultValue, String resultType, ResultLimit limit) {
+        // a null id is the selector's synthetic empty limit (no authored range
+        // matched this patient) — no basis to call anything "normal"
+        if (GenericValidator.isBlankOrNull(resultValue) || limit == null
+                || GenericValidator.isBlankOrNull(limit.getId()) || !"N".equals(resultType)) {
+            return null;
+        }
+        try {
+            double value = Double.parseDouble(resultValue);
+            if (value < limit.getLowValid() || value > limit.getHighValid()) {
+                return "INVALID";
+            }
+            boolean criticalLow = limit.getLowCritical() != Double.POSITIVE_INFINITY && value < limit.getLowCritical();
+            boolean criticalHigh = limit.getHighCritical() != Double.POSITIVE_INFINITY
+                    && value > limit.getHighCritical();
+            if (criticalLow || criticalHigh) {
+                return "CRITICAL";
+            }
+            if (value < limit.getLowNormal() || value > limit.getHighNormal()) {
+                return "ABNORMAL";
+            }
+            return "NORMAL";
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private boolean getIsNormal(String resultValue, ResultLimit resultLimit) {
         boolean normal = true;
 
@@ -1525,5 +1567,41 @@ public class ResultsLoadUtility {
             }
         }
         return "";
+    }
+
+    /**
+     * OGC-1021 (R2, FR-J1) — this analysis's notes as structured items so the
+     * unified panel can render each with its context (subject) and visibility
+     * (noteType) tags. pastNotes remains the legacy flat string.
+     */
+    private List<TestResultItem.AnalysisNote> buildAnalysisNotes(Analysis analysis) {
+        List<TestResultItem.AnalysisNote> items = new ArrayList<>();
+        NoteService noteService = SpringContext.getBean(NoteService.class);
+        for (Note note : noteService.getNotes(analysis)) {
+            TestResultItem.AnalysisNote item = new TestResultItem.AnalysisNote();
+            item.setText(note.getText());
+            item.setNoteType(note.getNoteType());
+            item.setSubject(note.getSubject());
+            item.setAuthor(getNoteAuthorDisplayName(note));
+            item.setDate(
+                    note.getLastupdated() != null ? DateUtil.convertTimestampToStringDateAndTime(note.getLastupdated())
+                            : "");
+            item.setTestResultComponentId(note.getTestResultComponentId());
+            items.add(item);
+        }
+        return items;
+    }
+
+    /**
+     * The note's systemUser is a lazy proxy whose session is closed by the time
+     * results are assembled, so only its identifier is safe to read; the author is
+     * reloaded by id to get the display name.
+     */
+    private String getNoteAuthorDisplayName(Note note) {
+        if (note.getSystemUser() == null || GenericValidator.isBlankOrNull(note.getSystemUser().getId())) {
+            return "";
+        }
+        SystemUser author = SpringContext.getBean(SystemUserService.class).get(note.getSystemUser().getId());
+        return author != null ? author.getDisplayName() : "";
     }
 }

@@ -29,6 +29,7 @@ import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimits.dao.ResultLimitDAO;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
@@ -37,6 +38,8 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
@@ -70,6 +73,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     private ComplianceThresholdService complianceThresholdService;
     @Autowired
     private org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
+    private TestResultComponentService testResultComponentService;
 
     @PostConstruct
     public void initializeGlobalVariables() {
@@ -590,6 +594,58 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitById(String resultLimitId) throws LIMSRuntimeException {
         return getBaseObjectDAO().getResultLimitById(resultLimitId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient) {
+        return getResultLimitForResult(analysis, result, patient, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient, String componentId) {
+        String sampleTypeId = analysis == null || analysis.getSampleItem() == null ? null
+                : analysis.getSampleItem().getTypeOfSampleId();
+        String testId = analysis == null || analysis.getTest() == null ? null : analysis.getTest().getId();
+        if (testId == null) {
+            return null;
+        }
+        String scope = componentId;
+        if (scope == null) {
+            TestResultComponent component = resolveComponentForResult(testId, result);
+            scope = component == null ? null : component.getId();
+        }
+        return scope == null ? getResultLimitForTestAndPatient(testId, patient, sampleTypeId)
+                : getResultLimitForComponentAndPatient(scope, patient, sampleTypeId);
+    }
+
+    /**
+     * The component whose range governs this result, or null when the test is not
+     * multi-component and therefore has only test-level ranges. A result points at
+     * its component through its test_result row; legacy rows with no component id
+     * belong to the primary.
+     */
+    private TestResultComponent resolveComponentForResult(String testId, Result result) {
+        List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(testId);
+        if (components.size() < 2) {
+            return null;
+        }
+        String componentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (componentId != null) {
+            for (TestResultComponent component : components) {
+                if (componentId.equals(component.getId())) {
+                    return component;
+                }
+            }
+        }
+        for (TestResultComponent component : components) {
+            if (component.getIsPrimary()) {
+                return component;
+            }
+        }
+        return components.get(0);
     }
 
     @Override

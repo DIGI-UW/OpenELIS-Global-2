@@ -300,22 +300,6 @@ export const postToOpenElisServerJsonResponse = <
     });
 };
 
-//provides Synchronous calls to the api
-export const getFromOpenElisServerSync = <T = LegacyApiResponse>(
-  endPoint: string,
-  callback: (response: LegacyApiResponse) => T,
-): T => {
-  const request = new XMLHttpRequest();
-  request.open("GET", config.serverBaseUrl + endPoint, false);
-  request.setRequestHeader("credentials", "include");
-  request.setRequestHeader("Accept-Language", getAcceptLanguageHeader());
-  request.send();
-  // if (request.response.url.includes("LoginPage")) {
-  //     throw "No Login Session";
-  // }
-  return callback(JSON.parse(request.response));
-};
-
 export const postToOpenElisServerForBlob = (
   endPoint: string,
   payLoad: RequestPayload,

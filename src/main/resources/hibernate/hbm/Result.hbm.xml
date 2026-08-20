@@ -49,10 +49,15 @@
             column="min_normal" />
         <property name="maxNormal" type="java.lang.Double"
             column="max_normal" />
+        <!-- Both columns are nullable and both accessors are int, so Hibernate
+            reads and writes the fields directly: through the setters a NULL could not
+            be assigned at all, and through the getters a NULL could not be written back
+            (OGC-1170). The getters keep returning int, substituting a safe value for
+            callers. -->
         <property name="significantDigits" type="java.lang.Integer"
-            column="significant_digits" />
+            column="significant_digits" access="field" />
         <property name="grouping" type="java.lang.Integer"
-            column="grouping" />
+            column="grouping" access="field" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
         <many-to-one name="parentResult"

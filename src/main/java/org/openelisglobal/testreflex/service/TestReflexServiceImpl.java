@@ -4,12 +4,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -51,6 +55,10 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
     AnalyteService analyteService;
     @Autowired
     TestAnalyteService testAnalyteService;
+    @Autowired
+    private RuleResultScope ruleResultScope;
+    @Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
 
     static final String REFLEX_RESULT_GROUP = "30";
     static final String REFLEX_RESULT_TYPE = "R";
@@ -251,6 +259,13 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         }
 
         for (ReflexRuleCondition condition : rule.getConditions()) {
+            // A condition may only name a component of the test it triggers on;
+            // anything else can never match a result and would save as a rule
+            // that looks configured and silently never fires.
+            if (!componentBelongsToTest(condition.getComponentId(), condition.getTestId())) {
+                throw new LIMSRuntimeException("Reflex condition names a component that is not on test "
+                        + condition.getTestId() + ": " + condition.getComponentId());
+            }
             if (testAndSampleMatches(condition.getTestId(), condition.getSampleId())) {
                 TestAnalyte testAnalyte = null;
                 Test triggerTest = null;
@@ -285,7 +300,24 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         if (results.isEmpty()) {
             results = List.of(createDefaultTestResult(triggerTest));
         }
-        if (testService.getResultType(triggerTest).equals("D")) {
+        // The condition names a component, and the component - not the parent
+        // test - owns the result type. A test whose primary component is coded
+        // and whose secondary is numeric has no single type, so asking the test
+        // hands a numeric condition the coded branch and it never fires.
+        String componentId = blankToNull(condition.getComponentId());
+        condition.setComponentId(componentId);
+        String resultType = ruleResultScope.resultTypeForComponent(triggerTest.getId(), componentId,
+                testService.getResultType(triggerTest));
+        if (!GenericValidator.isBlankOrNull(componentId)) {
+            List<TestResult> componentResults = results.stream().filter(res -> componentId.equals(res.getComponentId()))
+                    .collect(Collectors.toList());
+            if (!componentResults.isEmpty()) {
+                results = componentResults;
+            }
+        }
+        reflex.setComponentId(componentId);
+        reflex.setSampleTypeId(blankToNull(condition.getSampleId()));
+        if (resultType.equals("D")) {
             Optional<TestResult> result = results.stream()
                     .filter(res -> Objects.equals(res.getValue(), condition.getValue())).findFirst();
             if (result.isPresent()) {
@@ -295,7 +327,7 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
             }
         } else {
             reflex.setTestResult(results.get(0));
-            if (testService.getResultType(triggerTest).equals("N")) {
+            if (resultType.equals("N")) {
                 Double value = Double.parseDouble(condition.getValue());
                 Double value2 = Double.parseDouble(condition.getValue2());
                 if (condition.getRelation().equals(NumericRelationOptions.BETWEEN)) {
@@ -315,6 +347,13 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         if (testAndSampleMatches(action.getReflexTestId(), action.getSampleId())) {
             Test reflexTest = testService.getTestById(action.getReflexTestId());
             reflex.setAddedTest(reflexTest);
+            // The action's specimen is where the generated test is reported,
+            // and it is the lab's instruction rather than something to work
+            // out: a rule reading Respiratory Swab and adding a test on DBS
+            // means DBS. It was validated here and then dropped, so the
+            // executor had only the trigger's specimen to go on and filed the
+            // generated test against whatever fired the rule.
+            reflex.setAddedSampleTypeId(blankToNull(action.getSampleId()));
         }
     }
 
@@ -325,6 +364,22 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         defaultResult.setSortOrder("0");
         defaultResult.setIsActive(true);
         return testResultService.save(defaultResult);
+    }
+
+    /** "" is what an unset picker posts; the column wants NULL. */
+    private static String blankToNull(String value) {
+        return GenericValidator.isBlankOrNull(value) ? null : value;
+    }
+
+    private boolean componentBelongsToTest(String componentId, String testId) {
+        if (GenericValidator.isBlankOrNull(componentId)) {
+            return true;
+        }
+        if (GenericValidator.isBlankOrNull(testId)) {
+            return false;
+        }
+        return testResultComponentService.getActiveComponentsByTestId(testId).stream()
+                .anyMatch(c -> componentId.equals(c.getId()));
     }
 
     private Boolean testAndSampleMatches(String testId, String sampleTypeId) {
@@ -344,5 +399,16 @@ public class TestReflexServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
     @Override
     public ReflexRule getReflexRuleByAnalyteId(String analyteId) {
         return reflexRuleDAO.getReflexRuleByAnalyteId(analyteId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isReflexRuleActive(TestReflex reflex) {
+        if (reflex == null || reflex.getTestAnalyte() == null || reflex.getTestAnalyte().getAnalyte() == null
+                || GenericValidator.isBlankOrNull(reflex.getTestAnalyte().getAnalyte().getId())) {
+            return true;
+        }
+        ReflexRule rule = reflexRuleDAO.getReflexRuleByAnalyteId(reflex.getTestAnalyte().getAnalyte().getId());
+        return rule == null || Boolean.TRUE.equals(rule.getActive());
     }
 }

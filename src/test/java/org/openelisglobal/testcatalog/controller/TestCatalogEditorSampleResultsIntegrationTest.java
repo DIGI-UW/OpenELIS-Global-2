@@ -1,6 +1,7 @@
 package org.openelisglobal.testcatalog.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.UUID;
@@ -48,6 +49,24 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     private static final String DICT_ENTRY = "PositiveIT";
 
     private static final String SAMPLE_TYPE_DESC = "UrineIT";
+
+    private static final long FALLBACK_CATEGORY_ID = 952080L;
+
+    /**
+     * A category that is NOT "Test Result", plus an entry inside it that shares a
+     * name with a free-text option. Option lookup must not bind to it.
+     */
+    private static final long OTHER_CATEGORY_ID = 952081L;
+
+    private static final String OTHER_CATEGORY_NAME = "ScopingIT Demographics";
+
+    private static final long OTHER_CATEGORY_DICT_ID = 952082L;
+
+    private static final String SHARED_ENTRY_NAME = "SharedNameIT";
+
+    private Long testResultCategoryId;
+
+    private boolean createdTestResultCategory;
 
     @Autowired
     private TestService testService;
@@ -140,9 +159,29 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         // Self-seed the dictionary entry + sample type these tests need; CI's DB does
         // not ship seed rows for them. The dictionary needs only an id; the sample
         // type needs a (cascade-managed) name localization, created via the service.
+        // Free-text options materialize under the "Test Result" category; CI's DB
+        // may not ship it, so seed it when absent (and drop it again in cleanup).
+        // Resolved before the entry below, which has to live inside that category —
+        // option lookup is scoped to it.
+        testResultCategoryId = jdbc.queryForObject("SELECT min(id) FROM clinlims.dictionary_category WHERE name = ?",
+                Long.class, "Test Result");
+        if (testResultCategoryId == null) {
+            jdbc.update("INSERT INTO clinlims.dictionary_category (id, name, description, lastupdated)"
+                    + " VALUES (?, 'Test Result', 'General test result', NOW())", FALLBACK_CATEGORY_ID);
+            testResultCategoryId = FALLBACK_CATEGORY_ID;
+            createdTestResultCategory = true;
+        }
+        jdbc.update("INSERT INTO clinlims.dictionary"
+                + " (id, dict_entry, is_active, dictionary_category_id, lastupdated) VALUES (?, ?, 'Y', ?, NOW())",
+                DICT_ID, DICT_ENTRY, testResultCategoryId);
+        // A same-named entry in an unrelated category: option lookup must ignore it.
         jdbc.update(
-                "INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES (?, ?, 'Y', NOW())",
-                DICT_ID, DICT_ENTRY);
+                "INSERT INTO clinlims.dictionary_category (id, name, description, lastupdated)"
+                        + " VALUES (?, ?, 'Unrelated category for scoping test', NOW())",
+                OTHER_CATEGORY_ID, OTHER_CATEGORY_NAME);
+        jdbc.update("INSERT INTO clinlims.dictionary"
+                + " (id, dict_entry, is_active, dictionary_category_id, lastupdated) VALUES (?, ?, 'Y', ?, NOW())",
+                OTHER_CATEGORY_DICT_ID, SHARED_ENTRY_NAME, OTHER_CATEGORY_ID);
         Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(SAMPLE_TYPE_DESC,
                 SAMPLE_TYPE_DESC, LocalizationServiceImpl.LocalizationType.TEST_NAME);
         nameLocalization.setSysUserId("1");
@@ -192,6 +231,25 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
             }
         }
         jdbc.update("DELETE FROM clinlims.dictionary WHERE id = ?", DICT_ID);
+        jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry = ?", SHARED_ENTRY_NAME);
+        jdbc.update("DELETE FROM clinlims.dictionary_category WHERE id = ?", OTHER_CATEGORY_ID);
+        // Dictionary entries materialized from free-text options (SRIT- prefix),
+        // plus the localization rows their insert auto-created.
+        java.util.List<Long> materializedLocalizations = jdbc
+                .queryForList("SELECT name_localization_id FROM clinlims.dictionary"
+                        + " WHERE dict_entry LIKE 'SRIT-%' AND name_localization_id IS NOT NULL", Long.class);
+        jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'SRIT-%'");
+        for (Long localizationId : materializedLocalizations) {
+            try {
+                localizationService.delete(String.valueOf(localizationId), "1");
+            } catch (RuntimeException ignored) {
+                // localization may already be gone; ignore
+            }
+        }
+        if (createdTestResultCategory) {
+            jdbc.update("DELETE FROM clinlims.dictionary_category WHERE id = ?", FALLBACK_CATEGORY_ID);
+            createdTestResultCategory = false;
+        }
     }
 
     private void cleanupTest(long id) {
@@ -383,36 +441,117 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
 
     @org.junit.Test
     public void saveSampleResults_persistsOptionsPerComponent_andSoftDeletesOnOmit() {
+        // Free-text option values are materialized into dictionary entries on save,
+        // so the round-trip exposes the id in value and the text in valueName.
         ResultComponentDto sex = comp(null, "SEX", "Sex", 1);
         sex.resultType = "D";
-        sex.options.add(opt(null, "Male", 1));
-        sex.options.add(opt(null, "Female", 2));
+        sex.options.add(opt(null, "SRIT-Male", 1));
+        sex.options.add(opt(null, "SRIT-Female", 2));
         controller.saveSampleResults(String.valueOf(TEST_ID), body(sex), authedRequest());
 
         SampleResults loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
         ResultComponentDto loadedSex = loaded.components.get(0);
         assertEquals(2, loadedSex.options.size());
         // ordered by sortOrder
-        assertEquals("Male", loadedSex.options.get(0).value);
+        assertEquals("SRIT-Male", loadedSex.options.get(0).valueName);
+        assertTrue("value must hold a numeric dictionary id, got: " + loadedSex.options.get(0).value,
+                loadedSex.options.get(0).value.matches("\\d+"));
         assertEquals(Integer.valueOf(1), loadedSex.options.get(0).sortOrder);
-        assertEquals("Female", loadedSex.options.get(1).value);
+        assertEquals("SRIT-Female", loadedSex.options.get(1).valueName);
 
-        // Re-PUT keeping only "Male" (by id) → "Female" is soft-deleted.
+        // Re-PUT keeping only "SRIT-Male" (by id) → "SRIT-Female" is soft-deleted.
         ResultComponentDto edit = comp(loadedSex.id, "SEX", "Sex", 1);
         edit.resultType = "D";
-        OptionDto keep = loadedSex.options.stream().filter(o -> "Male".equals(o.value)).findFirst().get();
+        OptionDto keep = loadedSex.options.stream().filter(o -> "SRIT-Male".equals(o.valueName)).findFirst().get();
         edit.options.add(opt(keep.id, keep.value, keep.sortOrder));
         controller.saveSampleResults(String.valueOf(TEST_ID), body(edit), authedRequest());
 
         SampleResults after = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
         assertEquals(1, after.components.get(0).options.size());
-        assertEquals("Male", after.components.get(0).options.get(0).value);
-        // "Female" soft-deleted, not hard-deleted: a TEST_RESULT row remains
-        // is_active=false.
-        Long inactive = jdbc
-                .queryForObject("SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = 'Female'"
-                        + " AND is_active = false", Long.class, TEST_ID);
+        assertEquals("SRIT-Male", after.components.get(0).options.get(0).valueName);
+        // "SRIT-Female" soft-deleted, not hard-deleted: a TEST_RESULT row remains
+        // is_active=false, still pointing at the materialized dictionary entry.
+        Long femaleDictId = jdbc.queryForObject("SELECT min(id) FROM clinlims.dictionary WHERE dict_entry = ?",
+                Long.class, "SRIT-Female");
+        Long inactive = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = ? AND is_active = false",
+                Long.class, TEST_ID, String.valueOf(femaleDictId));
         assertEquals(Long.valueOf(1L), inactive);
+    }
+
+    @org.junit.Test
+    public void saveSampleResults_freeTextOptionMaterializesADictionaryEntry() {
+        // OGC-1142 FR-83 regression: a typed custom option must land in the
+        // dictionary master list, never as raw text in TEST_RESULT.VALUE — raw text
+        // there blows up every getDictionaryById consumer (500 on
+        // MasterListsPage/calculatedValue via /rest/test-display-beans-map).
+        ResultComponentDto virus = comp(null, "VIRUS", "Virus", 1);
+        virus.resultType = "D";
+        virus.options.add(opt(null, "SRIT-HIV1", 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(virus), authedRequest());
+
+        OptionDto saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).options
+                .get(0);
+        assertTrue("free text must be replaced by a numeric dictionary id, got: " + saved.value,
+                saved.value.matches("\\d+"));
+        assertEquals("SRIT-HIV1", saved.valueName);
+        Long entries = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.dictionary WHERE dict_entry = ? AND is_active = 'Y'", Long.class,
+                "SRIT-HIV1");
+        assertEquals("the typed text becomes an active dictionary entry", Long.valueOf(1L), entries);
+        Long categoryId = jdbc.queryForObject(
+                "SELECT dictionary_category_id FROM clinlims.dictionary" + " WHERE dict_entry = ? AND is_active = 'Y'",
+                Long.class, "SRIT-HIV1");
+        assertEquals("materialized entries belong to the Test Result category", testResultCategoryId, categoryId);
+        Long rawRows = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND value = 'SRIT-HIV1'", Long.class,
+                TEST_ID);
+        assertEquals("no test_result row may keep the raw text", Long.valueOf(0L), rawRows);
+        // The save also refreshes the cached DICTIONARY_TEST_RESULTS display list
+        // (legacy Test Add / select-list pages) so the materialized entry is
+        // offered without a restart. The cache itself is a static singleton that
+        // other suites and the transactional test context both mutate, so its
+        // contents are asserted by the direct category query above, not through
+        // DisplayListService.
+    }
+
+    @org.junit.Test
+    public void saveSampleResults_freeTextOptionReusesAnExistingActiveDictionaryEntry() {
+        ResultComponentDto res = comp(null, "RES", "Result", 1);
+        res.resultType = "D";
+        res.options.add(opt(null, DICT_ENTRY, 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(res), authedRequest());
+
+        OptionDto saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).options
+                .get(0);
+        assertEquals("text matching an active entry must reuse its id", String.valueOf(DICT_ID), saved.value);
+        Long entries = jdbc.queryForObject("SELECT count(*) FROM clinlims.dictionary WHERE dict_entry = ?", Long.class,
+                DICT_ENTRY);
+        assertEquals("no duplicate dictionary entry may be created", Long.valueOf(1L), entries);
+    }
+
+    /**
+     * A same-named active entry in another category must not be reused. Names
+     * repeat across categories — "Negative", "Invalid" and "Positive" all exist
+     * several times over — so matching on the name alone bound an option to an
+     * unrelated concept, and renaming that entry would silently rename the option.
+     */
+    @org.junit.Test
+    public void saveSampleResults_freeTextOptionIgnoresASameNamedEntryInAnotherCategory() {
+        ResultComponentDto res = comp(null, "RES", "Result", 1);
+        res.resultType = "D";
+        res.options.add(opt(null, SHARED_ENTRY_NAME, 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(res), authedRequest());
+
+        OptionDto saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).options
+                .get(0);
+        assertNotEquals("must not bind to the entry in the unrelated category", String.valueOf(OTHER_CATEGORY_DICT_ID),
+                saved.value);
+
+        Long categoryId = jdbc.queryForObject("SELECT dictionary_category_id FROM clinlims.dictionary WHERE id = ?",
+                Long.class, Long.parseLong(saved.value));
+        assertEquals("the option must resolve to an entry in the Test Result category", testResultCategoryId,
+                categoryId);
     }
 
     @org.junit.Test
@@ -420,8 +559,8 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         // Seed the source test's config via the controller.
         ResultComponentDto srcComp = comp(null, "SEX", "Sex", 1);
         srcComp.resultType = "D";
-        srcComp.options.add(opt(null, "Male", 1));
-        srcComp.interpretations.add(interp(null, "Male", "Boy", "NORMAL"));
+        srcComp.options.add(opt(null, "SRIT-Male", 1));
+        srcComp.interpretations.add(interp(null, "SRIT-Male", "Boy", "NORMAL"));
         controller.saveSampleResults(String.valueOf(SOURCE_ID), body(srcComp), authedRequest());
 
         // Copy onto the (empty) target test.
@@ -433,7 +572,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         assertEquals(1, target.components.size());
         assertEquals("SEX", target.components.get(0).code);
         assertEquals(1, target.components.get(0).options.size());
-        assertEquals("Male", target.components.get(0).options.get(0).value);
+        assertEquals("SRIT-Male", target.components.get(0).options.get(0).valueName);
         assertEquals(1, target.components.get(0).interpretations.size());
         assertEquals("Boy", target.components.get(0).interpretations.get(0).text);
     }

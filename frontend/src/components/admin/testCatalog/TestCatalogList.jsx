@@ -31,13 +31,11 @@ import {
 } from "@carbon/react";
 import { Add, Edit, Filter } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import useDomains from "../../common/useDomains";
 import { DEFAULT_SECTION } from "./sectionConfig";
+import PanelsList from "./PanelsList";
 
 /**
  * OGC-949 / OGC-1112 — Test List View.
@@ -74,7 +72,21 @@ const SEARCH_DEBOUNCE_MS = 300;
 // FR-61 — errors sort ahead of warnings ahead of info in the per-row tag list.
 const SEVERITY_RANK = { ERROR: 0, WARNING: 1, INFO: 2 };
 
+/**
+ * OGC-224 — the list route hosts multiple catalog entities (FRS: Tests /
+ * Panels / Sample Types as peers). ?entity=panels renders the Panels context;
+ * no param (or any other value) keeps the historic Tests list untouched.
+ */
 const TestCatalogList = () => {
+  const history = useHistory();
+  const entity = new URLSearchParams(history.location.search).get("entity");
+  if (entity === "panels") {
+    return <PanelsList />;
+  }
+  return <TestsList />;
+};
+
+const TestsList = () => {
   const domainOptions = [
     ALL_DOMAINS_OPTION,
     ...useDomains().map((d) => ({ id: d.id, label: d.labelKey })),
@@ -519,7 +531,6 @@ const TestCatalogList = () => {
                             <React.Fragment key={row.id}>
                               <TableRow
                                 {...getRowProps({ row })}
-                                onClick={() => openEditor(row.id)}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" || e.key === " ") {
                                     e.preventDefault();
@@ -527,16 +538,24 @@ const TestCatalogList = () => {
                                   }
                                 }}
                                 tabIndex={0}
-                                style={{ cursor: "pointer" }}
                                 data-cy={`test-row-${row.id}`}
                               >
-                                {/* Selecting a row must not open the editor. */}
+                                {/* The checkbox selects the row for the batch
+                                    action and must not open the editor. It is
+                                    left outside the clickable area rather than
+                                    stopping propagation: TableSelectRow accepts
+                                    a fixed set of props and drops onClick, so a
+                                    handler passed to it never reaches the DOM
+                                    and the click reaches the row regardless. */}
                                 <TableSelectRow
                                   {...getSelectionProps({ row })}
-                                  onClick={(e) => e.stopPropagation()}
                                 />
                                 {row.cells.map((cell) => (
-                                  <TableCell key={cell.id}>
+                                  <TableCell
+                                    key={cell.id}
+                                    onClick={() => openEditor(row.id)}
+                                    style={{ cursor: "pointer" }}
+                                  >
                                     {cell.info.header === "domain" ? (
                                       <>
                                         {cell.value && (

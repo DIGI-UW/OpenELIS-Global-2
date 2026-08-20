@@ -37,6 +37,7 @@ import {
 } from "@carbon/react";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
+import { PANEL_SECTIONS } from "./testCatalog/panelSectionConfig";
 
 const getAdminBasePath = (pathname) =>
   pathname.startsWith("/admin") ? "/admin" : "/MasterListsPage";
@@ -53,21 +54,73 @@ const normalizePath = (path) => {
 
 export default function AdminSideNav({ isTrainingInstallation = false }) {
   const intl = useIntl();
+  /**
+   * The caption above the sections list. Greyed sections without one leave a
+   * reader no way to know what to do next.
+   */
+  const sectionsCaption = (id, dataCy, messageId, values) => (
+    <li
+      id={id}
+      data-cy={dataCy}
+      className="adminSideNav__sectionsContext"
+      style={{
+        padding: "0.25rem 1rem 0.5rem",
+        fontSize: "0.75rem",
+        lineHeight: 1.3,
+        color: "var(--cds-text-secondary, #6f6f6f)",
+      }}
+    >
+      <FormattedMessage id={messageId} values={values} />
+    </li>
+  );
+
+  /** A section the reader cannot open yet, described by the caption above it. */
+  const disabledSection = (dataCy, describedBy, label) => (
+    <SideNavMenuItem
+      key={dataCy}
+      data-cy={dataCy}
+      aria-disabled="true"
+      aria-describedby={describedBy}
+      tabIndex={-1}
+      onClick={(e) => e.preventDefault()}
+      style={{ opacity: 0.5, cursor: "not-allowed" }}
+    >
+      {label}
+    </SideNavMenuItem>
+  );
+
   const history = useHistory();
   const location = useLocation();
   const path = getAdminBasePath(location.pathname);
 
-  const editorMatch = location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
+  // OGC-224 — /TestCatalogEditor/panel/:id is the PANEL editor, not a test id.
+  const panelEditorMatch = location.pathname.match(
+    /\/TestCatalogEditor\/panel\/([^/]+)/,
+  );
+  const editorPanelId = panelEditorMatch ? panelEditorMatch[1] : null;
+
+  const editorMatch = editorPanelId
+    ? null
+    : location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
   const editorTestId = editorMatch ? editorMatch[1] : null;
 
-  // Sample Type editor context: /SampleTypeManagement/:sampleTypeId/:section?
+  // Sample Type editor context: /SampleTypeEditor/:sampleTypeId/:section?
   // The plain list URL (no trailing id) leaves this null.
   const sampleTypeEditorMatch = location.pathname.match(
-    /\/SampleTypeManagement\/([^/]+)/,
+    /\/SampleTypeEditor\/([^/]+)/,
   );
   const editorSampleTypeId = sampleTypeEditorMatch
     ? sampleTypeEditorMatch[1]
     : null;
+
+  // Which entity the shell is showing, whether or not one is selected yet. The
+  // sections list needs this: with nothing selected the panels and sample types
+  // contexts used to fall through to the tests branch, which greyed out the
+  // test sections and told the reader to pick a test.
+  const inPanelsContext =
+    !!editorPanelId || /[?&]entity=panels(&|$)/.test(location.search);
+  const inSampleTypesContext =
+    !!editorSampleTypeId || /\/SampleTypeEditor(\/|$)/.test(location.pathname);
 
   // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
@@ -135,7 +188,29 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const inTestCatalogArea =
     !!editorTestId ||
     !!editorSampleTypeId ||
-    /\/(TestCatalogList|SampleTypeManagement)(\/|$)/.test(location.pathname);
+    !!editorPanelId ||
+    /\/(TestCatalogList|SampleTypeEditor)(\/|$)/.test(location.pathname);
+
+  // Panel name for the sidenav helper caption. "new" is create-in-place.
+  const [editorPanel, setEditorPanel] = useState({ id: null, name: null });
+  useEffect(() => {
+    if (!editorPanelId || editorPanelId === "new") {
+      return undefined;
+    }
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      `/rest/test-catalog/panels/${editorPanelId}`,
+      (res) => {
+        setEditorPanel({ id: editorPanelId, name: res?.name || null });
+      },
+      controller.signal,
+    );
+    return () => {
+      controller.abort();
+    };
+  }, [editorPanelId]);
+  const editorPanelName =
+    editorPanel.id === editorPanelId ? editorPanel.name : null;
 
   const handleNavigation = (targetPath) => (e) => {
     e.preventDefault();
@@ -152,6 +227,28 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       onClick: handleNavigation(targetPath),
     };
   };
+
+  // OGC-224 — the list route hosts two entities (?entity=panels); the two
+  // entity links disambiguate on the query string so only one lights up.
+  const onPanelsList =
+    new URLSearchParams(location.search).get("entity") === "panels";
+  const entityListNavProps = (targetPath, isActive) => ({
+    href: targetPath,
+    isActive,
+    "aria-current": isActive ? "page" : undefined,
+    onClick: handleNavigation(targetPath),
+  });
+  const testsListNavProps = (targetPath) =>
+    entityListNavProps(
+      targetPath,
+      normalizePath(location.pathname) === normalizePath(targetPath) &&
+        !onPanelsList,
+    );
+  const panelsListNavProps = (targetPath) =>
+    entityListNavProps(
+      targetPath,
+      /\/TestCatalogList(\/|$)/.test(location.pathname) && onPanelsList,
+    );
 
   return (
     <SideNavItems className="adminSideNav">
@@ -192,7 +289,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         {/* Entity links always come first, in both editor contexts. */}
         <SideNavMenuItem
           data-cy="sampleTypeManagement"
-          {...navProps(`${path}/SampleTypeManagement`)}
+          {...navProps(`${path}/SampleTypeEditor`)}
         >
           <FormattedMessage
             id={
@@ -204,7 +301,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         </SideNavMenuItem>
         <SideNavMenuItem
           data-cy="testCatalogList"
-          {...navProps(`${path}/TestCatalogList`)}
+          {...testsListNavProps(`${path}/TestCatalogList`)}
         >
           <FormattedMessage
             id={
@@ -214,43 +311,107 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
             }
           />
         </SideNavMenuItem>
-        {editorSampleTypeId ? (
+        {/* OGC-224 — Panels is a peer entity of Tests / Sample Types in this
+            shell; the list route hosts it via ?entity=panels. */}
+        <SideNavMenuItem
+          data-cy="panelsList"
+          {...panelsListNavProps(`${path}/TestCatalogList?entity=panels`)}
+        >
+          <FormattedMessage id="label.testCatalog.entity.panels" />
+        </SideNavMenuItem>
+        {inPanelsContext ? (
           <>
-            <li
-              id="sampleTypeSectionsHelp"
-              data-cy="sampleTypeSectionsContext"
-              className="adminSideNav__sectionsContext"
-              style={{
-                padding: "0.25rem 1rem 0.5rem",
-                fontSize: "0.75rem",
-                lineHeight: 1.3,
-                color: "var(--cds-text-secondary, #6f6f6f)",
-              }}
-            >
-              {editorSampleTypeId === "new" ? (
-                <FormattedMessage id="sidenav.label.admin.sampleType.addingNew" />
-              ) : editorSampleTypeName ? (
-                <FormattedMessage
-                  id="sidenav.label.admin.sampleType.editing"
-                  values={{ name: editorSampleTypeName }}
-                />
-              ) : (
-                <FormattedMessage id="sidenav.label.admin.sampleType.editingGeneric" />
-              )}
-            </li>
-            {SAMPLE_TYPE_SECTIONS.map((sectionKey) => (
-              <SideNavMenuItem
-                key={sectionKey}
-                data-cy={`sampleType-section-${sectionKey}`}
-                {...navProps(
-                  `${path}/SampleTypeManagement/${editorSampleTypeId}/${sectionKey}`,
+            {/* OGC-224 — panel context: caption + the panel's own sections as
+                SideNav submenu items (FRS: submenus, never tabs). With no panel
+                chosen the panel sections are shown greyed rather than the
+                test ones. */}
+            {editorPanelId
+              ? sectionsCaption(
+                  "panelSectionsHelp",
+                  "panelSectionsContext",
+                  editorPanelId === "new"
+                    ? "sidenav.label.admin.panel.addingNew"
+                    : "sidenav.label.admin.panel.editing",
+                  { name: editorPanelName || "" },
+                )
+              : sectionsCaption(
+                  "panelSectionsHelp",
+                  "panelSectionsContext",
+                  "sidenav.label.admin.panel.sectionsHelper",
                 )}
-              >
+            {PANEL_SECTIONS.map((sectionKey) => {
+              const label = (
+                <FormattedMessage id={`label.panel.section.${sectionKey}`} />
+              );
+              return editorPanelId ? (
+                <SideNavMenuItem
+                  key={sectionKey}
+                  data-cy={`panel-section-${sectionKey}`}
+                  {...navProps(
+                    `${path}/TestCatalogEditor/panel/${editorPanelId}/${sectionKey}`,
+                  )}
+                >
+                  {label}
+                </SideNavMenuItem>
+              ) : (
+                disabledSection(
+                  `panel-section-${sectionKey}`,
+                  "panelSectionsHelp",
+                  label,
+                )
+              );
+            })}
+          </>
+        ) : inSampleTypesContext ? (
+          <>
+            {!editorSampleTypeId
+              ? sectionsCaption(
+                  "sampleTypeSectionsHelp",
+                  "sampleTypeSectionsContext",
+                  "sidenav.label.admin.sampleType.sectionsHelper",
+                )
+              : editorSampleTypeId === "new"
+                ? sectionsCaption(
+                    "sampleTypeSectionsHelp",
+                    "sampleTypeSectionsContext",
+                    "sidenav.label.admin.sampleType.addingNew",
+                  )
+                : editorSampleTypeName
+                  ? sectionsCaption(
+                      "sampleTypeSectionsHelp",
+                      "sampleTypeSectionsContext",
+                      "sidenav.label.admin.sampleType.editing",
+                      { name: editorSampleTypeName },
+                    )
+                  : sectionsCaption(
+                      "sampleTypeSectionsHelp",
+                      "sampleTypeSectionsContext",
+                      "sidenav.label.admin.sampleType.editingGeneric",
+                    )}
+            {SAMPLE_TYPE_SECTIONS.map((sectionKey) => {
+              const label = (
                 <FormattedMessage
                   id={`label.sampleType.section.${sectionKey}`}
                 />
-              </SideNavMenuItem>
-            ))}
+              );
+              return editorSampleTypeId ? (
+                <SideNavMenuItem
+                  key={sectionKey}
+                  data-cy={`sampleType-section-${sectionKey}`}
+                  {...navProps(
+                    `${path}/SampleTypeEditor/${editorSampleTypeId}/${sectionKey}`,
+                  )}
+                >
+                  {label}
+                </SideNavMenuItem>
+              ) : (
+                disabledSection(
+                  `sampleType-section-${sectionKey}`,
+                  "sampleTypeSectionsHelp",
+                  label,
+                )
+              );
+            })}
           </>
         ) : (
           <>

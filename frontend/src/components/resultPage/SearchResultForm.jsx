@@ -21,7 +21,6 @@ import {
   SelectItem,
   Loading,
   Link,
-  FileUploader,
   Tag,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
@@ -1249,17 +1248,6 @@ export function SearchResults(props) {
     }
   };
 
-  const downloadFile = (fileName, content, fileType) => {
-    var win = window.open();
-    win.document.write(
-      '<iframe src="' +
-        fileType +
-        ";base64," +
-        content +
-        '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-    );
-  };
-
   const addRejectResult = () => {
     const resultColumn = {
       id: "reject",
@@ -2229,26 +2217,7 @@ export function SearchResults(props) {
             </Select>
           </Column>
           <Column lg={2}>
-            <CompactFileInput
-              data={data}
-              results={props.results}
-              setResultForm={props.setResultForm}
-            />
-
-            {data.resultFile && data.resultFile.fileName && (
-              <Link
-                onClick={() =>
-                  downloadFile(
-                    data.resultFile.fileName,
-                    data.resultFile.content,
-                    data.resultFile.fileType,
-                  )
-                }
-                style={{ fontSize: "12px" }}
-              >
-                {data.resultFile.fileName}
-              </Link>
-            )}
+            <CompactFileInput data={data} />
           </Column>
           <Column lg={2}>
             <span
@@ -2760,6 +2729,9 @@ export function SearchResults(props) {
           ? result.note + "\n" + exceededNote
           : exceededNote;
       }
+      // attachments live in order_attachment now (OGC-811); round-tripping
+      // the legacy inline resultFile would clone a result_file row per save
+      delete result.resultFile;
     });
     postToOpenElisServerJsonResponse(
       searchEndPoint,

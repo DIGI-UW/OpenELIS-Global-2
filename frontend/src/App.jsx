@@ -7,7 +7,6 @@ import {
   BrowserRouter as Router,
   Switch,
 } from "react-router-dom";
-import "./App.css";
 import RedirectOldUI from "./RedirectOldUI";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { Admin } from "./components";
@@ -27,7 +26,6 @@ import EditBoxPage from "./components/storage/pages/EditBoxPage";
 import AddLocationPage from "./components/storage/pages/AddLocationPage";
 import AddBoxPage from "./components/storage/pages/AddBoxPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
-import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
 import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";

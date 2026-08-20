@@ -316,7 +316,12 @@ public abstract class ConfigurationProperties {
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL("sampleAcceptCheck.environmental", "text"),
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR("sampleAcceptCheck.vector", "text"),
 
-        RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"); // OGC-1020 R1: unified /Results worklist
+        RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"), // OGC-1020 R1: unified /Results worklist
+        // When true the UI layers translation files mounted at /translation over
+        // its bundled ones, so a deployment can reword any string without a
+        // source change or a frontend rebuild.
+        OVERRIDE_DEFAULT_TRANSLATION("overrideDefaultTranslation", "text"),
+        REQUESTER_REQUIRED("requesterRequired", "text");
 
         // visible on
         // the ui

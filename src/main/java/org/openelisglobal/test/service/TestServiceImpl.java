@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Vector;
 import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -303,6 +304,19 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     /**
+     * The reporting name with the specimen it was run on, "Culture (Blood)". A test
+     * associated with several specimens reports under one name, which cannot be
+     * told apart on a patient report carrying more than one of them.
+     */
+    public static String getUserLocalizedReportingTestName(Test test, String sampleTypeName) {
+        String reportingName = getUserLocalizedReportingTestName(test);
+        if (GenericValidator.isBlankOrNull(reportingName) || GenericValidator.isBlankOrNull(sampleTypeName)) {
+            return reportingName;
+        }
+        return reportingName + " (" + sampleTypeName + ")";
+    }
+
+    /**
      * Get the localized reporting test name for the current request's locale.
      *
      * @param testId the test ID
@@ -350,27 +364,92 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     /**
+     * The test name augmented with the one specimen the caller is working on, for
+     * screens where the specimen is known — a results or validation row is for a
+     * single sample item, and the catalog summary ("(DBS +1)") cannot tell the user
+     * which specimen they are entering a result against.
+     *
+     * @param sampleTypeName the specimen to name; falls back to the catalog summary
+     *                       when blank
+     */
+    public static String getLocalizedTestNameWithType(Test test, String sampleTypeName) {
+        if (test == null) {
+            return "";
+        }
+        return buildAugmentedTestNameForLocale(test, sampleTypeName);
+    }
+
+    /**
+     * The test name with every associated specimen named, e.g. "Actin Smooth Muscle
+     * (Immunohistochemistry specimen, Serum, Plasma)". The list view abbreviates to
+     * "(first +n)" to stay readable; a screen showing one test has room for the
+     * whole configuration.
+     */
+    public static String getLocalizedTestNameWithAllTypes(Test test) {
+        if (test == null) {
+            return "";
+        }
+        Localization localization = test.getLocalizedTestName();
+        String baseName;
+        try {
+            baseName = localization.getLocalizedValue();
+        } catch (RuntimeException e) {
+            LogEvent.logInfo("TestServiceImpl", "getLocalizedTestNameWithAllTypes", "augmented caught LAZY");
+            baseName = test.getDescription() != null ? test.getDescription() : "";
+        }
+        if (!ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(ConfigurationProperties.Property.TEST_NAME_AUGMENTED, "true")) {
+            return baseName;
+        }
+        List<TypeOfSampleTest> typeOfSampleTests = typeOfSampleTestService.getTypeOfSampleTestsForTest(test.getId());
+        if (typeOfSampleTests == null || typeOfSampleTests.isEmpty()) {
+            return baseName;
+        }
+        List<String> names = new ArrayList<>();
+        for (TypeOfSampleTest typeOfSampleTest : typeOfSampleTests) {
+            TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleTest.getTypeOfSampleId());
+            if (typeOfSample == null || typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
+                continue;
+            }
+            String name = typeOfSample.getLocalizedName();
+            if (!GenericValidator.isBlankOrNull(name) && !names.contains(name)) {
+                names.add(name);
+            }
+        }
+        return names.isEmpty() ? baseName : baseName + "(" + String.join(", ", names) + ")";
+    }
+
+    /**
      * Build augmented test name using current request's locale. This is a static
      * helper that doesn't use instance state.
      */
     private static String buildAugmentedTestNameForLocale(Test test) {
+        return buildAugmentedTestNameForLocale(test, null);
+    }
+
+    private static String buildAugmentedTestNameForLocale(Test test, String explicitSampleName) {
         Localization localization = test.getLocalizedTestName();
 
         String sampleName = "";
 
         if (ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(ConfigurationProperties.Property.TEST_NAME_AUGMENTED, "true")) {
-            List<TypeOfSampleTest> typeOfSampleTests = typeOfSampleTestService
-                    .getTypeOfSampleTestsForTest(test.getId());
-            if (typeOfSampleTests != null && !typeOfSampleTests.isEmpty()) {
-                TypeOfSampleTest typeOfSampleTest = typeOfSampleTests.get(0);
-                TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleTest.getTypeOfSampleId());
-                if (typeOfSample != null && !typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
-                    // OGC-1145: a test may associate several sample types; the
-                    // augmented display name summarizes rather than implying one
-                    sampleName = typeOfSampleTests.size() > 1
-                            ? "(" + typeOfSample.getLocalizedName() + " +" + (typeOfSampleTests.size() - 1) + ")"
-                            : "(" + typeOfSample.getLocalizedName() + ")";
+            if (!GenericValidator.isBlankOrNull(explicitSampleName)) {
+                sampleName = "(" + explicitSampleName + ")";
+            } else {
+                List<TypeOfSampleTest> typeOfSampleTests = typeOfSampleTestService
+                        .getTypeOfSampleTestsForTest(test.getId());
+                if (typeOfSampleTests != null && !typeOfSampleTests.isEmpty()) {
+                    TypeOfSampleTest typeOfSampleTest = typeOfSampleTests.get(0);
+                    TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleTest.getTypeOfSampleId());
+                    if (typeOfSample != null && !typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
+                        // OGC-1145: a test may associate several sample types; with no
+                        // specimen in hand the display name summarizes rather than
+                        // implying one
+                        sampleName = typeOfSampleTests.size() > 1
+                                ? "(" + typeOfSample.getLocalizedName() + " +" + (typeOfSampleTests.size() - 1) + ")"
+                                : "(" + typeOfSample.getLocalizedName() + ")";
+                    }
                 }
             }
         }

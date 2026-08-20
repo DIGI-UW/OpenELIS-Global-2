@@ -42,9 +42,19 @@ public class Result extends EnumValueItemImpl {
     private String value;
     private Double minNormal;
     private Double maxNormal;
-    private int significantDigits;
+    /**
+     * Decimal places this result is reported to, or null where none was recorded.
+     *
+     * <p>
+     * Held as an object because the column is nullable and a row that carries no
+     * precision is ordinary — results written before the column was populated, and
+     * imports that do not supply one. Held as a primitive, loading such a row threw
+     * PropertyAccessException and took the whole query with it, so a single row
+     * without a precision made every result in its lab unit unreachable (OGC-1170).
+     */
+    private Integer significantDigits;
     private ValueHolder parentResult;
-    private int grouping;
+    private Integer grouping;
 
     @Value("${viralload.limit.low:49}")
     private Integer virralloadLowLimit;
@@ -179,8 +189,14 @@ public class Result extends EnumValueItemImpl {
         this.maxNormal = maxNormal;
     }
 
+    /**
+     * @return the recorded precision, or -1 where none was recorded — the value the
+     *         formatters already read as "report exactly as stored". Zero is not a
+     *         safe stand-in: it is an instruction to cut the value at the decimal
+     *         point.
+     */
     public int getSignificantDigits() {
-        return significantDigits;
+        return significantDigits == null ? -1 : significantDigits;
     }
 
     public void setSignificantDigits(int significantDigits) {
@@ -195,8 +211,12 @@ public class Result extends EnumValueItemImpl {
         this.parentResult.setValue(parentResult);
     }
 
+    /**
+     * @return the multiselect group, or 0 where none was recorded — the group a
+     *         single-valued result has always belonged to.
+     */
     public int getGrouping() {
-        return grouping;
+        return grouping == null ? 0 : grouping;
     }
 
     public void setGrouping(int grouping) {

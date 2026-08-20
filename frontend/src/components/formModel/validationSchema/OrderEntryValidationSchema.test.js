@@ -115,4 +115,39 @@ describe("createOrderEntryValidationSchema", () => {
 
     await expect(schema.isValid(minimalOrderValues)).resolves.toBe(false);
   });
+
+  test("accepts empty requester first/last name when REQUESTER_REQUIRED is false (default)", async () => {
+    const schema = createOrderEntryValidationSchema({
+      PATIENT_NATIONAL_ID_REQUIRED: "false",
+    });
+
+    const valuesWithoutRequester = {
+      ...minimalOrderValues,
+      sampleOrderItems: {
+        ...minimalOrderValues.sampleOrderItems,
+        providerFirstName: "",
+        providerLastName: "",
+      },
+    };
+
+    await expect(schema.isValid(valuesWithoutRequester)).resolves.toBe(true);
+  });
+
+  test("rejects empty requester first/last name when REQUESTER_REQUIRED is true", async () => {
+    const schema = createOrderEntryValidationSchema({
+      PATIENT_NATIONAL_ID_REQUIRED: "false",
+      REQUESTER_REQUIRED: "true",
+    });
+
+    const valuesWithoutRequester = {
+      ...minimalOrderValues,
+      sampleOrderItems: {
+        ...minimalOrderValues.sampleOrderItems,
+        providerFirstName: "",
+        providerLastName: "",
+      },
+    };
+
+    await expect(schema.isValid(valuesWithoutRequester)).resolves.toBe(false);
+  });
 });

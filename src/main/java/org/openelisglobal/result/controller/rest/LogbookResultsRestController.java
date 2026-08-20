@@ -41,6 +41,7 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.service.ReferralTypeService;
 import org.openelisglobal.referral.valueholder.ReferralType;
+import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.action.util.ResultsPaging;
@@ -144,7 +145,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private final String REFERRAL_CONFORMATION_ID;
     private static final String REFLEX_ACCESSIONS = "reflex_accessions";
 
-    private LogbookResultsRestController(ReferralTypeService referralTypeService) {
+    public LogbookResultsRestController(ReferralTypeService referralTypeService) {
         ReferralType referralType = referralTypeService.getReferralTypeByName("Confirmation");
         if (referralType != null) {
             REFERRAL_CONFORMATION_ID = referralType.getId();
@@ -541,7 +542,12 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             // OGC-763: evaluate per-test alert rules on the newly entered results and
             // dispatch matches to the header bell + SMS/Email senders.
             if (testAlertEvaluationService != null) {
-                actionDataSet.getNewResults().forEach(rs -> {
+                // An edited value is as alertable as a first one - a result
+                // corrected into the critical range has to raise the alert the
+                // original value did not.
+                List<ResultSet> alertable = new ArrayList<>(actionDataSet.getNewResults());
+                alertable.addAll(actionDataSet.getModifiedResults());
+                alertable.forEach(rs -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(rs.result, currentUser);
                     } catch (RuntimeException ex) {

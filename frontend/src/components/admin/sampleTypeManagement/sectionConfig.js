@@ -10,6 +10,7 @@ export const SAMPLE_TYPE_SECTIONS = [
   "display-order",
   "disposal",
   "terminology",
+  "localization",
 ];
 
 export const DEFAULT_SAMPLE_TYPE_SECTION = SAMPLE_TYPE_SECTIONS[0]; // "basic-info"

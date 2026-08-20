@@ -136,6 +136,8 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
+import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
 import org.openelisglobal.sourceofsample.service.SourceOfSampleService;
 import org.openelisglobal.sourceofsample.valueholder.SourceOfSample;
 import org.openelisglobal.spring.util.SpringContext;
@@ -176,6 +178,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private TestService testService;
     @Autowired
     private TestTerminologyMappingService testTerminologyMappingService;
+
+    @Autowired
+    private SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService;
     @Autowired
     private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
     @Autowired
@@ -1131,7 +1136,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                     new Coding(fhirConfig.getOeFhirSystem() + "/samp_domain", sample.getDomain(), sample.getDomain())));
         }
         serviceRequest.setPriority(convertToServiceRequestPriority(sample.getPriority()));
-        serviceRequest.setCode(transformTestToCodeableConcept(test.getId()));
+        serviceRequest
+                .setCode(transformTestToCodeableConcept(test.getId(), analysis.getSampleItem().getTypeOfSampleId()));
         serviceRequest.setAuthoredOn(new Date());
         for (Note note : noteService.getNotes(analysis)) {
             serviceRequest.addNote(transformNoteToAnnotation(note));
@@ -1180,11 +1186,17 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return codeableConcept;
     }
 
-    private CodeableConcept transformTestToCodeableConcept(String testId) {
-        return transformTestToCodeableConcept(testService.get(testId));
+    private CodeableConcept transformTestToCodeableConcept(String testId, String sampleTypeId) {
+        return transformTestToCodeableConcept(testService.get(testId), sampleTypeId);
     }
 
-    private CodeableConcept transformTestToCodeableConcept(Test test) {
+    /**
+     * The test's codings for one specimen. {@code sampleTypeId} is the specimen the
+     * resource describes: a mapping scoped to another sample type does not apply to
+     * it and is left out, so an Observation on a DBS specimen never carries the
+     * Urines terminology. A mapping with no sample type applies to every specimen.
+     */
+    private CodeableConcept transformTestToCodeableConcept(Test test, String sampleTypeId) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformTestToCodeableConcept",
                 "transformTestToCodeableConcept test called");
 
@@ -1201,7 +1213,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
             // Only test-level mappings identify the test itself; component-scoped
             // mappings (component_id != null) describe a sub-result, not this code.
-            if (mapping.getComponentId() != null) {
+            if (mapping.getComponentId() != null || !appliesToSpecimen(mapping.getSampleTypeId(), sampleTypeId)) {
                 continue;
             }
             String system = terminologySystemUrl(mapping.getSource());
@@ -1220,9 +1232,26 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                     .add(new Candidate(test.getLoinc(), true, display));
         }
 
-        // Emit one system's codings at a time. Within a system the SAME_AS mapping is
-        // the equivalent concept, so it wins; with no SAME_AS we keep the rest. A test
-        // thus maps to multiple terminology systems at once (LOINC + SNOMED + ...).
+        addPrioritizedCodings(codeableConcept, bySystem);
+        return codeableConcept;
+    }
+
+    /**
+     * Whether a mapping scoped to {@code mappingSampleTypeId} applies to the
+     * specimen {@code sampleTypeId}. A mapping with no sample type is shared and
+     * applies to all of them.
+     */
+    private boolean appliesToSpecimen(String mappingSampleTypeId, String sampleTypeId) {
+        return mappingSampleTypeId == null || mappingSampleTypeId.equals(sampleTypeId);
+    }
+
+    /**
+     * Emit one system's codings at a time. Within a system the SAME_AS mapping is
+     * the equivalent concept, so it wins; with no SAME_AS we keep the rest. A
+     * subject thus maps to multiple terminology systems at once (LOINC + SNOMED +
+     * ...).
+     */
+    private void addPrioritizedCodings(CodeableConcept codeableConcept, Map<String, List<Candidate>> bySystem) {
         for (Map.Entry<String, List<Candidate>> entry : bySystem.entrySet()) {
             String system = entry.getKey();
             List<Candidate> candidates = entry.getValue();
@@ -1237,7 +1266,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 }
             }
         }
-        return codeableConcept;
     }
 
     /**
@@ -1271,16 +1299,17 @@ public class FhirTransformServiceImpl implements FhirTransformService {
      * code and the component label as text, so it is individually identifiable.
      */
     private CodeableConcept transformResultCodeableConcept(Test test,
-            org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component) {
+            org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component, String sampleTypeId) {
         // Base: the whole-test codings, applied to every result's Observation.
-        CodeableConcept codeableConcept = transformTestToCodeableConcept(test);
+        CodeableConcept codeableConcept = transformTestToCodeableConcept(test, sampleTypeId);
         if (component == null) {
             return codeableConcept;
         }
         String label = GenericValidator.isBlankOrNull(component.getLabel()) ? component.getCode()
                 : component.getLabel();
         for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
-            if (!component.getId().equals(mapping.getComponentId())) {
+            if (!component.getId().equals(mapping.getComponentId())
+                    || !appliesToSpecimen(mapping.getSampleTypeId(), sampleTypeId)) {
                 continue;
             }
             String system = terminologySystemUrl(mapping.getSource());
@@ -1699,6 +1728,22 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         CodeableConcept codeableConcept = new CodeableConcept();
         codeableConcept.addCoding(new Coding(fhirConfig.getOeFhirSystem() + "/sampleType",
                 typeOfSample.getLocalAbbreviation(), typeOfSample.getLocalizedName()));
+
+        // The standard terminology configured in the Sample Type Editor, carried
+        // alongside the OpenELIS coding so a consumer can resolve the specimen
+        // against SNOMED/LOINC rather than a local abbreviation. Same precedence as
+        // the test codings: within one system the SAME_AS mapping wins.
+        Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
+        for (SampleTypeTerminologyMapping mapping : sampleTypeTerminologyMappingService
+                .getActiveBySampleTypeId(typeOfSample.getId())) {
+            String system = terminologySystemUrl(mapping.getSource());
+            if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
+                continue;
+            }
+            bySystem.computeIfAbsent(system, k -> new ArrayList<>()).add(new Candidate(mapping.getCode(),
+                    "SAME_AS".equalsIgnoreCase(mapping.getRelationship()), typeOfSample.getLocalizedName()));
+        }
+        addPrioritizedCodings(codeableConcept, bySystem);
         return codeableConcept;
     }
 
@@ -2129,7 +2174,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             diagnosticReport
                     .addResult(this.createReferenceFor(ResourceType.Observation, curResult.getFhirUuidAsString()));
         }
-        diagnosticReport.setCode(transformTestToCodeableConcept(test.getId()));
+        diagnosticReport.setCode(transformTestToCodeableConcept(test.getId(), sampleItem.getTypeOfSampleId()));
 
         return diagnosticReport;
     }
@@ -2276,7 +2321,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         // primary carries both too (OGC-1128/OGC-1129).
         org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = resolveResultComponent(
                 test.getId(), result);
-        observation.setCode(transformResultCodeableConcept(test, component));
+        observation.setCode(transformResultCodeableConcept(test, component, sampleItem.getTypeOfSampleId()));
         observation.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
         if (sampleItem != null) {
             observation.setSpecimen(this.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));

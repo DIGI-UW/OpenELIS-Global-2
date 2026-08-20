@@ -33,10 +33,9 @@ import {
   Heading,
   Form,
   Tile,
-  Loading,
   Pagination,
 } from "@carbon/react";
-import { CheckmarkFilled, View } from "@carbon/icons-react";
+import { View } from "@carbon/icons-react";
 import "./FreezerMonitoringDashboard.scss";
 import CorrectiveActions from "./CorrectiveActions";
 import HistoricalTrends from "./HistoricalTrends";
@@ -49,7 +48,6 @@ import {
   fetchOpenAlerts,
   acknowledgeAlert,
   resolveAlert,
-  fetchFilteredAlerts,
 } from "./api";
 import AlertDetailModal from "./AlertDetailModal";
 import DeviceHistoryExpansion from "./DeviceHistoryExpansion";

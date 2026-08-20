@@ -217,8 +217,11 @@ public class PatientDashBoardProvider {
                     if (sample != null) {
                         orderBean.setPriority(sample.getPriority() != null ? sample.getPriority().toString() : "");
                         orderBean.setLabNumber(sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
+                        // non-human samples (environmental/vector) legitimately have no
+                        // patient — one such order must not 500 the whole dashboard card
                         Patient patient = sampleHumanService.getPatientForSample(sample);
-                        orderBean.setPatientId(patient != null ? patient.getNationalId() : "");
+                        orderBean.setPatientId(
+                                patient != null && patient.getNationalId() != null ? patient.getNationalId() : "");
                     }
                     orderBean.setOrderDate(analysis.getStartedDateForDisplay());
                     orderBean.setTestName(analysis.getTest() != null ? analysis.getTest().getLocalizedName() : "");
