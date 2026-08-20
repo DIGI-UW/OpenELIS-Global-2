@@ -34,6 +34,7 @@ import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderWorkbenchPage from "./components/eqa/Provider/Workbench/ProviderWorkbenchPage";
 import InHousePanelsPage from "./components/eqa/InHouse/InHousePanelsPage";
 import FollowUpQueuePage from "./components/eqa/FollowUp/FollowUpQueuePage";
+import LabPerformancePage from "./components/eqa/Performance/LabPerformancePage";
 import BlindingWizard from "./components/eqa/InHouse/BlindingWizard";
 import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
@@ -857,6 +858,28 @@ export default function App() {
                   path="/qa/eqa/follow-up-queue"
                   exact
                   component={() => <FollowUpQueuePage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Lab Performance (T-20): two views of one rollup, as sibling
+                    routes rather than in-page tabs — the FRS makes these
+                    submenu children. */}
+                <Redirect
+                  exact
+                  from="/eqa/oversight/lab-performance/coverage"
+                  to="/qa/eqa/lab-performance/coverage"
+                />
+                <SecureRoute
+                  path="/qa/eqa/lab-performance/recent"
+                  exact
+                  component={() => <LabPerformancePage view="recent" />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/qa/eqa/lab-performance/coverage"
+                  exact
+                  component={() => <LabPerformancePage view="coverage" />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />

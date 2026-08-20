@@ -96,6 +96,12 @@ export const NceDashboard = () => {
   const [severityFilter, setSeverityFilter] = useState(
     () => new URLSearchParams(location.search).get("severity") || "",
   );
+  // ?source=eqa is the deep link the EQA Lab Performance tile follows
+  // (docs/eqa/nce-deep-links.md). Both EQA trigger sources share the EQA_
+  // prefix, so one value covers auto-created NCEs and escalations alike.
+  const [sourceFilter, setSourceFilter] = useState(
+    () => new URLSearchParams(location.search).get("source") || "",
+  );
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -218,9 +224,22 @@ export const NceDashboard = () => {
       filtered = filtered.filter((nce) => nce.severity === severityFilter);
     }
 
+    if (sourceFilter === "eqa") {
+      filtered = filtered.filter((nce) =>
+        nce.triggerSourceType?.startsWith("EQA_"),
+      );
+    }
+
     setFilteredList(filtered);
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, categoryFilter, severityFilter, nceList]);
+  }, [
+    searchTerm,
+    statusFilter,
+    categoryFilter,
+    severityFilter,
+    sourceFilter,
+    nceList,
+  ]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -228,6 +247,7 @@ export const NceDashboard = () => {
     setStatusFilter("");
     setCategoryFilter("");
     setSeverityFilter("");
+    setSourceFilter("");
   };
 
   // Toggle row expansion
@@ -668,6 +688,28 @@ export const NceDashboard = () => {
           <SelectItem value="MAJOR" text="Major" />
           <SelectItem value="MINOR" text="Minor" />
           <SelectItem value="LOW" text="Low" />
+        </Select>
+        <Select
+          id="source-filter"
+          labelText=""
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          className="nce-filter-select"
+        >
+          <SelectItem
+            value=""
+            text={intl.formatMessage({
+              id: "nce.filter.source.all",
+              defaultMessage: "All sources",
+            })}
+          />
+          <SelectItem
+            value="eqa"
+            text={intl.formatMessage({
+              id: "nce.filter.source.eqa",
+              defaultMessage: "EQA-triggered",
+            })}
+          />
         </Select>
         <Button kind="ghost" onClick={clearFilters}>
           <FormattedMessage

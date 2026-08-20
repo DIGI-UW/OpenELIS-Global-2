@@ -21,13 +21,13 @@ public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveT
     /**
      * Element id, route, display key, and whether the row is switched on. A row is
      * hidden until the card that builds its page re-activates it at the route that
-     * page actually serves (qa/029, then one changeset per page): My Cycles and the
-     * Follow-Up Queue are live, the rest are still dark.
+     * page actually serves (qa/029, then one changeset per page): My Cycles, the
+     * Follow-Up Queue and Lab Performance are live, the rest are still dark.
      */
     private static final String[][] MENUS = {
             { "menu_eqa_my_cycles", "/qa/eqa/my-cycles", "banner.menu.eqa.myCycles", "true" },
-            { "menu_eqa_lab_performance", "/eqa/oversight/lab-performance/coverage", "banner.menu.eqa.labPerformance",
-                    "false" },
+            { "menu_eqa_lab_performance", "/qa/eqa/lab-performance/coverage", "banner.menu.eqa.labPerformance",
+                    "true" },
             { "menu_eqa_follow_up_queue", "/qa/eqa/follow-up-queue", "banner.menu.eqa.followUpQueue", "true" },
             { "menu_eqa_analyst_competency", "/eqa/oversight/analyst-track", "banner.menu.eqa.analystCompetency",
                     "false" },
