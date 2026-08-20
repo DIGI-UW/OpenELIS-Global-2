@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.5 (OGC-613) T-24: the provider scheme list (FR-V2.5-01) and the
+    five-step cycle wizard (FR-V2.5-02).
+
+    Until now nothing recorded WHICH laboratories a cycle was created for, so
+    T-25's prep gate and shipment workbench sized a cycle by its scheme's active
+    enrollments as a stand-in. That is wrong the moment a provider runs a cycle
+    for a subset of the scheme's participants, or a lab enrolls after the panel
+    was already aliquoted. eqa_cycle_participant is that missing roster: the
+    wizard's participant step writes it, and both the gate and the workbench read
+    it (falling back to scheme enrollments for cycles that predate the table).
+
+    Conventions follow qa/017 and qa/018: numeric(10,0) keys, a per-table
+    sequence, MARK_RAN preconditions so a re-run is a no-op.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-060-create-eqa-cycle-participant">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="eqa_cycle_participant" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Per-cycle participant roster written by the cycle wizard (FR-V2.5-02)</comment>
+        <createSequence sequenceName="eqa_cycle_participant_seq" schemaName="clinlims" startValue="1"
+            incrementBy="1" />
+        <createTable schemaName="clinlims" tableName="eqa_cycle_participant">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_eqa_cycle_participant" />
+            </column>
+            <column name="cycle_id" type="numeric(10,0)">
+                <constraints nullable="false" />
+            </column>
+            <column name="organization_id" type="numeric(10,0)">
+                <constraints nullable="false" />
+            </column>
+            <!-- A withdrawn participant stays on the roster so the audit reads
+                 straight, but stops counting towards aliquots needed. -->
+            <column name="status" type="VARCHAR(20)" defaultValue="ACTIVE">
+                <constraints nullable="false" />
+            </column>
+            <column name="enrolled_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false" />
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false" />
+            </column>
+            <!-- BaseObject maps this as @Column(name = "last_updated"); every other
+                 EQA V2 table spells it that way and Hibernate will not find
+                 "lastupdated". -->
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <!-- One roster row per laboratory per cycle: this is what makes the
+             wizard's participant step idempotent rather than additive. -->
+        <addUniqueConstraint schemaName="clinlims" tableName="eqa_cycle_participant"
+            columnNames="cycle_id, organization_id" constraintName="uq_eqa_cycle_participant_cycle_org" />
+
+        <!-- CASCADE on the cycle: the roster is part of the cycle, not a record
+             that outlives it. RESTRICT on the organization, which is lab-wide
+             reference data. -->
+        <addForeignKeyConstraint constraintName="fk_eqa_cycle_participant_cycle"
+            baseTableSchemaName="clinlims" baseTableName="eqa_cycle_participant" baseColumnNames="cycle_id"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_cycle" referencedColumnNames="id"
+            onDelete="CASCADE" />
+        <addForeignKeyConstraint constraintName="fk_eqa_cycle_participant_organization"
+            baseTableSchemaName="clinlims" baseTableName="eqa_cycle_participant"
+            baseColumnNames="organization_id" referencedTableSchemaName="clinlims"
+            referencedTableName="organization" referencedColumnNames="id" onDelete="RESTRICT" />
+
+        <sql>
+            ALTER TABLE clinlims.eqa_cycle_participant
+            ADD CONSTRAINT eqa_cycle_participant_status_chk
+            CHECK (status IN ('ACTIVE', 'WITHDRAWN'))
+        </sql>
+
+        <!-- Every read is "the roster of this cycle". -->
+        <createIndex tableName="eqa_cycle_participant" schemaName="clinlims"
+            indexName="idx_eqa_cycle_participant_cycle">
+            <column name="cycle_id" />
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="eqa_cycle_participant" schemaName="clinlims"
+                indexName="idx_eqa_cycle_participant_cycle" />
+            <dropTable tableName="eqa_cycle_participant" schemaName="clinlims" />
+            <dropSequence sequenceName="eqa_cycle_participant_seq" schemaName="clinlims" />
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-061-activate-eqa-provider-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_provider'
+            </sqlCheck>
+        </preConditions>
+        <!-- Two corrections in one row, both because the page now exists:
+             qa/019 seeded the row at the FRS path before any page did, and qa/029
+             then switched it off along with every other page-less V2 row, leaving
+             each card to re-activate its own. This is that card. The route joins
+             the /qa/eqa/* family every other EQA page uses. -->
+        <comment>Activate the EQA Provider menu row and point it at the scheme list (FR-V2.5-01)</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/qa/eqa/provider/schemes" />
+            <column name="is_active" valueBoolean="true" />
+            <where>element_id = 'menu_eqa_provider'</where>
+        </update>
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="action_url" value="/eqa/management/provider/schemes" />
+                <column name="is_active" valueBoolean="false" />
+                <where>element_id = 'menu_eqa_provider'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

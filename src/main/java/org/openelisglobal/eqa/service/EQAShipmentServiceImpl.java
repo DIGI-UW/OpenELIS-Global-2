@@ -11,13 +11,16 @@ import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
+import org.openelisglobal.eqa.dao.EQACycleParticipantDAO;
 import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
+import org.openelisglobal.eqa.dao.EQAProgramEnrollmentDAO;
 import org.openelisglobal.eqa.service.EQAPrepGate.PanelRequirement;
 import org.openelisglobal.eqa.valueholder.EQACycle;
+import org.openelisglobal.eqa.valueholder.EQACycleParticipant;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
-import org.openelisglobal.eqa.valueholder.EQAProgramEnrollment;
+import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
@@ -51,7 +54,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     private EQAPanelSampleDAO eqaPanelSampleDAO;
 
     @Autowired
-    private EQAProgramEnrollmentService eqaProgramEnrollmentService;
+    private EQAProgramEnrollmentDAO eqaProgramEnrollmentDAO;
+
+    @Autowired
+    private EQACycleParticipantDAO eqaCycleParticipantDAO;
 
     @Autowired
     private OrganizationService organizationService;
@@ -64,29 +70,66 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getProviderCycles() {
-        List<Map<String, Object>> rows = new ArrayList<>();
-        // Newest first; the picker is a stopgap until T-24 owns the scheme list, so it
-        // does not earn a bespoke ordering of its own.
-        for (EQACycle cycle : eqaCycleDAO.getAllOrdered("id", true)) {
-            if (cycle.getScheme() == null) {
-                continue;
-            }
-            long participants = eqaProgramEnrollmentService.countActiveEnrollments(cycle.getScheme().getId());
-            if (participants == 0) {
-                continue;
-            }
-            Map<String, Object> dto = new LinkedHashMap<>();
-            dto.put("id", cycle.getId());
-            dto.put("cycleNumber", cycle.getCycleNumber());
-            dto.put("cycleName", cycle.getCycleName());
-            dto.put("status", cycle.getStatus() == null ? null : cycle.getStatus().name());
-            dto.put("schemeName", cycle.getScheme().getName());
-            dto.put("participantCount", (int) participants);
-            dto.put("panelCount", panelsOf(cycle.getId()).size());
-            rows.add(dto);
+    public List<Map<String, Object>> getProviderSchemes() {
+        List<Object[]> schemeRows = eqaProgramEnrollmentDAO.findProviderSchemeRows();
+        if (schemeRows.isEmpty()) {
+            return List.of();
         }
-        return rows;
+
+        Map<Long, List<EQACycle>> cyclesByScheme = new LinkedHashMap<>();
+        List<Long> schemeIds = new ArrayList<>();
+        for (Object[] row : schemeRows) {
+            schemeIds.add(((Number) row[0]).longValue());
+        }
+        for (EQACycle cycle : eqaCycleDAO.findBySchemeIds(schemeIds)) {
+            cyclesByScheme.computeIfAbsent(cycle.getScheme().getId(), id -> new ArrayList<>()).add(cycle);
+        }
+
+        List<Long> cycleIds = new ArrayList<>();
+        for (List<EQACycle> cycles : cyclesByScheme.values()) {
+            for (EQACycle cycle : cycles) {
+                cycleIds.add(cycle.getId());
+            }
+        }
+        Map<Long, Integer> panelCounts = new LinkedHashMap<>();
+        for (Object[] row : eqaPanelDAO.countByCycleIds(cycleIds)) {
+            panelCounts.put(((Number) row[0]).longValue(), ((Number) row[1]).intValue());
+        }
+        Map<Long, Integer> rosterCounts = new LinkedHashMap<>();
+        for (EQACycleParticipant participant : eqaCycleParticipantDAO.findActiveByCycleIds(cycleIds)) {
+            rosterCounts.merge(participant.getCycle().getId(), 1, Integer::sum);
+        }
+
+        List<Map<String, Object>> schemes = new ArrayList<>();
+        for (Object[] row : schemeRows) {
+            Long schemeId = ((Number) row[0]).longValue();
+            int enrolled = ((Number) row[4]).intValue();
+
+            List<Map<String, Object>> cycleDtos = new ArrayList<>();
+            for (EQACycle cycle : cyclesByScheme.getOrDefault(schemeId, List.of())) {
+                Map<String, Object> dto = new LinkedHashMap<>();
+                dto.put("id", cycle.getId());
+                dto.put("cycleNumber", cycle.getCycleNumber());
+                dto.put("cycleName", cycle.getCycleName());
+                dto.put("status", cycle.getStatus() == null ? null : cycle.getStatus().name());
+                // A cycle predating qa/032 has no roster, and was sized by the scheme's
+                // enrollments — the same fallback participantOrganizationIds applies, so
+                // the list cannot show a count the prep gate disagrees with.
+                dto.put("participantCount", rosterCounts.getOrDefault(cycle.getId(), enrolled));
+                dto.put("panelCount", panelCounts.getOrDefault(cycle.getId(), 0));
+                cycleDtos.add(dto);
+            }
+
+            Map<String, Object> scheme = new LinkedHashMap<>();
+            scheme.put("id", schemeId);
+            scheme.put("name", row[1]);
+            scheme.put("provider", row[2]);
+            scheme.put("schemeType", row[3] == null ? null : ((EQASchemeType) row[3]).name());
+            scheme.put("enrolledParticipantCount", enrolled);
+            scheme.put("cycles", cycleDtos);
+            schemes.add(scheme);
+        }
+        return schemes;
     }
 
     @Override
@@ -168,9 +211,9 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         EQACycle cycle = cycle(cycleId);
         Map<String, ShippingBox> boxes = boxesByCode(cycleId);
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (EQAProgramEnrollment enrollment : activeEnrollments(cycle)) {
-            ShippingBox box = boxes.get(boxCode(cycleId, enrollment.getOrganizationId()));
-            rows.add(toShipmentRow(enrollment, box, box == null ? null : box.getShipment()));
+        for (Long organizationId : eqaCycleService.participantOrganizationIds(cycle)) {
+            ShippingBox box = boxes.get(boxCode(cycleId, organizationId));
+            rows.add(toShipmentRow(organizationId, box, box == null ? null : box.getShipment()));
         }
         return rows;
     }
@@ -179,7 +222,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     public Map<String, Object> saveShipmentDetails(Long cycleId, Long organizationId, String courier,
             String trackingNumber, Date estimatedDeliveryDate, String sysUserId) {
         EQACycle cycle = cycle(cycleId);
-        EQAProgramEnrollment enrollment = participant(cycle, organizationId);
+        requireParticipant(eqaCycleService.participantOrganizationIds(cycle), organizationId);
 
         ShippingBox box = shippingBoxService.getBoxByBoxId(boxCode(cycleId, organizationId));
         if (box == null) {
@@ -212,7 +255,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         if (box.getState() == BoxState.DRAFT) {
             box = shippingBoxService.changeBoxState(box.getId(), BoxState.READY_TO_SEND, userId(sysUserId));
         }
-        return toShipmentRow(enrollment, box, shipment);
+        return toShipmentRow(organizationId, box, shipment);
     }
 
     @Override
@@ -232,12 +275,12 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         // Resolve and validate every participant before writing anything, so a bulk
         // dispatch is all-or-nothing rather than half-sent. Enrollments and boxes are
         // each read once for the whole batch.
-        List<EQAProgramEnrollment> participants = activeEnrollments(cycle);
+        List<Long> participants = eqaCycleService.participantOrganizationIds(cycle);
         Map<String, ShippingBox> boxes = boxesByCode(cycleId);
-        List<EQAProgramEnrollment> dispatchTo = new ArrayList<>();
+        List<Long> dispatchTo = new ArrayList<>();
         List<ShippingBox> dispatching = new ArrayList<>();
         for (Long organizationId : targets) {
-            EQAProgramEnrollment enrollment = participant(participants, organizationId);
+            requireParticipant(participants, organizationId);
             ShippingBox box = boxes.get(boxCode(cycleId, organizationId));
             if (box == null) {
                 throw new IllegalArgumentException(
@@ -252,7 +295,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
                 throw new IllegalStateException(
                         "Box " + box.getBoxId() + " is " + box.getState() + ", so it cannot be marked shipped");
             }
-            dispatchTo.add(enrollment);
+            dispatchTo.add(organizationId);
             dispatching.add(box);
         }
 
@@ -310,23 +353,15 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
                 .orElseThrow(() -> new ObjectNotFoundException(cycleId, EQACycle.class.getName()));
     }
 
-    private List<EQAProgramEnrollment> activeEnrollments(EQACycle cycle) {
-        return cycle.getScheme() == null ? List.of()
-                : eqaProgramEnrollmentService.findActiveByProgramId(cycle.getScheme().getId());
-    }
-
-    private EQAProgramEnrollment participant(EQACycle cycle, Long organizationId) {
-        return participant(activeEnrollments(cycle), organizationId);
-    }
-
-    private EQAProgramEnrollment participant(List<EQAProgramEnrollment> participants, Long organizationId) {
-        for (EQAProgramEnrollment enrollment : participants) {
-            if (enrollment.getOrganizationId().equals(organizationId)) {
-                return enrollment;
-            }
+    /**
+     * Shipping to a laboratory that is not on this cycle's roster would consume
+     * aliquots the prep gate never counted, so it is refused rather than tolerated.
+     */
+    private void requireParticipant(List<Long> participants, Long organizationId) {
+        if (!participants.contains(organizationId)) {
+            throw new IllegalArgumentException(
+                    "Organization " + organizationId + " is not a participant of this cycle");
         }
-        throw new IllegalArgumentException(
-                "Organization " + organizationId + " is not an active participant of this cycle's scheme");
     }
 
     private List<EQAPanel> panelsOf(Long cycleId) {
@@ -387,12 +422,11 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         return shippingBoxService.createBox(box);
     }
 
-    private Map<String, Object> toShipmentRow(EQAProgramEnrollment enrollment, ShippingBox box, Shipment shipment) {
-        Organization participant = organizationService
-                .getOrganizationById(String.valueOf(enrollment.getOrganizationId()));
+    private Map<String, Object> toShipmentRow(Long organizationId, ShippingBox box, Shipment shipment) {
+        Organization participant = organizationService.getOrganizationById(String.valueOf(organizationId));
 
         Map<String, Object> row = new LinkedHashMap<>();
-        row.put("organizationId", enrollment.getOrganizationId());
+        row.put("organizationId", organizationId);
         row.put("organizationName", participant == null ? null : participant.getOrganizationName());
         row.put("boxId", box == null ? null : box.getId());
         row.put("boxCode", box == null ? null : box.getBoxId());

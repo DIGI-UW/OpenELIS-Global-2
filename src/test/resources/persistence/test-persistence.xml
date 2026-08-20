@@ -191,6 +191,9 @@
         <class>org.openelisglobal.eqa.valueholder.EQAPanelReceipt</class>
         <class>org.openelisglobal.eqa.valueholder.EQAAnalystCompetencyEvent</class>
 
+        <!-- EQA V2.5 T-24 — OGC-613: per-cycle participant roster -->
+        <class>org.openelisglobal.eqa.valueholder.EQACycleParticipant</class>
+
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
         <class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>

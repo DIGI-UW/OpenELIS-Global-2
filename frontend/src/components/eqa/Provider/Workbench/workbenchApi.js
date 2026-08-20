@@ -1,4 +1,5 @@
-// Data seam for the provider prep + shipment workbenches (T-25, OGC-613).
+// Data seam for the provider lane: the scheme list and cycle wizard (T-24) and
+// the prep + shipment workbenches (T-25), OGC-613.
 // Every write goes through a FullResponse helper so a 409 (gate refusal, wrong
 // box state) or 422 (bad input) reaches the operator verbatim — a JSON-only
 // helper would swallow the reason, which is the D-LIVE-1 mistake.
@@ -8,10 +9,18 @@ import {
   postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 
-export const fetchProviderCycles = (callback) =>
-  getFromOpenElisServer("/rest/eqa/provider/cycles", (data) =>
-    callback(data || []),
-  );
+/**
+ * A list read must answer a list. `data || []` is not enough: a failed read
+ * hands back the server's error object, which is truthy, so the page reaches
+ * `.map` on an object and white-screens. Every list endpoint here goes through
+ * this.
+ */
+const asList = (callback) => (data) =>
+  callback(Array.isArray(data) ? data : []);
+
+/** FR-V2.5-01. Each scheme carries its cycles, so one read draws the list. */
+export const fetchProviderSchemes = (callback) =>
+  getFromOpenElisServer("/rest/eqa/provider/schemes", asList(callback));
 
 export const fetchPrepStatus = (cycleId, callback) =>
   getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/prep`, (data) =>
@@ -19,8 +28,9 @@ export const fetchPrepStatus = (cycleId, callback) =>
   );
 
 export const fetchShipmentRows = (cycleId, callback) =>
-  getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/shipments`, (data) =>
-    callback(data || []),
+  getFromOpenElisServer(
+    `/rest/eqa/cycles/${cycleId}/shipments`,
+    asList(callback),
   );
 
 /**
@@ -37,6 +47,18 @@ const withBody = (callback) => (response) => {
     .then((body) => callback({ ok: response.ok, body }))
     .catch(() => callback({ ok: response.ok, body: null }));
 };
+
+/**
+ * FR-V2.5-02. One POST writes the cycle, its panel, its samples and its
+ * participant roster, and leaves the cycle in prep — so a wizard the server
+ * refuses leaves nothing half-created for the scheme list to show.
+ */
+export const createProviderCycle = (payload, callback) =>
+  postToOpenElisServerFullResponse(
+    "/rest/eqa/provider/cycles",
+    JSON.stringify(payload),
+    withBody(callback),
+  );
 
 export const savePrep = (panelId, fields, callback) =>
   patchToOpenElisServerFullResponse(

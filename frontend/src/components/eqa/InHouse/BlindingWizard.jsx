@@ -570,7 +570,13 @@ const BlindingWizard = () => {
                 <SelectItem
                   key={type}
                   value={type}
-                  text={label(`eqa.inhouse.sourceType.${type}`, type)}
+                  // eqa.panel.* is the shared panel vocabulary the provider
+                  // wizard renders too (T-24); lower-cased like every other
+                  // enum-derived key in this module.
+                  text={label(
+                    `eqa.panel.source.${type.toLowerCase()}`,
+                    type.replace(/_/g, " "),
+                  )}
                 />
               ))}
             </Select>
@@ -604,7 +610,10 @@ const BlindingWizard = () => {
                 <SelectItem
                   key={temp}
                   value={temp}
-                  text={label(`eqa.inhouse.storageTemp.${temp}`, temp)}
+                  text={label(
+                    `eqa.panel.storage.${temp.toLowerCase()}`,
+                    temp.replace(/_/g, " "),
+                  )}
                 />
               ))}
             </Select>

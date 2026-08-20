@@ -35,6 +35,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
 
     private static final long ORG_A = 9960L;
     private static final long ORG_B = 9961L;
+    private static final long ORG_C = 9962L;
     private static final long ANALYTE_HIV_VL = 9802L;
     private static final long ANALYTE_EID = 9803L;
 
@@ -202,9 +203,34 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     public void aNonParticipantOrganizationCannotBeShippedTo() {
         try {
             shipmentService.saveShipmentDetails(cycle.getId(), 9999L, "DHL", "TRK-9", null, USER);
-            fail("only active participants of the cycle's scheme may receive a panel");
+            fail("only participants of the cycle may receive a panel");
         } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage().contains("not an active participant"));
+            assertTrue(expected.getMessage().contains("not a participant of this cycle"));
+        }
+    }
+
+    /**
+     * T-24: once a cycle carries its own roster, that roster — not the scheme's
+     * enrollment list — is what the cycle costs and who it ships to. This suite's
+     * other cases exercise the opposite side of the same rule: they seed no roster
+     * at all, so they run on the pre-qa/032 fallback.
+     */
+    @Test
+    public void aCycleRosterOverridesTheSchemeEnrollmentEverywhere() {
+        enroll(ORG_C);
+        addToRoster(ORG_A);
+
+        assertEquals("3 enrolled, 1 on this cycle's roster", 1,
+                shipmentService.getPrepStatus(cycle.getId()).get("participantCount"));
+        List<Map<String, Object>> rows = shipmentService.getShipmentRows(cycle.getId());
+        assertEquals(1, rows.size());
+        assertEquals(ORG_A, rows.get(0).get("organizationId"));
+
+        try {
+            shipmentService.saveShipmentDetails(cycle.getId(), ORG_B, "DHL", "TRK-B", null, USER);
+            fail("an enrolled lab that is not on this cycle's roster must not be shipped to");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("not a participant of this cycle"));
         }
     }
 
@@ -344,24 +370,53 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         assertEquals(EQACycleStatus.READY_TO_SHIP, readBack(cycle.getId()).getStatus());
     }
 
+    // ---- FR-V2.5-01: the provider scheme list ----
+
     @Test
-    public void providerCyclesListOnlySchemesWithParticipants() {
+    public void providerSchemeListCarriesOnlySchemesThisLabProvides() {
         EQAProgram participantOnly = insertScheme("Externally provided " + System.nanoTime(),
                 EQASchemeType.INTERNATIONAL_PT, "NHLS");
         insertCycle(participantOnly, 1);
 
-        List<Map<String, Object>> rows = shipmentService.getProviderCycles();
+        List<Map<String, Object>> schemes = shipmentService.getProviderSchemes();
 
-        assertEquals(1, rows.size());
-        assertEquals(cycle.getId(), rows.get(0).get("id"));
-        assertEquals(2, rows.get(0).get("participantCount"));
-        assertEquals(1, rows.get(0).get("panelCount"));
+        assertEquals("a scheme with no enrolled participant is one this lab only takes part in", 1, schemes.size());
+        assertEquals(scheme.getId(), schemes.get(0).get("id"));
+        assertEquals(2, schemes.get(0).get("enrolledParticipantCount"));
+
+        List<Map<String, Object>> cycles = cycles(schemes.get(0));
+        assertEquals(1, cycles.size());
+        assertEquals(cycle.getId(), cycles.get(0).get("id"));
+        assertEquals("no roster yet, so the scheme's enrollment stands in", 2, cycles.get(0).get("participantCount"));
+        assertEquals(1, cycles.get(0).get("panelCount"));
+    }
+
+    @Test
+    public void providerSchemeListCountsTheCycleRosterWhenThereIsOne() {
+        addToRoster(ORG_A);
+
+        List<Map<String, Object>> cycles = cycles(shipmentService.getProviderSchemes().get(0));
+
+        assertEquals("the list must not disagree with the prep gate", 1, cycles.get(0).get("participantCount"));
+    }
+
+    @Test
+    public void providerSchemeListOrdersCyclesNewestFirst() {
+        insertCycle(scheme, 7);
+        insertCycle(scheme, 3);
+
+        List<Map<String, Object>> cycles = cycles(shipmentService.getProviderSchemes().get(0));
+
+        assertEquals(3, cycles.size());
+        assertEquals(7, cycles.get(0).get("cycleNumber"));
+        assertEquals(3, cycles.get(1).get("cycleNumber"));
+        assertEquals(1, cycles.get(2).get("cycleNumber"));
     }
 
     // ---- fixture helpers ----
 
     private void seedOrganizations() {
-        for (long id : new long[] { ORG_A, ORG_B }) {
+        for (long id : new long[] { ORG_A, ORG_B, ORG_C }) {
             jdbc.update(
                     "INSERT INTO clinlims.organization (id, name, mls_sentinel_lab_flag, is_active, lastupdated)"
                             + " VALUES (?, ?, 'N', 'Y', now()) ON CONFLICT (id) DO NOTHING",
@@ -375,6 +430,13 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                         + " enrollment_date, status, sys_user_id, lastupdated)"
                         + " VALUES (nextval('clinlims.eqa_enrollment_seq'), ?, ?, now(), 'Active', ?, now())",
                 scheme.getId(), organizationId, USER);
+    }
+
+    private void addToRoster(long organizationId) {
+        jdbc.update(
+                "INSERT INTO clinlims.eqa_cycle_participant (id, cycle_id, organization_id, sys_user_id)"
+                        + " VALUES (nextval('clinlims.eqa_cycle_participant_seq'), ?, ?, ?)",
+                cycle.getId(), organizationId, USER);
     }
 
     private void insertPanelSample(String sampleCode, long analyteId) {
@@ -408,5 +470,10 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     @SuppressWarnings("unchecked")
     private List<String> blockers(Map<String, Object> prep) {
         return (List<String>) prep.get("blockers");
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> cycles(Map<String, Object> scheme) {
+        return (List<Map<String, Object>>) scheme.get("cycles");
     }
 }

@@ -112,4 +112,8 @@
 
   <!-- EQA V2.2 — OGC-610: automatic-submission retry bookkeeping (FR-V2.2-05) -->
   <include file="liquibase/qa/030-add-eqa-cycle-submission-retry.xml" />
+
+  <!-- EQA V2.5 T-24 — OGC-613: per-cycle participant roster; re-activates the
+       provider menu row qa/029 hid, now that its page exists -->
+  <include file="liquibase/qa/032-eqa-cycle-participant.xml" />
 </databaseChangeLog>

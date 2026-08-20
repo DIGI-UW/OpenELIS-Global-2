@@ -58,6 +58,21 @@ public class EQAProgramEnrollmentDAOImpl extends BaseDAOImpl<EQAProgramEnrollmen
 
     @Override
     @Transactional(readOnly = true)
+    public List<Object[]> findProviderSchemeRows() {
+        try {
+            String hql = "SELECT p.id, p.name, p.provider, p.schemeType, COUNT(e.id)"
+                    + " FROM EQAProgramEnrollment e JOIN e.eqaProgram p"
+                    + " WHERE e.status = 'Active' AND p.isActive = true"
+                    + " GROUP BY p.id, p.name, p.provider, p.schemeType ORDER BY p.name";
+            return entityManager.unwrap(Session.class).createQuery(hql, Object[].class).list();
+        } catch (Exception e) {
+            logger.error("Error retrieving provider scheme rows", e);
+            throw new LIMSRuntimeException("Error retrieving provider scheme rows", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean existsActiveEnrollment(Long programId, Long organizationId) {
         try {
             String hql = "SELECT COUNT(e) FROM EQAProgramEnrollment e" + " WHERE e.eqaProgram.id = :programId"

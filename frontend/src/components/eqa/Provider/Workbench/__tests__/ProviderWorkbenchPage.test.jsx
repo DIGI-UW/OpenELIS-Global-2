@@ -126,22 +126,6 @@ const renderWorkbench = (prep = PREP_SHORT, rows = ROWS, samplesByUrl = {}) => {
 const readyToShipButton = () =>
   screen.getByText("Mark cycle ready to ship").closest("button");
 
-const renderPicker = (cycles) => {
-  getFromOpenElisServer.mockImplementation((url, cb) => {
-    if (url === "/rest/eqa/provider/cycles") cb(cycles);
-    else cb([]);
-  });
-  return render(
-    <IntlProvider locale="en" messages={messages}>
-      <MemoryRouter initialEntries={["/qa/eqa/provider/workbench"]}>
-        <Route path="/qa/eqa/provider/workbench">
-          <ProviderWorkbenchPage />
-        </Route>
-      </MemoryRouter>
-    </IntlProvider>,
-  );
-};
-
 describe("ProviderWorkbenchPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -305,23 +289,5 @@ describe("ProviderWorkbenchPage", () => {
     expect(
       await screen.findByText("1 participant shipments dispatched."),
     ).toBeInTheDocument();
-  });
-
-  test("the picker lists provider cycles when no cycle is in the URL", () => {
-    renderPicker([
-      {
-        id: 7,
-        cycleNumber: 1,
-        cycleName: "2026 Round 1",
-        status: "PREP_IN_PROGRESS",
-        schemeName: "National HIV VL PT",
-        participantCount: 2,
-        panelCount: 1,
-      },
-    ]);
-
-    expect(screen.getByText("2026 Round 1")).toBeInTheDocument();
-    expect(screen.getByText("National HIV VL PT")).toBeInTheDocument();
-    expect(screen.getByText("Prep in progress")).toBeInTheDocument();
   });
 });

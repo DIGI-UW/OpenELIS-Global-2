@@ -55,9 +55,13 @@ const CreateDistribution = () => {
   }, []);
 
   // resuming a draft: the row carries name/program/deadline, but participants are
-  // not persisted yet (no distribution-participant table until the cycle work),
-  // so step 2 always starts empty and has to be re-picked
-  // ponytail: hydrate participants here once eqa_cycle_participant exists (T-24)
+  // not persisted, so step 2 always starts empty and has to be re-picked.
+  //
+  // T-24 added eqa_cycle_participant and it does NOT serve this screen: it is a
+  // per-cycle roster, and a V1 distribution has no cycle (eqa_distribution.cycle_id
+  // is never set by this wizard). The V2.5 cycle wizard at
+  // /qa/eqa/provider/schemes/{id}/cycles/new is where a participant list is now
+  // recorded; this screen keeps saying so rather than pretending to save one.
   useEffect(() => {
     if (!draftId) return;
     getFromOpenElisServer(`/rest/eqa/distributions/${draftId}`, (data) => {

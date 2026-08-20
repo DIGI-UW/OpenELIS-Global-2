@@ -19,9 +19,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveTest {
 
     /**
-     * Element id, route, display key, and whether the row is switched on. Only My
-     * Cycles has a page: the rest stay hidden until the card that builds each page
-     * re-activates its row with the route that page actually serves (qa/029).
+     * Element id, route, display key, and whether the row is switched on. Two rows
+     * have pages now — My Cycles (qa/029) and Provider (qa/032) — and each was
+     * switched on by the card that built its page; the rest stay hidden until
+     * theirs does the same.
      */
     private static final String[][] MENUS = {
             { "menu_eqa_my_cycles", "/qa/eqa/my-cycles", "banner.menu.eqa.myCycles", "true" },
@@ -30,7 +31,9 @@ public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveT
             { "menu_eqa_follow_up_queue", "/eqa/oversight/follow-up-queue", "banner.menu.eqa.followUpQueue", "false" },
             { "menu_eqa_analyst_competency", "/eqa/oversight/analyst-track", "banner.menu.eqa.analystCompetency",
                     "false" },
-            { "menu_eqa_provider", "/eqa/management/provider/schemes", "banner.menu.eqa.provider", "false" } };
+            // qa/032: T-24's scheme list is the page this row was waiting for, so it
+            // moves onto the served route and comes back on.
+            { "menu_eqa_provider", "/qa/eqa/provider/schemes", "banner.menu.eqa.provider", "true" } };
 
     private static final String[] TIERS = { "qa.eqa.participant", "qa.eqa.oversight", "qa.eqa.provider",
             "qa.eqa.inhouse.unblind" };

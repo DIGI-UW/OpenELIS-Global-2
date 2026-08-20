@@ -20,6 +20,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +28,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
+import org.openelisglobal.eqa.dao.EQACycleParticipantDAO;
 import org.openelisglobal.eqa.dao.EQACycleStateTransitionDAO;
 import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelReceiptDAO;
@@ -34,11 +36,15 @@ import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.service.EQAPrepGate.PanelRequirement;
 import org.openelisglobal.eqa.valueholder.EQACycle;
+import org.openelisglobal.eqa.valueholder.EQACycleParticipant;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
+import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
+import org.openelisglobal.eqa.valueholder.EQAProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
@@ -104,6 +110,12 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
 
     @Autowired
     private EQAProgramEnrollmentService eqaProgramEnrollmentService;
+
+    @Autowired
+    private EQACycleParticipantDAO eqaCycleParticipantDAO;
+
+    @Autowired
+    private EQAPanelService eqaPanelService;
 
     @Autowired
     private EQAProgramService eqaProgramService;
@@ -226,16 +238,15 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
      * QC.
      *
      * <p>
-     * The inventory half (T-25, FR-V2.5-12) sizes the cycle by the scheme's active
-     * enrollments, since no table records per-cycle participants: each participant
-     * needs one aliquot per panel sample, on top of what the panel holds back. The
-     * row-level invariant produced >= reserved + shipped is a DB CHECK in qa/017.
+     * The inventory half (T-25, FR-V2.5-12) sizes the cycle by its participant
+     * roster (T-24): each participant needs one aliquot per panel sample, on top of
+     * what the panel holds back. The row-level invariant produced >= reserved +
+     * shipped is a DB CHECK in qa/017.
      */
     @Override
     @Transactional(readOnly = true)
     public EQAPrepGate evaluatePrepGate(EQACycle cycle) {
-        int participants = cycle.getScheme() == null ? 0
-                : (int) eqaProgramEnrollmentService.countActiveEnrollments(cycle.getScheme().getId());
+        int participants = participantOrganizationIds(cycle).size();
         List<EQAPanel> panels = eqaPanelDAO.getAllMatching("cycle.id", cycle.getId());
 
         List<PanelRequirement> requirements = new ArrayList<>();
@@ -262,6 +273,174 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
 
     private static int nullToZero(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> participantOrganizationIds(EQACycle cycle) {
+        if (cycle == null || cycle.getId() == null) {
+            return List.of();
+        }
+        List<Long> roster = new ArrayList<>();
+        for (EQACycleParticipant participant : eqaCycleParticipantDAO.findActiveByCycleIds(List.of(cycle.getId()))) {
+            roster.add(participant.getOrganizationId());
+        }
+        if (!roster.isEmpty()) {
+            return roster;
+        }
+        // A cycle created before qa/032 has no roster at all — not an empty one — so
+        // it keeps the scheme's active enrollments it was sized by until it closes.
+        if (cycle.getScheme() == null) {
+            return List.of();
+        }
+        List<Long> enrolled = new ArrayList<>();
+        for (EQAProgramEnrollment enrollment : eqaProgramEnrollmentService
+                .findActiveByProgramId(cycle.getScheme().getId())) {
+            enrolled.add(enrollment.getOrganizationId());
+        }
+        return enrolled;
+    }
+
+    @Override
+    public EQACycle createProviderCycle(ProviderCycleRequest request, String sysUserId) {
+        if (request == null || request.schemeId() == null) {
+            throw new IllegalArgumentException("A cycle needs a scheme");
+        }
+        if (GenericValidator.isBlankOrNull(request.panelName())) {
+            throw new IllegalArgumentException("A cycle needs a panel name");
+        }
+        if (request.samples() == null || request.samples().isEmpty()) {
+            throw new IllegalArgumentException("A panel needs at least one sample");
+        }
+        if (request.participantOrganizationIds() == null || request.participantOrganizationIds().isEmpty()) {
+            throw new IllegalArgumentException("A cycle needs at least one participant laboratory");
+        }
+        // VENDOR_SOURCED and MIXED carry the vendor's provenance (FR-V2.1-17); an
+        // in-house aliquoted panel has none to carry.
+        if ((request.sourceType() == EQAPanelSourceType.VENDOR_SOURCED
+                || request.sourceType() == EQAPanelSourceType.MIXED)
+                && GenericValidator.isBlankOrNull(request.vendorName())) {
+            throw new IllegalArgumentException("A vendor-sourced panel needs the vendor's name");
+        }
+
+        EQAProgram scheme = eqaProgramService.get(request.schemeId());
+        // Validate the whole request against the scheme before the first insert, so a
+        // refusal leaves nothing behind even without the rollback. Resolving every
+        // analyte up front is part of that: an unknown test must not surface after
+        // the cycle row already exists.
+        List<Long> participants = resolveParticipants(scheme, request.participantOrganizationIds());
+        List<EQAPanelSample> samples = toPanelSamples(request.samples());
+
+        // Cycle and panel creation are T-21's (FR-V2.4-01/02) — the same writes the
+        // in-house wizard makes. Calling them from inside this transaction is what
+        // makes the provider wizard's single POST all-or-nothing, which two client
+        // calls could not be.
+        EQACycle cycle = create(request.schemeId(), request.cycleNumber(), request.cycleName(),
+                request.plannedStartDate(), request.plannedEndDate(), sysUserId);
+
+        EQAPanel panel = new EQAPanel();
+        panel.setScheme(scheme);
+        panel.setCycle(cycle);
+        panel.setPanelName(request.panelName().trim());
+        panel.setPanelType(scheme.getSchemeType() == null ? null : scheme.getSchemeType().name());
+        panel.setSourceType(request.sourceType());
+        panel.setLotNumber(request.lotNumber());
+        panel.setVendorName(request.vendorName());
+        panel.setVendorLot(request.vendorLot());
+        panel.setVendorCertificateRef(request.vendorCertificateRef());
+        panel.setStorageTemp(request.storageTemp());
+        panel.setExpirationDate(request.expirationDate());
+        eqaPanelService.create(panel, samples, sysUserId);
+
+        for (Long organizationId : participants) {
+            EQACycleParticipant participant = new EQACycleParticipant();
+            participant.setCycle(cycle);
+            participant.setOrganizationId(organizationId);
+            participant.setSysUserId(sysUserId);
+            eqaCycleParticipantDAO.insert(participant);
+        }
+
+        // Step 5 is "confirm & begin prep", so the wizard leaves the cycle where the
+        // prep workbench expects it. A person clicked this, so it is recorded as a
+        // manual move attributed to them (FR-V2.1-21), like every other HTTP-driven
+        // transition.
+        return transition(cycle.getId(), PREP_IN_PROGRESS, EQAStateMachine.PROVIDER, EQATriggerType.MANUAL,
+                EQATriggerEvent.MANUAL_OVERRIDE, actingUser(sysUserId), "Cycle created by the provider cycle wizard",
+                sysUserId);
+    }
+
+    /**
+     * The roster the wizard may write: every named organization must be an active
+     * participant of the scheme, because the roster is a subset of the enrollment,
+     * not a second way to enroll. Duplicates in the request collapse rather than
+     * hitting {@code uq_eqa_cycle_participant_cycle_org}.
+     */
+    private List<Long> resolveParticipants(EQAProgram scheme, List<Long> requested) {
+        Set<Long> enrolled = new LinkedHashSet<>();
+        for (EQAProgramEnrollment enrollment : eqaProgramEnrollmentService.findActiveByProgramId(scheme.getId())) {
+            enrolled.add(enrollment.getOrganizationId());
+        }
+        Set<Long> roster = new LinkedHashSet<>();
+        for (Long organizationId : requested) {
+            if (organizationId == null) {
+                throw new IllegalArgumentException("A participant id cannot be blank");
+            }
+            if (!enrolled.contains(organizationId)) {
+                throw new IllegalArgumentException(
+                        "Organization " + organizationId + " is not an active participant of this scheme");
+            }
+            roster.add(organizationId);
+        }
+        return new ArrayList<>(roster);
+    }
+
+    /**
+     * The wizard's samples as entities, validated first. Sample codes identify the
+     * material a participant reports against and
+     * {@code uq_eqa_panel_sample_panel_code} makes them unique per panel — caught
+     * here so the wizard names the offending code rather than showing a constraint.
+     * The analyte behind each test is resolved now, not at insert, so an unknown
+     * test cannot surface after the cycle row already exists.
+     */
+    private List<EQAPanelSample> toPanelSamples(List<PanelSampleRequest> requested) {
+        Set<String> codes = new LinkedHashSet<>();
+        List<EQAPanelSample> samples = new ArrayList<>();
+        for (PanelSampleRequest sample : requested) {
+            if (sample == null || GenericValidator.isBlankOrNull(sample.sampleCode())) {
+                throw new IllegalArgumentException("Every panel sample needs a sample code");
+            }
+            if (GenericValidator.isBlankOrNull(sample.testId())) {
+                throw new IllegalArgumentException("Sample " + sample.sampleCode() + " needs a test");
+            }
+            if (sample.acceptanceRangeLow() != null && sample.acceptanceRangeHigh() != null
+                    && sample.acceptanceRangeLow().compareTo(sample.acceptanceRangeHigh()) > 0) {
+                throw new IllegalArgumentException(
+                        "Sample " + sample.sampleCode() + " has an acceptance range that runs backwards");
+            }
+            if (!codes.add(sample.sampleCode().trim())) {
+                throw new IllegalArgumentException("Sample code " + sample.sampleCode() + " is used twice");
+            }
+
+            EQAPanelSample row = new EQAPanelSample();
+            row.setSampleCode(sample.sampleCode().trim());
+            row.setAnalyteId(eqaPanelService.analyteIdForTest(sample.testId()));
+            // Blank is not the same as absent here: the encryption converter passes
+            // blanks through as plaintext, and decrypting plaintext later throws.
+            row.setTargetValue(GenericValidator.isBlankOrNull(sample.targetValue()) ? null : sample.targetValue());
+            row.setTargetUnit(sample.targetUnit());
+            row.setAcceptanceRangeLow(sample.acceptanceRangeLow());
+            row.setAcceptanceRangeHigh(sample.acceptanceRangeHigh());
+            samples.add(row);
+        }
+        return samples;
+    }
+
+    private Long actingUser(String sysUserId) {
+        try {
+            return Long.valueOf(sysUserId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Cannot attribute this cycle to an authenticated user");
+        }
     }
 
     @Override
