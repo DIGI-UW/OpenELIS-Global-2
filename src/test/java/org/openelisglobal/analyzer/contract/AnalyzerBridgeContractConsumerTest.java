@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.hl7.fhir.r4.model.Bundle;
 import org.junit.Test;
@@ -70,6 +71,21 @@ public class AnalyzerBridgeContractConsumerTest {
         assertFalse(schema.contains("openelisTestId"));
         assertFalse(schema.contains("openelisResultOptionId"));
         assertFalse(schema.contains("labUnitId"));
+    }
+
+    @Test
+    public void priorityProfilesExposeOnlyMockProvenDefaultMappings() throws IOException {
+        JsonNode geneXpert = fixture("analyzer-profile-astm.json");
+        JsonNode fluoroCycler = fixture("analyzer-profile-file.json");
+        JsonNode quantStudio = fixture("analyzer-profile-quantstudio.json");
+
+        assertMappingCodes(geneXpert, Set.of("MTB-RIF", "RIF", "HIV-VL", "COVID19"));
+        assertMappingValues(geneXpert, "MTB-RIF", Set.of("MTB DETECTED", "NOT DETECTED", "HIGH", "MEDIUM", "LOW",
+                "VERY LOW", "INDETERMINATE", "ERROR", "NO RESULT"));
+        assertMappingValues(geneXpert, "RIF", Set.of("DETECTED", "NOT DETECTED", "INDETERMINATE"));
+        assertMappingValues(geneXpert, "COVID19", Set.of("POSITIVE", "NEGATIVE", "INDETERMINATE", "ERROR"));
+        assertMappingCodes(fluoroCycler, Set.of("VIH-1"));
+        assertMappingCodes(quantStudio, Set.of("VIH-1", "IC"));
     }
 
     @Test
@@ -174,6 +190,22 @@ public class AnalyzerBridgeContractConsumerTest {
 
     private static JsonNode fixture(String name) throws IOException {
         return JSON.readTree(FIXTURE_ROOT.resolve(name).toFile());
+    }
+
+    private static void assertMappingCodes(JsonNode profile, Set<String> expectedCodes) {
+        Set<String> actualCodes = StreamSupport.stream(profile.path("default_test_mappings").spliterator(), false)
+                .map(mapping -> mapping.path("test_code").asText()).collect(Collectors.toSet());
+        assertEquals(expectedCodes, actualCodes);
+        assertEquals(expectedCodes.size(), profile.path("default_test_mappings").size());
+    }
+
+    private static void assertMappingValues(JsonNode profile, String testCode, Set<String> expectedValues) {
+        JsonNode mapping = StreamSupport.stream(profile.path("default_test_mappings").spliterator(), false)
+                .filter(candidate -> testCode.equals(candidate.path("test_code").asText())).findFirst().orElseThrow();
+        Set<String> actualValues = StreamSupport.stream(mapping.path("values").spliterator(), false)
+                .map(JsonNode::asText).collect(Collectors.toSet());
+        assertEquals(expectedValues, actualValues);
+        assertEquals(expectedValues.size(), mapping.path("values").size());
     }
 
     private static JsonNode firstResource(JsonNode bundle, String resourceType) {
