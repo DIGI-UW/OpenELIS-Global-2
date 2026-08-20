@@ -177,7 +177,7 @@ capability is available; it does not own macro authoring or administration.
   events path.
 - [x] Complete WHONET specimen-code validation, export projection, and exact
   repair navigation through the owning sample-type administration workflow.
-- [*] Complete M-09 export population filters already supported by authoritative
+- [x] Complete M-09 export population filters already supported by authoritative
   case data: specimen, organism, patient origin, and significance. Apply the
   same selection to server-side preview and generation, preserve canonical URL
   state, place the single export navigation entry under Reports, and compact the

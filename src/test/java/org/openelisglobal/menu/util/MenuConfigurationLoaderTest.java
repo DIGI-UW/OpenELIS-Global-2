@@ -149,6 +149,23 @@ public class MenuConfigurationLoaderTest {
         assertEquals("menu_administration", stuckAnalyzerEvents.getParent().getElementId());
     }
 
+    @Test
+    public void distributionMenu_shouldExposeWhonetOnlyUnderReports() {
+        Menu existingMicrobiology = menu("17", "menu_microbiology", 6);
+        Menu existingReports = menu("70", "menu_reports", 14);
+        List<Menu> menus = new ArrayList<>();
+        menus.add(existingMicrobiology);
+        menus.add(existingReports);
+
+        MenuConfigurationLoader.loadConfiguredMenus(new File("volume/menu/menu_config.json"), menus);
+
+        Menu whonet = findMenu(menus, "menu_microbiology_whonet");
+        assertEquals("/Microbiology/whonet", whonet.getActionURL());
+        assertEquals("menu_reports", whonet.getParent().getElementId());
+        assertTrue(menus.stream().noneMatch(menu -> "menu_microbiology_whonet".equals(menu.getElementId())
+                && menu.getParent() != null && "menu_microbiology".equals(menu.getParent().getElementId())));
+    }
+
     private Menu menu(String id, String elementId, int presentationOrder) {
         Menu menu = new Menu();
         menu.setId(id);

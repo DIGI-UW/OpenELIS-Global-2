@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
+import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.reports.service.MicroWhonetExportResult;
 import org.openelisglobal.reports.service.WHONetReportService;
@@ -31,6 +32,13 @@ public class MicroWhonetExportRestController extends MicrobiologyRestControllerS
     @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')")
     public ResponseEntity<MicroWhonetPreviewForm> preview(@ModelAttribute MicroWhonetExportQueryForm query) {
         return ResponseEntity.ok(reportService.previewMicrobiologyExport(query));
+    }
+
+    @GetMapping("/filter-options")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')")
+    public ResponseEntity<MicroWhonetFilterOptionsForm> filterOptions(
+            @ModelAttribute MicroWhonetExportQueryForm query) {
+        return ResponseEntity.ok(reportService.getMicrobiologyExportFilterOptions(query));
     }
 
     @PostMapping("/exports")

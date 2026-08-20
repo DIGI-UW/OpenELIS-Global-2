@@ -112,7 +112,7 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         MicroWhonetExportQueryForm exportQuery = new MicroWhonetExportQueryForm();
         exportQuery.from = exportDate.toString();
         exportQuery.to = exportDate.toString();
-        exportQuery.significance = MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name();
+        exportQuery.significance = List.of(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
         exportQuery.dedup = "FIRST_ISOLATE_7_DAY";
         exportQuery.page = 1;
         exportQuery.pageSize = 20;

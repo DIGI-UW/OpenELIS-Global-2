@@ -28,6 +28,18 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
 
     @Override
     @Transactional(readOnly = true)
+    public List<MicroOrganism> getByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroOrganism> query = entityManager.unwrap(Session.class)
+                .createQuery("from MicroOrganism o where o.id in (:ids)", MicroOrganism.class);
+        query.setParameterList("ids", ids);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<MicroOrganism> findByDisplayNameIgnoreCase(String displayName) {
         Query<MicroOrganism> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroOrganism o where lower(o.displayName) = lower(:displayName)", MicroOrganism.class);

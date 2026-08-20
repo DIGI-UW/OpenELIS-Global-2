@@ -8,6 +8,8 @@ import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 public interface MicroOrganismDAO extends BaseDAO<MicroOrganism, String> {
     List<MicroOrganism> getActiveOrganisms();
 
+    List<MicroOrganism> getByIds(List<String> ids);
+
     Optional<MicroOrganism> findByDisplayNameIgnoreCase(String displayName);
 
     Optional<MicroOrganism> findByWhonetCodeIgnoreCase(String whonetCode);
