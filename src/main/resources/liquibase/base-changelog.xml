@@ -106,4 +106,7 @@
 
   <!-- EQA V2.4 T-21 — OGC-612: In-House Blinding menu row (FR-V2.4-01) -->
   <include file="liquibase/qa/031-add-eqa-in-house-menu.xml" />
+
+  <!-- EQA V2 — OGC-610: point My Cycles at its real route, hide the rows with no page -->
+  <include file="liquibase/qa/029-fix-eqa-my-cycles-menu-url.xml" />
 </databaseChangeLog>
