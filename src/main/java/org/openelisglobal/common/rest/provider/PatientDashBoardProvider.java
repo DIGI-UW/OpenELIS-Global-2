@@ -93,7 +93,7 @@ public class PatientDashBoardProvider {
     private UserService userService;
 
     @Autowired
-    private AnalysisAnchorService analysisAnchorService;
+    AnalysisAnchorService analysisAnchorService;
 
     @Autowired
     private TestSectionService testSectionService;
