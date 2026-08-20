@@ -17,14 +17,20 @@ import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
+import org.hl7.fhir.r4.model.StringType;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
+import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQADistributionDAO;
+import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.dao.EQAResultDAO;
+import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQADistribution;
+import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAResult;
+import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +48,12 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
 
     @Autowired
     private EQAResultDAO resultDAO;
+
+    @Autowired
+    private EQACycleDAO cycleDAO;
+
+    @Autowired
+    private EQAParticipantResultDAO participantResultDAO;
 
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
@@ -94,6 +106,125 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         }
 
         return response;
+    }
+
+    @Override
+    public boolean submitCycleViaFhir(Long cycleId, Long labEnrollmentId) {
+        EQACycle cycle = cycleDAO.get(cycleId)
+                .orElseThrow(() -> new IllegalArgumentException("Cycle not found: " + cycleId));
+
+        List<EQAParticipantResult> results = submittableResults(cycleId, labEnrollmentId);
+        if (results.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No submittable result for cycle " + cycleId + " and enrollment " + labEnrollmentId);
+        }
+
+        Map<String, Resource> fhirResources = new HashMap<>();
+        DiagnosticReport report = buildCycleReport(cycle, labEnrollmentId, results);
+        fhirResources.put(report.getId(), report);
+        for (EQAParticipantResult result : results) {
+            Observation observation = buildParticipantObservation(result);
+            fhirResources.put(observation.getId(), observation);
+        }
+
+        try {
+            Bundle responseBundle = fhirPersistanceService.createFhirResourcesInFhirStore(fhirResources);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "submitCycleViaFhir",
+                    "EQA cycle submission successful: cycle=" + cycleId + ", enrollment=" + labEnrollmentId
+                            + ", resources=" + fhirResources.size() + ", bundle=" + responseBundle.getId());
+            return true;
+        } catch (FhirLocalPersistingException | RuntimeException e) {
+            // Any transport or serialization failure is a failed attempt, not a
+            // crash: the caller counts it and retries under FR-V2.2-05 backoff.
+            LogEvent.logError(this.getClass().getSimpleName(), "submitCycleViaFhir",
+                    "EQA cycle submission failed: cycle=" + cycleId + ", enrollment=" + labEnrollmentId + ": "
+                            + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Everything this lab has validated but not yet had scored. SUBMITTED rows are
+     * included so a retry after a partial failure resends the whole set rather than
+     * a fragment the provider cannot reconcile.
+     */
+    private List<EQAParticipantResult> submittableResults(Long cycleId, Long labEnrollmentId) {
+        return participantResultDAO.getAllMatching(Map.of("cycle.id", cycleId, "labEnrollmentId", labEnrollmentId))
+                .stream().filter(r -> r.getSubmissionStatus() == EQASubmissionStatus.VALIDATED_PARTIAL
+                        || r.getSubmissionStatus() == EQASubmissionStatus.SUBMITTED)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * No subject reference: a participant self-enrollment
+     * (eqa_lab_program_enrollment) records a free-text provider and no
+     * organization, so an Organization/{id} reference would point at nothing. The
+     * cycle and enrollment identifiers carry the routing instead.
+     */
+    private DiagnosticReport buildCycleReport(EQACycle cycle, Long labEnrollmentId,
+            List<EQAParticipantResult> results) {
+        DiagnosticReport report = new DiagnosticReport();
+        String reportId = cycle.getFhirUuid().toString() + "-enrollment-" + labEnrollmentId;
+        report.setId(reportId);
+        report.addIdentifier(
+                createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/diagnostic_report", reportId));
+        report.addIdentifier(
+                createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/cycle_id", cycle.getId().toString()));
+        report.addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/lab_enrollment_id",
+                labEnrollmentId.toString()));
+        report.setStatus(DiagnosticReportStatus.FINAL);
+
+        CodeableConcept category = new CodeableConcept();
+        category.addCoding(new Coding("http://terminology.hl7.org/CodeSystem/v2-0074", "LAB", "Laboratory"));
+        report.addCategory(category);
+
+        CodeableConcept code = new CodeableConcept();
+        code.addCoding(new Coding(fhirConfig.getOeFhirSystem() + EQA_SYSTEM, "eqa-proficiency-test",
+                "EQA Proficiency Testing Results"));
+        code.setText("EQA Results: " + (cycle.getScheme() == null ? "" : cycle.getScheme().getName() + " ") + "cycle "
+                + cycle.getCycleNumber());
+        report.setCode(code);
+
+        for (EQAParticipantResult result : results) {
+            Reference obsRef = new Reference();
+            obsRef.setReference(ResourceType.Observation + "/" + result.getFhirUuid().toString());
+            report.addResult(obsRef);
+        }
+        return report;
+    }
+
+    /**
+     * A participant result value is free text on the wire: external PT covers
+     * qualitative analytes (HIV serology, blood-film ID) that have no numeric form,
+     * so it is sent as a Quantity only when it parses as one.
+     */
+    private Observation buildParticipantObservation(EQAParticipantResult result) {
+        Observation observation = new Observation();
+        observation.setId(result.getFhirUuid().toString());
+        observation
+                .addIdentifier(createIdentifier(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/participant_result_uuid",
+                        result.getFhirUuid().toString()));
+        observation.setStatus(ObservationStatus.FINAL);
+
+        CodeableConcept code = new CodeableConcept();
+        code.addCoding(new Coding(fhirConfig.getOeFhirSystem() + EQA_SYSTEM + "/analyte",
+                String.valueOf(result.getAnalyteId()), "EQA analyte " + result.getAnalyteId()));
+        observation.setCode(code);
+
+        String value = result.getResultValue();
+        if (value != null && !value.isBlank()) {
+            try {
+                Quantity quantity = new Quantity();
+                quantity.setValue(new java.math.BigDecimal(value.trim()));
+                if (result.getResultUnit() != null && !result.getResultUnit().isBlank()) {
+                    quantity.setUnit(result.getResultUnit());
+                }
+                observation.setValue(quantity);
+            } catch (NumberFormatException e) {
+                observation.setValue(new StringType(value.trim()));
+            }
+        }
+        return observation;
     }
 
     @Override

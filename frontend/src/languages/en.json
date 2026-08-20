@@ -8308,5 +8308,8 @@
   "eqa.inhouse.storageTemp.DRY_ICE": "Dry ice",
   "eqa.inhouse.back": "Back",
   "eqa.inhouse.next": "Next",
-  "eqa.inhouse.cancel": "Cancel"
+  "eqa.inhouse.cancel": "Cancel",
+  "eqa.enrollment.testAnalytes": "Reporting analyte per test",
+  "eqa.enrollment.testAnalytes.help": "Set which analyte each test reports for this scheme. Results are submitted to the provider under this analyte; a test left unset is not submitted automatically.",
+  "eqa.enrollment.selectAnalyte": "Choose an analyte"
 }

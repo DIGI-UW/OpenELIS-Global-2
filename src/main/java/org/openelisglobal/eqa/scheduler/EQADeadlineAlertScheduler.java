@@ -21,6 +21,7 @@ import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQARoundDAO;
 import org.openelisglobal.eqa.dao.SampleEQADAO;
 import org.openelisglobal.eqa.service.EQABlindingService;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
@@ -84,6 +85,9 @@ public class EQADeadlineAlertScheduler {
 
     @Autowired
     private EQABlindingService blindingService;
+
+    @Autowired
+    private EQACycleSubmissionService cycleSubmissionService;
 
     @Scheduled(fixedDelay = 300000)
     public void checkEQADeadlines() {
@@ -259,6 +263,27 @@ public class EQADeadlineAlertScheduler {
                 logger.info("Auto-unblinded in-house panel {}", panel.getId());
             } catch (RuntimeException e) {
                 logger.error("Auto-unblind failed for panel {}", panel.getId(), e);
+            }
+        }
+    }
+
+    /**
+     * FR-V2.2-05 automatic submission: bridge each participant cycle's validated
+     * results onto its own rows, advance the participant state machine, and post to
+     * the provider once the review window has elapsed. Per-cycle calls in a
+     * try/catch, like the unblind pass above — one unreachable cycle must not abort
+     * the sweep, and the submission window makes a 5-minute cadence plenty.
+     */
+    @Scheduled(fixedDelay = 300000)
+    public void advanceEQASubmissions() {
+        logger.debug("Running EQA submission sweep...");
+        for (Long cycleId : cycleSubmissionService.findAdvanceCandidates()) {
+            try {
+                if (cycleSubmissionService.advanceCycle(cycleId)) {
+                    logger.info("Advanced EQA cycle {}", cycleId);
+                }
+            } catch (RuntimeException e) {
+                logger.error("EQA submission sweep failed for cycle {}", cycleId, e);
             }
         }
     }

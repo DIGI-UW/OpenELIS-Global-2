@@ -7,6 +7,8 @@ import {
   Toggle,
   Button,
   FilterableMultiSelect,
+  Select,
+  SelectItem,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -30,17 +32,22 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
   const [selectedLabUnits, setSelectedLabUnits] = useState([]);
   const [selectedTests, setSelectedTests] = useState([]);
   const [selectedPanels, setSelectedPanels] = useState([]);
+  // Which analyte each selected test reports for this scheme, keyed by test id.
+  // Automatic submission cannot name an analyte without this: a result row only
+  // carries one when the test has a test_analyte mapping, which most do not.
+  const [testAnalytes, setTestAnalytes] = useState({});
   const [dataReady, setDataReady] = useState(false);
 
   const [labUnits, setLabUnits] = useState([]);
   const [tests, setTests] = useState([]);
   const [panels, setPanels] = useState([]);
+  const [analytes, setAnalytes] = useState([]);
 
   useEffect(() => {
     let loaded = 0;
     const checkReady = () => {
       loaded++;
-      if (loaded >= 3) setDataReady(true);
+      if (loaded >= 4) setDataReady(true);
     };
 
     getFromOpenElisServer("/rest/displayList/TEST_SECTION_ACTIVE", (data) => {
@@ -71,7 +78,19 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
             .map((t) => items.find((te) => te.id === String(t.id)))
             .filter(Boolean);
           setSelectedTests(selected);
+          const mapped = {};
+          (enrollment.tests || []).forEach((t) => {
+            if (t.analyteId) mapped[String(t.id)] = String(t.analyteId);
+          });
+          setTestAnalytes(mapped);
         }
+      }
+      checkReady();
+    });
+
+    getFromOpenElisServer("/rest/eqa/my-programs/analytes", (data) => {
+      if (data) {
+        setAnalytes(data.map((a) => ({ id: String(a.id), text: a.value })));
       }
       checkReady();
     });
@@ -101,6 +120,11 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
       labUnitIds: selectedLabUnits.map((u) => Number(u.id)),
       testIds: selectedTests.map((t) => Number(t.id)),
       panelIds: selectedPanels.map((p) => Number(p.id)),
+      // Only for tests still selected, so deselecting one drops its analyte too.
+      testAnalytes: selectedTests.reduce((acc, t) => {
+        if (testAnalytes[t.id]) acc[Number(t.id)] = Number(testAnalytes[t.id]);
+        return acc;
+      }, {}),
     };
     onSave(payload);
   };
@@ -209,6 +233,54 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
               })}
             />
           </Column>
+        </Grid>
+      )}
+
+      {dataReady && selectedTests.length > 0 && (
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={16} md={8} sm={4}>
+            <h6 style={{ marginBottom: "0.5rem" }}>
+              {intl.formatMessage({ id: "eqa.enrollment.testAnalytes" })}
+            </h6>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                marginBottom: "0.75rem",
+                color: "#525252",
+              }}
+            >
+              {intl.formatMessage({ id: "eqa.enrollment.testAnalytes.help" })}
+            </p>
+          </Column>
+          {selectedTests.map((test) => (
+            <Column lg={5} md={4} sm={4} key={test.id}>
+              <Select
+                id={`enrollment-analyte-${test.id}`}
+                labelText={test.text}
+                value={testAnalytes[test.id] || ""}
+                onChange={(e) =>
+                  setTestAnalytes({
+                    ...testAnalytes,
+                    [test.id]: e.target.value,
+                  })
+                }
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({
+                    id: "eqa.enrollment.selectAnalyte",
+                  })}
+                />
+                {analytes.map((analyte) => (
+                  <SelectItem
+                    key={analyte.id}
+                    value={analyte.id}
+                    text={analyte.text}
+                  />
+                ))}
+              </Select>
+            </Column>
+          ))}
         </Grid>
       )}
 

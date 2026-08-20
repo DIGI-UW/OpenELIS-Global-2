@@ -189,6 +189,17 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
             return http.build();
         }
 
+        /**
+         * The enrollment form's analyte list (qa/030) rides the my-programs controller.
+         */
+        @Bean
+        org.openelisglobal.analyte.service.AnalyteService analyteService() {
+            org.openelisglobal.analyte.service.AnalyteService service = Mockito
+                    .mock(org.openelisglobal.analyte.service.AnalyteService.class);
+            Mockito.when(service.getAll()).thenReturn(List.of());
+            return service;
+        }
+
         @Bean
         EQALabProgramEnrollmentService labProgramEnrollmentService() {
             EQALabProgramEnrollmentService service = Mockito.mock(EQALabProgramEnrollmentService.class);

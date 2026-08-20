@@ -87,11 +87,14 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAShipmentRestController#savePrep", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#saveShipment", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#ship", EQAGuards.PROVIDER);
+        // Score intake is the provider's verdict coming back (FR-V2.2-08)
+        WRITE_GUARDS.put("EQASubmissionRestController#intakeScores", EQAGuards.MANAGE);
         // Participant lane — bench work, so the legacy roles still admit it
         WRITE_GUARDS.put("EQAMyProgramsRestController#createMyProgram", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQAMyProgramsRestController#updateMyProgram", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQAMyProgramsRestController#deleteMyProgram", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQAPanelReceiptRestController#recordReceipt", EQAGuards.PARTICIPANT);
+        WRITE_GUARDS.put("EQASubmissionRestController#submitManually", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQAParticipantResultRestController#createDraft", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQAParticipantResultRestController#transition", EQAGuards.PARTICIPANT);
         WRITE_GUARDS.put("EQAResultRestController#submitResult", EQAGuards.PARTICIPANT);

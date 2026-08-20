@@ -82,7 +82,7 @@ public class EQALabProgramEnrollmentServiceTest {
         input.setProvider("WHO");
         input.setSysUserId("1");
 
-        EQALabProgramEnrollment result = service.createEnrollment(input, labUnitIds, testIds, panelIds);
+        EQALabProgramEnrollment result = service.createEnrollment(input, labUnitIds, testIds, panelIds, null);
 
         assertNotNull(result);
         assertEquals("Chemistry PT", result.getProgramName());
@@ -106,7 +106,7 @@ public class EQALabProgramEnrollmentServiceTest {
         input.setProvider("CDC");
         input.setSysUserId("1");
 
-        EQALabProgramEnrollment result = service.createEnrollment(input, null, null, null);
+        EQALabProgramEnrollment result = service.createEnrollment(input, null, null, null, null);
 
         assertNotNull(result);
 
@@ -128,7 +128,7 @@ public class EQALabProgramEnrollmentServiceTest {
         input.setIsActive(null);
         input.setSysUserId("1");
 
-        service.createEnrollment(input, null, null, null);
+        service.createEnrollment(input, null, null, null, null);
 
         ArgumentCaptor<EQALabProgramEnrollment> captor =
                 ArgumentCaptor.forClass(EQALabProgramEnrollment.class);
@@ -157,7 +157,7 @@ public class EQALabProgramEnrollmentServiceTest {
         updated.setIsActive(true);
         updated.setSysUserId("1");
 
-        EQALabProgramEnrollment result = service.updateEnrollment(1L, updated, List.of(30L), List.of(300L), null);
+        EQALabProgramEnrollment result = service.updateEnrollment(1L, updated, List.of(30L), List.of(300L), null, null);
 
         assertNotNull(result);
         assertEquals("New Name", result.getProgramName());
@@ -174,7 +174,7 @@ public class EQALabProgramEnrollmentServiceTest {
         updated.setProvider("Whatever");
         updated.setSysUserId("1");
 
-        service.updateEnrollment(999L, updated, null, null, null);
+        service.updateEnrollment(999L, updated, null, null, null, null);
     }
 
     @Test
