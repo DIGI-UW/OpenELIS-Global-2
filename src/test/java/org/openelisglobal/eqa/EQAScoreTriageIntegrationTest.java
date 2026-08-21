@@ -140,6 +140,44 @@ public class EQAScoreTriageIntegrationTest extends EQASpineTestBase {
         assertEquals("108", rows.get(0).get("reported"));
     }
 
+    /**
+     * The register is unique on cycle and organization, so a failure scored after
+     * triage closed the row merges into a closed row. The queue shows only open
+     * rows, so without reopening it that failure would never be seen.
+     */
+    @Test
+    public void aFailureScoredAfterEscalationReopensTheRow() {
+        Scored first = score(EQASchemeType.IN_HOUSE, EQAPerformanceStatus.UNACCEPTABLE, null, "Negative");
+        Long followupId = Long.valueOf(String.valueOf(followupService.getQueueRows().get(0).get("id")));
+        eqaScoreNceService.escalateFollowup(followupId, USER);
+        assertEquals("escalation leaves the queue", 0, followupService.getQueueRows().size());
+
+        EQACycle cycle = readBack(first.cycleId);
+        EQARound round = eqaRoundDAO.get(first.roundId).orElseThrow(AssertionError::new);
+        Long secondResultId = insertParticipantResult(cycle, round, ENROLLMENT, SECOND_ANALYTE,
+                EQASubmissionStatus.SUBMITTED, "Negative");
+        participantResultService.recordScore(secondResultId, EQAPerformanceStatus.UNACCEPTABLE, null, USER);
+
+        List<Map<String, Object>> queue = followupService.getQueueRows();
+        assertEquals("the new failure brings the row back", 1, queue.size());
+        assertEquals("NOTIFIED", queue.get(0).get("followupStatus"));
+        assertEquals("and it carries both results", 2, queueResults(queue.get(0)).size());
+    }
+
+    /**
+     * The queue page renders an analyte name and tags the source through i18n, so
+     * the row has to carry both — the snapshot holds only the analyte id and the
+     * source label is English (FR-V2.3-02).
+     */
+    @Test
+    public void queueRowsCarryAnalyteNamesAndTheSchemeTypeThePageTags() {
+        score(EQASchemeType.IN_HOUSE, EQAPerformanceStatus.UNACCEPTABLE, null, "Negative");
+
+        Map<String, Object> row = followupService.getQueueRows().get(0);
+        assertEquals("IN_HOUSE", row.get("schemeType"));
+        assertEquals(ANALYTE_NAME, queueResults(row).get(0).get("analyteName"));
+    }
+
     @Test
     public void questionableVerdictQueues() {
         score(EQASchemeType.INTERNATIONAL_PT, EQAPerformanceStatus.QUESTIONABLE, new BigDecimal("2.1"), "104");

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-611 — switch the oversight menu rows back on as their pages ship.
+
+    qa/019 seeded these rows at the FRS paths before any page existed and qa/029
+    deactivated them for exactly that reason, leaving each card to re-activate its
+    own row at the route its page actually serves. This is that re-activation for
+    the Follow-Up Queue (FR-V2.3-02) and Lab Performance (FR-V2.3-07); Analyst
+    Competency stays hidden until its page lands.
+    -->
+
+    <changeSet author="openelisglobal" id="qa-062-activate-menu-eqa-follow-up-queue">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_follow_up_queue'
+            </sqlCheck>
+        </preConditions>
+        <comment>Follow-Up Queue menu row: point at /qa/eqa/follow-up-queue and switch it on</comment>
+
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/qa/eqa/follow-up-queue" />
+            <column name="is_active" valueBoolean="true" />
+            <where>element_id = 'menu_eqa_follow_up_queue'</where>
+        </update>
+
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="action_url" value="/eqa/oversight/follow-up-queue" />
+                <column name="is_active" valueBoolean="false" />
+                <where>element_id = 'menu_eqa_follow_up_queue'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-063-activate-menu-eqa-lab-performance">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_lab_performance'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Performance menu row: point at /qa/eqa/lab-performance/coverage and switch it on</comment>
+
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/qa/eqa/lab-performance/coverage" />
+            <column name="is_active" valueBoolean="true" />
+            <where>element_id = 'menu_eqa_lab_performance'</where>
+        </update>
+
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="action_url" value="/eqa/oversight/lab-performance/coverage" />
+                <column name="is_active" valueBoolean="false" />
+                <where>element_id = 'menu_eqa_lab_performance'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -6,12 +6,16 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import org.openelisglobal.analysis.dao.AnalysisDAO;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.dao.EQARoundDAO;
 import org.openelisglobal.eqa.valueholder.EQACompetencyEventType;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAPerformanceStatus;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.openelisglobal.qaevent.service.EqaScoreNceService;
@@ -39,6 +43,9 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
 
     @Autowired
     private EQARoundDAO eqaRoundDAO;
+
+    @Autowired
+    private AnalysisDAO analysisDAO;
 
     public EQAParticipantResultServiceImpl() {
         super(EQAParticipantResult.class);
@@ -205,6 +212,34 @@ public class EQAParticipantResultServiceImpl extends BaseObjectServiceImpl<EQAPa
             rows.add(dto);
         }
         return rows;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, String> sectionNamesByResultId(List<EQAParticipantResult> results) {
+        List<String> analysisIds = results.stream().map(EQAParticipantResult::getAnalysisId).filter(Objects::nonNull)
+                .map(String::valueOf).distinct().toList();
+        Map<String, String> byAnalysis = new LinkedHashMap<>();
+        for (Analysis analysis : analysisIds.isEmpty() ? List.<Analysis>of() : analysisDAO.get(analysisIds)) {
+            if (analysis.getTest() != null && analysis.getTest().getTestSection() != null) {
+                byAnalysis.put(analysis.getId(), analysis.getTest().getTestSection().getTestSectionName());
+            }
+        }
+
+        Map<Long, String> byResult = new LinkedHashMap<>();
+        for (EQAParticipantResult result : results) {
+            String section = result.getAnalysisId() == null ? null
+                    : byAnalysis.get(String.valueOf(result.getAnalysisId()));
+            if (section == null) {
+                EQAProgram scheme = result.getCycle() == null ? null : result.getCycle().getScheme();
+                section = scheme == null || scheme.getTestSection() == null ? null
+                        : scheme.getTestSection().getTestSectionName();
+            }
+            if (section != null) {
+                byResult.put(result.getId(), section);
+            }
+        }
+        return byResult;
     }
 
     private static Timestamp now() {

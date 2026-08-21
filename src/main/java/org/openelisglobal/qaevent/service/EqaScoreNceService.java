@@ -22,6 +22,13 @@ import org.openelisglobal.qaevent.valueholder.NcEvent;
  */
 public interface EqaScoreNceService {
 
+    /**
+     * Both EQA trigger sources carry this prefix, which is what the register's
+     * {@code ?source=eqa} deep link filters on — see
+     * {@code docs/eqa/nce-deep-links.md}.
+     */
+    String TRIGGER_SOURCE_PREFIX = "EQA_";
+
     /** Trigger source for an auto-created NCE, anchored on the scored result. */
     String TRIGGER_SOURCE_EQA_UNACCEPTABLE = "EQA_UNACCEPTABLE";
 
