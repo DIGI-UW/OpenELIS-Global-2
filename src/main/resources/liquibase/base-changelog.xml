@@ -114,12 +114,14 @@
   <!-- EQA V2.2 — OGC-610: automatic-submission retry bookkeeping (FR-V2.2-05) -->
   <include file="liquibase/qa/030-add-eqa-cycle-submission-retry.xml" />
 
-  <!-- EQA V2.5 T-24 — OGC-613: per-cycle participant roster; re-activates the
-       provider menu row qa/029 hid, now that its page exists -->
-  <include file="liquibase/qa/032-eqa-cycle-participant.xml" />
+  <!-- EQA V2 — OGC-934: pre-approved interpretive comments for the performance report -->
+  <include file="liquibase/qa/032-eqa-report-comments.xml" />
 
-  <!-- EQA V2.5 — OGC-613: the cycle wizard's distribution method. Slot 034, not
-       033: another open PR claimed 033 with ids qa-062/qa-063 while this was in
-       flight, so this moved to 034 with qa-064/qa-065. -->
+  <!-- EQA V2.5 — OGC-613: per-cycle participant roster; re-activates the provider
+       menu row qa/029 hid, now that its page exists. Slot 035: 032 went to the
+       report comments above and 033 to another open PR while this was in flight. -->
+  <include file="liquibase/qa/035-eqa-cycle-participant.xml" />
+
+  <!-- EQA V2.5 — OGC-613: the cycle wizard's distribution method (qa-064/065) -->
   <include file="liquibase/qa/034-eqa-cycle-distribution-method.xml" />
 </databaseChangeLog>

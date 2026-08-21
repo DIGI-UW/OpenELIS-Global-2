@@ -19,7 +19,7 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
 
-    <changeSet author="openelisglobal" id="qa-060-create-eqa-cycle-participant">
+    <changeSet author="openelisglobal" id="qa-066-create-eqa-cycle-participant">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="eqa_cycle_participant" schemaName="clinlims" />
@@ -94,7 +94,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="openelisglobal" id="qa-061-activate-eqa-provider-menu">
+    <changeSet author="openelisglobal" id="qa-067-activate-eqa-provider-menu">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_provider'

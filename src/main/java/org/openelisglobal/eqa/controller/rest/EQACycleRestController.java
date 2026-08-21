@@ -17,6 +17,7 @@ import org.openelisglobal.eqa.service.EQACycleService.PanelSampleRequest;
 import org.openelisglobal.eqa.service.EQACycleService.ProviderCycleRequest;
 import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
+import org.openelisglobal.eqa.service.EQAReportCommentService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
@@ -37,6 +38,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -66,16 +68,18 @@ public class EQACycleRestController extends BaseRestController {
     private final AnalysisService analysisService;
     private final ResultService resultService;
     private final EQAPerformanceReportPDFService performanceReportService;
+    private final EQAReportCommentService reportCommentService;
 
     public EQACycleRestController(EQACycleService cycleService, SampleEQAService sampleEQAService,
             SampleService sampleService, AnalysisService analysisService, ResultService resultService,
-            EQAPerformanceReportPDFService performanceReportService) {
+            EQAPerformanceReportPDFService performanceReportService, EQAReportCommentService reportCommentService) {
         this.cycleService = cycleService;
         this.sampleEQAService = sampleEQAService;
         this.sampleService = sampleService;
         this.analysisService = analysisService;
         this.resultService = resultService;
         this.performanceReportService = performanceReportService;
+        this.reportCommentService = reportCommentService;
     }
 
     /**
@@ -98,6 +102,69 @@ public class EQACycleRestController extends BaseRestController {
         String filename = "eqa-performance-report-cycle-" + cycleId + ".pdf";
         return ResponseEntity.ok().header("Content-Disposition", "inline; filename=\"" + filename + "\"")
                 .contentType(MediaType.APPLICATION_PDF).body(pdf);
+    }
+
+    /**
+     * OGC-934: the pre-approved comment library the picker offers. Maintained as a
+     * dictionary category, so an installation edits the wording without a release.
+     */
+    @GetMapping(value = "/report-comments", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> reportCommentLibrary() {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EQAReportCommentService.LibraryEntry entry : reportCommentService.getLibrary()) {
+            Map<String, Object> dto = new LinkedHashMap<>();
+            dto.put("id", entry.id());
+            dto.put("text", entry.text());
+            rows.add(dto);
+        }
+        return rows;
+    }
+
+    @GetMapping(value = "/cycles/{cycleId}/report-comments", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> reportComments(@PathVariable Long cycleId) {
+        return commentDtos(reportCommentService.getComments(cycleId));
+    }
+
+    /**
+     * Attaches library entries to the cycle's report. The body carries ids only —
+     * there is no text field to fill, so nothing but pre-approved wording can reach
+     * a signed report (FR-V2.3 interpretive comments, OGC-934).
+     */
+    @PostMapping(value = "/cycles/{cycleId}/report-comments", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public List<Map<String, Object>> attachReportComments(HttpServletRequest request, @PathVariable Long cycleId,
+            @RequestBody Map<String, Object> body) {
+        Object ids = body.get("commentIds");
+        if (!(ids instanceof List<?> list)) {
+            throw new IllegalArgumentException("commentIds is required");
+        }
+        List<String> commentIds = new ArrayList<>();
+        for (Object id : list) {
+            commentIds.add(String.valueOf(id));
+        }
+        return commentDtos(reportCommentService.attach(cycleId, commentIds, getSysUserId(request)));
+    }
+
+    @DeleteMapping(value = "/cycles/{cycleId}/report-comments/{commentId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    public Map<String, Object> detachReportComment(@PathVariable Long cycleId, @PathVariable String commentId) {
+        reportCommentService.detach(cycleId, commentId);
+        return Map.of("removed", commentId);
+    }
+
+    private List<Map<String, Object>> commentDtos(List<EQAReportCommentService.AttachedComment> comments) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EQAReportCommentService.AttachedComment comment : comments) {
+            Map<String, Object> dto = new LinkedHashMap<>();
+            dto.put("id", comment.id());
+            dto.put("libraryEntryId", comment.libraryEntryId());
+            dto.put("text", comment.text());
+            dto.put("attachedBy", comment.attachedBy());
+            dto.put("attachedAt", comment.attachedAt());
+            rows.add(dto);
+        }
+        return rows;
     }
 
     /**

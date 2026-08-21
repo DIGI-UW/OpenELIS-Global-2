@@ -18,6 +18,7 @@ import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import CycleStateBanner from "../../CycleStateBanner";
 import { fetchPrepStatus, fetchShipmentRows } from "./workbenchApi";
 import PrepWorkbench from "./PrepWorkbench";
+import ReportComments from "./ReportComments";
 import ShipmentWorkbench from "./ShipmentWorkbench";
 
 const breadcrumbs = (cycleId) => [
@@ -112,6 +113,7 @@ const ProviderWorkbenchPage = () => {
             >
               <Tab>{t("eqa.prep.tab", "Prep")}</Tab>
               <Tab>{t("eqa.shipment.tab", "Shipments")}</Tab>
+              <Tab>{t("eqa.report.comments.tab", "Report comments")}</Tab>
             </TabList>
             <TabPanels>
               <TabPanel>
@@ -131,6 +133,9 @@ const ProviderWorkbenchPage = () => {
                   onChanged={reload}
                   onNotice={setNotice}
                 />
+              </TabPanel>
+              <TabPanel>
+                <ReportComments cycleId={cycleId} onNotice={setNotice} />
               </TabPanel>
             </TabPanels>
           </Tabs>
