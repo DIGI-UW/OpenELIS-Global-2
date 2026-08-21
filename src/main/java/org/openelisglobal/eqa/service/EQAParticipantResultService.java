@@ -53,4 +53,15 @@ public interface EQAParticipantResultService extends BaseObjectService<EQAPartic
 
     /** Results for one cycle, optionally narrowed to one lab enrollment. */
     List<Map<String, Object>> getResultDtos(Long cycleId, Long labEnrollmentId);
+
+    /**
+     * The lab unit that ran each result, keyed by result id: taken from the linked
+     * analysis when the result came through standard result entry, falling back to
+     * the scheme's own section. One query for the whole list, not one per row.
+     *
+     * <p>
+     * A result whose section resolves nowhere is absent from the map — the caller
+     * decides what an unassigned section reads as.
+     */
+    Map<Long, String> sectionNamesByResultId(List<EQAParticipantResult> results);
 }

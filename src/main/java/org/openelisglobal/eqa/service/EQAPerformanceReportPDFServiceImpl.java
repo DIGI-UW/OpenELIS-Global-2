@@ -30,8 +30,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import org.apache.commons.validator.GenericValidator;
-import org.openelisglobal.analysis.dao.AnalysisDAO;
-import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.dao.AnalyteDAO;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
@@ -80,7 +78,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
     @Autowired
     private AnalyteDAO analyteDAO;
     @Autowired
-    private AnalysisDAO analysisDAO;
+    private EQAParticipantResultService participantResultService;
     @Autowired
     private SystemUserDAO systemUserDAO;
     @Autowired
@@ -155,7 +153,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         List<EQAParticipantResult> results = participantResultDAO.getAllMatching("cycle.id", cycleId).stream()
                 .filter(result -> result.getSubmissionStatus() != EQASubmissionStatus.DRAFT).toList();
 
-        Map<String, String> sections = sectionsByAnalysis(results);
+        Map<Long, String> sections = participantResultService.sectionNamesByResultId(results);
         Map<String, String> analytes = analyteNames(results);
         Map<String, String> analysts = analystNames(results);
         Map<Long, String> targets = revealedTargets(results);
@@ -168,7 +166,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
             String analyteKey = key(result.getAnalyteId());
             String analystKey = key(result.getAssignedAnalystId());
             rows.add(new Row(result.getRound() == null ? null : result.getRound().getRoundNumber(),
-                    sectionName(result, sections), analytes.getOrDefault(analyteKey, analyteKey),
+                    sections.get(result.getId()), analytes.getOrDefault(analyteKey, analyteKey),
                     result.getResultValue(), targets.get(result.getId()), result.getResultUnit(), result.getZScore(),
                     result.getPerformanceStatus(), nceNumbers.get(result.getId()),
                     analysts.getOrDefault(analystKey, analystKey),
@@ -395,36 +393,10 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
     }
 
     /**
-     * The lab unit that ran the analyte, taken from the linked analysis when the
-     * result came through standard result entry and falling back to the scheme's
-     * own section otherwise.
+     * One IN query per referenced table, not a lookup per row — as does
+     * {@link #analystNames}. An id that no longer resolves is simply absent from
+     * the map, so the caller's fallback decides what the cell reads.
      */
-    private String sectionName(EQAParticipantResult result, Map<String, String> sectionsByAnalysis) {
-        String fromAnalysis = sectionsByAnalysis.get(key(result.getAnalysisId()));
-        if (fromAnalysis != null) {
-            return fromAnalysis;
-        }
-        EQAProgram scheme = result.getCycle() == null ? null : result.getCycle().getScheme();
-        return scheme == null || scheme.getTestSection() == null ? null : scheme.getTestSection().getTestSectionName();
-    }
-
-    /**
-     * One IN query per referenced table, not a lookup per row — as do
-     * {@link #analyteNames} and {@link #analystNames}. An id that no longer
-     * resolves is simply absent from the map, so the caller's fallback decides what
-     * the cell reads.
-     */
-    private Map<String, String> sectionsByAnalysis(List<EQAParticipantResult> results) {
-        List<String> ids = idsOf(results, EQAParticipantResult::getAnalysisId);
-        Map<String, String> sections = new HashMap<>();
-        for (Analysis analysis : ids.isEmpty() ? List.<Analysis>of() : analysisDAO.get(ids)) {
-            if (analysis.getTest() != null && analysis.getTest().getTestSection() != null) {
-                sections.put(analysis.getId(), analysis.getTest().getTestSection().getTestSectionName());
-            }
-        }
-        return sections;
-    }
-
     private Map<String, String> analyteNames(List<EQAParticipantResult> results) {
         List<String> ids = idsOf(results, EQAParticipantResult::getAnalyteId);
         Map<String, String> names = new HashMap<>();
