@@ -247,6 +247,9 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
     private Population loadPopulation(NormalizedQuery query) {
         List<MicroCase> cases = caseDAO.getFinalizedBacteriologyByClosedAtRange(query.fromInclusive, query.toExclusive);
+        if (cases.isEmpty()) {
+            return new Population(List.of(), Map.of(), List.of(), Map.of(), Map.of());
+        }
         List<String> caseIds = cases.stream().map(MicroCase::getId).toList();
         List<String> sampleItemIds = cases.stream().map(MicroCase::getSampleItemId).filter(this::hasText).distinct()
                 .toList();
