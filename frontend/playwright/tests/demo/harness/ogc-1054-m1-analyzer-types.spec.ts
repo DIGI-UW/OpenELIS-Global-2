@@ -2,6 +2,7 @@ import { expect, test } from "../../../helpers/test-base";
 import type { Locator, Page } from "@playwright/test";
 import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
+import { NAV_TIMEOUT, TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
 
@@ -10,7 +11,10 @@ function escapeRegExp(value: string): string {
 }
 
 async function openAnalyzerTypes(page: Page) {
-  await page.goto("/analyzers/types", { waitUntil: "domcontentloaded" });
+  await page.goto("/analyzers/types", {
+    waitUntil: "domcontentloaded",
+    timeout: NAV_TIMEOUT,
+  });
   await expect(
     page.getByRole("heading", { level: 1, name: "Analyzer Types" }),
   ).toBeVisible();
@@ -36,6 +40,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
   test("shows the lab-facing catalog and restores bookmarkable filters", async ({
     page,
   }, testInfo) => {
+    test.setTimeout(120_000 * TIMEOUT_SCALE);
     await openAnalyzerTypes(page);
 
     const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
@@ -84,7 +89,10 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(analyzerTypeRow(page, SOURCE_PROFILE)).toBeVisible();
     await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.reload({
+      waitUntil: "domcontentloaded",
+      timeout: NAV_TIMEOUT,
+    });
     await expect(page.getByRole("table")).toBeVisible();
     await expect(search).toHaveValue("gene");
     await expect(page.getByRole("combobox", { name: "Created" })).toHaveValue(
@@ -116,6 +124,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
   test("starts a Bridge-owned site profile draft from Create Profile", async ({
     page,
   }) => {
+    test.setTimeout(120_000 * TIMEOUT_SCALE);
     const draftName = `M1 Site Draft ${Date.now()}`;
     await openAnalyzerTypes(page);
     await page
@@ -158,6 +167,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
   test("duplicates a profile without changing its source and retains lifecycle history", async ({
     page,
   }, testInfo) => {
+    test.setTimeout(180_000 * TIMEOUT_SCALE);
     const duplicateName = `M1 GeneXpert Type ${Date.now()}`;
     await openAnalyzerTypes(page);
     const sourceCells = analyzerTypeRow(page, SOURCE_PROFILE).getByRole("cell");

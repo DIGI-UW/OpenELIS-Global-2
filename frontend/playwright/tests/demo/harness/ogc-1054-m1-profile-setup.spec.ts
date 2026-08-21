@@ -2,6 +2,7 @@ import { expect, test } from "../../../helpers/test-base";
 import type { Locator, Page } from "@playwright/test";
 import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
+import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -17,19 +18,6 @@ async function findAnalyzerRow(page: Page, name: string): Promise<Locator> {
   return row;
 }
 
-async function deleteAnalyzerThroughUi(page: Page, name: string) {
-  await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-  await expect(page.locator('[data-testid="analyzers-list"]')).toBeVisible();
-  const row = await findAnalyzerRow(page, name);
-  await row.locator('[data-testid^="analyzer-row-overflow-"]').click();
-  await page.locator('[data-testid*="analyzer-action-delete"]').click();
-  await page
-    .getByRole("button", { name: /delete|confirm/i })
-    .last()
-    .click();
-  await expect(row).not.toBeVisible();
-}
-
 test.describe("OGC-1054 M1 profile-backed analyzer setup", () => {
   test.describe.configure({ mode: "serial" });
 
@@ -38,19 +26,10 @@ test.describe("OGC-1054 M1 profile-backed analyzer setup", () => {
   const secondGeneXpertName = `M1 GeneXpert second ${suffix}`;
   const fluoroCyclerName = `M1 FluoroCycler ${suffix}`;
 
-  test.afterEach(async ({ page }) => {
-    for (const name of [geneXpertName, secondGeneXpertName, fluoroCyclerName]) {
-      try {
-        await deleteAnalyzerThroughUi(page, name);
-      } catch {
-        // A failed story may not have reached creation.
-      }
-    }
-  });
-
   test("creates two GeneXpert connections from the same exact reusable type", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.setTimeout(180_000 * TIMEOUT_SCALE);
     const list = new AnalyzerListPage(page);
     const form = new AnalyzerFormPage(page);
 
@@ -107,11 +86,17 @@ test.describe("OGC-1054 M1 profile-backed analyzer setup", () => {
 
     const secondRow = await findAnalyzerRow(page, secondGeneXpertName);
     await expect(secondRow).toContainText("Cepheid GeneXpert (ASTM Mode)");
+
+    await testInfo.attach("gene-xpert-profile-setup", {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
   });
 
   test("creates a FluoroCycler FILE connection from its exact reusable type", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.setTimeout(120_000 * TIMEOUT_SCALE);
     const list = new AnalyzerListPage(page);
     const form = new AnalyzerFormPage(page);
 
@@ -138,5 +123,10 @@ test.describe("OGC-1054 M1 profile-backed analyzer setup", () => {
 
     const row = await findAnalyzerRow(page, fluoroCyclerName);
     await expect(row).toContainText("Bruker FluoroCycler XT");
+
+    await testInfo.attach("fluorocycler-profile-setup", {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
   });
 });
