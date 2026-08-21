@@ -108,6 +108,14 @@ interface MicrobiologyReleaseFixture {
   closedAt: number | string;
 }
 
+interface SampleTypeManagementResponse {
+  success: boolean;
+  data?: {
+    id: string;
+    whonetCode?: string;
+  };
+}
+
 async function getCsrfToken(page: Page): Promise<string> {
   const state = await page.context().storageState();
   for (const origin of state.origins) {
@@ -330,7 +338,36 @@ async function ensureReviewedAstIsolate(
 interface WhonetExportScenarioOptions {
   scenarioKey: string;
   patientOrigin?: string;
+  specimenWhonetCode?: string;
   unmappedSignificance?: string;
+}
+
+async function ensureSampleTypeWhonetCode(
+  page: Page,
+  sampleTypeId: string,
+  whonetCode: string,
+): Promise<void> {
+  const current = await requireJsonResponse<SampleTypeManagementResponse>(
+    "Load WHONET specimen mapping",
+    await page.request.get(`${API_PREFIX}/rest/sample-types/${sampleTypeId}`),
+  );
+  if (!current.success || !current.data) {
+    throw new Error("WHONET specimen mapping response is incomplete");
+  }
+  if (current.data.whonetCode === whonetCode) {
+    return;
+  }
+
+  const updated = await requireJsonResponse<SampleTypeManagementResponse>(
+    "Set WHONET specimen mapping",
+    await page.request.put(`${API_PREFIX}/rest/sample-types/${sampleTypeId}`, {
+      headers: { "X-CSRF-Token": await getCsrfToken(page) },
+      data: { whonetCode },
+    }),
+  );
+  if (!updated.success || updated.data?.whonetCode !== whonetCode) {
+    throw new Error("WHONET specimen mapping was not persisted");
+  }
 }
 
 async function seedMicrobiologyWhonetExportScenario(
@@ -338,6 +375,7 @@ async function seedMicrobiologyWhonetExportScenario(
   {
     scenarioKey,
     patientOrigin,
+    specimenWhonetCode,
     unmappedSignificance = "CLINICALLY_SIGNIFICANT",
   }: WhonetExportScenarioOptions,
 ): Promise<SeededMicrobiologyWhonetExport> {
@@ -360,6 +398,13 @@ async function seedMicrobiologyWhonetExportScenario(
     sampleTypeId: string;
     unmappedOrganismId: string;
   };
+  if (specimenWhonetCode) {
+    await ensureSampleTypeWhonetCode(
+      page,
+      reference.sampleTypeId,
+      specimenWhonetCode,
+    );
+  }
   const antibiotics = (
     await requireJsonResponse<MicrobiologyReferenceOption[]>(
       "Load M4 antibiotics",
@@ -478,6 +523,7 @@ export function seedMicrobiologyWhonetExportFilters(
   return seedMicrobiologyWhonetExportScenario(page, {
     scenarioKey: "playwright-r9-whonet-export-filters",
     patientOrigin: "INPATIENT",
+    specimenWhonetCode: "BLD",
     unmappedSignificance: "CONTAMINANT",
   });
 }
