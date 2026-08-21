@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
@@ -33,6 +34,7 @@ import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultItem;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
@@ -84,6 +86,10 @@ public class TestResultItem implements ResultItem, Serializable {
     @ValidDate(relative = DateRelation.PAST, acceptTime = true, groups = { LogbookResultsForm.LogbookResults.class })
     private String testDate;
 
+    private String collectionDate;
+
+    private String timeHolding;
+
     @ValidDate(relative = DateRelation.PAST, acceptTime = true, groups = { WorkplanForm.PrintWorkplan.class })
     private String receivedDate;
     /*
@@ -123,6 +129,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private String normalRange = "";
     private double lowerCritical;
     private double higherCritical;
+    private List<ComplianceEvaluation> complianceStatuses = Collections.emptyList();
 
     /**
      * OGC-1022 (R3, FR-L1) — NORMAL | ABNORMAL | CRITICAL | INVALID, computed
@@ -138,6 +145,10 @@ public class TestResultItem implements ResultItem, Serializable {
     private String criticalRange = "";
 
     private int significantDigits = 0;
+
+    private String expandedUncertainty;
+
+    private String coverageFactor;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String shadowResultValue;
@@ -304,6 +315,23 @@ public class TestResultItem implements ResultItem, Serializable {
 
     private String sampleItemExternalId;
 
+    /**
+     * Set when this row's analysis is anchored to a vector_pool rather than a
+     * sample_item. The frontend uses it (along with {@link #vectorPoolMemberCount})
+     * to cluster pool rows under a collapsible header.
+     */
+    private String vectorPoolId;
+
+    /**
+     * Number of organisms in the pool. Combined with the row's already-localized
+     * {@code sampleType} on the frontend to render a label like "Pool of N
+     * {animal}" via React Intl — server-side concatenation here would leak English
+     * into non-English locales.
+     */
+    private Integer vectorPoolMemberCount;
+
+    private String vectorPoolLabel;
+
     private String analysisStatusId;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
@@ -392,8 +420,48 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean isEqaSample = false;
     private String eqaPriority;
 
+    // QC profile metadata (null on client samples). Sourced from
+    // SampleItemQcProfile.
+    private String qcType;
+    private String parentSampleItemId;
+    // Latest QcEvaluation result for display ("PASS" / "FAIL" / null).
+    private String qcStatus;
+    private String qcDetail;
+
     private ReferralItem referralItem;
     private ResultFileForm resultFile;
+
+    public String getQcType() {
+        return qcType;
+    }
+
+    public void setQcType(String qcType) {
+        this.qcType = qcType;
+    }
+
+    public String getParentSampleItemId() {
+        return parentSampleItemId;
+    }
+
+    public void setParentSampleItemId(String parentSampleItemId) {
+        this.parentSampleItemId = parentSampleItemId;
+    }
+
+    public String getQcStatus() {
+        return qcStatus;
+    }
+
+    public void setQcStatus(String qcStatus) {
+        this.qcStatus = qcStatus;
+    }
+
+    public String getQcDetail() {
+        return qcDetail;
+    }
+
+    public void setQcDetail(String qcDetail) {
+        this.qcDetail = qcDetail;
+    }
 
     public String getConsiderRejectReason() {
         return considerRejectReason;
@@ -611,6 +679,14 @@ public class TestResultItem implements ResultItem, Serializable {
         this.higherCritical = higherCritical;
     }
 
+    public List<ComplianceEvaluation> getComplianceStatuses() {
+        return complianceStatuses;
+    }
+
+    public void setComplianceStatuses(List<ComplianceEvaluation> complianceStatuses) {
+        this.complianceStatuses = complianceStatuses != null ? complianceStatuses : Collections.emptyList();
+    }
+
     public String getReportable() {
         return reportable ? IActionConstants.YES : IActionConstants.NO;
     }
@@ -686,6 +762,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setTestDate(String testDate) {
         this.testDate = testDate;
+    }
+
+    public String getCollectionDate() {
+        return collectionDate;
+    }
+
+    public void setCollectionDate(String collectionDate) {
+        this.collectionDate = collectionDate;
+    }
+
+    public String getTimeHolding() {
+        return timeHolding;
+    }
+
+    public void setTimeHolding(String timeHolding) {
+        this.timeHolding = timeHolding;
     }
 
     public String getTestMethod() {
@@ -810,6 +902,30 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setSampleItemExternalId(String sampleItemExternalId) {
         this.sampleItemExternalId = sampleItemExternalId;
+    }
+
+    public String getVectorPoolId() {
+        return vectorPoolId;
+    }
+
+    public void setVectorPoolId(String vectorPoolId) {
+        this.vectorPoolId = vectorPoolId;
+    }
+
+    public Integer getVectorPoolMemberCount() {
+        return vectorPoolMemberCount;
+    }
+
+    public void setVectorPoolMemberCount(Integer vectorPoolMemberCount) {
+        this.vectorPoolMemberCount = vectorPoolMemberCount;
+    }
+
+    public String getVectorPoolLabel() {
+        return vectorPoolLabel;
+    }
+
+    public void setVectorPoolLabel(String vectorPoolLabel) {
+        this.vectorPoolLabel = vectorPoolLabel;
     }
 
     public void setAnalysisStatusId(String analysisStatusId) {
@@ -1169,6 +1285,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setSignificantDigits(int significantDigits) {
         this.significantDigits = significantDigits;
+    }
+
+    public String getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(String expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public String getCoverageFactor() {
+        return coverageFactor;
+    }
+
+    public void setCoverageFactor(String coverageFactor) {
+        this.coverageFactor = coverageFactor;
     }
 
     public boolean isServingAsTestGroupIdentifier() {

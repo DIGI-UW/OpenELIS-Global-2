@@ -13,6 +13,20 @@ public class DomainTest {
         assertEquals(Domain.CLINICAL, Domain.fromRaw("N"));
         assertEquals(Domain.ENVIRONMENTAL, Domain.fromRaw("E"));
         assertEquals(Domain.VECTOR, Domain.fromRaw("A"));
+        assertEquals(Domain.VECTOR, Domain.fromRaw("V"));
+    }
+
+    /**
+     * The vector sample-type CSVs ship {@code domain=V}. Before "V" was mapped,
+     * normalize() fell through to the CLINICAL default, so those rows were stored
+     * as CLINICAL: they leaked into clinical order entry while the vector endpoints
+     * returned nothing and every vector species/trap row was skipped.
+     */
+    @Test
+    public void fromRaw_mapsVectorShorthandV() {
+        assertEquals(Domain.VECTOR, Domain.fromRaw("V"));
+        assertEquals(Domain.VECTOR, Domain.fromRaw(" v "));
+        assertEquals("VECTOR", Domain.normalize("V"));
     }
 
     @Test

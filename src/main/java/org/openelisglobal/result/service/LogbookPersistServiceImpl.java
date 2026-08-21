@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -19,6 +20,7 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
+import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -29,6 +31,7 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
+import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +57,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     private ReferralResultService referralResultService;
     @Autowired
     private ReferralSetService referralSetService;
+    @Autowired
+    private QcEvaluationService qcEvaluationService;
+    @Autowired
+    private VectorDeconvolutionService vectorDeconvolutionService;
 
     @Override
     @Transactional
@@ -87,6 +94,11 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
                 resultInventoryService.insert(resultSet.testKit);
             }
             resultSet.result.setId(resultId);
+
+            qcEvaluationService.evaluateQc(resultSet.result);
+            if (resultSet.result.getQcEvaluation() != null) {
+                resultService.update(resultSet.result);
+            }
         }
 
         for (ReferralSet referralSet : actionDataSet.getSavableReferralSets()) {
@@ -97,6 +109,7 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
         for (ResultSet resultSet : actionDataSet.getModifiedResults()) {
             resultSet.result.setResultEvent(Event.RESULT);
+            qcEvaluationService.evaluateQc(resultSet.result);
             resultService.update(resultSet.result);
 
             if (resultSet.signature != null) {
@@ -128,10 +141,82 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
         setSampleStatus(actionDataSet, sysUserId);
 
+        evaluateVectorResults(actionDataSet, sysUserId);
+
+        advanceReferralsForManualEntry(actionDataSet, sysUserId);
+
         for (IResultUpdate updater : updaters) {
             updater.transactionalUpdate(actionDataSet);
         }
         return reflexAnalysises;
+    }
+
+    /**
+     * OGC-799 Manual Entry hook: when a Result is saved against an Analysis whose
+     * Referral is still Outstanding, advance the referral to COMPLETED and set its
+     * manually_entered flag so the row routes from Outstanding → History. Only the
+     * referral's own bookkeeping is touched — the Analysis status stays under the
+     * Result Validation workflow's control.
+     *
+     * <p>
+     * {@code markReferralCompletedFromManualEntry} joins this transaction rather
+     * than opening its own: {@code persistDataSet} has already flushed the Analysis
+     * updates above and holds those row locks, so a second connection writing the
+     * same rows would block indefinitely. The per-referral catch keeps an expected
+     * no-op or a FHIR-sync problem from aborting the result save; a genuine DB
+     * failure inside the joined transaction still rolls the whole save back, which
+     * is the correct outcome once both writes share one transaction.
+     */
+    private void advanceReferralsForManualEntry(ResultsUpdateDataSet actionDataSet, String sysUserId) {
+        Set<String> analysisIds = new HashSet<>();
+        for (ResultSet rs : actionDataSet.getNewResults()) {
+            collectAnalysisId(rs, analysisIds);
+        }
+        for (ResultSet rs : actionDataSet.getModifiedResults()) {
+            collectAnalysisId(rs, analysisIds);
+        }
+        for (String analysisId : analysisIds) {
+            try {
+                Referral referral = referralService.getReferralByAnalysisId(analysisId);
+                if (referral != null && referral.getId() != null) {
+                    referralService.markReferralCompletedFromManualEntry(referral.getId(), sysUserId);
+                }
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "advanceReferralsForManualEntry",
+                        "failed to advance referral for analysis " + analysisId);
+                LogEvent.logError(e);
+            }
+        }
+    }
+
+    private void collectAnalysisId(ResultSet rs, Set<String> analysisIds) {
+        if (rs != null && rs.result != null && rs.result.getAnalysis() != null
+                && rs.result.getAnalysis().getId() != null) {
+            analysisIds.add(rs.result.getAnalysis().getId());
+        }
+    }
+
+    private void evaluateVectorResults(ResultsUpdateDataSet actionDataSet, String sysUserId) {
+        Set<ResultSet> evaluated = new HashSet<>();
+        evaluated.addAll(actionDataSet.getNewResults());
+        evaluated.addAll(actionDataSet.getModifiedResults());
+        for (ResultSet resultSet : evaluated) {
+            if (resultSet == null || resultSet.result == null) {
+                continue;
+            }
+            org.openelisglobal.analysis.valueholder.Analysis analysis = resultSet.result.getAnalysis();
+            if (analysis == null || analysis.getVectorPoolId() == null || analysis.getVectorPoolId().isBlank()) {
+                continue;
+            }
+            try {
+                Long poolId = Long.valueOf(analysis.getVectorPoolId());
+                vectorDeconvolutionService.evaluateResultEntered(poolId, sysUserId);
+            } catch (NumberFormatException e) {
+                // pool id not numeric — skip silently
+            }
+        }
+        // Completion is now triggered by confirmResultForAllMembers(), not by result
+        // entry — so evaluateChildResultsForCompletion is no longer called here.
     }
 
     private void saveReferralsWithRequiredObjects(ReferralSet referralSet, String sysUserId) {

@@ -21,7 +21,7 @@ import {
   putToOpenElisServer,
 } from "../../../utils/Utils";
 
-// Mirrors the Test Catalog Editor's Terminology UX (Source/Code/Relationship,
+// Mirrors the Test Catalogue Editor's Terminology UX (Source/Code/Relationship,
 // inline edit, draft-row add). Persists through
 // `GET/PUT /rest/sample-types/{id}/terminology`.
 const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL", "WHONET"];

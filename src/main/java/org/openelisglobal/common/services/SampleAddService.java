@@ -98,6 +98,17 @@ public class SampleAddService {
         try {
             Document sampleDom = DocumentHelper.parseText(xml);
 
+            String orderRequiredBy = sampleDom.getRootElement().attributeValue("requiredBy");
+            if (!GenericValidator.isBlankOrNull(orderRequiredBy)) {
+                try {
+                    sample.setRequiredBy(
+                            DateUtil.convertStringDateToTimestampWithPatternNoLocale(orderRequiredBy, "yyyy-MM-dd"));
+                } catch (Exception e) {
+                    LogEvent.logError("SampleAddService", "createSampleTestCollection",
+                            "Failed to parse requiredBy=" + orderRequiredBy + ": " + e.getMessage());
+                }
+            }
+
             for (@SuppressWarnings("rawtypes")
             Iterator i = sampleDom.getRootElement().elementIterator("sample"); i.hasNext();) {
                 sampleItemIdIndex++;
@@ -143,7 +154,11 @@ public class SampleAddService {
                 SampleItem item = new SampleItem();
                 item.setSysUserId(currentUserId);
                 item.setSample(sample);
-                item.setTypeOfSample(typeOfSampleService.getTypeOfSampleById(sampleItem.attributeValue("sampleID")));
+                String typeOfSampleId = sampleItem.attributeValue("typeId");
+                if (GenericValidator.isBlankOrNull(typeOfSampleId)) {
+                    typeOfSampleId = sampleItem.attributeValue("sampleID");
+                }
+                item.setTypeOfSample(typeOfSampleService.getTypeOfSampleById(typeOfSampleId));
                 item.setSortOrder(Integer.toString(sampleItemIdIndex));
                 if (rejected) {
                     item.setStatusId(
@@ -156,6 +171,14 @@ public class SampleAddService {
                 item.setCollectionMethod(sampleItem.attributeValue("collectionMethod"));
                 item.setSampleTemperature(sampleItem.attributeValue("sampleTemperature"));
                 item.setSpecimenOrigin(sampleItem.attributeValue("specimenOrigin"));
+                item.setContainer(sampleItem.attributeValue("container"));
+                item.setLocationDetails(sampleItem.attributeValue("locationDetails"));
+                item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
+                item.setGpsLongitude(sampleItem.attributeValue("gpsLongitude"));
+                item.setLabPerformedSampling(Boolean.parseBoolean(sampleItem.attributeValue("labPerformedSampling")));
+                // Vector collection site stamped at intake (order-level site → per-item
+                // location) so the surveillance dashboard groups by site immediately.
+                item.setCollectionLocationId(sampleItem.attributeValue("collectionLocationId"));
 
                 String receivedDateStr = sampleItem.attributeValue("receivedDate");
                 String receivedTimeStr = sampleItem.attributeValue("receivedTime");
@@ -218,6 +241,11 @@ public class SampleAddService {
                         storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude, gpsLongitude,
                         gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
                 stc.existingSampleItemId = existingSampleItemId;
+
+                stc.qcType = sampleItem.attributeValue("qcType");
+                stc.qcParentSampleIndex = sampleItem.attributeValue("qcParentSampleIndex");
+                stc.qcExpectedValue = sampleItem.attributeValue("qcExpectedValue");
+
                 sampleItemsTests.add(stc);
             }
         } catch (DocumentException e) {
@@ -353,6 +381,12 @@ public class SampleAddService {
 
         // Existing sample item ID - for updates, identifies which sample_item to update
         public String existingSampleItemId;
+
+        // QC metadata (OGC-554) - parsed from sample XML for SampleItemQcProfile
+        // creation
+        public String qcType;
+        public String qcParentSampleIndex;
+        public String qcExpectedValue;
 
         public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
                 List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,

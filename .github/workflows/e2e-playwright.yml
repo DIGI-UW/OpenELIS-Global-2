@@ -67,7 +67,18 @@ jobs:
           # NOTE: Do NOT add -Dmaven.test.skip=true here — the root build must
           # compile test classes so maven-jar-plugin produces the test-jar
           # (openelisglobal:jar:tests) required by GenericASTM/File/HL7 plugins.
-          mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
+          #
+          # The version is pinned to the one the plugins submodule asks for.
+          # plugins/pom.xml depends on org.openelisglobal:openelisglobal at a
+          # literal 3.2.1.3 — it lives in another repository, so the coupling has
+          # to be satisfied from this side. Only fix.version used to be pinned,
+          # which quietly relied on state.version staying 1; bumping the project
+          # to 3.2.2.0 then installed 3.2.2.3 and the plugin build could not
+          # resolve its dependency. Every component the plugins pin names is
+          # pinned here, so bumping the project version cannot break it again.
+          # Raise these only together with that dependency in the plugins repo.
+          mvn clean install -DskipTests -Dspotless.check.skip=true \
+            -Dmajor.version=3 -Dminor.version=2 -Dstate.version=1 -Dfix.version=3
 
       - name: Build plugins
         run: mvn clean install -DskipTests -Dmaven.test.skip=true

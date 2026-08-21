@@ -3,10 +3,7 @@ import { Button, TextInput } from "@carbon/react";
 import { Search, Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import useLocationPicker from "./useLocationPicker";
-import {
-  selectionToHierarchicalPath,
-  positionToCoordinate,
-} from "./locationSelectionMapper";
+import { selectionToHierarchicalPath } from "./locationSelectionMapper";
 import { searchResultToReplaceAction } from "./searchResultToAction";
 import useLatestCallback from "./useLatestCallback";
 import SearchField from "./components/SearchField";
@@ -35,6 +32,7 @@ export default function LocationPickerInline({
   initialSelection,
   initialPosition,
   onChange,
+  allowCreate = true,
 }) {
   const intl = useIntl();
   const [state, dispatch] = useLocationPicker(
@@ -74,14 +72,13 @@ export default function LocationPickerInline({
   };
 
   const summary = selectionToHierarchicalPath(state.selection);
-  const positionValue = positionToCoordinate(state.position);
 
   return (
     <div className="storage-location-picker-inline">
       {summary && (
         <div className="storage-location-picker-inline-summary">{summary}</div>
       )}
-      {state.mode === "search" ? (
+      {state.mode === "search" || !allowCreate ? (
         <>
           <SearchField
             query={state.searchQuery}
@@ -95,17 +92,19 @@ export default function LocationPickerInline({
             onSelect={handleSearchSelect}
             selectedSelection={state.selection}
           />
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={Add}
-            onClick={() => dispatch({ type: "SET_MODE", mode: "create" })}
-          >
-            {intl.formatMessage({
-              id: "storage.picker.createNewLocation",
-              defaultMessage: "Create new location",
-            })}
-          </Button>
+          {allowCreate && (
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={Add}
+              onClick={() => dispatch({ type: "SET_MODE", mode: "create" })}
+            >
+              {intl.formatMessage({
+                id: "storage.picker.createNewLocation",
+                defaultMessage: "Create new location",
+              })}
+            </Button>
+          )}
         </>
       ) : (
         <>
@@ -123,22 +122,6 @@ export default function LocationPickerInline({
           </Button>
         </>
       )}
-      <TextInput
-        id="storage-location-picker-inline-position"
-        labelText={intl.formatMessage({
-          id: "storage.picker.position.optional",
-          defaultMessage: "Position (optional)",
-        })}
-        value={positionValue}
-        onChange={(e) =>
-          dispatch({
-            type: "SET_POSITION",
-            position: e.target.value
-              ? { mode: "text", value: e.target.value }
-              : null,
-          })
-        }
-      />
     </div>
   );
 }

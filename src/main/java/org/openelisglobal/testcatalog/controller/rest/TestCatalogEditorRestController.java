@@ -1933,6 +1933,31 @@ public class TestCatalogEditorRestController {
         return resp;
     }
 
+    /**
+     * The localization records behind a panel's name, for the editor's Localization
+     * section.
+     *
+     * <p>
+     * Same bridge as a test's: a panel already FK-links to a row in the generic
+     * localization tables, so this hands back the backing id and the UI reads and
+     * writes per-locale values through /rest/localizations/{id}. A panel carries
+     * one localized field — its name — where a test carries two.
+     */
+    @GetMapping(value = "/panels/{panelId}/localization", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LocalizationRefs> getPanelLocalizationRefs(@PathVariable String panelId) {
+        Panel panel = findPanel(panelId);
+        if (panel == null) {
+            return ResponseEntity.notFound().build();
+        }
+        LocalizationRefs refs = new LocalizationRefs();
+        refs.testId = panelId;
+        Localization localization = panel.getLocalization();
+        if (localization != null && localization.getId() != null) {
+            refs.fields.add(new LocalizationFieldRef("name", localization.getId()));
+        }
+        return ResponseEntity.ok(refs);
+    }
+
     @GetMapping(value = "/panels/{panelId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PanelOption> getPanel(@PathVariable String panelId) {
         Panel panel = findPanel(panelId);

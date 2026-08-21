@@ -123,8 +123,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "initialSampleConditionList", "sampleXML",
             //
             "sampleOrderItems.newRequesterName", "sampleOrderItems.modified", "sampleOrderItems.sampleId",
-            "sampleOrderItems.labNo", "sampleOrderItems.requestDate", "sampleOrderItems.receivedDateForDisplay",
-            "sampleOrderItems.receivedTime", "sampleOrderItems.nextVisitDate", "sampleOrderItems.requesterSampleID",
+            "sampleOrderItems.labNo", "sampleOrderItems.requiredBy", "sampleOrderItems.requestDate",
+            "sampleOrderItems.receivedDateForDisplay", "sampleOrderItems.receivedTime",
+            "sampleOrderItems.nextVisitDate", "sampleOrderItems.requesterSampleID",
             "sampleOrderItems.referringPatientNumber", "sampleOrderItems.referringSiteId",
             "referringSiteDepartmentName", "sampleOrderItems.referringSiteDepartmentId",
             "sampleOrderItems.referringSiteName", "sampleOrderItems.referringSiteCode", "sampleOrderItems.program",
@@ -144,8 +145,13 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "referralItems*.referredResultType", "referralItems*.modified", "referralItems*.inLabResultId",
             "referralItems*.referralReasonId", "referralItems*.referrer", "referralItems*.referredInstituteId",
             "referralItems*.referredSendDate", "referralItems*.referredTestId", "referralItems*.referredReportDate",
-            "referralItems*.note", "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId",
-            "orderEntryOnly" };
+            "referralItems*.note",
+            // S-14 / OGC-624 subcontract metadata (per-referral)
+            "referralItems*.agreementReference", "referralItems*.handoffDatetime", "referralItems*.expectedReturnDate",
+            "referralItems*.cocContactName", "referralItems*.cocContactPhone", "referralItems*.cocContactEmail",
+            "referralItems*.subcontractNotes",
+            //
+            "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId", "orderEntryOnly" };
 
     @Autowired
     private SamplePatientEntryFormValidator formValidator;
@@ -262,6 +268,17 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // workflow
         SampleOrderItem sampleOrder = form.getSampleOrderItems();
         String workflowType = sampleOrder != null ? sampleOrder.getEnvironmentalFieldAsString("workflowType") : null;
+        if (logger.isDebugEnabled()) {
+            logger.debug(
+                    "SamplePatientEntry save: workflowType={} environmentalFields={} referringSiteId={} "
+                            + "referringSiteName={} requestorPersonId={} requestorFirstName={} requestorLastName={}",
+                    workflowType, sampleOrder != null ? sampleOrder.getEnvironmentalFields() : null,
+                    sampleOrder != null ? sampleOrder.getReferringSiteId() : null,
+                    sampleOrder != null ? sampleOrder.getReferringSiteName() : null,
+                    sampleOrder != null ? sampleOrder.getRequestorPersonId() : null,
+                    sampleOrder != null ? sampleOrder.getRequestorFirstName() : null,
+                    sampleOrder != null ? sampleOrder.getRequestorLastName() : null);
+        }
 
         formValidator.validate(form, result);
 
@@ -270,23 +287,21 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // Environmental samples don't require patient data (gender, nationalId, etc.)
         if (result.hasErrors()) {
             boolean hasNonPatientErrors = true;
-            if ("environmental".equals(workflowType)) {
+            if ("environmental".equals(workflowType) || "vector".equals(workflowType)) {
                 // OGC-744 follow-up: the new @NotNull on patientProperties (added in this
                 // PR) produces a FieldError whose field name is exactly "patientProperties"
                 // — the previous startsWith("patientProperties.") filter required a dot
                 // and let the bare top-level error fall through, breaking environmental
                 // orders that legitimately omit patient data. Match both forms.
                 List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
-                        .filter(error -> !"patientProperties".equals(error.getField())
-                                && !error.getField().startsWith("patientProperties."))
-                        .collect(Collectors.toList());
+                        .filter(error -> !isPatientFieldError(error)).collect(Collectors.toList());
                 hasNonPatientErrors = !nonPatientErrors.isEmpty();
             }
 
             if (hasNonPatientErrors) {
                 saveErrors(result);
                 logger.warn("SamplePatientEntry 400 (formValidator): {}", result.getAllErrors());
-                return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed"));
+                return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed", workflowType));
             }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
@@ -320,8 +335,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
 
-        // OGC-356: For environmental workflow, don't save patient data
-        if ("environmental".equals(workflowType)) {
+        // OGC-356: For environmental/vector workflow, don't save patient data
+        if ("environmental".equals(workflowType) || "vector".equals(workflowType)) {
             updateData.setSavePatient(false);
             updateData.setPatientErrors(new BaseErrors());
         }
@@ -330,6 +345,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         updateData.setReferringId(sampleOrder.getExternalOrderNumber());
         updateData.setPriority(sampleOrder.getPriority());
         updateData.initProvider(sampleOrder);
+        updateData.initRequestorContact(sampleOrder);
 
         // initSampleData MUST be called before initProgramQuestions so that the sample
         // object is loaded (for updates) before we try to load the existing
@@ -362,22 +378,22 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // They will be added in a later step (Collect Sample)
         boolean requireSampleItems = !form.isOrderEntryOnly();
 
-        updateData.validateSample(result, requireSampleItems);
+        updateData.validateSample(result, requireSampleItems, sampleOrder, workflowType);
 
-        // OGC-356: For environmental workflow, ignore patient-related validation errors
-        // Environmental samples don't require patient data (gender, nationalId, etc.)
+        // OGC-356: For environmental/vector workflow, ignore patient-related validation
+        // errors
         boolean hasNonPatientErrors = result.hasErrors();
-        if (hasNonPatientErrors && "environmental".equals(workflowType)) {
+        if (hasNonPatientErrors && ("environmental".equals(workflowType) || "vector".equals(workflowType))) {
             // Check if all errors are patient-related
             List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
-                    .filter(error -> !error.getField().startsWith("patientProperties.")).collect(Collectors.toList());
+                    .filter(error -> !isPatientFieldError(error)).collect(Collectors.toList());
             hasNonPatientErrors = !nonPatientErrors.isEmpty();
         }
 
         if (hasNonPatientErrors) {
             saveErrors(result);
             logger.warn("SamplePatientEntry 400 (validateSample): {}", result.getAllErrors());
-            return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed"));
+            return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed", workflowType));
         }
 
         // OGC-584: track persistence failure so we can return a proper HTTP
@@ -385,6 +401,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // reliable because the environmental-workflow path above intentionally
         // skips patient-field errors while leaving them in the BindingResult.
         boolean persistFailed = false;
+        boolean persistRejected = false;
         // Captures the actual failure message (e.g. storage-position-occupied)
         // when persistData rolls back, so we can return it instead of a
         // generic "Failed to save order" / "Transaction silently rolled
@@ -446,6 +463,11 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             logger.error("SamplePatientEntry errors: {}", result.toString());
             persistErrorMessage = rootCauseMessage(e);
             persistFailed = true;
+        } catch (IllegalArgumentException e) {
+            logger.warn("Order save rejected (validation) for labNo={}: {}", sampleOrder.getLabNo(), e.getMessage());
+            persistErrorMessage = e.getMessage();
+            persistRejected = true;
+            persistFailed = true;
         } catch (Exception e) {
             logger.error("Unexpected error saving order for labNo={}", sampleOrder.getLabNo(), e);
             persistErrorMessage = rootCauseMessage(e);
@@ -493,13 +515,13 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // Prefer the captured root-cause message (e.g. "Position Box A is
         // already occupied...") over the generic BindingResult fallback.
         if (persistFailed) {
+            // Validation rejection → 400. Server fault → 500.
+            HttpStatus status = persistRejected ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR;
             if (StringUtils.isNotBlank(persistErrorMessage)
                     && !persistErrorMessage.startsWith("Transaction silently rolled back")) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(Map.of("error", persistErrorMessage));
+                return ResponseEntity.status(status).body(Map.of("error", persistErrorMessage));
             }
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(buildErrorBody(result, "Failed to save order"));
+            return ResponseEntity.status(status).body(buildErrorBody(result, "Failed to save order", workflowType));
         }
 
         // Belt-and-suspenders: verify the row actually made it to the DB. Guards
@@ -548,7 +570,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         }
         form.getSampleOrderItems().setExternalOrderNumber(externalOrderNumber);
         if (StringUtils.isNotBlank(externalOrderNumber)) {
-            ElectronicOrder eOrder = electronicOrderService.getElectronicOrdersByExternalId(externalOrderNumber).get(0);
+            List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(externalOrderNumber);
+            ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(0);
             if (eOrder != null) {
                 form.getSampleOrderItems().setPriority(eOrder.getPriority());
                 Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
@@ -671,20 +694,41 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
      * human-readable `error` plus the per-field list — kept separate from the form
      * (success path) to avoid mixing concerns.
      */
+    // True for FieldErrors on the patient sub-form (the bare "patientProperties"
+    // top-level error or any "patientProperties.*" field). Environmental/vector
+    // orders carry no patient, so these are filtered from both the pass/fail
+    // decision and the error body surfaced to the client.
+    private static boolean isPatientFieldError(org.springframework.validation.FieldError fe) {
+        return "patientProperties".equals(fe.getField()) || fe.getField().startsWith("patientProperties.");
+    }
+
     private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage) {
-        org.springframework.validation.FieldError firstFe = result.getFieldError();
+        return buildErrorBody(result, fallbackMessage, null);
+    }
+
+    private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage,
+            String workflowType) {
+        boolean dropPatientErrors = "environmental".equals(workflowType) || "vector".equals(workflowType);
+        // The field errors actually surfaced to the client. For environmental/vector
+        // drop patient-form errors so the reported message reflects the real cause
+        // (e.g. missing requester) rather than a spurious "patientProperties.*" that
+        // the pass/fail logic already ignored.
+        List<org.springframework.validation.FieldError> fieldErrors = result.getFieldErrors().stream()
+                .filter(fe -> !dropPatientErrors || !isPatientFieldError(fe)).collect(Collectors.toList());
+
+        org.springframework.validation.FieldError firstFe = fieldErrors.isEmpty() ? null : fieldErrors.get(0);
         String message;
         if (firstFe != null) {
             message = firstFe.getField() + ": "
                     + (firstFe.getDefaultMessage() != null ? firstFe.getDefaultMessage() : "invalid value");
-        } else if (!result.getAllErrors().isEmpty() && result.getAllErrors().get(0).getDefaultMessage() != null) {
-            message = result.getAllErrors().get(0).getDefaultMessage();
+        } else if (!result.getGlobalErrors().isEmpty() && result.getGlobalErrors().get(0).getDefaultMessage() != null) {
+            message = result.getGlobalErrors().get(0).getDefaultMessage();
         } else {
             message = fallbackMessage;
         }
         Map<String, Object> body = new java.util.HashMap<>();
         body.put("error", message);
-        body.put("fieldErrors", result.getFieldErrors().stream().map(fe -> {
+        body.put("fieldErrors", fieldErrors.stream().map(fe -> {
             Map<String, String> entry = new java.util.HashMap<>();
             entry.put("field", fe.getField());
             entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");

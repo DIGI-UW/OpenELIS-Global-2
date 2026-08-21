@@ -102,6 +102,13 @@ public abstract class ConfigurationProperties {
         restrictFreeTextProviderEntry("restrictFreeTextProviderEntry", "text"), // If true then a user cannot enter new
         // providers during sample entry and must choose
         // from list provided
+        restrictFreeTextRequestorEntry("restrictFreeTextRequestorEntry", "text"), // if true then a user
+        // cannot enter new Environmental/Vector Requestor contacts during
+        // sample entry and must choose from the existing requestor_contact
+        // list provided
+        restrictFreeTextSampSiteEntry("restrictFreeTextSampSiteEntry", "text"), // if true then a user
+        // cannot enter new Vector/Environmental Sampling Sites during sample
+        // entry and must choose from the existing sampling site list provided
         autoFillTechNameBox("autoFillTechNameBox", "text"), // If true a box will be provided to auto-fill technicians
                                                             // name for
         // all results on page
@@ -301,7 +308,19 @@ public abstract class ConfigurationProperties {
                                                                      // "Environmental", or "Both"
         ELECTRONIC_SIGNATURE_ENABLED("electronicSignatureEnabled", "text"), // 21 CFR Part 11 e-signatures
         ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"), // signing session inactivity timeout
+
+        // S-09 (OGC-580) Sample Acceptance Checklist — per-domain enforcement
+        // (MANDATORY/OPTIONAL/OFF, default OPTIONAL)
+        // dbName capped at 32 chars (site_information.name is varchar(32))
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_CLINICAL("sampleAcceptCheck.clinical", "text"),
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL("sampleAcceptCheck.environmental", "text"),
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR("sampleAcceptCheck.vector", "text"),
+
         RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"), // OGC-1020 R1: unified /Results worklist
+        // When true the UI layers translation files mounted at /translation over
+        // its bundled ones, so a deployment can reword any string without a
+        // source change or a frontend rebuild.
+        OVERRIDE_DEFAULT_TRANSLATION("overrideDefaultTranslation", "text"),
         REQUESTER_REQUIRED("requesterRequired", "text");
 
         // visible on

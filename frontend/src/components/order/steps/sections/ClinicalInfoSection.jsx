@@ -81,6 +81,12 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
           defaultMessage="Clinical Information"
         />
       </h4>
+      <p className="helper-text">
+        <FormattedMessage
+          id="order.clinicalInfo.helper"
+          defaultMessage="Optional context to guide test selection and reporting — not recorded as a confirmed diagnosis."
+        />
+      </p>
 
       <Grid>
         <Column lg={8} md={4} sm={4}>
@@ -96,7 +102,12 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
             onChange={handleDiagnosisChange}
             placeholder={intl.formatMessage({
               id: "order.diagnosis.placeholder",
-              defaultMessage: "Enter provisional diagnosis...",
+              defaultMessage: "Enter diagnosis or clinical notes",
+            })}
+            helperText={intl.formatMessage({
+              id: "order.diagnosis.helper",
+              defaultMessage:
+                "Working diagnosis — guides test selection. Not recorded as a confirmed diagnosis.",
             })}
             disabled={isReadOnly}
           />
@@ -111,6 +122,10 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
             })}
             value={orderData?.sampleOrderItems?.paymentOptionSelection || ""}
             onChange={handlePaymentStatusChange}
+            helperText={intl.formatMessage({
+              id: "order.paymentStatus.helper",
+              defaultMessage: "How payment will be handled for this order.",
+            })}
             disabled={isReadOnly}
           >
             <SelectItem key="" value="" text="" />

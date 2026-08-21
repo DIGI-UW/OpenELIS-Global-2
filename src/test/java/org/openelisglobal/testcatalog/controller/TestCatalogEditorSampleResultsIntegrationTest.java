@@ -724,6 +724,11 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     public void listTests_appendsSampleTypeToTheName() {
         jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (?, ?, ?)", 952060L,
                 SAMPLE_TYPE_ID, TEST_ID);
+        // The test-id→sample-type and sample-type-id→sample-type maps are lazily
+        // built and cached process-wide; an earlier test may have populated them
+        // before this test's sample type / link existed, so the cached lookup
+        // returns a null element for the new id. Rebuild both after inserting.
+        typeOfSampleService.clearCache();
 
         TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null,
                 "SampleResultsIT", false, 1, 25);
