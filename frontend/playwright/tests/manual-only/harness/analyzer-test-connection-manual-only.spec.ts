@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
+import { cleanupAnalyzerByName } from "../../../helpers/cleanup-analyzer";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
@@ -23,19 +24,6 @@ test.describe("Real GeneXpert Test Connection (Manual Only)", () => {
   const analyzerName = `E2E-GeneXpert-Real-${uniqueSuffix}`;
   let createdAnalyzerId: string;
 
-  test.afterAll(async ({ request }) => {
-    if (process.env.SKIP_CLEANUP) return;
-    if (createdAnalyzerId) {
-      try {
-        await request.post(
-          `/rest/analyzer/analyzers/${createdAnalyzerId}/delete`,
-        );
-      } catch {
-        // Best effort cleanup.
-      }
-    }
-  });
-
   test("creates analyzer pointing to real GeneXpert VM", async ({ page }) => {
     const list = new AnalyzerListPage(page);
     const form = new AnalyzerFormPage(page);
@@ -47,15 +35,13 @@ test.describe("Real GeneXpert Test Connection (Manual Only)", () => {
 
     await form.fillName(analyzerName);
 
-    await form.selectPluginType("Generic ASTM");
-
-    await form.selectType("Molecular");
+    await form.selectProfile("Cepheid GeneXpert (ASTM Mode)");
     await form.fillIpAddress(GENEXPERT_HOST!);
     await form.fillPort(GENEXPERT_PORT);
 
     await form.save();
     await form.expectSuccessNotification();
-    await expect(form.modal).not.toBeVisible();
+    await expect(form.surface).not.toBeVisible();
 
     await list.goto();
     await list.expectLoaded();
@@ -113,5 +99,9 @@ test.describe("Real GeneXpert Test Connection (Manual Only)", () => {
     );
     await closeButton.click();
     await expect(modal).not.toBeVisible();
+
+    if (!process.env.SKIP_CLEANUP) {
+      await cleanupAnalyzerByName(page, analyzerName);
+    }
   });
 });

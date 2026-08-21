@@ -33,11 +33,20 @@ assert_harness_project_has_specs() {
   local project="$2"
   local spec_dir
 
+  if [[ "$project" == "harness-demo-video" ]]; then
+    local final_mvp_spec="$repo_root/frontend/playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts"
+    if [[ ! -f "$final_mvp_spec" ]]; then
+      echo "ERROR: project '$project' has no final analyzer MVP demo spec" >&2
+      return 2
+    fi
+    return
+  fi
+
   case "$project" in
     harness-foundational)
       spec_dir="$repo_root/frontend/playwright/tests/foundational/harness"
       ;;
-    harness-demo|harness-demo-video)
+    harness-demo)
       spec_dir="$repo_root/frontend/playwright/tests/demo/harness"
       ;;
     *)

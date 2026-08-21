@@ -37,7 +37,8 @@ public class AnalyzerSiteBindingLiquibaseTest {
         assertEquals(Set.of("analyzer_site_binding", "analyzer_site_binding_revision", "analyzer_site_binding_test",
                 "analyzer_site_binding_result"), attributes(elements(migration, "createTable"), "tableName"));
 
-        Element analyzerColumns = elements(migration, "addColumn").stream()
+        Element referenceChange = changeSet(migration, "OGC-1054-analyzer-site-binding-reference");
+        Element analyzerColumns = elements(referenceChange, "addColumn").stream()
                 .filter(element -> "analyzer".equals(element.getAttribute("tableName"))).findFirst().orElseThrow();
         assertEquals(Set.of("site_binding_revision_id"), childColumnNames(analyzerColumns));
 
@@ -51,6 +52,16 @@ public class AnalyzerSiteBindingLiquibaseTest {
         assertTrue(foreignKeys.contains("fk_analyzer_site_binding_test_revision"));
         assertTrue(foreignKeys.contains("fk_analyzer_site_binding_result_revision"));
         assertTrue(foreignKeys.contains("fk_analyzer_site_binding_analyzer_revision"));
+    }
+
+    @Test
+    public void migrationRemovesTheSupersededDirectAnalyzerProfileReference() throws Exception {
+        Element removal = changeSet(parse(MIGRATION), "OGC-1054-remove-direct-analyzer-profile-reference");
+
+        assertEquals(Set.of("fk_analyzer_profile_binding"),
+                attributes(elements(removal, "dropForeignKeyConstraint"), "constraintName"));
+        assertEquals(Set.of("idx_analyzer_profile_binding"), attributes(elements(removal, "dropIndex"), "indexName"));
+        assertEquals(Set.of("profile_binding_id"), attributes(elements(removal, "dropColumn"), "columnName"));
     }
 
     @Test
@@ -75,7 +86,7 @@ public class AnalyzerSiteBindingLiquibaseTest {
     }
 
     @Test
-    public void migrationKeepsLegacyInputsForPreflightAndDefinesRollback() throws Exception {
+    public void migrationLeavesMappingRemovalToItsOwningCheckpointAndDefinesRollback() throws Exception {
         Document migration = parse(MIGRATION);
 
         Set<String> droppedTables = attributes(elements(migration, "dropTable"), "tableName");
@@ -129,9 +140,21 @@ public class AnalyzerSiteBindingLiquibaseTest {
         return columns;
     }
 
+    private static Element changeSet(Document document, String id) {
+        return elements(document, "changeSet").stream().filter(element -> id.equals(element.getAttribute("id")))
+                .findFirst().orElseThrow();
+    }
+
+    private static Set<Element> elements(Element root, String tagName) {
+        return nodeElements(root.getElementsByTagName(tagName));
+    }
+
     private static Set<Element> elements(Document document, String tagName) {
+        return nodeElements(document.getElementsByTagName(tagName));
+    }
+
+    private static Set<Element> nodeElements(NodeList nodes) {
         Set<Element> result = new HashSet<>();
-        NodeList nodes = document.getElementsByTagName(tagName);
         for (int index = 0; index < nodes.getLength(); index++) {
             result.add((Element) nodes.item(index));
         }

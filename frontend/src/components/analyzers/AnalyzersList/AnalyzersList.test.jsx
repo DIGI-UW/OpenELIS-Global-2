@@ -166,6 +166,25 @@ describe("AnalyzersList", () => {
     expect(name2.textContent).toContain("Chemistry Analyzer 1");
   });
 
+  test("shows a visible loading state until the analyzer list resolves", async () => {
+    let resolveAnalyzers;
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      resolveAnalyzers = callback;
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(await screen.findByTestId("analyzers-loading")).toBeVisible();
+    expect(screen.queryByTestId("analyzers-table")).not.toBeInTheDocument();
+
+    act(() => {
+      resolveAnalyzers({ analyzers: [] });
+    });
+
+    expect(await screen.findByTestId("analyzers-table")).toBeVisible();
+    expect(screen.queryByTestId("analyzers-loading")).not.toBeInTheDocument();
+  });
+
   /**
    * Test: Search analyzers with query filters results
    *
@@ -355,5 +374,18 @@ describe("AnalyzersList", () => {
     // Note: Carbon Dropdown interaction may require specific approach
     // For now, verify the filter exists and can be interacted with
     expect(statusFilter).not.toBeNull();
+  });
+
+  test("passes a cancellable signal to the type catalog read", () => {
+    let catalogSignal;
+    getAnalyzers.mockImplementation(() => undefined);
+    getAnalyzerTypeCatalog.mockImplementation((_callback, signal) => {
+      catalogSignal = signal;
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(catalogSignal).toBeInstanceOf(AbortSignal);
+    expect(catalogSignal?.aborted).toBe(false);
   });
 });

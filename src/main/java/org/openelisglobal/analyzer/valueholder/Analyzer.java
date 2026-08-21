@@ -87,10 +87,6 @@ public class Analyzer extends BaseObject<String> {
     private AnalyzerType analyzerType;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "profile_binding_id")
-    private AnalyzerProfileBinding profileBinding;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_binding_revision_id")
     private AnalyzerSiteBindingRevision siteBindingRevision;
 
@@ -112,6 +108,14 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "communication_mode", length = 25)
     @Enumerated(EnumType.STRING)
     private CommunicationMode communicationMode;
+
+    @Column(name = "transport_mode", length = 16)
+    @Enumerated(EnumType.STRING)
+    private AnalyzerTransportMode transportMode;
+
+    @Column(name = "connection_role", length = 16)
+    @Enumerated(EnumType.STRING)
+    private AnalyzerConnectionRole connectionRole;
 
     // --- FILE transport fields (unified with TCP on analyzer table) ---
 
@@ -243,14 +247,6 @@ public class Analyzer extends BaseObject<String> {
         this.analyzerType = analyzerType;
     }
 
-    public AnalyzerProfileBinding getProfileBinding() {
-        return profileBinding;
-    }
-
-    public void setProfileBinding(AnalyzerProfileBinding profileBinding) {
-        this.profileBinding = profileBinding;
-    }
-
     public AnalyzerSiteBindingRevision getSiteBindingRevision() {
         return siteBindingRevision;
     }
@@ -298,6 +294,22 @@ public class Analyzer extends BaseObject<String> {
 
     public void setCommunicationMode(CommunicationMode communicationMode) {
         this.communicationMode = communicationMode;
+    }
+
+    public AnalyzerTransportMode getTransportMode() {
+        return transportMode;
+    }
+
+    public void setTransportMode(AnalyzerTransportMode transportMode) {
+        this.transportMode = transportMode;
+    }
+
+    public AnalyzerConnectionRole getConnectionRole() {
+        return connectionRole;
+    }
+
+    public void setConnectionRole(AnalyzerConnectionRole connectionRole) {
+        this.connectionRole = connectionRole;
     }
 
     /**

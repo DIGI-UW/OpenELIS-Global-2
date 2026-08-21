@@ -146,10 +146,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 new TypeReference<>() {
                 });
         Map<String, Object> profileReferences = jdbcTemplate.queryForMap(
-                "SELECT profile_binding_id, site_binding_revision_id FROM analyzer WHERE id = ?",
+                "SELECT site_binding_revision_id FROM analyzer WHERE id = ?",
                 Integer.valueOf(String.valueOf(created.get("id"))));
-        assertNull("Configured analyzer must not write the legacy profile reference",
-                profileReferences.get("profile_binding_id"));
         assertNotNull("Configured analyzer must pin a site-binding revision",
                 profileReferences.get("site_binding_revision_id"));
     }
@@ -165,6 +163,41 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.protocolVersion").value("ASTM_LIS2_A2"))
                 .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
                 .andExpect(jsonPath("$.port").value(9100));
+    }
+
+    @Test
+    public void testCreateAnalyzer_SameProfileRevisionCanConfigureMultipleInstances() throws Exception {
+        long suffix = System.currentTimeMillis();
+        String firstBody = "{\"name\":\"TEST-Shared-Profile-A-" + suffix + "\",\"testUnitIds\":[]}";
+        String secondBody = "{\"name\":\"TEST-Shared-Profile-B-" + suffix + "\",\"testUnitIds\":[]}";
+
+        MvcResult firstResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(firstBody)))
+                .andExpect(status().isCreated()).andReturn();
+        MvcResult secondResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(secondBody)))
+                .andExpect(status().isCreated()).andReturn();
+
+        Map<String, Object> first = objectMapper.readValue(firstResult.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        Map<String, Object> second = objectMapper.readValue(secondResult.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertNotEquals(first.get("id"), second.get("id"));
+
+        Integer firstSiteBindingRevision = jdbcTemplate.queryForObject(
+                "SELECT site_binding_revision_id FROM analyzer WHERE id = ?", Integer.class,
+                Integer.valueOf(String.valueOf(first.get("id"))));
+        Integer secondSiteBindingRevision = jdbcTemplate.queryForObject(
+                "SELECT site_binding_revision_id FROM analyzer WHERE id = ?", Integer.class,
+                Integer.valueOf(String.valueOf(second.get("id"))));
+
+        assertNotNull(firstSiteBindingRevision);
+        assertEquals("Analyzer instances created from one type revision must share its local binding revision",
+                firstSiteBindingRevision, secondSiteBindingRevision);
     }
 
     /**

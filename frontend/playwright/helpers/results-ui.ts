@@ -75,84 +75,16 @@ export function locatorForAccessionNumber(
 type NavigateUntilVisibleOptions = {
   timeoutMs?: number;
   perAttemptTimeoutMs?: number;
-  /** Optional API URL to poll before navigating. When provided, the helper
-   *  waits for the API to return matching content before loading the page,
-   *  eliminating the reload loop entirely. */
-  apiPollUrl?: string;
-  /** Text(s) to match in resultList accessionNumber fields. When an array,
-   *  ALL must be present before navigating (handles multi-sample file imports
-   *  where the bridge posts results one accession at a time). */
-  apiPollMatch?: string | string[];
 };
 
 async function navigateUntilVisible(
   page: Page,
   url: string,
-  visibleLocator: () => Locator,
+  visibleLocators: () => Locator[],
   options?: NavigateUntilVisibleOptions,
 ) {
   const timeoutMs = options?.timeoutMs ?? LONG_TIMEOUT;
   const perAttemptTimeoutMs = options?.perAttemptTimeoutMs ?? UI_TIMEOUT;
-
-  // When an API poll URL is provided, poll the REST API before navigating.
-  // Uses page.request.get() but disposes each response immediately to avoid
-  // stale protocol bindings that cause "guid response@... was not bound"
-  // on the subsequent page.goto().
-  if (options?.apiPollUrl) {
-    const matchList = !options?.apiPollMatch
-      ? []
-      : Array.isArray(options.apiPollMatch)
-        ? options.apiPollMatch
-        : [options.apiPollMatch];
-
-    await expect
-      .poll(
-        async () => {
-          try {
-            const resp = await page.request.get(options.apiPollUrl!, {
-              timeout: SHORT_TIMEOUT,
-            });
-            let ok = false;
-            let data = null;
-            try {
-              ok = resp.ok();
-              data = ok ? await resp.json() : null;
-            } finally {
-              await resp.dispose();
-            }
-            if (!ok || !data) return false;
-            const results = data?.resultList ?? [];
-            if (results.length === 0) return false;
-            if (matchList.length === 0) return true;
-            const accessions = results.map(
-              (r: { accessionNumber?: string }) => r.accessionNumber ?? "",
-            );
-            return matchList.every((m) =>
-              accessions.some((a: string) => a.includes(m)),
-            );
-          } catch {
-            return false;
-          }
-        },
-        {
-          message: `Waiting for results matching "${options?.apiPollMatch}" at ${options.apiPollUrl}`,
-          timeout: timeoutMs,
-          intervals: [2_000],
-        },
-      )
-      .toBeTruthy();
-
-    await page.goto(url, {
-      waitUntil: "domcontentloaded",
-      timeout: perAttemptTimeoutMs,
-    });
-    await expect(visibleLocator()).toBeVisible({
-      timeout: perAttemptTimeoutMs,
-    });
-    return;
-  }
-
-  // Fallback: reload loop for pages without a known API endpoint.
   const attempts = Math.max(1, Math.ceil(timeoutMs / perAttemptTimeoutMs));
   let lastError: unknown;
 
@@ -170,9 +102,9 @@ async function navigateUntilVisible(
         });
       }
 
-      await expect(visibleLocator()).toBeVisible({
-        timeout: perAttemptTimeoutMs,
-      });
+      for (const locator of visibleLocators()) {
+        await expect(locator).toBeVisible({ timeout: perAttemptTimeoutMs });
+      }
       return;
     } catch (error) {
       lastError = error;
@@ -197,17 +129,19 @@ export async function openAnalyzerResultsAndWaitForText(
   analyzerName: string,
   visibleText: string,
   options?: NavigateUntilVisibleOptions & {
-    /** All expected accession numbers — poll waits for ALL before navigating. */
+    /** All accession numbers that must be rendered before this helper returns. */
     allExpectedAccessions?: string[];
   },
 ) {
-  const apiUrl = `/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(analyzerName)}`;
-  const pollMatch = options?.allExpectedAccessions ?? visibleText;
+  const expectedAccessions = options?.allExpectedAccessions ?? [visibleText];
   await navigateUntilVisible(
     page,
     analyzerResultsUrl(analyzerName),
-    () => locatorForAccessionNumber(page, visibleText),
-    { ...options, apiPollUrl: apiUrl, apiPollMatch: pollMatch },
+    () =>
+      expectedAccessions.map((accession) =>
+        locatorForAccessionNumber(page, accession),
+      ),
+    options,
   );
 }
 

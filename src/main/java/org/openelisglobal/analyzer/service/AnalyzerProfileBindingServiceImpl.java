@@ -2,7 +2,9 @@ package org.openelisglobal.analyzer.service;
 
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -81,7 +83,6 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
         AnalyzerSiteBindingSnapshot siteBinding = siteBindingService.resolveInitialRevision(resolved.binding(),
                 resolved.profile().document(), sysUserId);
         analyzer.setSiteBindingRevision(siteBinding.revision());
-        analyzer.setProfileBinding(null);
         return resolved.binding();
     }
 
@@ -119,25 +120,25 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
             }
             analyzer.setCommunicationMode(communicationMode);
         }
-
+        if (analyzer.getTransportMode() == null) {
+            AnalyzerTransportMode transportMode = profile.resolvedTransportMode();
+            if (transportMode == null) {
+                throw new AnalyzerProfileBindingException(
+                        "Bridge profile " + profile.profileId() + " has no supported default transport");
+            }
+            analyzer.setTransportMode(transportMode);
+        }
+        if (analyzer.getConnectionRole() == null) {
+            AnalyzerConnectionRole connectionRole = profile.resolvedConnectionRole();
+            if (connectionRole == null) {
+                throw new AnalyzerProfileBindingException(
+                        "Bridge profile " + profile.profileId() + " has no supported connection role");
+            }
+            analyzer.setConnectionRole(connectionRole);
+        }
         BridgeAnalyzerProfile.InstanceDefaults defaults = profile.instanceDefaults();
         if (analyzer.getPort() == null) {
             analyzer.setPort(defaults.port());
-        }
-        if (analyzer.getFileFormat() == null || analyzer.getFileFormat().isBlank()) {
-            analyzer.setFileFormat(defaults.fileFormat());
-        }
-        if (analyzer.getFilePattern() == null || analyzer.getFilePattern().isBlank()) {
-            analyzer.setFilePattern(defaults.filePattern());
-        }
-        if (analyzer.getHasHeader() == null) {
-            analyzer.setHasHeader(defaults.hasHeader());
-        }
-        if (analyzer.getDelimiter() == null || analyzer.getDelimiter().isBlank()) {
-            analyzer.setDelimiter(defaults.delimiter());
-        }
-        if (analyzer.getSkipRows() == null) {
-            analyzer.setSkipRows(defaults.skipRows());
         }
     }
 

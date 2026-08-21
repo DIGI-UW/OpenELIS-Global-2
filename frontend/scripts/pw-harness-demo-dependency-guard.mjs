@@ -6,6 +6,7 @@ import tsParser from "@typescript-eslint/parser";
 import rule from "../eslint-local-rules/pw-demo-no-backend-access.js";
 
 const DEMO_ROOT = "playwright/tests/demo/harness";
+const AUTH_SETUP = "playwright/tests/auth.setup.ts";
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"];
 const RUNNER_DIAGNOSTIC_MESSAGE_IDS = new Set([
   "consoleListener",
@@ -169,6 +170,8 @@ export function findHarnessDemoDependencyViolations({
     const specRelativePath = relativeToFrontend(absoluteFrontendRoot, specPath);
     const visited = new Set();
     const pending = [specPath];
+    const authSetupPath = path.join(absoluteFrontendRoot, AUTH_SETUP);
+    if (fs.existsSync(authSetupPath)) pending.push(authSetupPath);
 
     while (pending.length > 0) {
       const dependencyPath = pending.shift();

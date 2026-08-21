@@ -48,6 +48,10 @@ public class AnalyzerForm {
 
     private String communicationMode; // ANALYZER_INITIATED, LIS_INITIATED, BOTH (nullable = infer from protocol)
 
+    private String transportMode;
+
+    private String connectionRole;
+
     private String importDirectory;
 
     private String filePattern;
@@ -166,6 +170,22 @@ public class AnalyzerForm {
 
     public void setCommunicationMode(String communicationMode) {
         this.communicationMode = communicationMode;
+    }
+
+    public String getTransportMode() {
+        return transportMode;
+    }
+
+    public void setTransportMode(String transportMode) {
+        this.transportMode = transportMode;
+    }
+
+    public String getConnectionRole() {
+        return connectionRole;
+    }
+
+    public void setConnectionRole(String connectionRole) {
+        this.connectionRole = connectionRole;
     }
 
     public String getImportDirectory() {

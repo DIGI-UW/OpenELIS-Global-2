@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingResultDAO;
@@ -66,6 +67,13 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
         AnalyzerSiteBindingRevision current = revisionDAO.findLatestByBindingId(binding.getId()).orElse(null);
         int revisionNumber = current == null ? 1 : current.getRevisionNumber() + 1;
         return persistRevision(binding, current, revisionNumber, draft, effectiveActor);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AnalyzerSiteBindingSnapshot> findCurrentByProfileBindingId(String profileBindingId) {
+        String bindingId = requireText(profileBindingId, "profile binding ID");
+        return bindingDAO.findByProfileBindingId(bindingId).map(this::loadLatest);
     }
 
     private AnalyzerSiteBindingSnapshot createInitial(AnalyzerProfileBinding profileBinding,

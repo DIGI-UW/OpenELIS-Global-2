@@ -1,364 +1,258 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HexFormat;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/** Bridge registration client for analyzer transport metadata. */
+/** Publishes OpenELIS-owned analyzer instance state to the Analyzer Bridge. */
 @Service
 public class BridgeRegistrationService {
 
     private static final String CLASS_NAME = "BridgeRegistrationService";
+    private static final Duration SYNC_TIMEOUT = Duration.ofSeconds(30);
 
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
-
-    @Value("${analyzer.bridge.url:}")
-    private String bridgeBaseUrl;
+    private final AnalyzerService analyzerService;
+    private final BridgeHttpClient bridgeHttpClient;
+    private final String bridgeBaseUrl;
+    private final Clock clock;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
-    private BridgeHttpClient bridgeHttpClient;
+    public BridgeRegistrationService(AnalyzerService analyzerService, BridgeHttpClient bridgeHttpClient,
+            @Value("${analyzer.bridge.url:}") String bridgeBaseUrl) {
+        this(analyzerService, bridgeHttpClient, bridgeBaseUrl, Clock.systemUTC());
+    }
 
-    // Optional — null in older deployments without QC rule support; service
-    // exists in current codebase. Autowired to avoid threading qcRules through
-    // every registerFile caller.
-    @Autowired(required = false)
-    private AnalyzerQcRuleService analyzerQcRuleService;
-
-    // Optional — null in older deployments without control-lot support.
-    // Used to publish active lot inventory to the bridge so the bridge can
-    // disambiguate in-message lot encodings (ASTM Q-segment, FILE sample
-    // names containing the lot number).
-    @Autowired(required = false)
-    private org.openelisglobal.qc.service.QCControlLotService qcControlLotService;
-
-    // The analyzer's test_code ↔ LOINC mapping, pushed so the bridge can
-    // translate both directions (inbound code→LOINC, outbound LOINC→code) and
-    // OE2 stays analyzer-agnostic. Sourced from AnalyzerTestMapping (the lab's
-    // configured per-analyzer mapping, seeded from the profile) joined to
-    // Test.loinc — the same LOINC OE2 binds inbound results by.
-    @Autowired(required = false)
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-
-    @Autowired(required = false)
-    private org.openelisglobal.test.service.TestService testService;
-
-    /** Register a TCP analyzer (ASTM/HL7) with the bridge. */
-    public boolean registerTcp(String oeAnalyzerId, String name, String ip, Integer port, String protocol,
-            String identifierPattern) {
-        if (!isBridgeConfigured()) {
-            return false;
-        }
-
-        try {
-            java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
-            payload.put("oeAnalyzerId", oeAnalyzerId);
-            payload.put("sourceId", ip);
-            payload.put("name", name);
-            payload.put("protocol", protocol != null ? protocol : "ASTM");
-            // The same regex OE uses to identify an inbound message by its sender
-            // (Analyzer.identifierPattern). Letting the bridge corroborate the
-            // connection-source-IP identity against this authoritative pattern —
-            // rather than a name-substring heuristic — keeps the two identity
-            // signals consistent (e.g. ASTM sender "GENEXPERT^GeneXpert^4.6.0").
-            if (identifierPattern != null && !identifierPattern.isBlank()) {
-                payload.put("identifierPattern", identifierPattern);
-            }
-            attachQcRules(payload, oeAnalyzerId);
-            attachControlLots(payload, oeAnalyzerId);
-            attachTestCodeLoinc(payload, oeAnalyzerId);
-            String json = objectMapper.writeValueAsString(payload);
-            return callRegister(json, oeAnalyzerId);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            LogEvent.logError(CLASS_NAME, "registerTcp", "Failed to build registration JSON: " + e.getMessage());
-            return false;
-        }
+    BridgeRegistrationService(AnalyzerService analyzerService, BridgeHttpClient bridgeHttpClient, String bridgeBaseUrl,
+            Clock clock) {
+        this.analyzerService = analyzerService;
+        this.bridgeHttpClient = bridgeHttpClient;
+        this.bridgeBaseUrl = bridgeBaseUrl == null ? "" : bridgeBaseUrl.replaceAll("/+$", "");
+        this.clock = clock;
     }
 
     /**
-     * Register a FILE analyzer with the bridge, including all config needed for
-     * file parsing (column mappings, format, delimiter, skipRows).
+     * Builds the complete desired Bridge state from immutable profile pins and
+     * site-owned instance values. Profile runtime/default documents never cross
+     * this boundary.
      */
-    public boolean registerFile(String oeAnalyzerId, String name, String watchDir, String filePattern,
-            java.util.Map<String, String> columnMappings, String fileFormat, String delimiter, Integer skipRows,
-            java.util.List<String> testMappings) {
-        if (!isBridgeConfigured()) {
-            return false;
-        }
-
-        try {
-            java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
-            payload.put("oeAnalyzerId", oeAnalyzerId);
-            payload.put("sourceId", watchDir);
-            payload.put("name", name);
-            payload.put("protocol", "FILE");
-            payload.put("filePattern", filePattern != null ? filePattern : "");
-            if (columnMappings != null && !columnMappings.isEmpty()) {
-                payload.put("columnMappings", columnMappings);
-            }
-            if (fileFormat != null && !fileFormat.isBlank()) {
-                payload.put("fileFormat", fileFormat);
-            }
-            if (delimiter != null && !delimiter.isEmpty()) {
-                payload.put("delimiter", delimiter);
-            }
-            if (skipRows != null && skipRows > 0) {
-                payload.put("skipRows", skipRows);
-            }
-            if (testMappings != null && !testMappings.isEmpty()) {
-                payload.put("testMappings", testMappings);
-            }
-            attachQcRules(payload, oeAnalyzerId);
-            attachControlLots(payload, oeAnalyzerId);
-            attachTestCodeLoinc(payload, oeAnalyzerId);
-            String json = objectMapper.writeValueAsString(payload);
-            return callRegister(json, oeAnalyzerId);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            LogEvent.logError(CLASS_NAME, "registerFile", "Failed to build registration JSON: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Fetch the bridge's view of registered analyzers (v5 §4.1 two-way sync). Used
-     * for drift detection — the webapp is the config authority, but the bridge's
-     * local state should mirror it. Any mismatch is a sync bug to investigate.
-     *
-     * @return list of {id, name, protocol, sourceId, mappedTestCodes, ...} maps or
-     *         an empty list if the bridge is unreachable / unconfigured.
-     */
-    @SuppressWarnings("unchecked")
-    public java.util.List<java.util.Map<String, Object>> fetchBridgeState() {
-        if (!isBridgeConfigured()) {
-            return java.util.Collections.emptyList();
-        }
-        try {
-            String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers";
-            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.get(endpoint, Duration.ofSeconds(10));
-            if (response.status != 200) {
-                LogEvent.logWarn(CLASS_NAME, "fetchBridgeState",
-                        "Bridge GET /api/analyzers returned " + response.status);
-                return java.util.Collections.emptyList();
-            }
-            // Response shape: {"<sourceId>": {id, name, expectedProtocol, mappedTestCodes,
-            // ...}, ...}
-            java.util.Map<String, Object> raw = objectMapper.readValue(response.body, java.util.Map.class);
-            java.util.List<java.util.Map<String, Object>> flat = new java.util.ArrayList<>();
-            for (java.util.Map.Entry<String, Object> e : raw.entrySet()) {
-                if (e.getValue() instanceof java.util.Map) {
-                    java.util.Map<String, Object> entry = new java.util.LinkedHashMap<>(
-                            (java.util.Map<String, Object>) e.getValue());
-                    entry.put("sourceId", e.getKey());
-                    flat.add(entry);
-                }
-            }
-            return flat;
-        } catch (Exception e) {
-            LogEvent.logWarn(CLASS_NAME, "fetchBridgeState", "Failed to fetch bridge state: " + e.getMessage());
-            return java.util.Collections.emptyList();
-        }
-    }
-
-    /**
-     * Full-state reconciliation with the bridge (v5 §4.2 two-way sync). The webapp
-     * is the config authority. This call sends the webapp's full list of analyzer
-     * registration payloads to the bridge, which deletes any entries not in the
-     * list and adds/updates the ones that are. Handles:
-     *
-     * <ul>
-     * <li>Bridge restarted after webapp's per-analyzer push loop
-     * <li>Bridge has a stale entry from an analyzer the webapp deleted
-     * <li>Partial registration failure during webapp boot
-     * </ul>
-     *
-     * Call once on webapp boot after the per-analyzer registration loop.
-     *
-     * @param payloads list of registration maps (same shape as POST /register
-     *                 bodies). Caller builds them from Analyzer entities.
-     * @return true if the sync call succeeded (2xx response), false otherwise
-     */
-    public boolean syncAll(java.util.List<java.util.Map<String, Object>> payloads) {
-        if (!isBridgeConfigured()) {
-            return false;
-        }
-        try {
-            String json = objectMapper.writeValueAsString(payloads);
-            String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers/sync";
-            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.put(endpoint, json, Duration.ofSeconds(30));
-            if (response.isSuccess()) {
-                LogEvent.logInfo(CLASS_NAME, "syncAll",
-                        "Bridge sync reconciled " + payloads.size() + " analyzers: " + response.body);
-                return true;
-            } else {
-                LogEvent.logWarn(CLASS_NAME, "syncAll",
-                        "Bridge PUT /api/analyzers/sync returned " + response.status + ": " + response.body);
-                return false;
-            }
-        } catch (Exception e) {
-            LogEvent.logWarn(CLASS_NAME, "syncAll", "Failed to sync analyzer list with bridge: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /** Unregister an analyzer from the bridge. */
-    public boolean unregister(String oeAnalyzerId) {
-        if (!isBridgeConfigured()) {
-            return false;
-        }
-
-        try {
-            String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers/" + oeAnalyzerId;
-            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.delete(endpoint, Duration.ofSeconds(10));
-            if (response.status == 200) {
-                LogEvent.logInfo(CLASS_NAME, "unregister", "Unregistered analyzer " + oeAnalyzerId + " from bridge");
-                return true;
-            } else {
-                LogEvent.logWarn(CLASS_NAME, "unregister",
-                        "Bridge unregister returned " + response.status + " for analyzer " + oeAnalyzerId);
-                return false;
-            }
-        } catch (Exception e) {
-            LogEvent.logWarn(CLASS_NAME, "unregister",
-                    "Failed to unregister analyzer " + oeAnalyzerId + " from bridge: " + e.getMessage());
-            return false;
-        }
-    }
-
-    private boolean callRegister(String json, String oeAnalyzerId) {
-        try {
-            String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers/register";
-            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.post(endpoint, json, Duration.ofSeconds(10));
-            if (response.status == 200) {
-                LogEvent.logInfo(CLASS_NAME, "callRegister", "Registered analyzer " + oeAnalyzerId + " with bridge");
-                return true;
-            } else {
-                LogEvent.logWarn(CLASS_NAME, "callRegister",
-                        "Bridge register returned " + response.status + ": " + response.body);
-                return false;
-            }
-        } catch (Exception e) {
-            LogEvent.logWarn(CLASS_NAME, "callRegister",
-                    "Failed to register analyzer " + oeAnalyzerId + " with bridge: " + e.getMessage());
-            return false;
-        }
-    }
-
-    private boolean isBridgeConfigured() {
-        if (bridgeBaseUrl == null || bridgeBaseUrl.isBlank()) {
-            LogEvent.logDebug(CLASS_NAME, "isBridgeConfigured",
-                    "No analyzer.bridge.url configured — skipping bridge registration");
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Attach the analyzer's active QC classification rules (e.g.
-     * {@code SPECIMEN_ID_PREFIX QC} for HL7, {@code FIELD_EQUALS O.12 Q} for ASTM,
-     * {@code SPECIMEN_ID_PREFIX LPC/HPC} for FILE) so the bridge can classify QC vs
-     * patient samples without falling back to its hardcoded default prefix list.
-     *
-     * <p>
-     * Package-private so {@link AnalyzerBridgeStartupRegistrar}'s full-state sync
-     * can reuse the same payload shape — without this the sync would push entries
-     * with no qcRules / controlLots and the bridge would lose its classification +
-     * lot inventory on every restart.
-     */
-    /**
-     * Attach the analyzer's {@code test_code → LOINC} map so the bridge can
-     * translate inbound results (code→LOINC) and outbound orders (LOINC→code).
-     * Built from the lab's configured {@code AnalyzerTestMapping} rows (analyzer
-     * test code → OE2 testId) joined to {@code Test.loinc} — the same LOINC OE2
-     * resolves inbound results by. Always attaches (possibly empty) so a sync
-     * payload can clear stale bridge mappings.
-     */
-    void attachTestCodeLoinc(java.util.Map<String, Object> payload, String oeAnalyzerId) {
-        java.util.Map<String, String> codeToLoinc = new java.util.LinkedHashMap<>();
-        if (analyzerTestMappingService != null && testService != null) {
-            for (org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping m : analyzerTestMappingService
-                    .getAllForAnalyzer(oeAnalyzerId)) {
-                String code = m.getAnalyzerTestName();
-                String testId = m.getTestId();
-                if (code == null || code.isBlank() || testId == null) {
-                    continue;
-                }
-                try {
-                    org.openelisglobal.test.valueholder.Test test = testService.get(testId);
-                    String loinc = test != null ? test.getLoinc() : null;
-                    if (loinc != null && !loinc.isBlank()) {
-                        codeToLoinc.put(code, loinc);
-                    }
-                } catch (Exception e) {
-                    LogEvent.logWarn(CLASS_NAME, "attachTestCodeLoinc",
-                            "Could not resolve LOINC for testId " + testId + ": " + e.getMessage());
-                }
-            }
-        }
-        payload.put("testCodeLoinc", codeToLoinc);
-    }
-
-    void attachQcRules(java.util.Map<String, Object> payload, String oeAnalyzerId) {
-        if (analyzerQcRuleService == null) {
-            return;
-        }
-        // Always attach `qcRules` (empty list when no active rules) so a sync
-        // payload can distinguish "no rules — clear bridge state" from
-        // "field absent — leave bridge state alone". Mirrors attachControlLots.
-        java.util.List<java.util.Map<String, Object>> qcRulesPayload = new java.util.ArrayList<>();
-        java.util.List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(oeAnalyzerId);
-        if (qcRules != null) {
-            for (QcRuleDto r : qcRules) {
-                java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
-                m.put("ruleType", r.ruleType());
-                if (r.targetField() != null) {
-                    m.put("targetField", r.targetField());
-                }
-                m.put("operand", r.operand());
-                qcRulesPayload.add(m);
-            }
-        }
-        payload.put("qcRules", qcRulesPayload);
-    }
-
-    /**
-     * Attach the analyzer's active control lots so the bridge can disambiguate lot
-     * encodings carried in inbound messages — FILE sample names whose sampleId
-     * contains the lot number, ASTM Q-segment field 3 components. Without this the
-     * bridge has no way to surface lot identity, and OE's Tier 1 lot match falls
-     * through to Tier 2/3 (controlLevel match or single-active-lot fallback).
-     */
-    void attachControlLots(java.util.Map<String, Object> payload, String oeAnalyzerId) {
-        // Always attach `controlLots` (empty list when no data) so the bridge
-        // contract is stable — a missing key would let downstream sync logic
-        // treat "absent" as "do not change", which conflicts with the
-        // intended "no active lots, clear them" semantics.
-        java.util.List<java.util.Map<String, Object>> lotsPayload = new java.util.ArrayList<>();
-        if (qcControlLotService != null) {
-            // oeAnalyzerId is a String matching Analyzer.id / QCControlLot.instrumentId
-            // typing — pass through, no parsing needed.
-            if (oeAnalyzerId != null && !oeAnalyzerId.isBlank()) {
-                java.util.List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
-                        .getActiveControlLotsByInstrument(oeAnalyzerId);
-                if (lots != null) {
-                    for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
-                        if (lot.getLotNumber() == null || lot.getLotNumber().isBlank()) {
-                            continue;
+    ObjectNode buildDesiredState() {
+        ObjectNode analyzersNode = objectMapper.createObjectNode();
+        List<Analyzer> analyzers = analyzerService.getAllWithTypes();
+        if (analyzers != null) {
+            analyzers.stream().filter(analyzer -> analyzer.getStatus() != Analyzer.AnalyzerStatus.DELETED)
+                    .sorted(Comparator.comparing(Analyzer::getId, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                    .forEach(analyzer -> {
+                        ObjectNode registration = buildRegistration(analyzer);
+                        if (registration != null) {
+                            analyzersNode.set(analyzer.getId(), registration);
                         }
-                        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
-                        m.put("lotNumber", lot.getLotNumber());
-                        if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
-                            m.put("controlLevel", lot.getControlLevel());
-                        }
-                        if (lot.getTestId() != null) {
-                            m.put("testId", lot.getTestId());
-                        }
-                        lotsPayload.add(m);
-                    }
-                }
-            }
+                    });
         }
-        payload.put("controlLots", lotsPayload);
+
+        ObjectNode desiredState = objectMapper.createObjectNode();
+        desiredState.put("schemaVersion", "1.0");
+        desiredState.put("desiredStateRevision", fingerprint(analyzersNode));
+        desiredState.put("generatedAt", clock.instant().toString());
+        desiredState.set("analyzers", analyzersNode);
+        return desiredState;
     }
 
+    /** Sends one idempotent, versioned full-state reconciliation request. */
+    public BridgeRegistrationResult synchronize() {
+        ObjectNode desiredState = buildDesiredState();
+        if (bridgeBaseUrl.isBlank()) {
+            return incomplete("Analyzer Bridge URL is not configured");
+        }
+
+        try {
+            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.put(bridgeBaseUrl + "/api/analyzers/sync",
+                    objectMapper.writeValueAsString(desiredState), SYNC_TIMEOUT);
+            if (!response.isSuccess()) {
+                return incomplete("Analyzer Bridge sync returned HTTP " + response.status);
+            }
+            return validateAcknowledgement(desiredState, objectMapper.readTree(response.body));
+        } catch (Exception exception) {
+            LogEvent.logWarn(CLASS_NAME, "synchronize", "Analyzer Bridge sync failed: " + exception.getMessage());
+            return incomplete("Analyzer Bridge sync failed: " + exception.getMessage());
+        }
+    }
+
+    private ObjectNode buildRegistration(Analyzer analyzer) {
+        boolean activationRequired = analyzer.getStatus() == Analyzer.AnalyzerStatus.ACTIVE;
+        boolean runtimeEnabled = isBridgeRuntimeEnabled(analyzer.getStatus());
+        String analyzerId = text(analyzer.getId());
+        AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
+        String name = text(analyzer.getName());
+        String protocol = normalizedProtocol(analyzer.getType());
+
+        if (analyzerId == null || profile == null || text(profile.getProfileId()) == null
+                || profile.getProfileRevision() < 1 || name == null || protocol == null) {
+            return incompleteAnalyzer(activationRequired, analyzerId,
+                    profile == null ? "profile pin" : "identity, name, or protocol");
+        }
+
+        ObjectNode connection = buildConnection(analyzer, protocol);
+        if (connection == null) {
+            return incompleteAnalyzer(activationRequired, analyzerId, "connection settings");
+        }
+
+        String sourceId = "FILE".equals(protocol) ? text(analyzer.getImportDirectory()) : text(analyzer.getIpAddress());
+        ObjectNode registration = objectMapper.createObjectNode();
+        registration.put("sourceId", sourceId);
+        registration.put("name", name);
+        ObjectNode profileRef = registration.putObject("profileRef");
+        profileRef.put("profileId", profile.getProfileId());
+        profileRef.put("revision", profile.getProfileRevision());
+        registration.put("protocol", protocol);
+        registration.put("desiredStatus", runtimeEnabled ? "ACTIVE" : "INACTIVE");
+        registration.set("connection", connection);
+        registration.put("desiredStateFingerprint", fingerprint(registration));
+        return registration;
+    }
+
+    private static boolean isBridgeRuntimeEnabled(Analyzer.AnalyzerStatus status) {
+        return status == Analyzer.AnalyzerStatus.SETUP || status == Analyzer.AnalyzerStatus.VALIDATION
+                || status == Analyzer.AnalyzerStatus.ACTIVE || status == Analyzer.AnalyzerStatus.ERROR_PENDING
+                || status == Analyzer.AnalyzerStatus.OFFLINE;
+    }
+
+    private ObjectNode buildConnection(Analyzer analyzer, String protocol) {
+        ObjectNode connection = objectMapper.createObjectNode();
+        ObjectNode settings;
+        AnalyzerTransportMode transport = analyzer.getTransportMode();
+        AnalyzerConnectionRole role = analyzer.getConnectionRole();
+        if (transport == null || role == null || !isCompatible(protocol, transport)) {
+            return null;
+        }
+        if (transport == AnalyzerTransportMode.FILE) {
+            String directory = text(analyzer.getImportDirectory());
+            if (directory == null) {
+                return null;
+            }
+            connection.put("mode", transport.name());
+            connection.put("role", role.name());
+            settings = connection.putObject("settings");
+            settings.put("directory", directory);
+            return connection;
+        }
+
+        if (transport != AnalyzerTransportMode.TCP && transport != AnalyzerTransportMode.MLLP) {
+            return null;
+        }
+        String host = text(analyzer.getIpAddress());
+        if (host == null) {
+            return null;
+        }
+        connection.put("mode", transport.name());
+        CommunicationMode communication = analyzer.getCommunicationMode();
+        connection.put("role", role.name());
+        settings = connection.putObject("settings");
+        if (role == AnalyzerConnectionRole.INITIATOR || communication == CommunicationMode.BOTH) {
+            if (analyzer.getPort() == null) {
+                return null;
+            }
+            settings.put("remoteHost", host);
+            settings.put("remotePort", analyzer.getPort());
+        }
+        return connection;
+    }
+
+    private static boolean isCompatible(String protocol, AnalyzerTransportMode transport) {
+        return switch (protocol) {
+        case "ASTM" -> transport == AnalyzerTransportMode.TCP || transport == AnalyzerTransportMode.SERIAL;
+        case "HL7" -> transport == AnalyzerTransportMode.TCP || transport == AnalyzerTransportMode.MLLP
+                || transport == AnalyzerTransportMode.HTTP;
+        case "FILE" -> transport == AnalyzerTransportMode.FILE;
+        default -> false;
+        };
+    }
+
+    private BridgeRegistrationResult validateAcknowledgement(ObjectNode request, JsonNode response) {
+        String expectedRevision = request.path("desiredStateRevision").asText();
+        if (!"1.0".equals(response.path("schemaVersion").asText())
+                || !expectedRevision.equals(response.path("appliedStateRevision").asText())) {
+            return incomplete("Analyzer Bridge did not acknowledge desired state " + expectedRevision);
+        }
+        if (!response.path("errors").isArray() || !response.path("errors").isEmpty()
+                || response.path("counts").path("rejected").asInt(-1) != 0) {
+            return incomplete("Analyzer Bridge rejected one or more registrations");
+        }
+
+        Set<String> acknowledged = new LinkedHashSet<>();
+        List<String> failures = new ArrayList<>();
+        request.path("analyzers").fields().forEachRemaining(entry -> {
+            JsonNode expected = entry.getValue();
+            JsonNode actual = response.path("registrations").path(entry.getKey());
+            String status = actual.path("status").asText();
+            boolean exact = ("APPLIED".equals(status) || "UNCHANGED".equals(status))
+                    && expected.path("profileRef").equals(actual.path("profileRef"))
+                    && expected.path("desiredStateFingerprint").asText()
+                            .equals(actual.path("desiredStateFingerprint").asText());
+            if (exact) {
+                acknowledged.add(entry.getKey());
+            } else {
+                failures.add(entry.getKey());
+            }
+        });
+        if (!failures.isEmpty() || acknowledged.size() != request.path("analyzers").size()) {
+            return incomplete("Analyzer Bridge acknowledgement mismatch for " + String.join(", ", failures));
+        }
+        return new BridgeRegistrationResult(true, acknowledged, null);
+    }
+
+    private ObjectNode incompleteAnalyzer(boolean active, String analyzerId, String missing) {
+        if (active) {
+            throw new BridgeRegistrationException(
+                    "Active analyzer " + (analyzerId == null ? "<unknown>" : analyzerId) + " requires " + missing);
+        }
+        return null;
+    }
+
+    private static String normalizedProtocol(String value) {
+        String protocol = text(value);
+        if (protocol == null) {
+            return null;
+        }
+        protocol = protocol.toUpperCase(Locale.ROOT);
+        return Set.of("ASTM", "HL7", "FILE").contains(protocol) ? protocol : null;
+    }
+
+    private static String text(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private String fingerprint(JsonNode value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = objectMapper.writeValueAsString(value).getBytes(StandardCharsets.UTF_8);
+            return "sha256:" + HexFormat.of().formatHex(digest.digest(bytes));
+        } catch (Exception exception) {
+            throw new BridgeRegistrationException("Could not fingerprint analyzer registration", exception);
+        }
+    }
+
+    private static BridgeRegistrationResult incomplete(String message) {
+        return new BridgeRegistrationResult(false, Set.of(), message);
+    }
 }

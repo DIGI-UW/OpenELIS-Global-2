@@ -4,34 +4,24 @@
  * Handles the full creation flow:
  * 1. (TCP only) Create mock network to get unique analyzer IP
  * 2. Open dashboard → click Add
- * 3. Select plugin type → select profile → fill name
+ * 3. Select the reusable Analyzer Type/profile → fill the instance name
  * 4. (TCP only) Fill IP address and port
  * 5. Save → verify success
  *
  * Returns the IP assigned to the analyzer (for TCP push destinations).
  */
 
-import { execFileSync } from "child_process";
 import { Page, expect } from "@playwright/test";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { cleanupAnalyzerByName } from "./cleanup-analyzer";
-import type { AnalyzerTestConfig } from "./analyzer-test-config";
+import {
+  resolveMockSimulatorUrl,
+  type AnalyzerTestConfig,
+} from "./analyzer-test-config";
 import { LONG_TIMEOUT } from "./timeouts";
-import { resolveDbContainer } from "./db-container";
 
-const SIMULATOR_URL = "http://localhost:8085";
-const ANALYZER_API_PATH = "/api/OpenELIS-Global/rest/analyzer/analyzers";
-const API_READY_TIMEOUT_MS = 15_000;
-const API_RETRY_DELAY_MS = 500;
-
-function getAnalyzerApiUrl(): string {
-  const baseUrl = (process.env.BASE_URL || "https://localhost").replace(
-    /\/$/,
-    "",
-  );
-  return `${baseUrl}${ANALYZER_API_PATH}`;
-}
+const SIMULATOR_URL = resolveMockSimulatorUrl();
 
 /**
  * Create a mock analyzer network and return the assigned IP.
@@ -39,28 +29,26 @@ function getAnalyzerApiUrl(): string {
  * giving each a stable IP for bridge identification.
  */
 async function createMockNetwork(
-  page: Page,
   mockName: string,
   template: string,
   port: number,
 ): Promise<string | null> {
   try {
-    const response = await page.request.post(`${SIMULATOR_URL}/analyzers`, {
-      data: { name: mockName, template, port },
+    const response = await fetch(`${SIMULATOR_URL}/analyzers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: mockName, template, port }),
     });
-    if (response.ok()) {
+    if (response.ok) {
       const body = await response.json();
-      await response.dispose();
       return body.ip || null;
     }
-    const status = response.status();
-    await response.dispose();
+    const status = response.status;
     // 409 = already exists, which is fine (idempotent)
     if (status === 409) {
       // Fetch existing
-      const listResp = await page.request.get(`${SIMULATOR_URL}/analyzers`);
-      const list = listResp.ok() ? await listResp.json() : null;
-      await listResp.dispose();
+      const listResp = await fetch(`${SIMULATOR_URL}/analyzers`);
+      const list = listResp.ok ? await listResp.json() : null;
       if (list) {
         const existing = list.analyzers?.find(
           (a: { name: string }) => a.name === mockName,
@@ -77,50 +65,42 @@ async function createMockNetwork(
 /**
  * Remove a mock analyzer network (cleanup).
  */
-async function removeMockNetwork(page: Page, mockName: string): Promise<void> {
-  try {
-    const existing = await page.request.get(`${SIMULATOR_URL}/analyzers`);
-    const body = existing.ok() ? await existing.json() : null;
-    await existing.dispose();
-    if (!body) return;
+export async function removeMockNetwork(mockName: string): Promise<void> {
+  const existing = await fetch(`${SIMULATOR_URL}/analyzers`);
+  const body = existing.ok ? await existing.json() : null;
+  if (!body) return;
 
-    const exists = Array.isArray(body?.analyzers)
-      ? body.analyzers.some((a: { name?: string }) => a?.name === mockName)
-      : false;
+  const exists = Array.isArray(body?.analyzers)
+    ? body.analyzers.some((a: { name?: string }) => a?.name === mockName)
+    : false;
 
-    if (!exists) return;
+  if (!exists) return;
 
-    const delResp = await page.request.delete(
-      `${SIMULATOR_URL}/analyzers/${mockName}`,
-    );
-    await delResp.dispose();
-  } catch {
-    // Best-effort cleanup
+  const removal = await fetch(`${SIMULATOR_URL}/analyzers/${mockName}`, {
+    method: "DELETE",
+  });
+  if (!removal.ok && removal.status !== 404) {
+    throw new Error(`Mock analyzer removal failed with HTTP ${removal.status}`);
   }
-}
 
-async function waitForAnalyzerApiReady(page: Page): Promise<void> {
-  const analyzerApiUrl = getAnalyzerApiUrl();
-
-  await expect
-    .poll(
-      async () => {
-        try {
-          const response = await page.request.get(analyzerApiUrl);
-          const status = response.status();
-          await response.dispose();
-          return status;
-        } catch {
-          return 0; // Network can flap while docker networks settle
-        }
-      },
-      {
-        message: `Analyzer API at ${analyzerApiUrl} did not become ready`,
-        timeout: API_READY_TIMEOUT_MS,
-        intervals: [API_RETRY_DELAY_MS],
-      },
-    )
-    .toBe(200);
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    try {
+      const current = await fetch(`${SIMULATOR_URL}/analyzers`);
+      const currentBody = current.ok ? await current.json() : null;
+      const stillExists = Array.isArray(currentBody?.analyzers)
+        ? currentBody.analyzers.some(
+            (a: { name?: string }) => a?.name === mockName,
+          )
+        : true;
+      if (!stillExists) return;
+    } catch {
+      // Docker briefly interrupts the mock control port while disconnecting
+      // the mock container from the analyzer's temporary network.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out removing mock analyzer "${mockName}"`);
 }
 
 export async function createAnalyzerFromProfile(
@@ -137,21 +117,17 @@ export async function createAnalyzerFromProfile(
   // Delete any leftover network first (from a previous failed run).
   let assignedIp: string | null = null;
   if (config.protocol !== "FILE" && config.mockAnalyzerName) {
-    await removeMockNetwork(page, config.mockAnalyzerName);
+    await removeMockNetwork(config.mockAnalyzerName);
     const template =
       config.push.protocol === "ASTM" || config.push.protocol === "HL7"
         ? (config.push as { template: string }).template
         : "";
     const port = config.port || 0;
     assignedIp = await createMockNetwork(
-      page,
       config.mockAnalyzerName,
       template,
       port,
     );
-
-    // Creating/attaching docker networks can briefly destabilize connectivity.
-    await waitForAnalyzerApiReady(page);
   }
 
   await list.goto();
@@ -171,16 +147,7 @@ export async function createAnalyzerFromProfile(
     await form.expectOpen();
   }
 
-  // Select plugin type
-  await form.selectPluginType(config.pluginType);
-
-  // Select profile (auto-fills fields)
-  if (config.profileName) {
-    await form.selectDefaultConfig(config.profileName);
-  }
-
-  // Select analyzer type (may already be set by profile)
-  await form.selectType(config.analyzerType);
+  await form.selectProfile(config.profileName);
 
   // Fill name
   await form.fillName(config.name);
@@ -202,20 +169,17 @@ export async function createAnalyzerFromProfile(
   // where the mock drops fixtures.
   if (config.protocol === "FILE") {
     const importDir =
-      config.push.protocol === "FILE"
-        ? config.push.targetDir ||
-          `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`
-        : `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`;
+      config.push.targetDir ||
+      `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`;
     await form.fillImportDirectory(importDir);
   }
 
   // Save
-  await waitForAnalyzerApiReady(page);
   await form.save();
   await form.expectSuccessNotification();
 
-  // Wait for modal to close
-  await expect(form.modal).not.toBeVisible({ timeout: LONG_TIMEOUT });
+  // Creation returns to the analyzer list.
+  await expect(form.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
 
   return assignedIp;
 }
@@ -231,8 +195,7 @@ export async function deleteAnalyzerFromDashboard(
 }
 
 /**
- * Full cleanup: soft-delete via UI (tests production flow) → SQL cleanup
- * (test isolation) → remove mock network.
+ * Cleanup uses the visible delete workflow, then removes the mock transport.
  */
 export async function teardownAnalyzer(
   page: Page,
@@ -241,42 +204,8 @@ export async function teardownAnalyzer(
   // Step 1: Soft-delete via UI (tests the production user flow)
   await deleteAnalyzerFromDashboard(page, config.name);
 
-  // Step 2: SQL cleanup of the soft-deleted row (test isolation)
-  hardDeleteAnalyzerFromDb(config.name);
-
-  // Step 3: Remove mock network
+  // Step 2: Remove mock network
   if (config.mockAnalyzerName) {
-    await removeMockNetwork(page, config.mockAnalyzerName);
-  }
-}
-
-/** Escape a value for use inside a PostgreSQL single-quoted literal. */
-function escapePgStringLiteral(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`;
-}
-
-/**
- * Hard-delete analyzer rows after UI soft-delete (test isolation).
- * CASCADE FK on analyzer_test_map handles test mapping cleanup automatically.
- */
-function hardDeleteAnalyzerFromDb(analyzerName: string): void {
-  const container = resolveDbContainer();
-  const nameLiteral = escapePgStringLiteral(analyzerName);
-  const sql = `DELETE FROM clinlims.analyzer_results WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ${nameLiteral}); DELETE FROM clinlims.analyzer WHERE name = ${nameLiteral};`;
-  try {
-    execFileSync("docker", [
-      "exec",
-      "-i",
-      container,
-      "psql",
-      "-U",
-      "clinlims",
-      "-d",
-      "clinlims",
-      "-c",
-      sql,
-    ]);
-  } catch (e) {
-    console.warn(`DB cleanup failed for "${analyzerName}": ${e}`);
+    await removeMockNetwork(config.mockAnalyzerName);
   }
 }

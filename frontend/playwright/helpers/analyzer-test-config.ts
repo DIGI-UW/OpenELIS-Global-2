@@ -11,6 +11,40 @@
 
 export type AnalyzerProtocol = "ASTM" | "HL7" | "FILE";
 
+export const resolveMockSimulatorUrl = (
+  environment: Record<string, string | undefined> = process.env,
+) => environment.MOCK_SIMULATOR_URL ?? "http://localhost:8085";
+
+const analyzerDirectoryName = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+export const createRunScopedAnalyzerConfig = (
+  config: AnalyzerTestConfig,
+  runId: string,
+): AnalyzerTestConfig => {
+  const scopedName = `${config.name} ${runId}`;
+  const scopedMockName = config.mockAnalyzerName
+    ? `${config.mockAnalyzerName}-${runId}`
+    : undefined;
+  const scopedTargetDir =
+    config.protocol === "FILE" && config.push.targetDir
+      ? `/data/analyzer-imports/${analyzerDirectoryName(scopedName)}/incoming`
+      : config.push.targetDir;
+
+  return {
+    ...config,
+    name: scopedName,
+    mockAnalyzerName: scopedMockName,
+    push: {
+      ...config.push,
+      targetDir: scopedTargetDir,
+    },
+  };
+};
+
 /**
  * Push config for all protocols. The mock server handles everything:
  * - ASTM: POST /simulate/astm/{template} → pushes via TCP
@@ -34,9 +68,7 @@ export interface PushConfig {
   /** TCP/MLLP destination (ASTM/HL7 only). */
   destination?: string;
   /**
-   * Container path for file drop (FILE only, legacy watched-directory mode,
-   * e.g., "/data/analyzer-imports/quantstudio-7/incoming"). Prefer
-   * uploadViaBridge for production-parity.
+   * Bridge-watched container path for FILE transport.
    */
   targetDir?: string;
   /**
@@ -52,11 +84,8 @@ export interface PushConfig {
    * Ignored for files whose columns already map to testCode (QuantStudio).
    */
   testCode?: string;
-  /**
-   * FILE uploadViaBridge only — analyzer name the helper uses to look up
-   * the bridge-registered id. Typically equal to AnalyzerTestConfig.name.
-   */
-  analyzerName?: string;
+  /** FILE uploadViaBridge only — id captured from the visible analyzer row. */
+  analyzerId?: string;
   /** Explicit sample ID override (optional — mock generates if omitted). */
   sampleId?: string;
 }
@@ -73,12 +102,8 @@ export interface AnalyzerTestConfig {
   name: string;
   /** Display name for demo title cards. */
   displayName: string;
-  /** Analyzer category: HEMATOLOGY, CHEMISTRY, MOLECULAR, etc. */
-  analyzerType: string;
-  /** Plugin type label for the dropdown: "Generic HL7", "Generic ASTM", "Generic File". */
-  pluginType: string;
-  /** Profile name for the default config dropdown (e.g., "QuantStudio", "Mindray"). */
-  profileName?: string;
+  /** Exact reusable Analyzer Type/profile display name. */
+  profileName: string;
   /** Protocol family. */
   protocol: AnalyzerProtocol;
   /** How to push a result (all protocols go through mock server). */

@@ -123,6 +123,21 @@ describe("DeleteAnalyzerModal", () => {
     expect(mockOnConfirm).not.toHaveBeenCalled();
   });
 
+  test("outside click does not dismiss the destructive confirmation", async () => {
+    renderWithIntl(
+      <DeleteAnalyzerModal
+        analyzer={createMockAnalyzer()}
+        open={true}
+        onClose={mockOnClose}
+        onConfirm={mockOnConfirm}
+      />,
+    );
+
+    await userEvent.click(screen.getByTestId("delete-analyzer-modal"));
+
+    expect(mockOnClose).not.toHaveBeenCalled();
+  });
+
   /**
    * Test: Delete button calls deleteAnalyzer service
    */

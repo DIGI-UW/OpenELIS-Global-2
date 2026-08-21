@@ -16,10 +16,14 @@ public class AnalyzerProfileBindingTest {
         binding.setProfileRevision(3);
         binding.setProfileFingerprint("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
+        AnalyzerSiteBinding siteBinding = new AnalyzerSiteBinding();
+        siteBinding.setProfileBinding(binding);
+        AnalyzerSiteBindingRevision siteBindingRevision = new AnalyzerSiteBindingRevision();
+        siteBindingRevision.setSiteBinding(siteBinding);
         Analyzer analyzer = new Analyzer();
-        analyzer.setProfileBinding(binding);
+        analyzer.setSiteBindingRevision(siteBindingRevision);
 
-        assertSame(binding, analyzer.getProfileBinding());
+        assertSame(binding, analyzer.getPinnedProfileBinding());
         assertEquals("sysmex-xn", binding.getProfileId());
         assertEquals(3, binding.getProfileRevision());
         assertFalse(Arrays.stream(AnalyzerProfileBinding.class.getDeclaredFields())

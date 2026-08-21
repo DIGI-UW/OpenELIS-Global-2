@@ -8,8 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
@@ -20,14 +18,17 @@ import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.service.BridgeHttpClient;
+import org.openelisglobal.analyzer.service.BridgeRegistrationResult;
 import org.openelisglobal.analyzer.service.BridgeRegistrationService;
 import org.openelisglobal.analyzer.service.QcRuleDto;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
@@ -102,10 +103,6 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerTestMappingService analyzerTestMappingService;
-
-    @Autowired
-    @org.springframework.beans.factory.annotation.Qualifier("bridgeRegistrationExecutor")
-    private Executor bridgeRegistrationExecutor;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -184,6 +181,8 @@ public class AnalyzerRestController extends BaseRestController {
         try {
             // Collect all validation errors instead of failing on the first one
             List<String> validationErrors = new ArrayList<>();
+            AnalyzerTransportMode requestedTransport = null;
+            AnalyzerConnectionRole requestedConnectionRole = null;
             if (form.getName() == null || form.getName().trim().isEmpty()) {
                 validationErrors.add("Analyzer name is required");
             }
@@ -204,6 +203,18 @@ public class AnalyzerRestController extends BaseRestController {
                         .collect(Collectors.joining(", "));
                 validationErrors.add("Invalid communication mode: " + form.getCommunicationMode() + ". Valid values: "
                         + validValues);
+            }
+            if (form.getTransportMode() != null && !form.getTransportMode().trim().isEmpty()) {
+                requestedTransport = AnalyzerTransportMode.fromProfileValue(form.getTransportMode());
+                if (requestedTransport == null) {
+                    validationErrors.add("Invalid analyzer transport mode");
+                }
+            }
+            if (form.getConnectionRole() != null && !form.getConnectionRole().trim().isEmpty()) {
+                requestedConnectionRole = AnalyzerConnectionRole.fromProfileValue(form.getConnectionRole());
+                if (requestedConnectionRole == null) {
+                    validationErrors.add("Invalid analyzer connection role");
+                }
             }
             if (form.getProfileId() == null || form.getProfileId().trim().isEmpty()
                     || form.getProfileRevision() == null) {
@@ -227,6 +238,12 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getCommunicationMode() != null && !form.getCommunicationMode().trim().isEmpty()) {
                 CommunicationMode cm = CommunicationMode.fromValue(form.getCommunicationMode());
                 analyzer.setCommunicationMode(cm);
+            }
+            if (requestedTransport != null) {
+                analyzer.setTransportMode(requestedTransport);
+            }
+            if (requestedConnectionRole != null) {
+                analyzer.setConnectionRole(requestedConnectionRole);
             }
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
@@ -286,12 +303,11 @@ public class AnalyzerRestController extends BaseRestController {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }
 
-            // Register with bridge synchronously — analyzer is not fully operational
-            // until the bridge confirms it can route results for it.
-            boolean bridgeRegistered = registerWithBridge(createdAnalyzer);
+            BridgeRegistrationResult bridgeResult = bridgeRegistrationService.synchronize();
 
             Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
-            response.put("bridgeRegistered", bridgeRegistered);
+            response.put("bridgeSynchronized", bridgeResult.complete());
+            response.put("bridgeAcknowledged", bridgeResult.acknowledged(analyzerId));
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (AnalyzerProfileBindingException e) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
@@ -492,6 +508,22 @@ public class AnalyzerRestController extends BaseRestController {
                 }
                 analyzer.setCommunicationMode(cm);
             }
+            if (form.getTransportMode() != null && !form.getTransportMode().trim().isEmpty()) {
+                AnalyzerTransportMode transport = AnalyzerTransportMode.fromProfileValue(form.getTransportMode());
+                if (transport == null) {
+                    return ResponseEntity.badRequest()
+                            .body(AnalyzerControllerHelper.wrapError("Invalid analyzer transport mode"));
+                }
+                analyzer.setTransportMode(transport);
+            }
+            if (form.getConnectionRole() != null && !form.getConnectionRole().trim().isEmpty()) {
+                AnalyzerConnectionRole role = AnalyzerConnectionRole.fromProfileValue(form.getConnectionRole());
+                if (role == null) {
+                    return ResponseEntity.badRequest()
+                            .body(AnalyzerControllerHelper.wrapError("Invalid analyzer connection role"));
+                }
+                analyzer.setConnectionRole(role);
+            }
             if (form.getTestUnitIds() != null) {
                 analyzer.setTestUnitIds(form.getTestUnitIds());
             }
@@ -541,12 +573,12 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setSysUserId(getSysUserId(request));
             analyzerService.update(analyzer);
 
-            // Re-register transport mapping with bridge synchronously.
             Analyzer updatedAnalyzer = analyzerService.getWithType(id)
                     .orElseThrow(() -> new LIMSRuntimeException("Failed to retrieve updated analyzer"));
-            boolean bridgeRegistered = registerWithBridge(updatedAnalyzer);
+            BridgeRegistrationResult bridgeResult = bridgeRegistrationService.synchronize();
             Map<String, Object> response = analyzerToMap(updatedAnalyzer, getLoadedPluginClassNames());
-            response.put("bridgeRegistered", bridgeRegistered);
+            response.put("bridgeSynchronized", bridgeResult.complete());
+            response.put("bridgeAcknowledged", bridgeResult.acknowledged(id));
             return ResponseEntity.ok(response);
         } catch (AnalyzerProfileBindingException e) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
@@ -587,13 +619,14 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setSysUserId(getSysUserId(request));
             analyzerService.update(analyzer);
 
-            unregisterFromBridgeAsync(id, analyzer.getName());
+            BridgeRegistrationResult bridgeResult = bridgeRegistrationService.synchronize();
             AnalyzerTestNameCache.getInstance().reloadCache();
 
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("message", "analyzer.delete.success");
             response.put("messageKey", "analyzer.delete.success");
             response.put("deleted", true);
+            response.put("bridgeSynchronized", bridgeResult.complete());
             return ResponseEntity.ok(response);
         } catch (org.hibernate.ObjectNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -645,6 +678,8 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("protocolVersion", analyzer.getProtocolVersion() != null ? analyzer.getProtocolVersion().name() : null);
         map.put("communicationMode",
                 analyzer.getCommunicationMode() != null ? analyzer.getCommunicationMode().name() : null);
+        map.put("transportMode", analyzer.getTransportMode() != null ? analyzer.getTransportMode().name() : null);
+        map.put("connectionRole", analyzer.getConnectionRole() != null ? analyzer.getConnectionRole().name() : null);
         map.put("effectiveCommunicationMode", analyzer.getEffectiveCommunicationMode().name());
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
@@ -1056,63 +1091,6 @@ public class AnalyzerRestController extends BaseRestController {
         }
 
         return result;
-    }
-
-    // testConnectionViaBridge() removed — bridge health is now checked via
-    // checkBridgeHealth() in the unified testTcpAnalyzerConnection() method.
-    // The bridge ASTM forwarding endpoint (POST /?forwardAddress=&forwardPort=)
-    // is still available for direct use by the bridge's own ASTM test tooling.
-    /**
-     * Register analyzer with the bridge for transport-level identification. Runs in
-     * background — failures are logged but don't prevent analyzer creation.
-     */
-    /**
-     * Register analyzer with the bridge synchronously. Returns true if the bridge
-     * confirmed registration, false if the bridge was unreachable or rejected.
-     *
-     * <p>
-     * Called during create/update — the analyzer is not fully operational until the
-     * bridge confirms it can route results for it.
-     */
-    private boolean registerWithBridge(Analyzer analyzer) {
-        try {
-            String id = analyzer.getId();
-            String name = analyzer.getName();
-            boolean registered = false;
-
-            // TCP/ASTM/HL7 analyzers: register by IP
-            if (analyzer.getIpAddress() != null && !analyzer.getIpAddress().isBlank()) {
-                String protocol = analyzer.getProtocolVersion() != null && analyzer.getProtocolVersion().isHl7() ? "HL7"
-                        : "ASTM";
-                registered = bridgeRegistrationService.registerTcp(id, name, analyzer.getIpAddress(),
-                        analyzer.getPort(), protocol, analyzer.getIdentifierPattern());
-            }
-
-            // FILE analyzers: register by watch directory (unified fields on Analyzer)
-            if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
-                List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(id).stream()
-                        .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
-                registered = bridgeRegistrationService.registerFile(id, name, analyzer.getImportDirectory(),
-                        analyzer.getFilePattern(), analyzer.getColumnMappings(), analyzer.getFileFormat(),
-                        analyzer.getDelimiter(), analyzer.getSkipRows(), testMappings);
-            }
-
-            if (registered) {
-                logger.info("Bridge registration confirmed for analyzer '{}' (id={})", name, id);
-            }
-            return registered;
-        } catch (Exception e) {
-            logger.warn("Bridge registration failed for analyzer '{}': {}", analyzer.getName(), e.getMessage());
-            return false;
-        }
-    }
-
-    private void unregisterFromBridgeAsync(String analyzerId, String analyzerName) {
-        CompletableFuture.runAsync(() -> bridgeRegistrationService.unregister(analyzerId), bridgeRegistrationExecutor)
-                .exceptionally(e -> {
-                    logger.warn("Async bridge unregister failed for analyzer {} ({})", analyzerName, analyzerId, e);
-                    return null;
-                });
     }
 
     // testFileConfiguration() and testSerialConfiguration() removed — replaced

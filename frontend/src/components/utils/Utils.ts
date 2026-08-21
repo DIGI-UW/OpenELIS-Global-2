@@ -130,7 +130,7 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
       }
     })
     .catch((error) => {
-      if (error.name === "AbortError") {
+      if (error.name === "AbortError" || signal?.aborted) {
         return; // Component is unmounting — don't call callback
       }
       console.error(error);

@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableBody,
   TableCell,
+  DataTableSkeleton,
   Search,
   Grid,
   Column,
@@ -83,7 +84,7 @@ const AnalyzersList = () => {
   const [, setAnalyzers] = useState<Analyzer[]>([]);
   const [filteredAnalyzers, setFilteredAnalyzers] = useState<Analyzer[]>([]);
   const [profileNames, setProfileNames] = useState<Record<string, string>>({});
-  const [, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<AnalyzerFilters>({
     status: "",
@@ -161,7 +162,7 @@ const AnalyzersList = () => {
         ]),
       );
       setProfileNames(names);
-    });
+    }, controller.signal);
     const params = new URLSearchParams(window.location.search);
     const initialSearch = params.get("search") || "";
     const initialStatus = params.get("status") || "";
@@ -197,6 +198,9 @@ const AnalyzersList = () => {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       controller.abort();
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
       window.removeEventListener("beforeunload", onBeforeUnload);
       sessionStorage.setItem("analyzers.scrollY", String(window.scrollY));
     };
@@ -507,205 +511,216 @@ const AnalyzersList = () => {
 
       <Grid>
         <Column lg={16} md={8} sm={4}>
-          <TableContainer
-            data-testid="analyzers-table-container"
-            className="analyzers-list-table-container"
-          >
-            <DataTable rows={rows} headers={headers} isSortable>
-              {({
-                rows,
-                headers,
-                getHeaderProps,
-                getRowProps,
-                getTableProps,
-              }) => (
-                <Table {...getTableProps()} data-testid="analyzers-table">
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row) => {
-                      const analyzer = filteredAnalyzers.find(
-                        (a) => a.id === row.id,
-                      );
-                      const unifiedStatus = analyzer?.status || "SETUP";
+          {loading ? (
+            <div data-testid="analyzers-loading">
+              <DataTableSkeleton
+                columnCount={headers.length}
+                rowCount={5}
+                showHeader={false}
+                showToolbar={false}
+              />
+            </div>
+          ) : (
+            <TableContainer
+              data-testid="analyzers-table-container"
+              className="analyzers-list-table-container"
+            >
+              <DataTable rows={rows} headers={headers} isSortable>
+                {({
+                  rows,
+                  headers,
+                  getHeaderProps,
+                  getRowProps,
+                  getTableProps,
+                }) => (
+                  <Table {...getTableProps()} data-testid="analyzers-table">
+                    <TableHead>
+                      <TableRow>
+                        {headers.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => {
+                        const analyzer = filteredAnalyzers.find(
+                          (a) => a.id === row.id,
+                        );
+                        const unifiedStatus = analyzer?.status || "SETUP";
 
-                      return (
-                        <TableRow
-                          key={row.id}
-                          {...getRowProps({ row })}
-                          data-testid={`analyzer-row-${row.id}`}
-                        >
-                          {row.cells.map((cell) => {
-                            const headerKey = cell.info.header;
-                            let testId = null;
-                            let cellContent = cell.value;
+                        return (
+                          <TableRow
+                            key={row.id}
+                            {...getRowProps({ row })}
+                            data-testid={`analyzer-row-${row.id}`}
+                          >
+                            {row.cells.map((cell) => {
+                              const headerKey = cell.info.header;
+                              let testId = null;
+                              let cellContent = cell.value;
 
-                            if (headerKey === "name") {
-                              testId = `analyzer-name-${row.id}`;
-                              if (analyzer && hasPluginWarning(analyzer)) {
+                              if (headerKey === "name") {
+                                testId = `analyzer-name-${row.id}`;
+                                if (analyzer && hasPluginWarning(analyzer)) {
+                                  cellContent = (
+                                    <span>
+                                      {cell.value}{" "}
+                                      <Tag
+                                        type="red"
+                                        size="sm"
+                                        data-testid={`plugin-warning-${row.id}`}
+                                      >
+                                        {intl.formatMessage({
+                                          id: "analyzer.plugin.missing",
+                                        })}
+                                      </Tag>
+                                    </span>
+                                  );
+                                }
+                              } else if (headerKey === "type") {
+                                testId = `analyzer-type-${row.id}`;
+                              } else if (headerKey === "connection") {
+                                testId = `analyzer-connection-${row.id}`;
+                              } else if (headerKey === "testUnits") {
+                                testId = `analyzer-test-units-${row.id}`;
+                              } else if (headerKey === "status") {
+                                testId = `analyzer-status-${row.id}`;
+                                const statusColorMap: Record<
+                                  AnalyzerStatus,
+                                  "gray" | "blue" | "green" | "red" | "purple"
+                                > = {
+                                  INACTIVE: "gray",
+                                  SETUP: "gray",
+                                  VALIDATION: "blue",
+                                  ACTIVE: "green",
+                                  ERROR_PENDING: "red", // Carbon doesn't support "orange", use "red" for error states
+                                  OFFLINE: "red",
+                                  PENDING_REGISTRATION: "purple", // Attention color — analyzer discovered by bridge but not yet configured
+                                };
+                                const statusColor =
+                                  statusColorMap[unifiedStatus] || "gray";
+                                // Convert ERROR_PENDING to error_pending for i18n key
+                                const statusKey =
+                                  unifiedStatus === "ERROR_PENDING"
+                                    ? "analyzer.status.error_pending"
+                                    : `analyzer.status.${unifiedStatus.toLowerCase()}`;
                                 cellContent = (
-                                  <span>
-                                    {cell.value}{" "}
-                                    <Tag
-                                      type="red"
-                                      size="sm"
-                                      data-testid={`plugin-warning-${row.id}`}
-                                    >
-                                      {intl.formatMessage({
-                                        id: "analyzer.plugin.missing",
-                                      })}
-                                    </Tag>
-                                  </span>
+                                  <Tag
+                                    type={statusColor}
+                                    data-testid={`status-badge-${row.id}`}
+                                  >
+                                    {intl.formatMessage({
+                                      id: statusKey,
+                                    })}
+                                  </Tag>
                                 );
-                              }
-                            } else if (headerKey === "type") {
-                              testId = `analyzer-type-${row.id}`;
-                            } else if (headerKey === "connection") {
-                              testId = `analyzer-connection-${row.id}`;
-                            } else if (headerKey === "testUnits") {
-                              testId = `analyzer-test-units-${row.id}`;
-                            } else if (headerKey === "status") {
-                              testId = `analyzer-status-${row.id}`;
-                              const statusColorMap: Record<
-                                AnalyzerStatus,
-                                "gray" | "blue" | "green" | "red" | "purple"
-                              > = {
-                                INACTIVE: "gray",
-                                SETUP: "gray",
-                                VALIDATION: "blue",
-                                ACTIVE: "green",
-                                ERROR_PENDING: "red", // Carbon doesn't support "orange", use "red" for error states
-                                OFFLINE: "red",
-                                PENDING_REGISTRATION: "purple", // Attention color — analyzer discovered by bridge but not yet configured
-                              };
-                              const statusColor =
-                                statusColorMap[unifiedStatus] || "gray";
-                              // Convert ERROR_PENDING to error_pending for i18n key
-                              const statusKey =
-                                unifiedStatus === "ERROR_PENDING"
-                                  ? "analyzer.status.error_pending"
-                                  : `analyzer.status.${unifiedStatus.toLowerCase()}`;
-                              cellContent = (
-                                <Tag
-                                  type={statusColor}
-                                  data-testid={`status-badge-${row.id}`}
-                                >
-                                  {intl.formatMessage({
-                                    id: statusKey,
-                                  })}
-                                </Tag>
-                              );
-                            } else if (headerKey === "lastModified") {
-                              testId = `analyzer-last-modified-${row.id}`;
-                            } else if (headerKey === "actions") {
-                              testId = `analyzer-actions-${row.id}`;
-                              cellContent = analyzer ? (
-                                <OverflowMenu
-                                  aria-label={intl.formatMessage({
-                                    id: "analyzer.table.actions",
-                                  })}
-                                  data-testid={`analyzer-row-overflow-${row.id}`}
-                                >
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.fieldMappings",
+                              } else if (headerKey === "lastModified") {
+                                testId = `analyzer-last-modified-${row.id}`;
+                              } else if (headerKey === "actions") {
+                                testId = `analyzer-actions-${row.id}`;
+                                cellContent = analyzer ? (
+                                  <OverflowMenu
+                                    aria-label={intl.formatMessage({
+                                      id: "analyzer.table.actions",
                                     })}
-                                    onClick={() => {
-                                      if (analyzer?.id) {
+                                    data-testid={`analyzer-row-overflow-${row.id}`}
+                                  >
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.fieldMappings",
+                                      })}
+                                      onClick={() => {
+                                        if (analyzer?.id) {
+                                          history.push(
+                                            `/analyzers/${analyzer.id}/mappings`,
+                                          );
+                                        }
+                                      }}
+                                      data-testid={`analyzer-action-mappings-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.testConnection",
+                                      })}
+                                      onClick={() => {
+                                        setTestConnectionModal({
+                                          open: true,
+                                          analyzer: analyzer,
+                                        });
+                                      }}
+                                      data-testid={`analyzer-action-test-connection-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.copyMappings",
+                                      })}
+                                      onClick={() => {
+                                        setCopyMappingsModal({
+                                          open: true,
+                                          analyzer: analyzer,
+                                        });
+                                      }}
+                                      data-testid={`analyzer-action-copy-mappings-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.edit",
+                                      })}
+                                      onClick={() =>
                                         history.push(
-                                          `/analyzers/${analyzer.id}/mappings`,
-                                        );
+                                          `/analyzers/${analyzer.id}/edit`,
+                                        )
                                       }
-                                    }}
-                                    data-testid={`analyzer-action-mappings-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.testConnection",
-                                    })}
-                                    onClick={() => {
-                                      setTestConnectionModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-test-connection-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.copyMappings",
-                                    })}
-                                    onClick={() => {
-                                      setCopyMappingsModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-copy-mappings-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.edit",
-                                    })}
-                                    onClick={() =>
-                                      history.push(
-                                        `/analyzers/${analyzer.id}/edit`,
-                                      )
-                                    }
-                                    data-testid={`analyzer-action-edit-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.qcRules",
-                                    })}
-                                    onClick={() =>
-                                      history.push(
-                                        `/analyzers/${analyzer.id}/qc-rules`,
-                                      )
-                                    }
-                                    data-testid={`analyzer-action-qc-rules-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.delete",
-                                    })}
-                                    isDelete
-                                    onClick={() => {
-                                      setDeleteModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-delete-${row.id}`}
-                                  />
-                                </OverflowMenu>
-                              ) : null;
-                            }
+                                      data-testid={`analyzer-action-edit-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.qcRules",
+                                      })}
+                                      onClick={() =>
+                                        history.push(
+                                          `/analyzers/${analyzer.id}/qc-rules`,
+                                        )
+                                      }
+                                      data-testid={`analyzer-action-qc-rules-${row.id}`}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.delete",
+                                      })}
+                                      isDelete
+                                      onClick={() => {
+                                        setDeleteModal({
+                                          open: true,
+                                          analyzer: analyzer,
+                                        });
+                                      }}
+                                      data-testid={`analyzer-action-delete-${row.id}`}
+                                    />
+                                  </OverflowMenu>
+                                ) : null;
+                              }
 
-                            return (
-                              <TableCell key={cell.id} data-testid={testId}>
-                                {cellContent}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </DataTable>
-          </TableContainer>
+                              return (
+                                <TableCell key={cell.id} data-testid={testId}>
+                                  {cellContent}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </DataTable>
+            </TableContainer>
+          )}
         </Column>
       </Grid>
 

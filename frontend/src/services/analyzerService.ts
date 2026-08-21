@@ -811,8 +811,9 @@ export const deleteValidationRule = (
 
 export const getAnalyzerTypeCatalog = (
   callback: DataCallback<AnalyzerTypeCatalog | undefined>,
+  signal: AbortSignal | null = null,
 ) => {
-  getFromOpenElisServer("/rest/analyzer-types", callback);
+  getFromOpenElisServer("/rest/analyzer-types", callback, signal);
 };
 
 export const createAnalyzerTypeDraft = (

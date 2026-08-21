@@ -9,7 +9,7 @@ import OEHeader from "./Header";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./Layout";
 import messages from "../../languages/en.json";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, getFromOpenElisServerV2 } from "../utils/Utils";
 
 // Mock Utils
 vi.mock("../utils/Utils", async () => {
@@ -795,6 +795,53 @@ describe("Header Component - M2b Enhancement Tests", () => {
   });
 
   describe("User panel actions", () => {
+    test.each([{ authenticated: false }, {}])(
+      "unauthenticated or unresolved shell does not request protected header resources",
+      async (sessionDetails) => {
+        renderHeader({
+          sessionDetails,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByRole("button", { name: "Language" })).toBeTruthy();
+        });
+
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/properties",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      },
+    );
+
+    test("subscription state loads only when Notifications is opened", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        expect(getFromOpenElisServer).toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+      });
+      expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+        "/rest/notification/pnconfig",
+      );
+
+      fireEvent.click(container.querySelector("#notification-Icon"));
+
+      await waitFor(() => {
+        expect(getFromOpenElisServerV2).toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      });
+    });
+
     test("authenticated panel orders locale, change password, then logout", async () => {
       const { container } = renderHeader();
 

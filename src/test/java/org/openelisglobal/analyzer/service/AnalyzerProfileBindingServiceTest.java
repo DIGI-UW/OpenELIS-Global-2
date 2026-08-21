@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -13,7 +14,6 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,9 +23,11 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 
@@ -136,16 +138,15 @@ public class AnalyzerProfileBindingServiceTest {
 
         assertSame(existing, result);
         assertSame(existingRevision, analyzer.getSiteBindingRevision());
-        assertEquals(null, analyzer.getProfileBinding());
+        assertSame(existing, analyzer.getPinnedProfileBinding());
         verify(catalogService, never()).getCatalog();
         verify(bindingDAO, never()).insert(any(AnalyzerProfileBinding.class));
         verify(siteBindingService, never()).resolveInitialRevision(any(), any(), any());
     }
 
     @Test
-    public void assignProfilePinsTheSharedLocalBindingRevisionWithoutWritingLegacyProfileReference() {
+    public void assignProfilePinsTheSharedLocalBindingRevision() {
         Analyzer analyzer = new Analyzer();
-        analyzer.setProfileBinding(binding(FINGERPRINT));
         AnalyzerProfileBinding selected = binding(FINGERPRINT);
         JsonNode portableProfile = catalog("ACTIVE", FINGERPRINT).profiles().get(0).profile();
         AnalyzerSiteBindingRevision siteBindingRevision = siteBindingRevision(selected);
@@ -159,11 +160,11 @@ public class AnalyzerProfileBindingServiceTest {
 
         assertSame(selected, result);
         assertSame(siteBindingRevision, analyzer.getSiteBindingRevision());
-        assertEquals(null, analyzer.getProfileBinding());
+        assertSame(selected, analyzer.getPinnedProfileBinding());
     }
 
     @Test
-    public void assignProfileAppliesSelectedRevisionDefaultsOnceAndPreservesSiteOverrides() {
+    public void assignProfileAppliesConnectionDefaultsWithoutCopyingProfileRuntimeBehavior() {
         Analyzer analyzer = new Analyzer();
         analyzer.setName("Hematology bench 1");
         AnalyzerProfileBinding selected = binding(FINGERPRINT);
@@ -181,8 +182,11 @@ public class AnalyzerProfileBindingServiceTest {
         assertEquals("ASTM", analyzer.getType());
         assertEquals(ProtocolVersion.ASTM_LIS2_A2, analyzer.getProtocolVersion());
         assertEquals(CommunicationMode.BOTH, analyzer.getCommunicationMode());
+        assertEquals(AnalyzerTransportMode.TCP, analyzer.getTransportMode());
+        assertEquals(AnalyzerConnectionRole.RECEIVER, analyzer.getConnectionRole());
         assertEquals(Integer.valueOf(9100), analyzer.getPort());
-        assertEquals("MOCK-H|ACME", analyzer.getIdentifierPattern());
+        assertNull(analyzer.getIdentifierPattern());
+        assertTrue(analyzer.getColumnMappings().isEmpty());
 
         analyzer.setPort(9200);
         service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
@@ -192,7 +196,7 @@ public class AnalyzerProfileBindingServiceTest {
     }
 
     @Test
-    public void assignProfileAppliesCompleteFileRuntimeDefaultsFromThePinnedRevisionExactlyOnce() throws Exception {
+    public void assignProfileLeavesFileRuntimeInPinnedRevisionAndPreservesSiteImportDirectory() throws Exception {
         Analyzer analyzer = new Analyzer();
         analyzer.setName("File bench 1");
         analyzer.setImportDirectory("/data/analyzer-imports/file-bench-1");
@@ -210,21 +214,48 @@ public class AnalyzerProfileBindingServiceTest {
         assertEquals("FILE", analyzer.getType());
         assertNull(analyzer.getProtocolVersion());
         assertNull(analyzer.getCommunicationMode());
+        assertEquals(AnalyzerTransportMode.FILE, analyzer.getTransportMode());
+        assertEquals(AnalyzerConnectionRole.RECEIVER, analyzer.getConnectionRole());
         assertEquals("/data/analyzer-imports/file-bench-1", analyzer.getImportDirectory());
-        assertEquals("XLSX", analyzer.getFileFormat());
-        assertEquals("(?i).*\\.(xlsx|xls)$", analyzer.getFilePattern());
-        assertEquals(Boolean.TRUE, analyzer.getHasHeader());
-        assertEquals(";", analyzer.getDelimiter());
-        assertEquals(Integer.valueOf(2), analyzer.getSkipRows());
-        assertEquals(Map.of("Sample ID", "sampleId", "Result", "result"), analyzer.getColumnMappings());
+        assertNull(analyzer.getFileFormat());
+        assertNull(analyzer.getFilePattern());
+        assertNull(analyzer.getHasHeader());
+        assertNull(analyzer.getDelimiter());
+        assertNull(analyzer.getSkipRows());
+        assertTrue(analyzer.getColumnMappings().isEmpty());
 
-        analyzer.setFilePattern("site-override-.*\\.xlsx");
-        analyzer.setColumnMappings(Map.of("Specimen", "sampleId"));
+        analyzer.setImportDirectory("/data/analyzer-imports/file-bench-2");
         service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
 
-        assertEquals("site-override-.*\\.xlsx", analyzer.getFilePattern());
-        assertEquals(Map.of("Specimen", "sampleId"), analyzer.getColumnMappings());
+        assertEquals("/data/analyzer-imports/file-bench-2", analyzer.getImportDirectory());
         verify(catalogService).getCatalog();
+    }
+
+    @Test
+    public void assignProfileLetsTwoAnalyzersShareOneExactProfileAndSiteBindingRevision() {
+        Analyzer first = new Analyzer();
+        Analyzer second = new Analyzer();
+        AnalyzerProfileBinding selected = binding(FINGERPRINT);
+        JsonNode profile = catalog("ACTIVE", FINGERPRINT).profiles().get(0).profile();
+        AnalyzerSiteBindingRevision sharedRevision = siteBindingRevision(selected);
+        AnalyzerSiteBindingSnapshot sharedSnapshot = new AnalyzerSiteBindingSnapshot(sharedRevision.getSiteBinding(),
+                sharedRevision, List.of(), List.of());
+        when(catalogService.getCatalog()).thenReturn(catalog("ACTIVE", FINGERPRINT));
+        when(bindingDAO.findByProfileIdAndRevision(PROFILE_ID, REVISION)).thenReturn(Optional.of(selected));
+        when(siteBindingService.resolveInitialRevision(eq(selected), eq(profile), eq("oe-user-17")))
+                .thenReturn(sharedSnapshot);
+
+        AnalyzerProfileBinding firstBinding = service.assignProfile(first, PROFILE_ID, REVISION, "oe-user-17");
+        AnalyzerProfileBinding secondBinding = service.assignProfile(second, PROFILE_ID, REVISION, "oe-user-17");
+
+        assertSame(selected, firstBinding);
+        assertSame(selected, secondBinding);
+        assertSame(sharedRevision, first.getSiteBindingRevision());
+        assertSame(sharedRevision, second.getSiteBindingRevision());
+        assertSame(selected, first.getPinnedProfileBinding());
+        assertSame(selected, second.getPinnedProfileBinding());
+        verify(siteBindingService, org.mockito.Mockito.times(2)).resolveInitialRevision(selected, profile,
+                "oe-user-17");
     }
 
     @Test

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,6 +15,13 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResultPK;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTestPK;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerTypeCatalogServiceTest {
@@ -26,11 +34,14 @@ public class AnalyzerTypeCatalogServiceTest {
     @Mock
     private AnalyzerProfileBindingDAO bindingDAO;
 
+    @Mock
+    private AnalyzerSiteBindingService siteBindingService;
+
     private AnalyzerTypeCatalogService service;
 
     @Before
     public void setUp() {
-        service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, bindingDAO);
+        service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, bindingDAO, siteBindingService);
     }
 
     @Test
@@ -41,6 +52,9 @@ public class AnalyzerTypeCatalogServiceTest {
         binding.setProfileRevision(3);
         when(bindingDAO.getAll()).thenReturn(List.of(binding));
         when(bindingDAO.countAnalyzersByBindingId("41")).thenReturn(3L);
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
+                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED),
+                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
 
         AnalyzerTypeCatalogView result = service.getCatalog();
@@ -48,7 +62,7 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("1.0", result.schemaVersion());
         assertEquals(2, result.summary().total());
         assertEquals(1, result.summary().inUse());
-        assertEquals(1, result.summary().needsAttention());
+        assertEquals(0, result.summary().needsAttention());
         assertEquals(1, result.summary().deactivated());
 
         AnalyzerTypeCatalogView.TypeSummary active = result.types().get(0);
@@ -65,13 +79,14 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("BOTH", serializedActive.at("/instanceDefaults/communicationMode").asText());
         assertEquals(9100, serializedActive.at("/instanceDefaults/port").asInt());
         assertEquals(2, active.testMappings().total());
-        assertEquals(0, active.testMappings().mapped());
-        assertEquals("NOT_STARTED", active.testMappings().state());
+        assertEquals(2, active.testMappings().mapped());
+        assertEquals("COMPLETE", active.testMappings().state());
         assertEquals(2, active.resultMappings().total());
-        assertEquals(0, active.resultMappings().mapped());
-        assertEquals("NOT_STARTED", active.resultMappings().state());
+        assertEquals(2, active.resultMappings().mapped());
+        assertEquals("COMPLETE", active.resultMappings().state());
+        assertEquals("51", active.siteBindingId());
         assertEquals(3L, active.usedBy());
-        assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
+        assertEquals("READY", active.readiness());
 
         AnalyzerTypeCatalogView.TypeSummary inactive = result.types().get(1);
         assertEquals("site.retired-file", inactive.profileId());
@@ -82,6 +97,32 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals(Integer.valueOf(1), inactive.parentRevision());
         assertEquals("NOT_APPLICABLE", inactive.resultMappings().state());
         assertNull(active.parentProfileId());
+    }
+
+    @Test
+    public void getCatalogKeepsUnresolvedLatestRowsVisibleAsIncompleteAttention() throws Exception {
+        AnalyzerProfileBinding binding = new AnalyzerProfileBinding();
+        binding.setId("41");
+        binding.setProfileId("site.mock-hematology");
+        binding.setProfileRevision(3);
+        when(bindingDAO.getAll()).thenReturn(List.of(binding));
+        when(bindingDAO.countAnalyzersByBindingId("41")).thenReturn(1L);
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
+                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.UNRESOLVED),
+                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.UNRESOLVED))));
+        when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
+
+        AnalyzerTypeCatalogView result = service.getCatalog();
+
+        AnalyzerTypeCatalogView.TypeSummary active = result.types().get(0);
+        assertEquals(1, result.summary().needsAttention());
+        assertEquals(1, active.testMappings().mapped());
+        assertEquals(2, active.testMappings().total());
+        assertEquals("INCOMPLETE", active.testMappings().state());
+        assertEquals(1, active.resultMappings().mapped());
+        assertEquals(2, active.resultMappings().total());
+        assertEquals("INCOMPLETE", active.resultMappings().state());
+        assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
     }
 
     private BridgeProfileCatalog catalog() throws Exception {
@@ -128,5 +169,46 @@ public class AnalyzerTypeCatalogServiceTest {
                 "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 List.of(new BridgeProfileCatalog.ProfileRevision(active, publication),
                         new BridgeProfileCatalog.ProfileRevision(inactive, publication)));
+    }
+
+    private static AnalyzerSiteBindingSnapshot siteBindingSnapshot(AnalyzerProfileBinding profileBinding,
+            List<AnalyzerSiteBindingMappingState> testStates, List<AnalyzerSiteBindingMappingState> resultStates) {
+        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
+        binding.setId("51");
+        binding.setProfileBinding(profileBinding);
+        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        revision.setId("61");
+        revision.setSiteBinding(binding);
+        revision.setRevisionNumber(2);
+
+        AnalyzerSiteBindingTest wbc = test(revision, "WBC", testStates.get(0));
+        AnalyzerSiteBindingTest flag = test(revision, "FLAG", testStates.get(1));
+        AnalyzerSiteBindingResult positive = result(revision, "FLAG", "POS", resultStates.get(0));
+        AnalyzerSiteBindingResult negative = result(revision, "FLAG", "NEG", resultStates.get(1));
+        return new AnalyzerSiteBindingSnapshot(binding, revision, List.of(wbc, flag), List.of(positive, negative));
+    }
+
+    private static AnalyzerSiteBindingTest test(AnalyzerSiteBindingRevision revision, String sourceRowKey,
+            AnalyzerSiteBindingMappingState state) {
+        AnalyzerSiteBindingTest row = new AnalyzerSiteBindingTest();
+        row.setId(new AnalyzerSiteBindingTestPK(revision.getId(), sourceRowKey));
+        row.setSiteBindingRevision(revision);
+        row.setMappingState(state);
+        if (state == AnalyzerSiteBindingMappingState.BOUND) {
+            row.setTestId("100");
+        }
+        return row;
+    }
+
+    private static AnalyzerSiteBindingResult result(AnalyzerSiteBindingRevision revision, String sourceRowKey,
+            String rawValue, AnalyzerSiteBindingMappingState state) {
+        AnalyzerSiteBindingResult row = new AnalyzerSiteBindingResult();
+        row.setId(new AnalyzerSiteBindingResultPK(revision.getId(), sourceRowKey, rawValue));
+        row.setSiteBindingRevision(revision);
+        row.setMappingState(state);
+        if (state == AnalyzerSiteBindingMappingState.BOUND) {
+            row.setTestResultId("200");
+        }
+        return row;
     }
 }

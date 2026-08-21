@@ -118,6 +118,38 @@ public class AnalyzerSiteBindingServiceTest {
     }
 
     @Test
+    public void findCurrentByProfileBindingIdReturnsTheLatestSharedSnapshotWithoutWriting() {
+        AnalyzerProfileBinding profileBinding = profileBinding();
+        AnalyzerSiteBinding binding = binding(profileBinding);
+        AnalyzerSiteBindingRevision revision = revision(binding);
+        AnalyzerSiteBindingTest test = new AnalyzerSiteBindingTest();
+        AnalyzerSiteBindingResult result = new AnalyzerSiteBindingResult();
+        when(bindingDAO.findByProfileBindingId("41")).thenReturn(Optional.of(binding));
+        when(revisionDAO.findLatestByBindingId("51")).thenReturn(Optional.of(revision));
+        when(testDAO.findByRevisionId("61")).thenReturn(List.of(test));
+        when(resultDAO.findByRevisionId("61")).thenReturn(List.of(result));
+
+        Optional<AnalyzerSiteBindingSnapshot> current = service.findCurrentByProfileBindingId("41");
+
+        assertEquals(true, current.isPresent());
+        assertSame(binding, current.get().binding());
+        assertSame(revision, current.get().revision());
+        assertEquals(List.of(test), current.get().tests());
+        assertEquals(List.of(result), current.get().results());
+        verifyZeroInteractions(auditTrailService);
+    }
+
+    @Test
+    public void findCurrentByProfileBindingIdReturnsEmptyWhenNoSharedBindingExists() {
+        when(bindingDAO.findByProfileBindingId("41")).thenReturn(Optional.empty());
+
+        Optional<AnalyzerSiteBindingSnapshot> current = service.findCurrentByProfileBindingId("41");
+
+        assertEquals(Optional.empty(), current);
+        verifyZeroInteractions(revisionDAO, testDAO, resultDAO, auditTrailService);
+    }
+
+    @Test
     public void resolveInitialRevisionRejectsMismatchedPortableIdentityBeforeWriting() throws Exception {
         JsonNode wrongRevision = portableProfile().deepCopy();
         ((com.fasterxml.jackson.databind.node.ObjectNode) wrongRevision.path("catalog")).put("revision", 4);

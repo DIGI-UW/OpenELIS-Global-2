@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -14,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,7 +62,7 @@ public class AnalyzerProfileCutoverContractTest {
                                           "protocol":{"name":"ASTM","version":"LIS2-A2"},
                                           "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
                                           "default_test_mappings":[],
-                                          "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
+                                          "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP","aggregationMode":"PER_MESSAGE"},
                                           "catalog":{
                                             "revision":3,
                                             "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -77,6 +79,8 @@ public class AnalyzerProfileCutoverContractTest {
         assertTrue(hasField(AnalyzerForm.class, "profileId"));
         assertTrue(hasField(AnalyzerForm.class, "profileRevision"));
         assertFalse(hasField(AnalyzerForm.class, "defaultConfigId"));
+        assertFalse("Analyzer must pin profiles only through its site-binding revision",
+                hasField(Analyzer.class, "profileBinding"));
     }
 
     @Test
@@ -98,7 +102,7 @@ public class AnalyzerProfileCutoverContractTest {
 
         assertSame(binding, result);
         assertSame(siteBindingRevision, analyzer.getSiteBindingRevision());
-        assertSame(null, analyzer.getProfileBinding());
+        assertSame(binding, analyzer.getPinnedProfileBinding());
         assertFalse(Arrays.stream(Analyzer.class.getDeclaredFields())
                 .anyMatch(field -> field.getName().toLowerCase().contains("profilesnapshot")));
     }
@@ -149,18 +153,43 @@ public class AnalyzerProfileCutoverContractTest {
         assertFalse("CI harness still mounts OpenELIS profile files", ciCompose.contains("projects/analyzer-profiles"));
         assertFalse("Analyzer harness still mounts OpenELIS profile files",
                 analyzerCompose.contains("projects/analyzer-profiles"));
-        assertTrue("Local mock must consume the exact Bridge GeneXpert profile",
-                analyzerCompose.contains("analyzer-profile-astm.json"));
-        assertTrue("Local mock must consume the exact Bridge FluoroCycler profile",
-                analyzerCompose.contains("analyzer-profile-file.json"));
-        assertTrue("Local mock must consume the exact Bridge QuantStudio profile",
-                analyzerCompose.contains("analyzer-profile-quantstudio.json"));
+        assertTrue("Local mock must mount the versioned Bridge profile catalog",
+                analyzerCompose.contains("contracts/analyzer/v1/fixtures:/data/bridge-profiles:ro"));
+        assertTrue("Local mock must resolve exact Bridge profile references",
+                analyzerCompose.contains("ANALYZER_BRIDGE_PROFILES_DIR=/data/bridge-profiles"));
+        assertTrue("Local mock must use the configured Bridge username",
+                analyzerCompose.contains("BRIDGE_USER=${BRIDGE_SECURITY_USERNAME:-admin}"));
+        assertTrue("Local mock must use the configured Bridge password",
+                analyzerCompose.contains("BRIDGE_PASS=${BRIDGE_SECURITY_PASSWORD:-adminADMIN!}"));
+        assertTrue("CI mock must mount the versioned Bridge profile catalog",
+                ciCompose.contains("contracts/analyzer/v1/fixtures:/data/bridge-profiles:ro"));
+        assertTrue("CI mock must resolve exact Bridge profile references",
+                ciCompose.contains("ANALYZER_BRIDGE_PROFILES_DIR=/data/bridge-profiles"));
+        assertFalse("Local mock still exposes an unversioned profile root",
+                analyzerCompose.contains("ANALYZER_PROFILES_DIR"));
+        assertFalse("CI mock still exposes an unversioned profile root", ciCompose.contains("ANALYZER_PROFILES_DIR"));
         for (String profileId : List.of("genexpert-astm", "fluorocycler-xt", "quantstudio")) {
             assertTrue("Harness must seed priority profile " + profileId, seed.contains(profileId));
         }
         for (String obsoleteSeed : List.of("mindray-bc5380", "mindray-bs200", "wondfo-csv", "tecan-f50",
                 "multiskan-fc")) {
             assertFalse("Harness still seeds non-priority profile " + obsoleteSeed, seed.contains(obsoleteSeed));
+        }
+    }
+
+    @Test
+    public void priorityMockTemplatesPinExactPublishedBridgeProfiles() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, String> expectedProfiles = Map.of("genexpert_astm", "genexpert-astm", "hain_fluorocycler",
+                "fluorocycler-xt", "quantstudio5", "quantstudio", "quantstudio7", "quantstudio");
+
+        for (Map.Entry<String, String> expected : expectedProfiles.entrySet()) {
+            com.fasterxml.jackson.databind.JsonNode template = mapper
+                    .readTree(Path.of("tools/analyzer-mock-server/templates", expected.getKey() + ".json").toFile());
+            assertEquals(expected.getValue(), template.path("profileRef").path("profileId").asText());
+            assertEquals(1, template.path("profileRef").path("revision").asInt());
+            assertFalse("Priority mock still has an unversioned profile path", template.has("profile"));
+            assertFalse("Priority mock duplicates profile-owned assay fields", template.has("fields"));
         }
     }
 

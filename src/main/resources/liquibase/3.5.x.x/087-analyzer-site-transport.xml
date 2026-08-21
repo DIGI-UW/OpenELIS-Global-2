@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-1054-analyzer-site-transport" author="OGC">
+        <comment>
+            Persist the site-selected transport and Bridge connection role that
+            are initialized from the pinned profile revision. These are instance
+            values, not a copied profile document.
+        </comment>
+        <addColumn schemaName="clinlims" tableName="analyzer">
+            <column name="transport_mode" type="VARCHAR(16)"/>
+            <column name="connection_role" type="VARCHAR(16)"/>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.analyzer
+            ADD CONSTRAINT chk_analyzer_transport_mode
+            CHECK (transport_mode IS NULL OR transport_mode IN ('TCP', 'MLLP', 'SERIAL', 'FILE', 'HTTP'));
+            ALTER TABLE clinlims.analyzer
+            ADD CONSTRAINT chk_analyzer_connection_role
+            CHECK (connection_role IS NULL OR connection_role IN ('RECEIVER', 'INITIATOR'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.analyzer DROP CONSTRAINT IF EXISTS chk_analyzer_connection_role;
+                ALTER TABLE clinlims.analyzer DROP CONSTRAINT IF EXISTS chk_analyzer_transport_mode;
+            </sql>
+            <dropColumn schemaName="clinlims" tableName="analyzer" columnName="connection_role"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer" columnName="transport_mode"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

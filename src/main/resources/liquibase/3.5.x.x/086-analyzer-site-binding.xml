@@ -178,6 +178,33 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="OGC-1054-remove-direct-analyzer-profile-reference" author="OGC">
+        <comment>
+            An analyzer pins one site-binding revision. The site binding owns the
+            exact Bridge profile reference, so a second direct analyzer reference
+            would create an alternate and potentially conflicting authority path.
+        </comment>
+        <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="analyzer"
+            constraintName="fk_analyzer_profile_binding"/>
+        <dropIndex schemaName="clinlims" tableName="analyzer"
+            indexName="idx_analyzer_profile_binding"/>
+        <dropColumn schemaName="clinlims" tableName="analyzer"
+            columnName="profile_binding_id"/>
+        <rollback>
+            <addColumn schemaName="clinlims" tableName="analyzer">
+                <column name="profile_binding_id" type="numeric(10)"/>
+            </addColumn>
+            <addForeignKeyConstraint constraintName="fk_analyzer_profile_binding"
+                baseTableSchemaName="clinlims" baseTableName="analyzer"
+                baseColumnNames="profile_binding_id" referencedTableSchemaName="clinlims"
+                referencedTableName="analyzer_profile_binding" referencedColumnNames="id"/>
+            <createIndex schemaName="clinlims" tableName="analyzer"
+                indexName="idx_analyzer_profile_binding">
+                <column name="profile_binding_id"/>
+            </createIndex>
+        </rollback>
+    </changeSet>
+
     <changeSet id="OGC-1054-analyzer-site-binding-audit-reference" author="OGC">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">

@@ -11,53 +11,8 @@
  * (sample IDs, results) so tests never hardcode expected values.
  */
 
-import { expect, Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 import type { PushConfig, PushResult } from "./analyzer-test-config";
-
-/**
- * Resolve the analyzer id the bridge knows about by querying OE's analyzer
- * registry. Matches on analyzer name (which the harness creates via the UI
- * earlier in the test — so the Demo: prefixed name is stable).
- */
-async function resolveAnalyzerId(
-  page: Page,
-  push: PushConfig,
-): Promise<string> {
-  const baseUrl = (process.env.BASE_URL || "https://localhost").replace(
-    /\/$/,
-    "",
-  );
-  const analyzerName = push.analyzerName;
-  if (!analyzerName) {
-    throw new Error(
-      "push.analyzerName is required when uploadViaBridge is set — " +
-        "the helper needs a name to look up the analyzer id in OE.",
-    );
-  }
-  const resp = await page.request.get(
-    `${baseUrl}/api/OpenELIS-Global/rest/analyzer/analyzers`,
-  );
-  expect(
-    resp.ok(),
-    `Analyzer list fetch failed: ${resp.status()}`,
-  ).toBeTruthy();
-  const json = (await resp.json()) as
-    | Array<{ id: string; name: string }>
-    | { analyzers?: Array<{ id: string; name: string }> };
-  await resp.dispose();
-  const list = Array.isArray(json) ? json : (json.analyzers ?? []);
-  const match = list.find((a) => a.name === analyzerName);
-  if (!match) {
-    throw new Error(
-      `resolveAnalyzerId: no analyzer named ${JSON.stringify(analyzerName)} ` +
-        `found in OE registry. Available: ${list
-          .map((a) => a.name)
-          .slice(0, 10)
-          .join(", ")}`,
-    );
-  }
-  return match.id;
-}
 
 /**
  * Push a result via the mock server and return parsed metadata.
@@ -67,7 +22,6 @@ async function resolveAnalyzerId(
  *   returns all parsed accessions + results from the file.
  */
 export async function pushAnalyzerResult(
-  page: Page,
   push: PushConfig,
 ): Promise<PushResult[]> {
   // Address the provisioned instance (single identity key) for TCP analyzers so
@@ -85,13 +39,13 @@ export async function pushAnalyzerResult(
     body.target_dir = push.targetDir;
   }
   if (push.uploadViaBridge) {
-    // Production-parity: route the fixture through the bridge's admin upload
-    // UI endpoint instead of dropping into a watched directory. Mock resolves
-    // bridge URL + credentials from env (BRIDGE_URL / BRIDGE_USER / BRIDGE_PASS)
-    // with sensible defaults for the CI compose network.
-    const analyzerId = await resolveAnalyzerId(page, push);
+    if (!push.analyzerId) {
+      throw new Error(
+        "push.analyzerId is required when uploadViaBridge is enabled",
+      );
+    }
     body.bridge_upload = {
-      analyzer_id: analyzerId,
+      analyzer_id: push.analyzerId,
       test_code: push.testCode ?? null,
     };
   }
@@ -99,14 +53,17 @@ export async function pushAnalyzerResult(
     body.sample_id = push.sampleId;
   }
 
-  const response = await page.request.post(endpoint, { data: body });
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
   expect(
-    response.ok(),
-    `Mock POST ${endpoint} failed: ${response.status()}`,
+    response.ok,
+    `Mock POST ${endpoint} failed: ${response.status}`,
   ).toBeTruthy();
 
   const json = await response.json();
-  await response.dispose();
 
   // Fail fast on non-delivery when delivery was requested (a destination was
   // given). The mock returns HTTP 200 even when every push failed, so the

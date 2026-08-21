@@ -27,4 +27,40 @@ public class AnalyzerRestControllerProfileValidationTest {
         List<String> errors = (List<String>) response.getBody().get("validationErrors");
         assertTrue(errors.contains("Profile ID and profile revision are required"));
     }
+
+    @Test
+    public void createRejectsUnknownTransportInsteadOfApplyingProfileDefault() {
+        AnalyzerForm form = validProfileForm();
+        form.setTransportMode("telepathy");
+
+        ResponseEntity<Map<String, Object>> response = new AnalyzerRestController().createAnalyzer(form,
+                new MockHttpServletRequest());
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        @SuppressWarnings("unchecked")
+        List<String> errors = (List<String>) response.getBody().get("validationErrors");
+        assertTrue(errors.contains("Invalid analyzer transport mode"));
+    }
+
+    @Test
+    public void createRejectsUnknownConnectionRoleInsteadOfApplyingProfileDefault() {
+        AnalyzerForm form = validProfileForm();
+        form.setConnectionRole("sideways");
+
+        ResponseEntity<Map<String, Object>> response = new AnalyzerRestController().createAnalyzer(form,
+                new MockHttpServletRequest());
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        @SuppressWarnings("unchecked")
+        List<String> errors = (List<String>) response.getBody().get("validationErrors");
+        assertTrue(errors.contains("Invalid analyzer connection role"));
+    }
+
+    private AnalyzerForm validProfileForm() {
+        AnalyzerForm form = new AnalyzerForm();
+        form.setName("Molecular bench 1");
+        form.setProfileId("genexpert-astm");
+        form.setProfileRevision(1);
+        return form;
+    }
 }

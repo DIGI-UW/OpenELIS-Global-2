@@ -1,7 +1,7 @@
 package org.openelisglobal.analyzer.config;
 
 import java.util.concurrent.Executor;
-import org.openelisglobal.config.UserContextPropagatingTaskDecorator;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -13,6 +13,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @Configuration
 public class BridgeRegistrationAsyncConfig {
 
+    private final DaemonContextExecutor daemonContextExecutor;
+
+    public BridgeRegistrationAsyncConfig(DaemonContextExecutor daemonContextExecutor) {
+        this.daemonContextExecutor = daemonContextExecutor;
+    }
+
     @Bean(name = "bridgeRegistrationExecutor")
     public Executor bridgeRegistrationExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -20,7 +26,7 @@ public class BridgeRegistrationAsyncConfig {
         executor.setMaxPoolSize(4);
         executor.setQueueCapacity(256);
         executor.setThreadNamePrefix("bridge-reg-");
-        executor.setTaskDecorator(new UserContextPropagatingTaskDecorator());
+        executor.setTaskDecorator(task -> () -> daemonContextExecutor.executeAsDaemon(task));
         executor.initialize();
         return executor;
     }

@@ -3,6 +3,8 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
+import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 
@@ -83,10 +85,8 @@ public final class BridgeAnalyzerProfile {
 
         JsonNode lineage = catalog.path("lineage");
         JsonNode communication = document.path("communication");
-        InstanceDefaults defaults = new InstanceDefaults(nullableInteger(configDefaults, "defaultPort"),
-                nullableText(configDefaults, "fileFormat"), nullableText(configDefaults, "filePattern"),
-                nullableBoolean(configDefaults, "hasHeader"), nullableText(configDefaults, "delimiter"),
-                nullableInteger(configDefaults, "skipRows"));
+        InstanceDefaults defaults = new InstanceDefaults(nullableText(configDefaults, "defaultTransport"),
+                nullableText(configDefaults, "connectionRole"), nullableInteger(configDefaults, "defaultPort"));
         return new BridgeAnalyzerProfile(document, profileId, revision, fingerprint,
                 requiredText(profileMeta, "displayName"), firstText(document, profileMeta, "manufacturer"),
                 nullableText(document, "model"), requiredText(catalog, "source"), requiredText(catalog, "status"),
@@ -166,6 +166,20 @@ public final class BridgeAnalyzerProfile {
         return CommunicationMode.fromValue(communicationMode);
     }
 
+    public AnalyzerTransportMode resolvedTransportMode() {
+        if ("FILE".equals(protocol)) {
+            return AnalyzerTransportMode.FILE;
+        }
+        return AnalyzerTransportMode.fromProfileValue(instanceDefaults.defaultTransport());
+    }
+
+    public AnalyzerConnectionRole resolvedConnectionRole() {
+        if ("FILE".equals(protocol)) {
+            return AnalyzerConnectionRole.RECEIVER;
+        }
+        return AnalyzerConnectionRole.fromProfileValue(instanceDefaults.connectionRole());
+    }
+
     private static String requiredText(JsonNode node, String field) {
         String value = nullableText(node, field);
         if (value == null) {
@@ -192,18 +206,12 @@ public final class BridgeAnalyzerProfile {
         return value.isIntegralNumber() && value.canConvertToInt() ? value.asInt() : null;
     }
 
-    private static Boolean nullableBoolean(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        return value.isBoolean() ? value.asBoolean() : null;
-    }
-
     public record TestDefinition(String analyzerCode, List<String> resultValues) {
         public TestDefinition {
             resultValues = resultValues == null ? List.of() : List.copyOf(resultValues);
         }
     }
 
-    public record InstanceDefaults(Integer port, String fileFormat, String filePattern, Boolean hasHeader,
-            String delimiter, Integer skipRows) {
+    public record InstanceDefaults(String defaultTransport, String connectionRole, Integer port) {
     }
 }

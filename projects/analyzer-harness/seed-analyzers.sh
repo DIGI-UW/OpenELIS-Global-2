@@ -1,29 +1,8 @@
 #!/usr/bin/env bash
-# seed-analyzers.sh — Create harness analyzers via OE REST API
+# Seed the M1 priority analyzer instances through the OpenELIS REST API.
 #
-# Default (clean mode): wipes stale analyzer data, then creates 4 representative
-# seed analyzers covering each transport. Ensures a clean baseline on every startup.
-#
-# Seeded set:
-#   - Cepheid GeneXpert (ASTM Mode) — ASTM over TCP (molecular)
-#   - Mindray BC-5380              — HL7/MLLP over TCP (hematology)
-#   - Mindray BS-200               — HL7/MLLP over TCP (chemistry — provides
-#                                    GLU/CREA/ALT/AST/etc. for QC validation
-#                                    against analytes BC-5380 doesn't carry)
-#   - QuantStudio 5                — FILE (.xls Excel, molecular)
-#   - QuantStudio 7                — FILE (.xls/.xlsx Excel, molecular)
-#
-# --no-clean: skips cleanup, runs idempotently (for manual testing).
-#
-# Uses profile-based defaultConfigId, which triggers:
-#   - autoCreateTestMappings() from profile LOINCs
-#   - autoCreateFromProfile() for FILE analyzers (FileImportConfig)
-#   - registerWithBridge() for TCP analyzers (bridge transport binding)
-#
-# Usage:
-#   ./seed-analyzers.sh                          # clean + seed (default)
-#   ./seed-analyzers.sh --no-clean               # seed only (idempotent)
-#   BASE_URL=https://myhost TEST_USER=u TEST_PASS=p ./seed-analyzers.sh
+# Profile content and revisions come from the Bridge catalog. This script owns
+# only harness instance values: names, network address/port, and FILE inboxes.
 
 set -euo pipefail
 
@@ -31,451 +10,271 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 CLEAN=true
-if [[ "${1:-}" == "--no-clean" ]]; then
+if [[ "$#" -gt 0 && "$1" == "--no-clean" ]]; then
   CLEAN=false
 fi
 
-BASE_URL="${BASE_URL:-https://localhost}"
-
-# Source .env if present so TEST_USER/TEST_PASS overrides take effect even when
-# this script is invoked directly (reset-env.sh already does this for its own
-# context; doing it here makes the script self-contained).
 if [ -f "$REPO_ROOT/.env" ]; then
-  set -a && . "$REPO_ROOT/.env" && set +a
+  set -a
+  . "$REPO_ROOT/.env"
+  set +a
 fi
 
-# Local-dev defaults: match .env.example and verify-login.sh. A .env file or
-# explicit TEST_USER/TEST_PASS exports still win (set -a above preserves them).
+BASE_URL="${BASE_URL:-https://localhost}"
+MOCK_URL="${MOCK_URL:-http://localhost:8085}"
+ANALYZER_API="$BASE_URL/api/OpenELIS-Global/rest/analyzer/analyzers"
+TYPE_API="$BASE_URL/api/OpenELIS-Global/rest/analyzer-types"
+
 TEST_USER="${TEST_USER:-admin}"
 TEST_PASS="${TEST_PASS:-adminADMIN!}"
-API="${BASE_URL}/api/OpenELIS-Global/rest/analyzer/analyzers"
 
-sql_escape() {
-  printf '%s' "${1//\'/\'\'}"
-}
+GENEXPERT_PROFILE_ID="genexpert-astm"
+FLUOROCYCLER_PROFILE_ID="fluorocycler-xt"
+QUANTSTUDIO_PROFILE_ID="quantstudio"
 
-psql_query() {
-  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -t -A -F $'\t' -c "$1"
-}
+CATALOG_FILE="$(mktemp)"
+ANALYZERS_FILE="$(mktemp)"
+RESPONSE_FILE="$(mktemp)"
+trap 'rm -f "$CATALOG_FILE" "$ANALYZERS_FILE" "$RESPONSE_FILE"' EXIT
 
-profile_path_for_default_config() {
-  local default_config_id="$1"
-  local profile_type="${default_config_id%%/*}"
-  local profile_name="${default_config_id#*/}"
-  echo "$REPO_ROOT/projects/analyzer-profiles/${profile_type}/${profile_name}.json"
-}
-
-profile_mappings() {
-  local default_config_id="$1"
-  local profile_path
-  profile_path="$(profile_path_for_default_config "$default_config_id")"
-
-  if [ ! -f "$profile_path" ]; then
-    echo "ERROR: Profile file not found for ${default_config_id}: ${profile_path}" >&2
+fetch_json() {
+  local url="$1"
+  local output="$2"
+  local label="$3"
+  local status
+  status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$output" -w "%{http_code}" -u "$TEST_USER:$TEST_PASS" "$url")"
+  if [ "$status" != "200" ]; then
+    echo "ERROR: $label returned HTTP $status" >&2
     return 1
   fi
+}
 
-  python3 - "$profile_path" <<'PY'
+resolve_active_revision() {
+  local profile_id="$1"
+  python3 - "$CATALOG_FILE" "$profile_id" <<'PY'
 import json
 import sys
 
-profile_path = sys.argv[1]
-with open(profile_path, encoding="utf-8") as handle:
-    data = json.load(handle)
+catalog_path, profile_id = sys.argv[1:]
+with open(catalog_path, encoding="utf-8") as handle:
+    catalog = json.load(handle)
 
-for mapping in data.get("default_test_mappings", []):
-    code = mapping.get("test_code") or mapping.get("analyzer_code") or ""
-    loinc = mapping.get("loinc") or ""
-    if code and loinc:
-        print(f"{code}\t{loinc}")
+matches = [
+    item
+    for item in catalog.get("types", [])
+    if item.get("profileId") == profile_id and item.get("status") == "ACTIVE"
+]
+if len(matches) != 1:
+    raise SystemExit(
+        f"expected exactly one active revision for {profile_id}; found {len(matches)}"
+    )
+revision = matches[0].get("revision")
+if not isinstance(revision, int) or revision < 1:
+    raise SystemExit(f"active revision for {profile_id} is invalid: {revision!r}")
+print(revision)
 PY
 }
 
-verify_profile_catalog_ready() {
+analyzer_exists() {
   local analyzer_name="$1"
-  local default_config_id="$2"
-  local missing=()
+  fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
+  python3 - "$ANALYZERS_FILE" "$analyzer_name" <<'PY'
+import json
+import sys
 
-  while IFS=$'\t' read -r test_code loinc; do
-    [ -z "$test_code" ] && continue
+with open(sys.argv[1], encoding="utf-8") as handle:
+    analyzers = json.load(handle).get("analyzers", [])
+raise SystemExit(0 if any(item.get("name") == sys.argv[2] for item in analyzers) else 1)
+PY
+}
 
-    local active_test_id
-    active_test_id="$(psql_query "SELECT id FROM clinlims.test WHERE loinc = '$(sql_escape "$loinc")' AND is_active = 'Y' ORDER BY id LIMIT 1;")"
-
-    if [ -z "$active_test_id" ]; then
-      missing+=("${test_code} (LOINC ${loinc})")
+delete_harness_analyzers() {
+  fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
+  while IFS=$'\t' read -r analyzer_id analyzer_name; do
+    [ -z "$analyzer_id" ] && continue
+    local status
+    status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$RESPONSE_FILE" -w "%{http_code}" -X POST -u "$TEST_USER:$TEST_PASS" "$ANALYZER_API/$analyzer_id/delete")"
+    if [ "$status" != "200" ]; then
+      echo "ERROR: Failed to delete harness analyzer $analyzer_name (HTTP $status)" >&2
+      return 1
     fi
-  done < <(profile_mappings "$default_config_id")
+    echo "  Deleted: $analyzer_name"
+  done < <(
+    python3 - "$ANALYZERS_FILE" <<'PY'
+import json
+import sys
 
-  if [ "${#missing[@]}" -gt 0 ]; then
-    echo "ERROR: Harness catalog cannot realize required profile mappings for ${analyzer_name} (${default_config_id})." >&2
-    echo "       Missing active OE tests for: ${missing[*]}" >&2
-    echo "       Fix the authoritative harness startup catalog under projects/analyzer-harness/config-templates/ first." >&2
-    return 1
-  fi
+names = {
+    "Cepheid GeneXpert (ASTM Mode)",
+    "QuantStudio 5",
+    "QuantStudio 7",
+    "FluoroCycler XT",
+}
+with open(sys.argv[1], encoding="utf-8") as handle:
+    analyzers = json.load(handle).get("analyzers", [])
+for analyzer in analyzers:
+    if analyzer.get("name") in names:
+        print(f"{analyzer.get('id', '')}\t{analyzer['name']}")
+PY
+  )
 }
 
-verify_realized_analyzer_mappings() {
-  local analyzer_name="$1"
-  local default_config_id="$2"
-  local analyzer_id
-  local missing=()
-
-  analyzer_id="$(psql_query "SELECT id FROM clinlims.analyzer WHERE name = '$(sql_escape "$analyzer_name")' ORDER BY id DESC LIMIT 1;")"
-  if [ -z "$analyzer_id" ]; then
-    echo "ERROR: Could not resolve analyzer id for '${analyzer_name}' during mapping verification." >&2
-    return 1
-  fi
-
-  while IFS=$'\t' read -r test_code loinc; do
-    [ -z "$test_code" ] && continue
-
-    local mapped_test_id
-    mapped_test_id="$(psql_query "SELECT test_id FROM clinlims.analyzer_test_map WHERE analyzer_id = ${analyzer_id} AND analyzer_test_name = '$(sql_escape "$test_code")' LIMIT 1;")"
-
-    if [ -z "$mapped_test_id" ]; then
-      missing+=("${test_code} (LOINC ${loinc})")
-    fi
-  done < <(profile_mappings "$default_config_id")
-
-  if [ "${#missing[@]}" -gt 0 ]; then
-    echo "ERROR: Analyzer '${analyzer_name}' was created, but required profile mappings were not realized." >&2
-    echo "       Missing analyzer_test_map rows for: ${missing[*]}" >&2
-    echo "       Harness boot must stop here because Playwright assertions would be invalid." >&2
-    return 1
-  fi
-}
-
-verify_seed_contract() {
-  echo "Verifying harness profile prerequisites and realized mappings..."
-  verify_profile_catalog_ready "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
-  verify_profile_catalog_ready "Mindray BC-5380" "hl7/mindray-bc5380"
-  verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
-  verify_profile_catalog_ready "QuantStudio 5" "file/quantstudio"
-  verify_profile_catalog_ready "QuantStudio 7" "file/quantstudio"
-  verify_profile_catalog_ready "FluoroCycler XT" "file/fluorocycler-xt"
-  verify_profile_catalog_ready "Wondfo Finecare FS-205" "file/wondfo-csv"
-  verify_profile_catalog_ready "Tecan Infinite F50" "file/tecan-f50"
-  verify_profile_catalog_ready "Thermo Multiskan FC" "file/multiskan-fc"
-
-  verify_realized_analyzer_mappings "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
-  verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
-  verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
-  verify_realized_analyzer_mappings "QuantStudio 5" "file/quantstudio"
-  verify_realized_analyzer_mappings "QuantStudio 7" "file/quantstudio"
-  verify_realized_analyzer_mappings "FluoroCycler XT" "file/fluorocycler-xt"
-  verify_realized_analyzer_mappings "Wondfo Finecare FS-205" "file/wondfo-csv"
-  verify_realized_analyzer_mappings "Tecan Infinite F50" "file/tecan-f50"
-  verify_realized_analyzer_mappings "Thermo Multiskan FC" "file/multiskan-fc"
-  echo "  Verified: harness catalog and analyzer mappings match seeded profiles"
-}
-
-create_analyzer() {
+create_profile_analyzer() {
   local name="$1"
-  local json="$2"
+  local profile_id="$2"
+  local profile_revision="$3"
+  local ip_address=""
+  local port=""
+  local import_directory=""
+  [ "$#" -ge 4 ] && ip_address="$4"
+  [ "$#" -ge 5 ] && port="$5"
+  [ "$#" -ge 6 ] && import_directory="$6"
 
-  local http_code
-  http_code=$(curl -sk -o /dev/null -w "%{http_code}" \
-    -X POST "$API" \
-    -u "${TEST_USER}:${TEST_PASS}" \
-    -H "Content-Type: application/json" \
-    -d "$json")
+  if analyzer_exists "$name"; then
+    echo "  Exists:  $name (skipped)"
+    return 0
+  fi
 
-  case "$http_code" in
-    201) echo "  Created: $name" ;;
-    409) echo "  Exists:  $name (skipped)" ;;
-    *)   echo "  FAILED:  $name (HTTP $http_code)" >&2; return 1 ;;
-  esac
+  local payload
+  payload="$(
+    python3 - "$name" "$profile_id" "$profile_revision" "$ip_address" "$port" "$import_directory" <<'PY'
+import json
+import sys
+
+name, profile_id, revision, ip_address, port, import_directory = sys.argv[1:]
+payload = {
+    "name": name,
+    "profileId": profile_id,
+    "profileRevision": int(revision),
+}
+if ip_address:
+    payload["ipAddress"] = ip_address
+if port:
+    payload["port"] = int(port)
+if import_directory:
+    payload["importDirectory"] = import_directory
+print(json.dumps(payload, separators=(",", ":")))
+PY
+  )"
+
+  local status
+  status="$(curl -sk --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X POST "$ANALYZER_API" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
+  if [ "$status" != "201" ]; then
+    echo "ERROR: Failed to create $name (HTTP $status)" >&2
+    sed 's/^/  /' "$RESPONSE_FILE" >&2
+    return 1
+  fi
+  echo "  Created: $name ($profile_id@$profile_revision)"
 }
 
-MOCK_URL="${MOCK_URL:-http://localhost:8085}"
-
-# Create dynamic Docker network per TCP analyzer — each gets a unique, stable IP
-# so the bridge can identify them individually.
 lookup_mock_network_ip() {
   local name="$1"
-  local response_file
-  local error_file
-  response_file="$(mktemp)"
-  error_file="$(mktemp)"
-
-  local curl_exit
-  set +e
-  curl -sk --connect-timeout 3 --max-time 15 "${MOCK_URL}/analyzers" \
-    >"$response_file" 2>"$error_file"
-  curl_exit=$?
-  set -e
-
-  local ip=""
-  ip="$(
-    python3 - "$name" "$response_file" <<'PY' 2>/dev/null || true
+  curl -sk --connect-timeout 3 --max-time 15 "$MOCK_URL/analyzers" |
+    python3 -c '
 import json
 import sys
 
 name = sys.argv[1]
-path = sys.argv[2]
-
-with open(path, "r", encoding="utf-8") as handle:
-    payload = json.load(handle)
-
-for analyzer in payload.get("analyzers", []):
+for analyzer in json.load(sys.stdin).get("analyzers", []):
     if analyzer.get("name") == name:
         print(analyzer.get("ip", ""))
         break
-PY
-  )"
-
-  if [ -z "$ip" ] && { [ "$curl_exit" -ne 0 ] || [ -s "$error_file" ]; }; then
-    echo "WARN: mock analyzer lookup for ${name} failed (curl exit ${curl_exit})" >&2
-    sed 's/^/  /' "$error_file" >&2 || true
-  fi
-
-  rm -f "$response_file" "$error_file"
-  echo "$ip"
+' "$name"
 }
 
 create_mock_network() {
   local name="$1"
   local template="$2"
-  local port="${3:-0}"
-  local response_file
-  local error_file
-  response_file="$(mktemp)"
-  error_file="$(mktemp)"
-
-  # Mock server briefly drops inbound connections right after a previous
-  # create — it connects ITSELF to the new analyzer network to simulate
-  # analyzer-initiated TCP pushes, which reconfigures its network stack
-  # for ~100–500ms. Retry curl-connect-failures (exit 7) with backoff so
-  # sequential seeds don't flake on fast hosts.
-  local curl_exit
+  local port="$3"
   local attempt
-  for attempt in 1 2 3 4 5; do
-    : >"$response_file"
-    : >"$error_file"
-    set +e
-    curl -sk --connect-timeout 3 --max-time 15 -X POST "${MOCK_URL}/analyzers" \
-      -H "Content-Type: application/json" \
-      -d "{\"name\":\"${name}\",\"template\":\"${template}\",\"port\":${port}}" \
-      >"$response_file" 2>"$error_file"
-    curl_exit=$?
-    set -e
-    # Exit 7 = Failed to connect; mock's net stack in flux. Back off + retry.
-    if [ "$curl_exit" -eq 7 ] && [ "$attempt" -lt 5 ]; then
-      sleep "$attempt"
-      continue
-    fi
-    break
-  done
+  local status
+  local payload
+  payload="$(python3 -c 'import json,sys; print(json.dumps({"name":sys.argv[1],"template":sys.argv[2],"port":int(sys.argv[3])}))' "$name" "$template" "$port")"
 
-  local resp
-  resp="$(python3 - "$response_file" <<'PY' 2>/dev/null || true
-from pathlib import Path
+  for attempt in 1 2 3 4 5; do
+    status="$(curl -sk --connect-timeout 3 --max-time 20 -o "$RESPONSE_FILE" -w "%{http_code}" -X POST "$MOCK_URL/analyzers" -H "Content-Type: application/json" -d "$payload" || true)"
+    if [ "$status" = "200" ] || [ "$status" = "201" ]; then
+      python3 - "$RESPONSE_FILE" <<'PY'
+import json
 import sys
 
-print(Path(sys.argv[1]).read_text(encoding="utf-8"))
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(json.load(handle).get("ip", ""))
 PY
-  )"
-
-  local ip=""
-  ip="$(
-    printf '%s' "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ip',''))" 2>/dev/null || true
-  )"
-
-  if [ -n "$ip" ]; then
-    rm -f "$response_file" "$error_file"
-    echo "  Mock network: ${name} → ${ip}" >&2
-    echo "$ip"
-    return 0
-  fi
-
-  echo "WARN: mock API create response for ${name} did not return an IP (curl exit ${curl_exit})" >&2
-  if [ -s "$error_file" ]; then
-    echo "  curl stderr:" >&2
-    sed 's/^/    /' "$error_file" >&2
-  fi
-  if [ -n "$resp" ]; then
-    echo "  response body:" >&2
-    printf '%s\n' "$resp" | sed 's/^/    /' >&2
-  fi
-
-  local recovered_ip=""
-  local attempt
-  for attempt in 1 2 3; do
-    sleep 1
-    recovered_ip="$(lookup_mock_network_ip "$name")"
-    if [ -n "$recovered_ip" ]; then
-      rm -f "$response_file" "$error_file"
-      echo "WARN: recovered mock network for ${name} via GET verification fallback on attempt ${attempt}: ${recovered_ip}" >&2
-      echo "$recovered_ip"
       return 0
     fi
+    if [ "$status" = "409" ]; then
+      lookup_mock_network_ip "$name"
+      return 0
+    fi
+    sleep "$attempt"
   done
 
-  rm -f "$response_file" "$error_file"
-  echo "ERROR: Failed to create mock network for ${name}; mock API did not return an IP." >&2
-  echo "       This is a hard failure because analyzer registration must match actual transport source." >&2
+  echo "ERROR: Mock network $name was not created (last HTTP $status)" >&2
+  sed 's/^/  /' "$RESPONSE_FILE" >&2
   return 1
 }
 
-echo "Seeding analyzers via REST API at ${API}"
-echo ""
+verify_profile_pins() {
+  fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
+  python3 - "$ANALYZERS_FILE" "$GENEXPERT_REVISION" "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_REVISION" <<'PY'
+import json
+import sys
 
-# Clean stale data (default). Ensures clean baseline on every startup.
-# Matches container_name on db.openelis.org in docker-compose.base.yml / build.docker-compose.yml.
-resolve_db_container() {
-  if [ -n "${DB_CONTAINER:-}" ]; then
-    echo "$DB_CONTAINER"
-    return 0
-  fi
-  echo "openelisglobal-database"
+with open(sys.argv[1], encoding="utf-8") as handle:
+    analyzers = json.load(handle).get("analyzers", [])
+
+expected = {
+    "Cepheid GeneXpert (ASTM Mode)": ("genexpert-astm", int(sys.argv[2])),
+    "QuantStudio 5": ("quantstudio", int(sys.argv[3])),
+    "QuantStudio 7": ("quantstudio", int(sys.argv[3])),
+    "FluoroCycler XT": ("fluorocycler-xt", int(sys.argv[4])),
+}
+problems = []
+for name, pin in expected.items():
+    matches = [
+        item
+        for item in analyzers
+        if item.get("name") == name
+        and (item.get("profileId"), item.get("profileRevision")) == pin
+    ]
+    if len(matches) != 1:
+        problems.append(f"{name}: expected one {pin[0]}@{pin[1]} instance, found {len(matches)}")
+
+if problems:
+    raise SystemExit("\n".join(problems))
+print("  Verified: all M1 harness analyzers persist their exact Bridge profile pins")
+PY
 }
 
-DB_CONTAINER="$(resolve_db_container)"
+echo "Resolving priority profiles from $TYPE_API..."
+fetch_json "$TYPE_API" "$CATALOG_FILE" "Analyzer Types catalog"
+GENEXPERT_REVISION="$(resolve_active_revision "$GENEXPERT_PROFILE_ID")"
+FLUOROCYCLER_REVISION="$(resolve_active_revision "$FLUOROCYCLER_PROFILE_ID")"
+QUANTSTUDIO_REVISION="$(resolve_active_revision "$QUANTSTUDIO_PROFILE_ID")"
+echo "  $GENEXPERT_PROFILE_ID@$GENEXPERT_REVISION"
+echo "  $FLUOROCYCLER_PROFILE_ID@$FLUOROCYCLER_REVISION"
+echo "  $QUANTSTUDIO_PROFILE_ID@$QUANTSTUDIO_REVISION"
 
 if [ "$CLEAN" = true ]; then
-  echo "Cleaning stale analyzer data..."
-  # FK chain: analyzer ← qc_control_lot ← {qc_result, qc_statistics} ← {qc_rule_violation, qc_alert}
-  # Plus westgard_rule_config references analyzer directly.
-  # Delete leaves first, then roots, so the analyzer DELETE doesn't trip
-  # fk_qc_control_lot_analyzer or fk_westgard_rule_config_analyzer.
-  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c "
-    DELETE FROM clinlims.qc_alert;
-    DELETE FROM clinlims.qc_rule_violation;
-    DELETE FROM clinlims.qc_result;
-    DELETE FROM clinlims.qc_statistics;
-    DELETE FROM clinlims.westgard_rule_config;
-    DELETE FROM clinlims.qc_control_lot;
-    DELETE FROM clinlims.analyzer_results;
-    DELETE FROM clinlims.analyzer;
-  " 2>&1 | sed 's/^/  /'
-  echo "  DB cleanup done"
-
-  # Remove mock networks (per-analyzer endpoint). Includes legacy names
-  # (bs200/bs300) so an existing stack seeded with a previous list cleans up.
-  for name in genexpert bc5380 bs200 bs300; do
-    curl -sk --connect-timeout 3 --max-time 10 -X DELETE "${MOCK_URL}/analyzers/${name}" 2>/dev/null || true
-  done
-  echo "  Mock network cleanup done"
-  echo ""
+  echo "Removing only the named harness analyzers..."
+  delete_harness_analyzers
+  curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
 fi
 
-# Create dynamic networks for TCP analyzers.
-# Wait 2s between calls: the mock server attaches itself to each new Docker
-# network asynchronously (api.py:511-515). During that attach, the container's
-# network stack is briefly disrupted, which drops the next HTTP connection
-# (curl exit 52). The sleep lets the async attach complete before the next POST.
-echo "Creating dynamic mock networks..."
-GX_IP=$(create_mock_network "genexpert" "genexpert_astm" 9600)
-sleep 2
-BC5380_IP=$(create_mock_network "bc5380" "mindray_bc5380" 5380)
-sleep 2
-BS200_IP=$(create_mock_network "bs200" "mindray_bs200" 6001)
-echo ""
+echo "Creating GeneXpert mock transport..."
+GENEXPERT_IP="$(create_mock_network "genexpert" "genexpert_astm" 9600)"
+if [ -z "$GENEXPERT_IP" ]; then
+  echo "ERROR: GeneXpert mock transport returned no IP address" >&2
+  exit 1
+fi
+echo "  genexpert -> $GENEXPERT_IP:9600"
 
-# 1. GeneXpert (ASTM) — dynamic mock IP. Source-binding is authoritative, so
-# the seeded registration must match the actual mock-network source identity
-# used by ASTM pushes in the harness.
-create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
-  \"name\": \"Cepheid GeneXpert (ASTM Mode)\",
-  \"analyzerType\": \"MOLECULAR\",
-  \"pluginTypeId\": \"generic-astm\",
-  \"ipAddress\": \"${GX_IP}\",
-  \"port\": 9600,
-  \"protocolVersion\": \"ASTM_LIS2_A2\",
-  \"communicationMode\": \"ANALYZER_INITIATED\",
-  \"identifierPattern\": \"GENEXPERT|CEPHEID\",
-  \"status\": \"ACTIVE\",
-  \"defaultConfigId\": \"astm/genexpert-astm\"
-}"
+echo "Creating profile-pinned analyzer instances..."
+create_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" "$GENEXPERT_IP" "9600"
+create_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" "" "" "/data/analyzer-imports/quantstudio-5/incoming"
+create_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" "" "" "/data/analyzer-imports/quantstudio-7/incoming"
+create_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" "" "" "/data/analyzer-imports/fluorocycler-xt/incoming"
 
-# 2. Mindray BC-5380 (HL7/MLLP — hematology) — dynamic IP
-create_analyzer "Mindray BC-5380" "{
-  \"name\": \"Mindray BC-5380\",
-  \"analyzerType\": \"HEMATOLOGY\",
-  \"pluginTypeId\": \"generic-hl7\",
-  \"ipAddress\": \"${BC5380_IP}\",
-  \"port\": 5380,
-  \"protocolVersion\": \"HL7_V2_3_1\",
-  \"communicationMode\": \"ANALYZER_INITIATED\",
-  \"identifierPattern\": \"MINDRAY.*BC.?5380|BC.?5380\",
-  \"status\": \"ACTIVE\",
-  \"defaultConfigId\": \"hl7/mindray-bc5380\"
-}"
-
-# 3. Mindray BS-200 (HL7/MLLP — chemistry) — dynamic IP
-# Provides GLU/CREA/ALT/AST/ALB/TP/TBIL/UREA — analytes BC-5380 (hematology)
-# doesn't carry. Profile mindray-bs200.json declares qcRules
-# [SPECIMEN_ID_PREFIX QC] so the bridge classifies samples whose OBR-3 starts
-# with "QC-" (the convention the mock's HL7 generate_qc emits).
-create_analyzer "Mindray BS-200" "{
-  \"name\": \"Mindray BS-200\",
-  \"analyzerType\": \"CHEMISTRY\",
-  \"pluginTypeId\": \"generic-hl7\",
-  \"ipAddress\": \"${BS200_IP}\",
-  \"port\": 6001,
-  \"protocolVersion\": \"HL7_V2_3_1\",
-  \"communicationMode\": \"ANALYZER_INITIATED\",
-  \"identifierPattern\": \"MINDRAY.*BS.?200|BS.?200\",
-  \"status\": \"ACTIVE\",
-  \"defaultConfigId\": \"hl7/mindray-bs200\"
-}"
-
-# 4. QuantStudio 5 (FILE/EXCEL .xls) — no TCP mock; exercise via bridge upload UI
-create_analyzer "QuantStudio 5" '{
-  "name": "QuantStudio 5",
-  "analyzerType": "MOLECULAR",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/quantstudio"
-}'
-
-# 5. QuantStudio 7 (FILE/EXCEL — same profile as QS5; brace glob matches both .xls/.xlsx)
-create_analyzer "QuantStudio 7" '{
-  "name": "QuantStudio 7",
-  "analyzerType": "MOLECULAR",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/quantstudio"
-}'
-
-# 6. FluoroCycler XT (FILE) — Madagascar Hain GeneXpert alternative for HIV-VL
-create_analyzer "FluoroCycler XT" '{
-  "name": "FluoroCycler XT",
-  "analyzerType": "MOLECULAR",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/fluorocycler-xt"
-}'
-
-# 7. Wondfo Finecare FS-205 (FILE) — Madagascar HIV/Hep rapid diagnostic exporter
-create_analyzer "Wondfo Finecare FS-205" '{
-  "name": "Wondfo Finecare FS-205",
-  "analyzerType": "IMMUNOASSAY",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/wondfo-csv"
-}'
-
-# 8. Tecan Infinite F50 (FILE) — Madagascar ELISA reader
-create_analyzer "Tecan Infinite F50" '{
-  "name": "Tecan Infinite F50",
-  "analyzerType": "IMMUNOASSAY",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/tecan-f50"
-}'
-
-# 9. Thermo Multiskan FC (FILE) — Madagascar microplate reader
-create_analyzer "Thermo Multiskan FC" '{
-  "name": "Thermo Multiskan FC",
-  "analyzerType": "IMMUNOASSAY",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/multiskan-fc"
-}'
-
-echo ""
-verify_seed_contract
-echo ""
-echo "Done. 9 analyzers seeded (1 ASTM + 2 HL7/MLLP + 6 FILE) — full Madagascar fleet."
+verify_profile_pins
+echo "Done. Four instances use the three validated M1 Bridge profile families."
