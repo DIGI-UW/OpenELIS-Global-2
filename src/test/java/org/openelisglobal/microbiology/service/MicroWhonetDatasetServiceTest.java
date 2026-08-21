@@ -369,6 +369,28 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
+    public void filterOptionsUseTheOriginCodeWhenItsDisplayNameIsMissing() {
+        MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
+        MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
+
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of(microCase));
+        when(caseOrderDetailDAO.getByCaseIds(List.of("case-1")))
+                .thenReturn(List.of(orderDetail("case-1", "LEGACY_ORIGIN")));
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
+        when(organismDAO.getByIds(List.of("organism-1"))).thenReturn(List.of(organism("organism-1", "eco", "E. coli")));
+        when(patientOriginDAO.getByCodes(List.of("LEGACY_ORIGIN")))
+                .thenReturn(List.of(patientOrigin("LEGACY_ORIGIN", null)));
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+
+        MicroWhonetFilterOptionsForm options = service.getFilterOptions(query("NONE"));
+
+        assertEquals(1, options.patientOrigins.size());
+        assertEquals("LEGACY_ORIGIN", options.patientOrigins.get(0).id);
+        assertEquals("LEGACY_ORIGIN", options.patientOrigins.get(0).label);
+    }
+
+    @Test
     public void previewUsesOnlyReviewedAndExplicitlyReportableAstRuns() {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
