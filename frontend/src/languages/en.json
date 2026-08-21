@@ -2759,7 +2759,7 @@
   "label.button.submit": "Submit",
   "label.button.update": "Update",
   "label.button.uploadfile": "Upload file",
-  "label.button.validate": "Validate",
+  "label.button.validate": "Save",
   "label.button.viewReport": "View Report",
   "label.cancel": "Cancel",
   "label.cancel.test.no.replace": "Cancel test for lab numbers selected, do not assign a new test",
