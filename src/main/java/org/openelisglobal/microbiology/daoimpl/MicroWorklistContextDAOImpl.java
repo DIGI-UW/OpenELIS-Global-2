@@ -1,11 +1,13 @@
 package org.openelisglobal.microbiology.daoimpl;
 
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
+import org.openelisglobal.microbiology.form.MicroWhonetPatientContext;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
 import org.openelisglobal.microbiology.form.MicroWorklistInoculationContext;
@@ -21,6 +23,15 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
 
     static final String SPECIMEN_CONTEXT_HQL = "select sampleItem.id, sample.accessionNumber, person.lastName, person.firstName, type.description "
             + "from SampleItem sampleItem join sampleItem.sample sample "
+            + "left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id "
+            + "left join Patient patient on patient.id = sampleHuman.patientId "
+            + "left join patient.person person left join sampleItem.typeOfSample type "
+            + "where sampleItem.id in (:sampleItemIds)";
+
+    static final String WHONET_PATIENT_CONTEXT_HQL = "select sampleItem.id, patient.id, patient.nationalId, "
+            + "person.firstName, person.lastName, patient.gender, patient.birthDate, sample.accessionNumber, "
+            + "sample.enteredDate, sampleItem.collectionDate, type.id, type.description, type.whonetCode, "
+            + "sample.gpsLatitude, sample.gpsLongitude from SampleItem sampleItem join sampleItem.sample sample "
             + "left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id "
             + "left join Patient patient on patient.id = sampleHuman.patientId "
             + "left join patient.person person left join sampleItem.typeOfSample type "
@@ -58,6 +69,23 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
         query.setParameterList("sampleItemIds", sampleItemIds);
         return query.list().stream().map(values -> new MicroWorklistSpecimenContext(text(values[0]), text(values[1]),
                 patientDisplay(values[2], values[3]), text(values[4]))).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroWhonetPatientContext> getWhonetPatientContexts(List<String> sampleItemIds) {
+        if (sampleItemIds.isEmpty()) {
+            return List.of();
+        }
+        Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(WHONET_PATIENT_CONTEXT_HQL,
+                Object[].class);
+        query.setParameterList("sampleItemIds", sampleItemIds);
+        return query.list().stream()
+                .map(values -> new MicroWhonetPatientContext(text(values[0]), text(values[1]), text(values[2]),
+                        text(values[3]), text(values[4]), text(values[5]), (Timestamp) values[6], text(values[7]),
+                        (Date) values[8], (Timestamp) values[9], text(values[10]), text(values[11]), text(values[12]),
+                        (Double) values[13], (Double) values[14]))
+                .toList();
     }
 
     @Override

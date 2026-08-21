@@ -116,7 +116,6 @@ public class MicrobiologyUatScenarioService {
     private static final String UAT_TEST_SECTION_NAME = "UAT Microbiology";
     private static final String UAT_TB_TEST_DESCRIPTION = "UAT microbiology TB culture";
     private static final String UAT_NON_CULTURE_TEST_DESCRIPTION = "UAT routine non-culture test";
-    private static final String UAT_TEST_SECTION_NAME = "UAT Microbiology";
     private static final String UAT_ANALYTE_NAME = "UAT microbiology culture result";
     private static final String UAT_SAMPLE_TYPE_DESCRIPTION = "UAT micro specimen";
     private static final String UAT_SAMPLE_TYPE_WHONET_CODE = "BLD";

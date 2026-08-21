@@ -23,10 +23,11 @@ import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
-import org.openelisglobal.microbiology.dao.MicroWhonetContext;
+import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
 import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionForm;
 import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
+import org.openelisglobal.microbiology.form.MicroWhonetPatientContext;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewRowForm;
 import org.openelisglobal.microbiology.form.MicroWhonetWarningForm;
@@ -40,6 +41,7 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
+import org.openelisglobal.microbiology.valueholder.MicroWhonetExportSelection;
 import org.openelisglobal.reports.action.implementation.reportBeans.WHONETCSVRoutineColumnBuilder.WHONetRow;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,10 +63,12 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     private final MicroOrganismDAO organismDAO;
     private final MicroPatientOriginDAO patientOriginDAO;
     private final MicroAntibioticDAO antibioticDAO;
+    private final MicroWorklistContextDAO worklistContextDAO;
 
     public MicroWhonetDatasetServiceImpl(MicroCaseDAO caseDAO, MicroCaseOrderDetailDAO caseOrderDetailDAO,
             MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO, MicroAstReadingDAO astReadingDAO,
-            MicroOrganismDAO organismDAO, MicroPatientOriginDAO patientOriginDAO, MicroAntibioticDAO antibioticDAO) {
+            MicroOrganismDAO organismDAO, MicroPatientOriginDAO patientOriginDAO, MicroAntibioticDAO antibioticDAO,
+            MicroWorklistContextDAO worklistContextDAO) {
         this.caseDAO = caseDAO;
         this.caseOrderDetailDAO = caseOrderDetailDAO;
         this.isolateDAO = isolateDAO;
@@ -73,6 +77,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         this.organismDAO = organismDAO;
         this.patientOriginDAO = patientOriginDAO;
         this.antibioticDAO = antibioticDAO;
+        this.worklistContextDAO = worklistContextDAO;
     }
 
     @Override
@@ -195,7 +200,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         int first = Math.min((query.page - 1) * query.pageSize, previewRows.size());
         int last = Math.min(first + query.pageSize, previewRows.size());
         preview.rows.addAll(previewRows.subList(first, last));
-        return new MicroWhonetDataset(preview, exportRows);
+        return new MicroWhonetDataset(preview, exportRows,
+                new MicroWhonetExportSelection(query.specimen, query.organism, query.origin, query.significance));
     }
 
     @Override
@@ -241,12 +247,18 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     private Population loadPopulation(NormalizedQuery query) {
         List<MicroCase> cases = caseDAO.getFinalizedBacteriologyByClosedAtRange(query.fromInclusive, query.toExclusive);
         List<String> caseIds = cases.stream().map(MicroCase::getId).toList();
+        List<String> sampleItemIds = cases.stream().map(MicroCase::getSampleItemId).filter(this::hasText).distinct()
+                .toList();
+        Map<String, MicroWhonetPatientContext> patientContextsBySampleItem = indexBy(
+                worklistContextDAO.getWhonetPatientContexts(sampleItemIds), MicroWhonetPatientContext::sampleItemId);
         Map<String, MicroCaseOrderDetail> detailsByCase = indexBy(caseOrderDetailDAO.getByCaseIds(caseIds),
                 MicroCaseOrderDetail::getCaseId);
-        Map<String, PatientContext> contextsByCase = caseDAO.getWhonetContextsByCaseIds(caseIds).stream()
-                .collect(Collectors.toMap(MicroWhonetContext::caseId,
-                        context -> patientContext(context, detailsByCase.get(context.caseId())),
-                        (first, ignored) -> first, LinkedHashMap::new));
+        Map<String, PatientContext> contextsByCase = new LinkedHashMap<>();
+        for (MicroCase microCase : cases) {
+            contextsByCase.put(microCase.getId(),
+                    patientContext(patientContextsBySampleItem.get(microCase.getSampleItemId()),
+                            detailsByCase.get(microCase.getId())));
+        }
         Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
                 MicroIsolate::getCaseId);
         List<MicroIsolate> allIsolates = cases.stream()
@@ -356,26 +368,26 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         return included;
     }
 
-    private PatientContext patientContext(MicroWhonetContext source, MicroCaseOrderDetail orderDetail) {
+    private PatientContext patientContext(MicroWhonetPatientContext source, MicroCaseOrderDetail orderDetail) {
         PatientContext context = new PatientContext();
-        context.patientId = safe(source.patientId());
-        context.nationalId = safe(source.nationalId());
-        context.firstName = safe(source.firstName());
-        context.lastName = safe(source.lastName());
-        context.gender = safe(source.gender());
-        context.birthDate = source.birthDate() == null ? ""
+        context.patientId = source == null ? "" : safe(source.patientId());
+        context.nationalId = source == null ? "" : safe(source.nationalId());
+        context.firstName = source == null ? "" : safe(source.firstName());
+        context.lastName = source == null ? "" : safe(source.lastName());
+        context.gender = source == null ? "" : safe(source.gender());
+        context.birthDate = source == null || source.birthDate() == null ? ""
                 : source.birthDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        context.accessionNumber = safe(source.accessionNumber());
-        context.enteredDate = source.enteredDate() == null ? ""
+        context.accessionNumber = source == null ? "" : safe(source.accessionNumber());
+        context.enteredDate = source == null || source.enteredDate() == null ? ""
                 : source.enteredDate().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        context.collectionDate = source.collectionDate() == null ? ""
+        context.collectionDate = source == null || source.collectionDate() == null ? ""
                 : source.collectionDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        context.specimenTypeId = safe(source.specimenTypeId());
-        context.specimenTypeLabel = safe(source.specimenTypeLabel());
-        context.specimenType = safe(source.specimenType());
+        context.specimenTypeId = source == null ? "" : safe(source.specimenTypeId());
+        context.specimenTypeLabel = source == null ? "" : safe(source.specimenTypeLabel());
+        context.specimenType = source == null ? "" : safe(source.specimenTypeCode());
         context.patientOrigin = orderDetail == null ? "" : safe(orderDetail.getPatientOrigin());
-        context.latitude = source.latitude() == null ? "" : source.latitude().toString();
-        context.longitude = source.longitude() == null ? "" : source.longitude().toString();
+        context.latitude = source == null || source.latitude() == null ? "" : source.latitude().toString();
+        context.longitude = source == null || source.longitude() == null ? "" : source.longitude().toString();
         return context;
     }
 

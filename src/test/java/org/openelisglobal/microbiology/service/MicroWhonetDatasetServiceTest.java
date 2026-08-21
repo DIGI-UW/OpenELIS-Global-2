@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,9 +28,10 @@ import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
-import org.openelisglobal.microbiology.dao.MicroWhonetContext;
+import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
 import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
+import org.openelisglobal.microbiology.form.MicroWhonetPatientContext;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
@@ -63,17 +64,20 @@ public class MicroWhonetDatasetServiceTest {
     private MicroPatientOriginDAO patientOriginDAO;
     @Mock
     private MicroAntibioticDAO antibioticDAO;
-    private final Map<String, MicroWhonetContext> contextsByCase = new HashMap<>();
+    @Mock
+    private MicroWorklistContextDAO worklistContextDAO;
     private MicroWhonetDatasetService service;
+    private Map<String, MicroWhonetPatientContext> patientContextsBySampleItem;
 
     @Before
     public void setUp() {
-        service = new MicroWhonetDatasetServiceImpl(caseDAO, caseOrderDetailDAO, isolateDAO, astRunDAO, astReadingDAO,
-                organismDAO, patientOriginDAO, antibioticDAO);
-        when(caseDAO.getWhonetContextsByCaseIds(any())).thenAnswer(invocation -> {
-            List<String> caseIds = invocation.getArgument(0);
-            return caseIds.stream().map(contextsByCase::get).filter(context -> context != null).toList();
+        patientContextsBySampleItem = new LinkedHashMap<>();
+        when(worklistContextDAO.getWhonetPatientContexts(any())).thenAnswer(invocation -> {
+            List<String> sampleItemIds = invocation.getArgument(0);
+            return sampleItemIds.stream().map(patientContextsBySampleItem::get).filter(value -> value != null).toList();
         });
+        service = new MicroWhonetDatasetServiceImpl(caseDAO, caseOrderDetailDAO, isolateDAO, astRunDAO, astReadingDAO,
+                organismDAO, patientOriginDAO, antibioticDAO, worklistContextDAO);
     }
 
     @Test
@@ -314,7 +318,8 @@ public class MicroWhonetDatasetServiceTest {
         query.organism = List.of("organism-2");
         query.origin = List.of("INPATIENT");
         query.significance = List.of(MicroIsolateSignificance.CONTAMINANT.name());
-        MicroWhonetPreviewForm preview = service.compile(query).getPreview();
+        MicroWhonetDataset dataset = service.compile(query);
+        MicroWhonetPreviewForm preview = dataset.getPreview();
 
         assertEquals(2, preview.afterSpecimen);
         assertEquals(1, preview.afterOrganism);
@@ -323,6 +328,11 @@ public class MicroWhonetDatasetServiceTest {
         assertEquals(1, preview.afterDeduplication);
         assertEquals(1, preview.exportedRows);
         assertEquals("case-3", preview.rows.get(0).caseId);
+        assertEquals(List.of("sample-type-blood"), dataset.getPopulationSelection().getSpecimen());
+        assertEquals(List.of("organism-2"), dataset.getPopulationSelection().getOrganism());
+        assertEquals(List.of("INPATIENT"), dataset.getPopulationSelection().getOrigin());
+        assertEquals(List.of(MicroIsolateSignificance.CONTAMINANT.name()),
+                dataset.getPopulationSelection().getSignificance());
     }
 
     @Test
@@ -354,6 +364,7 @@ public class MicroWhonetDatasetServiceTest {
                 options.patientOrigins.stream().map(option -> option.id).toList());
         assertEquals(List.of("CLINICALLY_SIGNIFICANT", "NORMAL_FLORA"),
                 options.significance.stream().map(option -> option.id).toList());
+        verify(worklistContextDAO).getWhonetPatientContexts(List.of("item-1", "item-2"));
     }
 
     @Test
@@ -424,7 +435,7 @@ public class MicroWhonetDatasetServiceTest {
 
         service.compile(query("NONE"));
 
-        verify(caseDAO).getWhonetContextsByCaseIds(List.of("case-1", "case-2"));
+        verify(worklistContextDAO).getWhonetPatientContexts(List.of("item-1", "item-2"));
     }
 
     @Test
@@ -564,8 +575,8 @@ public class MicroWhonetDatasetServiceTest {
 
     private void stubPatientContext(String caseId, String sampleItemId, String patientId, String accession,
             String sampleTypeId, String whonetCode) {
-        contextsByCase.put(caseId,
-                new MicroWhonetContext(caseId, sampleItemId, patientId, "NAT-001", "Ada", "Lovelace", "F", null,
+        patientContextsBySampleItem.put(sampleItemId,
+                new MicroWhonetPatientContext(sampleItemId, patientId, "NAT-001", "Ada", "Lovelace", "F", null,
                         accession, null, Timestamp.valueOf("2026-07-09 09:00:00"), sampleTypeId, "Blood", whonetCode,
                         null, null));
     }

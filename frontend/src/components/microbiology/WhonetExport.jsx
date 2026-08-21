@@ -91,6 +91,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [error, setError] = useState("");
+  const [filterOptionsError, setFilterOptionsError] = useState("");
   const [filterOptions, setFilterOptions] = useState(emptyFilterOptions);
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
   const referenceNow = useMemo(() => now || new Date(), [now]);
@@ -127,16 +128,23 @@ const WhonetExport = ({ service = defaultService, now }) => {
   const invalidPeriod = state.to < state.from;
 
   useEffect(() => {
-    if (invalidPeriod) return undefined;
+    if (invalidPeriod) {
+      setFilterOptionsError("");
+      return undefined;
+    }
     let active = true;
     setFilterOptionsLoading(true);
     service
       .getWhonetFilterOptions(request)
       .then((response) => {
-        if (active) setFilterOptions(response);
+        if (active) {
+          setFilterOptions(response);
+          setFilterOptionsError("");
+        }
       })
       .catch((requestError) => {
-        if (active) setError(formatRequestError(intl, requestError));
+        if (active)
+          setFilterOptionsError(formatRequestError(intl, requestError));
       })
       .finally(() => {
         if (active) setFilterOptionsLoading(false);
@@ -175,6 +183,8 @@ const WhonetExport = ({ service = defaultService, now }) => {
     setGenerated(false);
     setQuery({ ...updates, step: "configure", page: 1 });
   };
+
+  const activeError = error || filterOptionsError;
 
   const generate = async () => {
     setGenerating(true);
@@ -519,14 +529,14 @@ const WhonetExport = ({ service = defaultService, now }) => {
             </div>
           </Layer>
 
-          {error && (
+          {activeError && (
             <InlineNotification
               kind="error"
               hideCloseButton
               title={intl.formatMessage({
                 id: "microbiology.whonet.error.title",
               })}
-              subtitle={error}
+              subtitle={activeError}
             />
           )}
           {generated && (

@@ -213,6 +213,7 @@ public class WHONetReportServiceImpl implements WHONetReportService {
         run.setToDate(Date.valueOf(preview.to));
         run.setSignificancePolicy(preview.significance);
         run.setDedupPolicy(preview.dedup);
+        run.setPopulationSelection(dataset.getPopulationSelection());
         run.setCaseCount(preview.totalCases);
         run.setIsolateCount(preview.exportableIsolates);
         run.setRowCount(preview.exportedRows);
