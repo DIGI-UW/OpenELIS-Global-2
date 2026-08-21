@@ -470,6 +470,9 @@ describe("AnalyzerTypeManagement", () => {
         name: "Actions for Cepheid GeneXpert MTB/RIF",
       }),
     );
+    expect(
+      document.querySelector(".cds--overflow-menu--flip"),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
 
     const dialog = screen.getByRole("dialog", {

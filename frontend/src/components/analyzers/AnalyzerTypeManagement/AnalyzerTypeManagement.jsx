@@ -689,6 +689,7 @@ const AnalyzerTypeManagement = () => {
                                 </TableCell>
                                 <TableCell>
                                   <OverflowMenu
+                                    flipped
                                     size="sm"
                                     aria-label={intl.formatMessage(
                                       { id: "analyzerType.actions.ariaLabel" },

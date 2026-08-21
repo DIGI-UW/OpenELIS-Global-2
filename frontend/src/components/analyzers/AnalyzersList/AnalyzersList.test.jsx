@@ -166,6 +166,22 @@ describe("AnalyzersList", () => {
     expect(name2.textContent).toContain("Chemistry Analyzer 1");
   });
 
+  test("positions row actions inside the viewport", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
+
+    expect(
+      document.querySelector(".cds--overflow-menu--flip"),
+    ).toBeInTheDocument();
+  });
+
   test("shows a visible loading state until the analyzer list resolves", async () => {
     let resolveAnalyzers;
     getAnalyzers.mockImplementation((_filters, callback) => {
