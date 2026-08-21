@@ -80,7 +80,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * tables, so PostgreSQL cannot advance their sequences automatically.
      */
     private static final String[][] FIXTURE_SEQUENCE_MAPPINGS = { { "sample", "sample_seq" },
-            { "sample_item", "sample_item_seq" }, { "result", "result_seq" } };
+            { "sample_item", "sample_item_seq" }, { "result", "result_seq" },
+            { "inventory_item", "inventory_item_seq" } };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the

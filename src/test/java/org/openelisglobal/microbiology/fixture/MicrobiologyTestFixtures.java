@@ -231,7 +231,7 @@ public class MicrobiologyTestFixtures {
         setup.setMediaDefaults("Blood agar");
         setup.setIncubationDefaults("18-24h");
         setup.setAtmosphereDefaults("Ambient");
-        configurationService.createCultureSetup(setup);
+        setup = configurationService.getOrCreateCultureSetup(setup);
 
         return new ReferenceData(organism, antibiotic, panel, panelAntibiotic, standard, rule, setup);
     }
@@ -263,7 +263,7 @@ public class MicrobiologyTestFixtures {
         setup.setMediaDefaults("MGIT");
         setup.setIncubationDefaults("up to 42 days");
         setup.setAtmosphereDefaults("Ambient");
-        return configurationService.createCultureSetup(setup);
+        return configurationService.getOrCreateCultureSetup(setup);
     }
 
     public org.openelisglobal.test.valueholder.Test createCatalogTest() {
