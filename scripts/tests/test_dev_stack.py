@@ -234,6 +234,75 @@ class DevStackContractTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, str(java_home))
 
+    def test_playwright_defaults_to_core_app_and_preserves_test_selection(self):
+        command = self.dev_stack.playwright_command(
+            ["playwright/tests/foundational/core/example.spec.ts"]
+        )
+
+        self.assertEqual(
+            command,
+            [
+                "npm",
+                "run",
+                "pw:test",
+                "--",
+                "--project=core-app",
+                "playwright/tests/foundational/core/example.spec.ts",
+            ],
+        )
+
+    def test_playwright_preserves_explicit_project_and_options(self):
+        command = self.dev_stack.playwright_command(
+            ["--project=setup", "--headed"]
+        )
+
+        self.assertEqual(
+            command,
+            ["npm", "run", "pw:test", "--", "--project=setup", "--headed"],
+        )
+
+    def test_playwright_parser_forwards_native_options_without_separator(self):
+        arguments = self.dev_stack.parse_args(
+            [
+                "playwright",
+                "--project=core-app",
+                "playwright/tests/foundational/core/example.spec.ts",
+                "--headed",
+            ]
+        )
+
+        self.assertEqual(
+            arguments.playwright_args,
+            [
+                "--project=core-app",
+                "playwright/tests/foundational/core/example.spec.ts",
+                "--headed",
+            ],
+        )
+
+    def test_playwright_uses_explicit_remote_url_without_stack_discovery(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = {"BASE_URL": "https://amr.openelis-global.org"}
+
+        with patch.object(self.dev_stack, "endpoint_environment") as endpoints:
+            base_url = self.dev_stack.playwright_base_url(context, environment)
+
+        self.assertEqual(base_url, "https://amr.openelis-global.org")
+        endpoints.assert_not_called()
+
+    def test_playwright_discovers_current_worktree_url_when_not_explicit(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = {}
+
+        with patch.object(
+            self.dev_stack,
+            "endpoint_environment",
+            return_value={"BASE_URL": "https://localhost:49152"},
+        ):
+            base_url = self.dev_stack.playwright_base_url(context, environment)
+
+        self.assertEqual(base_url, "https://localhost:49152")
+
     def test_proxy_resolves_replaceable_services_through_docker_dns(self):
         for config_name in ("nginx.conf.template", "nginx.conf"):
             with self.subTest(config_name=config_name):
