@@ -610,6 +610,18 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void provisionsReviewedAstScenarioThroughServices() {
+        provisionReviewedAstScenario("AST_REVIEWED", false);
+    }
+
+    @Test
+    public void provisionsWhonetFilterScenarioWithDistinctUnmappedOrganism() {
+        MicrobiologyUatScenarioForm result = provisionReviewedAstScenario("WHONET_FILTERS", true);
+
+        assertEquals("organism-unmapped", result.unmappedOrganismId);
+        verify(configurationService).createOrganism(any(MicroOrganism.class));
+    }
+
+    private MicrobiologyUatScenarioForm provisionReviewedAstScenario(String scenario, boolean includeUnmappedOrganism) {
         Sample sample = sample("sample-1");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
@@ -648,10 +660,19 @@ public class MicrobiologyUatScenarioServiceTest {
             run.setStatus(MicroAstRunStatus.REVIEWED.name());
             return run;
         });
+        if (includeUnmappedOrganism) {
+            when(referenceAdminService.getOrganisms(any(MicroReferenceAdminQueryForm.class)))
+                    .thenReturn(new MicroReferenceAdminPageForm<>());
+            when(configurationService.createOrganism(any(MicroOrganism.class))).thenAnswer(invocation -> {
+                MicroOrganism organism = invocation.getArgument(0);
+                organism.setId("organism-unmapped");
+                return organism;
+            });
+        }
 
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
-        request.scenario = "AST_REVIEWED";
-        request.scenarioKey = "playwright-reviewed-ast";
+        request.scenario = scenario;
+        request.scenarioKey = "test-" + scenario.toLowerCase(Locale.ROOT);
 
         MicrobiologyUatScenarioForm result = service.provision(request, "1");
 
@@ -662,6 +683,7 @@ public class MicrobiologyUatScenarioServiceTest {
         verify(astService).recordReading(run.getId(), "antibiotic-cip",
                 org.openelisglobal.microbiology.valueholder.MicroAstMethod.MIC, new BigDecimal("4"), "1");
         verify(astService).reviewRun(run.getId(), "1");
+        return result;
     }
 
     @Test
