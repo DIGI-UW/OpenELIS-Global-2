@@ -558,12 +558,7 @@ public class MicrobiologyUatScenarioService {
     }
 
     private void ensureSampleType(SampleItem sampleItem, String performedBy) {
-        if (sampleItem.getTypeOfSample() != null) {
-            return;
-        }
-        sampleItem.setTypeOfSample(getOrCreateUatSampleType(performedBy));
-        sampleItem.setSysUserId(performedBy);
-        sampleItemService.update(sampleItem);
+        ensureSampleType(sampleItem, getOrCreateUatSampleType(performedBy), performedBy);
     }
 
     private void ensureSampleType(SampleItem sampleItem, TypeOfSample requiredSampleType, String performedBy) {

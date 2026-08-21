@@ -333,6 +333,40 @@ public class MicrobiologyUatScenarioServiceTest {
     }
 
     @Test
+    public void reconcilesExistingScenarioToCanonicalUatSampleType() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        TypeOfSample staleSampleType = new TypeOfSample();
+        staleSampleType.setId("sample-type-stale");
+        staleSampleType.setDescription("UAT micro specimen");
+        sampleItem.setTypeOfSample(staleSampleType);
+
+        TypeOfSample canonicalSampleType = new TypeOfSample();
+        canonicalSampleType.setId("sample-type-canonical");
+        canonicalSampleType.setDescription("UAT micro specimen");
+        canonicalSampleType.setActive(true);
+        canonicalSampleType.setWhonetCode("BLD");
+
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+        when(typeOfSampleService.getAllTypeOfSamples()).thenReturn(List.of(canonicalSampleType));
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "MVP";
+        request.scenarioKey = "existing-scenario-with-stale-sample-type";
+
+        MicrobiologyUatScenarioForm result = service.provision(request, "1");
+
+        assertEquals(canonicalSampleType.getId(), result.sampleTypeId);
+        assertEquals(canonicalSampleType.getId(), sampleItem.getTypeOfSample().getId());
+        verify(sampleItemService).update(sampleItem);
+    }
+
+    @Test
     public void provisionsReusableLotTraceabilityFixturesThroughServices() {
         Sample sample = sample("sample-1");
         SampleItem sampleItem = sampleItem("sample-item-1");
