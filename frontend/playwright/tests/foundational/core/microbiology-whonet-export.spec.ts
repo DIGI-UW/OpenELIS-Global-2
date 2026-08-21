@@ -167,6 +167,26 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       "2",
     );
     await expect(metric("Isolates included").locator("strong")).toHaveText("2");
+
+    const exportResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/rest/microbiology/whonet/exports") &&
+        response.request().method() === "POST" &&
+        response.status() === 200,
+    );
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Generate CSV" }).click();
+    const [exportResponse, download] = await Promise.all([
+      exportResponsePromise,
+      downloadPromise,
+    ]);
+    expect(exportResponse.request().postDataJSON()).toMatchObject({
+      specimen: [seeded.sampleTypeId],
+      organism: organisms.map((option) => option.id).sort(),
+      origin: ["INPATIENT"],
+      significance: ["CLINICALLY_SIGNIFICANT", "CONTAMINANT"],
+    });
+    expect(await readDownload(download)).toContain(seeded.accessionNumber);
   });
 
   test("previews mapped AST, links mapping repair, and downloads CSV", async ({
