@@ -164,10 +164,35 @@ when running tests.
 ### Prerequisites
 
 1. **Dependencies:** from `frontend/`, run **`npm run ci:deps`** (then **`npm run pw:install`**). Plain **`npm ci`** often prints almost nothing for several minutes while Cypress unpacks — it is not stuck; **`ci:deps`** forces progress + `loglevel=info` so you see steady output. `.npmrc` also sets `progress=true` for normal installs.
-2. App running at `https://localhost` (or set `BASE_URL`)
-3. Auth env vars: `TEST_USER` and `TEST_PASS`
+2. Start the isolated stack from the repository root with
+   **`scripts/dev-stack up`**.
+
+Authentication uses the shared setup project and the repository `.env` values;
+the standard development credentials need no manual export.
 
 ### Commands
+
+```bash
+# Preferred developer entry point, from the repository root. It discovers the
+# current worktree's URL and runs authentication automatically.
+scripts/dev-stack playwright
+
+# Run a specific test (core-app is the default project)
+scripts/dev-stack playwright playwright/tests/foundational/core/microbiology-whonet-export.spec.ts
+
+# Verify only the shared login/session contract
+scripts/dev-stack playwright --project=setup
+
+# Select another registered project
+scripts/dev-stack playwright --project=harness-foundational
+
+# Run the same test against a deployed target
+BASE_URL=https://amr.openelis-global.org \
+  scripts/dev-stack playwright playwright/tests/foundational/core/microbiology-whonet-export.spec.ts
+```
+
+The lower-level package commands below remain the CI interface and are useful
+when debugging Playwright itself:
 
 ```bash
 cd frontend

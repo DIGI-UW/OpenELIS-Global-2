@@ -94,7 +94,8 @@ const expectWhonetExportReady = async (
 };
 
 const fixtureLabels = {
-  specimen: "UAT micro specimen",
+  specimen: (accessionNumber: string) =>
+    `UAT WHONET specimen ${accessionNumber.replace(/^UATMICRO/, "")}`,
   mappedOrganism: "Reference organism (UAT)",
   unmappedOrganism: (accessionNumber: string) =>
     `WHONET mapping pending (UAT ${accessionNumber.replace(/^UATMICRO/, "")})`,
@@ -130,7 +131,11 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
     });
     await expectWhonetExportReady(page);
 
-    await selectFilterOption(page, /^Specimen types/, fixtureLabels.specimen);
+    await selectFilterOption(
+      page,
+      /^Specimen types/,
+      fixtureLabels.specimen(seeded.accessionNumber),
+    );
     await selectFilterOption(page, /^Organisms/, fixtureLabels.mappedOrganism);
     await selectFilterOption(
       page,
@@ -233,7 +238,11 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
     });
 
     await test.step("Select and preserve the export population", async () => {
-      await selectFilterOption(page, /^Specimen types/, fixtureLabels.specimen);
+      await selectFilterOption(
+        page,
+        /^Specimen types/,
+        fixtureLabels.specimen(seeded.accessionNumber),
+      );
       await selectFilterOption(
         page,
         /^Organisms/,
