@@ -232,7 +232,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 .filter(this::hasText).distinct().sorted().toList();
         Map<String, String> originLabels = indexBy(patientOriginDAO.getByCodes(originCodes),
                 MicroPatientOrigin::getCode).values().stream()
-                .collect(Collectors.toMap(MicroPatientOrigin::getCode, MicroPatientOrigin::getDisplayName));
+                .collect(Collectors.toMap(MicroPatientOrigin::getCode,
+                        origin -> hasText(origin.getDisplayName()) ? origin.getDisplayName() : origin.getCode()));
         for (String code : originCodes) {
             originLabels.putIfAbsent(code, code);
         }

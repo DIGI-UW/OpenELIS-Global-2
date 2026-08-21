@@ -61,13 +61,17 @@ const selectFilterOption = async (
 ) => {
   const filter = page.getByRole("combobox", { name: filterName });
   await filter.click();
+  const listbox = page.getByRole("listbox", { name: filterName });
+  await expect(listbox).toBeVisible();
   const supportsTextEntry = await filter.evaluate((element) =>
     element.matches("input, textarea, [contenteditable='true']"),
   );
   if (supportsTextEntry) {
     await filter.fill(optionName);
   }
-  await page.getByRole("option", { name: optionName, exact: true }).click();
+  await listbox.getByRole("option", { name: optionName, exact: true }).click();
+  await filter.press("Escape");
+  await expect(listbox).toBeHidden();
 };
 
 const readDownload = async (download: Download) => {
@@ -205,7 +209,15 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
         exact: true,
       });
       await expect(exportLink).toHaveAttribute("href", "/Microbiology/whonet");
+      const initialFilterOptionsResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes("/rest/microbiology/whonet/filter-options?") &&
+          response.request().method() === "GET",
+      );
       await exportLink.click();
+      expect((await initialFilterOptionsResponse).status()).toBe(200);
       await expect(
         page.getByRole("heading", { name: "WHONET export", exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
