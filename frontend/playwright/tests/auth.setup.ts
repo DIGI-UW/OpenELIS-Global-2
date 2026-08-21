@@ -1,5 +1,5 @@
 import { test as setup, expect } from "../helpers/test-base";
-import { SHORT_TIMEOUT, LONG_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
+import { SHORT_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
 const AUTH_FILE = "playwright/.auth/user.json";
 
@@ -138,25 +138,26 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   ]);
 
   // ── Step 4: Verify authenticated state ────────────────────────
-  // Navigate to the home page — lightest authenticated route.
-  // Wait for the session API call that SecureRoute uses to resolve auth,
-  // then assert we weren't redirected to /login. Without this, the
-  // not.toHaveURL assertion would pass instantly before React hydrates.
-  const sessionResponse = page.waitForResponse(
-    (resp) => resp.url().includes("/api/OpenELIS-Global/session") && resp.ok(),
-    { timeout: LONG_TIMEOUT },
-  );
-  await page.goto("/", { waitUntil: "domcontentloaded" });
-  await sessionResponse;
-  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, {
-    timeout: LONG_TIMEOUT,
+  // Verify the browser cookie against the same lightweight session contract
+  // the application uses. Booting the entire dashboard here couples every E2E
+  // test to frontend bundle transfer time before the test opens its own route.
+  const sessionResponse = await page.goto("/api/OpenELIS-Global/session", {
+    waitUntil: "domcontentloaded",
   });
-  await expect
-    .poll(() => page.evaluate(() => localStorage.getItem("CSRF")), {
-      timeout: LONG_TIMEOUT,
-      message: "Waiting for the authenticated app to persist its CSRF token",
-    })
-    .not.toBeNull();
+  const sessionData = await sessionResponse?.json().catch(() => null);
+  if (
+    sessionResponse?.status() !== 200 ||
+    !sessionData?.authenticated ||
+    !sessionData?.csrf
+  ) {
+    throw new Error(
+      `Session API did not confirm the browser login: ${sessionResponse?.status()} ${JSON.stringify(sessionData)}`,
+    );
+  }
+  await page.evaluate(
+    (csrf) => localStorage.setItem("CSRF", csrf),
+    sessionData.csrf,
+  );
 
   // ── Step 5: Save session ──────────────────────────────────────
   await page.context().storageState({ path: AUTH_FILE });
