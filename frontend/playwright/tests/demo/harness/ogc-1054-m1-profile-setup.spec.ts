@@ -2,7 +2,7 @@ import { expect, test } from "../../../helpers/test-base";
 import type { Locator, Page } from "@playwright/test";
 import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
-import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
+import { TIMEOUT_SCALE, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -10,11 +10,19 @@ function escapeRegExp(value: string): string {
 
 async function findAnalyzerRow(page: Page, name: string): Promise<Locator> {
   await page.locator('[data-testid="analyzer-search-input"]').fill(name);
-  const row = page.locator("tbody tr", {
-    hasText: new RegExp(escapeRegExp(name), "i"),
-  });
-  await expect(row).toHaveCount(1);
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get("search") === name,
+    {
+      timeout: UI_TIMEOUT,
+    },
+  );
+
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(1, { timeout: UI_TIMEOUT });
+  const row = rows.first();
+  await expect(row).toContainText(new RegExp(escapeRegExp(name), "i"));
   await expect(row).toBeVisible();
+  await row.scrollIntoViewIfNeeded();
   return row;
 }
 
