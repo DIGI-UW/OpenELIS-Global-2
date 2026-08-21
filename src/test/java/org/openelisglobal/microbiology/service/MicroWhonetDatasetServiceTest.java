@@ -369,6 +369,22 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
+    public void filterOptionsAreEmptyWhenTheReportingPeriodHasNoCases() {
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of());
+
+        MicroWhonetFilterOptionsForm options = service.getFilterOptions(query("NONE"));
+
+        assertTrue(options.specimenTypes.isEmpty());
+        assertTrue(options.organisms.isEmpty());
+        assertTrue(options.patientOrigins.isEmpty());
+        assertTrue(options.significance.isEmpty());
+        verify(worklistContextDAO, never()).getWhonetPatientContexts(any());
+        verify(caseOrderDetailDAO, never()).getByCaseIds(any());
+        verify(isolateDAO, never()).getByCaseIds(any());
+    }
+
+    @Test
     public void filterOptionsUseTheOriginCodeWhenItsDisplayNameIsMissing() {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
