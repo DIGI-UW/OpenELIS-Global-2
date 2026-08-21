@@ -7,10 +7,15 @@ import jakarta.persistence.Table;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.UUID;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.type.JsonbObjectType;
 
 @Entity
 @Table(name = "micro_whonet_export_run", schema = "clinlims")
+@TypeDef(name = "jsonb-object", typeClass = JsonbObjectType.class)
 public class MicroWhonetExportRun extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
@@ -30,6 +35,10 @@ public class MicroWhonetExportRun extends BaseObject<String> {
 
     @Column(name = "dedup_policy", nullable = false, length = 40)
     private String dedupPolicy;
+
+    @Type(type = "jsonb-object", parameters = @Parameter(name = "class", value = "org.openelisglobal.microbiology.valueholder.MicroWhonetExportSelection"))
+    @Column(name = "population_selection", nullable = false, columnDefinition = "jsonb")
+    private MicroWhonetExportSelection populationSelection;
 
     @Column(name = "case_count", nullable = false)
     private int caseCount;
@@ -95,6 +104,14 @@ public class MicroWhonetExportRun extends BaseObject<String> {
 
     public void setDedupPolicy(String dedupPolicy) {
         this.dedupPolicy = dedupPolicy;
+    }
+
+    public MicroWhonetExportSelection getPopulationSelection() {
+        return populationSelection;
+    }
+
+    public void setPopulationSelection(MicroWhonetExportSelection populationSelection) {
+        this.populationSelection = populationSelection;
     }
 
     public int getCaseCount() {

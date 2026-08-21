@@ -11,7 +11,9 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,8 +28,10 @@ import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
+import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
 import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
+import org.openelisglobal.microbiology.form.MicroWhonetPatientContext;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
@@ -40,13 +44,6 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
-import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.sample.valueholder.Sample;
-import org.openelisglobal.samplehuman.service.SampleHumanService;
-import org.openelisglobal.sampleitem.service.SampleItemService;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroWhonetDatasetServiceTest {
@@ -68,16 +65,20 @@ public class MicroWhonetDatasetServiceTest {
     @Mock
     private MicroAntibioticDAO antibioticDAO;
     @Mock
-    private SampleItemService sampleItemService;
-    @Mock
-    private SampleHumanService sampleHumanService;
+    private MicroWorklistContextDAO worklistContextDAO;
 
     private MicroWhonetDatasetService service;
+    private Map<String, MicroWhonetPatientContext> patientContextsBySampleItem;
 
     @Before
     public void setUp() {
+        patientContextsBySampleItem = new LinkedHashMap<>();
+        when(worklistContextDAO.getWhonetPatientContexts(any())).thenAnswer(invocation -> {
+            List<String> sampleItemIds = invocation.getArgument(0);
+            return sampleItemIds.stream().map(patientContextsBySampleItem::get).filter(value -> value != null).toList();
+        });
         service = new MicroWhonetDatasetServiceImpl(caseDAO, caseOrderDetailDAO, isolateDAO, astRunDAO, astReadingDAO,
-                organismDAO, patientOriginDAO, antibioticDAO, sampleItemService, sampleHumanService);
+                organismDAO, patientOriginDAO, antibioticDAO, worklistContextDAO);
     }
 
     @Test
@@ -318,7 +319,8 @@ public class MicroWhonetDatasetServiceTest {
         query.organism = List.of("organism-2");
         query.origin = List.of("INPATIENT");
         query.significance = List.of(MicroIsolateSignificance.CONTAMINANT.name());
-        MicroWhonetPreviewForm preview = service.compile(query).getPreview();
+        MicroWhonetDataset dataset = service.compile(query);
+        MicroWhonetPreviewForm preview = dataset.getPreview();
 
         assertEquals(2, preview.afterSpecimen);
         assertEquals(1, preview.afterOrganism);
@@ -327,6 +329,11 @@ public class MicroWhonetDatasetServiceTest {
         assertEquals(1, preview.afterDeduplication);
         assertEquals(1, preview.exportedRows);
         assertEquals("case-3", preview.rows.get(0).caseId);
+        assertEquals(List.of("sample-type-blood"), dataset.getPopulationSelection().getSpecimen());
+        assertEquals(List.of("organism-2"), dataset.getPopulationSelection().getOrganism());
+        assertEquals(List.of("INPATIENT"), dataset.getPopulationSelection().getOrigin());
+        assertEquals(List.of(MicroIsolateSignificance.CONTAMINANT.name()),
+                dataset.getPopulationSelection().getSignificance());
     }
 
     @Test
@@ -358,6 +365,7 @@ public class MicroWhonetDatasetServiceTest {
                 options.patientOrigins.stream().map(option -> option.id).toList());
         assertEquals(List.of("CLINICALLY_SIGNIFICANT", "NORMAL_FLORA"),
                 options.significance.stream().map(option -> option.id).toList());
+        verify(worklistContextDAO).getWhonetPatientContexts(List.of("item-1", "item-2"));
     }
 
     @Test
@@ -555,28 +563,9 @@ public class MicroWhonetDatasetServiceTest {
 
     private void stubPatientContext(String sampleItemId, String sampleId, String patientId, String accession,
             String sampleTypeId, String whonetCode) {
-        Sample sample = new Sample();
-        sample.setId(sampleId);
-        sample.setAccessionNumber(accession);
-        SampleItem item = new SampleItem();
-        item.setId(sampleItemId);
-        item.setSample(sample);
-        item.setCollectionDate(Timestamp.valueOf("2026-07-09 09:00:00"));
-        TypeOfSample type = new TypeOfSample();
-        type.setId(sampleTypeId);
-        type.setDescription("Blood");
-        type.setWhonetCode(whonetCode);
-        item.setTypeOfSample(type);
-        when(sampleItemService.getData(sampleItemId)).thenReturn(item);
-
-        Patient patient = new Patient();
-        patient.setId(patientId);
-        patient.setNationalId("NAT-001");
-        patient.setGender("F");
-        Person person = new Person();
-        person.setFirstName("Ada");
-        person.setLastName("Lovelace");
-        patient.setPerson(person);
-        when(sampleHumanService.getPatientForSample(sample)).thenReturn(patient);
+        patientContextsBySampleItem.put(sampleItemId,
+                new MicroWhonetPatientContext(sampleItemId, patientId, "NAT-001", "Ada", "Lovelace", "F", null,
+                        accession, null, Timestamp.valueOf("2026-07-09 09:00:00"), sampleTypeId, "Blood", whonetCode,
+                        null, null));
     }
 }

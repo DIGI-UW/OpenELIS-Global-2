@@ -112,6 +112,8 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         MicroWhonetExportQueryForm exportQuery = new MicroWhonetExportQueryForm();
         exportQuery.from = exportDate.toString();
         exportQuery.to = exportDate.toString();
+        exportQuery.specimen = List.of(scenario.sampleTypeId);
+        exportQuery.organism = List.of(scenario.organismId);
         exportQuery.significance = List.of(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
         exportQuery.dedup = "FIRST_ISOLATE_7_DAY";
         exportQuery.page = 1;
@@ -132,6 +134,11 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         assertEquals(preview.exportableIsolates, persisted.getIsolateCount());
         assertEquals(preview.exportedRows, persisted.getRowCount());
         assertEquals(preview.excludedRows, persisted.getExcludedRowCount());
+        assertEquals(List.of(scenario.sampleTypeId), persisted.getPopulationSelection().getSpecimen());
+        assertEquals(List.of(scenario.organismId), persisted.getPopulationSelection().getOrganism());
+        assertTrue(persisted.getPopulationSelection().getOrigin().isEmpty());
+        assertEquals(List.of(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name()),
+                persisted.getPopulationSelection().getSignificance());
         assertTrue(
                 new String(result.content, java.nio.charset.StandardCharsets.UTF_8).contains(scenario.accessionNumber));
     }

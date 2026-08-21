@@ -23,9 +23,11 @@ import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
+import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
 import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionForm;
 import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
+import org.openelisglobal.microbiology.form.MicroWhonetPatientContext;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewRowForm;
 import org.openelisglobal.microbiology.form.MicroWhonetWarningForm;
@@ -39,13 +41,8 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
-import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.microbiology.valueholder.MicroWhonetExportSelection;
 import org.openelisglobal.reports.action.implementation.reportBeans.WHONETCSVRoutineColumnBuilder.WHONetRow;
-import org.openelisglobal.sample.valueholder.Sample;
-import org.openelisglobal.samplehuman.service.SampleHumanService;
-import org.openelisglobal.sampleitem.service.SampleItemService;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,13 +63,12 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     private final MicroOrganismDAO organismDAO;
     private final MicroPatientOriginDAO patientOriginDAO;
     private final MicroAntibioticDAO antibioticDAO;
-    private final SampleItemService sampleItemService;
-    private final SampleHumanService sampleHumanService;
+    private final MicroWorklistContextDAO worklistContextDAO;
 
     public MicroWhonetDatasetServiceImpl(MicroCaseDAO caseDAO, MicroCaseOrderDetailDAO caseOrderDetailDAO,
             MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO, MicroAstReadingDAO astReadingDAO,
             MicroOrganismDAO organismDAO, MicroPatientOriginDAO patientOriginDAO, MicroAntibioticDAO antibioticDAO,
-            SampleItemService sampleItemService, SampleHumanService sampleHumanService) {
+            MicroWorklistContextDAO worklistContextDAO) {
         this.caseDAO = caseDAO;
         this.caseOrderDetailDAO = caseOrderDetailDAO;
         this.isolateDAO = isolateDAO;
@@ -81,8 +77,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         this.organismDAO = organismDAO;
         this.patientOriginDAO = patientOriginDAO;
         this.antibioticDAO = antibioticDAO;
-        this.sampleItemService = sampleItemService;
-        this.sampleHumanService = sampleHumanService;
+        this.worklistContextDAO = worklistContextDAO;
     }
 
     @Override
@@ -205,7 +200,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         int first = Math.min((query.page - 1) * query.pageSize, previewRows.size());
         int last = Math.min(first + query.pageSize, previewRows.size());
         preview.rows.addAll(previewRows.subList(first, last));
-        return new MicroWhonetDataset(preview, exportRows);
+        return new MicroWhonetDataset(preview, exportRows,
+                new MicroWhonetExportSelection(query.specimen, query.organism, query.origin, query.significance));
     }
 
     @Override
@@ -251,11 +247,17 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     private Population loadPopulation(NormalizedQuery query) {
         List<MicroCase> cases = caseDAO.getFinalizedBacteriologyByClosedAtRange(query.fromInclusive, query.toExclusive);
         List<String> caseIds = cases.stream().map(MicroCase::getId).toList();
+        List<String> sampleItemIds = cases.stream().map(MicroCase::getSampleItemId).filter(this::hasText).distinct()
+                .toList();
+        Map<String, MicroWhonetPatientContext> patientContextsBySampleItem = indexBy(
+                worklistContextDAO.getWhonetPatientContexts(sampleItemIds), MicroWhonetPatientContext::sampleItemId);
         Map<String, MicroCaseOrderDetail> detailsByCase = indexBy(caseOrderDetailDAO.getByCaseIds(caseIds),
                 MicroCaseOrderDetail::getCaseId);
         Map<String, PatientContext> contextsByCase = new LinkedHashMap<>();
         for (MicroCase microCase : cases) {
-            contextsByCase.put(microCase.getId(), patientContext(microCase, detailsByCase.get(microCase.getId())));
+            contextsByCase.put(microCase.getId(),
+                    patientContext(patientContextsBySampleItem.get(microCase.getSampleItemId()),
+                            detailsByCase.get(microCase.getId())));
         }
         Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
                 MicroIsolate::getCaseId);
@@ -366,34 +368,26 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         return included;
     }
 
-    private PatientContext patientContext(MicroCase microCase, MicroCaseOrderDetail orderDetail) {
-        SampleItem sampleItem = sampleItemService.getData(microCase.getSampleItemId());
-        Sample sample = sampleItem == null ? null : sampleItem.getSample();
-        Patient patient = sample == null ? null : sampleHumanService.getPatientForSample(sample);
+    private PatientContext patientContext(MicroWhonetPatientContext source, MicroCaseOrderDetail orderDetail) {
         PatientContext context = new PatientContext();
-        context.patientId = patient == null ? "" : safe(patient.getId());
-        context.nationalId = patient == null ? "" : safe(patient.getNationalId());
-        context.firstName = patient == null || patient.getPerson() == null ? ""
-                : safe(patient.getPerson().getFirstName());
-        context.lastName = patient == null || patient.getPerson() == null ? ""
-                : safe(patient.getPerson().getLastName());
-        context.gender = patient == null ? "" : safe(patient.getGender());
-        context.birthDate = patient == null || patient.getBirthDate() == null ? ""
-                : patient.getBirthDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        context.accessionNumber = sample == null ? "" : safe(sample.getAccessionNumber());
-        context.enteredDate = sample == null || sample.getEnteredDate() == null ? ""
-                : sample.getEnteredDate().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        context.collectionDate = sampleItem == null || sampleItem.getCollectionDate() == null ? ""
-                : sampleItem.getCollectionDate().toLocalDateTime().toLocalDate()
-                        .format(DateTimeFormatter.ISO_LOCAL_DATE);
-        TypeOfSample sampleType = sampleItem == null ? null : sampleItem.getTypeOfSample();
-        context.specimenTypeId = sampleType == null ? "" : safe(sampleType.getId());
-        context.specimenTypeLabel = sampleType == null ? "" : safe(sampleType.getDescription());
-        context.specimenType = sampleType == null ? "" : safe(sampleType.getWhonetCode());
+        context.patientId = source == null ? "" : safe(source.patientId());
+        context.nationalId = source == null ? "" : safe(source.nationalId());
+        context.firstName = source == null ? "" : safe(source.firstName());
+        context.lastName = source == null ? "" : safe(source.lastName());
+        context.gender = source == null ? "" : safe(source.gender());
+        context.birthDate = source == null || source.birthDate() == null ? ""
+                : source.birthDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        context.accessionNumber = source == null ? "" : safe(source.accessionNumber());
+        context.enteredDate = source == null || source.enteredDate() == null ? ""
+                : source.enteredDate().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        context.collectionDate = source == null || source.collectionDate() == null ? ""
+                : source.collectionDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        context.specimenTypeId = source == null ? "" : safe(source.specimenTypeId());
+        context.specimenTypeLabel = source == null ? "" : safe(source.specimenTypeLabel());
+        context.specimenType = source == null ? "" : safe(source.specimenTypeCode());
         context.patientOrigin = orderDetail == null ? "" : safe(orderDetail.getPatientOrigin());
-        context.latitude = sample == null || sample.getGpsLatitude() == null ? "" : sample.getGpsLatitude().toString();
-        context.longitude = sample == null || sample.getGpsLongitude() == null ? ""
-                : sample.getGpsLongitude().toString();
+        context.latitude = source == null || source.latitude() == null ? "" : source.latitude().toString();
+        context.longitude = source == null || source.longitude() == null ? "" : source.longitude().toString();
         return context;
     }
 

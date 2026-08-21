@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -302,5 +302,73 @@ describe("WhonetExport", () => {
         pageSize: 20,
       }),
     );
+  });
+
+  it("clears a filter-options error after a successful Carbon date retry", async () => {
+    const user = userEvent.setup();
+    const service = createService({
+      getWhonetFilterOptions: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("offline"))
+        .mockResolvedValue(filterOptions),
+    });
+
+    renderExport(
+      service,
+      "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
+    );
+
+    expect(
+      await screen.findByText(
+        "The export service could not be reached. Try again when the connection is available.",
+      ),
+    ).toBeInTheDocument();
+
+    const fromDate = screen.getByRole("textbox", { name: "From" });
+    await user.clear(fromDate);
+    await user.type(fromDate, "2026-07-02");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(service.getWhonetFilterOptions).toHaveBeenCalledTimes(2),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          "The export service could not be reached. Try again when the connection is available.",
+        ),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("does not clear a preview error when filter options finish loading", async () => {
+    let resolveFilterOptions;
+    const filterOptionsRequest = new Promise((resolve) => {
+      resolveFilterOptions = resolve;
+    });
+    const blockedError = Object.assign(new Error("blocked"), {
+      code: "MICROBIOLOGY_WHONET_EXPORT_BLOCKED",
+      status: 409,
+    });
+    const service = createService({
+      getWhonetFilterOptions: vi.fn().mockReturnValue(filterOptionsRequest),
+      getWhonetPreview: vi.fn().mockRejectedValue(blockedError),
+    });
+
+    renderExport(service);
+
+    expect(
+      await screen.findByText(
+        "No valid rows remain. Resolve the listed readiness issues before generating the CSV.",
+      ),
+    ).toBeInTheDocument();
+
+    await act(async () => resolveFilterOptions(filterOptions));
+
+    expect(
+      screen.getByText(
+        "No valid rows remain. Resolve the listed readiness issues before generating the CSV.",
+      ),
+    ).toBeInTheDocument();
   });
 });
