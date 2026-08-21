@@ -10,7 +10,7 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
 
-    <changeSet author="openelisglobal" id="qa-062-add-eqa-cycle-distribution-method">
+    <changeSet author="openelisglobal" id="qa-064-add-eqa-cycle-distribution-method">
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists schemaName="clinlims" tableName="eqa_cycle" columnName="distribution_method" />
@@ -31,7 +31,7 @@
     <!-- Its own changeset, with its own precondition: a database that already
          carries the column from an earlier variant of this work would otherwise
          MARK_RAN the whole thing and silently never get the constraint. -->
-    <changeSet author="openelisglobal" id="qa-063-check-eqa-cycle-distribution-method">
+    <changeSet author="openelisglobal" id="qa-065-check-eqa-cycle-distribution-method">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT count(*) FROM pg_constraint WHERE conname = 'eqa_cycle_distribution_method_chk'
