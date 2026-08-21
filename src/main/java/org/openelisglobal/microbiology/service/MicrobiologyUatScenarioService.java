@@ -106,6 +106,7 @@ public class MicrobiologyUatScenarioService {
     private static final String WHONET_EXPORT_SCENARIO = "M4";
     private static final String CLASSIFICATION_SCENARIO = "R1";
     private static final String REVIEWED_AST_SCENARIO = "AST_REVIEWED";
+    private static final String WHONET_FILTER_SCENARIO = "WHONET_FILTERS";
     private static final String ANALYZER_REVIEW_SCENARIO = "AST_ANALYZER_REVIEW";
     private static final String UAT_AST_ANALYZER_NAME = "UAT microbiology AST analyzer";
     private static final String UAT_METHOD_NAME = "UAT micro culture";
@@ -238,7 +239,9 @@ public class MicrobiologyUatScenarioService {
         ReferenceAdminData referenceAdminData = isReferenceScenario(scenario)
                 ? createReferenceAdminData(astReferenceData, performedBy)
                 : null;
-        MicroOrganism unmappedOrganism = WHONET_EXPORT_SCENARIO.equals(scenario)
+        boolean requiresUnmappedOrganism = WHONET_EXPORT_SCENARIO.equals(scenario)
+                || WHONET_FILTER_SCENARIO.equals(scenario);
+        MicroOrganism unmappedOrganism = requiresUnmappedOrganism
                 ? getOrCreateUnmappedReferenceOrganism(suffix, performedBy)
                 : null;
 
@@ -284,7 +287,7 @@ public class MicrobiologyUatScenarioService {
                     method.getId(), performedBy);
         }
         AstScenarioData astScenarioData = null;
-        if (REVIEWED_AST_SCENARIO.equals(scenario)) {
+        if (REVIEWED_AST_SCENARIO.equals(scenario) || WHONET_FILTER_SCENARIO.equals(scenario)) {
             astScenarioData = ensureReviewedAstScenario(microCase, astReferenceData, performedBy);
         } else if (ANALYZER_REVIEW_SCENARIO.equals(scenario)) {
             astScenarioData = ensureAnalyzerReviewScenario(microCase, astReferenceData, suffix, performedBy);
@@ -1157,9 +1160,9 @@ public class MicrobiologyUatScenarioService {
         if (!"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
                 && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)
                 && !CLASSIFICATION_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
-                && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
+                && !WHONET_FILTER_SCENARIO.equals(normalized) && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
             throw new IllegalArgumentException(
-                    "scenario must be CASE, MVP, WORKLIST, M3, M4, R1, AST_REVIEWED, or AST_ANALYZER_REVIEW");
+                    "scenario must be CASE, MVP, WORKLIST, M3, M4, R1, AST_REVIEWED, WHONET_FILTERS, or AST_ANALYZER_REVIEW");
         }
         return normalized;
     }
