@@ -19,6 +19,7 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerTypeMappingView;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalog;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
@@ -108,6 +109,19 @@ public class AnalyzerTypeRestControllerTest {
 
         assertSame(expected, controller.getMapping("site.mock", 2).getBody());
         verify(mappingService).getMapping("site.mock", 2);
+    }
+
+    @Test
+    public void saveMappingUsesTheAuthenticatedUserAsTheAuditActor() {
+        BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
+                "NONE", "This analyzer interface transports no control results.", true, List.of());
+        AnalyzerTypeMappingUpdate update = new AnalyzerTypeMappingUpdate(null, List.of(), List.of());
+        AnalyzerTypeMappingView expected = new AnalyzerTypeMappingView("site.mock", 2, "sha256:test", "Mock Analyzer",
+                "FILE", "51", 1, "sha256:binding", List.of(), recognition);
+        when(mappingService.saveMapping("site.mock", 2, update, "17")).thenReturn(expected);
+
+        assertSame(expected, controller.saveMapping("site.mock", 2, update, authenticatedRequest(17)).getBody());
+        verify(mappingService).saveMapping("site.mock", 2, update, "17");
     }
 
     @Test
