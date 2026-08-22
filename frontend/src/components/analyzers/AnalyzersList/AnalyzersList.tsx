@@ -33,7 +33,6 @@ import {
 // AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
-// QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -690,17 +689,6 @@ const AnalyzersList = () => {
                                         )
                                       }
                                       data-testid={`analyzer-action-edit-${row.id}`}
-                                    />
-                                    <OverflowMenuItem
-                                      itemText={intl.formatMessage({
-                                        id: "analyzer.action.qcRules",
-                                      })}
-                                      onClick={() =>
-                                        history.push(
-                                          `/analyzers/${analyzer.id}/qc-rules`,
-                                        )
-                                      }
-                                      data-testid={`analyzer-action-qc-rules-${row.id}`}
                                     />
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({

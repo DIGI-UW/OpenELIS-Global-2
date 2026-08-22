@@ -12,11 +12,13 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
-import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
+import org.openelisglobal.analyzer.service.AnalyzerProfileBindingException;
+import org.openelisglobal.analyzer.service.AnalyzerProfileBindingService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.service.BridgeHttpClient;
-import org.openelisglobal.analyzer.service.QcRuleDto;
+import org.openelisglobal.analyzer.service.BridgeRegistrationResult;
+import org.openelisglobal.analyzer.service.BridgeRegistrationService;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -77,13 +79,6 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private BridgeHttpClient bridgeHttpClient;
-
-    @Autowired
-    private AnalyzerQcRuleService analyzerQcRuleService;
-
-    // Optional — null in older deployments before control-lot support.
-    @Autowired(required = false)
-    private org.openelisglobal.qc.service.QCControlLotService qcControlLotService;
 
     @Autowired
     private AnalyzerErrorService analyzerErrorService;
@@ -646,39 +641,6 @@ public class AnalyzerRestController extends BaseRestController {
         // dashboard. Jackson serializes Timestamp as epoch millis; the frontend
         // formats with toLocaleDateString().
         map.put("lastModified", analyzer.getLastupdated());
-
-        // FR-15: Active QC rules for bridge consumption
-        List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(analyzer.getId());
-        map.put("qcRules", qcRules);
-
-        // Active QC control lots for bridge consumption — bridge attaches
-        // matching lotNumber to inbound QC samples (FILE: substring scan
-        // sample-name; ASTM: cross-check Q-segment field 3) so OE's Tier 1
-        // resolver picks the right lot when multiple are active per analyzer.
-        // Always emit `controlLots` (empty list if no data) so the bridge
-        // contract is stable — missing field would mean "key absent" rather
-        // than "no active lots".
-        List<Map<String, Object>> lotsPayload = new ArrayList<>();
-        if (qcControlLotService != null) {
-            // analyzer.getId() is String + LIMSStringNumberUserType, matching
-            // QCControlLot.instrumentId's typing — no parsing/bridging needed.
-            List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
-                    .getActiveControlLotsByInstrument(analyzer.getId());
-            for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
-                if (lot.getLotNumber() == null || lot.getLotNumber().isBlank())
-                    continue;
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("lotNumber", lot.getLotNumber());
-                if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
-                    m.put("controlLevel", lot.getControlLevel());
-                }
-                if (lot.getTestId() != null) {
-                    m.put("testId", lot.getTestId());
-                }
-                lotsPayload.add(m);
-            }
-        }
-        map.put("controlLots", lotsPayload);
 
         return map;
     }

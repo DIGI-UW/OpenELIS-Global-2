@@ -323,7 +323,6 @@ describe("TestMappingModal", () => {
       entityPreview: {},
       pluginConfigSnapshot: {
         aggregationMode: "PER_MESSAGE",
-        qcRules: [{ id: "rule-1", isActive: true }],
       },
       warnings: [],
       errors: [],

@@ -99,9 +99,6 @@ const AnalyzerTypesPage = lazyWithRetry(
 const AnalyzerFormPage = lazyWithRetry(
   () => import("./components/analyzers/AnalyzerForm/AnalyzerForm"),
 );
-const QcRulePage = lazyWithRetry(
-  () => import("./components/analyzers/QcRules/QcRuleBuilderModal"),
-);
 import {
   QCDashboard,
   ControlChartDetail,
@@ -1134,18 +1131,6 @@ export default function App() {
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
                       <Suspense fallback={null}>
                         <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/qc-rules"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <QcRulePage />
                       </Suspense>
                     </RouteErrorBoundary>
                   )}

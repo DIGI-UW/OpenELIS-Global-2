@@ -368,5 +368,9 @@
        whole constraint, so whichever ran second dropped the other's values. -->
   <include relativeToChangelogFile="true" file="086-merge-alert-type-constraint-union.xml"/>
 
+  <include relativeToChangelogFile="true" file="085-analyzer-profile-binding.xml"/>
+  <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
+  <include relativeToChangelogFile="true" file="087-analyzer-site-transport.xml"/>
+  <include relativeToChangelogFile="true" file="088-remove-analyzer-qc-rule.xml"/>
 
 </databaseChangeLog>

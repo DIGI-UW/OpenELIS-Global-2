@@ -63,9 +63,6 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
             result.setPluginConfigSnapshot(analyzerPluginConfigService.getConfigAsMap(analyzerId));
 
             validateMappings(parsedFields, mappings, result);
-            if (!analyzerPluginConfigService.hasAtLeastOneActiveQcRule(analyzerId)) {
-                result.getWarnings().add("No active QC rule configured; activation gate will block ACTIVE transition");
-            }
 
         } catch (Exception e) {
             result.getErrors().add("Error processing ASTM message: " + e.getMessage());

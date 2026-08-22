@@ -1,6 +1,5 @@
 package org.openelisglobal.analyzer.service;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,9 +29,6 @@ public class AnalyzerPluginConfigServiceTest {
 
     @Mock
     private AnalyzerService analyzerService;
-
-    @Mock
-    private AnalyzerQcRuleService analyzerQcRuleService;
 
     @InjectMocks
     private AnalyzerPluginConfigServiceImpl service;
@@ -111,20 +107,6 @@ public class AnalyzerPluginConfigServiceTest {
         config.put("clientTargetIp", "10.20.30.40");
 
         service.upsert("101", config, "1");
-    }
-
-    @Test
-    public void testHasAtLeastOneActiveQcRule_WithActiveRule_ReturnsTrue() {
-        when(analyzerQcRuleService.hasAtLeastOneActiveRule("101")).thenReturn(true);
-
-        assertTrue(service.hasAtLeastOneActiveQcRule("101"));
-    }
-
-    @Test
-    public void testHasAtLeastOneActiveQcRule_WithNoRules_ReturnsFalse() {
-        when(analyzerQcRuleService.hasAtLeastOneActiveRule("101")).thenReturn(false);
-
-        assertFalse(service.hasAtLeastOneActiveQcRule("101"));
     }
 
     @Test

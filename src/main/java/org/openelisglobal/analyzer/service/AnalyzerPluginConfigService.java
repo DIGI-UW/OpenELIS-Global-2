@@ -12,6 +12,4 @@ public interface AnalyzerPluginConfigService extends BaseObjectService<AnalyzerP
     Map<String, Object> getConfigAsMap(String analyzerId);
 
     void applyConfigDefaults(String analyzerId, Object configDefaults, String sysUserId);
-
-    boolean hasAtLeastOneActiveQcRule(String analyzerId);
 }

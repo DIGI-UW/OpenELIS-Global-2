@@ -26,9 +26,6 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
-    @Autowired
-    private AnalyzerPluginConfigService analyzerPluginConfigService;
-
     @Override
     public Analyzer transitionToValidation(String analyzerId) {
         Analyzer analyzer = getAnalyzerOrThrow(analyzerId);
@@ -51,11 +48,6 @@ public class AnalyzerStatusTransitionServiceImpl implements AnalyzerStatusTransi
             throw new IllegalStateException("Cannot transition to ACTIVE: analyzer " + analyzerId + " is in "
                     + currentStatus + " status (expected VALIDATION)");
         }
-        if (analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin()
-                && !analyzerPluginConfigService.hasAtLeastOneActiveQcRule(analyzerId)) {
-            throw new IllegalStateException("Cannot transition to ACTIVE: at least one active QC rule is required");
-        }
-
         analyzer.setLastActivatedDate(new Date());
 
         return updateStatus(analyzer, AnalyzerStatus.ACTIVE, "All required mappings activated");
