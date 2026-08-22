@@ -36,13 +36,16 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
     private final AnalyzerSiteBindingConfirmationDAO confirmationDAO;
     private final AuditTrailService auditTrailService;
     private final SystemUserService systemUserService;
+    private final AnalyzerMappingCatalogService mappingCatalogService;
     private final ObjectMapper objectMapper;
 
     public AnalyzerSiteBindingConfirmationServiceImpl(AnalyzerSiteBindingConfirmationDAO confirmationDAO,
-            AuditTrailService auditTrailService, SystemUserService systemUserService) {
+            AuditTrailService auditTrailService, SystemUserService systemUserService,
+            AnalyzerMappingCatalogService mappingCatalogService) {
         this.confirmationDAO = confirmationDAO;
         this.auditTrailService = auditTrailService;
         this.systemUserService = systemUserService;
+        this.mappingCatalogService = mappingCatalogService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -59,6 +62,9 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
                 "Analyzer Type mappings changed after Verify was loaded");
         requireMatchingFingerprint(request.recognitionFingerprint(), context.recognitionFingerprint,
                 "Control recognition changed after Verify was loaded");
+        if (!hasCurrentCatalogBindings(candidate)) {
+            throw new IllegalArgumentException("Analyzer Type mappings reference inactive or unrelated catalog values");
+        }
 
         RowDisposition expected = expectedRows(candidate);
         List<AnalyzerSiteBindingSourceRow> confirmedRows = normalizeRows(request.confirmedRows(), "confirmed");
@@ -96,7 +102,8 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
         return confirmationDAO.findLatestByBindingId(candidate.binding().getId())
                 .map(confirmation -> toView(confirmation,
-                        isCurrent(candidate, context, confirmation) ? AnalyzerSiteBindingConfirmationView.State.CURRENT
+                        isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate)
+                                ? AnalyzerSiteBindingConfirmationView.State.CURRENT
                                 : AnalyzerSiteBindingConfirmationView.State.STALE))
                 .orElseGet(AnalyzerSiteBindingConfirmationView::unconfirmed);
     }
@@ -158,6 +165,10 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         return Objects.equals(candidate.revision().getId(), confirmation.getSiteBindingRevision().getId())
                 && context.bindingFingerprint.equals(confirmation.getBindingFingerprint())
                 && context.recognitionFingerprint.equals(confirmation.getRecognitionFingerprint());
+    }
+
+    private boolean hasCurrentCatalogBindings(AnalyzerSiteBindingSnapshot candidate) {
+        return AnalyzerSiteBindingCatalogState.load(mappingCatalogService).validate(candidate).allRowsCurrent();
     }
 
     private AnalyzerSiteBindingConfirmationView toView(AnalyzerSiteBindingConfirmation confirmation,

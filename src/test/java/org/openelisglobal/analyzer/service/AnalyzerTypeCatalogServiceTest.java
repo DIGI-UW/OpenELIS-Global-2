@@ -38,11 +38,18 @@ public class AnalyzerTypeCatalogServiceTest {
     @Mock
     private AnalyzerSiteBindingService siteBindingService;
 
+    @Mock
+    private AnalyzerMappingCatalogService mappingCatalogService;
+
     private AnalyzerTypeCatalogService service;
 
     @Before
     public void setUp() {
-        service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, bindingDAO, siteBindingService);
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest()));
+        when(mappingCatalogService.getActiveResultOptions("100"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("200", "POS", "Positive")));
+        service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, bindingDAO, siteBindingService,
+                mappingCatalogService);
     }
 
     @Test
@@ -62,7 +69,7 @@ public class AnalyzerTypeCatalogServiceTest {
                         analyzer("503", "Hematology - Reference Lab", previousBinding, 1)));
         when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
         when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED),
+                List.of(AnalyzerSiteBindingMappingState.EXCLUDED, AnalyzerSiteBindingMappingState.BOUND),
                 List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
 
@@ -125,7 +132,7 @@ public class AnalyzerTypeCatalogServiceTest {
                 .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
         when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
         when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.UNRESOLVED),
+                List.of(AnalyzerSiteBindingMappingState.UNRESOLVED, AnalyzerSiteBindingMappingState.BOUND),
                 List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.UNRESOLVED))));
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
 
@@ -138,6 +145,47 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("INCOMPLETE", active.testMappings().state());
         assertEquals(1, active.resultMappings().mapped());
         assertEquals(2, active.resultMappings().total());
+        assertEquals("INCOMPLETE", active.resultMappings().state());
+        assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
+    }
+
+    @Test
+    public void getCatalogTreatsABoundInactiveTestAsIncomplete() throws Exception {
+        AnalyzerProfileBinding binding = activeProfileBinding();
+        when(bindingDAO.getAll()).thenReturn(List.of(binding));
+        when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
+        when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
+                List.of(AnalyzerSiteBindingMappingState.EXCLUDED, AnalyzerSiteBindingMappingState.BOUND),
+                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
+        when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
+
+        AnalyzerTypeCatalogView.TypeSummary active = service.getCatalog().types().get(0);
+
+        assertEquals("INCOMPLETE", active.testMappings().state());
+        assertEquals("INCOMPLETE", active.resultMappings().state());
+        assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
+    }
+
+    @Test
+    public void getCatalogTreatsAResultOptionOwnedByAnotherTestAsIncomplete() throws Exception {
+        AnalyzerProfileBinding binding = activeProfileBinding();
+        when(bindingDAO.getAll()).thenReturn(List.of(binding));
+        when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
+        when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
+                List.of(AnalyzerSiteBindingMappingState.EXCLUDED, AnalyzerSiteBindingMappingState.BOUND),
+                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
+        when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest()));
+        when(mappingCatalogService.getActiveResultOptions("100")).thenReturn(List.of());
+
+        AnalyzerTypeCatalogView.TypeSummary active = service.getCatalog().types().get(0);
+
+        assertEquals("COMPLETE", active.testMappings().state());
         assertEquals("INCOMPLETE", active.resultMappings().state());
         assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
     }
@@ -169,6 +217,19 @@ public class AnalyzerTypeCatalogServiceTest {
         AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
         profileBinding.setProfileRevision(1);
         return analyzer(id, name, profileBinding, 1);
+    }
+
+    private static AnalyzerProfileBinding activeProfileBinding() {
+        AnalyzerProfileBinding binding = new AnalyzerProfileBinding();
+        binding.setId("41");
+        binding.setProfileId("site.mock-hematology");
+        binding.setProfileRevision(3);
+        return binding;
+    }
+
+    private static AnalyzerMappingCatalogService.TestOption activeTest() {
+        return new AnalyzerMappingCatalogService.TestOption("100", "Mock active Test", "MOCK",
+                List.of("6690-2", "58410-2"));
     }
 
     private static Analyzer analyzer(String id, String name, AnalyzerProfileBinding profileBinding,

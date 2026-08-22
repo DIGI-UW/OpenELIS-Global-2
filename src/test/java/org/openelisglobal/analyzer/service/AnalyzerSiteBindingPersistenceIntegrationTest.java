@@ -95,6 +95,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             TestResultService testResultService = mock(TestResultService.class);
             AuditTrailService auditTrailService = mock(AuditTrailService.class);
             SystemUserService systemUserService = mock(SystemUserService.class);
+            AnalyzerMappingCatalogService mappingCatalogService = mock(AnalyzerMappingCatalogService.class);
             SystemUser actor = new SystemUser();
             actor.setId(TEST_SYS_USER_ID);
             actor.setFirstName("Integration");
@@ -102,12 +103,17 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             when(testService.get(testId)).thenReturn(test);
             when(testResultService.get(resultOptionId)).thenReturn(resultOption);
             when(systemUserService.getUserById(TEST_SYS_USER_ID)).thenReturn(actor);
+            when(mappingCatalogService.searchActiveTests(null))
+                    .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption(testId,
+                            "Analyzer binding persistence test", "TEST", List.of())));
+            when(mappingCatalogService.getActiveResultOptions(testId)).thenReturn(
+                    List.of(new AnalyzerMappingCatalogService.ResultOption(resultOptionId, "POSITIVE", "Positive")));
 
             AnalyzerSiteBindingService siteBindingService = new AnalyzerSiteBindingServiceImpl(siteBindingDAO,
                     revisionDAO, siteBindingTestDAO, siteBindingResultDAO, auditTrailService, testService,
                     testResultService);
             AnalyzerSiteBindingConfirmationService confirmationService = new AnalyzerSiteBindingConfirmationServiceImpl(
-                    confirmationDAO, auditTrailService, systemUserService);
+                    confirmationDAO, auditTrailService, systemUserService, mappingCatalogService);
 
             String profileId = "site.persistence." + UUID.randomUUID();
             AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
