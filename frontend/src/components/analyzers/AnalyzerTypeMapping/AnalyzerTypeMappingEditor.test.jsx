@@ -280,6 +280,11 @@ describe("AnalyzerTypeMappingEditor", () => {
     const sourceRows = screen.getAllByTestId("analyzer-type-mapping-row");
     expect(sourceRows).toHaveLength(3);
     expect(within(sourceRows[0]).getByText("RAW-A")).toBeVisible();
+    expect(
+      within(sourceRows[0]).getByRole("combobox", {
+        name: "OpenELIS result for DETECTED",
+      }),
+    ).toHaveTextContent("Resistant");
     expect(within(sourceRows[1]).getByText("RAW-B")).toBeVisible();
     expect(screen.getAllByText("Shared normalized identity")).toHaveLength(2);
     expect(screen.getByText("Alias: RAW A")).toBeVisible();
