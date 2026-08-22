@@ -26,6 +26,7 @@ import {
   publishAnalyzerTypeDraft,
   updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
+import ControlRecognitionDraftEditor from "./ControlRecognitionDraftEditor";
 
 const nextDuplicateName = (displayName, types) => {
   const existing = new Set(types.map((type) => type.displayName));
@@ -215,6 +216,13 @@ const DuplicateProfileModal = ({
   );
   const [pinnedSource, setPinnedSource] = useState(initialPinnedSource);
   const [draft, setDraft] = useState(null);
+  const [recognitionState, setRecognitionState] = useState({
+    loaded: false,
+    dirty: false,
+    valid: false,
+    publishable: false,
+    validationIssues: [],
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -267,8 +275,7 @@ const DuplicateProfileModal = ({
   const duplicateName = types.some(
     (type) => type.displayName.toLowerCase() === normalizedName.toLowerCase(),
   );
-  const publishable =
-    Boolean(activeDraft) && (activeDraft.validationIssues || []).length === 0;
+  const publishable = Boolean(activeDraft) && recognitionState.publishable;
   const valid = activeDraft
     ? publishable
     : Boolean(source) && Boolean(normalizedName) && !duplicateName;
@@ -341,22 +348,34 @@ const DuplicateProfileModal = ({
       onRequestClose={onClose}
       onSecondarySubmit={onClose}
       onRequestSubmit={submit}
-      size="sm"
+      size={activeDraft ? "lg" : "sm"}
     >
       <div className="analyzer-type-modal__form">
         {activeDraft ? (
-          <InlineNotification
-            kind="success"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({
-              id: "analyzerType.draft.publish.ready.title",
-            })}
-            subtitle={intl.formatMessage(
-              { id: "analyzerType.draft.publish.ready.subtitle" },
-              { name: normalizedName },
-            )}
-          />
+          <>
+            <InlineNotification
+              kind={publishable ? "success" : "info"}
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: publishable
+                  ? "analyzerType.draft.publish.ready.title"
+                  : "analyzerType.draft.publish.review.title",
+              })}
+              subtitle={intl.formatMessage(
+                {
+                  id: publishable
+                    ? "analyzerType.draft.publish.ready.subtitle"
+                    : "analyzerType.draft.publish.review.subtitle",
+                },
+                { name: normalizedName },
+              )}
+            />
+            <ControlRecognitionDraftEditor
+              draftId={activeDraft.draftId}
+              onStateChange={setRecognitionState}
+            />
+          </>
         ) : (
           <>
             <Select
@@ -424,11 +443,19 @@ const UpdateSharedProfileModal = ({
   profile,
   draftId,
   onClose,
+  onSuccess,
   onError,
   onDraftCreated,
 }) => {
   const intl = useIntl();
   const [draft, setDraft] = useState(null);
+  const [recognitionState, setRecognitionState] = useState({
+    loaded: false,
+    dirty: false,
+    valid: false,
+    publishable: false,
+    validationIssues: [],
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -454,10 +481,21 @@ const UpdateSharedProfileModal = ({
   );
 
   const submit = () => {
-    if (submitting) {
+    if (submitting || (activeDraft && !recognitionState.publishable)) {
       return;
     }
     setSubmitting(true);
+    if (activeDraft) {
+      publishAnalyzerTypeDraft(activeDraft.draftId, (response) => {
+        setSubmitting(false);
+        if (hasError(response)) {
+          onError(response?.error);
+          return;
+        }
+        onSuccess("update");
+      });
+      return;
+    }
     updateSharedAnalyzerType(
       profile.profileId,
       profile.revision,
@@ -490,22 +528,36 @@ const UpdateSharedProfileModal = ({
     return (
       <Modal
         open
-        passiveModal
         modalHeading={title}
+        primaryButtonText={intl.formatMessage({
+          id: "analyzerType.button.publish",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "analyzerType.button.cancel",
+        })}
+        primaryButtonDisabled={!recognitionState.publishable || submitting}
         onRequestClose={onClose}
-        size="sm"
+        onSecondarySubmit={onClose}
+        onRequestSubmit={submit}
+        size="lg"
       >
-        <InlineNotification
-          kind="success"
-          lowContrast
-          hideCloseButton
-          title={intl.formatMessage({
-            id: "analyzerType.draft.update.title",
-          })}
-          subtitle={intl.formatMessage({
-            id: "analyzerType.draft.update.subtitle",
-          })}
-        />
+        <div className="analyzer-type-modal__form">
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "analyzerType.draft.update.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "analyzerType.draft.update.subtitle",
+            })}
+          />
+          <ControlRecognitionDraftEditor
+            draftId={activeDraft.draftId}
+            onStateChange={setRecognitionState}
+          />
+        </div>
       </Modal>
     );
   }
@@ -775,6 +827,7 @@ const AnalyzerTypeLifecycleModals = ({
         profile={profile}
         draftId={draftId}
         onClose={onClose}
+        onSuccess={onSuccess}
         onError={onError}
         onDraftCreated={onDraftCreated}
       />
