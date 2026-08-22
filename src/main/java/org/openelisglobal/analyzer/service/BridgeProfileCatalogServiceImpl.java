@@ -107,7 +107,8 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
     }
 
     private static void validateControlRecognitionSummary(BridgeProfileCatalog.ControlRecognitionSummary summary) {
-        if (summary == null || isBlank(summary.description())) {
+        if (summary == null || summary.recognitionFingerprint() == null
+                || !summary.recognitionFingerprint().matches(FINGERPRINT_PATTERN) || isBlank(summary.description())) {
             throw invalidControlRecognitionSummary();
         }
         if ("NONE".equals(summary.mode())) {

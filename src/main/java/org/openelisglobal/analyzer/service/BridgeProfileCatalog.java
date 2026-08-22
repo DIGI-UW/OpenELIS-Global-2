@@ -17,8 +17,13 @@ public record BridgeProfileCatalog(String schemaVersion, String catalogFingerpri
         }
     }
 
-    public record ControlRecognitionSummary(String mode, String description, boolean affirmedNoControlResults,
-            List<Condition> conditions) {
+    public record ControlRecognitionSummary(String recognitionFingerprint, String mode, String description,
+            boolean affirmedNoControlResults, List<Condition> conditions) {
+
+        public ControlRecognitionSummary(String mode, String description, boolean affirmedNoControlResults,
+                List<Condition> conditions) {
+            this(null, mode, description, affirmedNoControlResults, conditions);
+        }
 
         public ControlRecognitionSummary {
             conditions = conditions == null ? List.of() : List.copyOf(conditions);
