@@ -619,6 +619,55 @@ describe("AnalyzerTypeManagement", () => {
     );
   });
 
+  it("returns to the mapping page that launched a profile action", async () => {
+    const returnTo =
+      "/analyzers/types/shipped.genexpert/mapping?revision=1&returnTo=%2Fanalyzers%2Ftypes%3Fprotocol%3DASTM";
+    window.history.replaceState(
+      {},
+      "",
+      `/analyzers/types?action=duplicate&profile=shipped.genexpert&revision=1&returnTo=${encodeURIComponent(
+        returnTo,
+      )}`,
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+
+    await waitFor(() =>
+      expect(`${window.location.pathname}${window.location.search}`).toBe(
+        returnTo,
+      ),
+    );
+  });
+
+  it("rejects an external profile-action return URL", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=duplicate&profile=shipped.genexpert&returnTo=%2F%2Fevil.example",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/analyzers/types");
+      expect(window.location.search).toBe("");
+    });
+  });
+
   it("deactivates a shipped profile through a confirmation dialog and exposes no delete action", async () => {
     renderPage();
     await screen.findByText("Cepheid GeneXpert MTB/RIF");
