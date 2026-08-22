@@ -15,6 +15,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
@@ -38,11 +39,14 @@ public class AnalyzerTypeRestControllerTest {
     @Mock
     private BridgeProfileManagementService managementService;
 
+    @Mock
+    private AnalyzerMappingCatalogService mappingCatalogService;
+
     private AnalyzerTypeRestController controller;
 
     @Before
     public void setUp() {
-        controller = new AnalyzerTypeRestController(catalogService, managementService);
+        controller = new AnalyzerTypeRestController(catalogService, managementService, mappingCatalogService);
     }
 
     @Test
@@ -65,6 +69,26 @@ public class AnalyzerTypeRestControllerTest {
         when(catalogService.getType("site.mock", 2)).thenReturn(expected);
 
         assertSame(expected, controller.getAnalyzerType("site.mock", 2).getBody());
+    }
+
+    @Test
+    public void searchMappingTestsReturnsCompleteActiveCatalogMatches() {
+        List<AnalyzerMappingCatalogService.TestOption> expected = List
+                .of(new AnalyzerMappingCatalogService.TestOption("1", "HIV Viral Load", "HIVVL", List.of("25836-8")));
+        when(mappingCatalogService.searchActiveTests("viral")).thenReturn(expected);
+
+        assertSame(expected, controller.searchMappingTests("viral").getBody());
+        verify(mappingCatalogService).searchActiveTests("viral");
+    }
+
+    @Test
+    public void getMappingResultOptionsScopesChoicesToTheMappedTest() {
+        List<AnalyzerMappingCatalogService.ResultOption> expected = List
+                .of(new AnalyzerMappingCatalogService.ResultOption("11", "501", "Detected"));
+        when(mappingCatalogService.getActiveResultOptions("1")).thenReturn(expected);
+
+        assertSame(expected, controller.getMappingResultOptions("1").getBody());
+        verify(mappingCatalogService).getActiveResultOptions("1");
     }
 
     @Test
