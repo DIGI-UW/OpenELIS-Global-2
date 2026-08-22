@@ -6,4 +6,7 @@ public interface AnalyzerTypeMappingService {
 
     AnalyzerTypeMappingView saveMapping(String profileId, int profileRevision, AnalyzerTypeMappingUpdate update,
             String actor);
+
+    AnalyzerSiteBindingConfirmationView confirmMapping(String profileId, int profileRevision,
+            AnalyzerSiteBindingConfirmationRequest request, String actor);
 }

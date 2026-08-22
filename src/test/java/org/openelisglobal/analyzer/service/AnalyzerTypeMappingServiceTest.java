@@ -123,14 +123,22 @@ public class AnalyzerTypeMappingServiceTest {
     @Test
     public void confirmMappingUsesTheExactCurrentProfileAndSiteBindingCandidate() throws Exception {
         AnalyzerProfileBinding profileBinding = profileBinding();
-        AnalyzerSiteBindingSnapshot candidate = siteBinding(profileBinding);
+        AnalyzerSiteBindingSnapshot candidate = confirmableSiteBinding(profileBinding);
         AnalyzerSiteBindingConfirmationRequest request = new AnalyzerSiteBindingConfirmationRequest(
-                candidate.revision().getBindingFingerprint(), recognitionFingerprint(), List.of(), List.of());
+                candidate.revision().getBindingFingerprint(), recognitionFingerprint(),
+                List.of(new AnalyzerSiteBindingSourceRow("RAW-A", null),
+                        new AnalyzerSiteBindingSourceRow("RAW-A", "POS")),
+                List.of(new AnalyzerSiteBindingSourceRow("RAW-A", "NEG"),
+                        new AnalyzerSiteBindingSourceRow("RAW-B", null),
+                        new AnalyzerSiteBindingSourceRow("RAW-C", null)));
         AnalyzerSiteBindingConfirmationView expected = AnalyzerSiteBindingConfirmationView.unconfirmed();
         when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
         when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2))
                 .thenReturn(Optional.of(profileBinding));
         when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(candidate));
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(mappingCatalogService.getActiveResultOptions("9701"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive")));
         when(confirmationService.confirm(candidate, recognitionFingerprint(), request, "17")).thenReturn(expected);
 
         AnalyzerSiteBindingConfirmationView confirmed = service.confirmMapping("site.mock-analyzer", 2, request, "17");
@@ -376,6 +384,13 @@ public class AnalyzerTypeMappingServiceTest {
                         test(revision, "RAW-C", AnalyzerSiteBindingMappingState.UNRESOLVED, null)),
                 List.of(result(revision, "RAW-A", "POS", AnalyzerSiteBindingMappingState.BOUND, "811"),
                         result(revision, "RAW-A", "NEG", AnalyzerSiteBindingMappingState.EXCLUDED, null)));
+    }
+
+    private AnalyzerSiteBindingSnapshot confirmableSiteBinding(AnalyzerProfileBinding profileBinding) {
+        AnalyzerSiteBindingSnapshot candidate = siteBinding(profileBinding);
+        candidate.tests().get(1).setMappingState(AnalyzerSiteBindingMappingState.EXCLUDED);
+        candidate.tests().get(2).setMappingState(AnalyzerSiteBindingMappingState.EXCLUDED);
+        return candidate;
     }
 
     private static List<AnalyzerMappingCatalogService.TestOption> activeTests() {

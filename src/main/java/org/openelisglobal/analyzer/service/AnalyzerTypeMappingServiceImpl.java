@@ -26,15 +26,18 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
     private final AnalyzerSiteBindingService siteBindingService;
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final AnalyzerProfileBindingService profileBindingService;
+    private final AnalyzerSiteBindingConfirmationService confirmationService;
 
     public AnalyzerTypeMappingServiceImpl(BridgeProfileCatalogService bridgeProfileCatalogService,
             AnalyzerProfileBindingDAO profileBindingDAO, AnalyzerSiteBindingService siteBindingService,
-            AnalyzerMappingCatalogService mappingCatalogService, AnalyzerProfileBindingService profileBindingService) {
+            AnalyzerMappingCatalogService mappingCatalogService, AnalyzerProfileBindingService profileBindingService,
+            AnalyzerSiteBindingConfirmationService confirmationService) {
         this.bridgeProfileCatalogService = bridgeProfileCatalogService;
         this.profileBindingDAO = profileBindingDAO;
         this.siteBindingService = siteBindingService;
         this.mappingCatalogService = mappingCatalogService;
         this.profileBindingService = profileBindingService;
+        this.confirmationService = confirmationService;
     }
 
     @Override
@@ -65,6 +68,20 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
         return compose(revision, profile, saved);
     }
 
+    @Override
+    @Transactional
+    public AnalyzerSiteBindingConfirmationView confirmMapping(String profileId, int profileRevision,
+            AnalyzerSiteBindingConfirmationRequest request, String actor) {
+        BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService.getProfile(profileId,
+                profileRevision);
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+        AnalyzerSiteBindingSnapshot candidate = findBinding(profile.profileId(), profile.revision()).orElseThrow(
+                () -> new IllegalArgumentException("Analyzer Type mappings must be saved before confirmation"));
+        validateConfirmable(compose(revision, profile, candidate));
+        return confirmationService.confirm(candidate, revision.controlRecognitionSummary().recognitionFingerprint(),
+                request, actor);
+    }
+
     private AnalyzerTypeMappingView compose(BridgeProfileCatalog.ProfileRevision revision,
             BridgeAnalyzerProfile profile, AnalyzerSiteBindingSnapshot binding) {
         List<AnalyzerMappingCatalogService.TestOption> activeTests = mappingCatalogService.searchActiveTests(null);
@@ -83,11 +100,30 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
                 .testDefinitions().stream().map(definition -> composeTestRow(definition,
                         currentTests.get(definition.analyzerCode()), currentResults, activeTests, activeTestsById))
                 .toList();
+        AnalyzerSiteBindingConfirmationView confirmation = binding == null
+                ? AnalyzerSiteBindingConfirmationView.unconfirmed()
+                : confirmationService.getStatus(binding, revision.controlRecognitionSummary().recognitionFingerprint());
         return new AnalyzerTypeMappingView(profile.profileId(), profile.revision(), profile.revisionFingerprint(),
                 profile.displayName(), profile.protocol(), binding == null ? null : binding.binding().getId(),
                 binding == null ? 0 : binding.revision().getRevisionNumber(),
                 binding == null ? null : binding.revision().getBindingFingerprint(), rows,
-                revision.controlRecognitionSummary());
+                revision.controlRecognitionSummary(), confirmation);
+    }
+
+    private static void validateConfirmable(AnalyzerTypeMappingView view) {
+        for (AnalyzerTypeMappingView.TestRow test : view.tests()) {
+            if (test.mappingState() == AnalyzerSiteBindingMappingState.UNRESOLVED
+                    || test.mappingState() == AnalyzerSiteBindingMappingState.BOUND && test.selectedTest() == null) {
+                throw new IllegalArgumentException("Every test row must have a current binding or exclusion");
+            }
+            for (AnalyzerTypeMappingView.ResultRow result : test.results()) {
+                if (result.mappingState() == AnalyzerSiteBindingMappingState.UNRESOLVED
+                        || result.mappingState() == AnalyzerSiteBindingMappingState.BOUND
+                                && result.selectedOption() == null) {
+                    throw new IllegalArgumentException("Every result row must have a current binding or exclusion");
+                }
+            }
+        }
     }
 
     private static AnalyzerSiteBindingDraft validateUpdate(BridgeAnalyzerProfile profile,

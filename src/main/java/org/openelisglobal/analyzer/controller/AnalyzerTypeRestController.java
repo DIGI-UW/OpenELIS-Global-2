@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationRequest;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
@@ -68,6 +70,14 @@ public class AnalyzerTypeRestController extends BaseRestController {
     public ResponseEntity<AnalyzerTypeMappingView> saveMapping(@PathVariable String profileId,
             @RequestParam int revision, @RequestBody AnalyzerTypeMappingUpdate update, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(mappingService.saveMapping(profileId, revision, update, getSysUserId(httpRequest)));
+    }
+
+    @PostMapping("/{profileId}/mapping/confirm")
+    public ResponseEntity<AnalyzerSiteBindingConfirmationView> confirmMapping(@PathVariable String profileId,
+            @RequestParam int revision, @RequestBody AnalyzerSiteBindingConfirmationRequest request,
+            HttpServletRequest httpRequest) {
+        return ResponseEntity
+                .ok(mappingService.confirmMapping(profileId, revision, request, getSysUserId(httpRequest)));
     }
 
     @GetMapping("/mapping-catalog/tests")
@@ -148,6 +158,11 @@ public class AnalyzerTypeRestController extends BaseRestController {
     @ExceptionHandler(BridgeProfileCatalogException.class)
     public ResponseEntity<ErrorResponse> handleProfileCatalogError(BridgeProfileCatalogException exception) {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(new ErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidMapping(IllegalArgumentException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(exception.getMessage()));
     }
 
     public record ProfileMutationRequest(JsonNode profile) {
