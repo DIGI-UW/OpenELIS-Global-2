@@ -22,6 +22,7 @@ import {
   createAnalyzerTypeDraft,
   duplicateAnalyzerType,
   getAnalyzerTypeDraft,
+  getAnalyzerTypeRevision,
   publishAnalyzerTypeDraft,
   updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
@@ -189,6 +190,7 @@ const CreateProfileModal = ({
 const DuplicateProfileModal = ({
   types,
   initialProfileId,
+  initialRevision,
   draftId,
   onClose,
   onSuccess,
@@ -203,12 +205,44 @@ const DuplicateProfileModal = ({
   const initialSource = activeTypes.find(
     (type) => type.profileId === initialProfileId,
   );
+  const initialPinnedSource =
+    initialSource && initialSource.revision === initialRevision
+      ? initialSource
+      : null;
   const [sourceId, setSourceId] = useState(initialSource?.profileId || "");
   const [displayName, setDisplayName] = useState(
     initialSource ? nextDuplicateName(initialSource.displayName, types) : "",
   );
+  const [pinnedSource, setPinnedSource] = useState(initialPinnedSource);
   const [draft, setDraft] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (
+      draftId ||
+      !initialProfileId ||
+      !initialRevision ||
+      initialPinnedSource
+    ) {
+      return;
+    }
+    getAnalyzerTypeRevision(initialProfileId, initialRevision, (response) => {
+      if (hasError(response)) {
+        onError(response?.error);
+        return;
+      }
+      setPinnedSource(response);
+      setSourceId(response.profileId);
+      setDisplayName(nextDuplicateName(response.displayName, types));
+    });
+  }, [
+    draftId,
+    initialPinnedSource,
+    initialProfileId,
+    initialRevision,
+    onError,
+    types,
+  ]);
 
   useEffect(() => {
     if (!draftId || draft?.draftId === draftId) {
@@ -226,7 +260,9 @@ const DuplicateProfileModal = ({
   }, [draft?.draftId, draftId, onError]);
 
   const activeDraft = draft?.draftId === draftId ? draft : null;
-  const source = activeTypes.find((type) => type.profileId === sourceId);
+  const source =
+    (pinnedSource?.profileId === sourceId && pinnedSource) ||
+    activeTypes.find((type) => type.profileId === sourceId);
   const normalizedName = displayName.trim();
   const duplicateName = types.some(
     (type) => type.displayName.toLowerCase() === normalizedName.toLowerCase(),
@@ -239,6 +275,7 @@ const DuplicateProfileModal = ({
 
   const changeSource = (profileId) => {
     const nextSource = activeTypes.find((type) => type.profileId === profileId);
+    setPinnedSource(null);
     setSourceId(profileId);
     setDisplayName(
       nextSource ? nextDuplicateName(nextSource.displayName, types) : "",
@@ -684,6 +721,7 @@ const ProfileHistoryModal = ({ profile, onClose, onError }) => {
 const AnalyzerTypeLifecycleModals = ({
   action,
   profileId,
+  revision,
   draftId,
   types,
   onClose,
@@ -709,6 +747,7 @@ const AnalyzerTypeLifecycleModals = ({
       <DuplicateProfileModal
         types={types}
         initialProfileId={profileId}
+        initialRevision={revision}
         draftId={draftId}
         onClose={onClose}
         onSuccess={onSuccess}

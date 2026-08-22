@@ -84,10 +84,15 @@ const AnalyzerTypeManagement = () => {
   const [notification, setNotification] = useState(null);
   const actionState = useMemo(() => {
     const params = new URLSearchParams(location.search);
+    const requestedRevision = Number(params.get("revision"));
     return {
       action: params.get("action"),
       profileId: params.get("profile"),
       draftId: params.get("draft"),
+      revision:
+        Number.isInteger(requestedRevision) && requestedRevision > 0
+          ? requestedRevision
+          : null,
     };
   }, [location.search]);
 
@@ -118,6 +123,7 @@ const AnalyzerTypeManagement = () => {
     params.delete("action");
     params.delete("profile");
     params.delete("draft");
+    params.delete("revision");
     history.push({
       pathname: location.pathname,
       search: params.toString() ? `?${params.toString()}` : "",
@@ -778,10 +784,11 @@ const AnalyzerTypeManagement = () => {
       </Grid>
       {catalog && actionState.action && (
         <AnalyzerTypeLifecycleModals
-          key={`${actionState.action}:${actionState.profileId || ""}`}
+          key={`${actionState.action}:${actionState.profileId || ""}:${actionState.revision || ""}`}
           action={actionState.action}
           profileId={actionState.profileId}
           draftId={actionState.draftId}
+          revision={actionState.revision}
           types={catalog.types}
           onClose={closeAction}
           onSuccess={handleActionSuccess}
