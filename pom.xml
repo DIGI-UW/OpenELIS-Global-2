@@ -1026,9 +1026,6 @@
                 <version>3.2.5</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
-                    <environmentVariables>
-                        <ANALYZER_PROFILES_DIR>${project.basedir}/projects/analyzer-profiles</ANALYZER_PROFILES_DIR>
-                    </environmentVariables>
                 </configuration>
             </plugin>
             <plugin>
