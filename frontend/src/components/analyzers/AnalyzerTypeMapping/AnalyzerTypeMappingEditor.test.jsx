@@ -34,7 +34,10 @@ const recognition = {
   conditions: [
     {
       key: "positive-control",
-      description: "Specimen ID starts with CPOS",
+      kind: "SPECIMEN_ID_STARTS_WITH",
+      sourceLabel: "Specimen ID",
+      value: "CPOS",
+      description: "SERVER DESCRIPTION MUST NOT RENDER",
       controlLevel: "POSITIVE",
       controlType: "ASSAY_CONTROL",
     },
@@ -260,6 +263,9 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(screen.getAllByText("Shared normalized identity")).toHaveLength(2);
     expect(screen.getByText("Alias: RAW A")).toBeVisible();
     expect(screen.getByText("Specimen ID starts with CPOS")).toBeVisible();
+    expect(
+      screen.queryByText("SERVER DESCRIPTION MUST NOT RENDER"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("GeneXpert - Main Lab")).toBeVisible();
     expect(screen.getByText("GeneXpert - TB Bench")).toBeVisible();
     expect(screen.getByText("GeneXpert - Reference Lab")).toBeVisible();

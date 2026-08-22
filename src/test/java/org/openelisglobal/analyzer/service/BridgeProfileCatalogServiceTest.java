@@ -48,6 +48,11 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("RULES", catalog.profiles().get(0).controlRecognitionSummary().mode());
         assertEquals("Specimen ID starts with QC-",
                 catalog.profiles().get(0).controlRecognitionSummary().conditions().get(0).description());
+        assertEquals("SPECIMEN_ID_STARTS_WITH",
+                catalog.profiles().get(0).controlRecognitionSummary().conditions().get(0).kind());
+        assertEquals("Specimen ID",
+                catalog.profiles().get(0).controlRecognitionSummary().conditions().get(0).sourceLabel());
+        assertEquals("QC-", catalog.profiles().get(0).controlRecognitionSummary().conditions().get(0).value());
     }
 
     @Test
@@ -122,6 +127,20 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("Bridge profile catalog contains an invalid control recognition summary", exception.getMessage());
     }
 
+    @Test
+    public void getCatalogRejectsRuleSummaryWithoutSafeSemanticFields() throws Exception {
+        JsonNode catalog = new ObjectMapper().readTree(validCatalog());
+        ((ObjectNode) catalog.path("profiles").get(0).path("controlRecognitionSummary").path("conditions").get(0))
+                .remove("kind");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        BridgeProfileCatalogException exception = assertThrows(BridgeProfileCatalogException.class,
+                () -> service.getCatalog());
+
+        assertEquals("Bridge profile catalog contains an invalid control recognition summary", exception.getMessage());
+    }
+
     private static String validCatalog() {
         return """
                 {
@@ -147,6 +166,9 @@ public class BridgeProfileCatalogServiceTest {
                       "affirmedNoControlResults":false,
                       "conditions":[{
                         "key":"qc-prefix",
+                        "kind":"SPECIMEN_ID_STARTS_WITH",
+                        "sourceLabel":"Specimen ID",
+                        "value":"QC-",
                         "description":"Specimen ID starts with QC-",
                         "controlLevel":"QC"
                       }]

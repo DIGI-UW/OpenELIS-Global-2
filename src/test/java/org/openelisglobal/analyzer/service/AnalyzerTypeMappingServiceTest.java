@@ -115,6 +115,9 @@ public class AnalyzerTypeMappingServiceTest {
 
         assertEquals("RULES", view.controlRecognition().mode());
         assertEquals("Specimen ID starts with QC-", view.controlRecognition().conditions().get(0).description());
+        assertEquals("SPECIMEN_ID_STARTS_WITH", view.controlRecognition().conditions().get(0).kind());
+        assertEquals("Specimen ID", view.controlRecognition().conditions().get(0).sourceLabel());
+        assertEquals("QC-", view.controlRecognition().conditions().get(0).value());
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, view.confirmation().state());
         verify(profileBindingDAO).findByProfileIdAndRevision("site.mock-analyzer", 2);
         verify(siteBindingService).findCurrentByProfileBindingId("41");

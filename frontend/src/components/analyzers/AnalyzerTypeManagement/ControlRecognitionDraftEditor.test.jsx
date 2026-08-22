@@ -26,14 +26,14 @@ const rulesDraft = {
   recognition: {
     mode: "RULES",
     affirmedNoControlResults: false,
-    description: "Any listed condition identifies a control result.",
+    description: "SERVER SUMMARY MUST NOT RENDER",
     conditions: [
       {
         key: "order-action-control",
         kind: "FIELD_VALUE_EQUALS",
         sourceKey: "source-safe-1",
         sourceLabel: "Order field 12",
-        description: "Order field 12 equals Q",
+        description: "SERVER CONDITION MUST NOT RENDER",
         value: "Q",
         editable: true,
         controlLevel: null,
@@ -44,7 +44,7 @@ const rulesDraft = {
         kind: "CONFIGURED_SPECIMEN_ID_PATTERN",
         sourceKey: null,
         sourceLabel: "Specimen ID",
-        description: "Specimen ID matches a configured pattern",
+        description: "SERVER PATTERN MUST NOT RENDER",
         value: null,
         editable: false,
         controlLevel: null,
@@ -132,6 +132,15 @@ describe("ControlRecognitionDraftEditor", () => {
     expect(
       screen.getByText("Specimen ID matches a configured pattern"),
     ).toBeVisible();
+    expect(document.body).not.toHaveTextContent(
+      "SERVER SUMMARY MUST NOT RENDER",
+    );
+    expect(document.body).not.toHaveTextContent(
+      "SERVER CONDITION MUST NOT RENDER",
+    );
+    expect(document.body).not.toHaveTextContent(
+      "SERVER PATTERN MUST NOT RENDER",
+    );
     expect(document.body).not.toHaveTextContent("O.12");
     expect(document.body).not.toHaveTextContent("^(CNEG|NTC)");
 
