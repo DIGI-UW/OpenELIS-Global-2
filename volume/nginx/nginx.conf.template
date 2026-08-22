@@ -15,6 +15,13 @@ worker_processes 1;
 events { worker_connections 1024; }
 
 http {
+    # Preserve WebSocket upgrades when the local harness runs the Vite dev
+    # server behind this TLS-terminating proxy.
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+
     # HTTP server — handles ACME challenges and redirects to HTTPS for both
     # the primary domain and the bridge subdomain. Certbot writes challenge
     # tokens into /var/www/certbot on ANY domain being validated, so both
@@ -69,7 +76,10 @@ http {
         location / {
             proxy_pass http://frontend.openelis.org;
             proxy_redirect off;
+            proxy_http_version 1.1;
             proxy_set_header Host localhost;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
         }
 
         # Backend API
@@ -170,7 +180,10 @@ http {
         location / {
             proxy_pass http://frontend.openelis.org;
             proxy_redirect off;
+            proxy_http_version 1.1;
             proxy_set_header Host localhost;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
         }
 
         # Backend API
