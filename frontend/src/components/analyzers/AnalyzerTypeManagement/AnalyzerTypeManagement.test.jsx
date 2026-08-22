@@ -353,6 +353,35 @@ describe("AnalyzerTypeManagement", () => {
     expect(screen.getByText("Tecan Infinite F50")).toBeVisible();
   });
 
+  it("opens the sole shared mapping editor and preserves the filtered return URL", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?source=SHIPPED&mapping=INCOMPLETE",
+    );
+    renderPage();
+    await screen.findByText("Cepheid GeneXpert MTB/RIF");
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Actions for Cepheid GeneXpert MTB/RIF",
+      }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Edit mappings" }),
+    );
+
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(
+        "/analyzers/types/shipped.genexpert/mapping",
+      ),
+    );
+    expect(window.location.search).toContain("revision=2");
+    expect(new URLSearchParams(window.location.search).get("returnTo")).toBe(
+      "/analyzers/types?source=SHIPPED&mapping=INCOMPLETE",
+    );
+  });
+
   it("starts a Bridge-owned site profile draft without fabricating a profile document", async () => {
     renderPage();
     await screen.findByText("Cepheid GeneXpert MTB/RIF");
