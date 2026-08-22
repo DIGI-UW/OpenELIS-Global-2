@@ -16,6 +16,8 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationRequest;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
@@ -122,6 +124,18 @@ public class AnalyzerTypeRestControllerTest {
 
         assertSame(expected, controller.saveMapping("site.mock", 2, update, authenticatedRequest(17)).getBody());
         verify(mappingService).saveMapping("site.mock", 2, update, "17");
+    }
+
+    @Test
+    public void confirmMappingUsesTheAuthenticatedUserAsTheAuditActor() {
+        AnalyzerSiteBindingConfirmationRequest request = new AnalyzerSiteBindingConfirmationRequest(
+                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", List.of(), List.of());
+        AnalyzerSiteBindingConfirmationView expected = AnalyzerSiteBindingConfirmationView.unconfirmed();
+        when(mappingService.confirmMapping("site.mock", 2, request, "17")).thenReturn(expected);
+
+        assertSame(expected, controller.confirmMapping("site.mock", 2, request, authenticatedRequest(17)).getBody());
+        verify(mappingService).confirmMapping("site.mock", 2, request, "17");
     }
 
     @Test
