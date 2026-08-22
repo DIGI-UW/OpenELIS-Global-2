@@ -22,7 +22,7 @@ import config from "../config.json";
 type ExtraParams = unknown;
 type JsonObject = Record<string, unknown>;
 type ApiCallback<T = AnalyzerApiResponse> = (
-  response: T,
+  response: T | undefined,
   extraParams?: ExtraParams,
 ) => void;
 type DataCallback<T> = (data: T) => void;
@@ -324,7 +324,7 @@ export const updateAnalyzer = (
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
     body: payload,
   })
@@ -379,7 +379,7 @@ export const deleteAnalyzer = (id: string, callback: SuccessCallback) => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken,
+      "X-CSRF-Token": csrfToken || "",
     },
   })
     .then(async (response) => {
