@@ -16,6 +16,7 @@
  */
 
 import { expect, test } from "../../../helpers/test-base";
+import type { ConsoleMessage, Page } from "@playwright/test";
 import { findAnalyzerRow } from "../../../helpers/analyzer-dashboard";
 import {
   createAnalyzerFromProfile,
@@ -38,6 +39,30 @@ import { resolveMockSimulatorUrl } from "../../../helpers/analyzer-test-config";
 
 const SIMULATOR_URL = resolveMockSimulatorUrl();
 const RESULTS_TIMEOUT = 90_000;
+
+const isLocalCertificateNoise = (message: string) =>
+  message.includes("An SSL certificate error occurred") ||
+  message.includes("Service Worker registration failed: SecurityError");
+
+function trackUnexpectedConsoleErrors(page: Page) {
+  const errors: string[] = [];
+  const onConsole = (message: ConsoleMessage) => {
+    if (
+      message.type() === "error" &&
+      !isLocalCertificateNoise(message.text())
+    ) {
+      errors.push(message.text());
+    }
+  };
+  page.on("console", onConsole);
+  return () => {
+    page.off("console", onConsole);
+    expect(
+      errors,
+      "Analyzer user story emitted browser console errors",
+    ).toEqual([]);
+  };
+}
 
 const CONFIGS: AnalyzerTestConfig[] = [
   {
@@ -123,6 +148,8 @@ test.describe("M1 priority profile transport integrations", () => {
     }, testInfo) => {
       const runId = `${Date.now().toString(36)}-${testInfo.retry}`;
       const config = createRunScopedAnalyzerConfig(baseConfig, runId);
+      const assertNoUnexpectedConsoleErrors =
+        trackUnexpectedConsoleErrors(page);
 
       // Step 1: Create analyzer from profile via dashboard UI
       const dynamicIp = await createAnalyzerFromProfile(page, config);
@@ -167,6 +194,7 @@ test.describe("M1 priority profile transport integrations", () => {
 
       // Teardown: delete analyzer + remove mock network
       await teardownAnalyzer(page, config);
+      assertNoUnexpectedConsoleErrors();
     });
   }
 });

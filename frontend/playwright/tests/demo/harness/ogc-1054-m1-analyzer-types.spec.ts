@@ -114,9 +114,41 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     );
     await page.goForward();
     await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
+    await expect(sourceRow).toBeInViewport({ ratio: 1 });
 
     await testInfo.attach("analyzer-types-filtered", {
       body: await page.screenshot(),
+      contentType: "image/png",
+    });
+  });
+
+  test("keeps the Analyzer Types workflow reachable on mobile", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openAnalyzerTypes(page);
+
+    await expect(
+      page.getByRole("button", { name: "Duplicate Profile", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Create Profile", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("searchbox", { name: "Search analyzer types" }),
+    ).toBeVisible();
+    await expect(page.getByRole("table")).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+      "Analyzer Types should not overflow the mobile page horizontally",
+    ).toBe(true);
+
+    await testInfo.attach("analyzer-types-mobile", {
+      body: await page.screenshot({ fullPage: true }),
       contentType: "image/png",
     });
   });

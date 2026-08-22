@@ -67,11 +67,12 @@
 .analyzer-type-filters {
   align-items: end;
   display: grid;
-  gap: spacing.$spacing-05;
+  gap: spacing.$spacing-03;
   grid-template-columns:
-    minmax(16rem, 2fr)
-    repeat(3, minmax(9rem, 1fr))
-    minmax(10rem, auto);
+    minmax(14rem, 2fr)
+    repeat(2, minmax(8rem, 1fr))
+    minmax(10rem, 1.25fr)
+    minmax(9rem, auto);
   margin-bottom: spacing.$spacing-05;
 
   .cds--checkbox-wrapper {
@@ -144,7 +145,7 @@
   min-height: 10rem;
 }
 
-@media (max-width: 82rem) {
+@media (max-width: 74rem) {
   .analyzer-type-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 

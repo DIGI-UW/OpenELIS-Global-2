@@ -23,6 +23,10 @@ import { LONG_TIMEOUT } from "./timeouts";
 
 const SIMULATOR_URL = resolveMockSimulatorUrl();
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Create a mock analyzer network and return the assigned IP.
  * The mock server creates a Docker network with a unique subnet per analyzer,
@@ -130,7 +134,9 @@ export async function createAnalyzerFromProfile(
     );
   }
 
-  await list.goto();
+  if (new URL(page.url()).pathname !== "/analyzers") {
+    await list.goto();
+  }
   await list.expectLoaded();
 
   await list.clickAdd();
@@ -180,6 +186,12 @@ export async function createAnalyzerFromProfile(
 
   // Creation returns to the analyzer list.
   await expect(form.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
+  const createdRow = page.locator("tbody tr", {
+    hasText: new RegExp(escapeRegExp(config.name), "i"),
+  });
+  await expect(createdRow.first()).toContainText(config.profileName, {
+    timeout: LONG_TIMEOUT,
+  });
 
   return assignedIp;
 }
