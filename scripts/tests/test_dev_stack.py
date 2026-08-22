@@ -6,6 +6,7 @@ import re
 import subprocess
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 
@@ -169,6 +170,48 @@ class DevStackContractTest(unittest.TestCase):
         self.assertIsNone(repair_mode("expected", "expected", "", True))
         with self.assertRaisesRegex(RuntimeError, "local changes"):
             repair_mode("expected", "actual", " M file", True)
+
+    def test_submodule_initialization_forces_only_an_empty_failed_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            (root / "plugins").mkdir()
+            (root / "plugins" / ".git").write_text("gitdir: missing\n")
+            context = SimpleNamespace(repo_root=root)
+            failed = subprocess.CalledProcessError(128, ["git", "submodule"])
+
+            with patch.object(
+                self.dev_stack, "run", side_effect=[failed, None]
+            ) as run:
+                self.dev_stack.initialize_submodule(context, {}, "plugins")
+
+            self.assertEqual(run.call_count, 2)
+            self.assertEqual(
+                run.call_args_list[1].args[0],
+                [
+                    "git",
+                    "submodule",
+                    "update",
+                    "--init",
+                    "--recursive",
+                    "--checkout",
+                    "--force",
+                    "plugins",
+                ],
+            )
+
+    def test_submodule_initialization_never_forces_a_populated_failed_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            (root / "plugins").mkdir()
+            (root / "plugins" / "local-change.txt").write_text("keep me\n")
+            context = SimpleNamespace(repo_root=root)
+            failed = subprocess.CalledProcessError(128, ["git", "submodule"])
+
+            with patch.object(self.dev_stack, "run", side_effect=failed) as run:
+                with self.assertRaisesRegex(RuntimeError, "populated checkout"):
+                    self.dev_stack.initialize_submodule(context, {}, "plugins")
+
+            run.assert_called_once()
 
     def test_frontend_build_override_is_deterministic(self):
         context = self.dev_stack.make_context(REPO_ROOT)
