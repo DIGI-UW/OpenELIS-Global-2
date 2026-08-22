@@ -188,6 +188,22 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
+    public Double getTotalUsableQuantity(Long itemId) throws LIMSRuntimeException {
+        try {
+            String sql = "SELECT COALESCE(SUM(current_quantity), 0.0) FROM clinlims.inventory_lot "
+                    + "WHERE inventory_item_id = ?1 " + "AND status IN ('ACTIVE', 'IN_USE') "
+                    + "AND qc_status = 'PASSED' " + "AND current_quantity > 0";
+
+            Number result = (Number) entityManager.createNativeQuery(sql).setParameter(1, itemId).getSingleResult();
+
+            return result != null ? result.doubleValue() : 0.0;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting total usable quantity", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InventoryLot getByFhirUuid(String fhirUuid) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryLot l WHERE l.fhirUuid = :fhirUuid";

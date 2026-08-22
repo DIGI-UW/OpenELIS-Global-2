@@ -83,6 +83,12 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Double getTotalUsableQuantity(Long itemId) {
+        return inventoryLotDAO.getTotalUsableQuantity(itemId);
+    }
+
+    @Override
     @Transactional
     public InventoryLot openLot(Long lotId, Timestamp openedDate, String sysUserId) {
         InventoryLot lot = get(lotId);
