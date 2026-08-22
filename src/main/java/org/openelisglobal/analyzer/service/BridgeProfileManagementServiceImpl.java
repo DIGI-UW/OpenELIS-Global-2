@@ -41,11 +41,28 @@ public class BridgeProfileManagementServiceImpl implements BridgeProfileManageme
     }
 
     @Override
+    public JsonNode getControlRecognition(String draftId) {
+        return get(draftUrl(draftId) + "/control-recognition");
+    }
+
+    @Override
     public JsonNode updateDraft(String draftId, JsonNode profile, String actor) {
         requireProfile(profile);
         ObjectNode request = actorRequest(actor);
         request.set("profile", profile);
         return put(draftUrl(draftId), request);
+    }
+
+    @Override
+    public JsonNode updateControlRecognition(String draftId, AnalyzerControlRecognitionUpdate update, String actor) {
+        if (update == null) {
+            throw new BridgeProfileManagementException(400, "Control recognition update is required");
+        }
+        ObjectNode request = actorRequest(actor);
+        request.put("mode", requireText(update.mode(), "Control recognition mode"));
+        request.put("affirmedNoControlResults", update.affirmedNoControlResults());
+        request.set("conditions", objectMapper.valueToTree(update.conditions()));
+        return put(draftUrl(draftId) + "/control-recognition", request);
     }
 
     @Override

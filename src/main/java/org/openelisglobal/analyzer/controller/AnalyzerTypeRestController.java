@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.openelisglobal.analyzer.service.AnalyzerControlRecognitionUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationRequest;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationView;
@@ -105,11 +106,23 @@ public class AnalyzerTypeRestController extends BaseRestController {
         return ResponseEntity.ok(managementService.getDraft(draftId));
     }
 
+    @GetMapping("/drafts/{draftId}/control-recognition")
+    public ResponseEntity<JsonNode> getControlRecognition(@PathVariable String draftId) {
+        return ResponseEntity.ok(managementService.getControlRecognition(draftId));
+    }
+
     @PutMapping("/drafts/{draftId}")
     public ResponseEntity<JsonNode> updateDraft(@PathVariable String draftId,
             @RequestBody ProfileMutationRequest request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(managementService.updateDraft(draftId, request == null ? null : request.profile(),
                 getSysUserId(httpRequest)));
+    }
+
+    @PutMapping("/drafts/{draftId}/control-recognition")
+    public ResponseEntity<JsonNode> updateControlRecognition(@PathVariable String draftId,
+            @RequestBody AnalyzerControlRecognitionUpdate update, HttpServletRequest httpRequest) {
+        return ResponseEntity
+                .ok(managementService.updateControlRecognition(draftId, update, getSysUserId(httpRequest)));
     }
 
     @PostMapping("/drafts/{draftId}/publish")

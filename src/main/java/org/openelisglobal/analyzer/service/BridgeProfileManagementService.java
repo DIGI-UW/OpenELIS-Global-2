@@ -8,7 +8,11 @@ public interface BridgeProfileManagementService {
 
     JsonNode getDraft(String draftId);
 
+    JsonNode getControlRecognition(String draftId);
+
     JsonNode updateDraft(String draftId, JsonNode profile, String actor);
+
+    JsonNode updateControlRecognition(String draftId, AnalyzerControlRecognitionUpdate update, String actor);
 
     JsonNode publishDraft(String draftId, String actor);
 
