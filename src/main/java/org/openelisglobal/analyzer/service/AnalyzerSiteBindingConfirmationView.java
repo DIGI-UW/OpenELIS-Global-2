@@ -1,12 +1,13 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.Instant;
 import java.util.List;
 
 public record AnalyzerSiteBindingConfirmationView(State state, String profileId, int profileRevision,
         String bindingFingerprint, String recognitionFingerprint, String confirmedBy, String confirmedByDisplayName,
-        Instant confirmedAt, List<AnalyzerSiteBindingSourceRow> confirmedRows,
-        List<AnalyzerSiteBindingSourceRow> excludedRows) {
+        @JsonFormat(shape = JsonFormat.Shape.STRING) Instant confirmedAt,
+        List<AnalyzerSiteBindingSourceRow> confirmedRows, List<AnalyzerSiteBindingSourceRow> excludedRows) {
 
     public enum State {
         UNCONFIRMED, CURRENT, STALE

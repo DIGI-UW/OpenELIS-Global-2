@@ -3,12 +3,15 @@ package org.openelisglobal.analyzer.controller;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.lang.reflect.Method;
+import java.time.Instant;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -137,6 +140,20 @@ public class AnalyzerTypeRestControllerTest {
 
         assertSame(expected, controller.confirmMapping("site.mock", 2, request, authenticatedRequest(17)).getBody());
         verify(mappingService).confirmMapping("site.mock", 2, request, "17");
+    }
+
+    @Test
+    public void confirmationTimestampSerializesAsIso8601Text() throws Exception {
+        Instant confirmedAt = Instant.parse("2026-08-22T12:00:00Z");
+        AnalyzerSiteBindingConfirmationView confirmation = new AnalyzerSiteBindingConfirmationView(
+                AnalyzerSiteBindingConfirmationView.State.CURRENT, "site.mock", 2, "sha256:binding",
+                "sha256:recognition", "17", "Lab Admin", confirmedAt, List.of(), List.of());
+        ObjectMapper productionMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+        JsonNode response = productionMapper.valueToTree(confirmation);
+
+        assertTrue(response.path("confirmedAt").isTextual());
+        assertEquals(confirmedAt.toString(), response.path("confirmedAt").asText());
     }
 
     @Test

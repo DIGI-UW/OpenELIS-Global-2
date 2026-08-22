@@ -257,6 +257,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     const confirmedBy = page.getByText(/^Confirmed by /);
     await expect(confirmedBy).toBeVisible();
     await expect(confirmedBy).not.toHaveText(/^Confirmed by \d+$/);
+    await expect(confirmedBy).toContainText(String(new Date().getFullYear()));
 
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(
