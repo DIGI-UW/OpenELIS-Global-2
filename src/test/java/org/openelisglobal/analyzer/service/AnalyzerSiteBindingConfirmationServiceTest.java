@@ -30,6 +30,8 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTestPK;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerSiteBindingConfirmationServiceTest {
@@ -43,11 +45,20 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
     @Mock
     private AuditTrailService auditTrailService;
 
+    @Mock
+    private SystemUserService systemUserService;
+
     private AnalyzerSiteBindingConfirmationService service;
 
     @Before
     public void setUp() {
-        service = new AnalyzerSiteBindingConfirmationServiceImpl(confirmationDAO, auditTrailService);
+        service = new AnalyzerSiteBindingConfirmationServiceImpl(confirmationDAO, auditTrailService, systemUserService);
+        SystemUser actor = new SystemUser();
+        actor.setId("17");
+        actor.setFirstName("Ada");
+        actor.setLastName("Lovelace");
+        actor.setLoginName("ada");
+        when(systemUserService.getUserById("17")).thenReturn(actor);
         when(confirmationDAO.insert(any(AnalyzerSiteBindingConfirmation.class))).thenAnswer(invocation -> {
             AnalyzerSiteBindingConfirmation confirmation = invocation.getArgument(0);
             confirmation.setId("71");
@@ -73,6 +84,8 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         assertEquals(RECOGNITION_FINGERPRINT, saved.getValue().getRecognitionFingerprint());
         assertEquals("17", saved.getValue().getConfirmedBy());
         assertEquals(AnalyzerSiteBindingConfirmationView.State.CURRENT, confirmed.state());
+        assertEquals("17", confirmed.confirmedBy());
+        assertEquals("Ada Lovelace", confirmed.confirmedByDisplayName());
         assertEquals(request.confirmedRows(), confirmed.confirmedRows());
         assertEquals(request.excludedRows(), confirmed.excludedRows());
         verify(auditTrailService).saveNewHistory(saved.getValue(), "17", "analyzer_site_binding_confirmation");

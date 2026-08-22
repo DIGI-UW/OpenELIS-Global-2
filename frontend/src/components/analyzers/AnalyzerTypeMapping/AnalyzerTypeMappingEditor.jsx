@@ -871,7 +871,7 @@ const AnalyzerTypeMappingEditor = () => {
               })}
               subtitle={intl.formatMessage(
                 { id: "analyzerType.mappingEditor.confirmation.by" },
-                { actor: confirmation.confirmedBy },
+                { actor: confirmation.confirmedByDisplayName },
               )}
             />
           )}

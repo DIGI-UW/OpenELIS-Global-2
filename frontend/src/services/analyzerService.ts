@@ -152,6 +152,7 @@ export interface AnalyzerTypeMappingView {
     bindingFingerprint?: string | null;
     recognitionFingerprint?: string | null;
     confirmedBy?: string | null;
+    confirmedByDisplayName?: string | null;
     confirmedAt?: string | null;
     confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
     excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;

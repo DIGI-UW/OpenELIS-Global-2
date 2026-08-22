@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.Test;
@@ -25,6 +24,8 @@ import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingTestDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
@@ -70,12 +71,16 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-            Map<String, Object> catalogTarget = jdbc.queryForMap("SELECT tr.id AS result_id, tr.test_id AS test_id "
-                    + "FROM test_result tr JOIN test t ON t.id = tr.test_id "
-                    + "WHERE tr.is_active = TRUE AND t.is_active = 'Y' AND tr.tst_rslt_type IN ('D', 'M') "
-                    + "ORDER BY tr.id LIMIT 1");
-            String testId = catalogTarget.get("test_id").toString();
-            String resultOptionId = catalogTarget.get("result_id").toString();
+            String testId = jdbc.queryForObject("SELECT nextval('test_seq')", Long.class).toString();
+            String resultOptionId = jdbc.queryForObject("SELECT nextval('test_result_seq')", Long.class).toString();
+            jdbc.update(
+                    "INSERT INTO test (id, name, description, guid, is_active, is_reportable, orderable, "
+                            + "lastupdated) VALUES (?, ?, ?, ?, 'Y', 'Y', TRUE, CURRENT_TIMESTAMP)",
+                    Long.valueOf(testId), "Analyzer binding persistence test", "Analyzer binding persistence test",
+                    UUID.randomUUID());
+            jdbc.update("INSERT INTO test_result (id, test_id, tst_rslt_type, value, sort_order, is_active, "
+                    + "is_normal, lastupdated) VALUES (?, ?, 'D', 'POSITIVE', 1, TRUE, TRUE, CURRENT_TIMESTAMP)",
+                    Long.valueOf(resultOptionId), Long.valueOf(testId));
 
             org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
             test.setId(testId);
@@ -89,14 +94,20 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             TestService testService = mock(TestService.class);
             TestResultService testResultService = mock(TestResultService.class);
             AuditTrailService auditTrailService = mock(AuditTrailService.class);
+            SystemUserService systemUserService = mock(SystemUserService.class);
+            SystemUser actor = new SystemUser();
+            actor.setId(TEST_SYS_USER_ID);
+            actor.setFirstName("Integration");
+            actor.setLastName("Reviewer");
             when(testService.get(testId)).thenReturn(test);
             when(testResultService.get(resultOptionId)).thenReturn(resultOption);
+            when(systemUserService.getUserById(TEST_SYS_USER_ID)).thenReturn(actor);
 
             AnalyzerSiteBindingService siteBindingService = new AnalyzerSiteBindingServiceImpl(siteBindingDAO,
                     revisionDAO, siteBindingTestDAO, siteBindingResultDAO, auditTrailService, testService,
                     testResultService);
             AnalyzerSiteBindingConfirmationService confirmationService = new AnalyzerSiteBindingConfirmationServiceImpl(
-                    confirmationDAO, auditTrailService);
+                    confirmationDAO, auditTrailService, systemUserService);
 
             String profileId = "site.persistence." + UUID.randomUUID();
             AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
@@ -138,6 +149,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
                     RECOGNITION_FINGERPRINT);
             assertEquals(AnalyzerSiteBindingConfirmationView.State.CURRENT, confirmation.state());
             assertEquals(TEST_SYS_USER_ID, confirmation.confirmedBy());
+            assertEquals("Integration Reviewer", confirmation.confirmedByDisplayName());
             assertNotNull(confirmation.confirmedAt());
             assertEquals(request.confirmedRows(), confirmation.confirmedRows());
             assertTrue(confirmation.excludedRows().isEmpty());

@@ -17,6 +17,8 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,12 +35,14 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
 
     private final AnalyzerSiteBindingConfirmationDAO confirmationDAO;
     private final AuditTrailService auditTrailService;
+    private final SystemUserService systemUserService;
     private final ObjectMapper objectMapper;
 
     public AnalyzerSiteBindingConfirmationServiceImpl(AnalyzerSiteBindingConfirmationDAO confirmationDAO,
-            AuditTrailService auditTrailService) {
+            AuditTrailService auditTrailService, SystemUserService systemUserService) {
         this.confirmationDAO = confirmationDAO;
         this.auditTrailService = auditTrailService;
+        this.systemUserService = systemUserService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -161,8 +165,25 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         return new AnalyzerSiteBindingConfirmationView(state, confirmation.getProfileId(),
                 confirmation.getProfileRevision(), confirmation.getBindingFingerprint(),
                 confirmation.getRecognitionFingerprint(), confirmation.getConfirmedBy(),
-                confirmation.getConfirmedAt().toInstant(), readRows(confirmation.getConfirmedRowsJson()),
-                readRows(confirmation.getExcludedRowsJson()));
+                resolveActorDisplayName(confirmation.getConfirmedBy()), confirmation.getConfirmedAt().toInstant(),
+                readRows(confirmation.getConfirmedRowsJson()), readRows(confirmation.getExcludedRowsJson()));
+    }
+
+    private String resolveActorDisplayName(String actorId) {
+        SystemUser actor = systemUserService.getUserById(actorId);
+        if (actor == null) {
+            return actorId;
+        }
+        String fullName = (textOrEmpty(actor.getFirstName()) + " " + textOrEmpty(actor.getLastName())).trim();
+        if (!fullName.isEmpty()) {
+            return fullName;
+        }
+        String loginName = textOrEmpty(actor.getLoginName()).trim();
+        return loginName.isEmpty() ? actorId : loginName;
+    }
+
+    private static String textOrEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private String writeRows(List<AnalyzerSiteBindingSourceRow> rows) {

@@ -69,7 +69,7 @@ public class AnalyzerTypeMappingServiceTest {
         AnalyzerSiteBindingConfirmationView confirmation = new AnalyzerSiteBindingConfirmationView(
                 AnalyzerSiteBindingConfirmationView.State.STALE, "site.mock-analyzer", 2,
                 "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", recognitionFingerprint(),
-                "16", null, List.of(), List.of());
+                "16", "Grace Hopper", null, List.of(), List.of());
         when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
         when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2))
                 .thenReturn(Optional.of(profileBinding));
