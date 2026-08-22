@@ -18,6 +18,9 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingView;
+import org.openelisglobal.analyzer.service.BridgeProfileCatalog;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
 import org.openelisglobal.common.action.IActionConstants;
@@ -42,11 +45,15 @@ public class AnalyzerTypeRestControllerTest {
     @Mock
     private AnalyzerMappingCatalogService mappingCatalogService;
 
+    @Mock
+    private AnalyzerTypeMappingService mappingService;
+
     private AnalyzerTypeRestController controller;
 
     @Before
     public void setUp() {
-        controller = new AnalyzerTypeRestController(catalogService, managementService, mappingCatalogService);
+        controller = new AnalyzerTypeRestController(catalogService, managementService, mappingCatalogService,
+                mappingService);
     }
 
     @Test
@@ -89,6 +96,18 @@ public class AnalyzerTypeRestControllerTest {
 
         assertSame(expected, controller.getMappingResultOptions("1").getBody());
         verify(mappingCatalogService).getActiveResultOptions("1");
+    }
+
+    @Test
+    public void getMappingReturnsTheSoleSharedEditorDocumentForTheExactRevision() {
+        BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
+                "NONE", "This analyzer interface transports no control results.", true, List.of());
+        AnalyzerTypeMappingView expected = new AnalyzerTypeMappingView("site.mock", 2, "sha256:test", "Mock Analyzer",
+                "FILE", null, 0, null, List.of(), recognition);
+        when(mappingService.getMapping("site.mock", 2)).thenReturn(expected);
+
+        assertSame(expected, controller.getMapping("site.mock", 2).getBody());
+        verify(mappingService).getMapping("site.mock", 2);
     }
 
     @Test
