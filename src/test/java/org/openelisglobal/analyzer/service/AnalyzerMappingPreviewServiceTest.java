@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -95,6 +96,15 @@ public class AnalyzerMappingPreviewServiceTest {
         assertNotNull("Preview result should not be null", result);
         assertNotNull("Parsed fields should not be null", result.getParsedFields());
         assertNotNull("Applied mappings should not be null", result.getAppliedMappings());
+    }
+
+    @Test
+    public void previewMapping_DoesNotWarnAboutOperationalQcActivation() {
+        when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("1")).thenReturn(List.of());
+
+        MappingPreviewResult result = analyzerMappingPreviewService.previewMapping("1", "H|\\^&|||Analyzer|", null);
+
+        assertFalse(result.getWarnings().stream().anyMatch(warning -> warning.contains("QC rule")));
     }
 
     /**

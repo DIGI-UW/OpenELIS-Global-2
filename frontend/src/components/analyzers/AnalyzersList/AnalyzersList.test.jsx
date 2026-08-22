@@ -175,6 +175,22 @@ describe("AnalyzersList", () => {
     ).toBeInTheDocument();
   });
 
+  test("does not expose the superseded analyzer QC rule editor", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
+
+    expect(
+      screen.queryByTestId("analyzer-action-qc-rules-1"),
+    ).not.toBeInTheDocument();
+  });
+
   test("localizes the assigned test-unit count", async () => {
     getAnalyzers.mockImplementation((_filters, callback) => {
       act(() => {

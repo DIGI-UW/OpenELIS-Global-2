@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import org.junit.Before;
@@ -16,6 +17,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerStatusTransitionServiceImpl.AnalyzerStatusChangeEvent;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.springframework.context.ApplicationEventPublisher;
 
 /**
@@ -34,6 +36,9 @@ public class AnalyzerStatusTransitionServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private AnalyzerPluginConfigService analyzerPluginConfigService;
 
     @InjectMocks
     private AnalyzerStatusTransitionServiceImpl transitionService;
@@ -89,6 +94,20 @@ public class AnalyzerStatusTransitionServiceTest {
         assertEquals(AnalyzerStatus.ACTIVE, result.getStatus());
         assertNotNull(result.getLastActivatedDate());
         verify(analyzerService).update(any(Analyzer.class));
+    }
+
+    @Test
+    public void transitionToActive_DoesNotConsultOperationalQc() {
+        AnalyzerType type = new AnalyzerType();
+        type.setGenericPlugin(true);
+        testAnalyzer.setAnalyzerType(type);
+        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
+
+        Analyzer result = transitionService.transitionToActive("1");
+
+        assertEquals(AnalyzerStatus.ACTIVE, result.getStatus());
+        verifyZeroInteractions(analyzerPluginConfigService);
     }
 
     @Test(expected = IllegalStateException.class)
