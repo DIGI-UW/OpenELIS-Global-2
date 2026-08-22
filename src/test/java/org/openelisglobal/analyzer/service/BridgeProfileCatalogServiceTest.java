@@ -43,6 +43,29 @@ public class BridgeProfileCatalogServiceTest {
     }
 
     @Test
+    public void getProfileFetchesAndValidatesTheExactRequestedRevision() throws Exception {
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles/site.mock%20hematology?revision=2"),
+                any(Duration.class))).thenReturn(new BridgeHttpClient.BridgeResponse(200, validProfileRevision()));
+
+        BridgeProfileCatalog.ProfileRevision revision = service.getProfile("site.mock hematology", 2);
+
+        assertEquals("site.mock hematology", revision.profile().path("profileMeta").path("id").asText());
+        assertEquals(2, revision.profile().path("catalog").path("revision").asInt());
+        assertEquals("PUBLISHED", revision.publication().path("action").asText());
+    }
+
+    @Test
+    public void getProfileRejectsAResponseForADifferentRevision() throws Exception {
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles/site.mock%20hematology?revision=1"),
+                any(Duration.class))).thenReturn(new BridgeHttpClient.BridgeResponse(200, validProfileRevision()));
+
+        BridgeProfileCatalogException exception = assertThrows(BridgeProfileCatalogException.class,
+                () -> service.getProfile("site.mock hematology", 1));
+
+        assertEquals("Bridge returned a different profile revision than requested", exception.getMessage());
+    }
+
+    @Test
     public void getCatalogRejectsUnsupportedSchemaVersion() throws Exception {
         when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(200,
@@ -86,6 +109,26 @@ public class BridgeProfileCatalogServiceTest {
                       "markedAt":"2026-08-18T12:00:00Z"
                     }
                   }]
+                }
+                """;
+    }
+
+    private static String validProfileRevision() {
+        return """
+                {
+                  "profile":{
+                    "schemaVersion":"1.0",
+                    "profileMeta":{"id":"site.mock hematology","version":"1.0.0","displayName":"Mock Hematology revision 2","confidence":"HIGH"},
+                    "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                    "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE","defaultPort":9200},
+                    "catalog":{
+                      "revision":2,
+                      "revisionFingerprint":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                      "source":"SITE",
+                      "status":"ACTIVE"
+                    }
+                  },
+                  "publication":{"action":"PUBLISHED","actor":"17","markedAt":"2026-08-18T12:00:00Z"}
                 }
                 """;
     }

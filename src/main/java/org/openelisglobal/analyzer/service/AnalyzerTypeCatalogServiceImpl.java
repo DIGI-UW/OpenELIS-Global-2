@@ -49,9 +49,12 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         bindings.values().forEach(binding -> usageByProfileId.merge(binding.getProfileId(),
                 bindingDAO.countAnalyzersByBindingId(binding.getId()), Long::sum));
 
-        List<AnalyzerTypeCatalogView.TypeSummary> types = bridgeCatalog.profiles().stream()
-                .map(revision -> summarize(revision, bindings, usageByProfileId))
-                .sorted(Comparator.comparing(summary -> summary.displayName().toLowerCase(Locale.ROOT))).toList();
+        List<AnalyzerTypeCatalogView.TypeSummary> types = bridgeCatalog.profiles().stream().map(revision -> {
+            BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+            AnalyzerProfileBinding binding = bindings
+                    .get(new ProfileRevisionKey(profile.profileId(), profile.revision()));
+            return summarize(revision, binding, usageByProfileId.getOrDefault(profile.profileId(), 0L));
+        }).sorted(Comparator.comparing(summary -> summary.displayName().toLowerCase(Locale.ROOT))).toList();
 
         int inUse = (int) types.stream().filter(type -> type.usedBy() > 0).count();
         int deactivated = (int) types.stream().filter(type -> "INACTIVE".equals(type.status())).count();
@@ -62,10 +65,19 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         return new AnalyzerTypeCatalogView(SCHEMA_VERSION, bridgeCatalog.catalogFingerprint(), summary, types);
     }
 
+    @Override
+    public AnalyzerTypeCatalogView.TypeSummary getType(String profileId, int revision) {
+        BridgeProfileCatalog.ProfileRevision profileRevision = bridgeCatalogService.getProfile(profileId, revision);
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(profileRevision.profile());
+        AnalyzerProfileBinding binding = bindingDAO.findByProfileIdAndRevision(profile.profileId(), profile.revision())
+                .orElse(null);
+        long usage = binding == null ? 0L : bindingDAO.countAnalyzersByBindingId(binding.getId());
+        return summarize(profileRevision, binding, usage);
+    }
+
     private AnalyzerTypeCatalogView.TypeSummary summarize(BridgeProfileCatalog.ProfileRevision revision,
-            Map<ProfileRevisionKey, AnalyzerProfileBinding> bindings, Map<String, Long> usageByProfileId) {
+            AnalyzerProfileBinding binding, long usage) {
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-        AnalyzerProfileBinding binding = bindings.get(new ProfileRevisionKey(profile.profileId(), profile.revision()));
         AnalyzerSiteBindingSnapshot siteBinding = binding == null ? null
                 : siteBindingService.findCurrentByProfileBindingId(binding.getId()).orElse(null);
         int testTotal = profile.testDefinitions().size();
@@ -78,9 +90,8 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
                 profile.revisionFingerprint(), profile.displayName(), profile.manufacturer(), profile.model(),
                 profile.source(), status, profile.protocol(), instanceDefaults(profile), profile.parentProfileId(),
                 profile.parentRevision(), siteBinding == null ? null : siteBinding.binding().getId(), testMappings,
-                resultMappings, usageByProfileId.getOrDefault(profile.profileId(), 0L), readiness,
-                nullableText(revision.publication(), "action"), nullableText(revision.publication(), "actor"),
-                nullableText(revision.publication(), "markedAt"));
+                resultMappings, usage, readiness, nullableText(revision.publication(), "action"),
+                nullableText(revision.publication(), "actor"), nullableText(revision.publication(), "markedAt"));
     }
 
     private static AnalyzerTypeCatalogView.InstanceDefaults instanceDefaults(BridgeAnalyzerProfile profile) {

@@ -13,6 +13,7 @@ import * as analyzerService from "../../../../services/analyzerService";
 vi.mock("../../../../services/analyzerService", () => ({
   getAnalyzer: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
+  getAnalyzerTypeRevision: vi.fn(),
   createAnalyzer: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
@@ -60,6 +61,17 @@ const renderNewAnalyzer = (entry) =>
         <Route path="/analyzers/new">
           <AnalyzerForm />
           <LocationProbe />
+        </Route>
+      </IntlProvider>
+    </MemoryRouter>,
+  );
+
+const renderExistingAnalyzer = (entry) =>
+  render(
+    <MemoryRouter initialEntries={[entry]}>
+      <IntlProvider locale="en" messages={messages}>
+        <Route path="/analyzers/:id/edit">
+          <AnalyzerForm />
         </Route>
       </IntlProvider>
     </MemoryRouter>,
@@ -140,5 +152,56 @@ describe("AnalyzerForm profile revision pin", () => {
     expect(submitted).not.toHaveProperty("analyzerType");
     expect(submitted).not.toHaveProperty("defaultConfigId");
     expect(submitted).not.toHaveProperty("pluginTypeId");
+  });
+
+  it("loads an existing analyzer's exact pinned revision instead of borrowing latest defaults", async () => {
+    analyzerService.getAnalyzer.mockImplementation((_id, callback) => {
+      callback({
+        id: "501",
+        name: "Pinned analyzer",
+        profileId: "shipped.validated-hl7-v25",
+        profileRevision: 1,
+        protocolVersion: null,
+        communicationMode: null,
+        port: null,
+        status: "SETUP",
+        testUnitIds: [],
+      });
+    });
+    analyzerService.getAnalyzerTypeRevision.mockImplementation(
+      (_profileId, _revision, callback) => {
+        callback({
+          profileId: "shipped.validated-hl7-v25",
+          revision: 1,
+          revisionFingerprint: "sha256:validated-hl7-v25-r1",
+          displayName: "Validated HL7 v2.5 Analyzer revision 1",
+          source: "SHIPPED",
+          status: "ACTIVE",
+          protocol: "HL7",
+          instanceDefaults: {
+            protocolVersion: "HL7_V2_3_1",
+            communicationMode: "ANALYZER_INITIATED",
+            port: 8100,
+          },
+        });
+      },
+    );
+
+    renderExistingAnalyzer("/analyzers/501/edit");
+
+    await waitFor(() => {
+      expect(analyzerService.getAnalyzerTypeRevision).toHaveBeenCalledWith(
+        "shipped.validated-hl7-v25",
+        1,
+        expect.any(Function),
+      );
+    });
+    expect(
+      screen.getByRole("combobox", { name: "Analyzer Type" }),
+    ).toHaveTextContent("Validated HL7 v2.5 Analyzer revision 1");
+    expect(screen.getByTestId("analyzer-form-port-input")).toHaveValue("8100");
+    expect(
+      screen.getByTestId("analyzer-form-communication-mode-dropdown"),
+    ).toHaveTextContent("Analyzer → LIS (analyzer connects to OpenELIS)");
   });
 });

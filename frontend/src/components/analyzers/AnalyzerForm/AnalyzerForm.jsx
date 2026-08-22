@@ -15,6 +15,7 @@ import {
   updateAnalyzer,
   getAnalyzer,
   getAnalyzerTypeCatalog,
+  getAnalyzerTypeRevision,
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -51,6 +52,7 @@ const AnalyzerForm = () => {
 
   const [profileCatalog, setProfileCatalog] = useState(null);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
+  const [pinnedProfileLookup, setPinnedProfileLookup] = useState(null);
 
   // Unified status options (manual transitions only - ACTIVE, ERROR_PENDING, OFFLINE are automatic).
   // PENDING_REGISTRATION stubs (discovered by the bridge) can only transition to SETUP or
@@ -177,34 +179,86 @@ const AnalyzerForm = () => {
     [activeProfiles, requestedPin],
   );
 
+  const catalogPinnedProfile = useMemo(
+    () =>
+      (profileCatalog?.types || []).find(
+        (profile) =>
+          profile.profileId === formData.profileId &&
+          profile.revision === formData.profileRevision,
+      ) || null,
+    [formData.profileId, formData.profileRevision, profileCatalog],
+  );
+
+  const needsPinnedProfileLookup = Boolean(
+    isEditMode &&
+    profileCatalog &&
+    formData.profileId &&
+    formData.profileRevision &&
+    !catalogPinnedProfile,
+  );
+
+  useEffect(() => {
+    if (!needsPinnedProfileLookup) {
+      return undefined;
+    }
+
+    const requestedProfileId = formData.profileId;
+    const requestedRevision = formData.profileRevision;
+    let cancelled = false;
+    getAnalyzerTypeRevision(
+      requestedProfileId,
+      requestedRevision,
+      (profile) => {
+        if (cancelled) {
+          return;
+        }
+        const exactProfile =
+          profile?.profileId === requestedProfileId &&
+          profile?.revision === requestedRevision
+            ? profile
+            : null;
+        setPinnedProfileLookup({
+          profileId: requestedProfileId,
+          revision: requestedRevision,
+          profile: exactProfile,
+        });
+        if (!exactProfile) {
+          setNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "analyzer.form.type.loadError",
+            }),
+          });
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    formData.profileId,
+    formData.profileRevision,
+    intl,
+    needsPinnedProfileLookup,
+  ]);
+
+  const exactPinnedProfile =
+    needsPinnedProfileLookup &&
+    pinnedProfileLookup?.profileId === formData.profileId &&
+    pinnedProfileLookup?.revision === formData.profileRevision
+      ? pinnedProfileLookup.profile
+      : null;
+  const loadingPinnedProfile =
+    needsPinnedProfileLookup &&
+    (pinnedProfileLookup?.profileId !== formData.profileId ||
+      pinnedProfileLookup?.revision !== formData.profileRevision);
+
   const selectedProfile = useMemo(() => {
     if (!isEditMode && requestedProfile) {
       return requestedProfile;
     }
-    const exact = (profileCatalog?.types || []).find(
-      (profile) =>
-        profile.profileId === formData.profileId &&
-        profile.revision === formData.profileRevision,
-    );
-    if (exact) {
-      return exact;
-    }
-    if (!isEditMode || !formData.profileId || !formData.profileRevision) {
-      return null;
-    }
-    const currentIdentity = (profileCatalog?.types || []).find(
-      (profile) => profile.profileId === formData.profileId,
-    );
-    return currentIdentity
-      ? { ...currentIdentity, revision: formData.profileRevision }
-      : null;
-  }, [
-    formData.profileId,
-    formData.profileRevision,
-    isEditMode,
-    profileCatalog,
-    requestedProfile,
-  ]);
+    return catalogPinnedProfile || (isEditMode ? exactPinnedProfile : null);
+  }, [catalogPinnedProfile, exactPinnedProfile, isEditMode, requestedProfile]);
 
   const formMatchesSelectedProfile =
     Boolean(selectedProfile) &&
@@ -421,7 +475,7 @@ const AnalyzerForm = () => {
     }
   };
 
-  if (loadingAnalyzer || loadingProfiles) {
+  if (loadingAnalyzer || loadingProfiles || loadingPinnedProfile) {
     return <Loading withOverlay={false} />;
   }
 

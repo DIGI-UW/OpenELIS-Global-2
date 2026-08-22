@@ -2,9 +2,11 @@ package org.openelisglobal.analyzer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriUtils;
 
 @Service
 public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogService {
@@ -25,21 +27,7 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
 
     @Override
     public BridgeProfileCatalog getCatalog() {
-        if (bridgeUrl.isBlank()) {
-            throw new BridgeProfileCatalogException("Bridge URL is not configured");
-        }
-
-        BridgeHttpClient.BridgeResponse response;
-        try {
-            response = bridgeHttpClient.get(bridgeUrl + "/api/profiles", REQUEST_TIMEOUT);
-        } catch (IOException e) {
-            throw new BridgeProfileCatalogException("Bridge profile catalog request failed", e);
-        }
-
-        if (!response.isSuccess()) {
-            throw new BridgeProfileCatalogException(
-                    "Bridge profile catalog request failed with HTTP " + response.status);
-        }
+        BridgeHttpClient.BridgeResponse response = get(bridgeUrl + "/api/profiles");
 
         BridgeProfileCatalog catalog;
         try {
@@ -52,6 +40,46 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
         return catalog;
     }
 
+    @Override
+    public BridgeProfileCatalog.ProfileRevision getProfile(String profileId, int revision) {
+        String normalizedProfileId = requireText(profileId, "Profile ID");
+        if (revision < 1) {
+            throw new BridgeProfileCatalogException("Profile revision must be at least 1");
+        }
+        String url = bridgeUrl + "/api/profiles/"
+                + UriUtils.encodePathSegment(normalizedProfileId, StandardCharsets.UTF_8) + "?revision=" + revision;
+        BridgeHttpClient.BridgeResponse response = get(url);
+
+        BridgeProfileCatalog.ProfileRevision profileRevision;
+        try {
+            profileRevision = objectMapper.readValue(response.body, BridgeProfileCatalog.ProfileRevision.class);
+        } catch (IOException e) {
+            throw new BridgeProfileCatalogException("Bridge profile revision response is invalid JSON", e);
+        }
+        validateRevision(profileRevision);
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(profileRevision.profile());
+        if (!normalizedProfileId.equals(profile.profileId()) || revision != profile.revision()) {
+            throw new BridgeProfileCatalogException("Bridge returned a different profile revision than requested");
+        }
+        return profileRevision;
+    }
+
+    private BridgeHttpClient.BridgeResponse get(String url) {
+        if (bridgeUrl.isBlank()) {
+            throw new BridgeProfileCatalogException("Bridge URL is not configured");
+        }
+        try {
+            BridgeHttpClient.BridgeResponse response = bridgeHttpClient.get(url, REQUEST_TIMEOUT);
+            if (!response.isSuccess()) {
+                throw new BridgeProfileCatalogException(
+                        "Bridge profile catalog request failed with HTTP " + response.status);
+            }
+            return response;
+        } catch (IOException e) {
+            throw new BridgeProfileCatalogException("Bridge profile catalog request failed", e);
+        }
+    }
+
     private static void validateContract(BridgeProfileCatalog catalog) {
         if (!SUPPORTED_SCHEMA_VERSION.equals(catalog.schemaVersion())) {
             throw new BridgeProfileCatalogException(
@@ -61,15 +89,27 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
             throw new BridgeProfileCatalogException("Bridge profile catalog fingerprint is invalid");
         }
         for (BridgeProfileCatalog.ProfileRevision revision : catalog.profiles()) {
-            if (revision == null || revision.profile() == null || revision.publication() == null) {
-                throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid revision");
-            }
-            try {
-                BridgeAnalyzerProfile.from(revision.profile());
-            } catch (IllegalArgumentException e) {
-                throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid profile", e);
-            }
+            validateRevision(revision);
         }
+    }
+
+    private static void validateRevision(BridgeProfileCatalog.ProfileRevision revision) {
+        if (revision == null || revision.profile() == null || revision.publication() == null
+                || !revision.publication().isObject()) {
+            throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid revision");
+        }
+        try {
+            BridgeAnalyzerProfile.from(revision.profile());
+        } catch (IllegalArgumentException e) {
+            throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid profile", e);
+        }
+    }
+
+    private static String requireText(String value, String fieldName) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new BridgeProfileCatalogException(fieldName + " is required");
+        }
+        return value.trim();
     }
 
     private static String stripTrailingSlashes(String value) {

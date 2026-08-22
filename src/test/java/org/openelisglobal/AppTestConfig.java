@@ -158,7 +158,23 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Primary
     @Profile("test")
     public BridgeProfileCatalogService bridgeProfileCatalogService() {
-        return AnalyzerTestProfileCatalog::catalog;
+        return new BridgeProfileCatalogService() {
+            @Override
+            public org.openelisglobal.analyzer.service.BridgeProfileCatalog getCatalog() {
+                return AnalyzerTestProfileCatalog.catalog();
+            }
+
+            @Override
+            public org.openelisglobal.analyzer.service.BridgeProfileCatalog.ProfileRevision getProfile(String profileId,
+                    int revision) {
+                return AnalyzerTestProfileCatalog.catalog().profiles().stream()
+                        .filter(candidate -> profileId
+                                .equals(candidate.profile().path("profileMeta").path("id").asText()))
+                        .filter(candidate -> revision == candidate.profile().path("catalog").path("revision").asInt())
+                        .findFirst().orElseThrow(() -> new IllegalArgumentException(
+                                "Unknown test analyzer profile revision: " + profileId + "@" + revision));
+            }
+        };
     }
 
     @Bean

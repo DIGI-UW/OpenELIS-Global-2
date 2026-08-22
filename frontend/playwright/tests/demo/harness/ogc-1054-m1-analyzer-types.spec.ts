@@ -67,6 +67,11 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(sourceRow).toContainText("ASTM");
     await expect(sourceRow).toContainText("revision 1");
     await expect(sourceRow).toContainText("Active");
+    await expect(sourceRow.getByRole("cell").nth(2)).not.toBeEmpty();
+    await expect(sourceRow.getByRole("cell").nth(3)).not.toBeEmpty();
+    await expect(sourceRow.getByRole("cell").nth(4)).toContainText(
+      /analyzer|Not in use/,
+    );
     await expect(page.getByText("Plugin class")).toHaveCount(0);
     await expect(page.getByText("Identifier pattern")).toHaveCount(0);
 
@@ -146,6 +151,18 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       ),
       "Analyzer Types should not overflow the mobile page horizontally",
     ).toBe(true);
+
+    const rowAction = page.getByRole("button", {
+      name: `Actions for ${SOURCE_PROFILE}`,
+      exact: true,
+    });
+    await rowAction.scrollIntoViewIfNeeded();
+    await expect(rowAction).toBeVisible();
+    await rowAction.click();
+    await expect(
+      page.getByRole("menuitem", { name: "Duplicate Profile", exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
 
     await testInfo.attach("analyzer-types-mobile", {
       body: await page.screenshot({ fullPage: true }),

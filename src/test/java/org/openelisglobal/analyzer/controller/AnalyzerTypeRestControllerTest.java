@@ -55,6 +55,19 @@ public class AnalyzerTypeRestControllerTest {
     }
 
     @Test
+    public void getAnalyzerTypeReturnsTheExactComposedRevision() {
+        AnalyzerTypeCatalogView.TypeSummary expected = new AnalyzerTypeCatalogView.TypeSummary("site.mock", 2,
+                "sha256:test", "Mock revision 2", "OpenELIS", "Mock", "SITE", "ACTIVE", "ASTM",
+                new AnalyzerTypeCatalogView.InstanceDefaults("ASTM_LIS2_A2", "BOTH", 9200), null, null, "51",
+                new AnalyzerTypeCatalogView.MappingSummary(0, 1, "NOT_STARTED"),
+                new AnalyzerTypeCatalogView.MappingSummary(0, 0, "NOT_APPLICABLE"), 1, "NEEDS_LOCAL_MAPPING",
+                "PUBLISHED", "17", "2026-08-18T12:00:00Z");
+        when(catalogService.getType("site.mock", 2)).thenReturn(expected);
+
+        assertSame(expected, controller.getAnalyzerType("site.mock", 2).getBody());
+    }
+
+    @Test
     public void duplicateUsesAuthenticatedUserAsBridgeActor() throws Exception {
         JsonNode response = objectMapper.readTree("{\"draftId\":\"draft-1\",\"kind\":\"DUPLICATE\"}");
         when(managementService.duplicate("site.mock", 3, "Mock Analyzer -1", "17")).thenReturn(response);

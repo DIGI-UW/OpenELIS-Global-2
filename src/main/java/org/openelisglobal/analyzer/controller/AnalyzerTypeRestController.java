@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -39,6 +40,12 @@ public class AnalyzerTypeRestController extends BaseRestController {
     @GetMapping
     public ResponseEntity<AnalyzerTypeCatalogView> getAnalyzerTypes() {
         return ResponseEntity.ok(catalogService.getCatalog());
+    }
+
+    @GetMapping("/{profileId}")
+    public ResponseEntity<AnalyzerTypeCatalogView.TypeSummary> getAnalyzerType(@PathVariable String profileId,
+            @RequestParam int revision) {
+        return ResponseEntity.ok(catalogService.getType(profileId, revision));
     }
 
     @PostMapping("/drafts")

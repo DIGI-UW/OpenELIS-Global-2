@@ -816,6 +816,17 @@ export const getAnalyzerTypeCatalog = (
   getFromOpenElisServer("/rest/analyzer-types", callback, signal);
 };
 
+export const getAnalyzerTypeRevision = (
+  profileId: string,
+  revision: number,
+  callback: DataCallback<AnalyzerTypeSummary | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}?revision=${revision}`,
+    callback,
+  );
+};
+
 export const createAnalyzerTypeDraft = (
   displayName: string,
   callback: ApiCallback<AnalyzerProfileDraftResponse>,

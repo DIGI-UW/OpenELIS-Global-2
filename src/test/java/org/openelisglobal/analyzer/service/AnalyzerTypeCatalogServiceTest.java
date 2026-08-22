@@ -130,6 +130,27 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
     }
 
+    @Test
+    public void getTypeComposesTheExactRequestedRevisionInsteadOfTheLatestRevision() throws Exception {
+        AnalyzerProfileBinding binding = new AnalyzerProfileBinding();
+        binding.setId("40");
+        binding.setProfileId("site.mock-hematology");
+        binding.setProfileRevision(2);
+        when(bindingDAO.findByProfileIdAndRevision("site.mock-hematology", 2)).thenReturn(Optional.of(binding));
+        when(bindingDAO.countAnalyzersByBindingId("40")).thenReturn(1L);
+        when(siteBindingService.findCurrentByProfileBindingId("40")).thenReturn(Optional.empty());
+        BridgeProfileCatalog.ProfileRevision revision = profileRevision(2, "Mock Hematology revision 2", 9200);
+        when(bridgeCatalogService.getProfile("site.mock-hematology", 2)).thenReturn(revision);
+
+        AnalyzerTypeCatalogView.TypeSummary result = service.getType("site.mock-hematology", 2);
+
+        assertEquals("site.mock-hematology", result.profileId());
+        assertEquals(2, result.revision());
+        assertEquals("Mock Hematology revision 2", result.displayName());
+        assertEquals(Integer.valueOf(9200), result.instanceDefaults().port());
+        assertEquals(1L, result.usedBy());
+    }
+
     private BridgeProfileCatalog catalog() throws Exception {
         JsonNode active = objectMapper.readTree(
                 """
@@ -174,6 +195,33 @@ public class AnalyzerTypeCatalogServiceTest {
                 "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 List.of(new BridgeProfileCatalog.ProfileRevision(active, publication),
                         new BridgeProfileCatalog.ProfileRevision(inactive, publication)));
+    }
+
+    private BridgeProfileCatalog.ProfileRevision profileRevision(int revision, String displayName, int port)
+            throws Exception {
+        JsonNode profile = objectMapper.readTree(
+                """
+                        {
+                          "schemaVersion":"1.0",
+                          "profileMeta":{"id":"site.mock-hematology","version":"1.0.0","displayName":"%s","confidence":"VALIDATED"},
+                          "manufacturer":"OpenELIS",
+                          "model":"Mock H",
+                          "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                          "communication":{"mode":"BOTH","supports_lis_initiated":true},
+                          "default_test_mappings":[{"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"}],
+                          "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP","defaultPort":%d,"aggregationMode":"PER_MESSAGE"},
+                          "catalog":{
+                            "revision":%d,
+                            "revisionFingerprint":"sha256:3333333333333333333333333333333333333333333333333333333333333333",
+                            "source":"SITE",
+                            "status":"ACTIVE"
+                          }
+                        }
+                        """
+                        .formatted(displayName, port, revision));
+        JsonNode publication = objectMapper
+                .readTree("{\"action\":\"PUBLISHED\",\"actor\":\"17\",\"markedAt\":\"2026-08-18T12:00:00Z\"}");
+        return new BridgeProfileCatalog.ProfileRevision(profile, publication);
     }
 
     private static AnalyzerSiteBindingSnapshot siteBindingSnapshot(AnalyzerProfileBinding profileBinding,
