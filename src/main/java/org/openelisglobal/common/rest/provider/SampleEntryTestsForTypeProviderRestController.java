@@ -11,12 +11,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
-import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
@@ -81,9 +79,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         String sampleType = request.getParameter("sampleType");
 
         String receptionRoleId = roleService.getRoleByName(Constants.ROLE_RECEPTION).getId();
-        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA);
-        List<IdValuePair> testSections = userService.getUserTestSections(String.valueOf(usd.getSystemUserId()),
-                receptionRoleId);
+        List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), receptionRoleId);
         List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
             testSections.forEach(test -> testUnitIds.add(test.getId()));

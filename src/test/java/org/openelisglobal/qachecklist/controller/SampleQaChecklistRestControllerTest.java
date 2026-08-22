@@ -10,7 +10,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,9 +44,6 @@ public class SampleQaChecklistRestControllerTest {
     @Mock
     private HttpServletRequest httpRequest;
 
-    @Mock
-    private HttpSession httpSession;
-
     private SampleQaChecklistRestController controller;
 
     @Before
@@ -57,7 +53,6 @@ public class SampleQaChecklistRestControllerTest {
         ReflectionTestUtils.setField(controller, "sampleService", sampleService);
         ReflectionTestUtils.setField(controller, "httpRequest", httpRequest);
 
-        when(httpRequest.getSession()).thenReturn(httpSession);
     }
 
     // ---- GET /rest/qa-checklist/config ----

@@ -326,8 +326,7 @@ describe("MicrobiologyCaseView", () => {
     const openReports = within(
       screen.getByTestId("microbiology-current-step-action"),
     ).getByRole("button", { name: "Open Reports" });
-    openReports.focus();
-    await user.keyboard("{Enter}");
+    await user.click(openReports);
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
