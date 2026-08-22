@@ -17,6 +17,7 @@ public class AnalyzerQcRuleRemovalContractTest {
     private static final Path JAVA_ROOT = Path.of("src", "main", "java", "org", "openelisglobal", "analyzer");
     private static final Path FRONTEND_ROOT = Path.of("frontend", "src");
     private static final Path LIQUIBASE_ROOT = Path.of("src", "main", "resources", "liquibase");
+    private static final Path WESTGARD_SPEC_ROOT = Path.of("specs", "OGC-41-westgard-qc");
     private static final Path REMOVAL_CHANGELOG = LIQUIBASE_ROOT.resolve("3.5.x.x")
             .resolve("088-remove-analyzer-qc-rule.xml");
 
@@ -57,6 +58,21 @@ public class AnalyzerQcRuleRemovalContractTest {
         assertTrue(hasElement(migration, "dropTable", "tableName", "analyzer_qc_rule"));
         assertTrue(hasElement(migration, "tableExists", "tableName", "analyzer_qc_rule"));
         assertTrue(hasElement(migration, "createTable", "tableName", "analyzer_qc_rule"));
+    }
+
+    @Test
+    public void operationalQcSpecificationsDoNotRestoreTheSupersededClassifier() throws Exception {
+        Path specification = WESTGARD_SPEC_ROOT.resolve("spec.md");
+        Path plan = WESTGARD_SPEC_ROOT.resolve("plan.md");
+        Path tasks = WESTGARD_SPEC_ROOT.resolve("tasks.md");
+
+        assertDoesNotContain(specification, "Admin Configures Per-Analyzer QC Rules");
+        assertDoesNotContain(specification, "pulls the active rule set from OpenELIS");
+        assertDoesNotContain(specification, "seeded from the analyzer's profile");
+        assertDoesNotContain(plan, "Backend (analyzer QC rules)");
+        assertDoesNotContain(plan, "AnalyzerQcRuleRestController");
+        assertDoesNotContain(plan, "pulls qcRules from OE");
+        assertDoesNotContain(tasks, "QC rules are populated from profiles");
     }
 
     private static void assertDoesNotContain(Path path, String text) throws Exception {

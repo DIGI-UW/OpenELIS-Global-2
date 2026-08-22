@@ -6,8 +6,8 @@
 > per-analyzer editable identification-rule design is superseded by the
 > [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
 > Control-result recognition is immutable behavior of the pinned Bridge profile
-> revision. `AnalyzerQcRule`, profile-to-rule copying, and OpenELIS-pushed
-> classifiers are not part of the target architecture and must not be extended.
+> revision. OpenELIS does not own an editable recognition rule or send a
+> classifier to Bridge.
 
 **Feature Branch**: `003-westgard-qc` **Created**: 2026-04-13 **Status**:
 Operational-QC foundation implemented; analyzer-identification path superseded
@@ -27,9 +27,26 @@ Operational-QC foundation implemented; analyzer-identification path superseded
 - **Manual QC spec**:
   [analyzer-manual-qc.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/quality/analyzer-manual-qc.md)
   (separate feature, not in v1 scope)
-- **Implementation**: PR
+- **Historical implementation**: PR
   [#3390](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3390), Bridge PR
   [#33](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/33)
+
+## Analyzer Architecture Boundary
+
+The canonical
+[OGC-1054 analyzer roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+supersedes the analyzer-classification ownership originally proposed here.
+This specification remains authoritative for OpenELIS operational QC: control
+lots, QC results, statistics, Westgard configuration and evaluation,
+violations, alerts, and their lab-facing workflows.
+
+Control-result recognition is analyzer-type behavior. Bridge reads and applies
+the explicit recognition definition from the configured analyzer's pinned,
+published profile revision. OpenELIS does not copy that definition into an
+analyzer connection, offer a second per-analyzer recognition editor, or push a
+classifier to Bridge. The superseded `AnalyzerQcRule` path is not part of the
+target system. Operational-QC completeness and outcomes never gate analyzer
+verification or activation.
 
 ## Executive Summary
 
@@ -39,11 +56,11 @@ This feature provides automated Westgard rule evaluation, a real-time compliance
 dashboard, Levey-Jennings control charts, and configurable alerting — replacing
 a fully manual, paper-based QC process.
 
-The system identifies QC samples automatically (via configurable rules evaluated
-by the analyzer bridge before results reach OpenELIS), persists QC measurements
-with statistical context, evaluates 8 standard Westgard rules asynchronously,
-and surfaces compliance status through a color-coded dashboard with drill-down
-charts and violation tracking.
+Bridge identifies control results from the pinned analyzer-type profile before
+results reach OpenELIS. OpenELIS persists those QC measurements with statistical
+context, evaluates 8 standard Westgard rules asynchronously, and surfaces
+compliance status through a color-coded dashboard with drill-down charts and
+violation tracking.
 
 ---
 
@@ -109,7 +126,7 @@ for initial/rolling, ACTIVE for manufacturer-fixed).
 
 ---
 
-### User Story 3 — Automatic QC Detection from Analyzer Files (Priority: P1)
+### User Story 3 — Automatic Control Recognition (Priority: P1)
 
 When the analyzer bridge processes analyzer traffic, it uses only the exact
 pinned profile revision's explicit control-result recognition behavior to
@@ -120,21 +137,24 @@ computes z-scores, and triggers Westgard rule evaluation.
 **Why this priority**: This is the data intake path. Without automatic QC
 identification, no results flow into the Westgard evaluation engine.
 
-**Independent Test**: Drop a file with a control sample (e.g., specimen ID
-"CNEG001") into a FILE analyzer's watched directory. Verify the system tags it
-as QC, creates a QC result, and (if the lot is active) runs Westgard evaluation.
+**Independent Test**: Send a representative control result through a configured
+analyzer profile. Verify Bridge recognizes it from that pinned profile, OpenELIS
+creates a QC result, and an active matching lot triggers Westgard evaluation.
 
 **Acceptance Scenarios**:
 
-1. **Given** a QuantStudio Excel file contains rows with Task="STANDARD",
-   **When** the bridge processes the file, **Then** those rows are identified as
-   QC control samples.
-2. **Given** the pinned profile explicitly declares that the analyzer does not
-   transmit controls, **When** traffic is processed, **Then** no result is
-   classified as a control and Bridge does not guess.
+1. **Given** a published profile defines a matching control-result condition,
+   **When** Bridge processes a matching message or file row, **Then** the result
+   is identified as a QC control sample.
+2. **Given** a published profile explicitly affirms that the interface
+   transports no control results, **When** Bridge processes traffic, **Then** it
+   does not infer a control through a hidden or hard-coded fallback.
 3. **Given** a QC-tagged result arrives and the control lot is ACTIVE, **When**
    the result is persisted, **Then** a z-score is computed and Westgard rules
    are evaluated without blocking the result ingestion pipeline.
+4. **Given** a profile's recognition definition is missing or invalid, **When**
+   an administrator attempts to publish or select it, **Then** the profile is
+   rejected rather than executed with fallback behavior.
 
 ---
 
@@ -213,6 +233,32 @@ appears in the Alerts tab within seconds, verify the acknowledge action works.
 
 ---
 
+### User Story 7 — Supervisor Opens Linked Operational QC (Priority: P3)
+
+A laboratory supervisor reviewing an analyzer follows its Quality Control link
+into the canonical OpenELIS QC workflow. The destination retains the analyzer
+context and provides a clear return path. The supervisor can inspect control
+lots, Westgard configuration, results, violations, and alerts without changing
+the analyzer's profile recognition or activation state.
+
+**Why this priority**: Analyzer context makes the QC workflow easier to reach,
+while preserving a clear boundary between connection readiness and laboratory
+quality decisions.
+
+**Independent Test**: Follow Quality Control from an analyzer, verify the QC
+workflow is filtered to that analyzer, change an operational-QC setting, return
+to the analyzer, and verify its activation and verification state is unchanged.
+
+**Acceptance Scenarios**:
+
+1. **Given** a supervisor follows Quality Control from an analyzer, **When** the
+   QC workflow opens, **Then** the analyzer context and return path are visible.
+2. **Given** the supervisor changes a control lot or Westgard configuration,
+   **When** they return to analyzer setup, **Then** the analyzer's verification
+   and activation blockers have not changed.
+
+---
+
 ### Edge Cases
 
 - What happens when a QC result arrives but no matching control lot exists? The
@@ -237,14 +283,17 @@ appears in the Alerts tab within seconds, verify the acknowledge action works.
 
 **QC Identification**
 
-- **FR-001**: Bridge MUST use only the exact pinned profile revision's explicit
-  control-result recognition behavior before results reach OpenELIS.
-- **FR-002**: Recognition MUST be profile-owned and data-driven. OpenELIS MUST
-  NOT publish an analyzer classifier or maintain a per-analyzer recognition
-  override.
-- **FR-003**: A profile MUST explicitly declare recognition rules or affirm
-  that the analyzer transmits no controls. Missing declarations and nonmatches
-  MUST NOT trigger a hidden fallback.
+- **FR-001**: Bridge MUST identify control results before they reach OpenELIS by
+  evaluating only the explicit control-result recognition definition in the
+  analyzer's pinned, published profile revision.
+- **FR-002**: Profile recognition MUST support field-value equality,
+  field-value containment, specimen-ID prefix, and configured specimen-ID
+  pattern matching, plus an explicit affirmed mode for interfaces that
+  transport no control results.
+- **FR-003**: A missing or invalid recognition definition MUST prevent profile
+  publication or selection. Published revisions are immutable; recognition is
+  changed by publishing a new analyzer-type revision, never by editing one
+  analyzer connection or by applying a hidden fallback.
 - **FR-004**: Identified QC observations MUST be clearly marked in the data
   pipeline so they are routed to QC processing rather than patient result
   acceptance.
@@ -308,8 +357,9 @@ appears in the Alerts tab within seconds, verify the acknowledge action works.
 
 **Navigation**
 
-- **FR-024**: The analyzer form, QC rules page, and instrument detail view MUST
-  be full pages with breadcrumb navigation (not modal dialogs).
+- **FR-024**: The QC dashboard, control-lot setup, Westgard configuration, and
+  instrument detail views MUST provide linkable breadcrumb navigation and
+  preserve analyzer context where applicable.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -317,9 +367,10 @@ appears in the Alerts tab within seconds, verify the acknowledge action works.
 - **CR-002**: All UI strings MUST be internationalized via React Intl
 - **CR-003**: Backend MUST follow 5-layer architecture (Valueholder, DAO,
   Service, Controller, Form)
-- **CR-004**: Database schema changes MUST use Liquibase changesets; runtime
-  configuration (QC rules, control lots) MUST come from the application layer,
-  not from Liquibase seed data
+- **CR-004**: Database schema changes MUST use Liquibase changesets.
+  Operational-QC configuration comes from OpenELIS application data;
+  control-result recognition comes from published Bridge profile revisions,
+  not Liquibase seed data.
 - **CR-005**: QC data flowing between systems MUST use FHIR R4 conventions
 - **CR-007**: Role-based access control with audit trail (user tracking and
   timestamps on all QC entities)
@@ -340,10 +391,10 @@ appears in the Alerts tab within seconds, verify the acknowledge action works.
   linking the triggering result and any related historical results.
 - **QC Alert**: Notification record per user per violation, with read/unread
   tracking and batching for warnings.
-- **Control-result recognition**: Immutable behavior of the pinned Bridge
-  profile revision that identifies transported control results. It is separate
-  from OpenELIS operational Quality Control and has no per-analyzer OpenELIS
-  editor or entity.
+- **Control-result recognition**: Immutable analyzer-type profile behavior
+  owned and evaluated by Bridge. It determines which incoming results are
+  controls before OpenELIS operational QC receives them; it is not an
+  OpenELIS QC entity or per-analyzer setting.
 
 ## Success Criteria _(mandatory)_
 
@@ -371,7 +422,8 @@ appears in the Alerts tab within seconds, verify the acknowledge action works.
 - The analyzer bridge is always in the communication path between analyzers and
   OpenELIS. QC identification happens on the bridge side.
 - Control-result recognition is defined and executed by the pinned Bridge
-  profile revision. OpenELIS does not seed or push classifier rules.
+  profile revision. OpenELIS neither sends classifier rules nor stores a
+  mutable per-analyzer copy or authoritative profile snapshot.
 - v1 delivers in-app alerts only. Email and real-time push notifications are
   deferred to v2.
 - v1 does not include corrective action workflows (recalibration, maintenance
@@ -384,15 +436,13 @@ appears in the Alerts tab within seconds, verify the acknowledge action works.
 - The system targets CLIA/CAP QC requirements and ISO 15189 audit trail
   standards.
 
-## v1 Implementation Status
+## Implementation Status
 
 PR #3390 implemented the OpenELIS operational-QC foundation and also introduced
-the superseded `AnalyzerQcRule` path. The control-lot, QC-result, statistics,
-Westgard, violation, alert, and dashboard work remains the operational
-foundation. OGC-1054 removes the classifier entity, service, controller, user
-interface, profile-copy behavior, and Bridge fallback before analyzer MVP
-acceptance. Historical test counts do not prove that removal or current user
-acceptance.
+an analyzer-classification path that OGC-1054 removes. The control-lot,
+QC-result, statistics, Westgard, violation, alert, and dashboard work remains
+the operational foundation. Current tests and human review determine
+acceptance; old test counts and route inventories do not.
 
 ## v2+ Roadmap (deferred from design spec)
 
