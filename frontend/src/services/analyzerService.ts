@@ -137,6 +137,9 @@ export interface AnalyzerTypeMappingView {
     affirmedNoControlResults: boolean;
     conditions: Array<{
       key: string;
+      kind: string;
+      sourceLabel: string;
+      value?: string | null;
       description: string;
       controlLevel?: string | null;
       controlType?: string | null;

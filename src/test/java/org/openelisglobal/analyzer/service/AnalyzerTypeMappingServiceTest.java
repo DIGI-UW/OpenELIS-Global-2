@@ -310,7 +310,7 @@ public class AnalyzerTypeMappingServiceTest {
         BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
                 recognitionFingerprint(), "RULES", "Control results match any configured condition.", false,
                 List.of(new BridgeProfileCatalog.ControlRecognitionSummary.Condition("qc-prefix",
-                        "Specimen ID starts with QC-", "QC", null)));
+                        "SPECIMEN_ID_STARTS_WITH", "Specimen ID", "QC-", "Specimen ID starts with QC-", "QC", null)));
         return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(), recognition);
     }
 

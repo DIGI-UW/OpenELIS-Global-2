@@ -25,6 +25,10 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { Link, useLocation, useParams } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AffectedAnalyzerList from "../AnalyzerTypeManagement/AffectedAnalyzerList";
+import {
+  formatRecognitionCondition,
+  formatRecognitionMode,
+} from "../AnalyzerTypeManagement/recognitionText";
 import { safeInternalPath } from "../../utils/UrlUtils";
 import {
   confirmAnalyzerTypeMapping,
@@ -804,9 +808,13 @@ const AnalyzerTypeMappingEditor = () => {
                 <h2 id="analyzer-type-recognition">
                   <FormattedMessage id="analyzerType.mappingEditor.recognition.heading" />
                 </h2>
-                <p>{mapping.controlRecognition.description}</p>
+                <p>
+                  {formatRecognitionMode(intl, mapping.controlRecognition.mode)}
+                </p>
               </div>
-              <Tag type="blue">{mapping.controlRecognition.mode}</Tag>
+              <Tag type="blue">
+                {formatRecognitionMode(intl, mapping.controlRecognition.mode)}
+              </Tag>
             </div>
             {mapping.controlRecognition.mode === "NONE" ? (
               <InlineNotification
@@ -821,7 +829,9 @@ const AnalyzerTypeMappingEditor = () => {
               <ul>
                 {mapping.controlRecognition.conditions.map((condition) => (
                   <li key={condition.key}>
-                    <strong>{condition.description}</strong>
+                    <strong>
+                      {formatRecognitionCondition(intl, condition)}
+                    </strong>
                     {(condition.controlLevel || condition.controlType) && (
                       <span>
                         {[condition.controlLevel, condition.controlType]

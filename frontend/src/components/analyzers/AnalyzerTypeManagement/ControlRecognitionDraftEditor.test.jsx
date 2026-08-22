@@ -62,7 +62,7 @@ const noneDraft = {
     ...rulesDraft.recognition,
     mode: "NONE",
     affirmedNoControlResults: true,
-    description: "This analyzer interface transports no control results.",
+    description: "SERVER NONE SUMMARY MUST NOT RENDER",
     conditions: [],
   },
 };
@@ -274,9 +274,10 @@ describe("ControlRecognitionDraftEditor", () => {
       expect.any(Function),
     );
     expect(
-      await screen.findByText(
-        "This analyzer interface transports no control results.",
-      ),
+      await screen.findByText("No control-result recognition"),
     ).toBeVisible();
+    expect(document.body).not.toHaveTextContent(
+      "SERVER NONE SUMMARY MUST NOT RENDER",
+    );
   });
 });

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriUtils;
@@ -13,6 +14,8 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
 
     private static final String SUPPORTED_SCHEMA_VERSION = "1.0";
     private static final String FINGERPRINT_PATTERN = "sha256:[0-9a-f]{64}";
+    private static final Set<String> RECOGNITION_CONDITION_KINDS = Set.of("SPECIMEN_ID_STARTS_WITH",
+            "CONFIGURED_SPECIMEN_ID_PATTERN", "FIELD_VALUE_EQUALS", "FIELD_VALUE_CONTAINS");
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
     private final BridgeHttpClient bridgeHttpClient;
@@ -118,10 +121,20 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
             return;
         }
         if (!"RULES".equals(summary.mode()) || summary.affirmedNoControlResults() || summary.conditions().isEmpty()
-                || summary.conditions().stream().anyMatch(condition -> condition == null || isBlank(condition.key())
-                        || isBlank(condition.description()))) {
+                || summary.conditions().stream()
+                        .anyMatch(condition -> condition == null || isBlank(condition.key())
+                                || isBlank(condition.description()) || isBlank(condition.kind())
+                                || !RECOGNITION_CONDITION_KINDS.contains(condition.kind())
+                                || isBlank(condition.sourceLabel()) || invalidRecognitionValue(condition))) {
             throw invalidControlRecognitionSummary();
         }
+    }
+
+    private static boolean invalidRecognitionValue(BridgeProfileCatalog.ControlRecognitionSummary.Condition condition) {
+        if ("CONFIGURED_SPECIMEN_ID_PATTERN".equals(condition.kind())) {
+            return condition.value() != null;
+        }
+        return isBlank(condition.value());
     }
 
     private static BridgeProfileCatalogException invalidControlRecognitionSummary() {

@@ -16,6 +16,10 @@ import {
   getAnalyzerTypeControlRecognition,
   updateAnalyzerTypeControlRecognition,
 } from "../../../services/analyzerService";
+import {
+  formatRecognitionCondition,
+  formatRecognitionMode,
+} from "./recognitionText";
 
 const hasError = (response) => !response || Boolean(response.error);
 
@@ -271,7 +275,7 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange }) => {
             id: "analyzerType.recognition.heading",
           })}
         </h3>
-        <p>{draft.recognition.description}</p>
+        <p>{formatRecognitionMode(intl, form.mode)}</p>
       </div>
 
       <RadioButtonGroup
@@ -306,51 +310,56 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange }) => {
               id: "analyzerType.recognition.rules.help",
             })}
           </p>
-          {form.conditions.map((condition) => (
-            <div
-              className="analyzer-type-recognition__condition"
-              key={condition.clientKey}
-              role="group"
-              aria-label={
-                condition.description ||
-                intl.formatMessage({
-                  id: "analyzerType.recognition.condition.new",
-                })
-              }
-            >
-              <div className="analyzer-type-recognition__condition-content">
-                {condition.description && <p>{condition.description}</p>}
-                {condition.editable && (
-                  <TextInput
-                    id={`control-recognition-${draftId}-${condition.clientKey}`}
-                    labelText={intl.formatMessage(
-                      {
-                        id:
-                          condition.kind === "SPECIMEN_ID_STARTS_WITH"
-                            ? "analyzerType.recognition.condition.prefixValue"
-                            : "analyzerType.recognition.condition.fieldValue",
-                      },
-                      { source: condition.sourceLabel },
-                    )}
-                    value={condition.value || ""}
-                    onChange={(event) =>
-                      changeCondition(condition.clientKey, event.target.value)
-                    }
-                  />
-                )}
+          {form.conditions.map((condition) => {
+            const conditionText = condition.key
+              ? formatRecognitionCondition(intl, condition)
+              : null;
+            return (
+              <div
+                className="analyzer-type-recognition__condition"
+                key={condition.clientKey}
+                role="group"
+                aria-label={
+                  conditionText ||
+                  intl.formatMessage({
+                    id: "analyzerType.recognition.condition.new",
+                  })
+                }
+              >
+                <div className="analyzer-type-recognition__condition-content">
+                  {conditionText && <p>{conditionText}</p>}
+                  {condition.editable && (
+                    <TextInput
+                      id={`control-recognition-${draftId}-${condition.clientKey}`}
+                      labelText={intl.formatMessage(
+                        {
+                          id:
+                            condition.kind === "SPECIMEN_ID_STARTS_WITH"
+                              ? "analyzerType.recognition.condition.prefixValue"
+                              : "analyzerType.recognition.condition.fieldValue",
+                        },
+                        { source: condition.sourceLabel },
+                      )}
+                      value={condition.value || ""}
+                      onChange={(event) =>
+                        changeCondition(condition.clientKey, event.target.value)
+                      }
+                    />
+                  )}
+                </div>
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  hasIconOnly
+                  renderIcon={TrashCan}
+                  iconDescription={intl.formatMessage({
+                    id: "analyzerType.recognition.condition.remove",
+                  })}
+                  onClick={() => removeCondition(condition.clientKey)}
+                />
               </div>
-              <Button
-                kind="ghost"
-                size="sm"
-                hasIconOnly
-                renderIcon={TrashCan}
-                iconDescription={intl.formatMessage({
-                  id: "analyzerType.recognition.condition.remove",
-                })}
-                onClick={() => removeCondition(condition.clientKey)}
-              />
-            </div>
-          ))}
+            );
+          })}
           <div className="analyzer-type-recognition__add">
             <Select
               id={`control-recognition-new-${draftId}`}
