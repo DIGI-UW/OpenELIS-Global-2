@@ -18,6 +18,7 @@ async function postAnalyzerIngress(path: string, data: object) {
   const machineClient = await playwrightRequest.newContext({
     baseURL: process.env.BASE_URL || "https://localhost",
     ignoreHTTPSErrors: true,
+    storageState: { cookies: [], origins: [] },
     extraHTTPHeaders: analyzerIngressHeaders(),
   });
   try {
