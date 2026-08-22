@@ -98,11 +98,38 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
                 || !revision.publication().isObject()) {
             throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid revision");
         }
+        validateControlRecognitionSummary(revision.controlRecognitionSummary());
         try {
             BridgeAnalyzerProfile.from(revision.profile());
         } catch (IllegalArgumentException e) {
             throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid profile", e);
         }
+    }
+
+    private static void validateControlRecognitionSummary(BridgeProfileCatalog.ControlRecognitionSummary summary) {
+        if (summary == null || isBlank(summary.description())) {
+            throw invalidControlRecognitionSummary();
+        }
+        if ("NONE".equals(summary.mode())) {
+            if (!summary.affirmedNoControlResults() || !summary.conditions().isEmpty()) {
+                throw invalidControlRecognitionSummary();
+            }
+            return;
+        }
+        if (!"RULES".equals(summary.mode()) || summary.affirmedNoControlResults() || summary.conditions().isEmpty()
+                || summary.conditions().stream().anyMatch(condition -> condition == null || isBlank(condition.key())
+                        || isBlank(condition.description()))) {
+            throw invalidControlRecognitionSummary();
+        }
+    }
+
+    private static BridgeProfileCatalogException invalidControlRecognitionSummary() {
+        return new BridgeProfileCatalogException(
+                "Bridge profile catalog contains an invalid control recognition summary");
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     private static String requireText(String value, String fieldName) {

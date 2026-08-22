@@ -6,6 +6,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
 import org.junit.Before;
 import org.junit.Test;
@@ -92,16 +95,15 @@ public class BridgeProfileCatalogServiceTest {
 
     @Test
     public void getCatalogRejectsRevisionWithoutControlRecognitionSummary() throws Exception {
+        JsonNode catalog = new ObjectMapper().readTree(validCatalog());
+        ((ObjectNode) catalog.path("profiles").get(0)).remove("controlRecognitionSummary");
         when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
-                .thenReturn(new BridgeHttpClient.BridgeResponse(200,
-                        validCatalog().replaceFirst("\\s*\\\"controlRecognitionSummary\\\":\\{.*?\\},\\s*\\\"publication\\\"",
-                                "\"publication\"")));
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
 
         BridgeProfileCatalogException exception = assertThrows(BridgeProfileCatalogException.class,
                 () -> service.getCatalog());
 
-        assertEquals("Bridge profile catalog contains an invalid control recognition summary",
-                exception.getMessage());
+        assertEquals("Bridge profile catalog contains an invalid control recognition summary", exception.getMessage());
     }
 
     private static String validCatalog() {
