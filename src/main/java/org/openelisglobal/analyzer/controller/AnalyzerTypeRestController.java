@@ -7,6 +7,7 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerTypeMappingView;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
@@ -61,6 +62,12 @@ public class AnalyzerTypeRestController extends BaseRestController {
     public ResponseEntity<AnalyzerTypeMappingView> getMapping(@PathVariable String profileId,
             @RequestParam int revision) {
         return ResponseEntity.ok(mappingService.getMapping(profileId, revision));
+    }
+
+    @PutMapping("/{profileId}/mapping")
+    public ResponseEntity<AnalyzerTypeMappingView> saveMapping(@PathVariable String profileId,
+            @RequestParam int revision, @RequestBody AnalyzerTypeMappingUpdate update, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(mappingService.saveMapping(profileId, revision, update, getSysUserId(httpRequest)));
     }
 
     @GetMapping("/mapping-catalog/tests")
