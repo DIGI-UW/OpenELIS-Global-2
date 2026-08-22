@@ -137,7 +137,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 continue;
             }
             Optional<MicroOrganism> organism = Optional
-                    .ofNullable(population.organismsById.get(candidate.isolate.getOrganismId()));
+                    .ofNullable(mappedReference(population.organismsById, candidate.isolate.getOrganismId()));
             if (organism.isEmpty()) {
                 organism = optionalReference(candidate.isolate.getOrganismId(), organismDAO::get);
             }
@@ -221,7 +221,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
         Map<String, String> organismLabels = new HashMap<>();
         for (MicroIsolate isolate : population.allIsolates) {
-            MicroOrganism organism = population.organismsById.get(isolate.getOrganismId());
+            MicroOrganism organism = mappedReference(population.organismsById, isolate.getOrganismId());
             if (organism != null) {
                 organismLabels.putIfAbsent(organism.getId(), organism.getDisplayName());
             }
@@ -269,7 +269,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 .flatMap(value -> valuesFor(isolatesByCase, value.getId()).stream()).toList();
         List<String> organismIds = allIsolates.stream().map(MicroIsolate::getOrganismId).filter(this::hasText)
                 .distinct().sorted().toList();
-        Map<String, MicroOrganism> organismsById = indexBy(organismDAO.getByIds(organismIds), MicroOrganism::getId);
+        List<MicroOrganism> organisms = organismIds.isEmpty() ? List.of() : organismDAO.getByIds(organismIds);
+        Map<String, MicroOrganism> organismsById = indexBy(organisms, MicroOrganism::getId);
         return new Population(cases, isolatesByCase, allIsolates, contextsByCase, organismsById);
     }
 
@@ -436,6 +437,10 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
     private <T> Optional<T> optionalReference(String id, Function<String, Optional<T>> loader) {
         return hasText(id) ? loader.apply(id) : Optional.empty();
+    }
+
+    private <T> T mappedReference(Map<String, T> values, String id) {
+        return hasText(id) ? values.get(id) : null;
     }
 
     private void addWarning(Map<String, MicroWhonetWarningForm> warnings, String code, String resource,

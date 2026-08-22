@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -234,6 +235,28 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
+    public void previewExcludesAnUnidentifiedIsolateWithoutFailingTheReportingPeriod() {
+        MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
+        MicroIsolate unidentified = isolate("isolate-1", "case-1", null);
+
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of(microCase));
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(unidentified));
+        when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of());
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+
+        MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
+
+        assertFalse(preview.canGenerate);
+        assertEquals(0, preview.exportedRows);
+        assertEquals(1, preview.excludedRows);
+        assertEquals(1, preview.warnings.size());
+        assertEquals("ORGANISM_MAPPING_REQUIRED", preview.warnings.get(0).code);
+        assertEquals("ISO-1", preview.warnings.get(0).itemLabel);
+        verify(organismDAO, never()).get(anyString());
+    }
+
+    @Test
     public void previewExcludesReadingsWithoutAWhonetSirInterpretation() {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
@@ -382,6 +405,25 @@ public class MicroWhonetDatasetServiceTest {
         verify(worklistContextDAO, never()).getWhonetPatientContexts(any());
         verify(caseOrderDetailDAO, never()).getByCaseIds(any());
         verify(isolateDAO, never()).getByCaseIds(any());
+    }
+
+    @Test
+    public void filterOptionsOmitUnidentifiedIsolatesWithoutFailingTheReportingPeriod() {
+        MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
+        MicroIsolate unidentified = isolate("isolate-1", "case-1", null);
+
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of(microCase));
+        when(caseOrderDetailDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
+        when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(unidentified));
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+
+        MicroWhonetFilterOptionsForm options = service.getFilterOptions(query("NONE"));
+
+        assertTrue(options.organisms.isEmpty());
+        assertEquals(List.of(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name()),
+                options.significance.stream().map(option -> option.id).toList());
+        verify(organismDAO, never()).getByIds(any());
     }
 
     @Test
