@@ -8,6 +8,7 @@ export const SampleOrderFormValues = {
   providerEmailNotificationTestIds: [],
   providerSMSNotificationTestIds: [],
   microbiologyOrderDetail: {
+    culturePurpose: "CLINICAL_DIAGNOSTIC",
     cultureMethodId: "",
     patientOrigin: "",
     admissionDate: "",

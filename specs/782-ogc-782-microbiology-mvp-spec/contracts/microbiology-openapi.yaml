@@ -98,6 +98,118 @@ paths:
                 $ref: "#/components/schemas/MicroCaseDetail"
         "400":
           description: Invalid activity for case state
+  /microbiology/cases/{caseId}/order-detail:
+    put:
+      summary: Correct captured microbiology order context before final release
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MicroCaseOrderDetailRequest"
+      responses:
+        "200":
+          description: Updated compiled case detail with an audited correction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicroCaseDetail"
+        "400":
+          description: Invalid order detail
+        "409":
+          description: The final case is locked against ordinary correction
+  /microbiology/whonet/preview:
+    get:
+      summary: Preview the selected WHONET export population
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: includeScreening
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: includeUnspecified
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: specimen
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: organism
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: origin
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: significance
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: dedup
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Population counts, readiness warnings, and eligible rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicroWhonetPreview"
+  /microbiology/whonet/exports:
+    post:
+      summary: Generate an audited WHONET CSV from the preview selection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MicroWhonetExportQuery"
+      responses:
+        "200":
+          description: Generated WHONET CSV
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "409":
+          description: No valid export rows remain
   /microbiology/isolates:
     post:
       summary: Record preliminary isolate work-up for a case
@@ -720,6 +832,10 @@ components:
           type: array
           items:
             type: string
+        orderDetail:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MicroCaseOrderDetail"
         activities:
           type: array
           items:
@@ -732,6 +848,104 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SiblingCase"
+    MicroCulturePurpose:
+      type: string
+      enum: [CLINICAL_DIAGNOSTIC, ACTIVE_SCREENING]
+    MicroCaseOrderDetail:
+      type: object
+      properties:
+        culturePurpose:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MicroCulturePurpose"
+        cultureMethodId:
+          type: string
+          nullable: true
+        patientOrigin:
+          type: string
+          nullable: true
+        admissionDate:
+          type: string
+          format: date
+          nullable: true
+        numberOfSets:
+          type: integer
+          minimum: 1
+          maximum: 10
+          nullable: true
+        clinicalHistory:
+          type: string
+          maxLength: 1000
+        antibioticExposure:
+          type: boolean
+          nullable: true
+    MicroCaseOrderDetailRequest:
+      allOf:
+        - $ref: "#/components/schemas/MicroCaseOrderDetail"
+      description: >-
+        New order-entry drafts require culturePurpose. A historical case may
+        retain a missing value as Unspecified until a user classifies it.
+    MicroWhonetExportQuery:
+      type: object
+      required: [from, to]
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        specimen:
+          type: array
+          items:
+            type: string
+        organism:
+          type: array
+          items:
+            type: string
+        origin:
+          type: array
+          items:
+            type: string
+        significance:
+          type: array
+          items:
+            type: string
+        includeScreening:
+          type: boolean
+          default: false
+        includeUnspecified:
+          type: boolean
+          default: false
+        dedup:
+          type: string
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+    MicroWhonetPreview:
+      type: object
+      properties:
+        totalCases:
+          type: integer
+        totalIsolates:
+          type: integer
+        clinicalPurposeCases:
+          type: integer
+        screeningPurposeCases:
+          type: integer
+        unspecifiedPurposeCases:
+          type: integer
+        afterCulturePurpose:
+          type: integer
+        exportedRows:
+          type: integer
+        excludedRows:
+          type: integer
+        canGenerate:
+          type: boolean
     SiblingCase:
       type: object
       properties:

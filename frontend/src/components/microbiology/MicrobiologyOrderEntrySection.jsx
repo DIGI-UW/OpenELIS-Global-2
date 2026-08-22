@@ -123,6 +123,7 @@ const MicrobiologyOrderEntrySection = ({
     fields.antibioticExposure,
     fields.admissionDate,
     fields.clinicalHistory,
+    fields.culturePurpose,
     fields.cultureMethodId,
     fields.numberOfSets,
     fields.patientOrigin,

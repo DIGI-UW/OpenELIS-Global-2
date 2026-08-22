@@ -12,6 +12,7 @@ describe("CaseInfoSummary", () => {
           accessionNumber="UATMICRO001"
           requestingLocation="Medical ward 2"
           orderDetail={{
+            culturePurpose: "CLINICAL_DIAGNOSTIC",
             clinicalHistory: "Fever and suspected sepsis",
             patientOrigin: "INPATIENT",
             admissionDate: "2026-08-03",
@@ -30,6 +31,9 @@ describe("CaseInfoSummary", () => {
     ).toBeTruthy();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();
+    expect(
+      screen.getByText("Clinical diagnosis or treatment"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/2026|8\/3/)).toBeInTheDocument();
     expect(screen.getByText(/UATMICRO001/)).toBeInTheDocument();
     expect(screen.getByText(/Medical ward 2/)).toBeInTheDocument();
@@ -43,5 +47,6 @@ describe("CaseInfoSummary", () => {
     );
 
     expect(screen.getAllByText("Not provided").length).toBeGreaterThan(1);
+    expect(screen.getByText("Unspecified")).toBeInTheDocument();
   });
 });

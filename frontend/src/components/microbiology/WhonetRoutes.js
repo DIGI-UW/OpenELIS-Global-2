@@ -47,6 +47,8 @@ const normalizedValues = (value, allowed) =>
 const repeatedValues = (params, key, allowed) =>
   normalizedValues(params.getAll(key), allowed);
 
+const enabled = (params, key) => params.get(key) === "true";
+
 export const parseWhonetSearch = (search = "", now = new Date()) => {
   const params = new URLSearchParams(search);
   const defaults = previousCompleteMonth(now);
@@ -65,6 +67,8 @@ export const parseWhonetSearch = (search = "", now = new Date()) => {
     origin: repeatedValues(params, "origin"),
     significance:
       significance.length > 0 ? significance : ["CLINICALLY_SIGNIFICANT"],
+    includeScreening: enabled(params, "includeScreening"),
+    includeUnspecified: enabled(params, "includeUnspecified"),
     dedup: DEDUP_POLICIES.has(dedup) ? dedup : "FIRST_ISOLATE_7_DAY",
     step: STEPS.has(step) ? step : "configure",
     page: positiveInteger(params.get("page"), 1),
@@ -82,11 +86,17 @@ export const buildWhonetSearch = (state, now = new Date()) => {
   ["specimen", "organism", "origin", "significance"].forEach((key) =>
     values(state[key]).forEach((value) => draft.append(key, value)),
   );
+  ["includeScreening", "includeUnspecified"].forEach((key) =>
+    draft.set(key, String(Boolean(state[key]))),
+  );
   const normalized = parseWhonetSearch(draft.toString(), now);
   const params = new URLSearchParams();
   ["from", "to"].forEach((key) => params.set(key, String(normalized[key])));
   ["specimen", "organism", "origin", "significance"].forEach((key) =>
     normalized[key].forEach((value) => params.append(key, value)),
+  );
+  ["includeScreening", "includeUnspecified"].forEach((key) =>
+    params.set(key, String(normalized[key])),
   );
   ["dedup", "step", "page", "pageSize"].forEach((key) =>
     params.set(key, String(normalized[key])),
@@ -126,6 +136,8 @@ export const toWhonetRequest = (state) => ({
   organism: [...state.organism],
   origin: [...state.origin],
   significance: [...state.significance],
+  includeScreening: state.includeScreening,
+  includeUnspecified: state.includeUnspecified,
   dedup: state.dedup,
   page: state.page,
   pageSize: state.pageSize,

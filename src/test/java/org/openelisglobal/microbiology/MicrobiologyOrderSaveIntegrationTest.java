@@ -144,6 +144,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
     private MicroCaseOrderDetailRequestForm orderDetail() {
         MicroCaseOrderDetailRequestForm detail = new MicroCaseOrderDetailRequestForm();
         detail.cultureMethodId = cultureTest.getMethod().getId();
+        detail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         detail.patientOrigin = "INPATIENT";
         detail.admissionDate = "2026-08-17";
         detail.numberOfSets = 2;
@@ -157,6 +158,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         assertNotNull(actual);
         assertEquals(expected.cultureMethodId, actual.getCultureMethodId());
         assertEquals(expected.patientOrigin, actual.getPatientOrigin());
+        assertEquals(expected.culturePurpose, actual.getCulturePurpose());
         assertEquals(LocalDate.parse(expected.admissionDate), actual.getAdmissionDate());
         assertEquals(expected.numberOfSets, actual.getNumberOfSets());
         assertEquals(expected.clinicalHistory, actual.getClinicalHistory());

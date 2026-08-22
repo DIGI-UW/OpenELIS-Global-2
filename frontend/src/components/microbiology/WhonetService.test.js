@@ -11,6 +11,8 @@ const query = {
   organism: ["organism-1"],
   origin: ["OUTPATIENT"],
   significance: ["NORMAL_FLORA", "CLINICALLY_SIGNIFICANT"],
+  includeScreening: true,
+  includeUnspecified: false,
   dedup: "FIRST_ISOLATE_7_DAY",
   page: 2,
   pageSize: 50,
@@ -32,7 +34,7 @@ describe("WhonetService", () => {
 
     await expect(getWhonetPreview(query)).resolves.toEqual({ exportedRows: 2 });
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/OpenELIS-Global/rest/microbiology/whonet/preview?from=2026-07-01&to=2026-07-31&specimen=sample-type-1&specimen=sample-type-2&organism=organism-1&origin=OUTPATIENT&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&dedup=FIRST_ISOLATE_7_DAY&page=2&pageSize=50",
+      "/api/OpenELIS-Global/rest/microbiology/whonet/preview?from=2026-07-01&to=2026-07-31&specimen=sample-type-1&specimen=sample-type-2&organism=organism-1&origin=OUTPATIENT&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&includeScreening=true&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&page=2&pageSize=50",
       expect.objectContaining({ credentials: "include" }),
     );
   });

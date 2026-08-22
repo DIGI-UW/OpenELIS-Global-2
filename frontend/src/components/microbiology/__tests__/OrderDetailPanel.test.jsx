@@ -29,6 +29,7 @@ describe("OrderDetailPanel", () => {
       }),
       saveOrderDetail: vi.fn().mockResolvedValue({
         orderDetail: {
+          culturePurpose: "ACTIVE_SCREENING",
           cultureMethodId: "",
           patientOrigin: "EMERGENCY",
           admissionDate: null,
@@ -42,6 +43,10 @@ describe("OrderDetailPanel", () => {
     renderPanel({ service });
 
     await screen.findByRole("option", { name: "Emergency" });
+    expect(screen.getByText("Unspecified")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("radio", { name: "Active screening or carriage" }),
+    );
     await user.selectOptions(
       screen.getByLabelText("Patient origin"),
       "EMERGENCY",
@@ -58,6 +63,7 @@ describe("OrderDetailPanel", () => {
 
     await waitFor(() =>
       expect(service.saveOrderDetail).toHaveBeenCalledWith("case-1", {
+        culturePurpose: "ACTIVE_SCREENING",
         cultureMethodId: "",
         patientOrigin: "EMERGENCY",
         admissionDate: null,
@@ -71,6 +77,7 @@ describe("OrderDetailPanel", () => {
   it("prefills fields from an existing captured order detail", async () => {
     renderPanel({
       orderDetail: {
+        culturePurpose: "CLINICAL_DIAGNOSTIC",
         cultureMethodId: "method-1",
         patientOrigin: "INPATIENT",
         admissionDate: "2026-08-03",
@@ -89,6 +96,9 @@ describe("OrderDetailPanel", () => {
 
     await screen.findByRole("option", { name: "Inpatient" });
     expect(screen.getByLabelText("Patient origin")).toHaveValue("INPATIENT");
+    expect(
+      screen.getByRole("radio", { name: "Clinical diagnosis or treatment" }),
+    ).toBeChecked();
     expect(screen.getByLabelText("Number of sets")).toHaveValue(3);
     expect(
       screen.getByLabelText(/Patient has recent antibiotic exposure/i),
@@ -96,5 +106,26 @@ describe("OrderDetailPanel", () => {
     expect(screen.getByLabelText("Date of admission")).toHaveValue(
       "08/03/2026",
     );
+  });
+
+  it("keeps culture purpose visible but immutable after final release", async () => {
+    renderPanel({
+      isReadOnly: true,
+      orderDetail: { culturePurpose: "ACTIVE_SCREENING" },
+      service: {
+        getPatientOrigins: vi.fn().mockResolvedValue({ options: [] }),
+        saveOrderDetail: vi.fn(),
+      },
+    });
+
+    expect(
+      screen.getByRole("radio", { name: "Active screening or carriage" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("radio", { name: "Clinical diagnosis or treatment" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Save order detail" }),
+    ).not.toBeInTheDocument();
   });
 });

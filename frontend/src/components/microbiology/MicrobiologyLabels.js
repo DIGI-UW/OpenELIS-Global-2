@@ -21,3 +21,13 @@ export const formatMicrobiologyEnum = (value) => {
     )
     .join(" ");
 };
+
+export const formatCulturePurpose = (intl, value) =>
+  intl.formatMessage({
+    id:
+      value === "CLINICAL_DIAGNOSTIC"
+        ? "microbiology.culturePurpose.clinical"
+        : value === "ACTIVE_SCREENING"
+          ? "microbiology.culturePurpose.screening"
+          : "microbiology.culturePurpose.unspecified",
+  });

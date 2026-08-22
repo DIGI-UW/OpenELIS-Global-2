@@ -18,6 +18,10 @@ const preview = {
   afterSpecimen: 1,
   afterOrganism: 1,
   afterPatientOrigin: 1,
+  clinicalPurposeCases: 1,
+  screeningPurposeCases: 1,
+  unspecifiedPurposeCases: 1,
+  afterCulturePurpose: 1,
   afterSignificance: 1,
   afterDeduplication: 1,
   exportableIsolates: 1,
@@ -58,7 +62,7 @@ const preview = {
 };
 
 const previewUrl =
-  "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=preview&page=1&pageSize=20";
+  "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&step=preview&page=1&pageSize=20";
 
 const filterOptions = {
   specimenTypes: [
@@ -123,6 +127,8 @@ describe("WhonetExport", () => {
       organism: [],
       origin: [],
       significance: ["CLINICALLY_SIGNIFICANT"],
+      includeScreening: false,
+      includeUnspecified: false,
       dedup: "FIRST_ISOLATE_7_DAY",
       page: 1,
       pageSize: 20,
@@ -144,6 +150,15 @@ describe("WhonetExport", () => {
     ).toHaveTextContent("1");
     expect(
       screen.getByText("Mappable isolates").previousSibling,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText("Clinical cultures").previousSibling,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText("Screening cultures").previousSibling,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText("Unspecified cultures").previousSibling,
     ).toHaveTextContent("1");
     expect(
       screen.getByText("Preview ready with 2 eligible rows."),
@@ -183,7 +198,7 @@ describe("WhonetExport", () => {
 
     renderExport(
       service,
-      "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
+      "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
     );
 
     const specimenFilter = await screen.findByRole("combobox", {
@@ -199,11 +214,21 @@ describe("WhonetExport", () => {
     await user.click(screen.getByRole("option", { name: "Normal flora" }));
     await user.keyboard("{Escape}");
     await user.selectOptions(screen.getByLabelText("De-duplication"), "NONE");
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "Include active screening or carriage cultures",
+      }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "Include historical cultures with unspecified purpose",
+      }),
+    );
     await user.click(screen.getByRole("button", { name: "Preview export" }));
 
     await waitFor(() =>
       expect(screen.getByTestId("whonet-current-url")).toHaveTextContent(
-        "specimen=sample-type-blood&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&dedup=NONE&step=preview&page=1&pageSize=20",
+        "specimen=sample-type-blood&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&includeScreening=true&includeUnspecified=true&dedup=NONE&step=preview&page=1&pageSize=20",
       ),
     );
     await waitFor(() =>
@@ -214,6 +239,8 @@ describe("WhonetExport", () => {
         organism: [],
         origin: [],
         significance: ["CLINICALLY_SIGNIFICANT", "NORMAL_FLORA"],
+        includeScreening: true,
+        includeUnspecified: true,
         dedup: "NONE",
         page: 1,
         pageSize: 20,
@@ -286,7 +313,7 @@ describe("WhonetExport", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("whonet-current-url")).toHaveTextContent(
-        "significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=preview&page=2&pageSize=20",
+        "significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&step=preview&page=2&pageSize=20",
       ),
     );
     await waitFor(() =>
@@ -297,6 +324,8 @@ describe("WhonetExport", () => {
         organism: [],
         origin: [],
         significance: ["CLINICALLY_SIGNIFICANT"],
+        includeScreening: false,
+        includeUnspecified: false,
         dedup: "FIRST_ISOLATE_7_DAY",
         page: 2,
         pageSize: 20,
@@ -315,7 +344,7 @@ describe("WhonetExport", () => {
 
     renderExport(
       service,
-      "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
+      "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
     );
 
     expect(

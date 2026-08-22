@@ -4,11 +4,13 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCulturePurpose;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -138,6 +140,14 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     private void validateOrderDetail(MicroCaseOrderDetailRequestForm orderDetail, SampleItem sampleItem) {
         if (orderDetail == null) {
             return;
+        }
+        if (orderDetail.culturePurpose == null || orderDetail.culturePurpose.isBlank()) {
+            throw new IllegalArgumentException("Culture purpose is required for a new microbiology order");
+        }
+        try {
+            MicroCulturePurpose.valueOf(orderDetail.culturePurpose.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unsupported culture purpose", exception);
         }
         if (orderDetail.numberOfSets != null && (orderDetail.numberOfSets < 1 || orderDetail.numberOfSets > 10)) {
             throw new IllegalArgumentException("Number of culture sets must be between 1 and 10");

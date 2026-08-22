@@ -6,7 +6,10 @@ import {
   StructuredListWrapper,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+import {
+  formatCulturePurpose,
+  formatMicrobiologyEnum,
+} from "./MicrobiologyLabels";
 
 const enabled = (value) => value === true || value === "true";
 
@@ -34,6 +37,9 @@ export const CaseInfoCompactSummary = ({
       `${intl.formatMessage({
         id: "microbiology.orderDetail.patientOrigin",
       })}: ${formatMicrobiologyEnum(detail.patientOrigin)}`,
+    `${intl.formatMessage({
+      id: "microbiology.culturePurpose.label",
+    })}: ${formatCulturePurpose(intl, detail.culturePurpose)}`,
     requestingLocation &&
       `${intl.formatMessage({
         id: "microbiology.case.requestingLocation",
@@ -77,6 +83,18 @@ const CaseInfoSummary = ({
       aria-label={intl.formatMessage({ id: "microbiology.caseInfo.summary" })}
     >
       <StructuredListBody>
+        <StructuredListRow>
+          <StructuredListCell>
+            <strong>
+              {intl.formatMessage({
+                id: "microbiology.culturePurpose.label",
+              })}
+            </strong>
+          </StructuredListCell>
+          <StructuredListCell>
+            {formatCulturePurpose(intl, detail.culturePurpose)}
+          </StructuredListCell>
+        </StructuredListRow>
         <StructuredListRow>
           <StructuredListCell>
             <strong>

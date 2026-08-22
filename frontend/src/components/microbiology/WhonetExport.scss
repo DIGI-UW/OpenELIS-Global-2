@@ -88,6 +88,26 @@
     margin-block-start: $spacing-05;
   }
 
+  &__purpose-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: $spacing-03 $spacing-05;
+    margin: $spacing-05 0 0;
+    padding: $spacing-04 0 0;
+    border: 0;
+    border-block-start: 1px solid $border-subtle-01;
+
+    legend,
+    p {
+      grid-column: 1 / -1;
+      margin: 0;
+    }
+
+    p {
+      color: $text-secondary;
+    }
+  }
+
   &__configure-actions {
     display: flex;
     justify-content: flex-end;
@@ -191,6 +211,7 @@
   .whonet-export {
     &__controls,
     &__filter-grid,
+    &__purpose-filters,
     &__metrics {
       grid-template-columns: minmax(0, 1fr);
     }

@@ -276,4 +276,7 @@
   <!-- OGC-782 R9: retain the exact normalized WHONET export population -->
   <include relativeToChangelogFile="true" file="087-microbiology-whonet-export-selection.xml"/>
 
+  <!-- OGC-782 R11: capture the explicit clinical or screening culture purpose -->
+  <include relativeToChangelogFile="true" file="088-microbiology-culture-purpose.xml"/>
+
 </databaseChangeLog>
