@@ -168,7 +168,7 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getUnacknowledgedAlertsOlderThan_shouldReturnCorrectAlerts_whenCutoffProvided() {
-        OffsetDateTime cutoff = OffsetDateTime.parse("2025-05-10T12:00:00Z");
+        OffsetDateTime cutoff = alertService.get(100L).getStartTime().plusHours(2);
         List<Alert> alerts = alertService.getUnacknowledgedAlertsOlderThan("Freezer", AlertStatus.OPEN,
                 AlertSeverity.CRITICAL, cutoff);
 

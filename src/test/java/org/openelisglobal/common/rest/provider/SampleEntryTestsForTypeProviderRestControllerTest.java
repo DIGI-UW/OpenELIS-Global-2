@@ -1,13 +1,11 @@
 package org.openelisglobal.common.rest.provider;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,11 +73,9 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
         controller = new SampleEntryTestsForTypeProviderRestController(panelService, testSectionService,
                 samplePanelService, panelItemService, typeOfSampleService, userService, roleService, programService,
                 testMethodService, testQcThresholdDAO, testService, microbiologyReferenceService);
-        HttpSession session = mock(HttpSession.class);
         UserSessionData userSessionData = new UserSessionData();
         userSessionData.setSytemUserId(17);
-        when(request.getSession()).thenReturn(session);
-        when(session.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(userSessionData);
+        when(request.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(userSessionData);
     }
 
     @Test
