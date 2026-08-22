@@ -1,10 +1,12 @@
 package org.openelisglobal.analyzer.service;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
@@ -23,14 +25,16 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
     private final AnalyzerProfileBindingDAO profileBindingDAO;
     private final AnalyzerSiteBindingService siteBindingService;
     private final AnalyzerMappingCatalogService mappingCatalogService;
+    private final AnalyzerProfileBindingService profileBindingService;
 
     public AnalyzerTypeMappingServiceImpl(BridgeProfileCatalogService bridgeProfileCatalogService,
             AnalyzerProfileBindingDAO profileBindingDAO, AnalyzerSiteBindingService siteBindingService,
-            AnalyzerMappingCatalogService mappingCatalogService) {
+            AnalyzerMappingCatalogService mappingCatalogService, AnalyzerProfileBindingService profileBindingService) {
         this.bridgeProfileCatalogService = bridgeProfileCatalogService;
         this.profileBindingDAO = profileBindingDAO;
         this.siteBindingService = siteBindingService;
         this.mappingCatalogService = mappingCatalogService;
+        this.profileBindingService = profileBindingService;
     }
 
     @Override
@@ -39,6 +43,30 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
                 profileRevision);
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
         AnalyzerSiteBindingSnapshot binding = findBinding(profile.profileId(), profile.revision()).orElse(null);
+        return compose(revision, profile, binding);
+    }
+
+    @Override
+    @Transactional
+    public AnalyzerTypeMappingView saveMapping(String profileId, int profileRevision, AnalyzerTypeMappingUpdate update,
+            String actor) {
+        BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService.getProfile(profileId,
+                profileRevision);
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+        AnalyzerSiteBindingDraft draft = validateUpdate(profile, update);
+        Optional<AnalyzerSiteBindingSnapshot> current = findBinding(profile.profileId(), profile.revision());
+        validateLoadedFingerprint(current.orElse(null), update.baseBindingFingerprint());
+
+        AnalyzerProfileBinding profileBinding = profileBindingService.resolveActiveRevision(profile.profileId(),
+                profile.revision(), actor);
+        AnalyzerSiteBindingSnapshot basis = current
+                .orElseGet(() -> siteBindingService.resolveInitialRevision(profileBinding, profile.document(), actor));
+        AnalyzerSiteBindingSnapshot saved = siteBindingService.appendRevision(basis.binding(), draft, actor);
+        return compose(revision, profile, saved);
+    }
+
+    private AnalyzerTypeMappingView compose(BridgeProfileCatalog.ProfileRevision revision,
+            BridgeAnalyzerProfile profile, AnalyzerSiteBindingSnapshot binding) {
         List<AnalyzerMappingCatalogService.TestOption> activeTests = mappingCatalogService.searchActiveTests(null);
         Map<String, AnalyzerMappingCatalogService.TestOption> activeTestsById = activeTests.stream()
                 .collect(Collectors.toMap(AnalyzerMappingCatalogService.TestOption::id, Function.identity()));
@@ -60,6 +88,43 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
                 binding == null ? 0 : binding.revision().getRevisionNumber(),
                 binding == null ? null : binding.revision().getBindingFingerprint(), rows,
                 revision.controlRecognitionSummary());
+    }
+
+    private static AnalyzerSiteBindingDraft validateUpdate(BridgeAnalyzerProfile profile,
+            AnalyzerTypeMappingUpdate update) {
+        if (update == null) {
+            throw new IllegalArgumentException("Mapping update is required");
+        }
+        AnalyzerSiteBindingDraft draft = update.toDraft();
+        Set<String> expectedTests = profile.testDefinitions().stream()
+                .map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> actualTests = draft.tests().stream().filter(row -> row != null && row.sourceRowKey() != null)
+                .map(AnalyzerSiteBindingTestDraft::sourceRowKey).collect(Collectors.toCollection(LinkedHashSet::new));
+        if (draft.tests().size() != expectedTests.size() || !actualTests.equals(expectedTests)) {
+            throw new IllegalArgumentException("Mapping update test rows must exactly match profile revision");
+        }
+
+        Set<ResultSourceKey> expectedResults = profile.testDefinitions().stream()
+                .flatMap(definition -> definition.resultValues().stream()
+                        .map(value -> new ResultSourceKey(definition.analyzerCode(), value)))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<ResultSourceKey> actualResults = draft.results().stream()
+                .filter(row -> row != null && row.sourceRowKey() != null && row.rawValue() != null)
+                .map(row -> new ResultSourceKey(row.sourceRowKey(), row.rawValue()))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (draft.results().size() != expectedResults.size() || !actualResults.equals(expectedResults)) {
+            throw new IllegalArgumentException("Mapping update result rows must exactly match profile revision");
+        }
+        return draft;
+    }
+
+    private static void validateLoadedFingerprint(AnalyzerSiteBindingSnapshot current, String loadedFingerprint) {
+        String normalized = loadedFingerprint == null || loadedFingerprint.isBlank() ? null : loadedFingerprint.trim();
+        String currentFingerprint = current == null ? null : current.revision().getBindingFingerprint();
+        if (!java.util.Objects.equals(normalized, currentFingerprint)) {
+            throw new IllegalArgumentException("Analyzer Type mappings changed after this editor was loaded");
+        }
     }
 
     private Optional<AnalyzerSiteBindingSnapshot> findBinding(String profileId, int profileRevision) {

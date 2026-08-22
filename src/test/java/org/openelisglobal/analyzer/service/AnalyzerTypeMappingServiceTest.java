@@ -158,6 +158,33 @@ public class AnalyzerTypeMappingServiceTest {
     }
 
     @Test
+    public void saveMappingCreatesTheSharedBindingForAnUnusedAnalyzerType() throws Exception {
+        AnalyzerProfileBinding profileBinding = profileBinding();
+        AnalyzerSiteBindingSnapshot initial = siteBinding(profileBinding);
+        AnalyzerSiteBindingSnapshot saved = savedSiteBinding(initial.binding());
+        AnalyzerSiteBindingDraft draft = validDraft();
+        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
+        when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2)).thenReturn(Optional.empty());
+        when(profileBindingService.resolveActiveRevision("site.mock-analyzer", 2, "17")).thenReturn(profileBinding);
+        when(siteBindingService.resolveInitialRevision(eq(profileBinding), any(JsonNode.class), eq("17")))
+                .thenReturn(initial);
+        when(siteBindingService.appendRevision(eq(initial.binding()), any(AnalyzerSiteBindingDraft.class), eq("17")))
+                .thenReturn(saved);
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(mappingCatalogService.getActiveResultOptions("9701"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive"),
+                        new AnalyzerMappingCatalogService.ResultOption("812", "1002", "Negative")));
+
+        AnalyzerTypeMappingView view = service.saveMapping("site.mock-analyzer", 2,
+                new AnalyzerTypeMappingUpdate(null, draft.tests(), draft.results()), "17");
+
+        assertEquals("51", view.siteBindingId());
+        assertEquals(5, view.siteBindingRevision());
+        verify(siteBindingService).resolveInitialRevision(eq(profileBinding), any(JsonNode.class), eq("17"));
+        verify(siteBindingService).appendRevision(eq(initial.binding()), eq(draft), eq("17"));
+    }
+
+    @Test
     public void saveMappingRejectsOmittedOrInventedRowsBeforeCreatingLocalState() throws Exception {
         AnalyzerSiteBindingDraft valid = validDraft();
         AnalyzerTypeMappingUpdate omitted = new AnalyzerTypeMappingUpdate(null,
