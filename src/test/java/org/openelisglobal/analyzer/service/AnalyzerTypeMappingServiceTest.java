@@ -51,22 +51,30 @@ public class AnalyzerTypeMappingServiceTest {
     @Mock
     private AnalyzerProfileBindingService profileBindingService;
 
+    @Mock
+    private AnalyzerSiteBindingConfirmationService confirmationService;
+
     private AnalyzerTypeMappingService service;
 
     @Before
     public void setUp() {
         service = new AnalyzerTypeMappingServiceImpl(bridgeProfileCatalogService, profileBindingDAO, siteBindingService,
-                mappingCatalogService, profileBindingService);
+                mappingCatalogService, profileBindingService, confirmationService);
     }
 
     @Test
     public void getMappingPreservesEverySourceRowAndHydratesCurrentLocalChoices() throws Exception {
         AnalyzerProfileBinding profileBinding = profileBinding();
+        AnalyzerSiteBindingSnapshot siteBinding = siteBinding(profileBinding);
+        AnalyzerSiteBindingConfirmationView confirmation = new AnalyzerSiteBindingConfirmationView(
+                AnalyzerSiteBindingConfirmationView.State.STALE, "site.mock-analyzer", 2,
+                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", recognitionFingerprint(),
+                "16", null, List.of(), List.of());
         when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
         when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2))
                 .thenReturn(Optional.of(profileBinding));
-        when(siteBindingService.findCurrentByProfileBindingId("41"))
-                .thenReturn(Optional.of(siteBinding(profileBinding)));
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBinding));
+        when(confirmationService.getStatus(siteBinding, recognitionFingerprint())).thenReturn(confirmation);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
         when(mappingCatalogService.getActiveResultOptions("9701"))
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive"),
@@ -107,8 +115,28 @@ public class AnalyzerTypeMappingServiceTest {
 
         assertEquals("RULES", view.controlRecognition().mode());
         assertEquals("Specimen ID starts with QC-", view.controlRecognition().conditions().get(0).description());
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, view.confirmation().state());
         verify(profileBindingDAO).findByProfileIdAndRevision("site.mock-analyzer", 2);
         verify(siteBindingService).findCurrentByProfileBindingId("41");
+    }
+
+    @Test
+    public void confirmMappingUsesTheExactCurrentProfileAndSiteBindingCandidate() throws Exception {
+        AnalyzerProfileBinding profileBinding = profileBinding();
+        AnalyzerSiteBindingSnapshot candidate = siteBinding(profileBinding);
+        AnalyzerSiteBindingConfirmationRequest request = new AnalyzerSiteBindingConfirmationRequest(
+                candidate.revision().getBindingFingerprint(), recognitionFingerprint(), List.of(), List.of());
+        AnalyzerSiteBindingConfirmationView expected = AnalyzerSiteBindingConfirmationView.unconfirmed();
+        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
+        when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2))
+                .thenReturn(Optional.of(profileBinding));
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(candidate));
+        when(confirmationService.confirm(candidate, recognitionFingerprint(), request, "17")).thenReturn(expected);
+
+        AnalyzerSiteBindingConfirmationView confirmed = service.confirmMapping("site.mock-analyzer", 2, request, "17");
+
+        assertEquals(expected, confirmed);
+        verify(confirmationService).confirm(candidate, recognitionFingerprint(), request, "17");
     }
 
     @Test
@@ -269,10 +297,14 @@ public class AnalyzerTypeMappingServiceTest {
                 }
                 """);
         BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
-                "RULES", "Control results match any configured condition.", false,
+                recognitionFingerprint(), "RULES", "Control results match any configured condition.", false,
                 List.of(new BridgeProfileCatalog.ControlRecognitionSummary.Condition("qc-prefix",
                         "Specimen ID starts with QC-", "QC", null)));
         return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(), recognition);
+    }
+
+    private static String recognitionFingerprint() {
+        return "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
     }
 
     private AnalyzerProfileBinding profileBinding() {
