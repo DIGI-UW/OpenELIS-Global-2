@@ -16,6 +16,7 @@ import {
   duplicateAnalyzerType,
   getAnalyzerTypeCatalog,
   getAnalyzerTypeDraft,
+  getAnalyzerTypeRevision,
   publishAnalyzerTypeDraft,
   updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
@@ -30,6 +31,7 @@ vi.mock("../../../services/analyzerService", () => ({
   duplicateAnalyzerType: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
   getAnalyzerTypeDraft: vi.fn(),
+  getAnalyzerTypeRevision: vi.fn(),
   publishAnalyzerTypeDraft: vi.fn(),
   updateSharedAnalyzerType: vi.fn(),
 }));
@@ -137,6 +139,14 @@ describe("AnalyzerTypeManagement", () => {
     getAnalyzerTypeCatalog.mockImplementation((callback) => {
       callback(catalog);
     });
+    getAnalyzerTypeRevision.mockImplementation(
+      (profileId, revision, callback) => {
+        const latest = catalog.types.find(
+          (type) => type.profileId === profileId,
+        );
+        callback(latest ? { ...latest, revision } : undefined);
+      },
+    );
     createAnalyzerTypeDraft.mockImplementation((displayName, callback) => {
       callback({
         draftId: "draft-create",
@@ -488,6 +498,39 @@ describe("AnalyzerTypeManagement", () => {
     expect(
       within(dialog).getByRole("button", { name: "Publish Profile" }),
     ).toBeEnabled();
+  });
+
+  it("duplicates the exact bookmarked profile revision instead of the latest revision", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=duplicate&profile=shipped.genexpert&revision=1&returnTo=%2Fanalyzers%2Ftypes%2Fshipped.genexpert%2Fmapping%3Frevision%3D1",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    await waitFor(() =>
+      expect(getAnalyzerTypeRevision).toHaveBeenCalledWith(
+        "shipped.genexpert",
+        1,
+        expect.any(Function),
+      ),
+    );
+    expect(within(dialog).getByText(/revision 1/)).toBeVisible();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Duplicate Profile" }),
+    );
+
+    expect(duplicateAnalyzerType).toHaveBeenCalledWith(
+      "shipped.genexpert",
+      1,
+      "Cepheid GeneXpert MTB/RIF -1",
+      expect.any(Function),
+    );
   });
 
   it("deactivates a shipped profile through a confirmation dialog and exposes no delete action", async () => {
