@@ -75,6 +75,7 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         Analysis persistedAnalysis = fixtures.createAnalysis(persistedItem, cultureTest);
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
         orderDetail.cultureMethodId = methodId;
+        orderDetail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         orderDetail.patientOrigin = "EMERGENCY";
         orderDetail.admissionDate = "2026-08-03";
         orderDetail.numberOfSets = 2;
@@ -91,11 +92,13 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals(1, caseService.getSiblingCases(persistedItem.getId()).size());
         MicroCaseOrderDetail persisted = orderDetailService.getOrderDetail(first.get(0).getId());
         assertEquals(Integer.valueOf(2), persisted.getNumberOfSets());
+        assertEquals("CLINICAL_DIAGNOSTIC", persisted.getCulturePurpose());
         assertEquals(LocalDate.of(2026, 8, 3), persisted.getAdmissionDate());
         assertTrue(persisted.getAntibioticExposure());
 
         MicroCaseDetailForm compiled = caseService.getCaseDetail(first.get(0).getId());
         assertEquals("EMERGENCY", compiled.orderDetail.patientOrigin);
+        assertEquals("CLINICAL_DIAGNOSTIC", compiled.orderDetail.culturePurpose);
         assertEquals("2026-08-03", compiled.orderDetail.admissionDate);
         assertEquals("Fever and hypotension", compiled.orderDetail.clinicalHistory);
         assertTrue(compiled.orderDetail.antibioticExposure);
@@ -109,6 +112,7 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         Analysis persistedAnalysis = fixtures.createAnalysis(persistedItem, cultureTest);
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
         orderDetail.cultureMethodId = methodId;
+        orderDetail.culturePurpose = "ACTIVE_SCREENING";
         orderDetail.patientOrigin = "INPATIENT";
         orderDetail.admissionDate = "2026-08-13";
         orderDetail.numberOfSets = 3;
@@ -118,6 +122,7 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
 
         MicroCaseOrderDetailRequestForm reloaded = orderDetailService.getOrderDraft(persistedItem.getSample().getId());
         assertEquals(methodId, reloaded.cultureMethodId);
+        assertEquals("ACTIVE_SCREENING", reloaded.culturePurpose);
         assertEquals("Persistent fever after antibiotics", reloaded.clinicalHistory);
         assertEquals("2026-08-13", reloaded.admissionDate);
 
@@ -127,6 +132,7 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals(1, routed.size());
         MicroCaseOrderDetail caseDetail = orderDetailService.getOrderDetail(routed.get(0).getId());
         assertEquals("INPATIENT", caseDetail.getPatientOrigin());
+        assertEquals("ACTIVE_SCREENING", caseDetail.getCulturePurpose());
         assertEquals(LocalDate.of(2026, 8, 13), caseDetail.getAdmissionDate());
         assertEquals(Integer.valueOf(3), caseDetail.getNumberOfSets());
         assertTrue(caseDetail.getAntibioticExposure());

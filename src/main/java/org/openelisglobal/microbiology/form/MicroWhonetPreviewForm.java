@@ -14,6 +14,10 @@ public class MicroWhonetPreviewForm {
     public int afterSpecimen;
     public int afterOrganism;
     public int afterPatientOrigin;
+    public int clinicalPurposeCases;
+    public int screeningPurposeCases;
+    public int unspecifiedPurposeCases;
+    public int afterCulturePurpose;
     public int afterSignificance;
     public int afterDeduplication;
     public int exportableIsolates;

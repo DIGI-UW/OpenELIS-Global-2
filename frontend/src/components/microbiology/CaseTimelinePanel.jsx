@@ -3,11 +3,44 @@ import { Add } from "@carbon/icons-react";
 import { Button, Stack, Tag, TextArea } from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
+  formatCulturePurpose,
   formatMicrobiologyActivityNote,
   formatMicrobiologyEnum,
 } from "./MicrobiologyLabels";
 
 const RECENT_TIMELINE_EVENT_LIMIT = 30;
+
+const parseStructuredData = (structuredData) => {
+  if (!structuredData) return {};
+  if (typeof structuredData === "object") return structuredData;
+  try {
+    return JSON.parse(structuredData);
+  } catch (_error) {
+    return {};
+  }
+};
+
+const activityPresentation = (intl, activity) => {
+  if (activity.activityType !== "CULTURE_PURPOSE_CHANGED") {
+    return {
+      title: formatMicrobiologyEnum(activity.activityType, intl),
+      note: formatMicrobiologyActivityNote(activity, intl),
+    };
+  }
+  const data = parseStructuredData(activity.structuredData);
+  return {
+    title: intl.formatMessage({
+      id: "microbiology.case.timeline.culturePurposeChanged",
+    }),
+    note: intl.formatMessage(
+      { id: "microbiology.case.timeline.culturePurposeChange" },
+      {
+        from: formatCulturePurpose(intl, data.fromPurpose),
+        to: formatCulturePurpose(intl, data.toPurpose),
+      },
+    ),
+  };
+};
 
 const CaseTimelinePanel = ({
   activities = [],
@@ -137,10 +170,7 @@ const CaseTimelinePanel = ({
         <>
           <ol className="microbiology-list">
             {visibleActivities.map((activity) => {
-              const activityNote = formatMicrobiologyActivityNote(
-                activity,
-                intl,
-              );
+              const presentation = activityPresentation(intl, activity);
               return (
                 <li
                   className="microbiology-list__row"
@@ -150,9 +180,7 @@ const CaseTimelinePanel = ({
                   }
                 >
                   <div className="microbiology-inline-actions">
-                    <strong>
-                      {formatMicrobiologyEnum(activity.activityType, intl)}
-                    </strong>
+                    <strong>{presentation.title}</strong>
                     <Tag type="cool-gray" size="sm">
                       {intl.formatMessage({
                         id:
@@ -162,7 +190,12 @@ const CaseTimelinePanel = ({
                       })}
                     </Tag>
                   </div>
-                  {activityNote ? `: ${activityNote}` : ""}
+                  {presentation.note &&
+                    (activity.activityType === "CULTURE_PURPOSE_CHANGED" ? (
+                      <span>{presentation.note}</span>
+                    ) : (
+                      `: ${presentation.note}`
+                    ))}
                   {(activity.performedByDisplay ||
                     activity.performedBy ||
                     activity.occurredAt) && (

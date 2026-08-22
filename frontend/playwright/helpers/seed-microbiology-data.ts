@@ -143,8 +143,13 @@ interface MicrobiologyCaseFixture {
   closedAt?: number | string;
   finalReleaseState: string;
   isolates: MicrobiologyIsolateFixture[];
-  orderDetail?: { patientOrigin?: string };
+  orderDetail?: {
+    culturePurpose?: CulturePurpose | null;
+    patientOrigin?: string;
+  };
 }
+
+type CulturePurpose = "CLINICAL_DIAGNOSTIC" | "ACTIVE_SCREENING";
 
 interface MicrobiologyAstRunFixture {
   id: string;
@@ -216,6 +221,35 @@ export function seedMicrobiologyCase(
   page: Page,
 ): Promise<SeededMicrobiologyCase> {
   return provisionMicrobiologyScenario(page, "CASE");
+}
+
+export async function seedMicrobiologyCulturePurposeCase(
+  page: Page,
+): Promise<SeededMicrobiologyCase> {
+  const seeded = await provisionMicrobiologyScenario(
+    page,
+    "CASE",
+    `playwright-r11-culture-purpose-case-${randomUUID()}`,
+  );
+  await requireJsonResponse(
+    "Set initial culture purpose",
+    await page.request.put(
+      `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/order-detail`,
+      {
+        headers: { "X-CSRF-Token": await getCsrfToken(page) },
+        data: {
+          culturePurpose: "CLINICAL_DIAGNOSTIC",
+          cultureMethodId: seeded.methodId,
+          patientOrigin: "",
+          admissionDate: null,
+          numberOfSets: 1,
+          clinicalHistory: "Culture-purpose review fixture",
+          antibioticExposure: false,
+        },
+      },
+    ),
+  );
+  return seeded;
 }
 
 export function seedMicrobiologyMvpCase(
@@ -387,6 +421,7 @@ async function ensureReviewedAstIsolate(
 
 interface WhonetExportScenarioOptions {
   scenarioKey: string;
+  culturePurpose?: CulturePurpose | null;
   patientOrigin?: string;
   specimenWhonetCode?: string;
   unmappedSignificance?: string;
@@ -424,6 +459,7 @@ async function seedMicrobiologyWhonetExportScenario(
   page: Page,
   {
     scenarioKey,
+    culturePurpose = "CLINICAL_DIAGNOSTIC",
     patientOrigin,
     specimenWhonetCode,
     unmappedSignificance = "CLINICALLY_SIGNIFICANT",
@@ -486,28 +522,34 @@ async function seedMicrobiologyWhonetExportScenario(
       !unmappedExisting ||
       unmappedExisting.significance !== unmappedSignificance ||
       (patientOrigin &&
-        caseDetail.orderDetail?.patientOrigin !== patientOrigin))
+        caseDetail.orderDetail?.patientOrigin !== patientOrigin) ||
+      (caseDetail.orderDetail?.culturePurpose || null) !== culturePurpose)
   ) {
     throw new Error(
       "Final WHONET fixture does not match its expected population",
     );
   }
 
+  const orderDetailNeedsUpdate =
+    culturePurpose !== null &&
+    (caseDetail.orderDetail?.culturePurpose !== culturePurpose ||
+      (patientOrigin &&
+        caseDetail.orderDetail?.patientOrigin !== patientOrigin));
   if (
-    patientOrigin &&
-    caseDetail.finalReleaseState !== "FINAL_RELEASED" &&
-    caseDetail.orderDetail?.patientOrigin !== patientOrigin
+    orderDetailNeedsUpdate &&
+    caseDetail.finalReleaseState !== "FINAL_RELEASED"
   ) {
     await requireJsonResponse(
-      "Set WHONET fixture patient origin",
+      "Set WHONET fixture order detail",
       await page.request.put(
         `${API_PREFIX}/rest/microbiology/cases/${reference.caseId}/order-detail`,
         {
           headers: { "X-CSRF-Token": await getCsrfToken(page) },
           data: {
+            culturePurpose,
             cultureMethodId: reference.methodId,
-            patientOrigin,
-            admissionDate: "2026-08-17",
+            patientOrigin: patientOrigin || "",
+            admissionDate: patientOrigin ? "2026-08-17" : null,
             numberOfSets: 1,
             clinicalHistory: "Synthetic WHONET export filter fixture",
             antibioticExposure: false,
@@ -563,7 +605,7 @@ export function seedMicrobiologyWhonetExport(
   page: Page,
 ): Promise<SeededMicrobiologyWhonetExport> {
   return seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-m4-whonet-export",
+    scenarioKey: "playwright-m4-whonet-export-r11",
   });
 }
 
@@ -571,11 +613,45 @@ export function seedMicrobiologyWhonetExportFilters(
   page: Page,
 ): Promise<SeededMicrobiologyWhonetExport> {
   return seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-r9-whonet-export-filters",
+    scenarioKey: "playwright-r9-whonet-export-filters-r11",
     patientOrigin: "INPATIENT",
     specimenWhonetCode: "BLD",
     unmappedSignificance: "CONTAMINANT",
   });
+}
+
+export async function seedMicrobiologyCulturePurposeWhonetPopulation(
+  page: Page,
+) {
+  const clinical = await seedMicrobiologyWhonetExportScenario(page, {
+    scenarioKey: "playwright-r11-culture-purpose-clinical",
+    culturePurpose: "CLINICAL_DIAGNOSTIC",
+    specimenWhonetCode: "BLD",
+  });
+  const screening = await seedMicrobiologyWhonetExportScenario(page, {
+    scenarioKey: "playwright-r11-culture-purpose-screening",
+    culturePurpose: "ACTIVE_SCREENING",
+    specimenWhonetCode: "BLD",
+  });
+  const unspecified = await seedMicrobiologyWhonetExportScenario(page, {
+    scenarioKey: "playwright-r11-culture-purpose-unspecified",
+    culturePurpose: null,
+    specimenWhonetCode: "BLD",
+  });
+  if (
+    clinical.exportDate !== screening.exportDate ||
+    clinical.exportDate !== unspecified.exportDate
+  ) {
+    throw new Error(
+      "Culture-purpose WHONET fixtures must share an export date",
+    );
+  }
+  return {
+    clinical,
+    screening,
+    unspecified,
+    exportDate: clinical.exportDate,
+  };
 }
 
 export async function seedMicrobiologyWorklistCases(

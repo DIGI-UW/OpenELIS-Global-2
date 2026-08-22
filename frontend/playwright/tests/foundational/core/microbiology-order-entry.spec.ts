@@ -24,6 +24,11 @@ async function fillMicrobiologyDetails(page: Page) {
     details.getByText(cultureMethodName, { exact: true }),
   ).toBeVisible();
   await expect(
+    details.getByRole("radio", {
+      name: "Clinical diagnosis or treatment",
+    }),
+  ).toBeChecked();
+  await expect(
     page.getByRole("combobox", { name: "Culture Protocol" }),
   ).toHaveCount(0);
   const patientOrigin = page.getByLabel("Patient Origin");
@@ -237,6 +242,11 @@ test.describe("microbiology order entry on the supported workflow", () => {
     await expect(
       reloadedDetails.getByRole("combobox", { name: "Culture Protocol" }),
     ).toHaveCount(0);
+    await expect(
+      reloadedDetails.getByRole("radio", {
+        name: "Clinical diagnosis or treatment",
+      }),
+    ).toBeChecked();
     await expect(page.getByLabel("Patient Origin")).toHaveValue("INPATIENT");
     await expect(page.getByLabel("Date of admission")).toHaveValue(
       displayedAdmissionDate,

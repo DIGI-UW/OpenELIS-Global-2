@@ -69,7 +69,7 @@ public class MicroOrderRoutingServiceTest {
         when(caseService.createOrGetCase("1001", MicroWorkflowType.UNASSIGNED, "1", "1")).thenReturn(routedCase);
 
         List<MicroCase> routed = service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(untypedAnalysis), "1",
-                new MicroCaseOrderDetailRequestForm(), true);
+                orderDetail(), true);
 
         assertEquals(1, routed.size());
         verify(caseService).createOrGetCase("1001", MicroWorkflowType.UNASSIGNED, "1", "1");
@@ -88,8 +88,7 @@ public class MicroOrderRoutingServiceTest {
         routedCase.setId("case-bacteriology");
         when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1")).thenReturn(routedCase);
 
-        service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(untypedAnalysis), "1",
-                new MicroCaseOrderDetailRequestForm(), true);
+        service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(untypedAnalysis), "1", orderDetail(), true);
 
         verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
     }
@@ -130,6 +129,7 @@ public class MicroOrderRoutingServiceTest {
         routedCase.setId("case-1");
         when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1")).thenReturn(routedCase);
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         orderDetail.patientOrigin = "Emergency department";
 
         service.routeAnalysesForSampleItem(sampleItem("1001"),
@@ -148,6 +148,7 @@ public class MicroOrderRoutingServiceTest {
         routedCase.setId("case-1");
         when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1")).thenReturn(routedCase);
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         orderDetail.cultureMethodId = "2";
 
         service.routeAnalysesForSampleItem(sampleItem("1001"),
@@ -196,6 +197,7 @@ public class MicroOrderRoutingServiceTest {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
                 orderDetailService, caseAnalysisService, testMethodService, "");
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         orderDetail.numberOfSets = 11;
 
         service.routeAnalysesForSampleItem(sampleItem("1001"),
@@ -207,6 +209,7 @@ public class MicroOrderRoutingServiceTest {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
                 orderDetailService, caseAnalysisService, testMethodService, "");
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         orderDetail.clinicalHistory = "x".repeat(1001);
 
         service.routeAnalysesForSampleItem(sampleItem("1001"),
@@ -218,6 +221,7 @@ public class MicroOrderRoutingServiceTest {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
                 orderDetailService, caseAnalysisService, testMethodService, "");
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         orderDetail.admissionDate = "2026-08-04";
         SampleItem sampleItem = sampleItem("1001");
         sampleItem.setCollectionDate(Timestamp.valueOf("2026-08-03 09:00:00"));
@@ -271,6 +275,7 @@ public class MicroOrderRoutingServiceTest {
                 .thenReturn(bacteriologyCase);
         when(caseService.createOrGetCase("1001", MicroWorkflowType.MYCOBACTERIOLOGY_TB, "9", "1")).thenReturn(tbCase);
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         orderDetail.cultureMethodId = "2";
 
         service.routeAnalysesForSampleItem(sampleItem("1001"),
@@ -309,6 +314,7 @@ public class MicroOrderRoutingServiceTest {
         routedCase.setId("case-1");
         when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1")).thenReturn(routedCase);
         MicroCaseOrderDetailRequestForm draft = new MicroCaseOrderDetailRequestForm();
+        draft.culturePurpose = "CLINICAL_DIAGNOSTIC";
         draft.patientOrigin = "INPATIENT";
         when(orderDetailService.getOrderDraft("2001")).thenReturn(draft);
         SampleItem sampleItem = sampleItem("1001");
@@ -340,6 +346,21 @@ public class MicroOrderRoutingServiceTest {
         verify(caseAnalysisService).linkAnalysis(microCase, analysis, setup);
     }
 
+    @Test
+    public void routeAnalysesRejectsMissingPurposeOnSubmittedNewOrderDetail() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService, "");
+
+        try {
+            service.routeAnalysesForSampleItem(sampleItem("1001"),
+                    List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1",
+                    new MicroCaseOrderDetailRequestForm());
+            fail("Expected missing culture purpose to be rejected");
+        } catch (IllegalArgumentException exception) {
+            assertEquals("Culture purpose is required for a new microbiology order", exception.getMessage());
+        }
+    }
+
     private SampleItem sampleItem(String id) {
         SampleItem sampleItem = new SampleItem();
         sampleItem.setId(id);
@@ -365,5 +386,11 @@ public class MicroOrderRoutingServiceTest {
         setup.setMethodId(methodId);
         setup.setWorkflowType(workflowType.name());
         return setup;
+    }
+
+    private MicroCaseOrderDetailRequestForm orderDetail() {
+        MicroCaseOrderDetailRequestForm detail = new MicroCaseOrderDetailRequestForm();
+        detail.culturePurpose = "CLINICAL_DIAGNOSTIC";
+        return detail;
     }
 }

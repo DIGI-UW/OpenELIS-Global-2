@@ -12,6 +12,7 @@ const OrderDetailPanel = ({
   orderDetail,
   service = MicrobiologyService,
   onSaved,
+  isReadOnly = false,
 }) => {
   const intl = useIntl();
   const [fields, setFields] = useState({
@@ -82,12 +83,15 @@ const OrderDetailPanel = ({
           onChange={(name, value) => setField(name)(value)}
           showCultureMethod={false}
           patientOrigins={patientOrigins}
+          isReadOnly={isReadOnly}
         />
-        <div>
-          <Button onClick={save} disabled={saving}>
-            {intl.formatMessage({ id: "microbiology.orderDetail.save" })}
-          </Button>
-        </div>
+        {!isReadOnly && (
+          <div>
+            <Button onClick={save} disabled={saving}>
+              {intl.formatMessage({ id: "microbiology.orderDetail.save" })}
+            </Button>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -26,6 +26,7 @@ describe("buildLoadedOrderData", () => {
     expect(loaded.sampleOrderItems.labNo).toBe("20260806-001");
     expect(loaded.patientProperties.patientUpdateStatus).toBe("NO_ACTION");
     expect(loaded.microbiologyOrderDetail).toEqual({
+      culturePurpose: "",
       cultureMethodId: "17",
       patientOrigin: "INPATIENT",
       admissionDate: "2026-08-03",
@@ -39,6 +40,7 @@ describe("buildLoadedOrderData", () => {
     const loaded = buildLoadedOrderData({ labNumber: "20260806-002" });
 
     expect(loaded.microbiologyOrderDetail).toEqual({
+      culturePurpose: "",
       cultureMethodId: "",
       patientOrigin: "",
       admissionDate: "",

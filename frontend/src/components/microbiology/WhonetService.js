@@ -8,6 +8,9 @@ const requestSearch = (query) => {
       .sort()
       .forEach((value) => params.append(key, String(value))),
   );
+  ["includeScreening", "includeUnspecified"].forEach((key) =>
+    params.set(key, String(Boolean(query[key]))),
+  );
   ["dedup", "page", "pageSize"].forEach((key) =>
     params.set(key, String(query[key])),
   );
