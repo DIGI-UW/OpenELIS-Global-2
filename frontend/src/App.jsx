@@ -84,9 +84,6 @@ function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
 }
 
 const AnalyzersPage = lazyWithRetry(() => import("./pages/AnalyzersPage"));
-const FieldMapping = lazyWithRetry(
-  () => import("./components/analyzers/FieldMapping/FieldMapping"),
-);
 const ErrorDashboardPage = lazyWithRetry(
   () => import("./pages/ErrorDashboardPage"),
 );
@@ -1146,18 +1143,6 @@ export default function App() {
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
                       <Suspense fallback={null}>
                         <AnalyzersPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/mappings"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <FieldMapping />
                       </Suspense>
                     </RouteErrorBoundary>
                   )}

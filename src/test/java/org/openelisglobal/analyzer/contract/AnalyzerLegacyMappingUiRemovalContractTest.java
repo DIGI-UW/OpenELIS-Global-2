@@ -31,6 +31,7 @@ public class AnalyzerLegacyMappingUiRemovalContractTest {
         String messages = Files.readString(FRONTEND_ROOT.resolve("languages/en.json"));
         assertFalse(messages.contains("analyzer.action.copyMappings"));
         assertFalse(messages.contains("analyzer.action.fieldMappings"));
+        assertFalse(messages.contains("analyzer.copyMappings."));
         assertFalse(messages.contains("analyzer.fieldMapping."));
         assertFalse(messages.contains("analyzer.errorDetails.createMapping"));
         assertFalse(messages.contains("analyzer.errorDetails.recommendedActions.createMapping"));
