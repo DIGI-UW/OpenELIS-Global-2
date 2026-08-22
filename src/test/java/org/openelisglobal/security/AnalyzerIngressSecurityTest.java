@@ -1,5 +1,6 @@
 package org.openelisglobal.security;
 
+import static org.junit.Assert.assertNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -59,9 +60,11 @@ public class AnalyzerIngressSecurityTest extends SecuritySliceMockMvcTest {
 
     @Test
     public void approvedBridgeIdentityCanSubmitAstAndCultureEvents() throws Exception {
-        mockMvc.perform(post(AST_EVENTS).with(httpBasic("bridge", "bridge-pass"))).andExpect(status().isNoContent());
+        var astResult = mockMvc.perform(post(AST_EVENTS).with(httpBasic("bridge", "bridge-pass")))
+                .andExpect(status().isNoContent()).andReturn();
         mockMvc.perform(post(CULTURE_EVENTS).with(httpBasic("bridge", "bridge-pass")))
                 .andExpect(status().isNoContent());
+        assertNull("Analyzer ingress must remain stateless", astResult.getRequest().getSession(false));
     }
 
     @Test

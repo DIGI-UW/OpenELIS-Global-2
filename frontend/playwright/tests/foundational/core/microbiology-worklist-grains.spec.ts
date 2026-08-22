@@ -227,7 +227,7 @@ test.describe("M-07 microbiology worklist grains", () => {
     );
     expect(browserIngressAttempt.status()).toBe(401);
 
-    await submitQcFailedAstAnalyzerResults(page, seeded);
+    await submitQcFailedAstAnalyzerResults(seeded);
     const resultsQuery = new URLSearchParams({
       grain: "ast",
       status: "results-in",
@@ -295,7 +295,7 @@ test.describe("M-07 microbiology worklist grains", () => {
     page,
   }) => {
     const seeded = await seedAnalyzerReviewMicrobiologyCase(page);
-    const unmatched = await submitUnmatchedAstAnalyzerResults(page, seeded);
+    const unmatched = await submitUnmatchedAstAnalyzerResults(seeded);
 
     await page.goto("/Dashboard", {
       waitUntil: "domcontentloaded",

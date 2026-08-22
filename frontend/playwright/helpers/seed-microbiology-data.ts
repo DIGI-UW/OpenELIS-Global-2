@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { request as playwrightRequest } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 const API_PREFIX = "/api/OpenELIS-Global";
@@ -12,6 +13,23 @@ const analyzerIngressHeaders = () => {
     Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
   };
 };
+
+async function postAnalyzerIngress(path: string, data: object) {
+  const machineClient = await playwrightRequest.newContext({
+    baseURL: process.env.BASE_URL || "https://localhost",
+    ignoreHTTPSErrors: true,
+    extraHTTPHeaders: analyzerIngressHeaders(),
+  });
+  try {
+    const response = await machineClient.post(`${API_PREFIX}${path}`, { data });
+    return {
+      status: response.status(),
+      body: await response.text(),
+    };
+  } finally {
+    await machineClient.dispose();
+  }
+}
 
 export interface SeededMicrobiologyCase {
   accessionNumber: string;
@@ -747,87 +765,71 @@ export async function seedAnalyzerReviewMicrobiologyCase(
 }
 
 export async function submitQcFailedAstAnalyzerResults(
-  page: Page,
   seeded: SeededAnalyzerReviewMicrobiologyCase,
 ) {
   const externalEventId = `playwright-ast-result-${randomUUID()}`;
-  const response = await page.request.post(
-    `${API_PREFIX}/rest/analyzer/events/ast`,
-    {
-      headers: analyzerIngressHeaders(),
-      data: {
-        externalEventId,
-        eventType: "AST_RESULT_AVAILABLE",
-        analyzerId: seeded.analyzerInstrumentId,
-        sourceId: seeded.analyzerCardId,
-        payload: {
-          analyzerInstrumentId: seeded.analyzerInstrumentId,
-          analyzerCardId: seeded.analyzerCardId,
-          analyzerSoftwareVersion: "UAT-1.0",
-          analyzerOrganismId: seeded.organismId,
-          analyzerOrganismName: "Escherichia coli (UAT)",
-          analyzerOrganismConfidence: 99.5,
-          instrumentQcReference: "UAT-QC-CONTROL-17",
-          qcPassed: false,
-          analyzerMessageCodes: ["CONTROL_OUT_OF_RANGE"],
-          readings: [
-            {
-              antibioticId: seeded.antibioticId,
-              rawValue: 4,
-              units: "mg/L",
-              instrumentInterpretation: "SUSCEPTIBLE",
-              analyzerResultReference: `${externalEventId}-CIP`,
-            },
-          ],
+  const response = await postAnalyzerIngress("/rest/analyzer/events/ast", {
+    externalEventId,
+    eventType: "AST_RESULT_AVAILABLE",
+    analyzerId: seeded.analyzerInstrumentId,
+    sourceId: seeded.analyzerCardId,
+    payload: {
+      analyzerInstrumentId: seeded.analyzerInstrumentId,
+      analyzerCardId: seeded.analyzerCardId,
+      analyzerSoftwareVersion: "UAT-1.0",
+      analyzerOrganismId: seeded.organismId,
+      analyzerOrganismName: "Escherichia coli (UAT)",
+      analyzerOrganismConfidence: 99.5,
+      instrumentQcReference: "UAT-QC-CONTROL-17",
+      qcPassed: false,
+      analyzerMessageCodes: ["CONTROL_OUT_OF_RANGE"],
+      readings: [
+        {
+          antibioticId: seeded.antibioticId,
+          rawValue: 4,
+          units: "mg/L",
+          instrumentInterpretation: "SUSCEPTIBLE",
+          analyzerResultReference: `${externalEventId}-CIP`,
         },
-      },
+      ],
     },
-  );
-  if (response.status() !== 202) {
-    const body = await response.text().catch(() => "");
+  });
+  if (response.status !== 202) {
     throw new Error(
-      `AST analyzer event failed: HTTP ${response.status()} ${body.slice(0, 500)}`,
+      `AST analyzer event failed: HTTP ${response.status} ${response.body.slice(0, 500)}`,
     );
   }
-  return response.json();
+  return JSON.parse(response.body);
 }
 
 export async function submitUnmatchedAstAnalyzerResults(
-  page: Page,
   seeded: SeededAnalyzerReviewMicrobiologyCase,
 ) {
   const externalEventId = `playwright-ast-unmatched-${randomUUID()}`;
   const sourceId = `${seeded.analyzerCardId}-UNMATCHED`;
-  const response = await page.request.post(
-    `${API_PREFIX}/rest/analyzer/events/ast`,
-    {
-      headers: analyzerIngressHeaders(),
-      data: {
-        externalEventId,
-        eventType: "AST_RESULT_AVAILABLE",
-        analyzerId: seeded.analyzerInstrumentId,
-        sourceId,
-        payload: {
-          analyzerInstrumentId: seeded.analyzerInstrumentId,
-          analyzerCardId: sourceId,
-          analyzerSoftwareVersion: "UAT-1.0",
-          readings: [
-            {
-              antibioticId: seeded.antibioticId,
-              rawValue: 4,
-              units: "mg/L",
-              instrumentInterpretation: "SUSCEPTIBLE",
-              analyzerResultReference: `${externalEventId}-CIP`,
-            },
-          ],
+  const response = await postAnalyzerIngress("/rest/analyzer/events/ast", {
+    externalEventId,
+    eventType: "AST_RESULT_AVAILABLE",
+    analyzerId: seeded.analyzerInstrumentId,
+    sourceId,
+    payload: {
+      analyzerInstrumentId: seeded.analyzerInstrumentId,
+      analyzerCardId: sourceId,
+      analyzerSoftwareVersion: "UAT-1.0",
+      readings: [
+        {
+          antibioticId: seeded.antibioticId,
+          rawValue: 4,
+          units: "mg/L",
+          instrumentInterpretation: "SUSCEPTIBLE",
+          analyzerResultReference: `${externalEventId}-CIP`,
         },
-      },
+      ],
     },
-  );
-  if (response.status() !== 422) {
-    const body = await response.text().catch(() => "");
+  });
+  if (response.status !== 422) {
     throw new Error(
-      `Unmatched AST analyzer event returned HTTP ${response.status()} ${body.slice(0, 500)}`,
+      `Unmatched AST analyzer event returned HTTP ${response.status} ${response.body.slice(0, 500)}`,
     );
   }
   return { externalEventId, sourceId };

@@ -145,8 +145,7 @@ public class SecurityConfig {
     @Order(1)
     public SecurityFilterChain analyzerIngressSecurityFilterChain(HttpSecurity http) throws Exception {
         configureAnalyzerIngress(http);
-        http.addFilterAt(SpringContext.getBean(BasicAuthFilter.class), BasicAuthenticationFilter.class)
-                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+        http.headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
         return http.build();
     }
 
