@@ -6,6 +6,8 @@ import java.util.List;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingView;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
@@ -32,13 +34,16 @@ public class AnalyzerTypeRestController extends BaseRestController {
     private final AnalyzerTypeCatalogService catalogService;
     private final BridgeProfileManagementService managementService;
     private final AnalyzerMappingCatalogService mappingCatalogService;
+    private final AnalyzerTypeMappingService mappingService;
 
     @Autowired
     public AnalyzerTypeRestController(AnalyzerTypeCatalogService catalogService,
-            BridgeProfileManagementService managementService, AnalyzerMappingCatalogService mappingCatalogService) {
+            BridgeProfileManagementService managementService, AnalyzerMappingCatalogService mappingCatalogService,
+            AnalyzerTypeMappingService mappingService) {
         this.catalogService = catalogService;
         this.managementService = managementService;
         this.mappingCatalogService = mappingCatalogService;
+        this.mappingService = mappingService;
     }
 
     @GetMapping
@@ -50,6 +55,12 @@ public class AnalyzerTypeRestController extends BaseRestController {
     public ResponseEntity<AnalyzerTypeCatalogView.TypeSummary> getAnalyzerType(@PathVariable String profileId,
             @RequestParam int revision) {
         return ResponseEntity.ok(catalogService.getType(profileId, revision));
+    }
+
+    @GetMapping("/{profileId}/mapping")
+    public ResponseEntity<AnalyzerTypeMappingView> getMapping(@PathVariable String profileId,
+            @RequestParam int revision) {
+        return ResponseEntity.ok(mappingService.getMapping(profileId, revision));
     }
 
     @GetMapping("/mapping-catalog/tests")
