@@ -24,6 +24,7 @@ import { ArrowLeft, Copy, Save } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Link, useLocation, useParams } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { safeInternalPath } from "../../utils/UrlUtils";
 import {
   confirmAnalyzerTypeMapping,
   getAnalyzerMappingResultOptions,
@@ -33,9 +34,6 @@ import {
   saveAnalyzerTypeMapping,
 } from "../../../services/analyzerService";
 import "./AnalyzerTypeMappingEditor.scss";
-
-const safeInternalPath = (value, fallback) =>
-  value && value.startsWith("/") && !value.startsWith("//") ? value : fallback;
 
 const hasApiError = (response) =>
   !response || Boolean(response.error) || Number(response.status || 0) >= 400;

@@ -13,6 +13,7 @@ import {
 import { ArrowLeft } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { safeInternalPath } from "../../utils/UrlUtils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
@@ -31,9 +32,6 @@ import AlertsSection from "./sections/AlertsSection";
 import ReflexCalcSection from "./sections/ReflexCalcSection";
 import LocalizationSection from "./sections/LocalizationSection";
 import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
-
-const safeInternalPath = (value) =>
-  value && value.startsWith("/") && !value.startsWith("//") ? value : null;
 
 /**
  * OGC-949 M2 / OGC-927 — unified Test Catalog editor shell.

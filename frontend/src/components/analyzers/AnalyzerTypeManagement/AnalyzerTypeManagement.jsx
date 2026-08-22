@@ -27,6 +27,7 @@ import { Add, Copy } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { safeInternalPath } from "../../utils/UrlUtils";
 import { getAnalyzerTypeCatalog } from "../../../services/analyzerService";
 import AnalyzerTypeLifecycleModals from "./AnalyzerTypeLifecycleModals";
 import "./AnalyzerTypeManagement.scss";
@@ -120,10 +121,16 @@ const AnalyzerTypeManagement = () => {
 
   const closeAction = useCallback(() => {
     const params = new URLSearchParams(location.search);
+    const returnTo = safeInternalPath(params.get("returnTo"));
+    if (returnTo) {
+      history.push(returnTo);
+      return;
+    }
     params.delete("action");
     params.delete("profile");
     params.delete("draft");
     params.delete("revision");
+    params.delete("returnTo");
     history.push({
       pathname: location.pathname,
       search: params.toString() ? `?${params.toString()}` : "",
