@@ -108,8 +108,11 @@ describe("ControlRecognitionDraftEditor", () => {
                     description:
                       condition.kind === "SPECIMEN_ID_STARTS_WITH"
                         ? `Specimen ID starts with ${condition.value}`
-                        : `Order field 12 equals ${condition.value}`,
-                    editable: true,
+                        : condition.kind === "CONFIGURED_SPECIMEN_ID_PATTERN"
+                          ? "Specimen ID matches a configured pattern"
+                          : `Order field 12 equals ${condition.value}`,
+                    editable:
+                      condition.kind !== "CONFIGURED_SPECIMEN_ID_PATTERN",
                   })),
                 },
               },

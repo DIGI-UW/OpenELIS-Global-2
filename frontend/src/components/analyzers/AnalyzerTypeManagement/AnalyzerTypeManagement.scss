@@ -145,6 +145,55 @@
   min-height: 10rem;
 }
 
+.analyzer-type-recognition {
+  display: grid;
+  gap: spacing.$spacing-05;
+
+  h3 {
+    @include type.type-style("heading-compact-02");
+    margin: 0 0 spacing.$spacing-02;
+  }
+
+  p {
+    @include type.type-style("body-compact-01");
+    color: var(--cds-text-secondary);
+    margin: 0;
+  }
+}
+
+.analyzer-type-recognition__loading {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 8rem;
+}
+
+.analyzer-type-recognition__conditions,
+.analyzer-type-recognition__none {
+  display: grid;
+  gap: spacing.$spacing-04;
+}
+
+.analyzer-type-recognition__condition {
+  align-items: end;
+  display: grid;
+  gap: spacing.$spacing-03;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 3rem;
+}
+
+.analyzer-type-recognition__condition-content {
+  display: grid;
+  gap: spacing.$spacing-03;
+}
+
+.analyzer-type-recognition__add {
+  align-items: end;
+  display: grid;
+  gap: spacing.$spacing-03;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 @media (max-width: 74rem) {
   .analyzer-type-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -184,7 +233,8 @@
   }
 
   .analyzer-type-modal__two-column,
-  .analyzer-type-modal__three-column {
+  .analyzer-type-modal__three-column,
+  .analyzer-type-recognition__add {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -191,6 +191,49 @@ export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
   validationIssues?: string[];
 }
 
+export interface AnalyzerControlRecognitionCondition {
+  key?: string | null;
+  kind: string;
+  sourceKey?: string | null;
+  sourceLabel?: string | null;
+  description?: string | null;
+  value?: string | null;
+  editable?: boolean;
+  controlLevel?: string | null;
+  controlType?: string | null;
+}
+
+export interface AnalyzerControlRecognitionDraft extends AnalyzerApiError {
+  draftId?: string;
+  kind?: "CREATE" | "DUPLICATE" | "UPDATE" | string;
+  baseProfileId?: string | null;
+  baseRevision?: number | null;
+  displayName?: string;
+  updatedBy?: string;
+  updatedAt?: string;
+  validationIssues?: string[];
+  recognition?: {
+    mode?: "RULES" | "NONE" | string | null;
+    affirmedNoControlResults: boolean;
+    description?: string;
+    conditions: AnalyzerControlRecognitionCondition[];
+    availableSources: Array<{ key: string; label: string }>;
+  };
+}
+
+export interface AnalyzerControlRecognitionUpdate {
+  mode: "RULES" | "NONE" | string;
+  affirmedNoControlResults: boolean;
+  conditions: Array<{
+    key?: string | null;
+    kind: string;
+    sourceKey?: string | null;
+    value?: string | null;
+    controlLevel?: string | null;
+    controlType?: string | null;
+  }>;
+}
+
 /**
  * Get all analyzers with optional filters
  * @param {Object} filters - Optional filters { status, search }
@@ -700,7 +743,7 @@ export const getAnalyzerMappingResultOptions = (
   );
 };
 
-const mutateAnalyzerTypeMapping = <T>(
+const mutateAnalyzerType = <T>(
   endpoint: string,
   method: "POST" | "PUT",
   body: JsonObject,
@@ -743,7 +786,7 @@ export const saveAnalyzerTypeMapping = (
   update: AnalyzerTypeMappingUpdate,
   callback: ApiCallback<AnalyzerTypeMappingView & AnalyzerApiError>,
 ) => {
-  mutateAnalyzerTypeMapping(
+  mutateAnalyzerType(
     `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping?revision=${revision}`,
     "PUT",
     update as unknown as JsonObject,
@@ -759,7 +802,7 @@ export const confirmAnalyzerTypeMapping = (
     AnalyzerTypeMappingView["confirmation"] & AnalyzerApiError
   >,
 ) => {
-  mutateAnalyzerTypeMapping(
+  mutateAnalyzerType(
     `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping/confirm?revision=${revision}`,
     "POST",
     request as unknown as JsonObject,
@@ -784,6 +827,29 @@ export const getAnalyzerTypeDraft = (
 ) => {
   getFromOpenElisServer(
     `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}`,
+    callback,
+  );
+};
+
+export const getAnalyzerTypeControlRecognition = (
+  draftId: string,
+  callback: DataCallback<AnalyzerControlRecognitionDraft | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}/control-recognition`,
+    callback,
+  );
+};
+
+export const updateAnalyzerTypeControlRecognition = (
+  draftId: string,
+  update: AnalyzerControlRecognitionUpdate,
+  callback: ApiCallback<AnalyzerControlRecognitionDraft>,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}/control-recognition`,
+    "PUT",
+    update as unknown as JsonObject,
     callback,
   );
 };
