@@ -63,8 +63,13 @@ const catalog = {
       parentProfileId: null,
       parentRevision: null,
       siteBindingId: "11",
-      testMappings: { mapped: 4, total: 4, state: "COMPLETE" },
-      resultMappings: { mapped: 5, total: 6, state: "INCOMPLETE" },
+      testMappings: { mapped: 3, excluded: 1, total: 4, state: "COMPLETE" },
+      resultMappings: {
+        mapped: 5,
+        excluded: 0,
+        total: 6,
+        state: "INCOMPLETE",
+      },
       usedBy: 2,
       affectedAnalyzers: [
         { id: "501", name: "GeneXpert - Main Lab", active: true },
@@ -88,8 +93,13 @@ const catalog = {
       parentProfileId: "shipped.mindray",
       parentRevision: 3,
       siteBindingId: "12",
-      testMappings: { mapped: 13, total: 13, state: "COMPLETE" },
-      resultMappings: { mapped: 0, total: 0, state: "NOT_APPLICABLE" },
+      testMappings: { mapped: 13, excluded: 0, total: 13, state: "COMPLETE" },
+      resultMappings: {
+        mapped: 0,
+        excluded: 0,
+        total: 0,
+        state: "NOT_APPLICABLE",
+      },
       usedBy: 2,
       affectedAnalyzers: [
         { id: "601", name: "Mindray - Main Lab", active: true },
@@ -113,8 +123,8 @@ const catalog = {
       parentProfileId: null,
       parentRevision: null,
       siteBindingId: null,
-      testMappings: { mapped: 0, total: 1, state: "INCOMPLETE" },
-      resultMappings: { mapped: 0, total: 3, state: "INCOMPLETE" },
+      testMappings: { mapped: 0, excluded: 0, total: 1, state: "INCOMPLETE" },
+      resultMappings: { mapped: 0, excluded: 0, total: 3, state: "INCOMPLETE" },
       usedBy: 0,
       readiness: "NEEDS_ATTENTION",
       publicationAction: "DEACTIVATED",
@@ -342,6 +352,9 @@ describe("AnalyzerTypeManagement", () => {
     expect(screen.getByRole("columnheader", { name: "Used by" })).toBeVisible();
     expect(screen.getByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
     expect(screen.getByText("Mindray BC-5380")).toBeVisible();
+    expect(
+      screen.getByText("3 / 4 · 75% · 1 marked Do not receive"),
+    ).toBeVisible();
     expect(screen.queryByText("Tecan Infinite F50")).not.toBeInTheDocument();
 
     expect(screen.queryByText("Plugin class")).not.toBeInTheDocument();

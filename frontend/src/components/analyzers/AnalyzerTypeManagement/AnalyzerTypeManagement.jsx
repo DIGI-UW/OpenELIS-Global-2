@@ -56,10 +56,7 @@ const getMappingState = (type) => {
   const summaries = [type.testMappings, type.resultMappings].filter(
     (summary) => summary && summary.state !== "NOT_APPLICABLE",
   );
-  return summaries.every(
-    (summary) =>
-      summary.state === "COMPLETE" && summary.mapped === summary.total,
-  )
+  return summaries.every((summary) => summary.state === "COMPLETE")
     ? "COMPLETE"
     : "INCOMPLETE";
 };
@@ -286,12 +283,21 @@ const AnalyzerTypeManagement = () => {
     if (!summary || summary.state === "NOT_APPLICABLE") {
       return intl.formatMessage({ id: "analyzerType.mapping.notApplicable" });
     }
-    if (summary.state === "NOT_STARTED") {
-      return intl.formatMessage({ id: "analyzerType.mapping.notStarted" });
+    const percent = Math.round((summary.mapped / summary.total) * 100);
+    if (summary.excluded > 0) {
+      return intl.formatMessage(
+        { id: "analyzerType.mapping.countWithExcluded" },
+        {
+          mapped: summary.mapped,
+          total: summary.total,
+          percent,
+          excluded: summary.excluded,
+        },
+      );
     }
     return intl.formatMessage(
       { id: "analyzerType.mapping.count" },
-      { mapped: summary.mapped, total: summary.total },
+      { mapped: summary.mapped, total: summary.total, percent },
     );
   };
 

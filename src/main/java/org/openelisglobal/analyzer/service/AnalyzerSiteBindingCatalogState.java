@@ -35,13 +35,24 @@ final class AnalyzerSiteBindingCatalogState {
 
         Map<String, AnalyzerSiteBindingTest> testsBySource = binding.tests().stream()
                 .collect(Collectors.toMap(row -> row.getId().getSourceRowKey(), Function.identity()));
-        Set<String> currentTests = binding.tests().stream().filter(this::isCurrentTest)
+        Set<String> currentBoundTests = binding.tests().stream()
+                .filter(row -> row.getMappingState() == AnalyzerSiteBindingMappingState.BOUND)
+                .filter(this::isCurrentTest).map(row -> row.getId().getSourceRowKey())
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<String> currentExcludedTests = binding.tests().stream()
+                .filter(row -> row.getMappingState() == AnalyzerSiteBindingMappingState.EXCLUDED)
                 .map(row -> row.getId().getSourceRowKey()).collect(Collectors.toCollection(HashSet::new));
-        Set<ResultSourceKey> currentResults = binding.results().stream()
+        Set<ResultSourceKey> currentBoundResults = binding.results().stream()
+                .filter(row -> row.getMappingState() == AnalyzerSiteBindingMappingState.BOUND)
                 .filter(row -> isCurrentResult(row, testsBySource.get(row.getId().getSourceRowKey())))
                 .map(row -> new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue()))
                 .collect(Collectors.toCollection(HashSet::new));
-        return new Validation(currentTests, currentResults, binding.tests().size(), binding.results().size());
+        Set<ResultSourceKey> currentExcludedResults = binding.results().stream()
+                .filter(row -> row.getMappingState() == AnalyzerSiteBindingMappingState.EXCLUDED)
+                .map(row -> new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue()))
+                .collect(Collectors.toCollection(HashSet::new));
+        return new Validation(currentBoundTests, currentExcludedTests, currentBoundResults, currentExcludedResults,
+                binding.tests().size(), binding.results().size());
     }
 
     private boolean isCurrentTest(AnalyzerSiteBindingTest row) {
@@ -70,28 +81,49 @@ final class AnalyzerSiteBindingCatalogState {
     record ResultSourceKey(String sourceRowKey, String rawValue) {
     }
 
-    record Validation(Set<String> currentTestRows, Set<ResultSourceKey> currentResultRows, int testRows,
+    record Validation(Set<String> currentBoundTestRows, Set<String> currentExcludedTestRows,
+            Set<ResultSourceKey> currentBoundResultRows, Set<ResultSourceKey> currentExcludedResultRows, int testRows,
             int resultRows) {
 
         Validation {
-            currentTestRows = currentTestRows == null ? Set.of() : Set.copyOf(currentTestRows);
-            currentResultRows = currentResultRows == null ? Set.of() : Set.copyOf(currentResultRows);
+            currentBoundTestRows = currentBoundTestRows == null ? Set.of() : Set.copyOf(currentBoundTestRows);
+            currentExcludedTestRows = currentExcludedTestRows == null ? Set.of() : Set.copyOf(currentExcludedTestRows);
+            currentBoundResultRows = currentBoundResultRows == null ? Set.of() : Set.copyOf(currentBoundResultRows);
+            currentExcludedResultRows = currentExcludedResultRows == null ? Set.of()
+                    : Set.copyOf(currentExcludedResultRows);
         }
 
         static Validation empty() {
-            return new Validation(Set.of(), Set.of(), 0, 0);
+            return new Validation(Set.of(), Set.of(), Set.of(), Set.of(), 0, 0);
         }
 
         boolean allRowsCurrent() {
-            return currentTestRows.size() == testRows && currentResultRows.size() == resultRows;
+            return currentBoundTestRows.size() + currentExcludedTestRows.size() == testRows
+                    && currentBoundResultRows.size() + currentExcludedResultRows.size() == resultRows;
         }
 
         boolean isCurrentTest(String sourceRowKey) {
-            return currentTestRows.contains(sourceRowKey);
+            return isCurrentBoundTest(sourceRowKey) || isCurrentExcludedTest(sourceRowKey);
+        }
+
+        boolean isCurrentBoundTest(String sourceRowKey) {
+            return currentBoundTestRows.contains(sourceRowKey);
+        }
+
+        boolean isCurrentExcludedTest(String sourceRowKey) {
+            return currentExcludedTestRows.contains(sourceRowKey);
         }
 
         boolean isCurrentResult(String sourceRowKey, String rawValue) {
-            return currentResultRows.contains(new ResultSourceKey(sourceRowKey, rawValue));
+            return isCurrentBoundResult(sourceRowKey, rawValue) || isCurrentExcludedResult(sourceRowKey, rawValue);
+        }
+
+        boolean isCurrentBoundResult(String sourceRowKey, String rawValue) {
+            return currentBoundResultRows.contains(new ResultSourceKey(sourceRowKey, rawValue));
+        }
+
+        boolean isCurrentExcludedResult(String sourceRowKey, String rawValue) {
+            return currentExcludedResultRows.contains(new ResultSourceKey(sourceRowKey, rawValue));
         }
     }
 }

@@ -12,7 +12,7 @@ public record AnalyzerTypeCatalogView(String schemaVersion, String catalogFinger
     public record CatalogSummary(int total, int inUse, int needsAttention, int deactivated) {
     }
 
-    public record MappingSummary(int mapped, int total, String state) {
+    public record MappingSummary(int mapped, int excluded, int total, String state) {
     }
 
     public record InstanceDefaults(String protocolVersion, String communicationMode, Integer port) {

@@ -133,27 +133,35 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
 
     private static AnalyzerTypeCatalogView.MappingSummary testMappingSummary(BridgeAnalyzerProfile profile,
             AnalyzerSiteBindingCatalogState.Validation catalogValidation) {
-        long resolved = profile.testDefinitions().stream().map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
-                .filter(catalogValidation::isCurrentTest).count();
-        return mappingSummary(profile.testDefinitions().size(), resolved);
+        long mapped = profile.testDefinitions().stream().map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
+                .filter(catalogValidation::isCurrentBoundTest).count();
+        long excluded = profile.testDefinitions().stream().map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
+                .filter(catalogValidation::isCurrentExcludedTest).count();
+        return mappingSummary(profile.testDefinitions().size(), mapped, excluded);
     }
 
     private static AnalyzerTypeCatalogView.MappingSummary resultMappingSummary(BridgeAnalyzerProfile profile,
             AnalyzerSiteBindingCatalogState.Validation catalogValidation) {
         int total = profile.testDefinitions().stream().mapToInt(test -> test.resultValues().size()).sum();
-        long resolved = profile.testDefinitions().stream()
+        long mapped = profile.testDefinitions().stream()
                 .flatMap(test -> test.resultValues().stream()
-                        .map(value -> catalogValidation.isCurrentResult(test.analyzerCode(), value)))
+                        .map(value -> catalogValidation.isCurrentBoundResult(test.analyzerCode(), value)))
                 .filter(Boolean::booleanValue).count();
-        return mappingSummary(total, resolved);
+        long excluded = profile.testDefinitions().stream()
+                .flatMap(test -> test.resultValues().stream()
+                        .map(value -> catalogValidation.isCurrentExcludedResult(test.analyzerCode(), value)))
+                .filter(Boolean::booleanValue).count();
+        return mappingSummary(total, mapped, excluded);
     }
 
-    private static AnalyzerTypeCatalogView.MappingSummary mappingSummary(int total, long resolved) {
+    private static AnalyzerTypeCatalogView.MappingSummary mappingSummary(int total, long mapped, long excluded) {
         if (total == 0) {
-            return new AnalyzerTypeCatalogView.MappingSummary(0, 0, "NOT_APPLICABLE");
+            return new AnalyzerTypeCatalogView.MappingSummary(0, 0, 0, "NOT_APPLICABLE");
         }
+        long resolved = mapped + excluded;
         String state = resolved == 0 ? "NOT_STARTED" : resolved == total ? "COMPLETE" : "INCOMPLETE";
-        return new AnalyzerTypeCatalogView.MappingSummary(Math.toIntExact(resolved), total, state);
+        return new AnalyzerTypeCatalogView.MappingSummary(Math.toIntExact(mapped), Math.toIntExact(excluded), total,
+                state);
     }
 
     private static String readiness(String status, AnalyzerTypeCatalogView.MappingSummary testMappings,

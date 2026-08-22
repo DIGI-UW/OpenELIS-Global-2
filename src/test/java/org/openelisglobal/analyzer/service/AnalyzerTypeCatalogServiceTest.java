@@ -95,10 +95,12 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("BOTH", serializedActive.at("/instanceDefaults/communicationMode").asText());
         assertEquals(9100, serializedActive.at("/instanceDefaults/port").asInt());
         assertEquals(2, active.testMappings().total());
-        assertEquals(2, active.testMappings().mapped());
+        assertEquals(1, active.testMappings().mapped());
+        assertEquals(1, active.testMappings().excluded());
         assertEquals("COMPLETE", active.testMappings().state());
         assertEquals(2, active.resultMappings().total());
-        assertEquals(2, active.resultMappings().mapped());
+        assertEquals(1, active.resultMappings().mapped());
+        assertEquals(1, active.resultMappings().excluded());
         assertEquals("COMPLETE", active.resultMappings().state());
         assertEquals("51", active.siteBindingId());
         assertEquals(3L, active.usedBy());
@@ -141,9 +143,11 @@ public class AnalyzerTypeCatalogServiceTest {
         AnalyzerTypeCatalogView.TypeSummary active = result.types().get(0);
         assertEquals(1, result.summary().needsAttention());
         assertEquals(1, active.testMappings().mapped());
+        assertEquals(0, active.testMappings().excluded());
         assertEquals(2, active.testMappings().total());
         assertEquals("INCOMPLETE", active.testMappings().state());
         assertEquals(1, active.resultMappings().mapped());
+        assertEquals(0, active.resultMappings().excluded());
         assertEquals(2, active.resultMappings().total());
         assertEquals("INCOMPLETE", active.resultMappings().state());
         assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
