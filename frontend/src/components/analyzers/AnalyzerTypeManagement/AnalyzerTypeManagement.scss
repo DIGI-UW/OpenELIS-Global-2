@@ -195,11 +195,11 @@
 }
 
 .analyzer-type-affected {
-  margin-block-start: $spacing-05;
+  margin-block-start: spacing.$spacing-05;
 
   h3 {
-    @include type-style("heading-compact-01");
-    margin-block-end: $spacing-03;
+    @include type.type-style("heading-compact-01");
+    margin-block-end: spacing.$spacing-03;
   }
 }
 
@@ -207,7 +207,7 @@
   align-items: center;
   display: inline-flex;
   flex-wrap: wrap;
-  gap: $spacing-03;
+  gap: spacing.$spacing-03;
 }
 
 @media (max-width: 74rem) {
