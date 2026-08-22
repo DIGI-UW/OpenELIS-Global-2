@@ -87,6 +87,25 @@ public class AnalyzerLegacyMappingUiRemovalContractTest {
     }
 
     @Test
+    public void legacyCustomFieldTypeAdminSurfaceIsAbsent() throws Exception {
+        assertFalse(Files.exists(FRONTEND_ROOT.resolve("pages/CustomFieldTypeManagementPage.jsx")));
+        assertFalse(Files.exists(FRONTEND_ROOT.resolve("components/analyzers/admin/CustomFieldTypeManagement.jsx")));
+        assertFalse(
+                Files.exists(FRONTEND_ROOT.resolve("components/analyzers/CustomFieldTypes/ValidationRuleEditor.jsx")));
+        assertDoesNotContain(FRONTEND_ROOT.resolve("App.jsx"), "CustomFieldTypeManagementPage");
+        assertDoesNotContain(FRONTEND_ROOT.resolve("App.jsx"), "/analyzers/custom-field-types");
+        assertDoesNotContain(FRONTEND_ROOT.resolve("services/analyzerService.ts"), "custom-field-types");
+        assertDoesNotContain(FRONTEND_ROOT.resolve("languages/en.json"), "\"customFieldType.");
+        assertDoesNotContain(FRONTEND_ROOT.resolve("languages/en.json"), "\"validationRule.");
+
+        for (String path : List.of("controller/CustomFieldTypeRestController.java", "form/CustomFieldTypeForm.java",
+                "form/ValidationRuleConfigurationForm.java")) {
+            assertFalse("legacy custom-field mapping writer remains: " + path,
+                    Files.exists(BACKEND_ROOT.resolve(path)));
+        }
+    }
+
+    @Test
     public void legacyPerAnalyzerMappingWritersAreAbsent() throws Exception {
         Path service = BACKEND_ROOT.resolve("service/AnalyzerService.java");
         Path implementation = BACKEND_ROOT.resolve("service/AnalyzerServiceImpl.java");
