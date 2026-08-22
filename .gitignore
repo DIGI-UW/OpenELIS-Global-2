@@ -94,6 +94,8 @@ projects/*/volume/
 # but the config-import test-results catalog is source, not a Playwright artifact
 !src/main/resources/configuration/test-results/
 !src/main/resources/configuration/test-results/**
+!projects/analyzer-harness/config-templates/test-results/
+!projects/analyzer-harness/config-templates/test-results/harness-test-results.csv
 # Note: frontend/playwright/ test sources are tracked (not ignored)
 *.pyc
 __pycache__/
