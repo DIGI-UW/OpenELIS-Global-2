@@ -485,7 +485,7 @@
   "analyzerType.mapping.notStarted": "Not mapped",
   "analyzerType.mappingEditor.alias": "Alias: {alias}",
   "analyzerType.mappingEditor.confirm": "Confirm mappings and control recognition",
-  "analyzerType.mappingEditor.confirmation.by": "Confirmed by {actor}",
+  "analyzerType.mappingEditor.confirmation.by": "Confirmed by {actor} on {date}",
   "analyzerType.mappingEditor.confirmation.current": "Current confirmation",
   "analyzerType.mappingEditor.confirmation.stale": "Confirmation is stale",
   "analyzerType.mappingEditor.confirmation.summary.current": "Current",

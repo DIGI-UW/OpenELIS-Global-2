@@ -546,7 +546,9 @@ describe("AnalyzerTypeMappingEditor", () => {
         expect.any(Function),
       ),
     );
-    expect(screen.getByText("Confirmed by Lab Admin")).toBeVisible();
+    expect(
+      screen.getByText(/Confirmed by Lab Admin on Aug 22, 2026/),
+    ).toBeVisible();
     expect(screen.getByText("Current confirmation")).toBeVisible();
   });
 });
