@@ -211,6 +211,11 @@ describe("AnalyzerTypeMappingEditor", () => {
           revision: mapping.profileRevision,
           displayName: mapping.displayName,
           usedBy: 3,
+          affectedAnalyzers: [
+            { id: "501", name: "GeneXpert - Main Lab", active: true },
+            { id: "502", name: "GeneXpert - TB Bench", active: true },
+            { id: "503", name: "GeneXpert - Reference Lab", active: false },
+          ],
         }),
     );
     getAnalyzerMappingTests.mockImplementation((callback) =>
@@ -255,11 +260,49 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(screen.getAllByText("Shared normalized identity")).toHaveLength(2);
     expect(screen.getByText("Alias: RAW A")).toBeVisible();
     expect(screen.getByText("Specimen ID starts with CPOS")).toBeVisible();
+    expect(screen.getByText("GeneXpert - Main Lab")).toBeVisible();
+    expect(screen.getByText("GeneXpert - TB Bench")).toBeVisible();
+    expect(screen.getByText("GeneXpert - Reference Lab")).toBeVisible();
     expect(screen.queryByText(/regex/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/operational QC/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(
       "revision=2&returnTo=%2Fanalyzers%2Ftypes%3Fmapping%3DINCOMPLETE",
     );
+  });
+
+  it("repoints one row by LOINC without blocking independent unresolved rows", async () => {
+    renderEditor();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Cepheid GeneXpert MTB/RIF mappings",
+    });
+
+    const rawC = screen
+      .getAllByTestId("analyzer-type-mapping-row")
+      .find((row) => within(row).queryByText("RAW-C"));
+    const picker = within(rawC).getByRole("combobox", {
+      name: "OpenELIS test for RAW-C",
+    });
+    await userEvent.click(picker);
+    await userEvent.type(picker, "94558-4");
+    await userEvent.click(
+      await screen.findByRole("option", {
+        name: "Unconfigured qualitative test · UNCONFIGURED · 94558-4",
+      }),
+    );
+
+    expect(
+      within(rawC).getByRole("combobox", {
+        name: "OpenELIS test for RAW-C",
+      }),
+    ).toHaveValue("Unconfigured qualitative test · UNCONFIGURED · 94558-4");
+    const rawB = screen
+      .getAllByTestId("analyzer-type-mapping-row")
+      .find((row) => within(row).queryByText("RAW-B"));
+    expect(within(rawB).getByText("Needs mapping")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Update shared mappings" }),
+    ).toBeEnabled();
   });
 
   it("saves independent catalog-bound decisions, reloads them, and confirms exact evidence", async () => {

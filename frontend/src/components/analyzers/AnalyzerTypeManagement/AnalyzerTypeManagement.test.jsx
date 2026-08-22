@@ -66,6 +66,10 @@ const catalog = {
       testMappings: { mapped: 4, total: 4, state: "COMPLETE" },
       resultMappings: { mapped: 5, total: 6, state: "INCOMPLETE" },
       usedBy: 2,
+      affectedAnalyzers: [
+        { id: "501", name: "GeneXpert - Main Lab", active: true },
+        { id: "502", name: "GeneXpert - TB Bench", active: true },
+      ],
       readiness: "NEEDS_ATTENTION",
       publicationAction: "SHIPPED",
       publicationActor: "system",
@@ -86,7 +90,11 @@ const catalog = {
       siteBindingId: "12",
       testMappings: { mapped: 13, total: 13, state: "COMPLETE" },
       resultMappings: { mapped: 0, total: 0, state: "NOT_APPLICABLE" },
-      usedBy: 0,
+      usedBy: 2,
+      affectedAnalyzers: [
+        { id: "601", name: "Mindray - Main Lab", active: true },
+        { id: "602", name: "Mindray - Night Bench", active: true },
+      ],
       readiness: "READY",
       publicationAction: "DUPLICATED",
       publicationActor: "17",
@@ -714,7 +722,7 @@ describe("AnalyzerTypeManagement", () => {
     const dialog = screen.getByRole("dialog", {
       name: "Update Mindray BC-5380",
     });
-    expect(within(dialog).getByText(/0 analyzers/)).toBeVisible();
+    expect(within(dialog).getByText(/2 analyzers/)).toBeVisible();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Start update" }),
     );
@@ -728,6 +736,29 @@ describe("AnalyzerTypeManagement", () => {
       expect(window.location.search).toContain("draft=draft-update"),
     );
     expect(screen.getByText("Profile update draft created")).toBeVisible();
+  });
+
+  it("names every affected analyzer before starting a shared-profile update", async () => {
+    renderPage();
+    await screen.findByText("Mindray BC-5380");
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Actions for Mindray BC-5380",
+      }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Update shared" }),
+    );
+
+    const dialog = screen.getByRole("dialog", {
+      name: "Update Mindray BC-5380",
+    });
+    expect(within(dialog).getByText("Mindray - Main Lab")).toBeVisible();
+    expect(within(dialog).getByText("Mindray - Night Bench")).toBeVisible();
+    expect(
+      within(dialog).getByText(/remain pinned to their current revisions/),
+    ).toBeVisible();
   });
 
   it("restores the exact shared-profile update draft from a bookmarked URL", async () => {
