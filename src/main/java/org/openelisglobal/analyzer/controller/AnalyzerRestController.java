@@ -27,9 +27,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
-import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -82,9 +80,6 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerErrorService analyzerErrorService;
-
-    @Autowired
-    private AnalyzerTestMappingService analyzerTestMappingService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -608,19 +603,6 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("delimiter", analyzer.getDelimiter());
         map.put("hasHeader", analyzer.getHasHeader());
         map.put("skipRows", analyzer.getSkipRows());
-
-        // Expose the analyzer's configured test code vocabulary so the bridge can
-        // populate the /admin/upload UI Test dropdown and feed the file-level
-        // self-declaration scanner's whitelist. Source: AnalyzerTestMapping rows
-        // linked to this analyzer (populated at analyzer-create time from the
-        // profile's default_test_mappings). This is NOT a default — just the
-        // allowed set. Test identity at ingestion time comes from the file's
-        // own content OR the tech's upload-time declaration, never from
-        // persistent config on the analyzer instance. See plan
-        // mellow-honking-cascade §2.WIRE.
-        List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(analyzer.getId()).stream()
-                .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
-        map.put("testMappings", testMappings);
 
         // Derive plugin type info from analyzer_type FK
         boolean isGeneric = analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin();

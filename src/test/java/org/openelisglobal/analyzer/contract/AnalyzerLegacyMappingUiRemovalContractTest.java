@@ -12,7 +12,13 @@ public class AnalyzerLegacyMappingUiRemovalContractTest {
 
     private static final Path FRONTEND_ROOT = Path.of("frontend", "src");
     private static final Path PLAYWRIGHT_ROOT = Path.of("frontend", "playwright");
+    private static final Path WEBAPP_ROOT = Path.of("src", "main", "webapp");
+    private static final Path RESOURCES_ROOT = Path.of("src", "main", "resources");
     private static final Path BACKEND_ROOT = Path.of("src", "main", "java", "org", "openelisglobal", "analyzer");
+    private static final Path ANALYZER_IMPORT_ROOT = Path.of("src", "main", "java", "org", "openelisglobal",
+            "analyzerimport");
+    private static final Path COMMON_ROOT = Path.of("src", "main", "java", "org", "openelisglobal", "common");
+    private static final Path MENU_ROOT = Path.of("src", "main", "java", "org", "openelisglobal", "menu");
 
     @Test
     public void perAnalyzerMappingEditorAndQueueAreAbsent() throws Exception {
@@ -55,6 +61,48 @@ public class AnalyzerLegacyMappingUiRemovalContractTest {
             assertFalse("superseded per-analyzer mapping helper remains: " + path,
                     Files.exists(BACKEND_ROOT.resolve(path)));
         }
+    }
+
+    @Test
+    public void legacyAnalyzerTestNameAdminSurfaceIsAbsent() throws Exception {
+        assertFalse(Files.exists(FRONTEND_ROOT.resolve("components/admin/analyzerTestName/AnalyzerTestName.jsx")));
+        assertDoesNotContain(FRONTEND_ROOT.resolve("components/admin/Admin.jsx"), "AnalyzerTestName");
+        assertDoesNotContain(FRONTEND_ROOT.resolve("components/admin/AdminSideNav.jsx"), "AnalyzerTestName");
+        assertFalse(Files.exists(WEBAPP_ROOT.resolve("pages/analyzertestname/analyzerTestName.jsp")));
+        assertFalse(Files.exists(WEBAPP_ROOT.resolve("pages/analyzertestname/analyzerTestNameMenu.jsp")));
+        assertDoesNotContain(RESOURCES_ROOT.resolve("tiles/tiles-defs.xml"), "analyzerTestNameDefinition");
+        assertDoesNotContain(RESOURCES_ROOT.resolve("tiles/tiles-defs.xml"), "analyzerTestNameMenuDefinition");
+        assertDoesNotContain(MENU_ROOT.resolve("service/AdminMenuItemServiceImpl.java"), "/AnalyzerTestNameMenu");
+        assertDoesNotContain(COMMON_ROOT.resolve("formfields/AdminFormFields.java"), "AnalyzerTestNameMenu");
+        assertDoesNotContain(COMMON_ROOT.resolve("formfields/DefaultAdminFormFields.java"), "AnalyzerTestNameMenu");
+
+        for (String path : List.of("controller/AnalyzerTestNameController.java",
+                "controller/AnalyzerTestNameMenuController.java", "controller/rest/AnalyzerTestNameRestController.java",
+                "controller/rest/AnalyzerTestNameMenuRestController.java", "form/AnalyzerTestNameForm.java",
+                "form/AnalyzerTestNameMenuForm.java", "validator/AnalyzerTestMappingValidator.java",
+                "action/beans/NamedAnalyzerTestMapping.java")) {
+            assertFalse("legacy Analyzer Test Names admin helper remains: " + path,
+                    Files.exists(ANALYZER_IMPORT_ROOT.resolve(path)));
+        }
+    }
+
+    @Test
+    public void legacyPerAnalyzerMappingWritersAreAbsent() throws Exception {
+        Path service = BACKEND_ROOT.resolve("service/AnalyzerService.java");
+        Path implementation = BACKEND_ROOT.resolve("service/AnalyzerServiceImpl.java");
+        Path pluginService = COMMON_ROOT.resolve("services/PluginAnalyzerService.java");
+
+        assertDoesNotContain(service, "persistTestMappings");
+        assertDoesNotContain(service, "void persistData(Analyzer analyzer, List<AnalyzerTestMapping>");
+        assertDoesNotContain(service, "autoCreateTestMappings");
+        assertDoesNotContain(implementation, "persistTestMappings");
+        assertDoesNotContain(implementation, "newMapping(AnalyzerTestMapping");
+        assertDoesNotContain(implementation, "autoCreateTestMappings");
+        assertDoesNotContain(pluginService, "findOrCreateAnalyzerForType");
+        assertDoesNotContain(pluginService, "createTestMappings");
+        assertDoesNotContain(pluginService, "analyzerMappingService");
+        assertDoesNotContain(BACKEND_ROOT.resolve("controller/AnalyzerRestController.java"),
+                "analyzerTestMappingService");
     }
 
     private static void assertDoesNotContain(Path path, String text) throws Exception {

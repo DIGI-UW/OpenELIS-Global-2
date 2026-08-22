@@ -983,24 +983,6 @@
             value="dictionaryMenuDefinition" />
     </definition>
 
-    <definition name="analyzerMasterListsPageDefinition"
-        extends="masterListsPageDefinition">
-        <put-attribute name="bodyFragment"
-            value="analyzerMasterListsPageBodyDefinition" />
-    </definition>
-
-    <definition name="analyzerMasterListsPageBodyDefinition"
-        extends="masterListsPageBodyDefinition">
-        <put-attribute name="rightFragment"
-            value="analyzerMasterListsPageRightDefinition" />
-    </definition>
-
-    <definition name="analyzerMasterListsPageRightDefinition"
-        template="/pages/menu/masterListsTab/masterListsPageRight.jsp">
-        <put-attribute name="rightMenuFragment"
-            value="analyzerTestNameMenuDefinition" />
-    </definition>
-
     <definition name="haitiMasterListsPageRightDefinition"
         extends="masterListsPageRightDefinition">
         <put-attribute name="rightTypeOfSampleTestFragment"
@@ -1019,8 +1001,6 @@
         <!-- value="unifiedSystemUserMenuDefinition" /> -->
         <!-- <put-attribute name="rightSiteInformationFragment" -->
         <!-- value="siteInformationMenuDefinition" /> -->
-        <!-- <put-attribute name="rightAnalyzerTestNameFragment" -->
-        <!-- value="analyzerTestNameMenuDefinition" /> -->
         <!-- <put-attribute name="rightTestNotificationFragment" -->
         <!-- value="testNotificationMenuDefinition" /> -->
     </definition>
@@ -1056,8 +1036,6 @@
             value="unifiedSystemUserMenuDefinition" />
         <put-attribute name="rightSiteInformationFragment"
             value="siteInformationMenuDefinition" />
-        <put-attribute name="rightAnalyzerTestNameFragment"
-            value="analyzerTestNameMenuDefinition" />
         <put-attribute name="rightTestNotificationFragment"
             value="testNotificationMenuDefinition" />
     </definition>
@@ -1331,20 +1309,6 @@
             value="/pages/common/actionSuccess.jsp" />
         <put-attribute name="bodyFragment"
             value="/pages/systemuser/unifiedSystemUser.jsp" />
-    </definition>
-
-    <definition name="analyzerTestNameMenuDefinition"
-        extends="baseMenuSelectListDefinition">
-        <put-attribute name="bodyMenuFragment"
-            value="/pages/analyzertestname/analyzerTestNameMenu.jsp" />
-    </definition>
-
-    <definition name="analyzerTestNameDefinition"
-        extends="baseDefinition">
-        <put-attribute name="preSelectionHeaderFragment"
-            value="/pages/common/actionSuccess.jsp" />
-        <put-attribute name="bodyFragment"
-            value="/pages/analyzertestname/analyzerTestName.jsp" />
     </definition>
 
     <definition name="webTestInfoDefinition"

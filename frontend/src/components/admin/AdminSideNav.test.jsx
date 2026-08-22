@@ -41,6 +41,13 @@ const renderNav = () =>
 beforeEach(() => vi.clearAllMocks());
 
 describe("AdminSideNav — Test Catalog Management entry", () => {
+  it("does not expose the superseded Analyzer Test Name mapping screen", () => {
+    const { container } = renderNav();
+
+    expect(screen.queryByText("Analyzer Test Name")).not.toBeInTheDocument();
+    expect(container.querySelector('a[href$="/AnalyzerTestName"]')).toBeNull();
+  });
+
   it("lists all 9 sections but DISABLED (not navigable) off an editor route", () => {
     mockLocation = { pathname: "/MasterListsPage/reflex", search: "" };
     const { container } = renderNav();

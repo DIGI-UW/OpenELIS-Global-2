@@ -79,7 +79,6 @@ public class DefaultAdminFormFields extends AAdminFormFields {
         defaultAttributes.put(Field.WORKPLAN_CONFIGURATION, Boolean.TRUE);
         defaultAttributes.put(Field.NON_CONFORMITY_CONFIGURATION, Boolean.TRUE);
         defaultAttributes.put(Field.PATIENT_ENTRY_CONFIGURATION, Boolean.TRUE);
-        defaultAttributes.put(Field.AnalyzerTestNameMenu, Boolean.TRUE);
     }
 
     @Override

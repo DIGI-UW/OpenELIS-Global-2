@@ -34,12 +34,6 @@ public class AdminMenuItemServiceImpl implements AdminMenuItemService, Configura
             curItem.setMessageKey("database.clean");
             adminMenuItems.add(curItem);
         }
-        if (adminFields.useField(Field.AnalyzerTestNameMenu)) {
-            curItem = new AdminMenuItem();
-            curItem.setPath("/AnalyzerTestNameMenu");
-            curItem.setMessageKey("analyzerTestName.browse.title");
-            adminMenuItems.add(curItem);
-        }
         if (adminFields.useField(Field.DictionaryMenu)) {
             curItem = new AdminMenuItem();
             curItem.setPath("/DictionaryMenu");
