@@ -276,6 +276,34 @@ describe("AnalyzerTypeMappingEditor", () => {
     );
   });
 
+  it("renders explicit NONE recognition without server-authored technical details", async () => {
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({
+          ...mapping,
+          controlRecognition: {
+            recognitionFingerprint: `sha256:${"d".repeat(64)}`,
+            mode: "NONE",
+            description: "SERVER NONE DESCRIPTION MUST NOT RENDER",
+            affirmedNoControlResults: true,
+            conditions: [],
+          },
+        }),
+    );
+
+    renderEditor();
+
+    expect(
+      await screen.findByText(
+        "This Analyzer Type explicitly declares that the interface transports no control results.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("SERVER NONE DESCRIPTION MUST NOT RENDER"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/regex/i)).not.toBeInTheDocument();
+  });
+
   it("repoints one row by LOINC without blocking independent unresolved rows", async () => {
     renderEditor();
     await screen.findByRole("heading", {
@@ -328,7 +356,7 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).toBeEnabled();
   });
 
-  it("saves independent catalog-bound decisions, reloads them, and confirms exact evidence", async () => {
+  it("saves independent catalog-bound decisions and confirms exact evidence", async () => {
     const saved = {
       ...mapping,
       siteBindingRevision: 4,

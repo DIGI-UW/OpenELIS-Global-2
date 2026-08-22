@@ -119,6 +119,19 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         assertEquals(exactRequest().confirmedRows(), status.confirmedRows());
     }
 
+    @Test
+    public void reportsAConfirmationAsStaleWhenControlRecognitionChanges() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+
+        AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate,
+                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
+
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
+        assertEquals(RECOGNITION_FINGERPRINT, status.recognitionFingerprint());
+    }
+
     private static AnalyzerSiteBindingConfirmationRequest exactRequest() {
         return new AnalyzerSiteBindingConfirmationRequest(BINDING_FINGERPRINT, RECOGNITION_FINGERPRINT,
                 List.of(new AnalyzerSiteBindingSourceRow("RAW-A", null),
