@@ -9,6 +9,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
@@ -45,8 +47,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
 
     @Before
     public void setUp() {
-        service = new AnalyzerSiteBindingConfirmationServiceImpl(confirmationDAO, auditTrailService,
-                new ObjectMapper());
+        service = new AnalyzerSiteBindingConfirmationServiceImpl(confirmationDAO, auditTrailService);
         when(confirmationDAO.insert(any(AnalyzerSiteBindingConfirmation.class))).thenAnswer(invocation -> {
             AnalyzerSiteBindingConfirmation confirmation = invocation.getArgument(0);
             confirmation.setId("71");
@@ -185,7 +186,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         confirmation.setConfirmedRowsJson(mapper.writeValueAsString(request.confirmedRows()));
         confirmation.setExcludedRowsJson(mapper.writeValueAsString(request.excludedRows()));
         confirmation.setConfirmedBy("16");
-        confirmation.prepareForInsert();
+        confirmation.setConfirmedAt(Timestamp.from(Instant.parse("2026-08-22T10:00:00Z")));
         return confirmation;
     }
 }
