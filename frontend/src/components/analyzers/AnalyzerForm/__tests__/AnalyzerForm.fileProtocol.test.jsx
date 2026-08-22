@@ -41,10 +41,10 @@ const catalog = {
   ],
 };
 
-const renderAtEditRoute = (analyzerId) =>
+const renderAtEditRoute = (analyzerId, localeMessages = messages) =>
   render(
     <MemoryRouter initialEntries={[`/analyzers/${analyzerId}/edit`]}>
-      <IntlProvider locale="en" messages={messages}>
+      <IntlProvider locale="en" messages={localeMessages}>
         <Route path="/analyzers/:id/edit">
           <AnalyzerForm />
         </Route>
@@ -131,5 +131,29 @@ describe("AnalyzerForm protocol-specific instance fields", () => {
     expect(
       screen.queryByTestId("analyzer-form-import-directory-input"),
     ).not.toBeInTheDocument();
+  });
+
+  it("localizes the FILE import-directory placeholder", async () => {
+    analyzerService.getAnalyzer.mockImplementation((id, callback) => {
+      callback({
+        id,
+        name: "FILE Bench 1",
+        analyzerType: "FILE",
+        profileId: "site.file",
+        profileRevision: 3,
+        status: "SETUP",
+        importDirectory: "",
+      });
+    });
+
+    renderAtEditRoute("file-1", {
+      ...messages,
+      "analyzer.form.importDirectory.placeholder":
+        "Localized import directory example",
+    });
+
+    expect(
+      await screen.findByTestId("analyzer-form-import-directory-input"),
+    ).toHaveAttribute("placeholder", "Localized import directory example");
   });
 });

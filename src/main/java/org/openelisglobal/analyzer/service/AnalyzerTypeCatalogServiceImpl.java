@@ -45,12 +45,12 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
                 .collect(Collectors.toMap(
                         binding -> new ProfileRevisionKey(binding.getProfileId(), binding.getProfileRevision()),
                         Function.identity()));
-        Map<String, Long> usageByBindingId = new HashMap<>();
-        bindings.values().forEach(binding -> usageByBindingId.put(binding.getId(),
-                bindingDAO.countAnalyzersByBindingId(binding.getId())));
+        Map<String, Long> usageByProfileId = new HashMap<>();
+        bindings.values().forEach(binding -> usageByProfileId.merge(binding.getProfileId(),
+                bindingDAO.countAnalyzersByBindingId(binding.getId()), Long::sum));
 
         List<AnalyzerTypeCatalogView.TypeSummary> types = bridgeCatalog.profiles().stream()
-                .map(revision -> summarize(revision, bindings, usageByBindingId))
+                .map(revision -> summarize(revision, bindings, usageByProfileId))
                 .sorted(Comparator.comparing(summary -> summary.displayName().toLowerCase(Locale.ROOT))).toList();
 
         int inUse = (int) types.stream().filter(type -> type.usedBy() > 0).count();
@@ -63,7 +63,7 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     }
 
     private AnalyzerTypeCatalogView.TypeSummary summarize(BridgeProfileCatalog.ProfileRevision revision,
-            Map<ProfileRevisionKey, AnalyzerProfileBinding> bindings, Map<String, Long> usageByBindingId) {
+            Map<ProfileRevisionKey, AnalyzerProfileBinding> bindings, Map<String, Long> usageByProfileId) {
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
         AnalyzerProfileBinding binding = bindings.get(new ProfileRevisionKey(profile.profileId(), profile.revision()));
         AnalyzerSiteBindingSnapshot siteBinding = binding == null ? null
@@ -78,7 +78,7 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
                 profile.revisionFingerprint(), profile.displayName(), profile.manufacturer(), profile.model(),
                 profile.source(), status, profile.protocol(), instanceDefaults(profile), profile.parentProfileId(),
                 profile.parentRevision(), siteBinding == null ? null : siteBinding.binding().getId(), testMappings,
-                resultMappings, binding == null ? 0 : usageByBindingId.getOrDefault(binding.getId(), 0L), readiness,
+                resultMappings, usageByProfileId.getOrDefault(profile.profileId(), 0L), readiness,
                 nullableText(revision.publication(), "action"), nullableText(revision.publication(), "actor"),
                 nullableText(revision.publication(), "markedAt"));
     }

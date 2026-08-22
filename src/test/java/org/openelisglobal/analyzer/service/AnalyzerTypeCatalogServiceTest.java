@@ -50,7 +50,12 @@ public class AnalyzerTypeCatalogServiceTest {
         binding.setId("41");
         binding.setProfileId("site.mock-hematology");
         binding.setProfileRevision(3);
-        when(bindingDAO.getAll()).thenReturn(List.of(binding));
+        AnalyzerProfileBinding previousBinding = new AnalyzerProfileBinding();
+        previousBinding.setId("40");
+        previousBinding.setProfileId("site.mock-hematology");
+        previousBinding.setProfileRevision(2);
+        when(bindingDAO.getAll()).thenReturn(List.of(previousBinding, binding));
+        when(bindingDAO.countAnalyzersByBindingId("40")).thenReturn(4L);
         when(bindingDAO.countAnalyzersByBindingId("41")).thenReturn(3L);
         when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
                 List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED),
@@ -85,7 +90,7 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals(2, active.resultMappings().mapped());
         assertEquals("COMPLETE", active.resultMappings().state());
         assertEquals("51", active.siteBindingId());
-        assertEquals(3L, active.usedBy());
+        assertEquals(7L, active.usedBy());
         assertEquals("READY", active.readiness());
 
         AnalyzerTypeCatalogView.TypeSummary inactive = result.types().get(1);

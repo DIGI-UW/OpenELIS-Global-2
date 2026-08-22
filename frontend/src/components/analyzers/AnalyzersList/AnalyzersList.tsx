@@ -22,7 +22,7 @@ import {
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   getAnalyzers,
   getAnalyzerTypeCatalog,
@@ -79,6 +79,7 @@ const hasPluginWarning = (analyzer: Analyzer) =>
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [, setAnalyzers] = useState<Analyzer[]>([]);
@@ -163,7 +164,12 @@ const AnalyzersList = () => {
       );
       setProfileNames(names);
     }, controller.signal);
-    const params = new URLSearchParams(window.location.search);
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams(location.search);
     const initialSearch = params.get("search") || "";
     const initialStatus = params.get("status") || "";
     const initialTestUnit = params.get("testUnit") || "";
@@ -183,6 +189,10 @@ const AnalyzersList = () => {
       controller.signal,
     );
 
+    return () => controller.abort();
+  }, [loadAnalyzers, location.search]);
+
+  useEffect(() => {
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
     if (storedScrollY) {
       try {
@@ -197,14 +207,13 @@ const AnalyzersList = () => {
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
-      controller.abort();
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
       window.removeEventListener("beforeunload", onBeforeUnload);
       sessionStorage.setItem("analyzers.scrollY", String(window.scrollY));
     };
-  }, [loadAnalyzers]);
+  }, []);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -214,18 +223,16 @@ const AnalyzersList = () => {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      const searchFilters: AnalyzerFilters = { ...filters };
-      if (value.trim()) {
-        searchFilters.search = value.trim();
-      }
-      loadAnalyzers(searchFilters);
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(location.search);
       if (value.trim()) {
         params.set("search", value.trim());
       } else {
         params.delete("search");
       }
-      history.replace({ search: params.toString() });
+      history.replace({
+        pathname: location.pathname,
+        search: params.toString(),
+      });
     }, 300);
   };
 
@@ -235,14 +242,16 @@ const AnalyzersList = () => {
   ) => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
-    loadAnalyzers(newFilters);
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     if (value) {
       params.set(filterName, value);
     } else {
       params.delete(filterName);
     }
-    history.replace({ search: params.toString() });
+    history.push({
+      pathname: location.pathname,
+      search: params.toString(),
+    });
   };
 
   const headers = [
@@ -306,7 +315,10 @@ const AnalyzersList = () => {
       connection: connection,
       testUnits:
         analyzer.testUnitIds && analyzer.testUnitIds.length > 0
-          ? `${analyzer.testUnitIds.length} unit(s)`
+          ? intl.formatMessage(
+              { id: "analyzer.testUnits.count" },
+              { count: analyzer.testUnitIds.length },
+            )
           : "-",
       status: unifiedStatus,
       lastModified: analyzer.lastModified

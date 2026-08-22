@@ -4,7 +4,6 @@ import React, {
   useEffect,
   useRef,
   useState,
-  createRef,
 } from "react";
 import config from "../config.json";
 import "./Style.css";
@@ -37,9 +36,13 @@ function Login(props) {
 
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
-  const [samlRedirectInitiated, setSamlRedirectInitiated] = useState(false);
   const [loginLogoUrl, setLoginLogoUrl] = useState(null);
   const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
+  const samlRedirectInitiatedRef = useRef(false);
+  const shouldAutoRedirectToSaml =
+    configurationProperties?.useSaml === "true" &&
+    configurationProperties?.useSamlLoginPage === "false" &&
+    !userSessionDetails.authenticated;
   const userIsActiveRef = useRef(false); // Track if user is actively typing without triggering re-renders
   const activityResetTimerRef = useRef(null);
   const markUserActive = useCallback(() => {
@@ -51,29 +54,20 @@ function Login(props) {
       userIsActiveRef.current = false;
     }, 5000);
   }, []);
-  const firstInput = createRef();
+  const firstInput = useRef(null);
 
   // Auto-redirect to SAML if configured to bypass login page
   useEffect(() => {
-    if (
-      configurationProperties?.useSaml === "true" &&
-      configurationProperties?.useSamlLoginPage === "false" &&
-      !samlRedirectInitiated &&
-      !userSessionDetails.authenticated
-    ) {
+    if (shouldAutoRedirectToSaml && !samlRedirectInitiatedRef.current) {
       // Mark as initiated to prevent multiple redirects
-      setSamlRedirectInitiated(true);
+      samlRedirectInitiatedRef.current = true;
 
       // Use full-page redirect instead of popup to avoid popup blockers
       // Add 'redirect=true' parameter to tell backend to redirect to dashboard after auth
       window.location.href =
         config.serverBaseUrl + "/LoginPage?useSAML=true&redirect=true";
     }
-  }, [
-    configurationProperties,
-    samlRedirectInitiated,
-    userSessionDetails.authenticated,
-  ]);
+  }, [shouldAutoRedirectToSaml]);
 
   useEffect(() => {
     firstInput?.current?.focus();
@@ -82,7 +76,7 @@ function Login(props) {
     // Using a ref (not state) keeps a single stable interval alive across renders.
     const interval = setInterval(() => {
       if (!userIsActiveRef.current) {
-        checkLogin();
+        refresh();
       }
     }, 1000 * 10);
 
@@ -92,7 +86,7 @@ function Login(props) {
         clearTimeout(activityResetTimerRef.current);
       }
     };
-  }, []);
+  }, [refresh]);
 
   // Load branding configuration for login logo
   // Colors are handled by App.js
@@ -116,10 +110,6 @@ function Login(props) {
       window.location.href = "/";
     }
   }, [userSessionDetails]);
-
-  const checkLogin = () => {
-    refresh();
-  };
 
   const loginMessage = () => {
     // Add cache-busting parameter to prevent stale logo display after upload
@@ -250,7 +240,7 @@ function Login(props) {
             <Column lg={6} md={0} sm={0} />
             <Column lg={4} md={8} sm={4}>
               <Section>
-                {samlRedirectInitiated ? (
+                {shouldAutoRedirectToSaml ? (
                   <Stack gap={5}>
                     <FormLabel>
                       <Heading>
@@ -278,7 +268,7 @@ function Login(props) {
                     onSubmit={(values) => doLogin(values)}
                   >
                     {({ isValid, handleChange, handleSubmit }) => (
-                      <Form onSubmit={handleSubmit} onChange={handleChange}>
+                      <Form onSubmit={handleSubmit}>
                         <Stack gap={5}>
                           <FormLabel>
                             <Heading>
@@ -289,6 +279,7 @@ function Login(props) {
                             <>
                               <TextInput
                                 id="loginName"
+                                name="username"
                                 invalidText={props.intl.formatMessage({
                                   id: "login.msg.username.missing",
                                 })}
@@ -302,10 +293,14 @@ function Login(props) {
                                 autoComplete="off"
                                 ref={firstInput}
                                 onFocus={markUserActive}
-                                onChange={markUserActive}
+                                onChange={(event) => {
+                                  markUserActive();
+                                  handleChange(event);
+                                }}
                               />
                               <PasswordInput
                                 id="password"
+                                name="password"
                                 invalidText={props.intl.formatMessage({
                                   id: "login.msg.password.missing",
                                 })}
@@ -317,7 +312,10 @@ function Login(props) {
                                   id: "login.msg.password",
                                 })}
                                 onFocus={markUserActive}
-                                onChange={markUserActive}
+                                onChange={(event) => {
+                                  markUserActive();
+                                  handleChange(event);
+                                }}
                               />
                               <Stack orientation="horizontal">
                                 <Button

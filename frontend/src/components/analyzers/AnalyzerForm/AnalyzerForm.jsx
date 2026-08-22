@@ -636,7 +636,9 @@ const AnalyzerForm = () => {
                   id: "analyzer.form.importDirectory",
                   defaultMessage: "Import Directory",
                 })}
-                placeholder="/data/analyzer-imports/my-analyzer/incoming"
+                placeholder={intl.formatMessage({
+                  id: "analyzer.form.importDirectory.placeholder",
+                })}
                 value={formData.importDirectory}
                 onChange={(e) =>
                   handleFieldChange("importDirectory", e.target.value)

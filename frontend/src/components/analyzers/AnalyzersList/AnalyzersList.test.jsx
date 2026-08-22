@@ -18,20 +18,6 @@ vi.mock("../../../services/analyzerService", () => ({
   updateAnalyzer: vi.fn(),
 }));
 
-const mockHistory = {
-  push: vi.fn(),
-  replace: vi.fn(),
-};
-
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    useHistory: () => mockHistory,
-    useLocation: () => ({ pathname: "/analyzers" }),
-  };
-});
-
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 
 // 1. React
@@ -67,10 +53,10 @@ import messages from "../../../languages/en.json";
 // ========== TEST SETUP ==========
 
 // Standard render helper with IntlProvider
-const renderWithIntl = (component) => {
+const renderWithIntl = (component, localeMessages = messages) => {
   return render(
     <BrowserRouter>
-      <IntlProvider locale="en" messages={messages}>
+      <IntlProvider locale="en" messages={localeMessages}>
         {component}
       </IntlProvider>
     </BrowserRouter>,
@@ -95,8 +81,7 @@ describe("AnalyzersList", () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
-    mockHistory.push.mockClear();
-    mockHistory.replace.mockClear();
+    window.history.replaceState({}, "", "/analyzers");
     getAnalyzerTypeCatalog.mockImplementation((callback) =>
       callback({
         schemaVersion: "1.0",
@@ -164,6 +149,14 @@ describe("AnalyzersList", () => {
     expect(name2).not.toBeNull();
     expect(name1.textContent).toContain("Hematology Analyzer 1");
     expect(name2.textContent).toContain("Chemistry Analyzer 1");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Analyzers" }),
+    ).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
+      "href",
+      "/",
+    );
   });
 
   test("positions row actions inside the viewport", async () => {
@@ -180,6 +173,23 @@ describe("AnalyzersList", () => {
     expect(
       document.querySelector(".cds--overflow-menu--flip"),
     ).toBeInTheDocument();
+  });
+
+  test("localizes the assigned test-unit count", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />, {
+      ...messages,
+      "analyzer.testUnits.count": "Localized {count} assigned",
+    });
+
+    expect(
+      await screen.findByTestId("analyzer-test-units-1"),
+    ).toHaveTextContent("Localized 2 assigned");
   });
 
   test("shows a visible loading state until the analyzer list resolves", async () => {
@@ -287,7 +297,7 @@ describe("AnalyzersList", () => {
     await userEvent.click(addButton);
 
     // Assert: navigation occurred to the new-analyzer route
-    expect(mockHistory.push).toHaveBeenCalledWith("/analyzers/new");
+    expect(window.location.pathname).toBe("/analyzers/new");
   });
 
   /**
@@ -382,14 +392,55 @@ describe("AnalyzersList", () => {
     // Wait for initial data load
     await screen.findByTestId("analyzer-name-1", {}, { timeout: 3000 });
 
-    // Find status filter dropdown
-    const statusFilter = screen.getByTestId("analyzer-status-filter");
-    expect(statusFilter).not.toBeNull();
+    const statusFilter = screen.getByRole("combobox", { name: "Status" });
+    await userEvent.click(statusFilter);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Validation" }),
+    );
 
-    // Act: Select VALIDATION filter
-    // Note: Carbon Dropdown interaction may require specific approach
-    // For now, verify the filter exists and can be interacted with
-    expect(statusFilter).not.toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByTestId("analyzer-name-1")).not.toBeInTheDocument();
+      expect(screen.getByTestId("analyzer-name-2")).toBeVisible();
+      expect(screen.queryByTestId("analyzer-name-3")).not.toBeInTheDocument();
+    });
+    expect(new URLSearchParams(window.location.search).get("status")).toBe(
+      "VALIDATION",
+    );
+  });
+
+  test("restores bookmarked controls and results when browser history changes", async () => {
+    const allAnalyzers = [
+      createMockAnalyzer({ id: "1", name: "Hematology Analyzer" }),
+      createMockAnalyzer({ id: "2", name: "Chemistry Analyzer" }),
+    ];
+    getAnalyzers.mockImplementation((filters, callback) => {
+      const search = filters?.search?.toLowerCase();
+      callback({
+        analyzers: search
+          ? allAnalyzers.filter((analyzer) =>
+              analyzer.name.toLowerCase().includes(search),
+            )
+          : allAnalyzers,
+      });
+    });
+    window.history.replaceState({}, "", "/analyzers?search=Hematology");
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(await screen.findByTestId("analyzer-name-1")).toBeVisible();
+    expect(screen.queryByTestId("analyzer-name-2")).not.toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-search-input")).toHaveValue(
+      "Hematology",
+    );
+
+    window.history.pushState({}, "", "/analyzers?search=Chemistry");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(await screen.findByTestId("analyzer-name-2")).toBeVisible();
+    expect(screen.queryByTestId("analyzer-name-1")).not.toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-search-input")).toHaveValue(
+      "Chemistry",
+    );
   });
 
   test("passes a cancellable signal to the type catalog read", () => {
