@@ -87,6 +87,105 @@ export interface AnalyzerTypeCatalog {
   types: AnalyzerTypeSummary[];
 }
 
+export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
+
+export interface AnalyzerMappingTestOption {
+  id: string;
+  name: string;
+  code?: string | null;
+  loincCodes: string[];
+}
+
+export interface AnalyzerMappingResultOption {
+  id: string;
+  value: string;
+  label: string;
+}
+
+export interface AnalyzerTypeMappingResultRow {
+  rawValue: string;
+  mappingState: AnalyzerMappingState;
+  resultOptionId?: string | null;
+  selectedOption?: AnalyzerMappingResultOption | null;
+}
+
+export interface AnalyzerTypeMappingTestRow {
+  sourceRowKey: string;
+  rawCode: string;
+  aliases: string[];
+  testNameHint?: string | null;
+  loinc?: string | null;
+  unit?: string | null;
+  resultType?: string | null;
+  normalizedCoding?: {
+    system: string;
+    code: string;
+    display?: string | null;
+  } | null;
+  mappingState: AnalyzerMappingState;
+  testId?: string | null;
+  selectedTest?: AnalyzerMappingTestOption | null;
+  suggestedTest?: AnalyzerMappingTestOption | null;
+  results: AnalyzerTypeMappingResultRow[];
+}
+
+export interface AnalyzerTypeMappingView {
+  profileId: string;
+  profileRevision: number;
+  profileFingerprint: string;
+  displayName: string;
+  protocol: AnalyzerProtocol;
+  siteBindingId?: string | null;
+  siteBindingRevision: number;
+  bindingFingerprint?: string | null;
+  tests: AnalyzerTypeMappingTestRow[];
+  controlRecognition: {
+    recognitionFingerprint: string;
+    mode: "RULES" | "NONE" | string;
+    description: string;
+    affirmedNoControlResults: boolean;
+    conditions: Array<{
+      key: string;
+      description: string;
+      controlLevel?: string | null;
+      controlType?: string | null;
+    }>;
+  };
+  confirmation: {
+    state: "UNCONFIRMED" | "CURRENT" | "STALE" | string;
+    profileId?: string | null;
+    profileRevision: number;
+    bindingFingerprint?: string | null;
+    recognitionFingerprint?: string | null;
+    confirmedBy?: string | null;
+    confirmedAt?: string | null;
+    confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+    excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+  };
+}
+
+export interface AnalyzerTypeMappingUpdate {
+  baseBindingFingerprint?: string | null;
+  tests: Array<{
+    sourceRowKey: string;
+    mappingState: AnalyzerMappingState;
+    testId?: string | null;
+  }>;
+  results: Array<{
+    sourceRowKey: string;
+    rawValue: string;
+    mappingState: AnalyzerMappingState;
+    testResultId?: string | null;
+  }>;
+}
+
+export interface AnalyzerTypeMappingConfirmationRequest {
+  baseBindingFingerprint: string;
+  recognitionFingerprint: string;
+  confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+  excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+}
+
 export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
   draftId?: string;
   kind?: "CREATE" | "DUPLICATE" | "UPDATE" | string;
@@ -823,6 +922,100 @@ export const getAnalyzerTypeRevision = (
 ) => {
   getFromOpenElisServer(
     `/rest/analyzer-types/${encodeURIComponent(profileId)}?revision=${revision}`,
+    callback,
+  );
+};
+
+export const getAnalyzerTypeMapping = (
+  profileId: string,
+  revision: number,
+  callback: DataCallback<AnalyzerTypeMappingView | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping?revision=${revision}`,
+    callback,
+  );
+};
+
+export const getAnalyzerMappingTests = (
+  callback: DataCallback<AnalyzerMappingTestOption[] | undefined>,
+) => {
+  getFromOpenElisServer("/rest/analyzer-types/mapping-catalog/tests", callback);
+};
+
+export const getAnalyzerMappingResultOptions = (
+  testId: string,
+  callback: DataCallback<AnalyzerMappingResultOption[] | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/mapping-catalog/tests/${encodeURIComponent(testId)}/result-options`,
+    callback,
+  );
+};
+
+const mutateAnalyzerTypeMapping = <T>(
+  endpoint: string,
+  method: "POST" | "PUT",
+  body: JsonObject,
+  callback: ApiCallback<T & AnalyzerApiError>,
+) => {
+  fetch(config.serverBaseUrl + endpoint, {
+    credentials: "include",
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
+    },
+    body: JSON.stringify(body),
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        callback({
+          ...json,
+          status: response.status,
+          statusCode: response.status,
+          statusText: response.statusText,
+        });
+        return;
+      }
+      callback(json);
+    })
+    .catch((error: Error) => {
+      callback({
+        error: error.message || "Network error",
+        message: error.message || "Network error",
+        status: 0,
+      } as T & AnalyzerApiError);
+    });
+};
+
+export const saveAnalyzerTypeMapping = (
+  profileId: string,
+  revision: number,
+  update: AnalyzerTypeMappingUpdate,
+  callback: ApiCallback<AnalyzerTypeMappingView & AnalyzerApiError>,
+) => {
+  mutateAnalyzerTypeMapping(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping?revision=${revision}`,
+    "PUT",
+    update as unknown as JsonObject,
+    callback,
+  );
+};
+
+export const confirmAnalyzerTypeMapping = (
+  profileId: string,
+  revision: number,
+  request: AnalyzerTypeMappingConfirmationRequest,
+  callback: ApiCallback<
+    AnalyzerTypeMappingView["confirmation"] & AnalyzerApiError
+  >,
+) => {
+  mutateAnalyzerTypeMapping(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping/confirm?revision=${revision}`,
+    "POST",
+    request as unknown as JsonObject,
     callback,
   );
 };

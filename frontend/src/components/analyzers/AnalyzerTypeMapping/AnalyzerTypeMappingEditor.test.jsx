@@ -230,7 +230,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         name: "Cepheid GeneXpert MTB/RIF mappings",
       }),
     ).toBeVisible();
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(document.querySelectorAll("h1")).toHaveLength(1);
     expect(getAnalyzerTypeMapping).toHaveBeenCalledWith(
       "shipped.genexpert",
       2,

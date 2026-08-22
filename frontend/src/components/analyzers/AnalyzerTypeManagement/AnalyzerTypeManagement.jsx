@@ -296,6 +296,18 @@ const AnalyzerTypeManagement = () => {
     });
   };
 
+  const openMapping = (type) => {
+    const returnTo = `${location.pathname}${location.search}`;
+    const params = new URLSearchParams({
+      revision: String(type.revision),
+      returnTo,
+    });
+    history.push({
+      pathname: `/analyzers/types/${encodeURIComponent(type.profileId)}/mapping`,
+      search: `?${params.toString()}`,
+    });
+  };
+
   const summary = catalog?.summary || {
     total: 0,
     inUse: 0,
@@ -700,6 +712,12 @@ const AnalyzerTypeManagement = () => {
                                       { name: type.displayName },
                                     )}
                                   >
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzerType.action.editMappings",
+                                      })}
+                                      onClick={() => openMapping(type)}
+                                    />
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
                                         id: "analyzerType.button.duplicate",

@@ -96,6 +96,9 @@ const CustomFieldTypeManagementPage = lazyWithRetry(
 const AnalyzerTypesPage = lazyWithRetry(
   () => import("./pages/AnalyzerTypesPage"),
 );
+const AnalyzerTypeMappingPage = lazyWithRetry(
+  () => import("./pages/AnalyzerTypeMappingPage"),
+);
 const AnalyzerFormPage = lazyWithRetry(
   () => import("./components/analyzers/AnalyzerForm/AnalyzerForm"),
 );
@@ -1195,6 +1198,18 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/analyzers/types/:profileId/mapping"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypeMappingPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/qc/instruments/:instrumentId"
