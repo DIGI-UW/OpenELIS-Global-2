@@ -2,7 +2,12 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -13,6 +18,7 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
@@ -42,12 +48,15 @@ public class AnalyzerTypeMappingServiceTest {
     @Mock
     private AnalyzerMappingCatalogService mappingCatalogService;
 
+    @Mock
+    private AnalyzerProfileBindingService profileBindingService;
+
     private AnalyzerTypeMappingService service;
 
     @Before
     public void setUp() {
         service = new AnalyzerTypeMappingServiceImpl(bridgeProfileCatalogService, profileBindingDAO, siteBindingService,
-                mappingCatalogService);
+                mappingCatalogService, profileBindingService);
     }
 
     @Test
@@ -116,6 +125,78 @@ public class AnalyzerTypeMappingServiceTest {
         assertEquals(AnalyzerSiteBindingMappingState.UNRESOLVED,
                 view.tests().get(0).results().get(0).mappingState());
         assertEquals("9701", view.tests().get(0).suggestedTest().id());
+    }
+
+    @Test
+    public void saveMappingAppendsAnAuditedRevisionAgainstTheLoadedFingerprint() throws Exception {
+        AnalyzerProfileBinding profileBinding = profileBinding();
+        AnalyzerSiteBindingSnapshot current = siteBinding(profileBinding);
+        AnalyzerSiteBindingSnapshot saved = savedSiteBinding(current.binding());
+        AnalyzerSiteBindingDraft draft = validDraft();
+        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
+        when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2))
+                .thenReturn(Optional.of(profileBinding));
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(current));
+        when(profileBindingService.resolveActiveRevision("site.mock-analyzer", 2, "17")).thenReturn(profileBinding);
+        when(siteBindingService.appendRevision(eq(current.binding()), any(AnalyzerSiteBindingDraft.class), eq("17")))
+                .thenReturn(saved);
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(mappingCatalogService.getActiveResultOptions("9701"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive"),
+                        new AnalyzerMappingCatalogService.ResultOption("812", "1002", "Negative")));
+
+        AnalyzerTypeMappingView view = service.saveMapping("site.mock-analyzer", 2, new AnalyzerTypeMappingUpdate(
+                current.revision().getBindingFingerprint(), draft.tests(), draft.results()), "17");
+
+        assertEquals(5, view.siteBindingRevision());
+        assertEquals("sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                view.bindingFingerprint());
+        assertEquals(AnalyzerSiteBindingMappingState.EXCLUDED, view.tests().get(1).mappingState());
+        ArgumentCaptor<AnalyzerSiteBindingDraft> savedDraft = ArgumentCaptor.forClass(AnalyzerSiteBindingDraft.class);
+        verify(siteBindingService).appendRevision(eq(current.binding()), savedDraft.capture(), eq("17"));
+        assertEquals(draft, savedDraft.getValue());
+    }
+
+    @Test
+    public void saveMappingRejectsOmittedOrInventedRowsBeforeCreatingLocalState() throws Exception {
+        AnalyzerSiteBindingDraft valid = validDraft();
+        AnalyzerTypeMappingUpdate omitted = new AnalyzerTypeMappingUpdate(null,
+                valid.tests().stream().filter(row -> !"RAW-C".equals(row.sourceRowKey())).toList(), valid.results());
+        AnalyzerTypeMappingUpdate invented = new AnalyzerTypeMappingUpdate(null,
+                List.of(valid.tests().get(0), valid.tests().get(1), valid.tests().get(2),
+                        new AnalyzerSiteBindingTestDraft("RAW-X", AnalyzerSiteBindingMappingState.EXCLUDED, null)),
+                valid.results());
+        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
+
+        assertEquals("Mapping update test rows must exactly match profile revision",
+                assertThrows(IllegalArgumentException.class,
+                        () -> service.saveMapping("site.mock-analyzer", 2, omitted, "17")).getMessage());
+        assertEquals("Mapping update test rows must exactly match profile revision",
+                assertThrows(IllegalArgumentException.class,
+                        () -> service.saveMapping("site.mock-analyzer", 2, invented, "17")).getMessage());
+        verifyZeroInteractions(profileBindingService, siteBindingService);
+    }
+
+    @Test
+    public void saveMappingRejectsAStaleLoadedFingerprintBeforeAppending() throws Exception {
+        AnalyzerProfileBinding profileBinding = profileBinding();
+        AnalyzerSiteBindingSnapshot current = siteBinding(profileBinding);
+        AnalyzerSiteBindingDraft draft = validDraft();
+        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
+        when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2))
+                .thenReturn(Optional.of(profileBinding));
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(current));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.saveMapping("site.mock-analyzer", 2,
+                        new AnalyzerTypeMappingUpdate(
+                                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                                draft.tests(), draft.results()),
+                        "17"));
+
+        assertEquals("Analyzer Type mappings changed after this editor was loaded", error.getMessage());
+        verifyZeroInteractions(profileBindingService);
+        verify(siteBindingService, never()).appendRevision(any(), any(), any());
     }
 
     private BridgeProfileCatalog.ProfileRevision profileRevision() throws Exception {
@@ -211,6 +292,31 @@ public class AnalyzerTypeMappingServiceTest {
         row.setMappingState(state);
         row.setTestResultId(optionId);
         return row;
+    }
+
+    private static AnalyzerSiteBindingDraft validDraft() {
+        return new AnalyzerSiteBindingDraft(
+                List.of(new AnalyzerSiteBindingTestDraft("RAW-A", AnalyzerSiteBindingMappingState.BOUND, "9701"),
+                        new AnalyzerSiteBindingTestDraft("RAW-B", AnalyzerSiteBindingMappingState.EXCLUDED, null),
+                        new AnalyzerSiteBindingTestDraft("RAW-C", AnalyzerSiteBindingMappingState.UNRESOLVED, null)),
+                List.of(new AnalyzerSiteBindingResultDraft("RAW-A", "POS", AnalyzerSiteBindingMappingState.BOUND,
+                        "811"),
+                        new AnalyzerSiteBindingResultDraft("RAW-A", "NEG", AnalyzerSiteBindingMappingState.EXCLUDED,
+                                null)));
+    }
+
+    private static AnalyzerSiteBindingSnapshot savedSiteBinding(AnalyzerSiteBinding binding) {
+        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        revision.setId("62");
+        revision.setSiteBinding(binding);
+        revision.setRevisionNumber(5);
+        revision.setBindingFingerprint("sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+        return new AnalyzerSiteBindingSnapshot(binding, revision,
+                List.of(test(revision, "RAW-A", AnalyzerSiteBindingMappingState.BOUND, "9701"),
+                        test(revision, "RAW-B", AnalyzerSiteBindingMappingState.EXCLUDED, null),
+                        test(revision, "RAW-C", AnalyzerSiteBindingMappingState.UNRESOLVED, null)),
+                List.of(result(revision, "RAW-A", "POS", AnalyzerSiteBindingMappingState.BOUND, "811"),
+                        result(revision, "RAW-A", "NEG", AnalyzerSiteBindingMappingState.EXCLUDED, null)));
     }
 
     private static List<AnalyzerMappingCatalogService.TestOption> activeTests() {
