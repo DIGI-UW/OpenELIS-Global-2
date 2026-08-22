@@ -43,6 +43,8 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("sysmex-xn", catalog.profiles().get(0).profile().path("profileMeta").path("id").asText());
         assertEquals(3, catalog.profiles().get(0).profile().path("catalog").path("revision").asInt());
         assertEquals("SHIPPED", catalog.profiles().get(0).publication().path("action").asText());
+        assertEquals("sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                catalog.profiles().get(0).controlRecognitionSummary().recognitionFingerprint());
         assertEquals("RULES", catalog.profiles().get(0).controlRecognitionSummary().mode());
         assertEquals("Specimen ID starts with QC-",
                 catalog.profiles().get(0).controlRecognitionSummary().conditions().get(0).description());
@@ -106,6 +108,20 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("Bridge profile catalog contains an invalid control recognition summary", exception.getMessage());
     }
 
+    @Test
+    public void getCatalogRejectsRecognitionSummaryWithoutFingerprint() throws Exception {
+        JsonNode catalog = new ObjectMapper().readTree(validCatalog());
+        ((ObjectNode) catalog.path("profiles").get(0).path("controlRecognitionSummary"))
+                .remove("recognitionFingerprint");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        BridgeProfileCatalogException exception = assertThrows(BridgeProfileCatalogException.class,
+                () -> service.getCatalog());
+
+        assertEquals("Bridge profile catalog contains an invalid control recognition summary", exception.getMessage());
+    }
+
     private static String validCatalog() {
         return """
                 {
@@ -125,6 +141,7 @@ public class BridgeProfileCatalogServiceTest {
                       }
                     },
                     "controlRecognitionSummary":{
+                      "recognitionFingerprint":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
                       "mode":"RULES",
                       "description":"Control results match any configured condition.",
                       "affirmedNoControlResults":false,
@@ -160,6 +177,7 @@ public class BridgeProfileCatalogServiceTest {
                     }
                   },
                   "controlRecognitionSummary":{
+                    "recognitionFingerprint":"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
                     "mode":"NONE",
                     "description":"This analyzer interface transports no control results.",
                     "affirmedNoControlResults":true,
