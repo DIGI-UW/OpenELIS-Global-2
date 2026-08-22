@@ -76,8 +76,6 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
     getAnalyzerTypeControlRecognition(draftId, (response) => {
       setLoading(false);
       if (hasError(response) || !response.recognition) {

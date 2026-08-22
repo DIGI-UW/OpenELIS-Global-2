@@ -100,6 +100,11 @@ const AnalyzerTypeMappingEditor = () => {
   const [confirming, setConfirming] = useState(false);
   const [notification, setNotification] = useState(null);
   const loadedResultOptions = useRef(new Set());
+  const routeIsValid =
+    Boolean(profileId) && Number.isInteger(revision) && revision >= 1;
+  const routeError = routeIsValid
+    ? null
+    : intl.formatMessage({ id: "analyzerType.mappingEditor.error.route" });
 
   const applyMapping = useCallback((nextMapping) => {
     setMapping(nextMapping);
@@ -107,18 +112,10 @@ const AnalyzerTypeMappingEditor = () => {
     setDirty(false);
   }, []);
 
-  const load = useCallback(() => {
-    if (!profileId || !Number.isInteger(revision) || revision < 1) {
-      setLoading(false);
-      setLoadError(
-        intl.formatMessage({ id: "analyzerType.mappingEditor.error.route" }),
-      );
+  const requestMapping = useCallback(() => {
+    if (!routeIsValid) {
       return;
     }
-    setLoading(true);
-    setLoadError(null);
-    loadedResultOptions.current = new Set();
-    setResultOptionsByTest({});
     getAnalyzerTypeMapping(profileId, revision, (response) => {
       setLoading(false);
       if (hasApiError(response) || !Array.isArray(response.tests)) {
@@ -132,6 +129,8 @@ const AnalyzerTypeMappingEditor = () => {
         );
         return;
       }
+      loadedResultOptions.current = new Set();
+      setResultOptionsByTest({});
       applyMapping(response);
     });
     getAnalyzerTypeRevision(profileId, revision, (response) => {
@@ -144,11 +143,20 @@ const AnalyzerTypeMappingEditor = () => {
         setCatalogTests(response);
       }
     });
-  }, [applyMapping, intl, profileId, revision]);
+  }, [applyMapping, intl, profileId, revision, routeIsValid]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    requestMapping();
+  }, [requestMapping]);
+
+  const retry = () => {
+    if (!routeIsValid) {
+      return;
+    }
+    setLoading(true);
+    setLoadError(null);
+    requestMapping();
+  };
 
   useEffect(() => {
     const selectedTestIds = new Set(
@@ -379,7 +387,14 @@ const AnalyzerTypeMappingEditor = () => {
     );
   };
 
-  if (loading) {
+  const mappingMatchesRoute =
+    mapping?.profileId === profileId && mapping?.profileRevision === revision;
+  const currentTypeSummary =
+    typeSummary?.profileId === profileId && typeSummary?.revision === revision
+      ? typeSummary
+      : null;
+
+  if (loading || (!routeError && !loadError && !mappingMatchesRoute)) {
     return (
       <div className="analyzer-type-mapping__loading">
         <Loading
@@ -392,7 +407,7 @@ const AnalyzerTypeMappingEditor = () => {
     );
   }
 
-  if (loadError || !mapping) {
+  if (routeError || loadError || !mapping) {
     return (
       <Grid fullWidth className="analyzer-type-mapping">
         <Column lg={16} md={8} sm={4}>
@@ -403,11 +418,11 @@ const AnalyzerTypeMappingEditor = () => {
             title={intl.formatMessage({
               id: "analyzerType.mappingEditor.error.load",
             })}
-            subtitle={loadError || ""}
+            subtitle={routeError || loadError || ""}
             actionButtonLabel={intl.formatMessage({
               id: "analyzerType.button.retry",
             })}
-            onActionButtonClick={load}
+            onActionButtonClick={retry}
           />
         </Column>
       </Grid>
@@ -482,11 +497,11 @@ const AnalyzerTypeMappingEditor = () => {
             })}
             subtitle={intl.formatMessage(
               { id: "analyzerType.mappingEditor.shared.subtitle" },
-              { count: typeSummary?.usedBy || 0 },
+              { count: currentTypeSummary?.usedBy || 0 },
             )}
           />
           <AffectedAnalyzerList
-            analyzers={typeSummary?.affectedAnalyzers || []}
+            analyzers={currentTypeSummary?.affectedAnalyzers || []}
           />
 
           {notification && (

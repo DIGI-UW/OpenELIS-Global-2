@@ -373,6 +373,7 @@ const DuplicateProfileModal = ({
               )}
             />
             <ControlRecognitionDraftEditor
+              key={activeDraft.draftId}
               draftId={activeDraft.draftId}
               onStateChange={setRecognitionState}
             />
@@ -555,6 +556,7 @@ const UpdateSharedProfileModal = ({
             })}
           />
           <ControlRecognitionDraftEditor
+            key={activeDraft.draftId}
             draftId={activeDraft.draftId}
             onStateChange={setRecognitionState}
           />
