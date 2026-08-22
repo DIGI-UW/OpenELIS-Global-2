@@ -27,6 +27,7 @@ import {
   updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
 import ControlRecognitionDraftEditor from "./ControlRecognitionDraftEditor";
+import AffectedAnalyzerList from "./AffectedAnalyzerList";
 
 const nextDuplicateName = (displayName, types) => {
   const existing = new Set(types.map((type) => type.displayName));
@@ -584,6 +585,7 @@ const UpdateSharedProfileModal = ({
           { count: profile.usedBy, revision: profile.revision },
         )}
       </p>
+      <AffectedAnalyzerList analyzers={profile.affectedAnalyzers} />
     </Modal>
   );
 };

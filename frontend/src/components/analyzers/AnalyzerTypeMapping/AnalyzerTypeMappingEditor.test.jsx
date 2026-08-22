@@ -296,10 +296,27 @@ describe("AnalyzerTypeMappingEditor", () => {
         name: "OpenELIS test for RAW-C",
       }),
     ).toHaveValue("Unconfigured qualitative test · UNCONFIGURED · 94558-4");
+    expect(
+      within(rawC).getByRole("link", {
+        name: "Add result options in Test Catalog",
+      }),
+    ).toHaveAttribute(
+      "href",
+      expect.stringContaining(
+        "/TestCatalogEditor/9703/sample-results?returnTo=",
+      ),
+    );
     const rawB = screen
       .getAllByTestId("analyzer-type-mapping-row")
       .find((row) => within(row).queryByText("RAW-B"));
-    expect(within(rawB).getByText("Needs mapping")).toBeVisible();
+    expect(
+      within(rawB).getByRole("combobox", {
+        name: "OpenELIS test for RAW-B",
+      }),
+    ).toHaveValue("");
+    expect(
+      within(rawB).getByText("Suggested match: COVID-19 PCR"),
+    ).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Update shared mappings" }),
     ).toBeEnabled();

@@ -59,6 +59,11 @@ export interface AnalyzerTypeSummary {
   protocol: AnalyzerProtocol;
   parentProfileId?: string | null;
   parentRevision?: number | null;
+  affectedAnalyzers?: Array<{
+    id: string;
+    name: string;
+    active: boolean;
+  }>;
 }
 
 export interface AnalyzerTypeCatalog {

@@ -24,6 +24,7 @@ import { ArrowLeft, Copy, Save } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Link, useLocation, useParams } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import AffectedAnalyzerList from "../AnalyzerTypeManagement/AffectedAnalyzerList";
 import { safeInternalPath } from "../../utils/UrlUtils";
 import {
   confirmAnalyzerTypeMapping,
@@ -480,6 +481,9 @@ const AnalyzerTypeMappingEditor = () => {
               { count: typeSummary?.usedBy || 0 },
             )}
           />
+          <AffectedAnalyzerList
+            analyzers={typeSummary?.affectedAnalyzers || []}
+          />
 
           {notification && (
             <InlineNotification
@@ -694,24 +698,24 @@ const AnalyzerTypeMappingEditor = () => {
                                 })}
                               />
                             ) : resultOptions.length === 0 ? (
-                              <InlineNotification
-                                kind="warning"
-                                lowContrast
-                                hideCloseButton
-                                title={intl.formatMessage({
-                                  id: "analyzerType.mappingEditor.results.empty",
-                                })}
-                                subtitle={
-                                  <CarbonLink
-                                    as={Link}
-                                    to={`/MasterListsPage/TestCatalogEditor/${test.testId}/sample-results?returnTo=${encodeURIComponent(
-                                      currentUrl,
-                                    )}`}
-                                  >
-                                    <FormattedMessage id="analyzerType.mappingEditor.results.openCatalog" />
-                                  </CarbonLink>
-                                }
-                              />
+                              <div className="analyzer-type-mapping__catalog-action">
+                                <InlineNotification
+                                  kind="warning"
+                                  lowContrast
+                                  hideCloseButton
+                                  title={intl.formatMessage({
+                                    id: "analyzerType.mappingEditor.results.empty",
+                                  })}
+                                />
+                                <CarbonLink
+                                  as={Link}
+                                  to={`/MasterListsPage/TestCatalogEditor/${test.testId}/sample-results?returnTo=${encodeURIComponent(
+                                    currentUrl,
+                                  )}`}
+                                >
+                                  <FormattedMessage id="analyzerType.mappingEditor.results.openCatalog" />
+                                </CarbonLink>
+                              </div>
                             ) : (
                               test.results.map((result) => {
                                 const selectedOption =

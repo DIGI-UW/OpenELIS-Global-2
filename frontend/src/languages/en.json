@@ -408,6 +408,7 @@
   "analyzerType.action.history": "View history",
   "analyzerType.action.reactivate": "Reactivate",
   "analyzerType.action.updateShared": "Update shared",
+  "analyzerType.affectedAnalyzers.heading": "{count, plural, one {Analyzer using this type} other {Analyzers using this type}}",
   "analyzerType.actions.ariaLabel": "Actions for {name}",
   "analyzerType.button.create": "Create Profile",
   "analyzerType.button.cancel": "Cancel",
