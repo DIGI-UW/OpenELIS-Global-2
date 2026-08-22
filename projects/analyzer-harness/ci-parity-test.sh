@@ -29,7 +29,7 @@ source "$SCRIPT_DIR/playwright-project-policy.sh"
 CI_COMPOSE_FILES=($(compose_args_ci))
 FIXTURE_SCRIPT="$REPO_ROOT/src/test/resources/load-test-fixtures.sh"
 SEED_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-analyzers.sh"
-REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-analyzer-harness-reusable.yml"
+REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-reusable.yml"
 
 PRECHECK_ONLY=false
 SEED_ONLY=false

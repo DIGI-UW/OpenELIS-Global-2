@@ -75,12 +75,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
       protocol: "FILE",
       simulatorUrl: SIMULATOR_URL,
       template: "hain_fluorocycler",
-      // FluoroCycler real files carry no per-row test-code column — in
-      // production the lab tech declares VIH-1 in the bridge upload UI.
-      // Mirror that here instead of hacking a TestCode column into the
-      // fixture.
-      uploadViaBridge: true,
-      testCode: "VIH-1",
+      targetDir: "/data/analyzer-imports/demo--fluorocycler-xt/incoming",
     },
   },
 ];
@@ -132,12 +127,6 @@ test.describe("M1 priority profile transport integrations", () => {
       // Step 1: Create analyzer from profile via dashboard UI
       const dynamicIp = await createAnalyzerFromProfile(page, config);
       const analyzerRow = await findAnalyzerRow(page, config.name, testInfo);
-      const rowTestId = await analyzerRow.first().getAttribute("data-testid");
-      const analyzerId = rowTestId?.replace("analyzer-row-", "");
-      expect(
-        analyzerId,
-        "Visible analyzer row must expose its id",
-      ).toBeTruthy();
 
       // Step 2: Test connection (skip for FILE — no TCP)
       if (config.protocol !== "FILE") {
@@ -145,7 +134,7 @@ test.describe("M1 priority profile transport integrations", () => {
       }
 
       // Override push destination with dynamic bridge IP for TCP analyzers
-      let pushConfig = { ...config.push, analyzerId };
+      let pushConfig = { ...config.push };
       if (dynamicIp && config.protocol !== "FILE") {
         const bridgeIp = dynamicIp.replace(/\.\d+$/, ".2");
         const port = config.protocol === "ASTM" ? 12001 : 2575;

@@ -71,21 +71,6 @@ export interface PushConfig {
    * Bridge-watched container path for FILE transport.
    */
   targetDir?: string;
-  /**
-   * FILE only — route the fixture through the bridge's /admin/upload endpoint
-   * (matching real lab-tech workflow) instead of dropping into a watched
-   * directory. Takes precedence over targetDir.
-   */
-  uploadViaBridge?: boolean;
-  /**
-   * FILE only — admin-declared test code for upload. Matches the "Test
-   * Code" dropdown in the bridge admin UI. Needed for files whose rows
-   * carry no per-row test identity (e.g., FluoroCycler VIH-1 results).
-   * Ignored for files whose columns already map to testCode (QuantStudio).
-   */
-  testCode?: string;
-  /** FILE uploadViaBridge only — id captured from the visible analyzer row. */
-  analyzerId?: string;
   /** Explicit sample ID override (optional — mock generates if omitted). */
   sampleId?: string;
 }

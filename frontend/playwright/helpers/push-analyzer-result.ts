@@ -38,17 +38,6 @@ export async function pushAnalyzerResult(
   if (push.targetDir) {
     body.target_dir = push.targetDir;
   }
-  if (push.uploadViaBridge) {
-    if (!push.analyzerId) {
-      throw new Error(
-        "push.analyzerId is required when uploadViaBridge is enabled",
-      );
-    }
-    body.bridge_upload = {
-      analyzer_id: push.analyzerId,
-      test_code: push.testCode ?? null,
-    };
-  }
   if (push.sampleId) {
     body.sample_id = push.sampleId;
   }

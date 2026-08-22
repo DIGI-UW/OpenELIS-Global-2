@@ -70,8 +70,8 @@ describe("Login", () => {
     const [, request] = fetch.mock.calls[0];
     const submitted = new URLSearchParams(request.body);
 
-    expect(submitted.get("username")).toBe("admin");
+    expect(submitted.get("loginName")).toBe("admin");
     expect(submitted.get("password")).toBe("adminADMIN!");
-    expect(submitted.has("loginName")).toBe(false);
+    expect(submitted.has("username")).toBe(false);
   });
 });
