@@ -15,9 +15,11 @@ import {
   createAnalyzerTypeDraft,
   duplicateAnalyzerType,
   getAnalyzerTypeCatalog,
+  getAnalyzerTypeControlRecognition,
   getAnalyzerTypeDraft,
   getAnalyzerTypeRevision,
   publishAnalyzerTypeDraft,
+  updateAnalyzerTypeControlRecognition,
   updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
 import AnalyzerTypeManagement from "./AnalyzerTypeManagement";
@@ -30,9 +32,11 @@ vi.mock("../../../services/analyzerService", () => ({
   createAnalyzerTypeDraft: vi.fn(),
   duplicateAnalyzerType: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
+  getAnalyzerTypeControlRecognition: vi.fn(),
   getAnalyzerTypeDraft: vi.fn(),
   getAnalyzerTypeRevision: vi.fn(),
   publishAnalyzerTypeDraft: vi.fn(),
+  updateAnalyzerTypeControlRecognition: vi.fn(),
   updateSharedAnalyzerType: vi.fn(),
 }));
 
@@ -111,6 +115,31 @@ const catalog = {
     },
   ],
 };
+
+const recognitionDraft = (draftId) => ({
+  draftId,
+  kind: draftId === "draft-update" ? "UPDATE" : "DUPLICATE",
+  validationIssues: [],
+  recognition: {
+    mode: "RULES",
+    affirmedNoControlResults: false,
+    description: "Any listed condition identifies a control result.",
+    conditions: [
+      {
+        key: "order-action-control",
+        kind: "FIELD_VALUE_EQUALS",
+        sourceKey: "source-safe-1",
+        sourceLabel: "Order field 12",
+        description: "Order field 12 equals Q",
+        value: "Q",
+        editable: true,
+        controlLevel: null,
+        controlType: null,
+      },
+    ],
+    availableSources: [{ key: "source-safe-1", label: "Order field 12" }],
+  },
+});
 
 const renderPage = () =>
   render(
@@ -233,6 +262,26 @@ describe("AnalyzerTypeManagement", () => {
         },
       });
     });
+    getAnalyzerTypeControlRecognition.mockImplementation((draftId, callback) =>
+      callback(recognitionDraft(draftId)),
+    );
+    updateAnalyzerTypeControlRecognition.mockImplementation(
+      (draftId, update, callback) =>
+        callback({
+          ...recognitionDraft(draftId),
+          recognition: {
+            ...recognitionDraft(draftId).recognition,
+            mode: update.mode,
+            affirmedNoControlResults: update.affirmedNoControlResults,
+            conditions: update.conditions.map((condition) => ({
+              ...condition,
+              sourceLabel: "Order field 12",
+              description: `Order field 12 equals ${condition.value}`,
+              editable: true,
+            })),
+          },
+        }),
+    );
     postToOpenElisServerJsonResponse.mockImplementation(
       (endpoint, payload, callback) => {
         callback({ profile: { profileId: "site.created" } });
@@ -500,6 +549,43 @@ describe("AnalyzerTypeManagement", () => {
     ).toBeEnabled();
   });
 
+  it("blocks duplicate publication until recognition changes are saved", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=duplicate&profile=shipped.genexpert&draft=draft-duplicate",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    expect(
+      await within(dialog).findByRole("heading", {
+        name: "Control result recognition",
+      }),
+    ).toBeVisible();
+    const publish = within(dialog).getByRole("button", {
+      name: "Publish Profile",
+    });
+    await waitFor(() => expect(publish).toBeEnabled());
+
+    const value = within(dialog).getByRole("textbox", {
+      name: "Order field 12 value",
+    });
+    await userEvent.clear(value);
+    await userEvent.type(value, "CONTROL");
+    expect(publish).toBeDisabled();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Save control recognition",
+      }),
+    );
+    await waitFor(() => expect(publish).toBeEnabled());
+  });
+
   it("duplicates the exact bookmarked profile revision instead of the latest revision", async () => {
     window.history.replaceState(
       {},
@@ -615,6 +701,36 @@ describe("AnalyzerTypeManagement", () => {
       within(dialog).getByText("Profile update draft created"),
     ).toBeVisible();
     expect(updateSharedAnalyzerType).not.toHaveBeenCalled();
+  });
+
+  it("publishes a shared-profile update through the same recognition editor", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=update&profile=site.mindray&draft=draft-update",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Update Mindray BC-5380",
+    });
+    expect(
+      await within(dialog).findByRole("heading", {
+        name: "Control result recognition",
+      }),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText(/Existing analyzers remain pinned/),
+    ).toBeVisible();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Publish Profile" }),
+    );
+    expect(publishAnalyzerTypeDraft).toHaveBeenCalledWith(
+      "draft-update",
+      expect.any(Function),
+    );
   });
 
   it("loads revision history through the profile history action", async () => {
