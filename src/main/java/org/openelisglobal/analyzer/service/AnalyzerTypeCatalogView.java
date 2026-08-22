@@ -18,7 +18,8 @@ public record AnalyzerTypeCatalogView(String schemaVersion, String catalogFinger
     public record InstanceDefaults(String protocolVersion, String communicationMode, Integer port) {
     }
 
-    public record AffectedAnalyzer(String id, String name, boolean active) {
+    public record AffectedAnalyzer(String id, String name, boolean active, int pinnedProfileRevision,
+            int pinnedMappingRevision, boolean updateAvailable) {
     }
 
     public record TypeSummary(String profileId, int revision, String revisionFingerprint, String displayName,

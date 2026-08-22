@@ -203,6 +203,13 @@
   }
 }
 
+.analyzer-type-affected__item {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: $spacing-03;
+}
+
 @media (max-width: 74rem) {
   .analyzer-type-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));

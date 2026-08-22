@@ -13,6 +13,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
@@ -45,15 +46,15 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
                 .collect(Collectors.toMap(
                         binding -> new ProfileRevisionKey(binding.getProfileId(), binding.getProfileRevision()),
                         Function.identity()));
-        Map<String, List<AnalyzerTypeCatalogView.AffectedAnalyzer>> affectedByProfileId = bridgeCatalog.profiles()
-                .stream().map(revision -> BridgeAnalyzerProfile.from(revision.profile()).profileId()).distinct()
+        Map<String, List<Analyzer>> analyzersByProfileId = bridgeCatalog.profiles().stream()
+                .map(revision -> BridgeAnalyzerProfile.from(revision.profile()).profileId()).distinct()
                 .collect(Collectors.toMap(Function.identity(), this::affectedAnalyzers));
 
         List<AnalyzerTypeCatalogView.TypeSummary> types = bridgeCatalog.profiles().stream().map(revision -> {
             BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
             AnalyzerProfileBinding binding = bindings
                     .get(new ProfileRevisionKey(profile.profileId(), profile.revision()));
-            return summarize(revision, binding, affectedByProfileId.getOrDefault(profile.profileId(), List.of()));
+            return summarize(revision, binding, analyzersByProfileId.getOrDefault(profile.profileId(), List.of()));
         }).sorted(Comparator.comparing(summary -> summary.displayName().toLowerCase(Locale.ROOT))).toList();
 
         int inUse = (int) types.stream().filter(type -> type.usedBy() > 0).count();
@@ -75,10 +76,12 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     }
 
     private AnalyzerTypeCatalogView.TypeSummary summarize(BridgeProfileCatalog.ProfileRevision revision,
-            AnalyzerProfileBinding binding, List<AnalyzerTypeCatalogView.AffectedAnalyzer> affectedAnalyzers) {
+            AnalyzerProfileBinding binding, List<Analyzer> analyzers) {
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
         AnalyzerSiteBindingSnapshot siteBinding = binding == null ? null
                 : siteBindingService.findCurrentByProfileBindingId(binding.getId()).orElse(null);
+        List<AnalyzerTypeCatalogView.AffectedAnalyzer> affectedAnalyzers = analyzers.stream()
+                .map(analyzer -> affectedAnalyzer(analyzer, profile, siteBinding)).toList();
         int testTotal = profile.testDefinitions().size();
         int resultTotal = profile.testDefinitions().stream().mapToInt(test -> test.resultValues().size()).sum();
         String status = profile.status();
@@ -94,12 +97,20 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
                 affectedAnalyzers);
     }
 
-    private List<AnalyzerTypeCatalogView.AffectedAnalyzer> affectedAnalyzers(String profileId) {
-        return bindingDAO.findAnalyzersByProfileId(profileId).stream().map(this::affectedAnalyzer).toList();
+    private List<Analyzer> affectedAnalyzers(String profileId) {
+        return bindingDAO.findAnalyzersByProfileId(profileId);
     }
 
-    private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer) {
-        return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive());
+    private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer, BridgeAnalyzerProfile profile,
+            AnalyzerSiteBindingSnapshot currentSiteBinding) {
+        AnalyzerSiteBindingRevision pinnedMapping = analyzer.getSiteBindingRevision();
+        int pinnedProfileRevision = pinnedMapping.getSiteBinding().getProfileBinding().getProfileRevision();
+        int pinnedMappingRevision = pinnedMapping.getRevisionNumber();
+        boolean newerProfileRevision = pinnedProfileRevision < profile.revision();
+        boolean newerMappingRevision = pinnedProfileRevision == profile.revision() && currentSiteBinding != null
+                && pinnedMappingRevision < currentSiteBinding.revision().getRevisionNumber();
+        return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive(),
+                pinnedProfileRevision, pinnedMappingRevision, newerProfileRevision || newerMappingRevision);
     }
 
     private static AnalyzerTypeCatalogView.InstanceDefaults instanceDefaults(BridgeAnalyzerProfile profile) {

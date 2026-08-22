@@ -58,7 +58,8 @@ public class AnalyzerTypeCatalogServiceTest {
         when(bindingDAO.getAll()).thenReturn(List.of(previousBinding, binding));
         when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
                 .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", binding, 2),
-                        analyzer("502", "Hematology - Night Bench", previousBinding, 1)));
+                        analyzer("502", "Hematology - Night Bench", binding, 1),
+                        analyzer("503", "Hematology - Reference Lab", previousBinding, 1)));
         when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
         when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
                 List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED),
@@ -93,12 +94,12 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals(2, active.resultMappings().mapped());
         assertEquals("COMPLETE", active.resultMappings().state());
         assertEquals("51", active.siteBindingId());
-        assertEquals(2L, active.usedBy());
-        assertEquals(List.of("Hematology - Main Lab", "Hematology - Night Bench"),
+        assertEquals(3L, active.usedBy());
+        assertEquals(List.of("Hematology - Main Lab", "Hematology - Night Bench", "Hematology - Reference Lab"),
                 active.affectedAnalyzers().stream().map(AnalyzerTypeCatalogView.AffectedAnalyzer::name).toList());
-        assertEquals(List.of(false, true), active.affectedAnalyzers().stream()
+        assertEquals(List.of(false, true, true), active.affectedAnalyzers().stream()
                 .map(AnalyzerTypeCatalogView.AffectedAnalyzer::updateAvailable).toList());
-        assertEquals(List.of(3, 2), active.affectedAnalyzers().stream()
+        assertEquals(List.of(3, 3, 2), active.affectedAnalyzers().stream()
                 .map(AnalyzerTypeCatalogView.AffectedAnalyzer::pinnedProfileRevision).toList());
         assertEquals("READY", active.readiness());
 

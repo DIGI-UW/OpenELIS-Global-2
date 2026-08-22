@@ -409,6 +409,7 @@
   "analyzerType.action.reactivate": "Reactivate",
   "analyzerType.action.updateShared": "Update shared",
   "analyzerType.affectedAnalyzers.heading": "{count, plural, one {Analyzer using this type} other {Analyzers using this type}}",
+  "analyzerType.affectedAnalyzers.updateAvailable": "Update available",
   "analyzerType.actions.ariaLabel": "Actions for {name}",
   "analyzerType.button.create": "Create Profile",
   "analyzerType.button.cancel": "Cancel",

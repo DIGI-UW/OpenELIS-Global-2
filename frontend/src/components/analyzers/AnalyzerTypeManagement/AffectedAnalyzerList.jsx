@@ -1,5 +1,5 @@
 import React from "react";
-import { ListItem, UnorderedList } from "@carbon/react";
+import { ListItem, Tag, UnorderedList } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 
 const AffectedAnalyzerList = ({ analyzers = [] }) => {
@@ -20,7 +20,16 @@ const AffectedAnalyzerList = ({ analyzers = [] }) => {
       </h3>
       <UnorderedList>
         {analyzers.map((analyzer) => (
-          <ListItem key={analyzer.id}>{analyzer.name}</ListItem>
+          <ListItem key={analyzer.id}>
+            <span className="analyzer-type-affected__item">
+              <span>{analyzer.name}</span>
+              {analyzer.updateAvailable && (
+                <Tag type="blue" size="sm">
+                  <FormattedMessage id="analyzerType.affectedAnalyzers.updateAvailable" />
+                </Tag>
+              )}
+            </span>
+          </ListItem>
         ))}
       </UnorderedList>
     </section>
