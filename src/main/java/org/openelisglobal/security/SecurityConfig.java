@@ -101,7 +101,9 @@ public class SecurityConfig {
     // Bridge endpoints (/analyzer/fhir, /analyzer/astm, /analyzer/hl7,
     // /rest/analyzer/analyzers)
     // are NOT in OPEN_PAGES — the bridge sends Basic auth for all OE calls.
-    // With @Order(1) on httpBasicServletFilterChain, Basic auth is processed first.
+    // Analyzer event ingestion has the highest-priority Basic-auth chain. Other
+    // Bridge endpoints continue through the general Basic-auth chain immediately
+    // after it.
     public static final String[] OPEN_PAGES = { "/pluginServlet/**", "/ChangePasswordLogin",
             "/UpdateLoginChangePassword", "/health/**", "/rest/open-configuration-properties", "/docs/UserManual",
             "/rest/site-branding/**", "/rest/supportedlocales/active" };
@@ -115,6 +117,7 @@ public class SecurityConfig {
     // "/pluginServlet/**",
     // "/importAnalyzer", "/fhir/**" };
     public static final String[] REST_CONTROLLERS = { "/Provider/**", "/rest/**" };
+    static final String[] ANALYZER_INGRESS_PATHS = { "/rest/analyzer/events/ast", "/rest/analyzer/events/culture" };
     // public static final String[] CLIENT_CERTIFICATE_PAGES = {};
 
     private static final String CONTENT_SECURITY_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
@@ -140,6 +143,23 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
+    public SecurityFilterChain analyzerIngressSecurityFilterChain(HttpSecurity http) throws Exception {
+        configureAnalyzerIngress(http);
+        http.addFilterAt(SpringContext.getBean(BasicAuthFilter.class), BasicAuthenticationFilter.class)
+                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+        return http.build();
+    }
+
+    static void configureAnalyzerIngress(HttpSecurity http) throws Exception {
+        http.securityMatcher(ANALYZER_INGRESS_PATHS)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().hasRole("ANALYSER_IMPORT"))
+                .httpBasic(Customizer.withDefaults()).csrf(csrf -> csrf.disable())
+                .requestCache(requestCache -> requestCache.disable());
+    }
+
+    @Bean
+    @Order(2)
     @ConditionalOnProperty(property = "org.itech.login.basic", havingValue = "true", matchIfMissing = true)
     public SecurityFilterChain httpBasicServletFilterChain(HttpSecurity http) throws Exception {
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
@@ -167,7 +187,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(2)
+    @Order(3)
     public SecurityFilterChain openSecurityFilterChain(HttpSecurity http) throws Exception {
         CharacterEncodingFilter filter = new CharacterEncodingFilter();
         filter.setEncoding("UTF-8");
@@ -274,7 +294,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(3)
+    @Order(4)
     @ConditionalOnProperty(property = "org.itech.login.saml", havingValue = "true")
     public SecurityFilterChain samlSecurityFilterChain(HttpSecurity http) throws Exception {
         CharacterEncodingFilter filter = new CharacterEncodingFilter();
@@ -341,7 +361,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(4)
+    @Order(5)
     @ConditionalOnProperty(property = "org.itech.login.oauth", havingValue = "true")
     public SecurityFilterChain openidSecurityFilterChain(HttpSecurity http) throws Exception {
         CharacterEncodingFilter filter = new CharacterEncodingFilter();
@@ -389,7 +409,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(5)
+    @Order(6)
     @ConditionalOnProperty(property = "org.itech.login.certificate", havingValue = "true")
     public SecurityFilterChain clientCertificateSecurityFilterChain(HttpSecurity http) throws Exception {
         CharacterEncodingFilter filter = new CharacterEncodingFilter();

@@ -3,6 +3,16 @@ import type { Page } from "@playwright/test";
 
 const API_PREFIX = "/api/OpenELIS-Global";
 
+const analyzerIngressHeaders = () => {
+  const username =
+    process.env.ANALYZER_INGRESS_USER || process.env.TEST_USER || "admin";
+  const password =
+    process.env.ANALYZER_INGRESS_PASS || process.env.TEST_PASS || "adminADMIN!";
+  return {
+    Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+  };
+};
+
 export interface SeededMicrobiologyCase {
   accessionNumber: string;
   caseId: string;
@@ -744,7 +754,7 @@ export async function submitQcFailedAstAnalyzerResults(
   const response = await page.request.post(
     `${API_PREFIX}/rest/analyzer/events/ast`,
     {
-      headers: { "X-CSRF-Token": await getCsrfToken(page) },
+      headers: analyzerIngressHeaders(),
       data: {
         externalEventId,
         eventType: "AST_RESULT_AVAILABLE",
@@ -791,7 +801,7 @@ export async function submitUnmatchedAstAnalyzerResults(
   const response = await page.request.post(
     `${API_PREFIX}/rest/analyzer/events/ast`,
     {
-      headers: { "X-CSRF-Token": await getCsrfToken(page) },
+      headers: analyzerIngressHeaders(),
       data: {
         externalEventId,
         eventType: "AST_RESULT_AVAILABLE",

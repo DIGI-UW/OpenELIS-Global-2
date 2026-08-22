@@ -25,7 +25,7 @@ public class MicroCultureAnalyzerEventRestController extends MicrobiologyRestCon
     }
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ANALYSER_IMPORT')")
     public ResponseEntity<MicroAnalyzerEventForm> receive(@RequestBody MicroCultureAnalyzerEventRequestForm request,
             HttpServletRequest httpRequest) {
         AnalyzerEvent event = eventService

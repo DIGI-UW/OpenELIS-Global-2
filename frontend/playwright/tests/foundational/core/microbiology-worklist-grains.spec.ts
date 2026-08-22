@@ -221,6 +221,12 @@ test.describe("M-07 microbiology worklist grains", () => {
     await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(row).toContainText("Awaiting Results");
 
+    const browserIngressAttempt = await page.request.post(
+      "/api/OpenELIS-Global/rest/analyzer/events/ast",
+      { data: {} },
+    );
+    expect(browserIngressAttempt.status()).toBe(401);
+
     await submitQcFailedAstAnalyzerResults(page, seeded);
     const resultsQuery = new URLSearchParams({
       grain: "ast",

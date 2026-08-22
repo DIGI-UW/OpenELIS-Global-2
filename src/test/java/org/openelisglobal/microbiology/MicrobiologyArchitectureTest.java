@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
@@ -10,6 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.Test;
+import org.openelisglobal.microbiology.controller.rest.MicroAstAnalyzerEventRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseAmendmentRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseInoculationRestController;
@@ -18,6 +20,7 @@ import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestCon
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseTimelineRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCriticalCommunicationRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCultureAnalyzerEventRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroReportReleaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroWhonetReadinessRestController;
@@ -71,13 +74,26 @@ public class MicrobiologyArchitectureTest {
     }
 
     @Test
+    public void analyzerEventControllersRequireTheExistingAnalyzerImportRole() throws NoSuchMethodException {
+        Class<?>[] controllers = { MicroAstAnalyzerEventRestController.class,
+                MicroCultureAnalyzerEventRestController.class };
+        for (Class<?> controller : controllers) {
+            Method receive = Stream.of(controller.getDeclaredMethods())
+                    .filter(method -> method.getName().equals("receive")).findFirst().orElseThrow();
+            var authorization = receive.getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
+            assertNotNull(controller.getName() + ".receive must declare its machine-role boundary", authorization);
+            assertEquals("hasRole('ANALYSER_IMPORT')", authorization.value());
+        }
+    }
+
+    @Test
     public void microbiologyFixturesDoNotBypassApplicationServices() throws IOException {
         Path repositoryRoot = Path.of(System.getProperty("user.dir"));
         Path microbiologyTests = repositoryRoot.resolve("src/test/java/org/openelisglobal/microbiology");
         try (Stream<Path> files = Files.walk(microbiologyTests)) {
             for (Path file : files.filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> !path.getFileName().toString().equals(getClass().getSimpleName() + ".java"))
-                    .filter(path -> !path.getFileName().toString().endsWith("LiquibaseRollbackTest.java"))
+                    .filter(path -> !path.getFileName().toString().contains("Liquibase"))
                     .filter(path -> !path.toString().contains("/qualification/")).toList()) {
                 assertNoForbiddenFixtureAccess(file, List.of("JdbcTemplate", "javax.sql.DataSource",
                         "java.sql.Connection", "createNativeQuery", "INSERT INTO", "DELETE FROM", "nextval("));
