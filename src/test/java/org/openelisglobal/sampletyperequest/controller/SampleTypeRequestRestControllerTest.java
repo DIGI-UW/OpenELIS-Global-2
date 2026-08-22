@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Collections;
@@ -20,6 +19,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.sample.service.SampleService;
@@ -69,9 +70,6 @@ public class SampleTypeRequestRestControllerTest {
     @Mock
     private HttpServletRequest httpRequest;
 
-    @Mock
-    private HttpSession httpSession;
-
     private SampleTypeRequestRestController controller;
 
     @Before
@@ -85,6 +83,9 @@ public class SampleTypeRequestRestControllerTest {
         ReflectionTestUtils.setField(controller, "testMethodService", testMethodService);
         ReflectionTestUtils.setField(controller, "panelService", panelService);
 
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        when(httpRequest.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
@@ -190,7 +191,6 @@ public class SampleTypeRequestRestControllerTest {
 
     @Test
     public void createRequest_validDto_returns201WithDto() {
-        when(httpRequest.getSession()).thenReturn(httpSession);
         Sample sample = new Sample();
         sample.setId("5");
         TypeOfSample typeOfSample = new TypeOfSample();
@@ -268,13 +268,11 @@ public class SampleTypeRequestRestControllerTest {
 
     @Test
     public void createRequest_withUnitOfMeasure_setsUom() {
-        when(httpRequest.getSession()).thenReturn(httpSession);
         Sample sample = new Sample();
         sample.setId("5");
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setId("2");
-        org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure uom =
-                new org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure();
+        org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure uom = new org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure();
         uom.setId("3");
 
         when(sampleService.get("5")).thenReturn(sample);
@@ -294,7 +292,6 @@ public class SampleTypeRequestRestControllerTest {
 
     @Test
     public void createRequest_defaultsApplied_whenNullOptionalFields() {
-        when(httpRequest.getSession()).thenReturn(httpSession);
         Sample sample = new Sample();
         sample.setId("5");
         TypeOfSample typeOfSample = new TypeOfSample();

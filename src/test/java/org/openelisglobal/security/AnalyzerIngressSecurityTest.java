@@ -7,12 +7,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.Customizer;
@@ -29,10 +29,9 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.HttpRequestHandler;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.handler.SimpleUrlHandlerMapping;
 
 @WebAppConfiguration
 @ContextConfiguration(classes = AnalyzerIngressSecurityTest.TestConfig.class)
@@ -116,22 +115,13 @@ public class AnalyzerIngressSecurityTest extends SecuritySliceMockMvcTest {
         }
 
         @Bean
-        IngressProbeController ingressProbeController() {
-            return new IngressProbeController();
-        }
-    }
-
-    @RestController
-    static class IngressProbeController {
-
-        @PostMapping({ AST_EVENTS, CULTURE_EVENTS })
-        ResponseEntity<Void> receive() {
-            return ResponseEntity.noContent().build();
-        }
-
-        @GetMapping("/rest/analyzer/import-issues")
-        ResponseEntity<Void> reconciliation() {
-            return ResponseEntity.noContent().build();
+        SimpleUrlHandlerMapping ingressProbeHandlerMapping() {
+            HttpRequestHandler noContent = (request, response) -> response.setStatus(204);
+            SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
+            mapping.setUrlMap(Map.of(AST_EVENTS, noContent, CULTURE_EVENTS, noContent, "/rest/analyzer/import-issues",
+                    noContent));
+            mapping.setOrder(-1);
+            return mapping;
         }
     }
 }
