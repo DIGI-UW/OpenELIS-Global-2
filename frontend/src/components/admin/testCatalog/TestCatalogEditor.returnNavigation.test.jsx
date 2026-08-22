@@ -65,6 +65,9 @@ describe("TestCatalogEditor return navigation", () => {
           <Route path="/analyzers/types/:profileId/mapping">
             <ReturnTarget />
           </Route>
+          <Route exact path="/MasterListsPage/TestCatalogList">
+            <div data-testid="test-catalog-list">Test Catalog</div>
+          </Route>
         </IntlProvider>
       </MemoryRouter>,
     );
@@ -75,5 +78,29 @@ describe("TestCatalogEditor return navigation", () => {
     expect(await screen.findByTestId("return-target")).toHaveTextContent(
       returnTo,
     );
+  });
+
+  it("ignores a protocol-relative return URL", async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          "/MasterListsPage/TestCatalogEditor/7/sample-results?returnTo=%2F%2Fevil.example",
+        ]}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <Route path="/MasterListsPage/TestCatalogEditor/:testId/:section?">
+            <TestCatalogEditor />
+          </Route>
+          <Route exact path="/MasterListsPage/TestCatalogList">
+            <div data-testid="test-catalog-list">Test Catalog</div>
+          </Route>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Drug susceptibility");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(await screen.findByTestId("test-catalog-list")).toBeVisible();
   });
 });
