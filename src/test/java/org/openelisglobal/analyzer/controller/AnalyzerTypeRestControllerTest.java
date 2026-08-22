@@ -15,6 +15,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.analyzer.service.AnalyzerControlRecognitionUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationRequest;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationView;
@@ -197,6 +198,21 @@ public class AnalyzerTypeRestControllerTest {
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertSame(response, result.getBody());
         verify(managementService).getDraft("draft-1");
+    }
+
+    @Test
+    public void controlRecognitionDraftCommandsUseTheAuthenticatedOpenElisActor() throws Exception {
+        JsonNode current = objectMapper.readTree("{\"draftId\":\"draft-1\",\"recognition\":{\"mode\":\"RULES\"}}");
+        JsonNode changed = objectMapper.readTree("{\"draftId\":\"draft-1\",\"recognition\":{\"mode\":\"NONE\"}}");
+        AnalyzerControlRecognitionUpdate update = new AnalyzerControlRecognitionUpdate("NONE", true, List.of());
+        when(managementService.getControlRecognition("draft-1")).thenReturn(current);
+        when(managementService.updateControlRecognition("draft-1", update, "17")).thenReturn(changed);
+
+        assertSame(current, controller.getControlRecognition("draft-1").getBody());
+        assertSame(changed, controller.updateControlRecognition("draft-1", update, authenticatedRequest(17)).getBody());
+
+        verify(managementService).getControlRecognition("draft-1");
+        verify(managementService).updateControlRecognition("draft-1", update, "17");
     }
 
     @Test

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -145,6 +146,32 @@ public class BridgeProfileManagementServiceTest {
 
         assertEquals("draft-1", draft.path("draftId").asText());
         assertEquals("DUPLICATE", draft.path("kind").asText());
+    }
+
+    @Test
+    public void controlRecognitionUsesTheSafeBridgeDraftContractAndAuthenticatedActor() throws Exception {
+        String endpoint = "https://bridge.example/api/profiles/drafts/draft-1/control-recognition";
+        when(bridgeHttpClient.get(eq(endpoint), any(Duration.class))).thenReturn(new BridgeHttpClient.BridgeResponse(
+                200, "{\"draftId\":\"draft-1\",\"recognition\":{\"mode\":\"RULES\"}}"));
+        when(bridgeHttpClient.put(eq(endpoint), any(String.class), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200,
+                        "{\"draftId\":\"draft-1\",\"recognition\":{\"mode\":\"NONE\"}}"));
+        AnalyzerControlRecognitionUpdate update = new AnalyzerControlRecognitionUpdate("NONE", true, List.of());
+
+        JsonNode current = service.getControlRecognition("draft-1");
+        JsonNode changed = service.updateControlRecognition("draft-1", update, "17");
+
+        assertEquals("RULES", current.path("recognition").path("mode").asText());
+        assertEquals("NONE", changed.path("recognition").path("mode").asText());
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(bridgeHttpClient).put(eq(endpoint), body.capture(), any(Duration.class));
+        JsonNode forwarded = objectMapper.readTree(body.getValue());
+        assertEquals("17", forwarded.path("actor").asText());
+        assertEquals("NONE", forwarded.path("mode").asText());
+        assertEquals(true, forwarded.path("affirmedNoControlResults").asBoolean());
+        assertEquals(true, forwarded.path("conditions").isArray());
+        assertEquals(false, forwarded.has("profile"));
+        assertEquals(false, forwarded.has("controlResultRecognition"));
     }
 
     @Test
