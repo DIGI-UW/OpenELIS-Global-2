@@ -40,6 +40,9 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("sysmex-xn", catalog.profiles().get(0).profile().path("profileMeta").path("id").asText());
         assertEquals(3, catalog.profiles().get(0).profile().path("catalog").path("revision").asInt());
         assertEquals("SHIPPED", catalog.profiles().get(0).publication().path("action").asText());
+        assertEquals("RULES", catalog.profiles().get(0).controlRecognitionSummary().mode());
+        assertEquals("Specimen ID starts with QC-",
+                catalog.profiles().get(0).controlRecognitionSummary().conditions().get(0).description());
     }
 
     @Test
@@ -52,6 +55,8 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("site.mock hematology", revision.profile().path("profileMeta").path("id").asText());
         assertEquals(2, revision.profile().path("catalog").path("revision").asInt());
         assertEquals("PUBLISHED", revision.publication().path("action").asText());
+        assertEquals("NONE", revision.controlRecognitionSummary().mode());
+        assertEquals(true, revision.controlRecognitionSummary().affirmedNoControlResults());
     }
 
     @Test
@@ -85,6 +90,20 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("Bridge profile catalog request failed with HTTP 401", exception.getMessage());
     }
 
+    @Test
+    public void getCatalogRejectsRevisionWithoutControlRecognitionSummary() throws Exception {
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200,
+                        validCatalog().replaceFirst("\\s*\\\"controlRecognitionSummary\\\":\\{.*?\\},\\s*\\\"publication\\\"",
+                                "\"publication\"")));
+
+        BridgeProfileCatalogException exception = assertThrows(BridgeProfileCatalogException.class,
+                () -> service.getCatalog());
+
+        assertEquals("Bridge profile catalog contains an invalid control recognition summary",
+                exception.getMessage());
+    }
+
     private static String validCatalog() {
         return """
                 {
@@ -102,6 +121,16 @@ public class BridgeProfileCatalogServiceTest {
                         "source":"SHIPPED",
                         "status":"ACTIVE"
                       }
+                    },
+                    "controlRecognitionSummary":{
+                      "mode":"RULES",
+                      "description":"Control results match any configured condition.",
+                      "affirmedNoControlResults":false,
+                      "conditions":[{
+                        "key":"qc-prefix",
+                        "description":"Specimen ID starts with QC-",
+                        "controlLevel":"QC"
+                      }]
                     },
                     "publication":{
                       "action":"SHIPPED",
@@ -127,6 +156,12 @@ public class BridgeProfileCatalogServiceTest {
                       "source":"SITE",
                       "status":"ACTIVE"
                     }
+                  },
+                  "controlRecognitionSummary":{
+                    "mode":"NONE",
+                    "description":"This analyzer interface transports no control results.",
+                    "affirmedNoControlResults":true,
+                    "conditions":[]
                   },
                   "publication":{"action":"PUBLISHED","actor":"17","markedAt":"2026-08-18T12:00:00Z"}
                 }
