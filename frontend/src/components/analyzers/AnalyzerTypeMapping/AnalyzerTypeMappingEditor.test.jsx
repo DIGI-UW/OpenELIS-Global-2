@@ -215,9 +215,30 @@ describe("AnalyzerTypeMappingEditor", () => {
           displayName: mapping.displayName,
           usedBy: 3,
           affectedAnalyzers: [
-            { id: "501", name: "GeneXpert - Main Lab", active: true },
-            { id: "502", name: "GeneXpert - TB Bench", active: true },
-            { id: "503", name: "GeneXpert - Reference Lab", active: false },
+            {
+              id: "501",
+              name: "GeneXpert - Main Lab",
+              active: true,
+              pinnedProfileRevision: 2,
+              pinnedMappingRevision: 3,
+              updateAvailable: false,
+            },
+            {
+              id: "502",
+              name: "GeneXpert - TB Bench",
+              active: true,
+              pinnedProfileRevision: 1,
+              pinnedMappingRevision: 2,
+              updateAvailable: true,
+            },
+            {
+              id: "503",
+              name: "GeneXpert - Reference Lab",
+              active: false,
+              pinnedProfileRevision: 2,
+              pinnedMappingRevision: 3,
+              updateAvailable: false,
+            },
           ],
         }),
     );
@@ -269,6 +290,7 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(screen.getByText("GeneXpert - Main Lab")).toBeVisible();
     expect(screen.getByText("GeneXpert - TB Bench")).toBeVisible();
     expect(screen.getByText("GeneXpert - Reference Lab")).toBeVisible();
+    expect(screen.getByText("Update available")).toBeVisible();
     expect(screen.queryByText(/regex/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/operational QC/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(

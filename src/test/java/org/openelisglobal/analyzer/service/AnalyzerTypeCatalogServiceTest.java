@@ -56,8 +56,9 @@ public class AnalyzerTypeCatalogServiceTest {
         previousBinding.setProfileId("site.mock-hematology");
         previousBinding.setProfileRevision(2);
         when(bindingDAO.getAll()).thenReturn(List.of(previousBinding, binding));
-        when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology")).thenReturn(
-                List.of(analyzer("501", "Hematology - Main Lab"), analyzer("502", "Hematology - Night Bench")));
+        when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", binding, 2),
+                        analyzer("502", "Hematology - Night Bench", previousBinding, 1)));
         when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
         when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
                 List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED),
@@ -95,6 +96,10 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals(2L, active.usedBy());
         assertEquals(List.of("Hematology - Main Lab", "Hematology - Night Bench"),
                 active.affectedAnalyzers().stream().map(AnalyzerTypeCatalogView.AffectedAnalyzer::name).toList());
+        assertEquals(List.of(false, true), active.affectedAnalyzers().stream()
+                .map(AnalyzerTypeCatalogView.AffectedAnalyzer::updateAvailable).toList());
+        assertEquals(List.of(3, 2), active.affectedAnalyzers().stream()
+                .map(AnalyzerTypeCatalogView.AffectedAnalyzer::pinnedProfileRevision).toList());
         assertEquals("READY", active.readiness());
 
         AnalyzerTypeCatalogView.TypeSummary inactive = result.types().get(1);
@@ -160,10 +165,23 @@ public class AnalyzerTypeCatalogServiceTest {
     }
 
     private static Analyzer analyzer(String id, String name) {
+        AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
+        profileBinding.setProfileRevision(1);
+        return analyzer(id, name, profileBinding, 1);
+    }
+
+    private static Analyzer analyzer(String id, String name, AnalyzerProfileBinding profileBinding,
+            int mappingRevision) {
         Analyzer analyzer = new Analyzer();
         analyzer.setId(id);
         analyzer.setName(name);
         analyzer.setActive(true);
+        AnalyzerSiteBinding siteBinding = new AnalyzerSiteBinding();
+        siteBinding.setProfileBinding(profileBinding);
+        AnalyzerSiteBindingRevision siteBindingRevision = new AnalyzerSiteBindingRevision();
+        siteBindingRevision.setSiteBinding(siteBinding);
+        siteBindingRevision.setRevisionNumber(mappingRevision);
+        analyzer.setSiteBindingRevision(siteBindingRevision);
         return analyzer;
     }
 
