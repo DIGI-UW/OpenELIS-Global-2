@@ -184,9 +184,10 @@ capability is available; it does not own macro authoring or administration.
   default action queue, retain them in a bookmarkable Reviewed view with a
   read-only View action, and keep reasoned repeat/retest setup inside the case.
 
-The active product iteration is Culture purpose in Phase 1B. Human acceptance
-and the shared offline and reagent-policy dependencies remain independent work
-and do not reorder that product sequence.
+The active product iteration is M-09 reporting-period presets and the
+AST-worklist export deep link in Phase 1B. Human acceptance and the shared
+offline and reagent-policy dependencies remain independent work and do not
+reorder that product sequence.
 
 ### Phase 1B Clinical Depth
 
@@ -202,12 +203,12 @@ and do not reorder that product sequence.
   same selection to server-side preview and generation, preserve canonical URL
   state, place the single export navigation entry under Reports, and compact the
   touched page toward the M-09 operational layout.
-- [*] Capture Culture purpose on microbiology orders as Clinical
+- [x] Capture Culture purpose on microbiology orders as Clinical
   diagnosis/treatment or Active screening/carriage, show it with the case, audit
   pre-release corrections, and complete the M-09 screening filter. New orders
   default visibly to clinical purpose; historical missing values remain
   Unspecified; screening and unspecified records require explicit inclusion.
-- [ ] Complete M-09 reporting-period presets and enable the AST-worklist Export
+- [*] Complete M-09 reporting-period presets and enable the AST-worklist Export
   to WHONET deep link so its active scope pre-fills the generator and can be
   cleared.
 - [ ] Complete M-09 advanced first-isolate behavior behind a progressive
