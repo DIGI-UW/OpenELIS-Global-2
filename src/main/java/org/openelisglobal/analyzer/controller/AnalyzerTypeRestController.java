@@ -2,6 +2,8 @@ package org.openelisglobal.analyzer.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogException;
@@ -29,12 +31,14 @@ public class AnalyzerTypeRestController extends BaseRestController {
 
     private final AnalyzerTypeCatalogService catalogService;
     private final BridgeProfileManagementService managementService;
+    private final AnalyzerMappingCatalogService mappingCatalogService;
 
     @Autowired
     public AnalyzerTypeRestController(AnalyzerTypeCatalogService catalogService,
-            BridgeProfileManagementService managementService) {
+            BridgeProfileManagementService managementService, AnalyzerMappingCatalogService mappingCatalogService) {
         this.catalogService = catalogService;
         this.managementService = managementService;
+        this.mappingCatalogService = mappingCatalogService;
     }
 
     @GetMapping
@@ -46,6 +50,18 @@ public class AnalyzerTypeRestController extends BaseRestController {
     public ResponseEntity<AnalyzerTypeCatalogView.TypeSummary> getAnalyzerType(@PathVariable String profileId,
             @RequestParam int revision) {
         return ResponseEntity.ok(catalogService.getType(profileId, revision));
+    }
+
+    @GetMapping("/mapping-catalog/tests")
+    public ResponseEntity<List<AnalyzerMappingCatalogService.TestOption>> searchMappingTests(
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(mappingCatalogService.searchActiveTests(search));
+    }
+
+    @GetMapping("/mapping-catalog/tests/{testId}/result-options")
+    public ResponseEntity<List<AnalyzerMappingCatalogService.ResultOption>> getMappingResultOptions(
+            @PathVariable String testId) {
+        return ResponseEntity.ok(mappingCatalogService.getActiveResultOptions(testId));
     }
 
     @PostMapping("/drafts")

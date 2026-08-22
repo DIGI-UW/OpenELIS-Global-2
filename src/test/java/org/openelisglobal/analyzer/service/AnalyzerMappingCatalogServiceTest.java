@@ -65,12 +65,14 @@ public class AnalyzerMappingCatalogServiceTest {
         TestResult textOption = option("12", mapped, "Not detected", true);
         TestResult inactiveOption = option("13", mapped, "Inactive", false);
         TestResult foreignOption = option("14", other, "Foreign", true);
+        TestResult numericRow = option("15", mapped, "5.2", true);
+        numericRow.setTestResultType("N");
         Dictionary dictionary = new Dictionary();
         dictionary.setId("501");
         dictionary.setDictEntry("Detected");
         when(testService.get("1")).thenReturn(mapped);
         when(testResultService.getActiveTestResultsByTest("1"))
-                .thenReturn(List.of(textOption, inactiveOption, foreignOption, dictionaryOption));
+                .thenReturn(List.of(textOption, inactiveOption, foreignOption, numericRow, dictionaryOption));
         when(dictionaryService.getDictionaryById("501")).thenReturn(dictionary);
 
         List<AnalyzerMappingCatalogService.ResultOption> options = service.getActiveResultOptions("1");
@@ -124,6 +126,7 @@ public class AnalyzerMappingCatalogServiceTest {
         result.setTest(test);
         result.setValue(value);
         result.setIsActive(active);
+        result.setTestResultType("D");
         return result;
     }
 }
