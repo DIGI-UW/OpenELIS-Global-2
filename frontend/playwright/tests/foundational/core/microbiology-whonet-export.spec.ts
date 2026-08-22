@@ -1,129 +1,25 @@
 import { expect, test } from "../../../helpers/test-base";
-import type { Download } from "@playwright/test";
-import { Sidenav } from "../../../fixtures/sidenav";
 import {
   seedMicrobiologyWhonetExport,
   seedMicrobiologyWhonetExportFilters,
 } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+import {
+  buildWhonetExportQuery,
+  expectWhonetExportReady,
+  parseWhonetCsvLine,
+  readWhonetDownload,
+  selectWhonetFilterOption,
+  whonetFixtureLabels,
+} from "../../../helpers/whonet-export";
+import { Sidenav } from "../../../fixtures/sidenav";
 
-const currentPeriodQuery = (
-  exportDate: string,
-  filters: {
-    specimen?: string[];
-    organism?: string[];
-    origin?: string[];
-    significance?: string[];
-  } = {},
-) => {
-  const params = new URLSearchParams({
-    from: exportDate,
-    to: exportDate,
-    dedup: "FIRST_ISOLATE_7_DAY",
-    step: "configure",
-    page: "1",
-    pageSize: "100",
-  });
-  [...(filters.specimen || [])]
-    .sort()
-    .forEach((id) => params.append("specimen", id));
-  [...(filters.organism || [])]
-    .sort()
-    .forEach((id) => params.append("organism", id));
-  [...(filters.origin || [])]
-    .sort()
-    .forEach((id) => params.append("origin", id));
-  [...(filters.significance || ["CLINICALLY_SIGNIFICANT"])]
-    .sort()
-    .forEach((id) => params.append("significance", id));
-  const canonical = new URLSearchParams();
-  ["from", "to"].forEach((key) => canonical.set(key, params.get(key) || ""));
-  params
-    .getAll("specimen")
-    .forEach((value) => canonical.append("specimen", value));
-  params
-    .getAll("organism")
-    .forEach((value) => canonical.append("organism", value));
-  params.getAll("origin").forEach((value) => canonical.append("origin", value));
-  params
-    .getAll("significance")
-    .forEach((value) => canonical.append("significance", value));
-  ["dedup", "step", "page", "pageSize"].forEach((key) =>
-    canonical.set(key, params.get(key) || ""),
-  );
-  return canonical.toString();
-};
-
-const selectFilterOption = async (
-  page: import("@playwright/test").Page,
-  filterName: RegExp,
-  optionName: string,
-) => {
-  const filter = page.getByRole("combobox", { name: filterName });
-  await filter.click();
-  const listbox = page.getByRole("listbox", { name: filterName });
-  await expect(listbox).toBeVisible();
-  const supportsTextEntry = await filter.evaluate((element) =>
-    element.matches("input, textarea, [contenteditable='true']"),
-  );
-  if (supportsTextEntry) {
-    await filter.fill(optionName);
-  }
-  const option = listbox.getByRole("option", {
-    name: optionName,
-    exact: true,
-  });
-  await expect(option).toBeVisible();
-  await option.click();
-  await filter.press("Escape");
-  await expect(listbox).toBeHidden();
-};
-
-const expectWhonetExportReady = async (
-  page: import("@playwright/test").Page,
-) => {
-  await expect(page.getByTestId("whonet-export")).toBeVisible({
-    timeout: 0,
-  });
-  await expect(
-    page.getByRole("heading", { name: "WHONET export", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("combobox", { name: /^Specimen types/ }),
-  ).toBeEnabled();
-};
-
-const fixtureLabels = {
-  specimen: (accessionNumber: string) =>
-    `UAT WHONET specimen ${accessionNumber.replace(/^UATMICRO/, "")}`,
-  mappedOrganism: "Reference organism (UAT)",
-  unmappedOrganism: (accessionNumber: string) =>
-    `WHONET mapping pending (UAT ${accessionNumber.replace(/^UATMICRO/, "")})`,
-  inpatient: "Inpatient",
-};
-
-const readDownload = async (download: Download) => {
-  const stream = await download.createReadStream();
-  let content = "";
-  for await (const chunk of stream) content += chunk.toString();
-  return content;
-};
-
-const parseCsvLine = (line: string) => {
-  const fields: string[] = [];
-  const pattern = /"((?:[^"]|"")*)"(?:,|$)/g;
-  for (const match of line.matchAll(pattern)) {
-    fields.push(match[1].replace(/""/g, '"'));
-  }
-  return fields;
-};
-
-test.describe("OGC-782 M4 WHONET manual export", () => {
+test.describe("OGC-782 WHONET manual export", () => {
   test.describe.configure({ timeout: 120_000 });
 
   test("preserves every R9 export population filter", async ({ page }) => {
     const seeded = await seedMicrobiologyWhonetExportFilters(page);
-    const query = currentPeriodQuery(seeded.exportDate);
+    const query = buildWhonetExportQuery(seeded.exportDate);
     const organismIds = [seeded.organismId, seeded.unmappedOrganismId];
 
     await page.goto(`/Microbiology/whonet?${query}`, {
@@ -131,21 +27,29 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
     });
     await expectWhonetExportReady(page);
 
-    await selectFilterOption(
+    await selectWhonetFilterOption(
       page,
       /^Specimen types/,
-      fixtureLabels.specimen(seeded.accessionNumber),
+      whonetFixtureLabels.specimen(seeded.accessionNumber),
     );
-    await selectFilterOption(page, /^Organisms/, fixtureLabels.mappedOrganism);
-    await selectFilterOption(
+    await selectWhonetFilterOption(
       page,
       /^Organisms/,
-      fixtureLabels.unmappedOrganism(seeded.accessionNumber),
+      whonetFixtureLabels.mappedOrganism,
     );
-    await selectFilterOption(page, /^Patient origins/, fixtureLabels.inpatient);
-    await selectFilterOption(page, /^Inclusion/, "Contaminant");
+    await selectWhonetFilterOption(
+      page,
+      /^Organisms/,
+      whonetFixtureLabels.unmappedOrganism(seeded.accessionNumber),
+    );
+    await selectWhonetFilterOption(
+      page,
+      /^Patient origins/,
+      whonetFixtureLabels.inpatient,
+    );
+    await selectWhonetFilterOption(page, /^Inclusion/, "Contaminant");
 
-    const filteredQuery = currentPeriodQuery(seeded.exportDate, {
+    const filteredQuery = buildWhonetExportQuery(seeded.exportDate, {
       specimen: [seeded.sampleTypeId],
       organism: organismIds,
       origin: ["INPATIENT"],
@@ -189,7 +93,9 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Generate CSV" }).click();
     const download = await downloadPromise;
-    expect(await readDownload(download)).toContain(seeded.accessionNumber);
+    expect(await readWhonetDownload(download)).toContain(
+      seeded.accessionNumber,
+    );
   });
 
   test("previews mapped AST, links mapping repair, and downloads CSV", async ({
@@ -212,7 +118,7 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       await expectWhonetExportReady(page);
     });
 
-    const query = currentPeriodQuery(seeded.exportDate);
+    const query = buildWhonetExportQuery(seeded.exportDate);
     await test.step("Reload the complete canonical configuration", async () => {
       await page.goto(`/Microbiology/whonet?${query}`, {
         waitUntil: "commit",
@@ -238,23 +144,23 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
     });
 
     await test.step("Select and preserve the export population", async () => {
-      await selectFilterOption(
+      await selectWhonetFilterOption(
         page,
         /^Specimen types/,
-        fixtureLabels.specimen(seeded.accessionNumber),
+        whonetFixtureLabels.specimen(seeded.accessionNumber),
       );
-      await selectFilterOption(
+      await selectWhonetFilterOption(
         page,
         /^Organisms/,
-        fixtureLabels.mappedOrganism,
+        whonetFixtureLabels.mappedOrganism,
       );
-      await selectFilterOption(
+      await selectWhonetFilterOption(
         page,
         /^Organisms/,
-        fixtureLabels.unmappedOrganism(seeded.accessionNumber),
+        whonetFixtureLabels.unmappedOrganism(seeded.accessionNumber),
       );
 
-      const filteredQuery = currentPeriodQuery(seeded.exportDate, {
+      const filteredQuery = buildWhonetExportQuery(seeded.exportDate, {
         specimen: [seeded.sampleTypeId],
         organism: organismIds,
       });
@@ -417,9 +323,9 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       });
       expect(download.suggestedFilename()).toMatch(/^WHONET_.*\.csv$/);
 
-      const csv = await readDownload(download);
+      const csv = await readWhonetDownload(download);
       const lines = csv.split(/\r?\n/).filter(Boolean);
-      const header = parseCsvLine(lines[0]);
+      const header = parseWhonetCsvLine(lines[0]);
       const accessionIndex = header.indexOf("LAB_NUMBER");
       const antibioticIndex = header.indexOf("ANTIBIOTIC");
       const organismIndex = header.indexOf("ORGANISM");
@@ -433,7 +339,7 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
 
       const seededRows = lines
         .slice(1)
-        .map(parseCsvLine)
+        .map(parseWhonetCsvLine)
         .filter((row) => row[accessionIndex] === seeded.accessionNumber);
       expect(seededRows).toHaveLength(2);
       expect(
