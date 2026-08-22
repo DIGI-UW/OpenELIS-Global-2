@@ -12,6 +12,9 @@ describe("safeInternalPath", () => {
     expect(safeInternalPath("//evil.example", "/analyzers/types")).toBe(
       "/analyzers/types",
     );
+    expect(safeInternalPath("/\\evil.example", "/analyzers/types")).toBe(
+      "/analyzers/types",
+    );
     expect(safeInternalPath("https://evil.example", "/analyzers/types")).toBe(
       "/analyzers/types",
     );
