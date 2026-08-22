@@ -139,6 +139,15 @@ public class AnalyzerTypeRestControllerTest {
     }
 
     @Test
+    public void invalidMappingCommandsReturnAVisibleBadRequest() {
+        ResponseEntity<AnalyzerTypeRestController.ErrorResponse> response = controller
+                .handleInvalidMapping(new IllegalArgumentException("Every source row must be resolved"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Every source row must be resolved", response.getBody().error());
+    }
+
+    @Test
     public void duplicateUsesAuthenticatedUserAsBridgeActor() throws Exception {
         JsonNode response = objectMapper.readTree("{\"draftId\":\"draft-1\",\"kind\":\"DUPLICATE\"}");
         when(managementService.duplicate("site.mock", 3, "Mock Analyzer -1", "17")).thenReturn(response);
