@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -40,9 +39,6 @@ public class EQAMyProgramsRestControllerTest {
     @Mock
     private HttpServletRequest request;
 
-    @Mock
-    private HttpSession session;
-
     @InjectMocks
     private EQAMyProgramsRestController controller;
 
@@ -53,8 +49,7 @@ public class EQAMyProgramsRestControllerTest {
     public void setUp() {
         UserSessionData usd = new UserSessionData();
         usd.setSytemUserId(1);
-        when(request.getSession()).thenReturn(session);
-        when(session.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
+        when(request.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
 
         enrollment1 = new EQALabProgramEnrollment();
         enrollment1.setId(1L);
