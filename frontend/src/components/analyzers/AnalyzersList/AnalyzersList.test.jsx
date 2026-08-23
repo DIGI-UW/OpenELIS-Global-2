@@ -13,6 +13,8 @@
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
 vi.mock("../../../services/analyzerService", () => ({
+  createAnalyzer: vi.fn(),
+  getAnalyzer: vi.fn(),
   getAnalyzers: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
@@ -304,7 +306,11 @@ describe("AnalyzersList", () => {
   });
 
   test("opens linkable Instrument setup inline while preserving the list", async () => {
-    window.history.replaceState({}, "", "/analyzers?search=chemistry");
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers?search=chemistry&analyzerId=42&profile=stale&revision=1",
+    );
     // Arrange: Setup API mocks
     getAnalyzers.mockImplementation((filters, callback) => {
       act(() => {
@@ -333,6 +339,15 @@ describe("AnalyzersList", () => {
     expect(new URLSearchParams(window.location.search).get("search")).toBe(
       "chemistry",
     );
+    expect(
+      new URLSearchParams(window.location.search).get("analyzerId"),
+    ).toBeNull();
+    expect(
+      new URLSearchParams(window.location.search).get("profile"),
+    ).toBeNull();
+    expect(
+      new URLSearchParams(window.location.search).get("revision"),
+    ).toBeNull();
     expect(screen.getByTestId("analyzers-list")).toBeVisible();
     expect(
       await screen.findByRole("region", { name: "Set up a new analyzer" }),

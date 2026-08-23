@@ -31,11 +31,6 @@ type SuccessCallback = (
   error: AnalyzerApiError | null,
 ) => void;
 
-const asExtraParamsObject = (extraParams?: ExtraParams): JsonObject =>
-  typeof extraParams === "object" && extraParams !== null
-    ? (extraParams as JsonObject)
-    : {};
-
 export interface AnalyzerFilters {
   status?: string;
   search?: string;
@@ -286,9 +281,10 @@ export const getAnalyzers = (
 export const getAnalyzer = (
   id: string,
   callback: DataCallback<Analyzer | undefined>,
+  signal: AbortSignal | null = null,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${id}`;
-  getFromOpenElisServer(endpoint, callback);
+  getFromOpenElisServer(endpoint, callback, signal);
 };
 
 export const getAnalyzerLabUnits = (

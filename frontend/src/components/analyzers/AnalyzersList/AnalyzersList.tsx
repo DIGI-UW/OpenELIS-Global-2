@@ -32,7 +32,9 @@ import {
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
-import AnalyzerSetup from "../AnalyzerSetup/AnalyzerSetup";
+import AnalyzerSetup, {
+  type AnalyzerSetupStep,
+} from "../AnalyzerSetup/AnalyzerSetup";
 
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
@@ -74,6 +76,11 @@ const profileRevisionKey = (profileId: string, revision: number) =>
 const hasPluginWarning = (analyzer: Analyzer) =>
   analyzer.profileBindingStatus !== "PINNED" && analyzer.pluginLoaded === false;
 
+const isAnalyzerSetupStep = (
+  value: string | null,
+): value is AnalyzerSetupStep =>
+  value === "instrument" || value === "verify" || value === "connect";
+
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
@@ -113,21 +120,20 @@ const AnalyzersList = () => {
     useState<ListNotification | null>(null);
 
   const setupStep = new URLSearchParams(location.search).get("setup");
-  const visibleSetupStep = ["instrument", "verify", "connect"].includes(
-    setupStep || "",
-  )
-    ? setupStep
-    : null;
+  const visibleSetupStep = isAnalyzerSetupStep(setupStep) ? setupStep : null;
 
   const openSetup = () => {
     const params = new URLSearchParams(location.search);
+    ["analyzerId", "profile", "revision"].forEach((key) => params.delete(key));
     params.set("setup", "instrument");
     history.push({ pathname: "/analyzers", search: params.toString() });
   };
 
   const closeSetup = () => {
     const params = new URLSearchParams(location.search);
-    params.delete("setup");
+    ["setup", "analyzerId", "profile", "revision"].forEach((key) =>
+      params.delete(key),
+    );
     history.push({ pathname: "/analyzers", search: params.toString() });
   };
 

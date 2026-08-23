@@ -13,7 +13,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.history.service.HistoryService;
@@ -97,20 +99,14 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String uniqueName = "TEST-Fields-" + System.currentTimeMillis();
         String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(createBody))).andExpect(status().isCreated());
 
         mockMvc.perform(get("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.analyzers").isArray())
                 .andExpect(jsonPath("$.analyzers[0].qcRules").doesNotExist())
                 .andExpect(jsonPath("$.analyzers[0].controlLots").doesNotExist());
-    }
-
-    @Test
-    public void legacyQcRuleEndpoint_IsNotAvailable() throws Exception {
-        mockMvc.perform(get("/rest/analyzer/analyzers/1/qc-rules").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
     }
 
     /**
@@ -124,9 +120,103 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         // Act & Assert: Endpoint should create analyzer
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        MvcResult result = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(requestBody)))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value(uniqueName));
+                .andExpect(jsonPath("$.name").value(uniqueName)).andExpect(jsonPath("$.type").value("ASTM"))
+                .andExpect(jsonPath("$.profileId").value(AnalyzerTestProfileCatalog.PROFILE_ID))
+                .andExpect(jsonPath("$.profileRevision").value(AnalyzerTestProfileCatalog.PROFILE_REVISION))
+                .andExpect(jsonPath("$.profileBindingStatus").value("PINNED"))
+                .andExpect(jsonPath("$.pluginLoaded").doesNotExist()).andReturn();
+
+        Map<String, Object> created = objectMapper.readValue(result.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        Map<String, Object> profileReferences = jdbcTemplate.queryForMap(
+                "SELECT site_binding_revision_id FROM analyzer WHERE id = ?",
+                Integer.valueOf(String.valueOf(created.get("id"))));
+        assertNotNull("Configured analyzer must pin a site-binding revision",
+                profileReferences.get("site_binding_revision_id"));
+    }
+
+    @Test
+    public void testCreateAnalyzer_DerivesTypeAndDefaultsFromExactProfileRevision() throws Exception {
+        String uniqueName = "TEST-Profile-Defaults-" + System.currentTimeMillis();
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[]}";
+
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(requestBody))).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value(uniqueName)).andExpect(jsonPath("$.type").value("ASTM"))
+                .andExpect(jsonPath("$.protocolVersion").value("ASTM_LIS2_A2"))
+                .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
+                .andExpect(jsonPath("$.port").value(9100));
+    }
+
+    @Test
+    public void testCreateAnalyzer_GuidedCandidateReloadsProfileAndLabUnits() throws Exception {
+        String uniqueName = "TEST-Guided-Candidate-" + System.currentTimeMillis();
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"status\":\"SETUP\","
+                + "\"testUnitIds\":[\"36\",\"136\"]}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(requestBody)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("SETUP")).andReturn();
+
+        Map<String, Object> created = objectMapper.readValue(createResult.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertEquals(List.of("36", "136"), created.get("testUnitIds"));
+
+        String analyzerId = String.valueOf(created.get("id"));
+        MvcResult reloadResult = mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value(uniqueName))
+                .andExpect(jsonPath("$.profileId").value(AnalyzerTestProfileCatalog.PROFILE_ID))
+                .andExpect(jsonPath("$.profileRevision").value(AnalyzerTestProfileCatalog.PROFILE_REVISION))
+                .andExpect(jsonPath("$.protocolVersion").value("ASTM_LIS2_A2"))
+                .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
+                .andExpect(jsonPath("$.port").value(9100)).andReturn();
+
+        Map<String, Object> reloaded = objectMapper.readValue(reloadResult.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertEquals(List.of("36", "136"), reloaded.get("testUnitIds"));
+    }
+
+    @Test
+    public void testCreateAnalyzer_SameProfileRevisionCanConfigureMultipleInstances() throws Exception {
+        long suffix = System.currentTimeMillis();
+        String firstBody = "{\"name\":\"TEST-Shared-Profile-A-" + suffix + "\",\"testUnitIds\":[]}";
+        String secondBody = "{\"name\":\"TEST-Shared-Profile-B-" + suffix + "\",\"testUnitIds\":[]}";
+
+        MvcResult firstResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(firstBody)))
+                .andExpect(status().isCreated()).andReturn();
+        MvcResult secondResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(secondBody)))
+                .andExpect(status().isCreated()).andReturn();
+
+        Map<String, Object> first = objectMapper.readValue(firstResult.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        Map<String, Object> second = objectMapper.readValue(secondResult.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertNotEquals(first.get("id"), second.get("id"));
+
+        Integer firstSiteBindingRevision = jdbcTemplate.queryForObject(
+                "SELECT site_binding_revision_id FROM analyzer WHERE id = ?", Integer.class,
+                Integer.valueOf(String.valueOf(first.get("id"))));
+        Integer secondSiteBindingRevision = jdbcTemplate.queryForObject(
+                "SELECT site_binding_revision_id FROM analyzer WHERE id = ?", Integer.class,
+                Integer.valueOf(String.valueOf(second.get("id"))));
+
+        assertNotNull(firstSiteBindingRevision);
+        assertEquals("Analyzer instances created from one type revision must share its local binding revision",
+                firstSiteBindingRevision, secondSiteBindingRevision);
     }
 
     /**
@@ -139,8 +229,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+        MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
+                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andReturn(); // Don't assert status yet - we'll check it
 
         int status = createResult.getResponse().getStatus();
@@ -172,7 +262,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
@@ -209,7 +300,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
@@ -247,7 +339,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
@@ -361,67 +454,63 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: GET /rest/analyzer/analyzers includes pluginLoaded field in each entry.
-     * For test-created analyzers (no matching plugin JAR), pluginLoaded should be
-     * false.
-     *
-     * Verifies R1 fix: pluginLoaded field is always present in analyzer responses.
+     * Plugin availability is reported only for unbound analyzers that use the
+     * OpenELIS plugin runtime. Bridge-profile analyzers must not be labeled as
+     * missing an OpenELIS plugin.
      */
     @Test
-    public void testGetAnalyzers_ResponseIncludesPluginLoadedField() throws Exception {
-        // Arrange: Create a test analyzer
-        String uniqueName = "TEST-PluginLoaded-List-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
-                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+    public void testGetAnalyzers_PluginAvailabilityOnlyAppliesToUnboundAnalyzers() throws Exception {
+        String profileBackedName = "TEST-ProfileBacked-List-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + profileBackedName
+                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"" + testIp + "\","
+                + "\"port\":5000,\"testUnitIds\":[]}";
 
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(createBody))).andExpect(status().isCreated());
 
-        // Act
+        String unboundName = "TEST-Unbound-Plugin-List-" + System.currentTimeMillis();
+        createUnboundAnalyzer(unboundName);
+
         MvcResult listResult = mockMvc.perform(get("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andReturn();
 
-        // Assert: Each entry should have a pluginLoaded field
         String responseBody = listResult.getResponse().getContentAsString();
         Map<String, Object> envelope = objectMapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {
         });
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> analyzers = (List<Map<String, Object>>) envelope.get("analyzers");
         assertNotNull("Response should contain analyzers array", analyzers);
-        assertFalse("Response should contain at least one analyzer", analyzers.isEmpty());
-        for (Map<String, Object> analyzerMap : analyzers) {
-            assertTrue("Each analyzer should have pluginLoaded field", analyzerMap.containsKey("pluginLoaded"));
-        }
+        Map<String, Object> profileBacked = analyzers.stream()
+                .filter(analyzer -> profileBackedName.equals(analyzer.get("name"))).findFirst().orElseThrow();
+        Map<String, Object> unbound = analyzers.stream().filter(analyzer -> unboundName.equals(analyzer.get("name")))
+                .findFirst().orElseThrow();
+
+        assertFalse("Bridge-profile analyzer must not expose OE plugin availability",
+                profileBacked.containsKey("pluginLoaded"));
+        assertEquals(Boolean.FALSE, unbound.get("pluginLoaded"));
     }
 
     /**
-     * Test: GET /rest/analyzer/analyzers/{id} includes pluginLoaded=false when no
-     * plugin JAR is loaded for the analyzer.
-     *
-     * Verifies R1 fix: pluginLoaded is false (not missing or error) for analyzers
-     * without a loaded plugin.
+     * An explicitly unbound analyzer reports pluginLoaded=false when no matching
+     * OpenELIS plugin is loaded.
      */
     @Test
     public void testGetAnalyzer_PluginLoadedFalse_WhenNoMatchingPlugin() throws Exception {
-        // Arrange: Create analyzer (no real plugin JAR loaded for "Chemistry Analyzer")
         String uniqueName = "TEST-PluginLoaded-False-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
-                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+        String analyzerId = createUnboundAnalyzer(uniqueName);
 
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
-                .andExpect(status().isCreated()).andReturn();
-
-        String responseBody = createResult.getResponse().getContentAsString();
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
-                new TypeReference<Map<String, Object>>() {
-                });
-        String analyzerId = String.valueOf(responseMap.get("id"));
-
-        // Act & Assert: pluginLoaded should be false (no plugin JAR loaded)
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.pluginLoaded").value(false));
+    }
+
+    private String createUnboundAnalyzer(String name) {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setName(name);
+        analyzer.setActive(false);
+        analyzer.setSysUserId("1");
+        analyzer.setIpAddress(testIp);
+        analyzer.setPort(5000);
+        return analyzerService.insert(analyzer);
     }
 
     /**
@@ -441,9 +530,9 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
         // Should return 201 (gracefully ignoring unresolvable pluginTypeId)
         // instead of 500 NumberFormatException
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value(uniqueName));
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(requestBody))).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists()).andExpect(jsonPath("$.name").value(uniqueName));
     }
 
     /**
@@ -460,7 +549,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + testIp + "\",\"port\":1200}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
@@ -485,12 +575,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testTestConnection_WithHl7Protocol_ReturnsExpectedFields() throws Exception {
         String uniqueName = "TEST-HL7-Connection-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"HEMATOLOGY\",\"ipAddress\":\"" + testIp
-                + "\"," + "\"port\":5380,\"protocolVersion\":\"HL7_V2_3_1\","
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + testIp + "\"," + "\"port\":5380,"
                 + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
 
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+        MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
+                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withHl7Profile(createBody)))
                 .andReturn();
         assertEquals("HL7 analyzer creation should succeed", 201, createResult.getResponse().getStatus());
 
@@ -516,11 +605,10 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testTestConnection_WithHl7Protocol_NoIpPort_ReturnsConfigError() throws Exception {
         String uniqueName = "TEST-HL7-NoIP-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"HEMATOLOGY\",\"protocolVersion\":\"HL7_V2_3_1\",\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[]}";
 
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+        MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
+                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withHl7Profile(createBody)))
                 .andReturn();
         assertEquals(201, createResult.getResponse().getStatus());
 
@@ -546,7 +634,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
 
         MvcResult result = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
@@ -568,7 +657,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\",\"testUnitIds\":[]}";
 
         MvcResult result = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(createBody)))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();

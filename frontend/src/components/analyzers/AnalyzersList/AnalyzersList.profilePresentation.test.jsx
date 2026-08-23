@@ -12,7 +12,10 @@ import {
 import AnalyzersList from "./AnalyzersList";
 
 vi.mock("../../../services/analyzerService", () => ({
+  createAnalyzer: vi.fn(),
+  getAnalyzer: vi.fn(),
   getAnalyzers: vi.fn(),
+  getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
 }));
 
