@@ -158,6 +158,21 @@ public class AnalyzerBridgeContractConsumerTest {
     }
 
     @Test
+    public void connectionProbeEvidenceIdentifiesTheExactRegisteredCandidate() throws IOException {
+        JsonNode result = fixture("connection-probe-result.json");
+
+        assertConforms("connection-probe-result.schema.json", result);
+        assertEquals("77", result.path("analyzerId").asText());
+        assertEquals("genexpert-astm", result.path("profileRef").path("profileId").asText());
+        assertEquals(1, result.path("profileRef").path("revision").asInt());
+        assertTrue(result.path("desiredStateFingerprint").asText().matches(FINGERPRINT_PATTERN));
+        assertEquals("RECEIVER", result.path("connection").path("role").asText());
+        assertEquals("TWO_WAY", result.path("dataFlow").asText());
+        assertEquals("TIMEOUT", result.path("outcome").asText());
+        assertTrue(result.path("resultsOnlyAvailable").asBoolean());
+    }
+
+    @Test
     public void normalizedTrafficIsStrictR4WithRawRecognitionEvidence() throws IOException {
         for (String name : new String[] { "normalized-known-test.fhir.json", "normalized-unknown-test.fhir.json",
                 "normalized-unknown-value.fhir.json", "normalized-qc.fhir.json", "normalized-nonmatch.fhir.json",
