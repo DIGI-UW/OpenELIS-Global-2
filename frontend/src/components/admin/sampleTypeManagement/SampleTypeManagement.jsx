@@ -46,6 +46,7 @@ import {
   isValidSampleTypeSection,
 } from "./sectionConfig";
 import TerminologySection from "./sections/TerminologySection";
+import LocalizationSection from "../testCatalog/sections/LocalizationSection";
 import DisplayOrderSection from "./sections/DisplayOrderSection";
 import DisposalSection from "./sections/DisposalSection";
 import AssociatedTestsSection from "./sections/AssociatedTestsSection";
@@ -89,7 +90,7 @@ function SampleTypeManagement({ intl }) {
   const basePath = location.pathname.startsWith("/admin")
     ? "/admin"
     : "/MasterListsPage";
-  const listUrl = `${basePath}/SampleTypeManagement`;
+  const listUrl = `${basePath}/SampleTypeEditor`;
 
   // View is derived from the URL: no id → list, "new" → add, otherwise → editor.
   const view = !sampleTypeId
@@ -620,7 +621,7 @@ function SampleTypeManagement({ intl }) {
                     >
                       <FormattedMessage
                         id="heading.sampleType.management"
-                        defaultMessage="Sample Type Management"
+                        defaultMessage="Sample Type Editor"
                       />
                     </h2>
                     <p
@@ -818,8 +819,21 @@ function SampleTypeManagement({ intl }) {
                   <TableBody>
                     {paginatedTypes.length > 0 ? (
                       paginatedTypes.map((st) => (
-                        <TableRow key={st.id}>
-                          <TableCell>
+                        <TableRow
+                          key={st.id}
+                          data-cy={`sampleType-row-${st.id}`}
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openEditor(st);
+                            }
+                          }}
+                        >
+                          <TableCell
+                            onClick={() => openEditor(st)}
+                            style={{ cursor: "pointer" }}
+                          >
                             <div>
                               <span
                                 style={{
@@ -843,12 +857,18 @@ function SampleTypeManagement({ intl }) {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            onClick={() => openEditor(st)}
+                            style={{ cursor: "pointer" }}
+                          >
                             <Tag type={domainColor(st.domain)} size="sm">
                               {domainLabel(st.domain)}
                             </Tag>
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            onClick={() => openEditor(st)}
+                            style={{ cursor: "pointer" }}
+                          >
                             <Tag type={st.active ? "green" : "gray"} size="sm">
                               {st.active ? (
                                 <FormattedMessage
@@ -863,7 +883,10 @@ function SampleTypeManagement({ intl }) {
                               )}
                             </Tag>
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            onClick={() => openEditor(st)}
+                            style={{ cursor: "pointer" }}
+                          >
                             <span
                               style={{
                                 fontWeight: 500,
@@ -973,7 +996,7 @@ function SampleTypeManagement({ intl }) {
                 >
                   <FormattedMessage
                     id="heading.sampleType.management"
-                    defaultMessage="Sample Type Management"
+                    defaultMessage="Sample Type Editor"
                   />
                 </h2>
                 <Stack
@@ -1451,7 +1474,7 @@ function SampleTypeManagement({ intl }) {
                 )}
 
                 {/* Terminology — multi-row Source/Code/Relationship mappings,
-                mirrors the Test Catalog Editor's Terminology section. */}
+                mirrors the Test Catalogue Editor's Terminology section. */}
                 {activeSection === "terminology" && (
                   <div>
                     <Tile
@@ -1476,6 +1499,42 @@ function SampleTypeManagement({ intl }) {
                         </p>
                       ) : (
                         <TerminologySection sampleTypeId={sampleTypeId} />
+                      )}
+                    </Tile>
+                  </div>
+                )}
+                {/* The same section the Test Catalogue Editor uses. A sample
+                    type's display name lives in the same localization tables —
+                    including the translations a sample-types configuration file
+                    loaded — reached through the sample type's bridge endpoint. */}
+                {activeSection === "localization" && (
+                  <div>
+                    <Tile
+                      style={{
+                        padding: "var(--cds-spacing-07)",
+                        border: "1px solid var(--cds-border-subtle)",
+                        borderRadius: "var(--cds-border-radius)",
+                      }}
+                    >
+                      {view === "add" ? (
+                        <p
+                          style={{
+                            color: "var(--cds-text-secondary)",
+                            fontSize: "14px",
+                            margin: 0,
+                          }}
+                        >
+                          <FormattedMessage
+                            id="label.sampleType.localization.addHint"
+                            defaultMessage="Save this sample type first, then edit its translations."
+                          />
+                        </p>
+                      ) : (
+                        <LocalizationSection
+                          entity="sampleType"
+                          entityId={sampleTypeId}
+                          refsUrl={`/rest/sample-types/${sampleTypeId}/localization`}
+                        />
                       )}
                     </Tile>
                   </div>

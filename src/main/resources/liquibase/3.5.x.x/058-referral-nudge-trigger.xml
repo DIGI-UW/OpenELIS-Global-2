@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    OGC-810 — validator-initiated notification for the configurable trigger
+    system: REFERRAL_NUDGE. Fired from the "Notify reference lab" button on an
+    outstanding referral (ReferralServiceImpl.nudgeReferenceLab), nudging a slow
+    reference lab. Seeded disabled; admin activates channels/recipients via the
+    existing admin screen (recipient = COC_CONTACT reaches the reference lab
+    contact captured at dispatch). Variables: [sampleAccessionNumber],
+    [referralId], [labName], [testName], [daysOutstanding], [freeFormMessage].
+  -->
+
+  <changeSet id="3.5.0.0-058-seed-referral-nudge-template" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.notification_payload_template
+        WHERE type = 'REFERRAL_NUDGE'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="notification_payload_template" schemaName="clinlims">
+      <column name="id" valueComputed="nextval('clinlims.notification_payload_template_seq')"/>
+      <column name="type" value="REFERRAL_NUDGE"/>
+      <column name="subject_template" value="Result awaited: [sampleAccessionNumber]"/>
+      <column name="message_template" value="Sample [sampleAccessionNumber] (referral [referralId], test [testName]) has been outstanding [daysOutstanding] day(s) at [labName]. Please advise on status. [freeFormMessage]"/>
+      <column name="last_updated" valueComputed="now()"/>
+    </insert>
+    <rollback>
+      <delete tableName="notification_payload_template" schemaName="clinlims">
+        <where>type = 'REFERRAL_NUDGE'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-058-seed-referral-nudge-trigger" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.notification_trigger_config
+        WHERE event_code = 'REFERRAL_NUDGE'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="notification_trigger_config" schemaName="clinlims">
+      <column name="id" valueComputed="nextval('clinlims.notification_trigger_config_seq')"/>
+      <column name="event_code" value="REFERRAL_NUDGE"/>
+      <column name="enabled" valueBoolean="false"/>
+      <column name="payload_template_id"
+              valueComputed="(SELECT id FROM clinlims.notification_payload_template
+                              WHERE type = 'REFERRAL_NUDGE')"/>
+      <column name="last_updated" valueComputed="now()"/>
+    </insert>
+    <rollback>
+      <delete tableName="notification_trigger_config" schemaName="clinlims">
+        <where>event_code = 'REFERRAL_NUDGE'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

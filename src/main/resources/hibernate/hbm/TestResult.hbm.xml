@@ -59,6 +59,9 @@
             column="is_active" />
         <property name="isNormal" type="java.lang.Boolean"
             column="is_normal" />
+        <property name="significance" type="java.lang.String">
+            <column name="SIGNIFICANCE" length="20" />
+        </property>
         <property name="componentId" type="java.lang.String">
             <column name="component_id" length="36" />
         </property>

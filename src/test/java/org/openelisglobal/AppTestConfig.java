@@ -26,7 +26,6 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
-import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
@@ -117,11 +116,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.fhir.providers", "org.openelisglobal.common.dao", "org.openelisglobal.report",
         "org.openelisglobal.eqa", "org.openelisglobal.qc", "org.openelisglobal.externalconnections",
         "org.openelisglobal.notifications", "org.openelisglobal.calendar", "org.openelisglobal.qachecklist",
-        "org.openelisglobal.esig", "org.openelisglobal.resultreporting.service",
-        "org.openelisglobal.security" }, excludeFilters = {
+        "org.openelisglobal.esig", "org.openelisglobal.compliance", "org.openelisglobal.vector",
+        "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
+        "org.openelisglobal.resultreporting.service", "org.openelisglobal.security",
+        "org.openelisglobal.genericsample" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.vector.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.result.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.login.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.program.controller.*"),
@@ -137,7 +139,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.scheduler.*"),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PrintBarcodeController.class),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = WHONetReportServiceImpl.class),
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TestNotificationServiceImpl.class) })
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TestNotificationServiceImpl.class),
+                // Nested test-only @Configuration classes must not be picked up by this
+                // shared component scan. ComplianceReportReissueSecurityTest.TestConfig
+                // registers a mock SampleComplianceStandardDAO @Bean for its isolated
+                // MockMvc slice; if scanned here it collides with the real
+                // sampleComplianceStandardDAOImpl (NoUniqueBeanDefinitionException) and
+                // breaks the shared integration ApplicationContext. Matched by REGEX on
+                // its binary name because the nested config is package-private.
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.compliance.controller.rest.ComplianceReportReissueSecurityTest.*") })
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
 
@@ -191,18 +201,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public FhirContext fhirContext() {
         return mock(FhirContext.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public BasicAuthenticationDataService basicAuthDataService() {
-        return mock(BasicAuthenticationDataService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public BasicAuthenticationDataService basicAuthenticationDataService() {
-        return mock(BasicAuthenticationDataService.class);
     }
 
     @Bean()
@@ -297,6 +295,14 @@ public class AppTestConfig implements WebMvcConfigurer {
         messageSource.setUseCodeAsDefaultMessage(true);
         MessageUtil.setMessageSource(messageSource);
         return messageSource;
+    }
+
+    @Bean
+    public com.fasterxml.jackson.databind.ObjectMapper objectMapper() {
+        Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
+        builder.serializationInclusion(JsonInclude.Include.NON_NULL);
+        builder.modules(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        return builder.build();
     }
 
     @Bean

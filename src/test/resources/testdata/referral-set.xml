@@ -140,7 +140,7 @@
         organization_name="African Health Org"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="1"
-        referral_type_id="1" requester_name="Doctor" Status="SENT"
+        referral_type_id="1" requester_name="Doctor" Status="DRAFT"
         lastUpdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
         fhir_uuid="436a353f-8ac9-4a30-86db-bb6eda979b57" />
@@ -148,7 +148,7 @@
         organization_name="Health Corporations Ltd"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="2"
-        referral_type_id="2" requester_name="Doctor" status="RECEIVED"
+        referral_type_id="2" requester_name="Doctor" status="REQUESTED"
         lastUpdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
         fhir_uuid="386e3e0c-013b-425b-ab5f-46f40278c5d3" />
@@ -177,5 +177,13 @@
     <referral_result id="904" referral_id="103"
         test_id="202" referral_report_date="2025-01-02 11:00:00"
         lastupdated="2025-07-02 11:30:00" />
+
+    <!-- Empty elements so DbUnit's REFRESH cleans these tables before this
+        fixture loads. Without them, rows from referral.xml (e.g. subcontract id=10,
+        history id=100) survive across the prior test class and the clinlims.referral_subcontract_seq
+        sequence eventually collides with the lingering id=10 inside this class's
+        createSave tests. -->
+    <referral_subcontract />
+    <referral_status_history />
 
 </dataset>

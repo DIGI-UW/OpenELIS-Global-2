@@ -52,6 +52,22 @@ public enum AlertType {
     CRITICAL_UNACKNOWLEDGED,
 
     /**
+     * Order required-by deadline approaching or past
+     */
+    REQUIRED_BY_DEADLINE,
+
+    /**
+     * Reference lab returned a Critical/Abnormal result awaiting acceptance
+     * (OGC-803)
+     */
+    REFERRAL_CRITICAL_RESULT,
+
+    /**
+     * Reference lab referral was rejected — lab-side acknowledgment (OGC-804)
+     */
+    REFERRAL_REJECTED,
+
+    /**
      * A saved result outside its authored critical bounds (OGC-1022 R3); entity is
      * the ANALYSIS carrying the value
      */

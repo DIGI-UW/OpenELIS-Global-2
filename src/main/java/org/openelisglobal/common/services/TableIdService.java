@@ -47,6 +47,7 @@ public class TableIdService {
     // requester type
     public long ORGANIZATION_REQUESTER_TYPE_ID;
     public long PROVIDER_REQUESTER_TYPE_ID;
+    public long REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
 
     // organization type
     public String REFERRING_ORG_TYPE_ID;
@@ -85,6 +86,11 @@ public class TableIdService {
         type = requesterTypeService.getRequesterTypeByName("provider");
         if (type != null) {
             PROVIDER_REQUESTER_TYPE_ID = Long.parseLong(type.getId());
+        }
+
+        type = requesterTypeService.getRequesterTypeByName("requestor_contact");
+        if (type != null) {
+            REQUESTOR_CONTACT_REQUESTER_TYPE_ID = Long.parseLong(type.getId());
         }
 
         OrganizationType orgType = organizationTypeService.getOrganizationTypeByName("referring clinic");

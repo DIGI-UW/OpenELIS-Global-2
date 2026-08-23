@@ -122,7 +122,6 @@ public class SampleEditServiceImpl implements SampleEditService {
     @Override
     public void editSample(SampleEditForm form, HttpServletRequest request, Sample updatedSample, boolean sampleChanged,
             String sysUserId) {
-
         List<SampleEditItem> existingTests = form.getExistingTests() != null ? form.getExistingTests()
                 : new ArrayList<>();
         List<Analysis> cancelAnalysisList = createRemoveList(existingTests, sysUserId);
@@ -614,18 +613,25 @@ public class SampleEditServiceImpl implements SampleEditService {
             // Skip if no storage location specified
             if (storageLocationId == null || storageLocationId.trim().isEmpty() || storageLocationType == null
                     || storageLocationType.trim().isEmpty()) {
+                logger.warn("Cannot assign storage location - SampleItem not persisted yet");
                 continue;
             }
 
             SampleItem sampleItem = sampleTestCollection.item;
             if (sampleItem == null || sampleItem.getId() == null) {
-                logger.warn("Cannot assign storage location - SampleItem not persisted yet");
                 continue;
             }
 
             String sampleItemId = sampleItem.getId();
-            sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
-                    storagePositionCoordinate, "Auto-assigned on order creation");
+            java.util.Map<String, Object> existing = sampleStorageService.getSampleItemLocation(sampleItemId);
+            boolean alreadyAssigned = existing != null && !existing.isEmpty();
+            if (alreadyAssigned) {
+                sampleStorageService.moveSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                        storagePositionCoordinate, "Reassignment on order save", "");
+            } else {
+                sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                        storagePositionCoordinate, "Auto-assigned on order creation");
+            }
         }
     }
 

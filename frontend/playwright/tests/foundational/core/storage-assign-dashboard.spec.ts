@@ -89,8 +89,11 @@ test.describe("Sample Items page — Manage Location (dedicated page)", () => {
         .locator("#storage-location-picker-search-input")
         .fill("Freezer");
 
+      // The search returns the device AND its descendants (shelves, racks,
+      // plates), whose breadcrumb labels all contain "Freezer Unit 1"; anchor to
+      // the leaf so only the device-level option matches.
       const option = page.getByRole("option", {
-        name: /freezer unit 1/i,
+        name: /freezer unit 1$/i,
       });
       await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
       await option.click();

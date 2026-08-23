@@ -531,7 +531,6 @@ const TestsList = () => {
                             <React.Fragment key={row.id}>
                               <TableRow
                                 {...getRowProps({ row })}
-                                onClick={() => openEditor(row.id)}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" || e.key === " ") {
                                     e.preventDefault();
@@ -539,16 +538,24 @@ const TestsList = () => {
                                   }
                                 }}
                                 tabIndex={0}
-                                style={{ cursor: "pointer" }}
                                 data-cy={`test-row-${row.id}`}
                               >
-                                {/* Selecting a row must not open the editor. */}
+                                {/* The checkbox selects the row for the batch
+                                    action and must not open the editor. It is
+                                    left outside the clickable area rather than
+                                    stopping propagation: TableSelectRow accepts
+                                    a fixed set of props and drops onClick, so a
+                                    handler passed to it never reaches the DOM
+                                    and the click reaches the row regardless. */}
                                 <TableSelectRow
                                   {...getSelectionProps({ row })}
-                                  onClick={(e) => e.stopPropagation()}
                                 />
                                 {row.cells.map((cell) => (
-                                  <TableCell key={cell.id}>
+                                  <TableCell
+                                    key={cell.id}
+                                    onClick={() => openEditor(row.id)}
+                                    style={{ cursor: "pointer" }}
+                                  >
                                     {cell.info.header === "domain" ? (
                                       <>
                                         {cell.value && (

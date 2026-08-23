@@ -1,7 +1,10 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
-import { useIntl } from "react-intl";
-import { Stack, InlineNotification } from "@carbon/react";
+import { useWorkflowPrefix } from "../OrderContext";
+import { useIntl, FormattedMessage } from "react-intl";
+import { Stack, InlineNotification, Button } from "@carbon/react";
+import { Warning } from "@carbon/icons-react";
+import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
@@ -32,6 +35,7 @@ import "../order-workflow.scss";
 const OrderCollect = () => {
   const intl = useIntl();
   const history = useHistory();
+  const workflowPrefix = useWorkflowPrefix();
   const componentMounted = useRef(true);
 
   const {
@@ -40,7 +44,6 @@ const OrderCollect = () => {
     samples,
     setSamples,
     saveOrder,
-    loadOrder,
     markStepComplete,
     isReadOnly,
     isEditMode,
@@ -49,10 +52,14 @@ const OrderCollect = () => {
     removeTestFromSample,
     updateSampleCollectionDetails,
     setOrderData,
+    labNumber,
   } = useOrderContext();
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+
+  // Sample types from API
+  const [showNceForm, setShowNceForm] = useState(false);
 
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
@@ -173,28 +180,6 @@ const OrderCollect = () => {
     loadPendingRequests();
   }, [orderId]);
 
-  // Track if we've already attempted to reload samples
-  const hasAttemptedReload = useRef(false);
-
-  // Reload order if samples don't have sampleItemId (needed for updates)
-  // This handles the case where user navigates directly to this step
-  useEffect(() => {
-    const labNo = orderData?.sampleOrderItems?.labNo;
-    const hasSampleItemIds = samples.some((s) => s.sampleItemId);
-    const hasSamplesWithTypes = samples.some((s) => s.sampleTypeId);
-
-    if (
-      labNo &&
-      !hasSampleItemIds &&
-      hasSamplesWithTypes &&
-      !hasAttemptedReload.current
-    ) {
-      // Samples exist but don't have sampleItemId - reload to get them
-      hasAttemptedReload.current = true;
-      loadOrder(labNo, false);
-    }
-  }, [orderData?.sampleOrderItems?.labNo, samples, loadOrder]);
-
   // Validate that at least one sample with a sample type is present.
   // Informed consent is advisory only (FRS FR-5-001/FR-5-002) — does not gate submission.
   const canProceed = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
@@ -227,7 +212,7 @@ const OrderCollect = () => {
     try {
       await saveOrder();
       markStepComplete("collect");
-      history.push("/order/label");
+      history.push(`${workflowPrefix}/label`);
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -256,11 +241,25 @@ const OrderCollect = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={1}
       title="order.step.collect"
       canProceed={canProceed}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
+      extraButtons={
+        labNumber && (
+          <Button
+            kind="danger--tertiary"
+            size="md"
+            renderIcon={Warning}
+            onClick={() => setShowNceForm((v) => !v)}
+          >
+            <FormattedMessage
+              id="nce.button.reportNce"
+              defaultMessage="Report NCE"
+            />
+          </Button>
+        )
+      }
     >
       {notificationVisible && <AlertDialog />}
 
@@ -310,6 +309,14 @@ const OrderCollect = () => {
           updateSampleCollectionDetails={updateSampleCollectionDetails}
           isReadOnly={isReadOnly && !isEditMode}
         />
+
+        {showNceForm && labNumber && (
+          <InlineNceForm
+            accessionNumber={labNumber}
+            onClose={() => setShowNceForm(false)}
+            onSubmitSuccess={() => setShowNceForm(false)}
+          />
+        )}
       </Stack>
     </OrderWorkflowLayout>
   );

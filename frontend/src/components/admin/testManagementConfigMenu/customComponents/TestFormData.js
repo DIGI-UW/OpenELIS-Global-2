@@ -12,6 +12,10 @@ export const TestFormData = {
   notifyResults: "N",
   inLabOnly: "N",
   antimicrobialResistance: "N",
+  qcBlankThreshold: "",
+  qcRpdThreshold: "",
+  qcRecoveryWindowPct: "",
+  timeHolding: "",
   active: "Y",
   dictionary: [],
   dictionaryReference: "",
@@ -142,7 +146,6 @@ const extractRange = (rangeStr) => {
 };
 
 export const mapTestCatBeanToFormData = (test) => {
-  console.log(JSON.stringify(test));
   return {
     testId: test.id,
     testNameEnglish: test.localization?.english || "",
@@ -161,6 +164,10 @@ export const mapTestCatBeanToFormData = (test) => {
     notifyResults: test.notifyResults ? "Y" : "N",
     inLabOnly: test.inLabOnly ? "Y" : "N",
     antimicrobialResistance: test.antimicrobialResistance ? "Y" : "N",
+    qcBlankThreshold: test.qcBlankThreshold || "",
+    qcRpdThreshold: test.qcRpdThreshold || "",
+    qcRecoveryWindowPct: test.qcRecoveryWindowPct || "",
+    timeHolding: test.timeHolding || "",
     active: test.active === "Active" ? "Y" : "N",
     dictionary: (test.dictionaryIds || []).map((id, i) => ({
       id,
@@ -170,7 +177,7 @@ export const mapTestCatBeanToFormData = (test) => {
       ? ""
       : test.referenceValue,
     defaultTestResult: "",
-    sampleTypes: test.sampleType ? [test.sampleType] : [],
+    sampleTypes: test.sampleTypeId ? [test.sampleTypeId] : [],
     lowValid: extractRange(test.resultLimits?.[0]?.validRange)[0],
     highValid: extractRange(test.resultLimits?.[0]?.validRange)[1],
     lowReportingRange: extractRange(test.resultLimits?.[0]?.reportingRange)[0],

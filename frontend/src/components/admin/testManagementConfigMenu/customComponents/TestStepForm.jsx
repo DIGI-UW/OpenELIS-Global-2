@@ -79,6 +79,9 @@ export const TestStepForm = ({
   );
   const [multiSelectDictionaryListTag, setMultiSelectDictionaryListTag] =
     useState([]);
+  const [environmentalSampleTypeIds, setEnvironmentalSampleTypeIds] = useState(
+    [],
+  );
   const [currentStep, setCurrentStep] = useState(0);
   const [ageRangeFields, setAgeRangeFields] = useState([0]);
   const [ageRanges, setAgeRanges] = useState([{ raw: "Infinity", unit: "Y" }]);
@@ -103,10 +106,11 @@ export const TestStepForm = ({
   }, [resultTypeCodes]);
 
   const handleNextStep = (newData, final = false) => {
-    setFormData((prev) => ({ ...prev, ...newData }));
+    const mergedData = { ...formData, ...newData };
+    setFormData(mergedData);
 
     if (!final) {
-      postCall(formData);
+      postCall(mergedData);
     }
 
     const selectedResultTypeId = newData?.resultType || formData.resultType;
@@ -174,6 +178,7 @@ export const TestStepForm = ({
       setUomList(res.uomList || []);
       setResultTypeList(res.resultTypeList || []);
       setSampleTypeList(res.sampleTypeList || []);
+      setEnvironmentalSampleTypeIds(res.environmentalSampleTypeIds || []);
       setGroupedDictionaryList(res.groupedDictionaryList || []);
       setDictionaryList(res.dictionaryList || []);
       setAgeRangeList(res.ageRangeList || []);
@@ -249,8 +254,7 @@ export const TestStepForm = ({
       );
 
       const selectedSampleTypeFilteredObject = sampleTypeList.filter(
-        (sampleType) =>
-          initialData.sampleTypes.includes(String(sampleType.value)),
+        (sampleType) => initialData.sampleTypes.includes(String(sampleType.id)),
       );
 
       selectedSampleTypeFilteredObject.forEach((sampleType) => {
@@ -566,6 +570,7 @@ export const TestStepForm = ({
       setSelectedSampleType={setSelectedSampleType}
       selectedSampleTypeResp={selectedSampleTypeResp}
       setSelectedSampleTypeResp={setSelectedSampleTypeResp}
+      environmentalSampleTypeIds={environmentalSampleTypeIds}
       currentStep={currentStep}
     />,
     <StepFiveSelectListOptionsAndResultOrder
@@ -635,6 +640,7 @@ export const TestStepForm = ({
       setSelectedSampleType={setSelectedSampleType}
       selectedSampleTypeResp={selectedSampleTypeResp}
       setSelectedSampleTypeResp={setSelectedSampleTypeResp}
+      environmentalSampleTypeIds={environmentalSampleTypeIds}
       dictionaryListTag={dictionaryListTag}
       setDictionaryListTag={setDictionaryListTag}
       singleSelectDictionaryList={singleSelectDictionaryList}
@@ -1362,10 +1368,22 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
   setSelectedSampleType,
   selectedSampleTypeResp,
   setSelectedSampleTypeResp,
+  environmentalSampleTypeIds = [],
   currentStep,
 }) => {
+  const hasEnvironmentalSampleType = selectedSampleType.some((st) =>
+    environmentalSampleTypeIds.includes(st.id),
+  );
   const handleSubmit = (values) => {
-    handleNextStep(values, true);
+    const submittedValues = hasEnvironmentalSampleType
+      ? values
+      : {
+          ...values,
+          qcBlankThreshold: "",
+          qcRpdThreshold: "",
+          qcRecoveryWindowPct: "",
+        };
+    handleNextStep(submittedValues, true);
   };
 
   useEffect(() => {
@@ -1584,6 +1602,97 @@ export const StepFourSelectSampleTypeAndTestDisplayOrder = ({
                       )}
                     </Column>
                   </Grid>
+                  {hasEnvironmentalSampleType && (
+                    <>
+                      <br />
+                      <Section>
+                        <Section>
+                          <Section>
+                            <Heading>
+                              <FormattedMessage id="test.qc.thresholds.heading" />
+                            </Heading>
+                          </Section>
+                        </Section>
+                      </Section>
+                      <p style={{ marginBottom: "1rem", color: "#525252" }}>
+                        <FormattedMessage id="test.qc.thresholds.description" />
+                      </p>
+                      <Grid fullWidth={true}>
+                        <Column lg={5} md={4} sm={4}>
+                          <TextInput
+                            id="qc-blank-threshold"
+                            name="qcBlankThreshold"
+                            labelText={
+                              <FormattedMessage id="test.qc.blankThreshold" />
+                            }
+                            value={values?.qcBlankThreshold || ""}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                qcBlankThreshold: e.target.value,
+                              }));
+                            }}
+                            placeholder="e.g. 0.5"
+                          />
+                        </Column>
+                        <Column lg={5} md={4} sm={4}>
+                          <TextInput
+                            id="qc-rpd-threshold"
+                            name="qcRpdThreshold"
+                            labelText={
+                              <FormattedMessage id="test.qc.rpdThreshold" />
+                            }
+                            value={values?.qcRpdThreshold || ""}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                qcRpdThreshold: e.target.value,
+                              }));
+                            }}
+                            placeholder="20"
+                          />
+                        </Column>
+                        <Column lg={5} md={4} sm={4}>
+                          <TextInput
+                            id="qc-recovery-window-pct"
+                            name="qcRecoveryWindowPct"
+                            labelText={
+                              <FormattedMessage id="test.qc.recoveryWindowPct" />
+                            }
+                            value={values?.qcRecoveryWindowPct || ""}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                qcRecoveryWindowPct: e.target.value,
+                              }));
+                            }}
+                            placeholder="20"
+                          />
+                        </Column>
+                        <Column lg={5} md={4} sm={4}>
+                          <TextInput
+                            id="time-holding"
+                            name="timeHolding"
+                            labelText={
+                              <FormattedMessage id="test.timeHolding" />
+                            }
+                            value={values?.timeHolding || ""}
+                            onChange={(e) => {
+                              handleChange(e);
+                              setFormData((prev) => ({
+                                ...prev,
+                                timeHolding: e.target.value,
+                              }));
+                            }}
+                            placeholder="e.g. 1440"
+                          />
+                        </Column>
+                      </Grid>
+                    </>
+                  )}
                   <br />
                   <Grid fullWidth={true}>
                     <Column lg={16} md={8} sm={4}>
@@ -3382,6 +3491,7 @@ export const StepSevenFinalDisplayAndSaveConfirmation = ({
   selectedResultTypeList,
   selectedSampleTypeList,
   selectedSampleTypeResp,
+  environmentalSampleTypeIds = [],
   currentStep,
   setCurrentStep,
 }) => {
@@ -3511,6 +3621,32 @@ export const StepSevenFinalDisplayAndSaveConfirmation = ({
                       {" : "}
                       {values?.inLabOnly}
                       <br />
+                      {selectedSampleTypeList.some((st) =>
+                        environmentalSampleTypeIds.includes(st.id),
+                      ) && (
+                        <>
+                          <br />
+                          <FormattedMessage id="test.qc.thresholds.heading" />
+                          {" : "}
+                          <br />
+                          <FormattedMessage id="test.qc.blankThreshold" />
+                          {" : "}
+                          {values?.qcBlankThreshold || "-"}
+                          <br />
+                          <FormattedMessage id="test.qc.rpdThreshold" />
+                          {" : "}
+                          {values?.qcRpdThreshold || "-"}
+                          <br />
+                          <FormattedMessage id="test.qc.recoveryWindowPct" />
+                          {" : "}
+                          {values?.qcRecoveryWindowPct || "-"}
+                          <br />
+                          <FormattedMessage id="test.timeHolding" />
+                          {" : "}
+                          {values?.timeHolding || "-"}
+                          <br />
+                        </>
+                      )}
                     </Column>
                     <Column lg={10} md={8} sm={4}>
                       <FormattedMessage id="sample.type.and.test.sort.order" />

@@ -57,6 +57,11 @@ public class ShippingBoxForm extends BaseForm {
 
     private Integer sampleCount;
 
+    private Boolean inbound;
+
+    @Size(max = 255)
+    private String originFacilityName;
+
     @Size(max = 2000)
     private String contents;
 
@@ -267,6 +272,22 @@ public class ShippingBoxForm extends BaseForm {
 
     public void setSampleCount(Integer sampleCount) {
         this.sampleCount = sampleCount;
+    }
+
+    public Boolean getInbound() {
+        return inbound;
+    }
+
+    public void setInbound(Boolean inbound) {
+        this.inbound = inbound;
+    }
+
+    public String getOriginFacilityName() {
+        return originFacilityName;
+    }
+
+    public void setOriginFacilityName(String originFacilityName) {
+        this.originFacilityName = originFacilityName;
     }
 
     public String getContents() {
