@@ -78,6 +78,11 @@ export interface AnalyzerTypeCatalog {
   types: AnalyzerTypeSummary[];
 }
 
+export interface AnalyzerLabUnit {
+  id: string;
+  name: string;
+}
+
 export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
 
 export interface AnalyzerMappingTestOption {
@@ -284,6 +289,13 @@ export const getAnalyzer = (
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${id}`;
   getFromOpenElisServer(endpoint, callback);
+};
+
+export const getAnalyzerLabUnits = (
+  callback: DataCallback<AnalyzerLabUnit[]>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer("/rest/test-catalog/lab-units", callback, signal);
 };
 
 /**

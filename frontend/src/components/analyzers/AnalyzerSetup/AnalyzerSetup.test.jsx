@@ -81,7 +81,7 @@ describe("AnalyzerSetup Instrument step", () => {
     const typePicker = screen.getByRole("combobox", {
       name: "Analyzer type",
     });
-    expect(screen.getByRole("combobox", { name: "Lab units" })).toBeVisible();
+    expect(screen.getByRole("combobox", { name: /^Lab units/ })).toBeVisible();
 
     await userEvent.click(typePicker);
     await userEvent.type(typePicker, "GeneXpert");

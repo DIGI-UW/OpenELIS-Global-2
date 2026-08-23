@@ -33,6 +33,18 @@
   padding: 0 spacing.$spacing-05;
 }
 
+.analyzer-setup__instrument {
+  display: grid;
+  gap: spacing.$spacing-05;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0 0 spacing.$spacing-06 calc(1.5rem + #{spacing.$spacing-04});
+
+  > .cds--link {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
 .analyzer-setup__step-heading {
   align-items: center;
   display: flex;
@@ -73,5 +85,11 @@
   .analyzer-setup__step-heading h3,
   .analyzer-setup__step-number {
     color: var(--cds-text-disabled);
+  }
+}
+
+@media (max-width: 66rem) {
+  .analyzer-setup__instrument {
+    grid-template-columns: 1fr;
   }
 }
