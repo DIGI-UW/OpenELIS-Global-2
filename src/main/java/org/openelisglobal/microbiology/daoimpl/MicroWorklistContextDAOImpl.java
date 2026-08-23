@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> implements MicroWorklistContextDAO {
 
-    static final String SPECIMEN_CONTEXT_HQL = "select sampleItem.id, sample.accessionNumber, person.lastName, person.firstName, type.description "
+    static final String SPECIMEN_CONTEXT_HQL = "select sampleItem.id, sample.accessionNumber, person.lastName, person.firstName, type.description, sampleItem.collectionDate, type.id "
             + "from SampleItem sampleItem join sampleItem.sample sample "
             + "left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id "
             + "left join Patient patient on patient.id = sampleHuman.patientId "
@@ -67,8 +67,10 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
         }
         Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(SPECIMEN_CONTEXT_HQL, Object[].class);
         query.setParameterList("sampleItemIds", sampleItemIds);
-        return query.list().stream().map(values -> new MicroWorklistSpecimenContext(text(values[0]), text(values[1]),
-                patientDisplay(values[2], values[3]), text(values[4]))).toList();
+        return query.list().stream()
+                .map(values -> new MicroWorklistSpecimenContext(text(values[0]), text(values[1]),
+                        patientDisplay(values[2], values[3]), text(values[4]), (Timestamp) values[5], text(values[6])))
+                .toList();
     }
 
     @Override

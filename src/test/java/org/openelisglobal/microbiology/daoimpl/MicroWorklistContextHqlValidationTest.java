@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class MicroWorklistContextHqlValidationTest extends BaseWebContextSensitiveTest {
@@ -28,6 +29,8 @@ public class MicroWorklistContextHqlValidationTest extends BaseWebContextSensiti
                     Object[].class));
             assertNotNull(
                     entityManager.createQuery(MicroWorklistContextDAOImpl.CULTURE_TIMING_CONTEXT_HQL, Object[].class));
+            assertNotNull(entityManager.createQuery(MicroCaseDAOImpl.FINALIZED_BACTERIOLOGY_BY_COLLECTION_DATE_HQL,
+                    MicroCase.class));
         } finally {
             entityManager.close();
         }

@@ -296,7 +296,10 @@ public class MicrobiologyUatScenarioServiceTest {
         request.scenario = "WORKLIST";
         request.scenarioKey = "playwright-worklist-7bd4adf1";
 
-        service.provision(request, "1");
+        MicrobiologyUatScenarioForm result = service.provision(request, "1");
+
+        assertNotNull(sampleItem.getCollectionDate());
+        assertEquals(sampleItem.getCollectionDate().toInstant().toString(), result.collectionDate);
 
         ArgumentCaptor<Person> personCaptor = ArgumentCaptor.forClass(Person.class);
         verify(personService).insert(personCaptor.capture());
@@ -767,7 +770,7 @@ public class MicrobiologyUatScenarioServiceTest {
         assertTrue(sampleTypes.stream().allMatch(candidate -> "".equals(candidate.getWhonetCode())));
         assertFalse(sampleTypes.get(0).getLocalAbbreviation().equals(sampleTypes.get(1).getLocalAbbreviation()));
         assertTrue(sampleTypes.stream().allMatch(candidate -> candidate.getLocalAbbreviation().length() <= 10));
-        verify(sampleItemService, times(2)).update(sampleItem);
+        verify(sampleItemService, times(3)).update(sampleItem);
         ArgumentCaptor<MicroOrganism> organismCaptor = ArgumentCaptor.forClass(MicroOrganism.class);
         verify(configurationService, times(2)).createOrganism(organismCaptor.capture());
         assertTrue(organismCaptor.getAllValues().stream()

@@ -35,6 +35,8 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun;
 import org.openelisglobal.reports.service.MicroWhonetExportResult;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,6 +70,9 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
     private MicroWhonetExportRunDAO exportRunDAO;
 
     @Autowired
+    private SampleItemService sampleItemService;
+
+    @Autowired
     private TypeOfSampleService typeOfSampleService;
 
     @Before
@@ -84,6 +89,12 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         request.scenario = "M4";
         request.scenarioKey = "integration-m4-" + UUID.randomUUID();
         MicrobiologyUatScenarioForm scenario = uatScenarioService.provision(request, performedBy);
+
+        Timestamp collectionDate = Timestamp.valueOf("2026-07-12 09:00:00");
+        SampleItem sampleItem = sampleItemService.get(scenario.sampleItemId);
+        sampleItem.setCollectionDate(collectionDate);
+        sampleItem.setSysUserId(performedBy);
+        sampleItemService.update(sampleItem);
 
         TypeOfSample sampleType = typeOfSampleService.get(scenario.sampleTypeId);
         sampleType.setWhonetCode("BLD");
@@ -102,13 +113,13 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         astService.reviewRun(run.getId(), performedBy);
         MicroCase released = reportReleaseService.releaseFinal(scenario.caseId, performedBy);
 
-        Timestamp closedAt = released.getClosedAt();
-        assertEquals(List.of(released),
-                caseDAO.getFinalizedBacteriologyByClosedAtRange(closedAt, new Timestamp(closedAt.getTime() + 1_000)));
-        assertFalse(caseDAO.getFinalizedBacteriologyByClosedAtRange(new Timestamp(closedAt.getTime() - 1_000), closedAt)
-                .contains(released));
+        assertTrue(released.getClosedAt().after(new Timestamp(collectionDate.getTime() + 1_000)));
+        assertEquals(List.of(released), caseDAO.getFinalizedBacteriologyByCollectionDateRange(collectionDate,
+                new Timestamp(collectionDate.getTime() + 1_000)));
+        assertFalse(caseDAO.getFinalizedBacteriologyByCollectionDateRange(
+                new Timestamp(collectionDate.getTime() - 1_000), collectionDate).contains(released));
 
-        LocalDate exportDate = closedAt.toLocalDateTime().toLocalDate();
+        LocalDate exportDate = collectionDate.toLocalDateTime().toLocalDate();
         MicroWhonetExportQueryForm exportQuery = new MicroWhonetExportQueryForm();
         exportQuery.from = exportDate.toString();
         exportQuery.to = exportDate.toString();

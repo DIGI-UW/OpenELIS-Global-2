@@ -298,10 +298,24 @@ class DevStackContractTest(unittest.TestCase):
             commands[1][-6:], ["exec", "-T", "proxy", "nginx", "-s", "reload"]
         )
 
-    def test_up_does_not_recreate_backend_after_initial_start(self):
-        source = SCRIPT_PATH.read_text()
+    def test_rebuilt_backend_is_recreated_without_restarting_dependencies(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = self.dev_stack.build_environment(context)
 
-        self.assertNotIn("--force-recreate", source)
+        with patch.object(self.dev_stack, "run") as run:
+            self.dev_stack.recreate_backend(context, environment)
+
+        command = run.call_args.args[0]
+        self.assertEqual(
+            command[-5:],
+            [
+                "up",
+                "-d",
+                "--no-deps",
+                "--force-recreate",
+                "oe.openelis.org",
+            ],
+        )
         self.assertIn(
             "../../target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war",
             (

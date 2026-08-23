@@ -250,6 +250,7 @@ public class MicrobiologyUatScenarioService {
         } else {
             ensureSampleType(sampleItem, performedBy);
         }
+        ensureCollectionDate(sampleItem, performedBy);
         Method method = getOrCreateUatMethod(performedBy);
         Method alternateMethod = CLASSIFICATION_SCENARIO.equals(scenario) ? getOrCreateUatAlternateMethod(performedBy)
                 : null;
@@ -299,6 +300,7 @@ public class MicrobiologyUatScenarioService {
         form.accessionNumber = accessionNumber;
         form.sampleId = sample.getId();
         form.sampleItemId = sampleItem.getId();
+        form.collectionDate = sampleItem.getCollectionDate().toInstant().toString();
         form.patientId = patient.getId();
         form.patientExternalId = patient.getExternalId();
         form.caseId = microCase.getId();
@@ -550,11 +552,21 @@ public class MicrobiologyUatScenarioService {
         SampleItem sampleItem = new SampleItem();
         sampleItem.setSample(sample);
         sampleItem.setTypeOfSample(getOrCreateUatSampleType(performedBy));
+        sampleItem.setCollectionDate(Timestamp.from(Instant.now()));
         sampleItem.setSortOrder("1");
         sampleItem.setStatusId(ensureSampleEnteredStatus(performedBy));
         sampleItem.setSysUserId(performedBy);
         sampleItemService.insert(sampleItem);
         return sampleItem;
+    }
+
+    private void ensureCollectionDate(SampleItem sampleItem, String performedBy) {
+        if (sampleItem.getCollectionDate() != null) {
+            return;
+        }
+        sampleItem.setCollectionDate(Timestamp.from(Instant.now()));
+        sampleItem.setSysUserId(performedBy);
+        sampleItemService.update(sampleItem);
     }
 
     private void ensureSampleType(SampleItem sampleItem, String performedBy) {
