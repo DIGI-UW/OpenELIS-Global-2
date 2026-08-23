@@ -12,6 +12,7 @@ import {
   getAnalyzer,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
+  getAnalyzerTypeMapping,
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
@@ -22,6 +23,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzer: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
+  getAnalyzerTypeMapping: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
 
@@ -35,6 +37,88 @@ const activeType = {
   source: "SHIPPED",
   status: "ACTIVE",
   protocol: "ASTM",
+};
+
+const currentMapping = {
+  profileId: activeType.profileId,
+  profileRevision: activeType.revision,
+  profileFingerprint: activeType.revisionFingerprint,
+  displayName: activeType.displayName,
+  protocol: activeType.protocol,
+  siteBindingId: "12",
+  siteBindingRevision: 2,
+  bindingFingerprint: `sha256:${"c".repeat(64)}`,
+  tests: [
+    {
+      sourceRowKey: "test:MTB-RIF",
+      rawCode: "MTB-RIF",
+      aliases: [],
+      mappingState: "BOUND",
+      testId: "301",
+      selectedTest: {
+        id: "301",
+        name: "MTB Detection",
+        code: "MTB",
+        loincCodes: ["85362-2"],
+      },
+      results: [
+        {
+          rawValue: "POS",
+          mappingState: "BOUND",
+          resultOptionId: "701",
+          selectedOption: { id: "701", value: "POS", label: "Detected" },
+        },
+        {
+          rawValue: "INVALID",
+          mappingState: "EXCLUDED",
+          resultOptionId: null,
+          selectedOption: null,
+        },
+      ],
+    },
+    {
+      sourceRowKey: "test:SERVICE",
+      rawCode: "SERVICE",
+      aliases: [],
+      mappingState: "EXCLUDED",
+      testId: null,
+      selectedTest: null,
+      results: [],
+    },
+  ],
+  controlRecognition: {
+    recognitionFingerprint: `sha256:${"d".repeat(64)}`,
+    mode: "RULES",
+    description: "Control specimen identifiers start with QC",
+    affirmedNoControlResults: false,
+    conditions: [
+      {
+        key: "specimen-prefix",
+        kind: "SPECIMEN_ID_STARTS_WITH",
+        sourceLabel: "Specimen ID",
+        value: "QC",
+        description: "Control specimen identifiers start with QC",
+      },
+    ],
+  },
+  confirmation: {
+    state: "CURRENT",
+    profileId: activeType.profileId,
+    profileRevision: activeType.revision,
+    bindingFingerprint: `sha256:${"c".repeat(64)}`,
+    recognitionFingerprint: `sha256:${"d".repeat(64)}`,
+    confirmedBy: "19",
+    confirmedByDisplayName: "Casey Iiams-Hauser",
+    confirmedAt: "2026-08-23T15:30:00Z",
+    confirmedRows: [
+      { sourceRowKey: "test:MTB-RIF", rawValue: null },
+      { sourceRowKey: "test:MTB-RIF", rawValue: "POS" },
+    ],
+    excludedRows: [
+      { sourceRowKey: "test:MTB-RIF", rawValue: "INVALID" },
+      { sourceRowKey: "test:SERVICE", rawValue: null },
+    ],
+  },
 };
 
 const SetupHarness = () => {
@@ -97,6 +181,9 @@ describe("AnalyzerSetup Instrument step", () => {
         { id: "7", name: "Molecular Biology" },
         { id: "8", name: "Hematology" },
       ]),
+    );
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) => callback(currentMapping),
     );
   });
 
@@ -256,6 +343,104 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(
       screen.getByRole("heading", { level: 3, name: "Verify" }).closest("li"),
     ).toHaveAttribute("aria-current", "step");
+  });
+
+  it("reloads the shared mapping sign-off and advances a current candidate to Connect", async () => {
+    const entry = `/analyzers?search=gene&setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`;
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        id: "42",
+        name: "GX bench 1",
+        profileId: activeType.profileId,
+        profileRevision: activeType.revision,
+        testUnitIds: ["7"],
+        status: "SETUP",
+      }),
+    );
+    const history = renderSetupWithHistory(entry);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Review analyzer type mappings",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText("2 of 2 tests ready")).toBeVisible();
+    expect(screen.getByText("2 of 2 result values ready")).toBeVisible();
+    expect(screen.getByText("Rule-based control recognition")).toBeVisible();
+    expect(screen.getByText("Specimen ID starts with QC")).toBeVisible();
+    expect(screen.getByText(/Casey Iiams-Hauser/)).toBeVisible();
+    expect(getAnalyzerTypeMapping).toHaveBeenCalledWith(
+      activeType.profileId,
+      activeType.revision,
+      expect.any(Function),
+    );
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+
+    const reviewLink = screen.getByRole("link", {
+      name: "Review mappings in Analyzer Types",
+    });
+    const reviewUrl = new URL(reviewLink.href);
+    expect(reviewUrl.pathname).toBe(
+      `/analyzers/types/${activeType.profileId}/mapping`,
+    );
+    expect(reviewUrl.searchParams.get("revision")).toBe("3");
+    expect(reviewUrl.searchParams.get("returnTo")).toBe(entry);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Continue to Connect" }),
+    );
+    const params = new URLSearchParams(history.location.search);
+    expect(params.get("search")).toBe("gene");
+    expect(params.get("setup")).toBe("connect");
+    expect(params.get("analyzerId")).toBe("42");
+    expect(params.get("profile")).toBe(activeType.profileId);
+    expect(params.get("revision")).toBe("3");
+  });
+
+  it("blocks Connect and uses the sole Analyzer Types editor when verification needs attention", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        id: "42",
+        name: "GX bench 1",
+        profileId: activeType.profileId,
+        profileRevision: activeType.revision,
+        testUnitIds: ["7"],
+        status: "SETUP",
+      }),
+    );
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({
+          ...currentMapping,
+          tests: [
+            {
+              ...currentMapping.tests[0],
+              mappingState: "UNRESOLVED",
+              testId: null,
+              selectedTest: null,
+            },
+          ],
+          confirmation: {
+            ...currentMapping.confirmation,
+            state: "STALE",
+          },
+        }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+
+    expect(
+      await screen.findByText("Verification needs attention"),
+    ).toBeVisible();
+    expect(screen.getByText("0 of 1 tests ready")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Continue to Connect" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("link", { name: "Review mappings in Analyzer Types" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
   it("returns to and updates the same candidate through browser history", async () => {
