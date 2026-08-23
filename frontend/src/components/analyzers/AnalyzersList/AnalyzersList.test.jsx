@@ -300,16 +300,8 @@ describe("AnalyzersList", () => {
     );
   });
 
-  /**
-   * Test: Open Add Analyzer modal shows form
-   *
-   * Arrange-Act-Assert pattern:
-   * 1. Arrange: Setup API mocks
-   * 2. Act: Click "Add Analyzer" button
-   * 3. Assert: Verify navigation to /analyzers/new (AnalyzerForm is now a
-   *    routed page, not an inline modal)
-   */
-  test("testClickAddAnalyzer_NavigatesToNewForm", async () => {
+  test("opens linkable Instrument setup inline while preserving the list", async () => {
+    window.history.replaceState({}, "", "/analyzers?search=chemistry");
     // Arrange: Setup API mocks
     getAnalyzers.mockImplementation((filters, callback) => {
       act(() => {
@@ -331,8 +323,38 @@ describe("AnalyzersList", () => {
     const addButton = screen.getByTestId("add-analyzer-button");
     await userEvent.click(addButton);
 
-    // Assert: navigation occurred to the new-analyzer route
-    expect(window.location.pathname).toBe("/analyzers/new");
+    expect(window.location.pathname).toBe("/analyzers");
+    expect(new URLSearchParams(window.location.search).get("setup")).toBe(
+      "instrument",
+    );
+    expect(new URLSearchParams(window.location.search).get("search")).toBe(
+      "chemistry",
+    );
+    expect(screen.getByTestId("analyzers-list")).toBeVisible();
+    expect(
+      await screen.findByRole("region", { name: "Set up a new analyzer" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Set up a new analyzer",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Instrument" }),
+    ).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close analyzer setup" }),
+    );
+
+    expect(new URLSearchParams(window.location.search).get("setup")).toBeNull();
+    expect(new URLSearchParams(window.location.search).get("search")).toBe(
+      "chemistry",
+    );
+    expect(
+      screen.queryByRole("region", { name: "Set up a new analyzer" }),
+    ).not.toBeInTheDocument();
   });
 
   /**
