@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!--
+      S-09 (OGC-580) Sample Acceptance Checklist — config foundation.
+
+      Distinct from the OGC-356 "QA Checklist" (category QAChecklistItem): this is the
+      pre-analytical specimen-acceptance gate (ISO 15189 §5.4 / 17025 §7.4). Item
+      definitions are Dictionary entries under the SampleAcceptanceItem* categories;
+      the 6 lab-wide defaults are seeded via
+      volume/configuration/backend/dictionaries/sample-acceptance-items.csv through
+      DictionaryConfigurationHandler on startup. The 3 domain categories start empty —
+      a domain with no active items falls back to the lab-wide list.
+    -->
+    <changeSet id="OGC-580-sample-acceptance-dictionary-categories" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.dictionary_category WHERE name = 'SampleAcceptanceItem'</sqlCheck>
+        </preConditions>
+        <comment>Create the lab-wide + per-domain dictionary categories for the Sample Acceptance Checklist.</comment>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Sample Acceptance Checklist items — lab-wide (all domains)"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="SAcceptAll"/>
+            <column name="name" value="SampleAcceptanceItem"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Sample Acceptance Checklist items — Clinical"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="SAcceptCli"/>
+            <column name="name" value="SampleAcceptanceItem_CLINICAL"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Sample Acceptance Checklist items — Environmental"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="SAcceptEnv"/>
+            <column name="name" value="SampleAcceptanceItem_ENVIRONMENTAL"/>
+        </insert>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Sample Acceptance Checklist items — Vector"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="SAcceptVec"/>
+            <column name="name" value="SampleAcceptanceItem_VECTOR"/>
+        </insert>
+    </changeSet>
+
+    <!--
+      Per-domain enforcement settings as SiteInformation key-value rows under the
+      existing 'sampleEntryConfig' domain, read in backend code via
+      ConfigurationProperties. Values: MANDATORY | OPTIONAL | OFF (default OPTIONAL).
+    -->
+    <changeSet id="OGC-580-sample-acceptance-enforcement-settings" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'sampleAcceptCheck.clinical'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.site_information_domain WHERE name = 'sampleEntryConfig'</sqlCheck>
+        </preConditions>
+        <comment>Seed the 3 per-domain Sample Acceptance Checklist enforcement settings (default OPTIONAL).</comment>
+        <insert tableName="site_information" schemaName="clinlims">
+            <column name="id" valueSequenceNext="site_information_seq"/>
+            <column name="name" value="sampleAcceptCheck.clinical"/>
+            <column name="value" value="OPTIONAL"/>
+            <column name="description" value="Enforcement level for the Clinical sample acceptance checklist (MANDATORY/OPTIONAL/OFF)"/>
+            <column name="value_type" value="text"/>
+            <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'sampleEntryConfig')"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <insert tableName="site_information" schemaName="clinlims">
+            <column name="id" valueSequenceNext="site_information_seq"/>
+            <column name="name" value="sampleAcceptCheck.environmental"/>
+            <column name="value" value="OPTIONAL"/>
+            <column name="description" value="Enforcement level for the Environmental sample acceptance checklist (MANDATORY/OPTIONAL/OFF)"/>
+            <column name="value_type" value="text"/>
+            <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'sampleEntryConfig')"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <insert tableName="site_information" schemaName="clinlims">
+            <column name="id" valueSequenceNext="site_information_seq"/>
+            <column name="name" value="sampleAcceptCheck.vector"/>
+            <column name="value" value="OPTIONAL"/>
+            <column name="description" value="Enforcement level for the Vector sample acceptance checklist (MANDATORY/OPTIONAL/OFF)"/>
+            <column name="value_type" value="text"/>
+            <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'sampleEntryConfig')"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -12,7 +12,6 @@ import {
   TableBody,
   TableCell,
   Section,
-  Button,
   TextArea,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl } from "react-intl";

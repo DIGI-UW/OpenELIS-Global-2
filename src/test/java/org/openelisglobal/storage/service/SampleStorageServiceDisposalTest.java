@@ -226,4 +226,86 @@ public class SampleStorageServiceDisposalTest {
     public void testDisposeSampleItem_MissingSysUserId_ThrowsException() {
         sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null, null);
     }
+
+    /**
+     * OGC-1026 (R7, D13) — partial use decrements the remaining quantity through
+     * the audit-emitting service path; exhaustion is remaining == 0, not a status.
+     */
+    @Test
+    public void recordSampleUsage_partialUse_decrementsRemaining() {
+        testSampleItem.setRemainingQuantity(new java.math.BigDecimal("3.5"));
+
+        Map<String, Object> result = sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER,
+                new java.math.BigDecimal("1.0"), false, TEST_SYS_USER_ID);
+
+        verify(sampleItemService).update(testSampleItem);
+        verify(sampleItemDAO, never()).update(any(SampleItem.class));
+        assertEquals("sysUserId must be stamped for audit emit", TEST_SYS_USER_ID, testSampleItem.getSysUserId());
+        assertEquals(0, testSampleItem.getRemainingQuantity().compareTo(new java.math.BigDecimal("2.5")));
+        assertEquals(Boolean.FALSE, result.get("exhausted"));
+    }
+
+    /** Legacy samples fall back to the initial quantity as the baseline. */
+    @Test
+    public void recordSampleUsage_legacyNullRemaining_baselinesOnQuantity() {
+        testSampleItem.setRemainingQuantity(null);
+        testSampleItem.setQuantity(5.0);
+
+        sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER, new java.math.BigDecimal("2"), false,
+                TEST_SYS_USER_ID);
+
+        assertEquals(0, testSampleItem.getRemainingQuantity().compareTo(new java.math.BigDecimal("3")));
+    }
+
+    /** Over-consumption clamps at zero and reports exhaustion. */
+    @Test
+    public void recordSampleUsage_overConsumption_clampsAtZeroExhausted() {
+        testSampleItem.setRemainingQuantity(new java.math.BigDecimal("1.0"));
+
+        Map<String, Object> result = sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER,
+                new java.math.BigDecimal("5"), false, TEST_SYS_USER_ID);
+
+        assertEquals(0, testSampleItem.getRemainingQuantity().compareTo(java.math.BigDecimal.ZERO));
+        assertEquals(Boolean.TRUE, result.get("exhausted"));
+    }
+
+    /** Mark used up zeroes the remaining quantity without needing an amount. */
+    @Test
+    public void recordSampleUsage_markUsedUp_zeroesRemaining() {
+        testSampleItem.setRemainingQuantity(new java.math.BigDecimal("3.5"));
+
+        Map<String, Object> result = sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER, null, true,
+                TEST_SYS_USER_ID);
+
+        verify(sampleItemService).update(testSampleItem);
+        assertEquals(0, testSampleItem.getRemainingQuantity().compareTo(java.math.BigDecimal.ZERO));
+        assertEquals(Boolean.TRUE, result.get("exhausted"));
+    }
+
+    @Test(expected = LIMSRuntimeException.class)
+    public void recordSampleUsage_nonPositiveAmount_throws() {
+        testSampleItem.setRemainingQuantity(new java.math.BigDecimal("3.5"));
+        sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER, java.math.BigDecimal.ZERO, false,
+                TEST_SYS_USER_ID);
+    }
+
+    @Test(expected = LIMSRuntimeException.class)
+    public void recordSampleUsage_noQuantityTracked_throwsUnlessMarkUsedUp() {
+        testSampleItem.setRemainingQuantity(null);
+        testSampleItem.setQuantity(null);
+        sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER, new java.math.BigDecimal("1"), false,
+                TEST_SYS_USER_ID);
+    }
+
+    @Test(expected = LIMSRuntimeException.class)
+    public void recordSampleUsage_alreadyDisposed_throws() {
+        testSampleItem.setStatusId(DISPOSED_STATUS_ID);
+        when(statusService.matches(DISPOSED_STATUS_ID, SampleStatus.Disposed)).thenReturn(true);
+        sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER, null, true, TEST_SYS_USER_ID);
+    }
+
+    @Test(expected = LIMSRuntimeException.class)
+    public void recordSampleUsage_missingSysUserId_throws() {
+        sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER, null, true, null);
+    }
 }

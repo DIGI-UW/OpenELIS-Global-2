@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    Requester element revamp. Env/Vector orders need a
+    "Requesting Organization" (name/address/city + its own phone/fax/email)
+    independent from an optional "Requestor" contact person. Requestor is
+    modeled as a plain Person (already has name/phone/fax/email) tagged via a
+    new requester_type row rather than a dedicated join entity, mirroring how
+    Provider already works through sample_requester/requester_type.
+  -->
+
+  <changeSet id="3.5.0-053-add-organization-phone" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="organization" columnName="phone" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="organization" schemaName="clinlims">
+      <column name="phone" type="VARCHAR(20)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-053-add-organization-fax" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="organization" columnName="fax" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="organization" schemaName="clinlims">
+      <column name="fax" type="VARCHAR(20)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-053-add-organization-email" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="organization" columnName="email" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="organization" schemaName="clinlims">
+      <column name="email" type="VARCHAR(255)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-053-add-person-department" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="person" columnName="department" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="department" type="VARCHAR(100)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-053-add-requestor-contact-requester-type" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.requester_type WHERE requester_type = 'requestor_contact'
+      </sqlCheck>
+    </preConditions>
+    <comment>New requester_type so sample_requester can point at a standalone
+      Requestor Person for Environmental/Vector orders, independent of the
+      existing 'organization' and 'provider' types.</comment>
+    <insert tableName="requester_type" schemaName="clinlims">
+      <column name="id" valueSequenceNext="requester_type_seq"/>
+      <column name="requester_type" value="requestor_contact"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

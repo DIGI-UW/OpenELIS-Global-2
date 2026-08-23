@@ -58,6 +58,9 @@
         <property name="fax" type="java.lang.String">
             <column name="FAX" />
         </property>
+        <property name="department" type="java.lang.String">
+            <column name="department" />
+        </property>
         <property name="gpsLatitude" type="java.math.BigDecimal">
             <column name="gps_latitude" />
         </property>

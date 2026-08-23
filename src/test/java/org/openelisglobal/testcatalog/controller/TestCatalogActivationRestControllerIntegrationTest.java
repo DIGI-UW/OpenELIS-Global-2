@@ -13,9 +13,11 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testactivation.service.TestActivationAcknowledgmentService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogActivationRestController;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogActivationRestController.ActivateRequest;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogActivationRestController.ActivationResult;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService;
 import org.openelisglobal.testcatalog.service.RangeCoverageValidationService.CoverageReport;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -160,5 +162,29 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
     @org.junit.Test
     public void unknownTest_returns404() {
         assertEquals(404, controller.activateTest("99999999", null, authedRequest()).getStatusCode().value());
+    }
+
+    /**
+     * OGC-1153 defect 5a — activation also flips {@code orderable} (FRS lifecycle:
+     * Active ⇒ orderable), which the old bare-coverage-report body never mentioned,
+     * so a client had to reload to find out. The success body must state the
+     * resulting flags, and must stay a superset of the coverage report the 409 flow
+     * consumes.
+     */
+    @org.junit.Test
+    public void activateResponse_statesTheResultingActiveAndOrderableFlags() {
+        seedRange(null, 0d, Double.POSITIVE_INFINITY);
+        ResponseEntity<?> resp = controller.activateTest(String.valueOf(TEST_ID), null, authedRequest());
+        assertEquals(200, resp.getStatusCode().value());
+
+        ActivationResult result = (ActivationResult) resp.getBody();
+        assertEquals(String.valueOf(TEST_ID), result.testId);
+        assertTrue("activation must report the test as active", result.active);
+        assertTrue("activation sets orderable, so the response must say so", result.orderable);
+        assertTrue("the success body must still carry the coverage report", result.male != null);
+
+        Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        assertTrue("the reported flags must match what was persisted", reloaded.isActive());
+        assertTrue(Boolean.TRUE.equals(reloaded.getOrderable()));
     }
 }

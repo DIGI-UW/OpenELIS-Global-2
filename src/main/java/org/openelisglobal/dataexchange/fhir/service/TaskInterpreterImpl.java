@@ -102,6 +102,9 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     private List<InterpreterResults> results = new ArrayList<>();
     private List<String> unsupportedTests = new ArrayList<>();
     private List<String> unsupportedPanels = new ArrayList<>();
+    // OGC-1145 FR-8: the order's code is specimen-ambiguous and the message
+    // carried no specimen — TaskWorker queues it AwaitingSpecimen, not Entered.
+    private boolean specimenClarificationNeeded = false;
     private ITestIdentityService testIdentityService;
 
     @Override
@@ -113,6 +116,7 @@ public class TaskInterpreterImpl implements TaskInterpreter {
         this.patient = incomingPatient;
 
         this.orderMessage = fhirContext.newJsonParser().encodeResourceToString(task);
+        specimenClarificationNeeded = false;
 
         try {
             messagePatient = createPatientFromFHIR();
@@ -157,6 +161,21 @@ public class TaskInterpreterImpl implements TaskInterpreter {
                 if (!GenericValidator.isBlankOrNull(loincCode)) {
                     tests = testService.getTestsByLoincCode(loincCode);
                     if (tests.size() != 0) {
+                        // OGC-1145 FR-8: when the ServiceRequest carries no
+                        // specimen and the code is specimen-ambiguous (several
+                        // tests, or one test spanning several sample types),
+                        // flag the order for the AwaitingSpecimen hold — the
+                        // accessioner resolves it with the sample-type chooser.
+                        // A specimen-carrying order resolves at accession from
+                        // its Specimen resource (FR-7), so it queues normally.
+                        if (!serviceRequest.hasSpecimen()
+                                && (tests.size() > 1 || testService.getTypeOfSamples(tests.get(0)).size() > 1)) {
+                            specimenClarificationNeeded = true;
+                            LogEvent.logWarn(this.getClass().getSimpleName(), "createTestFromFHIR",
+                                    "LOINC " + loincCode + " is specimen-ambiguous and the order carries no"
+                                            + " specimen; holding SR awaiting specimen: "
+                                            + serviceRequest.getIdElement().getIdPart());
+                        }
                         return tests.get(0);
                     }
                 } else {
@@ -201,6 +220,10 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     }
 
     private MessagePatient createPatientFromFHIR() throws HL7Exception {
+        // env/vector samples have no patient
+        if (patient == null) {
+            return null;
+        }
 
         MessagePatient messagePatient = new MessagePatient();
 
@@ -319,30 +342,21 @@ public class TaskInterpreterImpl implements TaskInterpreter {
             }
 
             if (orderType == OrderType.REQUEST) {
-                // a GUID is no longer being sent, so no longer requiring it, it is instead
-                // generated upon receiving patient
-                /*
-                 * if(GenericValidator.isBlankOrNull(getMessagePatient().getGuid())){
-                 * results.add(InterpreterResults.MISSING_PATIENT_GUID); }
-                 */
+                // skip patient validation for env/vector samples
+                if (getMessagePatient() != null) {
+                    if (GenericValidator.isBlankOrNull(getMessagePatient().getGender())) {
+                        results.add(InterpreterResults.MISSING_PATIENT_GENDER);
+                    }
 
-                // These are being commented out until we get confirmation on the desired
-                // policy. Either the request should be rejected or the user should be required
-                // to
-                // fill the missing information in at the time of sample entry. Commenting these
-                // out supports the latter
-                if (GenericValidator.isBlankOrNull(getMessagePatient().getGender())) {
-                    results.add(InterpreterResults.MISSING_PATIENT_GENDER);
-                }
+                    if (getMessagePatient().getDisplayDOB() == null) {
+                        results.add(InterpreterResults.MISSING_PATIENT_DOB);
+                    }
 
-                if (getMessagePatient().getDisplayDOB() == null) {
-                    results.add(InterpreterResults.MISSING_PATIENT_DOB);
-                }
-
-                if (getMessagePatient().getNationalId() == null && getMessagePatient().getObNumber() == null
-                        && getMessagePatient().getPcNumber() == null && getMessagePatient().getStNumber() == null
-                        && getMessagePatient().getExternalId() == null) {
-                    results.add(InterpreterResults.MISSING_PATIENT_IDENTIFIER);
+                    if (getMessagePatient().getNationalId() == null && getMessagePatient().getObNumber() == null
+                            && getMessagePatient().getPcNumber() == null && getMessagePatient().getStNumber() == null
+                            && getMessagePatient().getExternalId() == null) {
+                        results.add(InterpreterResults.MISSING_PATIENT_IDENTIFIER);
+                    }
                 }
 
                 if ((test == null || !getTestIdentityService().doesActiveTestExistForLoinc(test.getLoinc()))
@@ -442,5 +456,10 @@ public class TaskInterpreterImpl implements TaskInterpreter {
     @Override
     public Panel getPanel() {
         return panel;
+    }
+
+    @Override
+    public boolean isSpecimenClarificationNeeded() {
+        return specimenClarificationNeeded;
     }
 }

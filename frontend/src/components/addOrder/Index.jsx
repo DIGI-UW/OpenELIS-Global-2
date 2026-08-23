@@ -1,5 +1,14 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Button, ProgressIndicator, ProgressStep, Stack } from "@carbon/react";
+import {
+  Button,
+  InlineNotification,
+  ProgressIndicator,
+  ProgressStep,
+  Select,
+  SelectItem,
+  SkeletonText,
+  Stack,
+} from "@carbon/react";
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
 import AddOrder from "./AddOrder";
@@ -26,6 +35,20 @@ let breadcrumbs = [
   { label: "breadcrumb.label.addOrder", link: "/SamplePatientEntry" },
 ];
 
+// Step identifiers — decoupled from physical tab position
+const STEP_PATIENT_INFO = "patient_info";
+const STEP_PROGRAM = "program";
+const STEP_ADD_SAMPLE = "add_sample";
+const STEP_ADD_ORDER = "add_order";
+const STEP_SUCCESS = "success";
+
+const STEP_LABELS = {
+  [STEP_PATIENT_INFO]: "order.step.patient.info",
+  [STEP_PROGRAM]: "order.step.program.selection",
+  [STEP_ADD_SAMPLE]: "sample.add.action",
+  [STEP_ADD_ORDER]: "order.label.add",
+};
+
 export let sampleObject = {
   index: 0,
   sampleRejected: false,
@@ -40,19 +63,13 @@ export let sampleObject = {
 const Index = () => {
   const intl = useIntl();
 
-  const firstPageNumber = 0;
-  const lastPageNumber = 4;
-  const patientInfoPageNumber = firstPageNumber;
-  const programPageNumber = firstPageNumber + 1;
-  const samplePageNumber = firstPageNumber + 2;
-  const orderPageNumber = firstPageNumber + 3;
-  const successMsgPageNumber = lastPageNumber;
   const [changed, setChanged] = useState({
     "sampleOrderItems.providerFirstName": false,
     "sampleOrderItems.providerLastName": false,
     "sampleOrderItems.labNo": false,
   });
-  const [page, setPage] = useState(firstPageNumber);
+  const [currentStep, setCurrentStep] = useState(STEP_PATIENT_INFO);
+  const [isLoadingReferral, setIsLoadingReferral] = useState(false);
   const isEQAFromUrl =
     new URLSearchParams(window.location.search).get("isEQA") === "true";
   const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
@@ -65,24 +82,52 @@ const Index = () => {
     contactPhone: { body: "", status: true },
   });
   const [stagedAttachments, setStagedAttachments] = useState([]);
+  // OGC-1145 FR-8 — e-order tests/panels whose sample type couldn't be resolved
+  // from the message (multi-specimen test, no specimen coding): the accessioner
+  // picks the specimen here, which files the orderable under that sample type.
+  const [crossTests, setCrossTests] = useState([]);
+  const [crossPanels, setCrossPanels] = useState([]);
+
+  // Derived step values
+  const domain = orderFormValues?.sampleOrderItems?.domain;
+  const isNonClinicalDomain = domain === "E" || domain === "V";
+
+  const visibleSteps = isNonClinicalDomain
+    ? [STEP_PROGRAM, STEP_ADD_SAMPLE, STEP_ADD_ORDER]
+    : [STEP_PATIENT_INFO, STEP_PROGRAM, STEP_ADD_SAMPLE, STEP_ADD_ORDER];
+
+  const currentStepIndex = visibleSteps.indexOf(currentStep);
+  const isFirstStep = currentStepIndex === 0;
+  const isLastStep = currentStepIndex === visibleSteps.length - 1;
+  const isOnSuccess = currentStep === STEP_SUCCESS;
 
   let SampleTypes = [];
   let sampleTypeMap = {};
-  let CrossPanels = [];
-  let CrossTests = [];
-  let sampleTypeOrder;
-  let crossSampleTypeMap = {};
-  let crossSampleTypeOrderMap = {};
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
 
+  // If current step becomes invisible (e.g. domain changed while on patient
+  // info), snap to first visible step
+  useEffect(() => {
+    if (
+      !isOnSuccess &&
+      currentStep !== STEP_PATIENT_INFO &&
+      !visibleSteps.includes(currentStep)
+    ) {
+      setCurrentStep(visibleSteps[0]);
+    }
+  }, [isNonClinicalDomain]);
+
   useEffect(() => {
     if (configurationProperties.ACCEPT_EXTERNAL_ORDERS === "true") {
       const urlParams = new URLSearchParams(window.location.search);
       const externalId = urlParams.get("ID");
-      checkOrderReferral(externalId);
+      if (externalId) {
+        setIsLoadingReferral(true);
+        checkOrderReferral(externalId);
+      }
     } else {
       setOrderFormValues((prev) => ({
         ...prev,
@@ -117,7 +162,6 @@ const Index = () => {
         orderNumber,
       {
         method: "get",
-        //indicator: 'throbbing',
         headers: {
           "X-CSRF-Token": localStorage.getItem("CSRF"),
         },
@@ -126,6 +170,7 @@ const Index = () => {
       .then((response) => response.json())
       .then((jsonResponse) => {
         success(jsonResponse);
+        setIsLoadingReferral(false);
       })
       .catch((error) => {
         console.error(error);
@@ -141,12 +186,12 @@ const Index = () => {
           });
           setNotificationVisible(true);
         }
+        setIsLoadingReferral(false);
         failure();
       });
   };
 
   const processLabOrderSuccess = (labOrder) => {
-    // clearOrderData();
     let message = labOrder.fieldmessage.message;
     let formField = labOrder.fieldmessage.formfield;
     let order = formField.order;
@@ -154,12 +199,30 @@ const Index = () => {
     let newOrderFormValues = { ...orderFormValues };
 
     SampleTypes = [];
-    CrossPanels = [];
-    CrossTests = [];
     sampleTypeMap = {};
 
-    //TODO all these actions mimic other areas of the code. Possible rework could centralize these calls into a context
     if (message === "valid") {
+      // DOMAIN
+      if (order.domain) {
+        const workflowType =
+          order.domain === "E"
+            ? "environmental"
+            : order.domain === "V"
+              ? "vector"
+              : "clinical";
+        newOrderFormValues = {
+          ...newOrderFormValues,
+          sampleOrderItems: {
+            ...newOrderFormValues.sampleOrderItems,
+            domain: order.domain,
+            environmentalFields: {
+              ...newOrderFormValues.sampleOrderItems.environmentalFields,
+              workflowType: workflowType,
+            },
+          },
+        };
+      }
+
       // PATIENT
       if (order.patient) {
         parsePatient(newOrderFormValues, order.patient);
@@ -181,11 +244,6 @@ const Index = () => {
         alert(order.user_alert);
       }
 
-      // initialize objects and globals
-      sampleTypeOrder = -1;
-      crossSampleTypeMap = {};
-      crossSampleTypeOrderMap = {};
-
       if (order.sampleTypes != "") {
         parseSampletypes(
           newOrderFormValues,
@@ -194,6 +252,29 @@ const Index = () => {
             : [{ sampleType: order.sampleTypes.sampleType }],
           SampleTypes,
         );
+      }
+
+      // Referred tests/panels whose sample type can't be auto-resolved come back
+      // as crosstests/crosspanels (test/panel is known, but valid for several
+      // local sample types). The form can't hold a test with a blank type, so
+      // instead of silently dropping them we name them and let the tech pick.
+      const toArray = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
+      const ambiguousItems = [
+        ...toArray(order.crosstests?.crosstest),
+        ...toArray(order.crosspanels?.crosspanel),
+      ]
+        .map((item) => item.name)
+        .filter(Boolean);
+      if (ambiguousItems.length > 0) {
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage(
+            { id: "order.referral.sampleType.ambiguous" },
+            { items: ambiguousItems.join(", ") },
+          ),
+        });
+        setNotificationVisible(true);
       }
 
       const urlParams = new URLSearchParams(window.location.search);
@@ -209,33 +290,24 @@ const Index = () => {
         },
       };
       setOrderFormValues(newOrderFormValues);
-      setSamples(SampleTypes);
+      // A pure awaiting-specimen order carries no pre-bound sample types; keep
+      // the blank sample entry so the Add Sample step stays usable while the
+      // chooser below resolves the specimens.
+      setSamples(SampleTypes.length > 0 ? SampleTypes : [sampleObject]);
 
-      //TODO not translated over for 3.0 Unsure if needed
-      // parseCrossPanels(
-      //   order.crosspanel,
-      //   crossSampleTypeMap,
-      //   crossSampleTypeOrderMap,
-      // );
-      // parseCrossTests(
-      //   order.crosstest,
-      //   crossSampleTypeMap,
-      //   crossSampleTypeOrderMap,
-      // );
-      // populateCrossPanelsAndTests(CrossPanels, CrossTests, '${entryDate}');
-      // displaySampleTypes('${entryDate}');
-
-      // if (SampleTypes.length > 0) sampleClicked(1);
+      // Set initial step based on resolved domain
+      const resolvedDomain = order.domain;
+      if (resolvedDomain === "E" || resolvedDomain === "V") {
+        setCurrentStep(STEP_PROGRAM);
+      }
+      // OGC-1145 FR-8 — orderables the provider couldn't bind to one specimen
+      // (<crosstest>/<crosspanel> in the provider XML) go to the chooser instead
+      // of being first-matched; resolving one files it under the chosen type.
+      setCrossTests(order.crosstest ? parseCrossList(order.crosstest) : []);
+      setCrossPanels(order.crosspanel ? parseCrossList(order.crosspanel) : []);
     } else {
       alert(message);
     }
-
-    // if (attemptAutoSave) {
-    // let validToSave =  patientFormValid() && sampleEntryTopValid();
-    // if (validToSave) {
-    //   savePage();
-    // }
-    // }
   };
 
   const parsePatient = (newOrderFormValues, patient) => {
@@ -255,10 +327,10 @@ const Index = () => {
       getFromOpenElisServer(
         "/rest/practitioner?providerId=" + providerId,
         (data) => {
-          setOrderFormValues({
-            ...orderFormValues,
+          setOrderFormValues((prev) => ({
+            ...prev,
             sampleOrderItems: {
-              ...orderFormValues.sampleOrderItems,
+              ...prev.sampleOrderItems,
               providerId: data.id,
               providerPersonId: data.person.id,
               providerFirstName: data.person.firstName ?? "",
@@ -267,7 +339,7 @@ const Index = () => {
               providerEmail: data.person.email ?? "",
               providerFax: data.person.fax ?? "",
             },
-          });
+          }));
         },
       );
     } else {
@@ -359,71 +431,76 @@ const Index = () => {
     return index;
   };
 
-  // const parseCrossPanels = (
-  //   crosspanels,
-  //   crossSampleTypeMap,
-  //   crossSampleTypeOrderMap,
-  // ) => {
-  //   for (let i = 0; i < crosspanels.length; i++) {
-  //     var crossPanelName = crosspanels[i].name;
-  //     var crossPanelId = crosspanels[i].id;
-  //     var crossSampleTypes = crosspanels[i].crosssampletypes;
+  // <crosstest>/<crosspanel> nodes → { id?, name, options: [{id, name, testId}] }.
+  // Options are the candidate sample types the orderable may run under.
+  const parseCrossList = (crossNodes) => {
+    const nodes = crossNodes instanceof Array ? crossNodes : [crossNodes];
+    return nodes.filter(Boolean).map((node) => ({
+      id: node.id ? "" + node.id : null,
+      name: node.name,
+      options: getNodeNamesByTagName(
+        node.crosssampletypes || {},
+        "crosssampletype",
+      ),
+      chosenId: "",
+    }));
+  };
 
-  //     CrossPanels[i] = newCrossPanel(crossPanelId, crossPanelName);
-  //     CrossPanels[i].sampleTypes = getNodeNamesByTagName(
-  //       crossSampleTypes,
-  //       "crosssampletype",
-  //     );
-  //     CrossPanels[i].typeMap = [CrossPanels[i].sampleTypes.length];
+  // Files a resolved orderable under the chosen sample type, creating the
+  // sample entry if the order didn't already carry one of that type (mirrors
+  // parseSampletype's autofill behavior).
+  const addUnderSampleType = (option, applyToSampleType) => {
+    setSamples((prev) => {
+      const next = prev
+        .filter((s) => s.sampleTypeId !== "")
+        .map((s) => ({
+          ...s,
+          tests: [...s.tests],
+          panels: [...s.panels],
+        }));
+      let sampleType = next.find((s) => s.sampleTypeId === "" + option.id);
+      if (!sampleType) {
+        sampleType = newSampleType(option.id, option.name, next.length + 1);
+        if (configurationProperties?.AUTOFILL_COLLECTION_DATE === "true") {
+          sampleType.sampleXML.collectionDate =
+            configurationProperties.currentDateAsText;
+          sampleType.sampleXML.collectionTime =
+            configurationProperties.currentTimeAsText;
+        }
+        next.push(sampleType);
+      }
+      applyToSampleType(sampleType);
+      return next;
+    });
+  };
 
-  //     for (let j = 0; j < CrossPanels[i].sampleTypes.length; j = j + 1) {
-  //       CrossPanels[i].typeMap[CrossPanels[i].sampleTypes[j].name] = "t";
-  //       var sampleType = crossSampleTypeMap[CrossPanels[i].sampleTypes[j].id];
+  const resolveCrossTest = (index, optionId) => {
+    const crossTest = crossTests[index];
+    const option = crossTest.options.find((o) => o.id === optionId);
+    if (!option) {
+      return;
+    }
+    addUnderSampleType(option, (sampleType) => {
+      if (!sampleType.tests.some((t) => t.id === "" + option.testId)) {
+        sampleType.tests.push(newTest(option.testId, crossTest.name));
+      }
+    });
+    setCrossTests((prev) => prev.filter((_, i) => i !== index));
+  };
 
-  //       if (sampleType === undefined) {
-  //         crossSampleTypeMap[CrossPanels[i].sampleTypes[j].id] =
-  //           CrossPanels[i].sampleTypes[j];
-  //         sampleTypeOrder = sampleTypeOrder + 1;
-  //         crossSampleTypeOrderMap[sampleTypeOrder] =
-  //           CrossPanels[i].sampleTypes[j].id;
-  //       }
-  //     }
-  //   }
-  // };
-
-  // const parseCrossTests = (
-  //   crosstests,
-  //   crossSampleTypeMap,
-  //   crossSampleTypeOrderMap,
-  // ) => {
-  //   for (let x = 0; x < crosstests.length; x = x + 1) {
-  //     var crossTestName = crosstests[x].name;
-  //     var crossSampleTypes = crosstests[x].crosssampletypes;
-
-  //     CrossTests[x] = newCrossTest(crossTestName);
-  //     CrossTests[x].sampleTypes = getNodeNamesByTagName(
-  //       crossSampleTypes,
-  //       "crosssampletype",
-  //     );
-  //     CrossTests[x].typeMap = [CrossTests[x].sampleTypes.length];
-  //     var sTypes = [];
-  //     for (var y = 0; y < CrossTests[x].sampleTypes.length; y++) {
-  //       //alert(crossTestName + " " + CrossTests[x].sampleTypes[y].id + " testid=" + CrossTests[x].sampleTypes[y].testId);
-  //       sTypes[y] = CrossTests[x].sampleTypes[y];
-  //       CrossTests[x].typeMap[CrossTests[x].sampleTypes[y].name] = "t";
-  //       var sType = crossSampleTypeMap[CrossTests[x].sampleTypes[y].id];
-
-  //       if (sType === undefined) {
-  //         crossSampleTypeMap[CrossTests[x].sampleTypes[y].id] =
-  //           CrossTests[x].sampleTypes[y];
-  //         sampleTypeOrder++;
-  //         crossSampleTypeOrderMap[sampleTypeOrder] =
-  //           CrossTests[x].sampleTypes[y].id;
-  //       }
-  //     }
-  //     crossTestSampleTypeTestIdMap[crossTestName] = sTypes;
-  //   }
-  // };
+  const resolveCrossPanel = (index, optionId) => {
+    const crossPanel = crossPanels[index];
+    const option = crossPanel.options.find((o) => o.id === optionId);
+    if (!option) {
+      return;
+    }
+    addUnderSampleType(option, (sampleType) => {
+      if (!sampleType.panels.some((p) => p.id === crossPanel.id)) {
+        sampleType.panels.push(newPanel(crossPanel.id, crossPanel.name));
+      }
+    });
+    setCrossPanels((prev) => prev.filter((_, i) => i !== index));
+  };
 
   function addPanelsToSampleType(sampleType, panelNodes) {
     for (let i = 0; i < panelNodes.length; i++) {
@@ -440,7 +517,6 @@ const Index = () => {
   }
 
   function getNodeNamesByTagName(elements, tag) {
-    //initialize helper objects
     let allTestsMap = {};
     let panelTestsMap = {};
 
@@ -476,7 +552,6 @@ const Index = () => {
         }
       } else if (tag == "test") {
         objList[j] = newTest(id, name);
-        allTestsMap[id] = name;
       } else if (tag == "crosssampletype") {
         let testtag = nodes[j].testid;
         if (testtag) {
@@ -514,10 +589,6 @@ const Index = () => {
       name: name,
       panels: [],
       tests: [],
-      // setCrossPanels: "false",
-      // setCrossTests: "false",
-      // crossPanels: [],
-      // crossTests: [],
     };
   };
 
@@ -537,21 +608,6 @@ const Index = () => {
       id: "" + id,
       name: name,
       testId: testId,
-    };
-  };
-  const newCrossPanel = (id, name) => {
-    return {
-      id: "" + id,
-      name: name,
-      sampleTypes: [],
-      typeMap: [],
-    };
-  };
-  const newCrossTest = (name) => {
-    return {
-      name: name,
-      sampleTypes: [],
-      typeMap: [],
     };
   };
 
@@ -598,10 +654,8 @@ const Index = () => {
         NotificationKinds.success,
       );
       uploadStagedAttachments(response?.sampleOrderItems?.labNo);
-      setPage(page + 1);
+      setCurrentStep(STEP_SUCCESS);
     } else {
-      // Surface the backend's actual error/fieldErrors instead of the generic
-      // "Oops, Server error..." fallback.
       showAlertMessage(
         resolveApiErrorMessage(intl, response, "server.error.msg"),
         NotificationKinds.error,
@@ -621,7 +675,6 @@ const Index = () => {
 
   const handleSubmitOrderForm = (e) => {
     e.preventDefault();
-    // Prevent multiple submissions.
     if (isSubmitting) {
       return;
     }
@@ -638,11 +691,11 @@ const Index = () => {
     if ("questionnaire" in orderFormValues.sampleOrderItems) {
       delete orderFormValues.sampleOrderItems.questionnaire;
     }
-    // readOnly is frontend-only, do not send to backend
+    // domain is frontend-only (used for step/validation logic), not a backend field
+    delete orderFormValues.sampleOrderItems.domain;
     if ("readOnly" in orderFormValues.patientProperties) {
       delete orderFormValues.patientProperties.readOnly;
     }
-    //remove display Lists rom the form
     orderFormValues.sampleOrderItems.priorityList = [];
     orderFormValues.sampleOrderItems.programList = [];
     orderFormValues.sampleOrderItems.referringSiteList = [];
@@ -659,37 +712,37 @@ const Index = () => {
   };
 
   useEffect(() => {
-    if (page === samplePageNumber + 1) {
+    if (currentStep === STEP_ADD_ORDER) {
       attacheSamplesToFormValues();
     }
-  }, [page]);
+  }, [currentStep]);
 
   useEffect(() => {
-    console.log(changed);
-    createOrderEntryValidationSchema(configurationProperties)
+    const schema = createOrderEntryValidationSchema(
+      configurationProperties,
+      domain,
+    );
+    schema
       .validate(orderFormValues, { abortEarly: false })
       .then((validData) => {
         setErrors([]);
-        console.debug("Valid Data:", validData);
       })
       .catch((errors) => {
         setErrors(errors);
-        console.error("Validation Errors:", errors.errors);
       });
-  }, [changed, configurationProperties, orderFormValues]);
+  }, [changed, configurationProperties, orderFormValues, domain]);
 
   useEffect(() => {
     const labNumber = new URLSearchParams(window.location.search).get(
       "labNumber",
     );
-    const newOrderFormValues = {
-      ...orderFormValues,
+    setOrderFormValues((prev) => ({
+      ...prev,
       sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
+        ...prev.sampleOrderItems,
         labNo: labNumber ? labNumber : "",
       },
-    };
-    setOrderFormValues(newOrderFormValues);
+    }));
   }, []);
 
   const attacheSamplesToFormValues = () => {
@@ -716,24 +769,18 @@ const Index = () => {
                 })
                 .join(",");
             }
-            // Extract storage location data if present
             const storageLocation = sampleItem.sampleXML?.storageLocation;
             const storageLocationId = storageLocation?.id || "";
             const storageLocationType = storageLocation?.type || "";
             const storagePositionCoordinate =
               storageLocation?.positionCoordinate || "";
 
-            // Extract GPS coordinates data if present
             const gpsLatitude = sampleItem.sampleXML?.gpsLatitude || "";
             const gpsLongitude = sampleItem.sampleXML?.gpsLongitude || "";
             const gpsAccuracy = sampleItem.sampleXML?.gpsAccuracy || "";
             const gpsCaptureMethod =
               sampleItem.sampleXML?.gpsCaptureMethod || "";
 
-            // OGC-651: specimen detail freetext attributes (LO-03-01).
-            // Backend reads via SampleAddService.attributeValue("...");
-            // persists to sample_item.collection_method / sample_temperature /
-            // specimen_origin columns (Liquibase 3.5.0-020).
             const collectionMethod =
               sampleItem.sampleXML?.collectionMethod || "";
             const sampleTemperature =
@@ -743,35 +790,39 @@ const Index = () => {
             sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' collectionMethod='${collectionMethod}' sampleTemperature='${sampleTemperature}' specimenOrigin='${specimenOrigin}' numOrderLabels='${sampleItem.sampleXML?.numOrderLabels || 1}' numSpecimenLabels='${sampleItem.sampleXML?.numSpecimenLabels || 1}'/>`;
           }
           if (sampleItem.referralItems.length > 0) {
-            const referredInstitutes = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].institute;
-              })
-              .join(",");
-
-            const sentDates = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].sentDate;
-              })
-              .join(",");
-
-            const referralReasonIds = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].reasonForReferral;
-              })
-              .join(",");
-
-            const referrers = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].referrer;
-              })
-              .join(",");
-            referralItems.push({
-              referrer: referrers,
-              referredInstituteId: referredInstitutes,
-              referredTestId: tests,
-              referredSendDate: sentDates,
-              referralReasonId: referralReasonIds,
+            // One payload entry per referred test, carrying scalar ids. The server
+            // resolves referredInstituteId as an organization id and matches
+            // referredTestId against a single analysis, so comma-joining the rows
+            // (as this did previously) produced values like "4,4" and failed the save.
+            const sampleTestIds = String(tests || "")
+              .split(",")
+              .filter(Boolean);
+            const seen = new Set();
+            sampleItem.referralItems.forEach((referral) => {
+              if (!referral) {
+                return;
+              }
+              const institute = referral.institute || "";
+              if (!institute) {
+                return;
+              }
+              const targetTestIds = referral.testId
+                ? [String(referral.testId)]
+                : sampleTestIds;
+              targetTestIds.forEach((testId) => {
+                const key = institute + ":" + testId;
+                if (!testId || seen.has(key)) {
+                  return;
+                }
+                seen.add(key);
+                referralItems.push({
+                  referrer: referral.referrer || "",
+                  referredInstituteId: institute,
+                  referredTestId: testId,
+                  referredSendDate: referral.sentDate || "",
+                  referralReasonId: referral.reasonForReferral || "",
+                });
+              });
             });
           }
         });
@@ -787,18 +838,29 @@ const Index = () => {
   };
 
   const navigateForward = () => {
-    if (page <= lastPageNumber && page >= firstPageNumber) {
-      setPage(page + 1);
+    if (currentStepIndex < visibleSteps.length - 1) {
+      setCurrentStep(visibleSteps[currentStepIndex + 1]);
     }
   };
 
-  const navigateBackWards = () => {
-    if (page > firstPageNumber) {
-      setPage(page + -1);
+  const navigateBackward = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStep(visibleSteps[currentStepIndex - 1]);
     }
   };
-  const handleTabClickHandler = (e) => {
-    setPage(e);
+
+  const handleTabClick = (physicalIndex) => {
+    const targetStep = visibleSteps[physicalIndex];
+    if (targetStep) {
+      setCurrentStep(targetStep);
+    }
+  };
+
+  // Compat wrapper: OrderSuccessMessage calls setPage(0) to reset
+  const handleResetToFirstStep = (pageNumber) => {
+    if (pageNumber === 0) {
+      setCurrentStep(visibleSteps[0]);
+    }
   };
 
   return (
@@ -811,128 +873,192 @@ const Index = () => {
             <h2>
               <FormattedMessage id="order.test.request.heading" />
             </h2>
-            {page <= orderPageNumber && (
-              <ProgressIndicator
-                currentIndex={page}
-                className="ProgressIndicator"
-                spaceEqually={true}
-                onChange={(e) => handleTabClickHandler(e)}
-              >
-                <ProgressStep
-                  complete
-                  label={intl.formatMessage({ id: "order.step.patient.info" })}
-                />
-                <ProgressStep
-                  label={intl.formatMessage({
-                    id: "order.step.program.selection",
-                  })}
-                />
-                <ProgressStep
-                  label={intl.formatMessage({ id: "sample.add.action" })}
-                />
-                <ProgressStep
-                  label={intl.formatMessage({ id: "order.label.add" })}
-                />
-              </ProgressIndicator>
+
+            {isLoadingReferral && (
+              <div style={{ padding: "1rem" }}>
+                <SkeletonText paragraph lineCount={5} />
+              </div>
             )}
 
-            {page === patientInfoPageNumber && (
+            {!isLoadingReferral &&
+              (crossTests.length > 0 || crossPanels.length > 0) && (
+                <div
+                  style={{ marginTop: "1rem" }}
+                  data-testid="awaiting-specimen-chooser"
+                >
+                  <InlineNotification
+                    kind="warning"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "notice.testCatalog.intake.awaitingSpecimen",
+                    })}
+                  />
+                  {crossTests.map((crossTest, i) => (
+                    <Select
+                      key={`cross-test-${crossTest.name}-${i}`}
+                      id={`cross-test-${i}`}
+                      labelText={crossTest.name}
+                      defaultValue=""
+                      onChange={(e) => resolveCrossTest(i, e.target.value)}
+                    >
+                      <SelectItem
+                        value=""
+                        text={intl.formatMessage({
+                          id: "label.testCatalog.specimenType",
+                        })}
+                      />
+                      {crossTest.options.map((option) => (
+                        <SelectItem
+                          key={option.id}
+                          value={option.id}
+                          text={option.name}
+                        />
+                      ))}
+                    </Select>
+                  ))}
+                  {crossPanels.map((crossPanel, i) => (
+                    <Select
+                      key={`cross-panel-${crossPanel.name}-${i}`}
+                      id={`cross-panel-${i}`}
+                      labelText={crossPanel.name}
+                      defaultValue=""
+                      onChange={(e) => resolveCrossPanel(i, e.target.value)}
+                    >
+                      <SelectItem
+                        value=""
+                        text={intl.formatMessage({
+                          id: "label.testCatalog.specimenType",
+                        })}
+                      />
+                      {crossPanel.options.map((option) => (
+                        <SelectItem
+                          key={option.id}
+                          value={option.id}
+                          text={option.name}
+                        />
+                      ))}
+                    </Select>
+                  ))}
+                </div>
+              )}
+
+            {!isLoadingReferral && (
               <>
-                {(configurationProperties.EQA_ENABLED === "true" ||
-                  isEQAFromUrl ||
-                  orderFormValues?.sampleOrderItems?.isEQASample) && (
-                  <EQASampleEntry
-                    orderFormValues={orderFormValues}
-                    setOrderFormValues={setOrderFormValues}
-                    autoEnable={isEQAFromUrl}
+                {!isOnSuccess && (
+                  <ProgressIndicator
+                    currentIndex={currentStepIndex}
+                    className="ProgressIndicator"
+                    spaceEqually={true}
+                    onChange={handleTabClick}
+                  >
+                    {visibleSteps.map((stepId) => (
+                      <ProgressStep
+                        key={stepId}
+                        label={intl.formatMessage({ id: STEP_LABELS[stepId] })}
+                      />
+                    ))}
+                  </ProgressIndicator>
+                )}
+
+                {currentStep === STEP_PATIENT_INFO && (
+                  <>
+                    {(configurationProperties.EQA_ENABLED === "true" ||
+                      isEQAFromUrl ||
+                      orderFormValues?.sampleOrderItems?.isEQASample) && (
+                      <EQASampleEntry
+                        orderFormValues={orderFormValues}
+                        setOrderFormValues={setOrderFormValues}
+                        autoEnable={isEQAFromUrl}
+                      />
+                    )}
+                    <PatientInfo
+                      orderFormValues={orderFormValues}
+                      setOrderFormValues={setOrderFormValues}
+                      error={elementError}
+                      setPhoneValidation={setPhoneValidation}
+                    />
+                  </>
+                )}
+                {currentStep === STEP_PROGRAM &&
+                  (orderFormValues?.sampleOrderItems?.isEQASample ? (
+                    <EQAOrderForm
+                      orderFormValues={orderFormValues}
+                      setOrderFormValues={setOrderFormValues}
+                    />
+                  ) : (
+                    <OrderEntryAdditionalQuestions
+                      orderFormValues={orderFormValues}
+                      setOrderFormValues={setOrderFormValues}
+                    />
+                  ))}
+                {currentStep === STEP_ADD_SAMPLE && (
+                  <AddSample
+                    error={elementError}
+                    setSamples={setSamples}
+                    samples={samples}
+                    domain={domain}
                   />
                 )}
-                <PatientInfo
-                  orderFormValues={orderFormValues}
-                  setOrderFormValues={setOrderFormValues}
-                  error={elementError}
-                  setPhoneValidation={setPhoneValidation}
-                />
+                {currentStep === STEP_ADD_ORDER && (
+                  <AddOrder
+                    orderFormValues={orderFormValues}
+                    setOrderFormValues={setOrderFormValues}
+                    samples={samples}
+                    error={elementError}
+                    isModifyOrder={false}
+                    changed={changed}
+                    setChanged={setChanged}
+                    stagedAttachments={stagedAttachments}
+                    setStagedAttachments={setStagedAttachments}
+                  />
+                )}
+
+                {currentStep === STEP_SUCCESS && (
+                  <OrderSuccessMessage
+                    orderFormValues={orderFormValues}
+                    setOrderFormValues={setOrderFormValues}
+                    setSamples={setSamples}
+                    setPage={handleResetToFirstStep}
+                    saveResponse={saveResponse}
+                  />
+                )}
+                <div className="navigationButtonsLayout">
+                  {!isFirstStep && !isOnSuccess && (
+                    <Button kind="tertiary" onClick={navigateBackward}>
+                      <FormattedMessage id="back.action.button" />
+                    </Button>
+                  )}
+
+                  {!isLastStep && !isOnSuccess && (
+                    <Button
+                      kind="primary"
+                      className="forwardButton"
+                      onClick={navigateForward}
+                    >
+                      <FormattedMessage id="next.action.button" />
+                    </Button>
+                  )}
+
+                  {isLastStep && !isOnSuccess && (
+                    <Button
+                      kind="primary"
+                      className="forwardButton"
+                      disabled={
+                        isSubmitting ||
+                        Object.values(phoneValidation).some(
+                          (item) => item.status === false,
+                        ) ||
+                        errors?.errors?.length > 0
+                      }
+                      onClick={handleSubmitOrderForm}
+                    >
+                      <FormattedMessage id="label.button.submit" />
+                    </Button>
+                  )}
+                </div>
               </>
             )}
-            {page === programPageNumber &&
-              (orderFormValues?.sampleOrderItems?.isEQASample ? (
-                <EQAOrderForm
-                  orderFormValues={orderFormValues}
-                  setOrderFormValues={setOrderFormValues}
-                />
-              ) : (
-                <OrderEntryAdditionalQuestions
-                  orderFormValues={orderFormValues}
-                  setOrderFormValues={setOrderFormValues}
-                />
-              ))}
-            {page === samplePageNumber && (
-              <AddSample
-                error={elementError}
-                setSamples={setSamples}
-                samples={samples}
-              />
-            )}
-            {page === orderPageNumber && (
-              <AddOrder
-                orderFormValues={orderFormValues}
-                setOrderFormValues={setOrderFormValues}
-                samples={samples}
-                error={elementError}
-                isModifyOrder={false}
-                changed={changed}
-                setChanged={setChanged}
-                stagedAttachments={stagedAttachments}
-                setStagedAttachments={setStagedAttachments}
-              />
-            )}
-
-            {page === successMsgPageNumber && (
-              <OrderSuccessMessage
-                orderFormValues={orderFormValues}
-                setOrderFormValues={setOrderFormValues}
-                setSamples={setSamples}
-                setPage={setPage}
-                saveResponse={saveResponse}
-              />
-            )}
-            <div className="navigationButtonsLayout">
-              {page !== firstPageNumber && page <= orderPageNumber && (
-                <Button kind="tertiary" onClick={() => navigateBackWards()}>
-                  <FormattedMessage id="back.action.button" />
-                </Button>
-              )}
-
-              {page < orderPageNumber && (
-                <Button
-                  kind="primary"
-                  className="forwardButton"
-                  onClick={() => navigateForward()}
-                >
-                  <FormattedMessage id="next.action.button" />
-                </Button>
-              )}
-
-              {page === orderPageNumber && (
-                <Button
-                  kind="primary"
-                  className="forwardButton"
-                  disabled={
-                    isSubmitting ||
-                    Object.values(phoneValidation).some(
-                      (item) => item.status === false,
-                    ) ||
-                    errors?.errors?.length > 0
-                      ? true
-                      : false
-                  }
-                  onClick={handleSubmitOrderForm}
-                >
-                  <FormattedMessage id="label.button.submit" />
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       </Stack>

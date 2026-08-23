@@ -3,12 +3,7 @@ import {
   Button,
   Column,
   Form,
-  FormLabel,
-  Heading,
-  Row,
-  Section,
   Stack,
-  TextInput,
   SelectItem,
   Select,
   Loading,
@@ -22,7 +17,6 @@ import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSe
 import { getFromOpenElisServer, Roles } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
-import { format } from "date-fns";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 

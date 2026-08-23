@@ -26,6 +26,8 @@ import {
   ConnectionSignal,
   Calendar,
   TrashCan,
+  Sprout,
+  ListChecked,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -34,6 +36,8 @@ import {
   SideNavMenuItem,
 } from "@carbon/react";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
+import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
+import { PANEL_SECTIONS } from "./testCatalog/panelSectionConfig";
 
 const getAdminBasePath = (pathname) =>
   pathname.startsWith("/admin") ? "/admin" : "/MasterListsPage";
@@ -50,12 +54,73 @@ const normalizePath = (path) => {
 
 export default function AdminSideNav({ isTrainingInstallation = false }) {
   const intl = useIntl();
+  /**
+   * The caption above the sections list. Greyed sections without one leave a
+   * reader no way to know what to do next.
+   */
+  const sectionsCaption = (id, dataCy, messageId, values) => (
+    <li
+      id={id}
+      data-cy={dataCy}
+      className="adminSideNav__sectionsContext"
+      style={{
+        padding: "0.25rem 1rem 0.5rem",
+        fontSize: "0.75rem",
+        lineHeight: 1.3,
+        color: "var(--cds-text-secondary, #6f6f6f)",
+      }}
+    >
+      <FormattedMessage id={messageId} values={values} />
+    </li>
+  );
+
+  /** A section the reader cannot open yet, described by the caption above it. */
+  const disabledSection = (dataCy, describedBy, label) => (
+    <SideNavMenuItem
+      key={dataCy}
+      data-cy={dataCy}
+      aria-disabled="true"
+      aria-describedby={describedBy}
+      tabIndex={-1}
+      onClick={(e) => e.preventDefault()}
+      style={{ opacity: 0.5, cursor: "not-allowed" }}
+    >
+      {label}
+    </SideNavMenuItem>
+  );
+
   const history = useHistory();
   const location = useLocation();
   const path = getAdminBasePath(location.pathname);
 
-  const editorMatch = location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
+  // OGC-224 — /TestCatalogEditor/panel/:id is the PANEL editor, not a test id.
+  const panelEditorMatch = location.pathname.match(
+    /\/TestCatalogEditor\/panel\/([^/]+)/,
+  );
+  const editorPanelId = panelEditorMatch ? panelEditorMatch[1] : null;
+
+  const editorMatch = editorPanelId
+    ? null
+    : location.pathname.match(/\/TestCatalogEditor\/([^/]+)/);
   const editorTestId = editorMatch ? editorMatch[1] : null;
+
+  // Sample Type editor context: /SampleTypeEditor/:sampleTypeId/:section?
+  // The plain list URL (no trailing id) leaves this null.
+  const sampleTypeEditorMatch = location.pathname.match(
+    /\/SampleTypeEditor\/([^/]+)/,
+  );
+  const editorSampleTypeId = sampleTypeEditorMatch
+    ? sampleTypeEditorMatch[1]
+    : null;
+
+  // Which entity the shell is showing, whether or not one is selected yet. The
+  // sections list needs this: with nothing selected the panels and sample types
+  // contexts used to fall through to the tests branch, which greyed out the
+  // test sections and told the reader to pick a test.
+  const inPanelsContext =
+    !!editorPanelId || /[?&]entity=panels(&|$)/.test(location.search);
+  const inSampleTypesContext =
+    !!editorSampleTypeId || /\/SampleTypeEditor(\/|$)/.test(location.pathname);
 
   // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
@@ -80,6 +145,73 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   const editorTestName =
     editorTest.id === editorTestId ? editorTest.name : null;
 
+  // Sample type name for the sidenav helper caption. "new" is create-in-place.
+  const [editorSampleType, setEditorSampleType] = useState({
+    id: null,
+    name: null,
+  });
+  useEffect(() => {
+    if (!editorSampleTypeId || editorSampleTypeId === "new") {
+      return undefined;
+    }
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      "/rest/sample-types",
+      (res) => {
+        const list =
+          res && res.success && Array.isArray(res.data)
+            ? res.data
+            : Array.isArray(res)
+              ? res
+              : [];
+        const match = list.find(
+          (item) => String(item.id) === String(editorSampleTypeId),
+        );
+        setEditorSampleType({
+          id: editorSampleTypeId,
+          name: match ? match.name || match.description || null : null,
+        });
+      },
+      controller.signal,
+    );
+    return () => {
+      controller.abort();
+    };
+  }, [editorSampleTypeId]);
+  const editorSampleTypeName =
+    editorSampleType.id === editorSampleTypeId ? editorSampleType.name : null;
+
+  // Any Test Catalog Management surface (list or editor, either entity). The
+  // menu stays mounted (same key) and expanded across every in-area
+  // navigation, so clicking "All Sample Types"/"All Tests" from an editor
+  // doesn't collapse it.
+  const inTestCatalogArea =
+    !!editorTestId ||
+    !!editorSampleTypeId ||
+    !!editorPanelId ||
+    /\/(TestCatalogList|SampleTypeEditor)(\/|$)/.test(location.pathname);
+
+  // Panel name for the sidenav helper caption. "new" is create-in-place.
+  const [editorPanel, setEditorPanel] = useState({ id: null, name: null });
+  useEffect(() => {
+    if (!editorPanelId || editorPanelId === "new") {
+      return undefined;
+    }
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      `/rest/test-catalog/panels/${editorPanelId}`,
+      (res) => {
+        setEditorPanel({ id: editorPanelId, name: res?.name || null });
+      },
+      controller.signal,
+    );
+    return () => {
+      controller.abort();
+    };
+  }, [editorPanelId]);
+  const editorPanelName =
+    editorPanel.id === editorPanelId ? editorPanel.name : null;
+
   const handleNavigation = (targetPath) => (e) => {
     e.preventDefault();
     history.push(targetPath);
@@ -95,6 +227,28 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       onClick: handleNavigation(targetPath),
     };
   };
+
+  // OGC-224 — the list route hosts two entities (?entity=panels); the two
+  // entity links disambiguate on the query string so only one lights up.
+  const onPanelsList =
+    new URLSearchParams(location.search).get("entity") === "panels";
+  const entityListNavProps = (targetPath, isActive) => ({
+    href: targetPath,
+    isActive,
+    "aria-current": isActive ? "page" : undefined,
+    onClick: handleNavigation(targetPath),
+  });
+  const testsListNavProps = (targetPath) =>
+    entityListNavProps(
+      targetPath,
+      normalizePath(location.pathname) === normalizePath(targetPath) &&
+        !onPanelsList,
+    );
+  const panelsListNavProps = (targetPath) =>
+    entityListNavProps(
+      targetPath,
+      /\/TestCatalogList(\/|$)/.test(location.pathname) && onPanelsList,
+    );
 
   return (
     <SideNavItems className="adminSideNav">
@@ -120,19 +274,34 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
       </SideNavMenu>
-      {/* key flips with editor context to force a remount — Carbon SideNavMenu
-          reads defaultExpanded only at mount. */}
+      {/* key flips on entering/leaving the Test Catalog area to force a
+          remount — Carbon SideNavMenu reads defaultExpanded only at mount.
+          Within the area the key is stable, so navigating between the lists
+          and either editor never collapses the menu. */}
       <SideNavMenu
-        key={editorTestId ? "testcatalog-editor" : "testcatalog"}
+        key={inTestCatalogArea ? "testcatalog-area" : "testcatalog"}
         data-cy="testCatalogManagement"
         renderIcon={Catalog}
-        isActive={!!editorTestId}
-        defaultExpanded={!!editorTestId}
+        isActive={inTestCatalogArea}
+        defaultExpanded={inTestCatalogArea}
         title={intl.formatMessage({ id: "sidenav.label.admin.testCatalog" })}
       >
+        {/* Entity links always come first, in both editor contexts. */}
+        <SideNavMenuItem
+          data-cy="sampleTypeManagement"
+          {...navProps(`${path}/SampleTypeEditor`)}
+        >
+          <FormattedMessage
+            id={
+              editorSampleTypeId
+                ? "sidenav.label.admin.sampleType.backToList"
+                : "sidenav.label.admin.sampleTypeManagement"
+            }
+          />
+        </SideNavMenuItem>
         <SideNavMenuItem
           data-cy="testCatalogList"
-          {...navProps(`${path}/TestCatalogList`)}
+          {...testsListNavProps(`${path}/TestCatalogList`)}
         >
           <FormattedMessage
             id={
@@ -142,58 +311,166 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
             }
           />
         </SideNavMenuItem>
-        <li
-          id="testCatalogSectionsHelp"
-          data-cy="testCatalogSectionsContext"
-          className="adminSideNav__sectionsContext"
-          style={{
-            padding: "0.25rem 1rem 0.5rem",
-            fontSize: "0.75rem",
-            lineHeight: 1.3,
-            color: "var(--cds-text-secondary, #6f6f6f)",
-          }}
+        {/* OGC-224 — Panels is a peer entity of Tests / Sample Types in this
+            shell; the list route hosts it via ?entity=panels. */}
+        <SideNavMenuItem
+          data-cy="panelsList"
+          {...panelsListNavProps(`${path}/TestCatalogList?entity=panels`)}
         >
-          {editorTestId ? (
-            editorTestName ? (
-              <FormattedMessage
-                id="sidenav.label.admin.testCatalog.editing"
-                values={{ name: editorTestName }}
-              />
-            ) : (
-              <FormattedMessage id="sidenav.label.admin.testCatalog.editingGeneric" />
-            )
-          ) : (
-            <FormattedMessage id="sidenav.label.admin.testCatalog.sectionsHelper" />
-          )}
-        </li>
-        {V1_SECTIONS.map((sectionKey) => {
-          const label = (
-            <FormattedMessage id={`label.testCatalog.section.${sectionKey}`} />
-          );
-          return editorTestId ? (
-            <SideNavMenuItem
-              key={sectionKey}
-              data-cy={`section-${sectionKey}`}
-              {...navProps(
-                `${path}/TestCatalogEditor/${editorTestId}/${sectionKey}`,
+          <FormattedMessage id="label.testCatalog.entity.panels" />
+        </SideNavMenuItem>
+        {inPanelsContext ? (
+          <>
+            {/* OGC-224 — panel context: caption + the panel's own sections as
+                SideNav submenu items (FRS: submenus, never tabs). With no panel
+                chosen the panel sections are shown greyed rather than the
+                test ones. */}
+            {editorPanelId
+              ? sectionsCaption(
+                  "panelSectionsHelp",
+                  "panelSectionsContext",
+                  editorPanelId === "new"
+                    ? "sidenav.label.admin.panel.addingNew"
+                    : "sidenav.label.admin.panel.editing",
+                  { name: editorPanelName || "" },
+                )
+              : sectionsCaption(
+                  "panelSectionsHelp",
+                  "panelSectionsContext",
+                  "sidenav.label.admin.panel.sectionsHelper",
+                )}
+            {PANEL_SECTIONS.map((sectionKey) => {
+              const label = (
+                <FormattedMessage id={`label.panel.section.${sectionKey}`} />
+              );
+              return editorPanelId ? (
+                <SideNavMenuItem
+                  key={sectionKey}
+                  data-cy={`panel-section-${sectionKey}`}
+                  {...navProps(
+                    `${path}/TestCatalogEditor/panel/${editorPanelId}/${sectionKey}`,
+                  )}
+                >
+                  {label}
+                </SideNavMenuItem>
+              ) : (
+                disabledSection(
+                  `panel-section-${sectionKey}`,
+                  "panelSectionsHelp",
+                  label,
+                )
+              );
+            })}
+          </>
+        ) : inSampleTypesContext ? (
+          <>
+            {!editorSampleTypeId
+              ? sectionsCaption(
+                  "sampleTypeSectionsHelp",
+                  "sampleTypeSectionsContext",
+                  "sidenav.label.admin.sampleType.sectionsHelper",
+                )
+              : editorSampleTypeId === "new"
+                ? sectionsCaption(
+                    "sampleTypeSectionsHelp",
+                    "sampleTypeSectionsContext",
+                    "sidenav.label.admin.sampleType.addingNew",
+                  )
+                : editorSampleTypeName
+                  ? sectionsCaption(
+                      "sampleTypeSectionsHelp",
+                      "sampleTypeSectionsContext",
+                      "sidenav.label.admin.sampleType.editing",
+                      { name: editorSampleTypeName },
+                    )
+                  : sectionsCaption(
+                      "sampleTypeSectionsHelp",
+                      "sampleTypeSectionsContext",
+                      "sidenav.label.admin.sampleType.editingGeneric",
+                    )}
+            {SAMPLE_TYPE_SECTIONS.map((sectionKey) => {
+              const label = (
+                <FormattedMessage
+                  id={`label.sampleType.section.${sectionKey}`}
+                />
+              );
+              return editorSampleTypeId ? (
+                <SideNavMenuItem
+                  key={sectionKey}
+                  data-cy={`sampleType-section-${sectionKey}`}
+                  {...navProps(
+                    `${path}/SampleTypeEditor/${editorSampleTypeId}/${sectionKey}`,
+                  )}
+                >
+                  {label}
+                </SideNavMenuItem>
+              ) : (
+                disabledSection(
+                  `sampleType-section-${sectionKey}`,
+                  "sampleTypeSectionsHelp",
+                  label,
+                )
+              );
+            })}
+          </>
+        ) : (
+          <>
+            <li
+              id="testCatalogSectionsHelp"
+              data-cy="testCatalogSectionsContext"
+              className="adminSideNav__sectionsContext"
+              style={{
+                padding: "0.25rem 1rem 0.5rem",
+                fontSize: "0.75rem",
+                lineHeight: 1.3,
+                color: "var(--cds-text-secondary, #6f6f6f)",
+              }}
+            >
+              {editorTestId ? (
+                editorTestName ? (
+                  <FormattedMessage
+                    id="sidenav.label.admin.testCatalog.editing"
+                    values={{ name: editorTestName }}
+                  />
+                ) : (
+                  <FormattedMessage id="sidenav.label.admin.testCatalog.editingGeneric" />
+                )
+              ) : (
+                <FormattedMessage id="sidenav.label.admin.testCatalog.sectionsHelper" />
               )}
-            >
-              {label}
-            </SideNavMenuItem>
-          ) : (
-            <SideNavMenuItem
-              key={sectionKey}
-              data-cy={`section-${sectionKey}`}
-              aria-disabled="true"
-              aria-describedby="testCatalogSectionsHelp"
-              tabIndex={-1}
-              onClick={(e) => e.preventDefault()}
-              style={{ opacity: 0.5, cursor: "not-allowed" }}
-            >
-              {label}
-            </SideNavMenuItem>
-          );
-        })}
+            </li>
+            {V1_SECTIONS.map((sectionKey) => {
+              const label = (
+                <FormattedMessage
+                  id={`label.testCatalog.section.${sectionKey}`}
+                />
+              );
+              return editorTestId ? (
+                <SideNavMenuItem
+                  key={sectionKey}
+                  data-cy={`section-${sectionKey}`}
+                  {...navProps(
+                    `${path}/TestCatalogEditor/${editorTestId}/${sectionKey}`,
+                  )}
+                >
+                  {label}
+                </SideNavMenuItem>
+              ) : (
+                <SideNavMenuItem
+                  key={sectionKey}
+                  data-cy={`section-${sectionKey}`}
+                  aria-disabled="true"
+                  aria-describedby="testCatalogSectionsHelp"
+                  tabIndex={-1}
+                  onClick={(e) => e.preventDefault()}
+                  style={{ opacity: 0.5, cursor: "not-allowed" }}
+                >
+                  {label}
+                </SideNavMenuItem>
+              );
+            })}
+          </>
+        )}
       </SideNavMenu>
       <SideNavLink
         renderIcon={ListDropdown}
@@ -236,6 +513,51 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       >
         <FormattedMessage id="sidenav.label.admin.Listplugin" />
       </SideNavLink>
+      <SideNavMenu
+        data-cy="vectorSurveillance"
+        renderIcon={Sprout}
+        title={intl.formatMessage({
+          id: "sidenav.label.admin.vectorSurveillance",
+          defaultMessage: "Vector Surveillance",
+        })}
+      >
+        <SideNavMenuItem
+          data-cy="vectorSpecies"
+          {...navProps(`${path}/vectorSurveillanceSetup/species`)}
+        >
+          <FormattedMessage
+            id="vector.admin.species"
+            defaultMessage="Species"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="vectorTrapTypes"
+          {...navProps(`${path}/vectorSurveillanceSetup/trap-types`)}
+        >
+          <FormattedMessage
+            id="vector.admin.trapTypes"
+            defaultMessage="Trap Types"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="vectorSamplingSites"
+          {...navProps(`${path}/vectorSurveillanceSetup/sampling-sites`)}
+        >
+          <FormattedMessage
+            id="vector.admin.samplingSites"
+            defaultMessage="Sampling Sites"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="vectorManualEntryFields"
+          {...navProps(`${path}/vectorSurveillanceSetup/manual-entry-fields`)}
+        >
+          <FormattedMessage
+            id="vectorReport.fieldMap.title"
+            defaultMessage="Manual Entry Field Map"
+          />
+        </SideNavMenuItem>
+      </SideNavMenu>
       <SideNavLink
         data-cy="orgMgmnt"
         renderIcon={ContainerSoftware}
@@ -370,6 +692,52 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           {...navProps(`${path}/ValidationConfigurationMenu`)}
         >
           <FormattedMessage id="sidenav.label.admin.formEntry.validationconfig" />
+        </SideNavMenuItem>
+      </SideNavMenu>
+
+      <SideNavMenu
+        data-cy="sampleAcceptanceChecklist"
+        renderIcon={ListChecked}
+        title={intl.formatMessage({
+          id: "sampleAcceptance.title",
+          defaultMessage: "Sample Acceptance Checklist",
+        })}
+      >
+        <SideNavMenuItem
+          data-cy="sampleAcceptanceAll"
+          {...navProps(`${path}/SampleAcceptanceChecklist/all`)}
+        >
+          <FormattedMessage
+            id="sampleAcceptance.domain.all"
+            defaultMessage="All domains"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="sampleAcceptanceClinical"
+          {...navProps(`${path}/SampleAcceptanceChecklist/clinical`)}
+        >
+          <FormattedMessage
+            id="sampleAcceptance.domain.clinical"
+            defaultMessage="Clinical"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="sampleAcceptanceEnvironmental"
+          {...navProps(`${path}/SampleAcceptanceChecklist/environmental`)}
+        >
+          <FormattedMessage
+            id="sampleAcceptance.domain.environmental"
+            defaultMessage="Environmental"
+          />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="sampleAcceptanceVector"
+          {...navProps(`${path}/SampleAcceptanceChecklist/vector`)}
+        >
+          <FormattedMessage
+            id="sampleAcceptance.domain.vector"
+            defaultMessage="Vector"
+          />
         </SideNavMenuItem>
       </SideNavMenu>
 

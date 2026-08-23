@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1020 (R1 of OGC-811) — Results Entry unified worklist foundation
+    Adds:
+      1. test_section.domain — CLINICAL / ENVIRONMENTAL / VECTOR on the Lab Unit
+         (FR-M1: currentDomain derives from the selected Lab Unit). Mirrors the
+         OGC-936 test.domain pattern (backfilled CLINICAL, CHECK-guarded string).
+      2. site_information 'results.entry.unifiedRoute' — site flag gating the
+         unified /Results route consolidation (default off).
+    -->
+
+    <changeSet id="OGC-1020-test-section-domain-column" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_section" columnName="domain"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="test_section">
+            <column name="domain" type="VARCHAR(20)" defaultValue="CLINICAL">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.test_section
+            ADD CONSTRAINT test_section_domain_chk
+            CHECK (domain IN ('CLINICAL', 'ENVIRONMENTAL', 'VECTOR'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.test_section DROP CONSTRAINT test_section_domain_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="test_section" columnName="domain"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-1020-results-unified-menu-item" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_results_unified'
+            </sqlCheck>
+        </preConditions>
+        <comment>Unified /Results worklist menu item (first under Results); the
+            frontend shows it only when results.entry.unifiedRoute is on, and
+            hides the legacy result-entry items it consolidates</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_results')"/>
+            <column name="presentation_order" value="0"/>
+            <column name="element_id" value="menu_results_unified"/>
+            <column name="action_url" value="/Results"/>
+            <column name="display_key" value="banner.menu.results.unified"/>
+            <column name="tool_tip_key" value="banner.menu.results.unified.tooltip"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hide_in_old_ui" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="OGC-1020-results-unified-route-flag" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'resultsEntryUnifiedRoute';</sqlCheck>
+        </preConditions>
+        <comment>Site flag gating the unified /Results worklist route (OGC-1020 R1); default off</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="resultsEntryUnifiedRoute" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, the unified Results Entry worklist replaces the legacy result entry pages (legacy routes redirect)" />
+            <column name="value" value="false" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.results.entry.unified.route" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

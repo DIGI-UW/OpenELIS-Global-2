@@ -107,7 +107,6 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
         siteInformation.setDescriptionKey(getValueOrEmpty(values, descriptionKeyIndex));
         siteInformation.setGroup(parseGroup(getValueOrEmpty(values, groupIndex), siteInformation.getGroup()));
         siteInformation.setEncrypted(Boolean.parseBoolean(getValueOrEmpty(values, encryptedIndex)));
-        siteInformation.setSysUserId("1");
 
         String domainName = getValueOrEmpty(values, domainNameIndex);
         if (!domainName.isEmpty()) {

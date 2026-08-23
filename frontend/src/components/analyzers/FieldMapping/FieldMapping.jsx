@@ -10,15 +10,8 @@
  * - Field selection opens mapping panel
  */
 
-import React, { useState, useEffect, useRef } from "react";
-import {
-  Grid,
-  Column,
-  Button,
-  Search,
-  Tile,
-  InlineNotification,
-} from "@carbon/react";
+import React, { useState, useEffect } from "react";
+import { Grid, Column, Button, Tile, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams, useHistory, useLocation } from "react-router-dom";
 import * as analyzerService from "../../../services/analyzerService";
@@ -29,6 +22,7 @@ import TestMappingModal from "./TestMappingModal";
 import ValidationDashboard from "./ValidationDashboard";
 import PendingCodesPanel from "./PendingCodesPanel";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./FieldMapping.css";
 
 // Helper function to extract mappings from API response
@@ -232,6 +226,16 @@ const FieldMapping = () => {
       {/* Hierarchical Page Title with Back Arrow */}
       <div className="field-mapping-header">
         <div className="field-mapping-header-title">
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "" },
+              { label: "analyzer.page.hierarchy.mappings", link: "" },
+              // the analyzer's own crumb appears once it resolves; before that it
+              // would just repeat the section above it
+              ...(analyzer?.name ? [{ label: analyzer.name, link: "" }] : []),
+            ]}
+          />
           <PageTitle
             breadcrumbs={[
               {

@@ -184,7 +184,6 @@ public class IndicatorAggregationReportingServlet extends HttpServlet {
         }
 
         importReport.setData(data);
-        importReport.setSysUserId("1");
         importReport.setRecievedDate(DateUtil.getTimestampAtMidnightForDaysAgo(0));
 
         return importReport;

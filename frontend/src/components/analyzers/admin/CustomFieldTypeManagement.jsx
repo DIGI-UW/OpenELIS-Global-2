@@ -23,7 +23,7 @@ import {
   Grid,
   Column,
 } from "@carbon/react";
-import { Add, Edit, TrashCan } from "@carbon/icons-react";
+import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
   getCustomFieldTypes,
@@ -32,6 +32,7 @@ import {
   deleteCustomFieldType,
 } from "../../../services/analyzerService";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./CustomFieldTypeManagement.css";
 
 /**
@@ -338,6 +339,13 @@ const CustomFieldTypeManagement = () => {
     >
       {/* Header */}
       <div className="custom-field-type-management-header">
+        <PageBreadCrumb
+          breadcrumbs={[
+            { label: "home.label", link: "/" },
+            { label: "customFieldType.page.hierarchy.root", link: "" },
+            { label: "customFieldType.page.hierarchy.management", link: "" },
+          ]}
+        />
         <PageTitle
           breadcrumbs={[
             {

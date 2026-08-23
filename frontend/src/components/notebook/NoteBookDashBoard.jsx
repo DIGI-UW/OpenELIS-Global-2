@@ -21,7 +21,7 @@ import {
   Pagination,
 } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { getFromOpenElisServer, hasRole } from "../utils/Utils";
+import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -29,10 +29,8 @@ import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomDatePicker from "../common/CustomDatePicker";
 import {
-  UserAvatar,
   Document,
   Time,
-  UserAvatarFilledAlt,
   Tag as TagIcon,
   Add,
   Edit,
@@ -263,7 +261,7 @@ function NoteBookDashBoard() {
 
   let breadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "label.button.newEntry", link: "/NoteBookEntryForm" },
+    { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
   ];
 
   const handlePageChange = (pageInfo) => {

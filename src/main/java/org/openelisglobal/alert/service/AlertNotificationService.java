@@ -157,7 +157,8 @@ public class AlertNotificationService {
             smsNotification.setPayload(new AlertNotificationPayload(subject, subject + "\n\n" + message));
 
             sendNotification(smsNotification);
-            logger.info("Alert SMS notification sent to: {}", phoneNumber);
+            logger.info("Alert SMS notification sent to configured recipient ending {}",
+                    phoneNumber.length() > 4 ? phoneNumber.substring(phoneNumber.length() - 4) : "****");
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "sendSMSNotification",
                     "Failed to send alert SMS notification");

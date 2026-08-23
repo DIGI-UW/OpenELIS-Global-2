@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Dictionary entries for vecPathogens, vecLifecycleStages, and species-specific
+       categories are seeded via volume/configuration/backend/dictionaries/vector-dictionaries.csv
+       through DictionaryConfigurationHandler on startup.
+
+       Species-to-category mapping is stored directly on vector_species via two FK columns
+       rather than join tables — each species references the dictionary_category that holds
+       its relevant pathogens and lifecycle stages. -->
+
+  <changeSet id="3.4.0.0-vector-species-pathogen-category-col" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="vector_species" schemaName="clinlims" columnName="pathogen_category_id"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="vector_species" schemaName="clinlims">
+      <column name="pathogen_category_id" type="NUMERIC(10,0)"/>
+    </addColumn>
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims" baseTableName="vector_species" baseColumnNames="pathogen_category_id"
+      constraintName="fk_vs_pathogen_category"
+      referencedTableSchemaName="clinlims" referencedTableName="dictionary_category" referencedColumnNames="id"/>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-vector-species-lifecycle-category-col" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="vector_species" schemaName="clinlims" columnName="lifecycle_category_id"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="vector_species" schemaName="clinlims">
+      <column name="lifecycle_category_id" type="NUMERIC(10,0)"/>
+    </addColumn>
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims" baseTableName="vector_species" baseColumnNames="lifecycle_category_id"
+      constraintName="fk_vs_lifecycle_category"
+      referencedTableSchemaName="clinlims" referencedTableName="dictionary_category" referencedColumnNames="id"/>
+  </changeSet>
+
+</databaseChangeLog>

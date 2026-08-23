@@ -1,0 +1,151 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr,localization:es,localization:id
+# ============================================================================
+# SHARED PATHOGEN POOL — all possible vector-borne pathogens
+# ============================================================================
+vecPathogens,Dengue,Dengue,Y,10,,Dengue,Dengue,Dengue,Dengue
+vecPathogens,Zika,Zika,Y,20,,Zika,Zika,Zika,Zika
+vecPathogens,Chikungunya,Chikungunya,Y,30,,Chikungunya,Chikungunya,Chikungunya,Chikungunya
+vecPathogens,Malaria,Malaria,Y,40,,Malaria,Paludisme,Malaria,Malaria
+vecPathogens,Yellow Fever,YellowFever,Y,50,,Yellow Fever,Fievre Jaune,Fiebre Amarilla,Demam Kuning
+vecPathogens,West Nile Virus,WestNile,Y,60,,West Nile Virus,Virus du Nil Occidental,Virus del Nilo Occidental,Virus Nil Barat
+vecPathogens,Rift Valley Fever,RiftValley,Y,70,,Rift Valley Fever,Fievre de la Vallee du Rift,Fiebre del Valle del Rift,Demam Lembah Rift
+vecPathogens,Plague,Plague,Y,80,,Plague,Peste,Plaga,Pes
+vecPathogens,Typhus,Typhus,Y,90,,Typhus,Typhus,Tifus,Tifus
+# ============================================================================
+# SHARED LIFECYCLE STAGE POOL — all possible vector lifecycle stages
+# ============================================================================
+vecLifecycleStages,Adult,ADULT,Y,10,,Adult,Adulte,Adulto,Dewasa
+vecLifecycleStages,Larva,LARVA,Y,20,,Larva,Larve,Larva,Larva
+vecLifecycleStages,Pupa,PUPA,Y,30,,Pupa,Pupe,Pupa,Pupa
+vecLifecycleStages,Egg,EGG,Y,40,,Egg,Oeuf,Huevo,Telur
+vecLifecycleStages,Nymph,NYMPH,Y,50,,Nymph,Nymphe,Ninfa,Nimfa
+# ============================================================================
+# SPECIES-SPECIFIC PATHOGEN CATEGORIES
+# Each category is a named subset of vecPathogens linked to one species.
+# The category name is referenced in vector-species.csv under pathogenCategory.
+# ============================================================================
+aedesAegyptiPathogens,Dengue,Dengue,Y,10,,Dengue,Dengue,Dengue,Dengue
+aedesAegyptiPathogens,Zika,Zika,Y,20,,Zika,Zika,Zika,Zika
+aedesAegyptiPathogens,Chikungunya,Chikungunya,Y,30,,Chikungunya,Chikungunya,Chikungunya,Chikungunya
+aedesAegyptiPathogens,Yellow Fever,YellowFever,Y,40,,Yellow Fever,Fievre Jaune,Fiebre Amarilla,Demam Kuning
+aedesAlbopictusPathogens,Dengue,Dengue,Y,10,,Dengue,Dengue,Dengue,Dengue
+aedesAlbopictusPathogens,Zika,Zika,Y,20,,Zika,Zika,Zika,Zika
+aedesAlbopictusPathogens,Chikungunya,Chikungunya,Y,30,,Chikungunya,Chikungunya,Chikungunya,Chikungunya
+anophelesPathogens,Malaria,Malaria,Y,10,,Malaria,Paludisme,Malaria,Malaria
+culexPathogens,West Nile Virus,WestNile,Y,10,,West Nile Virus,Virus du Nil Occidental,Virus del Nilo Occidental,Virus Nil Barat
+phlebotomusPathogens,Rift Valley Fever,RiftValley,Y,10,,Rift Valley Fever,Fievre de la Vallee du Rift,Fiebre del Valle del Rift,Demam Lembah Rift
+xenopsyllaPathogens,Plague,Plague,Y,10,,Plague,Peste,Plaga,Pes
+xenopsyllaPathogens,Typhus,Typhus,Y,20,,Typhus,Typhus,Tifus,Tifus
+rattusPathogens,Plague,Plague,Y,10,,Plague,Peste,Plaga,Pes
+rattusPathogens,Typhus,Typhus,Y,20,,Typhus,Typhus,Tifus,Tifus
+muscaPathogens,Typhus,Typhus,Y,10,,Typhus,Typhus,Tifus,Tifus
+# ============================================================================
+# SPECIES-SPECIFIC LIFECYCLE CATEGORIES
+# ============================================================================
+mosquitoFullCycle,Adult,ADULT,Y,10,,Adult,Adulte,Adulto,Dewasa
+mosquitoFullCycle,Larva,LARVA,Y,20,,Larva,Larve,Larva,Larva
+mosquitoFullCycle,Pupa,PUPA,Y,30,,Pupa,Pupe,Pupa,Pupa
+mosquitoFullCycle,Egg,EGG,Y,40,,Egg,Oeuf,Huevo,Telur
+fleaFullCycle,Adult,ADULT,Y,10,,Adult,Adulte,Adulto,Dewasa
+fleaFullCycle,Larva,LARVA,Y,20,,Larva,Larve,Larva,Larva
+fleaFullCycle,Pupa,PUPA,Y,30,,Pupa,Pupe,Pupa,Pupa
+fleaFullCycle,Egg,EGG,Y,40,,Egg,Oeuf,Huevo,Telur
+flyStages,Adult,ADULT,Y,10,,Adult,Adulte,Adulto,Dewasa
+flyStages,Larva,LARVA,Y,20,,Larva,Larve,Larva,Larva
+flyStages,Pupa,PUPA,Y,30,,Pupa,Pupe,Pupa,Pupa
+rodentStages,Adult,ADULT,Y,10,,Adult,Adulte,Adulto,Dewasa
+# ============================================================================
+# VECTOR TEST RESULT OPTIONS
+# ============================================================================
+Test Results,Detected,DET,Y,50,,Detected,Détecté,Detectado,Terdeteksi
+Test Results,Not Detected,NDET,Y,51,,Not Detected,Non Détecté,No Detectado,Tidak Terdeteksi
+# ============================================================================
+# Localization fallback: es/id duplicate en until proper translations arrive.
+# (Lifecycle stage uses the existing vecLifecycleStages category — not duplicated.)
+# ============================================================================
+# ============================================================================
+# V-03 VECTOR SURVEILLANCE — FRS §A.7 (trimmed: 3 categories × 3 entries each)
+# ============================================================================
+# vecPathogenResult — A.7.1
+vecPathogenResult,Positive,POSITIVE,Y,1,,,,,
+vecPathogenResult,Negative,NEGATIVE,Y,2,,,,,
+vecPathogenResult,Equivocal / Indeterminate,EQUIVOCAL,Y,3,,,,,
+vecPathogenResult,Invalid,INVALID,Y,4,,,,,
+# vecPlasmodiumSpecies — A.7.2
+vecPlasmodiumSpecies,P. falciparum,P_FALCIPARUM,Y,1,,,,,
+vecPlasmodiumSpecies,P. vivax,P_VIVAX,Y,2,,,,,
+vecPlasmodiumSpecies,P. malariae,P_MALARIAE,Y,3,,,,,
+vecPlasmodiumSpecies,P. ovale,P_OVALE,Y,4,,,,,
+vecPlasmodiumSpecies,P. knowlesi,P_KNOWLESI,N,5,,,,,
+vecPlasmodiumSpecies,Mixed infection,MIXED,Y,6,,,,,
+vecPlasmodiumSpecies,Indeterminate,INDETERMINATE,Y,7,,,,,
+# vecPhysiologicalState — A.7.8
+vecPhysiologicalState,Unfed,UNFED,Y,1,,,,,
+vecPhysiologicalState,Blood-fed,BLOOD_FED,Y,2,,,,,
+vecPhysiologicalState,Half-gravid,HALF_GRAVID,Y,3,,,,,
+vecPhysiologicalState,Gravid,GRAVID,Y,4,,,,,
+vecPhysiologicalState,Unknown / not assessed,PHYS_UNKNOWN,Y,5,,,,,
+# vecPlasmodiumDrugResistanceVariant — A.7.3
+vecPlasmodiumDrugResistanceVariant,Wild type (pfkelch13),PFKELCH13_WT,Y,1,,,,,
+vecPlasmodiumDrugResistanceVariant,C580Y,PFKELCH13_C580Y,Y,2,,,,,
+vecPlasmodiumDrugResistanceVariant,R539T,PFKELCH13_R539T,Y,3,,,,,
+vecPlasmodiumDrugResistanceVariant,Y493H,PFKELCH13_Y493H,Y,4,,,,,
+vecPlasmodiumDrugResistanceVariant,I543T,PFKELCH13_I543T,Y,5,,,,,
+vecPlasmodiumDrugResistanceVariant,P553L,PFKELCH13_P553L,Y,6,,,,,
+vecPlasmodiumDrugResistanceVariant,Other variant (sequence captured),PFKELCH13_OTHER,Y,7,,,,,
+vecPlasmodiumDrugResistanceVariant,K76 (wild type),PFCRT_K76,Y,8,,,,,
+vecPlasmodiumDrugResistanceVariant,76T,PFCRT_76T,Y,9,,,,,
+vecPlasmodiumDrugResistanceVariant,Y86,PFMDR1_Y86,Y,10,,,,,
+vecPlasmodiumDrugResistanceVariant,Y184,PFMDR1_Y184,Y,11,,,,,
+vecPlasmodiumDrugResistanceVariant,S1034,PFMDR1_S1034,Y,12,,,,,
+vecPlasmodiumDrugResistanceVariant,N1042,PFMDR1_N1042,Y,13,,,,,
+vecPlasmodiumDrugResistanceVariant,D1246,PFMDR1_D1246,Y,14,,,,,
+vecPlasmodiumDrugResistanceVariant,S108,DHFR_S108,Y,15,,,,,
+vecPlasmodiumDrugResistanceVariant,N51I,DHFR_N51,Y,16,,,,,
+vecPlasmodiumDrugResistanceVariant,R59,DHFR_R59,Y,17,,,,,
+vecPlasmodiumDrugResistanceVariant,I164L,DHFR_I164,Y,18,,,,,
+vecPlasmodiumDrugResistanceVariant,A437G,DHPS_A437,Y,19,,,,,
+vecPlasmodiumDrugResistanceVariant,K540E,DHPS_K540,Y,20,,,,,
+vecPlasmodiumDrugResistanceVariant,A581G,DHPS_A581,Y,21,,,,,
+vecPlasmodiumDrugResistanceVariant,A613S,DHPS_A613,Y,22,,,,,
+# vecInsecticideResistanceGenotype — A.7.4
+vecInsecticideResistanceGenotype,Resistant homozygote,RR,Y,1,,,,,
+vecInsecticideResistanceGenotype,Heterozygote,RS,Y,2,,,,,
+vecInsecticideResistanceGenotype,Susceptible homozygote,SS,Y,3,,,,,
+vecInsecticideResistanceGenotype,Indeterminate,INDETERMINATE,Y,4,,,,,
+# vecWhoInsecticideSusceptibilityClass — A.7.5
+vecWhoInsecticideSusceptibilityClass,Susceptible,SUSCEPTIBLE,Y,1,,,,,
+vecWhoInsecticideSusceptibilityClass,Possibly resistant,POSSIBLY_RESISTANT,Y,2,,,,,
+vecWhoInsecticideSusceptibilityClass,Resistant,RESISTANT,Y,3,,,,,
+# vecBloodmealHostSpecies — A.7.6
+vecBloodmealHostSpecies,Human (Homo sapiens),HUMAN,Y,1,,,,,
+vecBloodmealHostSpecies,Cattle (Bos taurus),BOVINE,Y,2,,,,,
+vecBloodmealHostSpecies,Dog (Canis familiaris),CANINE,Y,3,,,,,
+vecBloodmealHostSpecies,Avian (proxy: chicken),AVIAN_GENERIC,Y,4,,,,,
+vecBloodmealHostSpecies,Pig (Sus scrofa),PORCINE,Y,5,,,,,
+vecBloodmealHostSpecies,Goat (Capra hircus),CAPRINE,Y,6,,,,,
+vecBloodmealHostSpecies,Mixed-host bloodmeal,MIXED,Y,7,,,,,
+vecBloodmealHostSpecies,No host detected,NEGATIVE,Y,8,,,,,
+# vecVirusIsolationResult — A.7.7
+vecVirusIsolationResult,Isolated,ISOLATED,Y,1,,,,,
+vecVirusIsolationResult,Not isolated,NOT_ISOLATED,Y,2,,,,,
+vecVirusIsolationResult,Inconclusive,INCONCLUSIVE,Y,3,,,,,
+# vecCollectionTimeOfDay — A.7.11
+vecCollectionTimeOfDay,Dawn,DAWN,Y,1,,,,,
+vecCollectionTimeOfDay,Daylight,DAYLIGHT,Y,2,,,,,
+vecCollectionTimeOfDay,Dusk,DUSK,Y,3,,,,,
+vecCollectionTimeOfDay,Night,NIGHT,Y,4,,,,,
+vecCollectionTimeOfDay,Unknown,UNKNOWN,Y,5,,,,,
+# vecTrapType — A.7.10 (v1.13). Passive traps + active collection methods.
+vecTrapType,BG-Sentinel trap,BG_SENTINEL,Y,1,,,,,
+vecTrapType,CDC light trap,CDC_LIGHT_TRAP,Y,2,,,,,
+vecTrapType,Gravid trap,GRAVID_TRAP,Y,3,,,,,
+vecTrapType,Ovitrap,OVITRAP,Y,4,,,,,
+vecTrapType,Human-landing collection,HUMAN_LANDING,Y,5,,,,,
+vecTrapType,Aspirator,ASPIRATOR,Y,6,,,,,
+vecTrapType,Sweep net,SWEEP_NET,Y,7,,,,,
+vecTrapType,Other (specify in notes),OTHER,Y,8,,,,,
+# vecRestingContext — A.7.12 (v1.13). Drives endophily / exophily classification.
+vecRestingContext,Indoor (endophilic),INDOOR,Y,1,,,,,
+vecRestingContext,Outdoor (exophilic),OUTDOOR,Y,2,,,,,
+vecRestingContext,Unknown,UNKNOWN,Y,3,,,,,

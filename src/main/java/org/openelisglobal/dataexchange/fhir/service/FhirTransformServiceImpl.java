@@ -68,6 +68,8 @@ import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
 import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
+import org.openelisglobal.analysis.service.AnalysisAnchor;
+import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerService;
@@ -134,6 +136,8 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
+import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
 import org.openelisglobal.sourceofsample.service.SourceOfSampleService;
 import org.openelisglobal.sourceofsample.valueholder.SourceOfSample;
 import org.openelisglobal.spring.util.SpringContext;
@@ -174,6 +178,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private TestService testService;
     @Autowired
     private TestTerminologyMappingService testTerminologyMappingService;
+
+    @Autowired
+    private SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService;
     @Autowired
     private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
     @Autowired
@@ -190,6 +197,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private NoteService noteService;
     @Autowired
     private SampleItemService sampleItemService;
+    @Autowired
+    private AnalysisAnchorService analysisAnchorService;
     @Autowired
     private ObservationHistoryService observationHistoryService;
     @Autowired
@@ -382,6 +391,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             if (analysises != null) {
                 for (Analysis analysis : analysises) {
                     ServiceRequest serviceRequest = this.transformToServiceRequest(analysis);
+                    if (serviceRequest == null) {
+                        // transformToServiceRequest already logged the skip reason
+                        // (no resolvable Sample via sample_item or vector_pool).
+                        continue;
+                    }
                     if (serviceRequests.containsKey(serviceRequest.getIdElement().getIdPart())) {
                         LogEvent.logWarn(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
                                 "serviceRequest collision with id: " + serviceRequest.getIdElement().getIdPart());
@@ -547,6 +561,13 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         // Specimens and service requests
         for (SampleTestCollection sampleTest : updateData.getSampleItemsTests()) {
+            // Skip items removed between updateData capture and async transform —
+            // notably vector_pool fan-out hard-deletes the parent SampleItem after
+            // creating per-organism children.
+            if (sampleTest.item == null || sampleTest.item.getId() == null
+                    || sampleItemService.getMatch("id", sampleTest.item.getId()).isEmpty()) {
+                continue;
+            }
             FhirSampleEntryObjects fhirSampleEntryObjects = new FhirSampleEntryObjects();
             fhirSampleEntryObjects.specimen = transformToFhirSpecimen(sampleTest);
 
@@ -577,7 +598,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
 
-        if (useReferral) {
+        // S-14 / OGC-624: env/vector "Refer Out" already persisted its referrals
+        // synchronously inside SamplePatientEntryServiceImpl.persistData. Guard
+        // prevents the legacy save-and-FHIR-push path from running a second time
+        // for those workflows.
+        if (useReferral && !updateData.isReferralsPersistedSynchronously()) {
             referralSetService.createSaveReferralSetsSamplePatientEntry(referralItems, updateData);
         }
     }
@@ -1020,7 +1045,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         List<ServiceRequest> serviceRequestsForSampleItem = new ArrayList<>();
 
         for (Analysis analysis : sampleTestCollection.analysises) {
-            serviceRequestsForSampleItem.add(this.transformToServiceRequest(analysis.getId()));
+            ServiceRequest serviceRequest = this.transformToServiceRequest(analysis.getId());
+            if (serviceRequest != null) {
+                serviceRequestsForSampleItem.add(serviceRequest);
+            }
         }
         return serviceRequestsForSampleItem;
     }
@@ -1034,7 +1062,13 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToServiceRequest",
                 "transformToServiceRequest called");
 
-        Sample sample = analysis.getSampleItem().getSample();
+        Sample sample = analysisAnchorService.resolveSample(analysis);
+        if (sample == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "transformToServiceRequest",
+                    "skipping ServiceRequest transform for analysis " + (analysis != null ? analysis.getId() : "null")
+                            + " — no resolvable Sample (neither sample_item nor vector_pool linkage)");
+            return null;
+        }
         Patient patient = sampleHumanService.getPatientForSample(sample);
         Provider provider = sampleHumanService.getProviderForSample(sample);
 
@@ -1052,8 +1086,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (facilityId != null) {
             serviceRequest.addIdentifier(facilityId);
         }
-        serviceRequest.setRequisition(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/samp_labNo",
-                analysis.getSampleItem().getSample().getAccessionNumber()));
+        serviceRequest.setRequisition(
+                this.createIdentifier(fhirConfig.getOeFhirSystem() + "/samp_labNo", sample.getAccessionNumber()));
         if (organization != null) {
             serviceRequest.addLocationReference(
                     this.createReferenceFor(ResourceType.Location, organization.getFhirUuidAsString()));
@@ -1096,16 +1130,28 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (program != null && !GenericValidator.isBlankOrNull(program.getValue())) {
             serviceRequest.addCategory(transformSampleProgramToCodeableConcept(program));
         }
+        // encode sample domain for the receive side
+        if (!GenericValidator.isBlankOrNull(sample.getDomain())) {
+            serviceRequest.addCategory(new CodeableConcept().addCoding(
+                    new Coding(fhirConfig.getOeFhirSystem() + "/samp_domain", sample.getDomain(), sample.getDomain())));
+        }
         serviceRequest.setPriority(convertToServiceRequestPriority(sample.getPriority()));
-        serviceRequest.setCode(transformTestToCodeableConcept(test.getId()));
+        serviceRequest
+                .setCode(transformTestToCodeableConcept(test.getId(), analysis.getSampleItem().getTypeOfSampleId()));
         serviceRequest.setAuthoredOn(new Date());
         for (Note note : noteService.getNotes(analysis)) {
             serviceRequest.addNote(transformNoteToAnnotation(note));
         }
         // TODO performer type?
 
-        serviceRequest.addSpecimen(
-                this.createReferenceFor(ResourceType.Specimen, analysis.getSampleItem().getFhirUuidAsString()));
+        // Pool-level vector analyses have no specific Specimen — FHIR
+        // Specimen is per-sample-item, and the test runs against the pool
+        // grouping until deconvolution narrows it down.
+        SampleItem analysisSampleItem = analysis.getSampleItem();
+        if (analysisSampleItem != null) {
+            serviceRequest.addSpecimen(
+                    this.createReferenceFor(ResourceType.Specimen, analysisSampleItem.getFhirUuidAsString()));
+        }
         // OGC-356: Environmental samples don't have a patient
         if (patient != null) {
             serviceRequest.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
@@ -1140,11 +1186,17 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return codeableConcept;
     }
 
-    private CodeableConcept transformTestToCodeableConcept(String testId) {
-        return transformTestToCodeableConcept(testService.get(testId));
+    private CodeableConcept transformTestToCodeableConcept(String testId, String sampleTypeId) {
+        return transformTestToCodeableConcept(testService.get(testId), sampleTypeId);
     }
 
-    private CodeableConcept transformTestToCodeableConcept(Test test) {
+    /**
+     * The test's codings for one specimen. {@code sampleTypeId} is the specimen the
+     * resource describes: a mapping scoped to another sample type does not apply to
+     * it and is left out, so an Observation on a DBS specimen never carries the
+     * Urines terminology. A mapping with no sample type applies to every specimen.
+     */
+    private CodeableConcept transformTestToCodeableConcept(Test test, String sampleTypeId) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformTestToCodeableConcept",
                 "transformTestToCodeableConcept test called");
 
@@ -1161,7 +1213,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
             // Only test-level mappings identify the test itself; component-scoped
             // mappings (component_id != null) describe a sub-result, not this code.
-            if (mapping.getComponentId() != null) {
+            if (mapping.getComponentId() != null || !appliesToSpecimen(mapping.getSampleTypeId(), sampleTypeId)) {
                 continue;
             }
             String system = terminologySystemUrl(mapping.getSource());
@@ -1180,9 +1232,26 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                     .add(new Candidate(test.getLoinc(), true, display));
         }
 
-        // Emit one system's codings at a time. Within a system the SAME_AS mapping is
-        // the equivalent concept, so it wins; with no SAME_AS we keep the rest. A test
-        // thus maps to multiple terminology systems at once (LOINC + SNOMED + ...).
+        addPrioritizedCodings(codeableConcept, bySystem);
+        return codeableConcept;
+    }
+
+    /**
+     * Whether a mapping scoped to {@code mappingSampleTypeId} applies to the
+     * specimen {@code sampleTypeId}. A mapping with no sample type is shared and
+     * applies to all of them.
+     */
+    private boolean appliesToSpecimen(String mappingSampleTypeId, String sampleTypeId) {
+        return mappingSampleTypeId == null || mappingSampleTypeId.equals(sampleTypeId);
+    }
+
+    /**
+     * Emit one system's codings at a time. Within a system the SAME_AS mapping is
+     * the equivalent concept, so it wins; with no SAME_AS we keep the rest. A
+     * subject thus maps to multiple terminology systems at once (LOINC + SNOMED +
+     * ...).
+     */
+    private void addPrioritizedCodings(CodeableConcept codeableConcept, Map<String, List<Candidate>> bySystem) {
         for (Map.Entry<String, List<Candidate>> entry : bySystem.entrySet()) {
             String system = entry.getKey();
             List<Candidate> candidates = entry.getValue();
@@ -1197,7 +1266,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 }
             }
         }
-        return codeableConcept;
     }
 
     /**
@@ -1231,16 +1299,17 @@ public class FhirTransformServiceImpl implements FhirTransformService {
      * code and the component label as text, so it is individually identifiable.
      */
     private CodeableConcept transformResultCodeableConcept(Test test,
-            org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component) {
+            org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component, String sampleTypeId) {
         // Base: the whole-test codings, applied to every result's Observation.
-        CodeableConcept codeableConcept = transformTestToCodeableConcept(test);
+        CodeableConcept codeableConcept = transformTestToCodeableConcept(test, sampleTypeId);
         if (component == null) {
             return codeableConcept;
         }
         String label = GenericValidator.isBlankOrNull(component.getLabel()) ? component.getCode()
                 : component.getLabel();
         for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
-            if (!component.getId().equals(mapping.getComponentId())) {
+            if (!component.getId().equals(mapping.getComponentId())
+                    || !appliesToSpecimen(mapping.getSampleTypeId(), sampleTypeId)) {
                 continue;
             }
             String system = terminologySystemUrl(mapping.getSource());
@@ -1462,7 +1531,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
     @Override
     public Specimen transformToSpecimen(SampleItem sampleItem) {
-
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToSpecimen", "transformToSpecimen called");
 
         Specimen specimen = new Specimen();
@@ -1660,6 +1728,22 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         CodeableConcept codeableConcept = new CodeableConcept();
         codeableConcept.addCoding(new Coding(fhirConfig.getOeFhirSystem() + "/sampleType",
                 typeOfSample.getLocalAbbreviation(), typeOfSample.getLocalizedName()));
+
+        // The standard terminology configured in the Sample Type Editor, carried
+        // alongside the OpenELIS coding so a consumer can resolve the specimen
+        // against SNOMED/LOINC rather than a local abbreviation. Same precedence as
+        // the test codings: within one system the SAME_AS mapping wins.
+        Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
+        for (SampleTypeTerminologyMapping mapping : sampleTypeTerminologyMappingService
+                .getActiveBySampleTypeId(typeOfSample.getId())) {
+            String system = terminologySystemUrl(mapping.getSource());
+            if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
+                continue;
+            }
+            bySystem.computeIfAbsent(system, k -> new ArrayList<>()).add(new Candidate(mapping.getCode(),
+                    "SAME_AS".equalsIgnoreCase(mapping.getRelationship()), typeOfSample.getLocalizedName()));
+        }
+        addPrioritizedCodings(codeableConcept, bySystem);
         return codeableConcept;
     }
 
@@ -1692,7 +1776,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         for (Analysis analysis : actionDataSet.getModifiedAnalysis()) {
             ServiceRequest serviceRequest = this.transformToServiceRequest(analysis.getId());
-            this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+            if (serviceRequest != null) {
+                preserveTerminalServiceRequestStatus(analysis, serviceRequest);
+                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+            }
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
                 DiagnosticReport diagnosticReport = this.transformResultToDiagnosticReport(analysis.getId());
                 this.addToOperations(fhirOperations, tempIdGenerator, diagnosticReport);
@@ -1704,6 +1791,33 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         } catch (FhirPersistanceException e) {
             LogEvent.logError(getClass().getSimpleName(), method, "Fhir store currently un avalable");
         }
+    }
+
+    /**
+     * A referred-out analysis reaches ServiceRequest.status COMPLETED when the
+     * reference lab's result is accepted (OGC-799), which happens while the local
+     * Analysis is still un-validated. This sync rebuilds the ServiceRequest from
+     * the local Analysis status, so without this guard a later Result Entry save
+     * would downgrade a completed ServiceRequest back to active in the FHIR store.
+     * Terminal remote states are therefore never overwritten by a derived one.
+     */
+    private void preserveTerminalServiceRequestStatus(Analysis analysis, ServiceRequest serviceRequest) {
+        if (analysis.getFhirUuid() == null) {
+            return;
+        }
+        try {
+            fhirPersistanceService.getServiceRequestByAnalysisUuid(analysis.getFhirUuidAsString())
+                    .map(ServiceRequest::getStatus).filter(FhirTransformServiceImpl::isTerminalServiceRequestStatus)
+                    .ifPresent(serviceRequest::setStatus);
+        } catch (RuntimeException e) {
+            LogEvent.logDebug(getClass().getSimpleName(), "preserveTerminalServiceRequestStatus",
+                    "could not read existing ServiceRequest status for analysis " + analysis.getId() + ": "
+                            + e.getMessage());
+        }
+    }
+
+    private static boolean isTerminalServiceRequestStatus(ServiceRequestStatus status) {
+        return status == ServiceRequestStatus.COMPLETED || status == ServiceRequestStatus.REVOKED;
     }
 
     @Override
@@ -1908,7 +2022,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         for (Analysis analysis : analysisUpdateList) {
             ServiceRequest serviceRequest = this.transformToServiceRequest(analysis.getId());
-            this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+            if (serviceRequest != null) {
+                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+            }
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
                 DiagnosticReport diagnosticReport = this.transformResultToDiagnosticReport(analysis.getId());
                 this.addToOperations(fhirOperations, tempIdGenerator, diagnosticReport);
@@ -2029,7 +2145,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         List<Result> allResults = resultService.getResultsByAnalysis(analysis);
         SampleItem sampleItem = analysis.getSampleItem();
-        Patient patient = sampleHumanService.getPatientForSample(sampleItem.getSample());
+        Sample sampleForAnalysis = analysisAnchorService.resolveSample(analysis);
+        Patient patient = sampleForAnalysis != null ? sampleHumanService.getPatientForSample(sampleForAnalysis) : null;
 
         DiagnosticReport diagnosticReport = genNewDiagnosticReport(analysis);
         Test test = analysis.getTest();
@@ -2057,7 +2174,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             diagnosticReport
                     .addResult(this.createReferenceFor(ResourceType.Observation, curResult.getFhirUuidAsString()));
         }
-        diagnosticReport.setCode(transformTestToCodeableConcept(test.getId()));
+        diagnosticReport.setCode(transformTestToCodeableConcept(test.getId(), sampleItem.getTypeOfSampleId()));
 
         return diagnosticReport;
     }
@@ -2123,8 +2240,13 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         Analysis analysis = result.getAnalysis();
         Test test = analysis.getTest();
-        SampleItem sampleItem = analysis.getSampleItem();
-        Patient patient = sampleHumanService.getPatientForSample(sampleItem.getSample());
+        // Pool-anchored analyses have analysis.sampleItem == null; fall back to a
+        // representative pool member so the Specimen reference still resolves.
+        AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+        SampleItem sampleItem = analysis.getSampleItem() != null ? analysis.getSampleItem()
+                : (anchor != null ? anchor.getSampleItem() : null);
+        Sample sampleForResult = anchor != null ? anchor.getSample() : null;
+        Patient patient = sampleForResult != null ? sampleHumanService.getPatientForSample(sampleForResult) : null;
         Observation observation = new Observation();
 
         observation.setId(result.getFhirUuidAsString());
@@ -2199,9 +2321,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         // primary carries both too (OGC-1128/OGC-1129).
         org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = resolveResultComponent(
                 test.getId(), result);
-        observation.setCode(transformResultCodeableConcept(test, component));
+        observation.setCode(transformResultCodeableConcept(test, component, sampleItem.getTypeOfSampleId()));
         observation.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
-        observation.setSpecimen(this.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
+        if (sampleItem != null) {
+            observation.setSpecimen(this.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
+        }
         // OGC-356: Environmental samples don't have a patient
         if (patient != null) {
             observation.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
@@ -2581,7 +2705,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         for (String analysisId : analysisIds) {
             Analysis analysis = analysisService.get(analysisId);
             ServiceRequest serviceRequest = this.transformToServiceRequest(analysis);
-            this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+            if (serviceRequest != null) {
+                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+            }
 
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
                 DiagnosticReport diagnosticReport = this.transformResultToDiagnosticReport(analysis.getId());
@@ -2634,7 +2760,25 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Test requestedTest = null;
         if (serviceRequest.hasCode()) {
             List<Test> foundTests = resolveTestsFromServiceRequest(serviceRequest);
-            requestedTest = foundTests.get(0);
+            // OGC-1145: the ServiceRequest's specimen was resolved above —
+            // prefer the candidate test associated with that sample type
+            // instead of first-match, so a shared code (or a test spanning
+            // several specimens) resolves to the specimen the order names
+            if (sampleItem != null && sampleItem.getTypeOfSample() != null && foundTests.size() > 1) {
+                String specimenTypeId = sampleItem.getTypeOfSample().getId();
+                requestedTest = foundTests
+                        .stream().filter(candidate -> typeOfSampleService.getTypeOfSampleForTest(candidate.getId())
+                                .stream().anyMatch(type -> specimenTypeId.equals(type.getId())))
+                        .findFirst().orElse(null);
+                if (requestedTest == null) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "buildSampleEditItems",
+                            "no candidate test for ServiceRequest " + serviceRequest.getIdElement().getIdPart()
+                                    + " matches specimen type " + specimenTypeId + "; falling back to first match");
+                }
+            }
+            if (requestedTest == null) {
+                requestedTest = foundTests.get(0);
+            }
         }
 
         // Build edit item for existing analysis if available

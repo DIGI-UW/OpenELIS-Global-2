@@ -12,7 +12,7 @@ import {
   putToOpenElisServer,
   urlBase64ToUint8Array,
 } from "../utils/Utils";
-import Spinner from "../common/Sprinner";
+import Spinner from "../common/Spinner";
 import { useIntl } from "react-intl";
 import { useContext, useEffect, useState } from "react";
 import { NotificationContext } from "../layout/Layout";
@@ -31,10 +31,9 @@ export default function SlideOverNotifications(props) {
   const [subscriptionState, setSubscriptionState] = useState(null);
 
   useEffect(() => {
-    // Whenever subscriptionState changes, re-check the subscription status
-
-    intialSubscriptionState(); // Fetch the current subscription state again
-  }, [subscriptionState]);
+    intialSubscriptionState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const intialSubscriptionState = async () => {
     try {

@@ -41,11 +41,15 @@ public class HistoryServiceImpl extends AuditableBaseObjectServiceImpl<History, 
 
     @Override
     public String insert(History history) {
+        // These overrides write straight to the DAO (bypassing super), so stamp the
+        // audit user here — the base class would otherwise do it in super.insert.
+        fillSysUserIdIfMissing(history);
         return baseObjectDAO.insert(history);
     }
 
     @Override
     public History update(History history) {
+        fillSysUserIdIfMissing(history);
         if (history.getLastupdated() == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "update",
                     "running update on an object with a missing version field can result in unintended"
@@ -59,6 +63,7 @@ public class HistoryServiceImpl extends AuditableBaseObjectServiceImpl<History, 
 
     @Override
     public void delete(History history) {
+        fillSysUserIdIfMissing(history);
         baseObjectDAO.delete(history);
     }
 

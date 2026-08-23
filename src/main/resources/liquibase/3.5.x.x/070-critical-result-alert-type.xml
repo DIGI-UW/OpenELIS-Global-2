@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1022 (R3) - a saved result outside its authored critical bounds posts a
+    CRITICAL_RESULT alert against the analysis, so acknowledgment lives on the
+    Alerts dashboard (FR-A4: acknowledgment never gates Save).
+    -->
+    <changeSet id="OGC-1022-critical-result-alert-type" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="alert"/>
+        </preConditions>
+        <comment>Extend alert_type CHECK constraint with CRITICAL_RESULT</comment>
+        <sql>
+            ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+            ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+            CHECK (alert_type IN (
+            'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+            'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+            'CRITICAL_RESULT'
+            ));
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

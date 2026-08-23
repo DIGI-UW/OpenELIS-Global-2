@@ -22,6 +22,7 @@ import {
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import {
   PROTOCOL_VERSIONS,
   PLUGIN_PROTOCOL_DEFAULTS,
@@ -515,6 +516,18 @@ const AnalyzerForm = () => {
         className="analyzer-form-page pageContent"
       >
         <div data-testid="analyzer-form-header">
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "" },
+              {
+                label: isEditMode
+                  ? "analyzer.form.editTitle"
+                  : "analyzer.form.addTitle",
+                link: "",
+              },
+            ]}
+          />
           <PageTitle
             breadcrumbs={[
               {

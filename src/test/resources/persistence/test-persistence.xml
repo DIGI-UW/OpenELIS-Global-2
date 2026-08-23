@@ -35,7 +35,8 @@
         <class>org.openelisglobal.testactivation.valueholder.TestActivationAcknowledgment</class>
         <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling</class>
         <class>org.openelisglobal.testterminology.valueholder.TestTerminologyMapping</class>
-        <class>org.openelisglobal.testvariant.valueholder.TestVariantLink</class>
+        <class>org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping</class>
+        <class>org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping</class>
         <class>org.openelisglobal.testreagentlink.valueholder.TestReagentLink</class>
         <class>org.openelisglobal.testalertrule.valueholder.TestAlertRule</class>
         <class>org.openelisglobal.testsamplehandling.valueholder.TestSampleHandlingHistory</class>
@@ -94,6 +95,8 @@
         <!-- Notification entities -->
         <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
         <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
+        <class>org.openelisglobal.notification.valueholder.NotificationTriggerConfig</class>
+        <class>org.openelisglobal.notification.valueholder.NotificationLog</class>
         <class>org.openelisglobal.notifications.entity.Notification</class>
 
         <!-- Dictionary entities (required by NoteBook.type relationship) -->
@@ -195,8 +198,39 @@
         <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseItem</class>
         <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseAnswer</class>
 
+        <class>org.openelisglobal.compliance.valueholder.ComplianceStandard</class>
+        <class>org.openelisglobal.compliance.valueholder.ParameterGroup</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceThreshold</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceReportArchive</class>
+        <class>org.openelisglobal.sample.valueholder.SampleComplianceStandard</class>
+        <!-- Vector Surveillance entities -->
+        <class>org.openelisglobal.vector.valueholder.VectorOrganismGroup</class>
+        <class>org.openelisglobal.vector.valueholder.VectorTrapType</class>
+        <class>org.openelisglobal.vector.valueholder.VectorSpecies</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPool</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPoolMember</class>
+        <class>org.openelisglobal.vector.valueholder.VectorSamplingSite</class>
+        <!-- V-03 Vector Testing & Identification entities -->
+        <class>org.openelisglobal.vector.identification.valueholder.VectorSpecimenIdentification</class>
+        <class>org.openelisglobal.vector.identification.valueholder.VectorMolecularRecord</class>
+
+        <!-- V-04 M3: Vector Surveillance Manual Entry Helper entities -->
+        <class>org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntryFieldMap</class>
+        <class>org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntrySubmissionAudit</class>
+
+        <!-- QC Result Evaluation entities (OGC-554 S-08) -->
+        <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>
+        <class>org.openelisglobal.qc.valueholder.TestQcThreshold</class>
+        <class>org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment</class>
+
+        <!-- Sample Acceptance Record (S-09 / OGC-580) -->
+        <class>org.openelisglobal.sampleacceptance.valueholder.SampleAcceptanceRecord</class>
         <!-- Decoupled order workflow (OGC-356) -->
         <class>org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest</class>
+
+        <!-- QA Checklist domain (OGC-356 step 4) -->
+        <class>org.openelisglobal.qachecklist.valueholder.SampleQaChecklist</class>
         <!-- Barcode Label Presets (OGC-285 M2) -->
         <class>org.openelisglobal.labelpreset.valueholder.LabelPreset</class>
         <class>org.openelisglobal.labelpreset.valueholder.LabelPresetField</class>

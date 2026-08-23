@@ -69,19 +69,37 @@
     <type_of_sample id="2" description="Urine Sample"
         name_localization_id="2" lastupdated="2023-12-01 12:00:00" />
 
-    <!-- Status of Sample -->
+    <!-- Status of Sample. Note: DBunit's FlatXmlDataSet reads column schema
+        from the FIRST row, so id=8 below must keep id=1 first AND id=1 must declare
+        every column used by subsequent rows (name, description) — otherwise DBunit
+        silently drops them and we end up with null names which trip StatusService. -->
     <status_of_sample id="1" code="100"
-        status_type="Received" lastupdated="2023-12-01 12:00:00" />
+        status_type="Received" name="" description=""
+        lastupdated="2023-12-01 12:00:00" />
     <status_of_sample id="2" code="200"
-        status_type="In Progress" lastupdated="2023-12-01 12:00:00" />
+        status_type="In Progress" name="" description=""
+        lastupdated="2023-12-01 12:00:00" />
+    <!-- Maps to AnalysisStatus.Canceled via StatusService.addToAnalysisMap
+        (matches by name). Required so cancelLinkedAnalysis can resolve a real status
+        id during mark-lost. -->
+    <status_of_sample id="8" description="Test Canceled"
+        code="6" status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="Test Canceled" />
+    <!-- Maps to AnalysisStatus.RejectedByReferenceLab via StatusService.addToAnalysisMap
+        (matches by name). Required so rejectLinkedAnalysis can resolve a real status
+        id during OGC-804 reject. -->
+    <status_of_sample id="9"
+        description="Rejected by reference lab" code="7"
+        status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="RejectedByReferenceLab" />
 
     <!-- Test Section -->
     <test_section id="1" name="Chemistry"
         description="Chemical Testing Section" name_localization_id="1"
-        lastupdated="2023-12-01 12:00:00" />
+        domain="CLINICAL" lastupdated="2023-12-01 12:00:00" />
     <test_section id="2" name="Microbiology"
         description="Microbiology Testing Section" name_localization_id="2"
-        lastupdated="2023-12-01 12:00:00" />
+        domain="CLINICAL" lastupdated="2023-12-01 12:00:00" />
 
     <person id="1" last_name="Doe" first_name="John"
         middle_name="joddy" city="Kampala" state="Kampala metropolitan"
@@ -217,7 +235,7 @@
     <analyte id="2" name="Cholesterol"
         lastupdated="2023-12-01 12:00:00" />
 
-    <!-- Analysis -->
+    <!-- Analysis (must load before result rows that FK to analysis_id) -->
     <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
         revision="1" started_date="2023-11-15 12:00:00"
         completed_date="2023-11-15 14:00:00" status="1"
@@ -282,20 +300,37 @@
         display_key="referral.reason.moreTests"
         lastupdated="2018-02-16 20:45:59" />
 
+    <!-- S-14 subcontract metadata: referral 1 has a paired subcontract row,
+        referral 2 deliberately does not (covers "no subcontract" historical case). -->
+    <referral_subcontract id="10"
+        agreement_reference="AGR-2026-017"
+        handoff_datetime="2026-04-25 09:30:00"
+        expected_return_date="2026-05-20" coc_contact_name="Jane Doe"
+        coc_contact_phone="+1-555-0142"
+        coc_contact_email="cox-coc@example.org"
+        subcontract_notes="Initial handoff for Q2 subcontract batch."
+        lastupdated="2026-04-25 09:30:00" />
+
     <referral id="1" analysis_id="1" organization_id="1"
         organization_name="African Health Org"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="1"
-        referral_type_id="1" requester_name="Doctor" Status="SENT"
+        referral_type_id="1" requester_name="Doctor" status="DRAFT"
         lastUpdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
-        fhir_uuid="436a353f-8ac9-4a30-86db-bb6eda979b57" />
+        fhir_uuid="436a353f-8ac9-4a30-86db-bb6eda979b57" subcontract_id="10" />
     <referral id="2" analysis_id="2" organization_id="2"
         organization_name="Health Corporations Ltd"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="2"
-        referral_type_id="2" requester_name="Doctor" status="RECEIVED"
+        referral_type_id="2" requester_name="Doctor" status="REQUESTED"
         lastUpdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
         fhir_uuid="386e3e0c-013b-425b-ab5f-46f40278c5d3" />
+
+    <!-- S-14 FR-02 audit-trail seed for referral 1 (subcontract at DRAFT). -->
+    <referral_status_history id="100"
+        referral_id="1" to_status="DRAFT" changed_by_user_id="1"
+        changed_at="2026-04-25 09:00:00" notes="initial creation"
+        lastupdated="2026-04-25 09:00:00" />
 </dataset>

@@ -24,19 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
  * defining laboratory test sections/departments.
  *
  * Expected CSV format:
- * testSectionName,description,isActive,sortOrder,isExternal,localization:en,localization:fr
- * Hematology,Hematology Department,Y,1,N,Hematology,Hématologie
- * Biochemistry,Biochemistry Department,Y,2,N,Biochemistry,Biochimie
- * Serology,Serology Department,Y,3,N,Serology,Sérologie
+ * testSectionName,description,isActive,sortOrder,isExternal,domain,localization:en,localization:fr
+ * Hematology,Hematology Department,Y,1,N,CLINICAL,Hematology,Hématologie
+ * Biochemistry,Biochemistry Department,Y,2,N,CLINICAL,Biochemistry,Biochimie
  *
  * Notes: - First line is the header (required) - testSectionName is required -
  * description defaults to testSectionName if not provided - isActive defaults
  * to "Y" if not specified - sortOrder is optional (auto-assigned if not
- * provided) - isExternal defaults to "N" if not specified - localization:xx
- * columns (where xx is a locale code like en, fr, es) provide translations - If
- * no localization columns are provided, testSectionName is used as the default
- * value for the fallback locale (en) - Existing test sections with matching
- * name will be updated
+ * provided) - isExternal defaults to "N" if not specified - domain must be one
+ * of CLINICAL, ENVIRONMENTAL, or VECTOR; defaults to CLINICAL if not specified
+ * - localization:xx columns (where xx is a locale code like en, fr, es) provide
+ * translations - If no localization columns are provided, testSectionName is
+ * used as the default value for the fallback locale (en) - Existing test
+ * sections with matching name will be updated
  */
 @Component
 public class TestSectionConfigurationHandler implements DomainConfigurationHandler {
@@ -87,6 +87,7 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int isExternalIndex = findColumnIndex(headers, "isExternal");
+        int domainIndex = findColumnIndex(headers, "domain");
 
         // Detect localization columns (localization:en, localization:fr, etc.)
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
@@ -106,7 +107,8 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             try {
                 String[] values = parseCsvLine(line);
                 TestSection section = processCsvLine(values, testSectionNameIndex, descriptionIndex, isActiveIndex,
-                        sortOrderIndex, isExternalIndex, localizationColumns, lineNumber, fileName, nextSortOrder);
+                        sortOrderIndex, isExternalIndex, domainIndex, localizationColumns, lineNumber, fileName,
+                        nextSortOrder);
                 if (section != null) {
                     processedSections.add(section);
                     nextSortOrder++;
@@ -205,8 +207,8 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
     }
 
     private TestSection processCsvLine(String[] values, int testSectionNameIndex, int descriptionIndex,
-            int isActiveIndex, int sortOrderIndex, int isExternalIndex, Map<String, Integer> localizationColumns,
-            int lineNumber, String fileName, int defaultSortOrder) {
+            int isActiveIndex, int sortOrderIndex, int isExternalIndex, int domainIndex,
+            Map<String, Integer> localizationColumns, int lineNumber, String fileName, int defaultSortOrder) {
 
         String testSectionName = getValueOrEmpty(values, testSectionNameIndex);
 
@@ -221,14 +223,14 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
 
         if (existingSection != null) {
             updateTestSection(existingSection, values, testSectionName, descriptionIndex, isActiveIndex, sortOrderIndex,
-                    isExternalIndex, localizationColumns, defaultSortOrder);
+                    isExternalIndex, domainIndex, localizationColumns, defaultSortOrder);
             testSectionService.update(existingSection);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Updated existing test section: " + testSectionName);
             return existingSection;
         } else {
             return createTestSection(values, testSectionName, descriptionIndex, isActiveIndex, sortOrderIndex,
-                    isExternalIndex, localizationColumns, defaultSortOrder);
+                    isExternalIndex, domainIndex, localizationColumns, defaultSortOrder);
         }
     }
 
@@ -241,8 +243,8 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
     }
 
     private void updateTestSection(TestSection section, String[] values, String testSectionName, int descriptionIndex,
-            int isActiveIndex, int sortOrderIndex, int isExternalIndex, Map<String, Integer> localizationColumns,
-            int defaultSortOrder) {
+            int isActiveIndex, int sortOrderIndex, int isExternalIndex, int domainIndex,
+            Map<String, Integer> localizationColumns, int defaultSortOrder) {
 
         section.setTestSectionName(testSectionName);
 
@@ -275,15 +277,19 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             section.setIsExternal("Y".equalsIgnoreCase(isExternal) || "true".equalsIgnoreCase(isExternal) ? "Y" : "N");
         }
 
-        section.setSysUserId("1");
+        // Update domain (preserve existing value if column absent or blank)
+        String domain = getValueOrEmpty(values, domainIndex);
+        if (!domain.isEmpty()) {
+            section.setDomain(domain);
+        }
 
         // Handle localization
         processLocalization(section, values, testSectionName, localizationColumns);
     }
 
     private TestSection createTestSection(String[] values, String testSectionName, int descriptionIndex,
-            int isActiveIndex, int sortOrderIndex, int isExternalIndex, Map<String, Integer> localizationColumns,
-            int defaultSortOrder) {
+            int isActiveIndex, int sortOrderIndex, int isExternalIndex, int domainIndex,
+            Map<String, Integer> localizationColumns, int defaultSortOrder) {
 
         // Build translations map
         Map<String, String> translations = buildTranslationsMap(values, testSectionName, localizationColumns);
@@ -293,7 +299,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         localization.setDescription("test section name");
         localization.setEnglish(translations.getOrDefault("en", testSectionName));
         localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
-        localization.setSysUserId("1");
         String localizationId = localizationService.insert(localization);
         localization.setId(localizationId);
 
@@ -345,7 +350,9 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             section.setIsExternal("N");
         }
 
-        section.setSysUserId("1");
+        // Set domain; default to CLINICAL if column absent or blank
+        String domain = getValueOrEmpty(values, domainIndex);
+        section.setDomain(domain.isEmpty() ? "CLINICAL" : domain);
 
         String sectionId = testSectionService.insert(section);
         section.setId(sectionId);
@@ -401,7 +408,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             localization.setDescription("test section name");
             localization.setEnglish(translations.getOrDefault("en", testSectionName));
             localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
-            localization.setSysUserId("1");
             String localizationId = localizationService.insert(localization);
             localization.setId(localizationId);
             section.setLocalization(localization);

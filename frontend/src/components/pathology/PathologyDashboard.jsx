@@ -293,7 +293,10 @@ function PathologyDashboard() {
     };
   }, [filters]);
 
-  let breadcrumbs = [{ label: "home.label", link: "/" }];
+  let breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "pathology.label.dashboard", link: "/PathologyDashboard" },
+  ];
 
   return (
     <>
