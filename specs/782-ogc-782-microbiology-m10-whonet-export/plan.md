@@ -16,11 +16,14 @@ boundary rather than introducing a second export implementation.
 2. The existing fifteen-column CSV contract remains the first downloadable
    format. A verified future wide-column WHONET contract can replace or version
    it without changing this page workflow.
-3. Export selection uses final close time in a half-open date interval and the
-   bacteriology workflow only.
-4. The local seven-day policy sorts by final close time and keeps the first
-   isolate for each patient and organism within each rolling seven-day window.
-   It is explicitly not labeled WHO/CLSI-certified.
+3. Export eligibility requires a finalized bacteriology case, while reporting-
+   period membership uses the specimen collection timestamp in a half-open date
+   interval. Final close time does not determine period membership.
+4. The local seven-day policy sorts by specimen collection time and keeps the
+   first isolate for each patient and organism within each rolling seven-day
+   window. It is explicitly not labeled WHO/CLSI-certified. A later configured
+   window-basis option may change this de-duplication chronology without
+   changing reporting-period membership.
 5. Missing organism or antibiotic codes are warnings and exclude affected rows.
    Readings without a final S/I/R interpretation are also excluded. Zero
    remaining rows is a generation blocker.
@@ -28,8 +31,9 @@ boundary rather than introducing a second export implementation.
    not the PHI-bearing file body. Exact re-download is therefore deferred.
 7. The write controller derives the actor from the authenticated request. The
    request contract has no actor field.
-8. The frontend route is `/Microbiology/whonet` with `from`, `to`,
-   `significance`, `dedup`, `step`, `page`, and `pageSize` query state.
+8. The frontend route is `/Microbiology/whonet` with canonical reporting,
+   population, workflow-step, paging, and optional AST-worklist provenance query
+   state.
 9. Mapping repair uses the M3 admin `edit` query state to open the exact organism
    or antibiotic record. Browser history returns to the preview.
 10. The config-backed Reports menu owns the single navigation entry for the
@@ -62,17 +66,20 @@ fixtures, tests, and UI do not receive migrations.
 
 ## Test Strategy
 
-- JUnit 4/Mockito: date boundaries, final-case selection, significance,
+- JUnit 4/Mockito: collection-date boundaries, final-case eligibility,
+  significance,
   seven-day de-duplication, mapping warnings, multiple AST readings, CSV
   escaping, blocked generation, and authenticated actor.
-- Controller: query binding, attachment headers, authorization, and actor
-  spoof resistance through absence of client actor input.
+- Controller: worklist and export query binding, attachment headers,
+  authorization, and actor spoof resistance through absence of client actor
+  input.
 - ORM/Liquibase: entity registration plus update and rollback.
-- Vitest/RTL: canonical query state, Carbon interactions by role/label,
+- Vitest/RTL: worklist and generator canonical query state, reporting presets,
+  Carbon interactions by role/label, transferred-scope notice and clear action,
   preview counts, exact mapping links, disabled/enabled generation, and download.
-- Playwright `core-app`: authenticated navigation, seeded final case, preview,
-  mapping repair path, generation, and downloaded CSV assertions. No arbitrary
-  waits.
+- Playwright `core-app`: authenticated AST-worklist filtering, export handoff,
+  editable transferred scope, clear behavior, preview, generation, and
+  downloaded CSV assertions. No arbitrary waits.
 - Visual evidence: desktop and mobile screenshots compared with M-09 Configure
   and Preview states; deviations recorded as intentional.
 
@@ -130,3 +137,22 @@ detail and case workflow rather than introducing a separate surveillance record.
 FHIR projection, when implemented, should carry the order-specific context in
 the laboratory ServiceRequest; it is not required to complete these local
 workflow slices.
+
+## R12 Engineering Addendum - Reporting Scope Handoff
+
+R12 resolves the source gap between M-07 and M-09. The AST worklist gains only
+the structured surveillance filters that have direct WHONET meaning: reporting
+period, specimen type, patient origin, organism, and isolate significance. Its
+operational controls remain independent and are never translated into export
+criteria.
+
+One canonical scope representation is shared by the worklist handoff and the
+generator. Direct Reports entry defaults to the previous complete month; AST-
+worklist entry without an active period defaults to the full current calendar
+month. The generator retains the stable Reports-owned route, identifies
+the transferred scope, permits editing, and clears back to direct-entry defaults.
+
+The backend changes period membership and default first-isolate ordering from
+final close time to specimen collection time while retaining final release as an
+eligibility gate. No data-model migration is required because collection time
+and every transferable filter value already have authoritative sources.
