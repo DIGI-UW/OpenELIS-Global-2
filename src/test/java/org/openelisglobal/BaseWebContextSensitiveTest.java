@@ -61,18 +61,17 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     /**
      * Tables that are static seeds — fixture loads must never truncate or replace
-     * them. {@code reference_tables} is populated by Liquibase at DB init with ~136
-     * rows (PATIENT, PERSON, DICTIONARY, BARCODE_LABEL_INFO, ANALYSIS, NCE_EVENT,
-     * etc.). Every audit-emitting service (post PR #3591) does an
-     * {@code AuditTrailServiceImpl.saveNewHistory} lookup keyed on its
-     * ref_table_name; if a fixture loader truncates the seed and re-inserts only
-     * the fixture's handful of rows, every downstream test that audits an entity
-     * blows up with "Reference Table is null". The bug is surefire-order-dependent
-     * and was masked until PR #3591 (2026-05-13) opted 14 P0 services into
-     * audit-emit. Filter at the loader so the seed is untouchable regardless of
-     * which fixture declares which rows.
+     * them. {@code reference_tables} and {@code observation_history_type} are
+     * populated by Liquibase at database initialization. Every audit-emitting
+     * service (post PR #3591) does an {@code AuditTrailServiceImpl.saveNewHistory}
+     * lookup keyed on its ref_table_name; if a fixture loader truncates the seed
+     * and re-inserts only the fixture's handful of rows, every downstream test that
+     * audits an entity blows up with "Reference Table is null". The bug is
+     * surefire-order-dependent and was masked until PR #3591 (2026-05-13) opted 14
+     * P0 services into audit-emit. Filter at the loader so the seed is untouchable
+     * regardless of which fixture declares which rows.
      */
-    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables" };
+    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables", "observation_history_type" };
 
     /**
      * Legacy entities whose Hibernate generators use standalone sequences rather

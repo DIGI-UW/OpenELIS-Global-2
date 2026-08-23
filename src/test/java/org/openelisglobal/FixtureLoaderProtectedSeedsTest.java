@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import javax.sql.DataSource;
 import org.junit.Test;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
 
     @Autowired
     private ReferenceTablesService referenceTablesService;
+
+    @Autowired
+    private ObservationHistoryTypeService observationHistoryTypeService;
 
     @Autowired
     private DataSource dataSource;
@@ -76,6 +80,24 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
         assertTrue("Seed shrank from " + seedSizeBefore + " to " + seedSizeAfter + " — fixture loader truncated "
                 + "reference_tables despite the PROTECTED_SEED_TABLES filter. Did someone drop reference_tables "
                 + "from BaseWebContextSensitiveTest.PROTECTED_SEED_TABLES?", seedSizeAfter >= seedSizeBefore);
+    }
+
+    @Test
+    public void loadingObservationFixture_doesNotReplaceCanonicalHistoryTypes() throws Exception {
+        int seedSizeBefore = observationHistoryTypeService.getAll().size();
+        assertNotNull("SampleRecordStatus must exist before fixture load",
+                observationHistoryTypeService.getByName("SampleRecordStatus"));
+        assertNotNull("PatientRecordStatus must exist before fixture load",
+                observationHistoryTypeService.getByName("PatientRecordStatus"));
+
+        executeDataSetWithStateManagement("testdata/observation-history.xml");
+
+        assertNotNull("SampleRecordStatus was wiped by the fixture loader",
+                observationHistoryTypeService.getByName("SampleRecordStatus"));
+        assertNotNull("PatientRecordStatus was wiped by the fixture loader",
+                observationHistoryTypeService.getByName("PatientRecordStatus"));
+        assertTrue("Observation history type seed shrank after fixture load",
+                observationHistoryTypeService.getAll().size() >= seedSizeBefore);
     }
 
     private int countReferenceTables() throws Exception {

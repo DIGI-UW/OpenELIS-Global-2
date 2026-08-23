@@ -1,8 +1,15 @@
 package org.openelisglobal.observationhistorytype;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -15,9 +22,29 @@ public class ObservationHistoryTypeServiceTest extends BaseWebContextSensitiveTe
     @Autowired
     private ObservationHistoryTypeService observationHistoryTypeService;
 
+    private final List<ObservationHistoryType> createdTypes = new ArrayList<>();
+    private String typeNamePrefix;
+    private ObservationHistoryType educationType;
+    private ObservationHistoryType maritalType;
+    private ObservationHistoryType occupationType;
+
     @Before
-    public void setUp() throws Exception {
-        executeDataSetWithStateManagement("testdata/observation-history-type.xml");
+    public void setUp() {
+        typeNamePrefix = "T" + UUID.randomUUID().toString().substring(0, 8).toUpperCase() + "_";
+        educationType = createType("EDUCATION_LEVEL", "Patient's education level");
+        maritalType = createType("MARITAL_STATUS", "Patient's marital status");
+        occupationType = createType("OCCUPATION", "Patient's occupation");
+    }
+
+    @After
+    public void tearDown() {
+        for (int index = createdTypes.size() - 1; index >= 0; index--) {
+            ObservationHistoryType type = createdTypes.get(index);
+            if (observationHistoryTypeService.get(type.getId()) != null) {
+                observationHistoryTypeService.delete(type);
+            }
+        }
+        createdTypes.clear();
     }
 
     @Test
@@ -26,78 +53,87 @@ public class ObservationHistoryTypeServiceTest extends BaseWebContextSensitiveTe
 
         assertNotNull("Observation history type list should not be null", observationHistoryTypes);
         assertFalse("Observation history type list should not be empty", observationHistoryTypes.isEmpty());
-
-        for (ObservationHistoryType observationType : observationHistoryTypes) {
-            assertNotNull("ObservationHistoryType ID should not be null", observationType.getId());
-            assertNotNull("ObservationHistoryType typeName should not be null", observationType.getTypeName());
-        }
+        assertTrue(observationHistoryTypes.stream().anyMatch(type -> educationType.getId().equals(type.getId())));
     }
 
     @Test
-    public void getAll_shouldReturnAllObservationHistoryTypes() {
+    public void getAll_shouldContainServiceCreatedObservationHistoryTypes() {
         List<ObservationHistoryType> observationHistoryTypes = observationHistoryTypeService.getAll();
-        assertTrue(observationHistoryTypes.size() == 4);
+
+        assertTrue(observationHistoryTypes.stream().anyMatch(type -> educationType.getId().equals(type.getId())));
+        assertTrue(observationHistoryTypes.stream().anyMatch(type -> maritalType.getId().equals(type.getId())));
+        assertTrue(observationHistoryTypes.stream().anyMatch(type -> occupationType.getId().equals(type.getId())));
     }
 
     @Test
-    public void get_shouldReturnObservationHistoryTypeById() {
-        ObservationHistoryType observationType = observationHistoryTypeService.get("1");
-        assertEquals("EDUCATION_LEVEL", observationType.getTypeName());
+    public void get_shouldReturnObservationHistoryTypeByGeneratedId() {
+        ObservationHistoryType observationType = observationHistoryTypeService.get(educationType.getId());
+
+        assertEquals(typeName("EDUCATION_LEVEL"), observationType.getTypeName());
         assertEquals("Patient's education level", observationType.getDescription());
     }
 
     @Test
-    public void getByName_shouldReturnObservationHistoryTypeByName() {
-        ObservationHistoryType observationType = observationHistoryTypeService.getByName("EDUCATION_LEVEL");
-        assertEquals("1", observationType.getId());
+    public void getByName_shouldReturnObservationHistoryTypeByStableName() {
+        ObservationHistoryType observationType = observationHistoryTypeService.getByName(typeName("EDUCATION_LEVEL"));
+
+        assertEquals(educationType.getId(), observationType.getId());
         assertEquals("Patient's education level", observationType.getDescription());
     }
 
     @Test
     public void insert_shouldInsertObservationHistoryType() {
-        ObservationHistoryType observationType = new ObservationHistoryType();
-        observationType.setTypeName("EXERCISE_FREQUENCY");
-        observationType.setDescription("Patient's exercise frequency");
-        observationHistoryTypeService.insert(observationType);
+        ObservationHistoryType insertedType = createType("EXERCISE_FREQUENCY", "Patient's exercise frequency");
 
-        ObservationHistoryType insertedType = observationHistoryTypeService.getByName("EXERCISE_FREQUENCY");
-        assertNotNull(insertedType);
-        assertEquals("EXERCISE_FREQUENCY", insertedType.getTypeName());
-        assertEquals("Patient's exercise frequency", insertedType.getDescription());
+        ObservationHistoryType found = observationHistoryTypeService.getByName(insertedType.getTypeName());
+        assertNotNull(found);
+        assertEquals("Patient's exercise frequency", found.getDescription());
     }
 
     @Test
     public void save_shouldSaveObservationHistoryType() {
         ObservationHistoryType observationType = new ObservationHistoryType();
-        observationType.setTypeName("ALCOHOL_CONSUMPTION");
+        observationType.setTypeName(typeName("ALCOHOL_CONSUMPTION"));
         observationType.setDescription("Patient's alcohol consumption habits");
-        observationHistoryTypeService.save(observationType);
+        ObservationHistoryType savedType = observationHistoryTypeService.save(observationType);
+        createdTypes.add(savedType);
 
-        ObservationHistoryType savedType = observationHistoryTypeService.getByName("ALCOHOL_CONSUMPTION");
-        assertNotNull(savedType);
-        assertEquals("ALCOHOL_CONSUMPTION", savedType.getTypeName());
-        assertEquals("Patient's alcohol consumption habits", savedType.getDescription());
+        ObservationHistoryType found = observationHistoryTypeService.getByName(savedType.getTypeName());
+        assertNotNull(found);
+        assertEquals("Patient's alcohol consumption habits", found.getDescription());
     }
 
     @Test
     public void update_shouldUpdateObservationHistoryType() {
-        ObservationHistoryType observationType = observationHistoryTypeService.get("2");
+        maritalType.setTypeName(typeName("RELATIONSHIP_STATUS"));
+        maritalType.setDescription("Updated marital status description");
 
-        observationType.setTypeName("RELATIONSHIP_STATUS");
-        observationType.setDescription("Updated marital status description");
+        observationHistoryTypeService.update(maritalType);
 
-        observationHistoryTypeService.update(observationType);
-
-        ObservationHistoryType updatedType = observationHistoryTypeService.get("2");
-        assertEquals("RELATIONSHIP_STATUS", updatedType.getTypeName());
+        ObservationHistoryType updatedType = observationHistoryTypeService.get(maritalType.getId());
+        assertEquals(typeName("RELATIONSHIP_STATUS"), updatedType.getTypeName());
         assertEquals("Updated marital status description", updatedType.getDescription());
     }
 
     @Test
-    public void delete_shouldInactivateObservationHistoryType() {
-        ObservationHistoryType observationType = observationHistoryTypeService.get("3");
+    public void delete_shouldDeleteOnlyTheServiceCreatedObservationHistoryType() {
+        observationHistoryTypeService.delete(occupationType);
+        createdTypes.remove(occupationType);
 
-        observationHistoryTypeService.delete(observationType);
-        assertEquals(3, observationHistoryTypeService.getAll().size());
+        assertNull(observationHistoryTypeService.getByName(typeName("OCCUPATION")));
+        assertNotNull(observationHistoryTypeService.getByName("SampleRecordStatus"));
+    }
+
+    private ObservationHistoryType createType(String suffix, String description) {
+        ObservationHistoryType type = new ObservationHistoryType();
+        type.setTypeName(typeName(suffix));
+        type.setDescription(description);
+        type.setId(observationHistoryTypeService.insert(type));
+        createdTypes.add(type);
+        return type;
+    }
+
+    private String typeName(String suffix) {
+        return typeNamePrefix + suffix;
     }
 }
