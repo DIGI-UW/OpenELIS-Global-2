@@ -14,6 +14,7 @@
 
 vi.mock("../../../services/analyzerService", () => ({
   getAnalyzers: vi.fn(),
+  getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
@@ -44,6 +45,7 @@ import AnalyzersList from "./AnalyzersList";
 // 8. Utilities (import functions, not just for mocking)
 import {
   getAnalyzers,
+  getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
 } from "../../../services/analyzerService";
 
@@ -95,6 +97,7 @@ describe("AnalyzersList", () => {
         types: [],
       }),
     );
+    getAnalyzerLabUnits.mockImplementation((callback) => callback([]));
   });
 
   /**
