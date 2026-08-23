@@ -5,6 +5,8 @@ import {
   FilterableMultiSelect,
   InlineNotification,
   Link as CarbonLink,
+  Loading,
+  Tag,
   TextInput,
 } from "@carbon/react";
 import { ArrowRight, Close } from "@carbon/icons-react";
@@ -16,8 +18,13 @@ import {
   getAnalyzer,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
+  getAnalyzerTypeMapping,
   updateAnalyzer,
 } from "../../../services/analyzerService";
+import {
+  formatRecognitionCondition,
+  formatRecognitionMode,
+} from "../AnalyzerTypeManagement/recognitionText";
 
 import "./AnalyzerSetup.scss";
 
@@ -33,6 +40,11 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
   const [labUnits, setLabUnits] = useState([]);
   const [selectedLabUnitIds, setSelectedLabUnitIds] = useState([]);
   const [candidate, setCandidate] = useState(null);
+  const [mappingResult, setMappingResult] = useState({
+    requestKey: null,
+    mapping: null,
+    error: false,
+  });
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -69,22 +81,6 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
         setSelectedLabUnitIds(
           (analyzer.testUnitIds || []).map((id) => String(id)),
         );
-
-        if (analyzer.profileId && analyzer.profileRevision) {
-          const params = new URLSearchParams(location.search);
-          const revision = String(analyzer.profileRevision);
-          if (
-            params.get("profile") !== analyzer.profileId ||
-            params.get("revision") !== revision
-          ) {
-            params.set("profile", analyzer.profileId);
-            params.set("revision", revision);
-            history.replace({
-              pathname: location.pathname,
-              search: params.toString(),
-            });
-          }
-        }
       },
       controller.signal,
     );
@@ -103,9 +99,9 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
 
   const selectedType = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    const profileId = params.get("profile") || candidate?.profileId;
+    const profileId = candidate?.profileId || params.get("profile");
     const revision = Number(
-      params.get("revision") || candidate?.profileRevision,
+      candidate?.profileRevision || params.get("revision"),
     );
     return (
       (profileCatalog?.types || []).find(
@@ -121,6 +117,140 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
         .filter(Boolean),
     [labUnits, selectedLabUnitIds],
   );
+
+  const mappingRoute = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const profileId = params.get("profile");
+    const revision = Number(params.get("revision"));
+    const valid =
+      Boolean(profileId) && Number.isInteger(revision) && revision >= 1;
+    return {
+      profileId,
+      revision,
+      valid,
+      requestKey: valid ? `${profileId}@${revision}` : null,
+    };
+  }, [location.search]);
+
+  const candidateProfileValid =
+    Boolean(candidate?.profileId) &&
+    Number.isInteger(Number(candidate?.profileRevision)) &&
+    Number(candidate?.profileRevision) >= 1;
+  const candidateMatchesMappingRoute =
+    Boolean(analyzerId) &&
+    String(candidate?.id) === String(analyzerId) &&
+    candidate?.profileId === mappingRoute.profileId &&
+    Number(candidate?.profileRevision) === mappingRoute.revision;
+
+  useEffect(() => {
+    if (!candidateProfileValid) {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    const revision = String(candidate.profileRevision);
+    if (
+      params.get("profile") === candidate.profileId &&
+      params.get("revision") === revision
+    ) {
+      return;
+    }
+
+    params.set("profile", candidate.profileId);
+    params.set("revision", revision);
+    history.replace({
+      pathname: location.pathname,
+      search: params.toString(),
+    });
+  }, [
+    candidate?.profileId,
+    candidate?.profileRevision,
+    candidateProfileValid,
+    history,
+    location.pathname,
+    location.search,
+  ]);
+
+  useEffect(() => {
+    if (
+      currentStep !== "verify" ||
+      !mappingRoute.valid ||
+      !candidateMatchesMappingRoute
+    ) {
+      return;
+    }
+
+    getAnalyzerTypeMapping(
+      mappingRoute.profileId,
+      mappingRoute.revision,
+      (response) => {
+        const error =
+          !response ||
+          response.error ||
+          !Array.isArray(response.tests) ||
+          response.profileId !== mappingRoute.profileId ||
+          response.profileRevision !== mappingRoute.revision;
+        setMappingResult({
+          requestKey: mappingRoute.requestKey,
+          mapping: error ? null : response,
+          error,
+        });
+      },
+    );
+  }, [candidateMatchesMappingRoute, currentStep, mappingRoute]);
+
+  const mappingMatchesRoute =
+    mappingResult.requestKey === mappingRoute.requestKey;
+  const mapping = mappingMatchesRoute ? mappingResult.mapping : null;
+  const mappingLoading =
+    currentStep === "verify" &&
+    Boolean(analyzerId) &&
+    !saveError &&
+    (!candidate ||
+      (candidateProfileValid && !candidateMatchesMappingRoute) ||
+      (candidateMatchesMappingRoute && !mappingMatchesRoute));
+  const mappingLoadError =
+    currentStep === "verify" &&
+    (!analyzerId ||
+      (saveError && !candidate) ||
+      (candidate && !candidateProfileValid) ||
+      (candidateMatchesMappingRoute &&
+        mappingMatchesRoute &&
+        mappingResult.error));
+
+  const verification = useMemo(() => {
+    if (!mapping) {
+      return {
+        testsReady: 0,
+        testsTotal: 0,
+        resultsReady: 0,
+        resultsTotal: 0,
+        complete: false,
+      };
+    }
+
+    const resultRows = mapping.tests.flatMap((test) => test.results || []);
+    const testIsReady = (test) =>
+      test.mappingState === "EXCLUDED" ||
+      (test.mappingState === "BOUND" && Boolean(test.testId));
+    const resultIsReady = (result) =>
+      result.mappingState === "EXCLUDED" ||
+      (result.mappingState === "BOUND" && Boolean(result.resultOptionId));
+    const testsReady = mapping.tests.filter(testIsReady).length;
+    const resultsReady = resultRows.filter(resultIsReady).length;
+
+    return {
+      testsReady,
+      testsTotal: mapping.tests.length,
+      resultsReady,
+      resultsTotal: resultRows.length,
+      complete:
+        mapping.tests.length > 0 &&
+        testsReady === mapping.tests.length &&
+        resultsReady === resultRows.length &&
+        mapping.confirmation?.state === "CURRENT",
+    };
+  }, [mapping]);
 
   const typeLabel = (type) =>
     type
@@ -210,6 +340,23 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
   const createTypeTarget = `/analyzers/types?action=create&returnTo=${encodeURIComponent(
     returnTo,
   )}`;
+  const currentSetupUrl = `${location.pathname}${location.search}`;
+  const mappingEditorTarget = mappingRoute.valid
+    ? `/analyzers/types/${encodeURIComponent(
+        mappingRoute.profileId,
+      )}/mapping?revision=${mappingRoute.revision}&returnTo=${encodeURIComponent(
+        currentSetupUrl,
+      )}`
+    : "/analyzers/types";
+
+  const continueToConnect = () => {
+    if (!verification.complete) {
+      return;
+    }
+    const params = new URLSearchParams(location.search);
+    params.set("setup", "connect");
+    history.push({ pathname: location.pathname, search: params.toString() });
+  };
 
   return (
     <section
@@ -380,6 +527,200 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     </dd>
                   </div>
                 </dl>
+              )}
+              {state === "current" && step === "verify" && (
+                <div className="analyzer-setup__verify">
+                  {mappingLoading ? (
+                    <Loading
+                      small
+                      withOverlay={false}
+                      description={intl.formatMessage({
+                        id: "analyzer.setup.verify.loading",
+                      })}
+                    />
+                  ) : mappingLoadError || !mapping ? (
+                    <InlineNotification
+                      kind="error"
+                      lowContrast
+                      hideCloseButton
+                      title={intl.formatMessage({
+                        id: "analyzer.setup.verify.loadError",
+                      })}
+                    />
+                  ) : (
+                    <>
+                      <div className="analyzer-setup__verify-heading">
+                        <div>
+                          <h4>
+                            {intl.formatMessage({
+                              id: "analyzer.setup.verify.heading",
+                            })}
+                          </h4>
+                          <p>
+                            {intl.formatMessage(
+                              { id: "analyzer.setup.verify.profile" },
+                              {
+                                name: mapping.displayName,
+                                protocol: mapping.protocol,
+                                revision: mapping.profileRevision,
+                              },
+                            )}
+                          </p>
+                        </div>
+                        <Tag
+                          type={
+                            mapping.confirmation?.state === "CURRENT"
+                              ? "green"
+                              : "warm-gray"
+                          }
+                        >
+                          {intl.formatMessage({
+                            id: `analyzerType.mappingEditor.confirmation.summary.${String(
+                              mapping.confirmation?.state || "UNCONFIRMED",
+                            ).toLowerCase()}`,
+                          })}
+                        </Tag>
+                      </div>
+
+                      {!verification.complete && (
+                        <InlineNotification
+                          kind="warning"
+                          lowContrast
+                          hideCloseButton
+                          title={intl.formatMessage({
+                            id: "analyzer.setup.verify.attention",
+                          })}
+                        />
+                      )}
+
+                      <dl
+                        className="analyzer-setup__verify-counts"
+                        aria-label={intl.formatMessage({
+                          id: "analyzer.setup.verify.counts",
+                        })}
+                      >
+                        <div>
+                          <dt>
+                            {intl.formatMessage({
+                              id: "analyzerType.mappingEditor.tests",
+                            })}
+                          </dt>
+                          <dd>
+                            {intl.formatMessage(
+                              { id: "analyzer.setup.verify.testsReady" },
+                              {
+                                ready: verification.testsReady,
+                                total: verification.testsTotal,
+                              },
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>
+                            {intl.formatMessage({
+                              id: "analyzerType.mappingEditor.results",
+                            })}
+                          </dt>
+                          <dd>
+                            {intl.formatMessage(
+                              { id: "analyzer.setup.verify.resultsReady" },
+                              {
+                                ready: verification.resultsReady,
+                                total: verification.resultsTotal,
+                              },
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <section
+                        className="analyzer-setup__verify-recognition"
+                        aria-labelledby="analyzer-setup-recognition"
+                      >
+                        <div className="analyzer-setup__verify-recognition-heading">
+                          <h4 id="analyzer-setup-recognition">
+                            {intl.formatMessage({
+                              id: "analyzerType.recognition.heading",
+                            })}
+                          </h4>
+                          <Tag type="blue">
+                            {formatRecognitionMode(
+                              intl,
+                              mapping.controlRecognition.mode,
+                            )}
+                          </Tag>
+                        </div>
+                        {mapping.controlRecognition.mode === "NONE" ? (
+                          <p>
+                            {intl.formatMessage({
+                              id: "analyzerType.recognition.mode.none",
+                            })}
+                          </p>
+                        ) : (
+                          <ul>
+                            {mapping.controlRecognition.conditions.map(
+                              (condition) => (
+                                <li key={condition.key}>
+                                  {formatRecognitionCondition(intl, condition)}
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        )}
+                      </section>
+
+                      {mapping.confirmation?.state === "CURRENT" &&
+                        mapping.confirmation.confirmedByDisplayName &&
+                        mapping.confirmation.confirmedAt && (
+                          <InlineNotification
+                            kind="success"
+                            lowContrast
+                            hideCloseButton
+                            title={intl.formatMessage({
+                              id: "analyzerType.mappingEditor.confirmation.current",
+                            })}
+                            subtitle={intl.formatMessage(
+                              {
+                                id: "analyzerType.mappingEditor.confirmation.by",
+                              },
+                              {
+                                actor:
+                                  mapping.confirmation.confirmedByDisplayName,
+                                date: intl.formatDate(
+                                  mapping.confirmation.confirmedAt,
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                  },
+                                ),
+                              },
+                            )}
+                          />
+                        )}
+                    </>
+                  )}
+
+                  <div className="analyzer-setup__verify-actions">
+                    <CarbonLink as={RouterLink} to={mappingEditorTarget}>
+                      {intl.formatMessage({
+                        id: "analyzer.setup.verify.review",
+                      })}
+                    </CarbonLink>
+                    <Button
+                      type="button"
+                      renderIcon={ArrowRight}
+                      disabled={!verification.complete}
+                      onClick={continueToConnect}
+                    >
+                      {intl.formatMessage({
+                        id: "analyzer.setup.verify.continue",
+                      })}
+                    </Button>
+                  </div>
+                </div>
               )}
             </li>
           );
