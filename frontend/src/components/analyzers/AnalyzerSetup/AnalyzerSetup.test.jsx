@@ -1,7 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import { BrowserRouter, useLocation } from "react-router-dom";
+import { createMemoryHistory } from "history";
+import { BrowserRouter, Router, useLocation } from "react-router-dom";
 import { IntlProvider } from "react-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,6 +12,7 @@ import {
   getAnalyzer,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
+  updateAnalyzer,
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
 import AnalyzerSetup from "./AnalyzerSetup";
@@ -19,6 +22,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzer: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
+  updateAnalyzer: vi.fn(),
 }));
 
 const activeType = {
@@ -49,6 +53,18 @@ const renderSetup = () =>
       </IntlProvider>
     </BrowserRouter>,
   );
+
+const renderSetupWithHistory = (initialEntry) => {
+  const history = createMemoryHistory({ initialEntries: [initialEntry] });
+  render(
+    <Router history={history}>
+      <IntlProvider locale="en" messages={messages}>
+        <SetupHarness />
+      </IntlProvider>
+    </Router>,
+  );
+  return history;
+};
 
 describe("AnalyzerSetup Instrument step", () => {
   beforeEach(() => {
@@ -240,5 +256,90 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(
       screen.getByRole("heading", { level: 3, name: "Verify" }).closest("li"),
     ).toHaveAttribute("aria-current", "step");
+  });
+
+  it("returns to and updates the same candidate through browser history", async () => {
+    const candidate = {
+      id: "42",
+      name: "GX bench 1",
+      profileId: activeType.profileId,
+      profileRevision: activeType.revision,
+      testUnitIds: ["7"],
+      status: "SETUP",
+    };
+    createAnalyzer.mockImplementation((_payload, callback) =>
+      callback(candidate),
+    );
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback({ ...candidate, ...payload }),
+    );
+    const history = renderSetupWithHistory("/analyzers?setup=instrument");
+
+    const typePicker = await screen.findByRole("combobox", {
+      name: "Analyzer type",
+    });
+    await userEvent.click(typePicker);
+    await userEvent.type(typePicker, "GeneXpert");
+    await userEvent.click(
+      await screen.findByRole("option", {
+        name: "GeneXpert MTB/RIF · Cepheid · ASTM · revision 3",
+      }),
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Analyzer name" }),
+      "GX bench 1",
+    );
+    const labUnitPicker = screen.getByRole("combobox", {
+      name: /^Lab units/,
+    });
+    await userEvent.click(labUnitPicker);
+    await userEvent.type(labUnitPicker, "Molecular");
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Molecular Biology" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Continue to Verify" }),
+    );
+
+    expect(new URLSearchParams(history.location.search).get("setup")).toBe(
+      "verify",
+    );
+    history.goBack();
+    await waitFor(() =>
+      expect(new URLSearchParams(history.location.search).get("setup")).toBe(
+        "instrument",
+      ),
+    );
+    expect(new URLSearchParams(history.location.search).get("analyzerId")).toBe(
+      "42",
+    );
+
+    createAnalyzer.mockClear();
+    const nameInput = screen.getByRole("textbox", { name: "Analyzer name" });
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "GX bench A");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Continue to Verify" }),
+    );
+
+    expect(createAnalyzer).not.toHaveBeenCalled();
+    expect(updateAnalyzer).toHaveBeenCalledWith(
+      "42",
+      {
+        name: "GX bench A",
+        profileId: activeType.profileId,
+        profileRevision: activeType.revision,
+        status: "SETUP",
+        testUnitIds: ["7"],
+      },
+      expect.any(Function),
+    );
+    expect(new URLSearchParams(history.location.search).get("setup")).toBe(
+      "verify",
+    );
+    expect(new URLSearchParams(history.location.search).get("analyzerId")).toBe(
+      "42",
+    );
   });
 });
