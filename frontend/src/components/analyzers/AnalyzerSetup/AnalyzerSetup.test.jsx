@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { createMemoryHistory } from "history";
@@ -343,6 +343,41 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(
       screen.getByRole("heading", { level: 3, name: "Verify" }).closest("li"),
     ).toHaveAttribute("aria-current", "step");
+  });
+
+  it("loads verification only for the persisted candidate profile revision", async () => {
+    let loadCandidate;
+    getAnalyzer.mockImplementation((_id, callback) => {
+      loadCandidate = callback;
+    });
+    const history = renderSetupWithHistory(
+      "/analyzers?setup=verify&analyzerId=42&profile=site.inactive&revision=9",
+    );
+
+    expect(getAnalyzerTypeMapping).not.toHaveBeenCalled();
+
+    await act(async () => {
+      loadCandidate({
+        id: "42",
+        name: "GX bench 1",
+        profileId: activeType.profileId,
+        profileRevision: activeType.revision,
+        testUnitIds: ["7"],
+        status: "SETUP",
+      });
+    });
+
+    await waitFor(() =>
+      expect(getAnalyzerTypeMapping).toHaveBeenCalledWith(
+        activeType.profileId,
+        activeType.revision,
+        expect.any(Function),
+      ),
+    );
+    expect(getAnalyzerTypeMapping).toHaveBeenCalledTimes(1);
+    const params = new URLSearchParams(history.location.search);
+    expect(params.get("profile")).toBe(activeType.profileId);
+    expect(params.get("revision")).toBe(String(activeType.revision));
   });
 
   it("reloads the shared mapping sign-off and advances a current candidate to Connect", async () => {
