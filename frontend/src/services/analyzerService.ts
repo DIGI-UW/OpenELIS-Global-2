@@ -295,7 +295,11 @@ export const getAnalyzerLabUnits = (
   callback: DataCallback<AnalyzerLabUnit[]>,
   signal: AbortSignal | null = null,
 ) => {
-  getFromOpenElisServer("/rest/test-catalog/lab-units", callback, signal);
+  getFromOpenElisServer<AnalyzerLabUnit[]>(
+    "/rest/test-catalog/lab-units",
+    (response) => callback(response ?? []),
+    signal,
+  );
 };
 
 /**
