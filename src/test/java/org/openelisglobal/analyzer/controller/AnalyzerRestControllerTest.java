@@ -182,6 +182,19 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 new TypeReference<>() {
                 });
         assertEquals(List.of("36", "136"), reloaded.get("testUnitIds"));
+
+        String updatedName = uniqueName + "-Updated";
+        String updateBody = "{\"name\":\"" + updatedName + "\",\"status\":\"SETUP\"," + "\"testUnitIds\":[\"136\"]}";
+        mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(updateBody))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(analyzerId)).andExpect(jsonPath("$.name").value(updatedName));
+
+        MvcResult updatedReloadResult = mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value(updatedName)).andReturn();
+        Map<String, Object> updated = objectMapper.readValue(updatedReloadResult.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertEquals(List.of("136"), updated.get("testUnitIds"));
     }
 
     @Test
