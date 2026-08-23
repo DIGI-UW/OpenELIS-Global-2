@@ -1,6 +1,8 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +19,7 @@ public class BridgeAnalyzerProfileTest {
                 {
                   "profileMeta":{"id":"site.mock-analyzer","displayName":"Mock Analyzer"},
                   "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                  "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":true},
                   "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
                   "catalog":{
                     "revision":2,
@@ -66,5 +69,27 @@ public class BridgeAnalyzerProfileTest {
         assertEquals("SARS-CoV-2 RNA", first.normalizedCoding().display());
         assertEquals("RAW-B", profile.testDefinitions().get(1).analyzerCode());
         assertEquals("94500-6", profile.testDefinitions().get(1).loinc());
+        assertTrue(profile.supportsLisInitiated());
+    }
+
+    @Test
+    public void rejectsProfileWithoutDeclaredLisInitiatedCapability() throws Exception {
+        JsonNode document = objectMapper.readTree("""
+                {
+                  "profileMeta":{"id":"site.mock-analyzer","displayName":"Mock Analyzer"},
+                  "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                  "communication":{"mode":"ANALYZER_INITIATED"},
+                  "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
+                  "catalog":{
+                    "revision":2,
+                    "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "source":"SITE",
+                    "status":"ACTIVE"
+                  },
+                  "default_test_mappings":[]
+                }
+                """);
+
+        assertThrows(IllegalArgumentException.class, () -> BridgeAnalyzerProfile.from(document));
     }
 }

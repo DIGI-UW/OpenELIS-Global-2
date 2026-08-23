@@ -21,6 +21,7 @@ public final class BridgeAnalyzerProfile {
     private final String protocol;
     private final String protocolVersion;
     private final String communicationMode;
+    private final Boolean supportsLisInitiated;
     private final String parentProfileId;
     private final Integer parentRevision;
     private final List<TestDefinition> testDefinitions;
@@ -28,8 +29,8 @@ public final class BridgeAnalyzerProfile {
 
     private BridgeAnalyzerProfile(JsonNode document, String profileId, int revision, String revisionFingerprint,
             String displayName, String manufacturer, String model, String source, String status, String protocol,
-            String protocolVersion, String communicationMode, String parentProfileId, Integer parentRevision,
-            List<TestDefinition> testDefinitions, InstanceDefaults instanceDefaults) {
+            String protocolVersion, String communicationMode, Boolean supportsLisInitiated, String parentProfileId,
+            Integer parentRevision, List<TestDefinition> testDefinitions, InstanceDefaults instanceDefaults) {
         this.document = document.deepCopy();
         this.profileId = profileId;
         this.revision = revision;
@@ -42,6 +43,7 @@ public final class BridgeAnalyzerProfile {
         this.protocol = protocol;
         this.protocolVersion = protocolVersion;
         this.communicationMode = communicationMode;
+        this.supportsLisInitiated = supportsLisInitiated;
         this.parentProfileId = parentProfileId;
         this.parentRevision = parentRevision;
         this.testDefinitions = List.copyOf(testDefinitions);
@@ -57,6 +59,7 @@ public final class BridgeAnalyzerProfile {
         JsonNode protocol = document.path("protocol");
         JsonNode configDefaults = document.path("configDefaults");
         String profileId = requiredText(profileMeta, "id");
+        String protocolName = requiredText(protocol, "name");
         int revision = catalog.path("revision").asInt(-1);
         if (revision < 1) {
             throw new IllegalArgumentException("Bridge analyzer profile revision must be at least 1");
@@ -88,13 +91,19 @@ public final class BridgeAnalyzerProfile {
 
         JsonNode lineage = catalog.path("lineage");
         JsonNode communication = document.path("communication");
+        Boolean supportsLisInitiated = nullableBoolean(communication, "supports_lis_initiated");
+        if (!"FILE".equals(protocolName) && supportsLisInitiated == null) {
+            throw new IllegalArgumentException(
+                    "Bridge analyzer profile supports_lis_initiated is required for " + protocolName);
+        }
         InstanceDefaults defaults = new InstanceDefaults(nullableText(configDefaults, "transport"),
                 nullableText(configDefaults, "connectionRole"), nullableInteger(configDefaults, "port"));
         return new BridgeAnalyzerProfile(document, profileId, revision, fingerprint,
                 requiredText(profileMeta, "displayName"), firstText(document, profileMeta, "manufacturer"),
                 nullableText(document, "model"), requiredText(catalog, "source"), requiredText(catalog, "status"),
-                requiredText(protocol, "name"), nullableText(protocol, "version"), nullableText(communication, "mode"),
-                nullableText(lineage, "parentProfileId"), nullableInteger(lineage, "parentRevision"), tests, defaults);
+                protocolName, nullableText(protocol, "version"), nullableText(communication, "mode"),
+                supportsLisInitiated, nullableText(lineage, "parentProfileId"),
+                nullableInteger(lineage, "parentRevision"), tests, defaults);
     }
 
     public JsonNode document() {
@@ -145,6 +154,10 @@ public final class BridgeAnalyzerProfile {
         return communicationMode;
     }
 
+    public Boolean supportsLisInitiated() {
+        return supportsLisInitiated;
+    }
+
     public String parentProfileId() {
         return parentProfileId;
     }
@@ -185,6 +198,17 @@ public final class BridgeAnalyzerProfile {
     private static Integer nullableInteger(JsonNode node, String field) {
         JsonNode value = node.path(field);
         return value.isIntegralNumber() && value.canConvertToInt() ? value.asInt() : null;
+    }
+
+    private static Boolean nullableBoolean(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+        if (!value.isBoolean()) {
+            throw new IllegalArgumentException("Bridge analyzer profile " + field + " must be a boolean");
+        }
+        return value.asBoolean();
     }
 
     private static List<String> textList(JsonNode values, String label) {
