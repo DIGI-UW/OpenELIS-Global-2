@@ -259,7 +259,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     }
 
     private Population loadPopulation(NormalizedQuery query) {
-        List<MicroCase> cases = caseDAO.getFinalizedBacteriologyByClosedAtRange(query.fromInclusive, query.toExclusive);
+        List<MicroCase> cases = caseDAO.getFinalizedBacteriologyByCollectionDateRange(query.fromInclusive,
+                query.toExclusive);
         if (cases.isEmpty()) {
             return new Population(List.of(), Map.of(), List.of(), Map.of(), Map.of());
         }
@@ -363,7 +364,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
     private List<Candidate> deduplicate(List<Candidate> candidates, String policy) {
         List<Candidate> sorted = candidates.stream()
-                .sorted(Comparator.comparing((Candidate value) -> value.microCase.getClosedAt())
+                .sorted(Comparator.comparing((Candidate value) -> value.context.collectionTimestamp)
                         .thenComparing(value -> value.microCase.getId()).thenComparing(value -> value.isolate.getId()))
                 .toList();
         if (NONE.equals(policy)) {
@@ -378,9 +379,10 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                     : "UNKNOWN:" + candidate.isolate.getId();
             String key = patientKey + "|" + organismKey;
             Timestamp first = firstByPatientOrganism.get(key);
-            if (first == null || candidate.microCase.getClosedAt().getTime() - first.getTime() >= SEVEN_DAYS_MILLIS) {
+            if (first == null
+                    || candidate.context.collectionTimestamp.getTime() - first.getTime() >= SEVEN_DAYS_MILLIS) {
                 included.add(candidate);
-                firstByPatientOrganism.put(key, candidate.microCase.getClosedAt());
+                firstByPatientOrganism.put(key, candidate.context.collectionTimestamp);
             }
         }
         return included;
@@ -400,6 +402,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 : source.enteredDate().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
         context.collectionDate = source == null || source.collectionDate() == null ? ""
                 : source.collectionDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        context.collectionTimestamp = source == null ? null : source.collectionDate();
         context.specimenTypeId = source == null ? "" : safe(source.specimenTypeId());
         context.specimenTypeLabel = source == null ? "" : safe(source.specimenTypeLabel());
         context.specimenType = source == null ? "" : safe(source.specimenTypeCode());
@@ -547,6 +550,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         private String accessionNumber;
         private String enteredDate;
         private String collectionDate;
+        private Timestamp collectionTimestamp;
         private String specimenTypeId;
         private String specimenTypeLabel;
         private String specimenType;

@@ -12,11 +12,15 @@ import java.util.stream.Collectors;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistQuery;
 import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistRow;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
+import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionForm;
+import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
 import org.openelisglobal.microbiology.form.MicroWorklistInoculationContext;
@@ -31,11 +35,13 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,21 +55,25 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     private static final List<String> RESISTANCE_FLAGS = List.of("ESBL", "MRSA", "CRE", "VRE", "MDR");
 
     private final MicroCaseDAO caseDAO;
+    private final MicroCaseOrderDetailDAO caseOrderDetailDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroAstRunDAO astRunDAO;
     private final MicroCriticalCommunicationDAO communicationDAO;
     private final MicroWorklistContextDAO contextDAO;
     private final MicroAstPanelDAO panelDAO;
+    private final MicroPatientOriginDAO patientOriginDAO;
 
-    public MicroWorklistServiceImpl(MicroCaseDAO caseDAO, MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO,
-            MicroCriticalCommunicationDAO communicationDAO, MicroWorklistContextDAO contextDAO,
-            MicroAstPanelDAO panelDAO) {
+    public MicroWorklistServiceImpl(MicroCaseDAO caseDAO, MicroCaseOrderDetailDAO caseOrderDetailDAO,
+            MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO, MicroCriticalCommunicationDAO communicationDAO,
+            MicroWorklistContextDAO contextDAO, MicroAstPanelDAO panelDAO, MicroPatientOriginDAO patientOriginDAO) {
         this.caseDAO = caseDAO;
+        this.caseOrderDetailDAO = caseOrderDetailDAO;
         this.isolateDAO = isolateDAO;
         this.astRunDAO = astRunDAO;
         this.communicationDAO = communicationDAO;
         this.contextDAO = contextDAO;
         this.panelDAO = panelDAO;
+        this.patientOriginDAO = patientOriginDAO;
     }
 
     @Override
@@ -88,6 +98,9 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 communicationDAO.getByCaseIds(caseIds), MicroCriticalCommunication::getCaseId);
         Map<String, MicroWorklistSpecimenContext> specimenContextBySampleItem = indexBy(
                 contextDAO.getSpecimenContexts(sampleItemIds), MicroWorklistSpecimenContext::sampleItemId);
+        Map<String, MicroCaseOrderDetail> orderDetailsByCase = AST_GRAIN.equals(normalized.grain)
+                ? indexBy(caseOrderDetailDAO.getByCaseIds(caseIds), MicroCaseOrderDetail::getCaseId)
+                : Map.of();
         Map<String, MicroWorklistActivityContext> activityContextByCase = indexBy(
                 contextDAO.getLatestActivityContexts(caseIds), MicroWorklistActivityContext::caseId);
         Map<String, MicroWorklistInoculationContext> inoculationContextByCase = indexBy(
@@ -105,15 +118,21 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         List<MicroWorklistRowForm> rows = AST_GRAIN.equals(normalized.grain)
                 ? toAstRows(worklistCases, isolatesByCase, runsByIsolate)
                 : toCultureRows(worklistCases, isolatesByCase, runsByIsolate, communicationsByCase, casesBySampleItem);
-        enrichRows(rows, specimenContextBySampleItem, activityContextByCase, panelsById);
+        enrichRows(rows, specimenContextBySampleItem, activityContextByCase, panelsById, orderDetailsByCase);
         enrichCultureTiming(rows, indexBy(worklistCases, MicroCase::getId), inoculationContextByCase,
                 timingContextByMethodAndWorkflow);
+        Map<String, String> patientOriginLabels = AST_GRAIN.equals(normalized.grain) ? patientOriginLabels(rows)
+                : Map.of();
+        MicroWhonetFilterOptionsForm surveillanceOptions = AST_GRAIN.equals(normalized.grain)
+                ? surveillanceFilterOptions(rows, patientOriginLabels)
+                : new MicroWhonetFilterOptionsForm();
         List<MicroWorklistRowForm> summaryRows = new ArrayList<>(rows);
         summaryRows.removeIf(row -> !matches(row, queryWithoutActionFilters(normalized)));
         rows.removeIf(row -> !matches(row, normalized));
         rows.sort(comparatorFor(normalized.sort));
 
         MicroWorklistPageForm page = new MicroWorklistPageForm();
+        page.filterOptions = surveillanceOptions;
         page.summary = summarize(summaryRows);
         addResistanceHits(page.summary, runsByIsolate);
         page.recentActivity
@@ -142,9 +161,12 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 MicroWorklistSpecimenContext::sampleItemId);
         Map<String, MicroWorklistActivityContext> activities = indexBy(contextDAO.getLatestActivityContexts(caseIds),
                 MicroWorklistActivityContext::caseId);
+        Map<String, MicroCaseOrderDetail> orderDetails = indexBy(caseOrderDetailDAO.getByCaseIds(caseIds),
+                MicroCaseOrderDetail::getCaseId);
         List<String> panelIds = selected.stream().map(item -> item.run().getPanelId())
                 .filter(panelId -> panelId != null && !panelId.isBlank()).distinct().toList();
-        enrichRows(rows, specimens, activities, indexBy(panelDAO.getByIds(panelIds), MicroAstPanel::getId));
+        enrichRows(rows, specimens, activities, indexBy(panelDAO.getByIds(panelIds), MicroAstPanel::getId),
+                orderDetails);
 
         MicroWorklistPageForm page = new MicroWorklistPageForm();
         page.total = (int) Math.min(Integer.MAX_VALUE, astRunDAO.countReviewedWorklist(reviewedQuery));
@@ -160,6 +182,12 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         MicroWorklistQueryForm summaryQuery = new MicroWorklistQueryForm();
         summaryQuery.grain = query.grain;
         summaryQuery.workflow = query.workflow;
+        summaryQuery.from = query.from;
+        summaryQuery.to = query.to;
+        summaryQuery.specimen = query.specimen;
+        summaryQuery.organism = query.organism;
+        summaryQuery.origin = query.origin;
+        summaryQuery.significance = query.significance;
         summaryQuery.urgency = query.urgency;
         summaryQuery.q = query.q;
         summaryQuery.sort = query.sort;
@@ -265,6 +293,12 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         }
         normalized.grain = AST_GRAIN.equals(query.grain) ? AST_GRAIN : CULTURES_GRAIN;
         normalized.status = statusForGrain(normalized.grain, query.status);
+        normalized.from = AST_GRAIN.equals(normalized.grain) ? filterDate(query.from) : "";
+        normalized.to = AST_GRAIN.equals(normalized.grain) ? filterDate(query.to) : "";
+        normalized.specimen = AST_GRAIN.equals(normalized.grain) ? filterValues(query.specimen) : List.of();
+        normalized.organism = AST_GRAIN.equals(normalized.grain) ? filterValues(query.organism) : List.of();
+        normalized.origin = AST_GRAIN.equals(normalized.grain) ? filterValues(query.origin) : List.of();
+        normalized.significance = AST_GRAIN.equals(normalized.grain) ? filterValues(query.significance) : List.of();
         normalized.workflow = filterText(query.workflow);
         normalized.stage = filterText(query.stage);
         normalized.urgency = filterText(query.urgency);
@@ -296,6 +330,26 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
             return false;
         }
         if (!query.due.isEmpty() && !query.due.equals(row.dueAction)) {
+            return false;
+        }
+        if (!query.from.isEmpty() && (row.collectionDate == null
+                || row.collectionDate.toLocalDateTime().toLocalDate().isBefore(LocalDate.parse(query.from)))) {
+            return false;
+        }
+        if (!query.to.isEmpty() && (row.collectionDate == null
+                || row.collectionDate.toLocalDateTime().toLocalDate().isAfter(LocalDate.parse(query.to)))) {
+            return false;
+        }
+        if (!query.specimen.isEmpty() && !query.specimen.contains(row.specimenTypeId)) {
+            return false;
+        }
+        if (!query.organism.isEmpty() && !query.organism.contains(row.organismId)) {
+            return false;
+        }
+        if (!query.origin.isEmpty() && !query.origin.contains(row.patientOrigin)) {
+            return false;
+        }
+        if (!query.significance.isEmpty() && !query.significance.contains(row.isolateSignificance)) {
             return false;
         }
         if (query.q.isEmpty()) {
@@ -368,6 +422,21 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     private String filterText(String value) {
         String normalized = text(value);
         return "ALL".equalsIgnoreCase(normalized) ? "" : normalized;
+    }
+
+    private String filterDate(String value) {
+        try {
+            return LocalDate.parse(text(value)).toString();
+        } catch (RuntimeException exception) {
+            return "";
+        }
+    }
+
+    private List<String> filterValues(List<String> values) {
+        if (values == null) {
+            return List.of();
+        }
+        return values.stream().map(this::text).filter(value -> !value.isEmpty()).distinct().sorted().toList();
     }
 
     private String safe(String value) {
@@ -448,6 +517,8 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         row.priority = microCase.getPriority();
         row.isolateId = isolate.getId();
         row.isolateLabel = isolate.getIsolateLabel();
+        row.organismId = isolate.getOrganismId();
+        row.isolateSignificance = isolate.getSignificance();
         row.organismDisplay = text(isolate.getPreliminaryOrganismText()).isEmpty() ? isolate.getOrganismId()
                 : isolate.getPreliminaryOrganismText();
         if (run == null) {
@@ -504,13 +575,20 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
 
     private void enrichRows(List<MicroWorklistRowForm> rows,
             Map<String, MicroWorklistSpecimenContext> specimenContextBySampleItem,
-            Map<String, MicroWorklistActivityContext> activityContextByCase, Map<String, MicroAstPanel> panelsById) {
+            Map<String, MicroWorklistActivityContext> activityContextByCase, Map<String, MicroAstPanel> panelsById,
+            Map<String, MicroCaseOrderDetail> orderDetailsByCase) {
         for (MicroWorklistRowForm row : rows) {
             MicroWorklistSpecimenContext specimen = specimenContextBySampleItem.get(row.sampleItemId);
             if (specimen != null) {
                 row.accessionNumber = specimen.accessionNumber();
                 row.patientDisplay = specimen.patientDisplay();
                 row.specimenDisplay = specimen.specimenDisplay();
+                row.collectionDate = specimen.collectionDate();
+                row.specimenTypeId = specimen.specimenTypeId();
+            }
+            MicroCaseOrderDetail orderDetail = orderDetailsByCase.get(row.caseId);
+            if (orderDetail != null) {
+                row.patientOrigin = orderDetail.getPatientOrigin();
             }
             MicroWorklistActivityContext activity = activityContextByCase.get(row.caseId);
             if (activity != null) {
@@ -522,6 +600,43 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 row.panelName = panel.getName();
             }
         }
+    }
+
+    private Map<String, String> patientOriginLabels(List<MicroWorklistRowForm> rows) {
+        List<String> codes = rows.stream().map(row -> row.patientOrigin)
+                .filter(value -> value != null && !value.isBlank()).distinct().toList();
+        return patientOriginDAO.getByCodes(codes).stream()
+                .collect(Collectors.toMap(MicroPatientOrigin::getCode,
+                        origin -> origin.getDisplayName() == null || origin.getDisplayName().isBlank()
+                                ? origin.getCode()
+                                : origin.getDisplayName()));
+    }
+
+    private MicroWhonetFilterOptionsForm surveillanceFilterOptions(List<MicroWorklistRowForm> rows,
+            Map<String, String> patientOriginLabels) {
+        MicroWhonetFilterOptionsForm options = new MicroWhonetFilterOptionsForm();
+        options.specimenTypes.addAll(filterOptions(rows, row -> row.specimenTypeId, row -> row.specimenDisplay));
+        options.organisms.addAll(filterOptions(rows, row -> row.organismId, row -> row.organismDisplay));
+        options.patientOrigins.addAll(filterOptions(rows, row -> row.patientOrigin,
+                row -> patientOriginLabels.getOrDefault(row.patientOrigin, row.patientOrigin)));
+        options.significance
+                .addAll(filterOptions(rows, row -> row.isolateSignificance, row -> row.isolateSignificance));
+        return options;
+    }
+
+    private List<MicroWhonetFilterOptionForm> filterOptions(List<MicroWorklistRowForm> rows,
+            Function<MicroWorklistRowForm, String> id, Function<MicroWorklistRowForm, String> label) {
+        Map<String, String> labels = rows.stream().filter(row -> !text(id.apply(row)).isEmpty())
+                .collect(Collectors.toMap(row -> id.apply(row), row -> {
+                    String display = text(label.apply(row));
+                    return display.isEmpty() ? id.apply(row) : display;
+                }, (first, ignored) -> first));
+        return labels.entrySet().stream()
+                .map(entry -> new MicroWhonetFilterOptionForm(entry.getKey(), entry.getValue()))
+                .sorted(Comparator
+                        .comparing((MicroWhonetFilterOptionForm option) -> option.label, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(option -> option.id))
+                .toList();
     }
 
     private boolean hasOpenCriticalCommunication(List<MicroCriticalCommunication> communications) {

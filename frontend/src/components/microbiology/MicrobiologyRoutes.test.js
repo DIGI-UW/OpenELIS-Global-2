@@ -6,6 +6,8 @@ import {
 } from "./MicrobiologyRoutes";
 
 describe("MicrobiologyRoutes", () => {
+  const now = new Date(2026, 7, 4, 12, 0, 0);
+
   it("composes worklist filters in a deterministic order", () => {
     expect(
       getMicrobiologyWorklistUrl({
@@ -25,26 +27,51 @@ describe("MicrobiologyRoutes", () => {
 
   it("composes a canonical AST grain and status before shared filters", () => {
     expect(
-      getMicrobiologyWorklistUrl({
-        grain: "ast",
-        status: "results-in",
-        urgency: "HIGH",
-        q: "E. coli",
-      }),
+      getMicrobiologyWorklistUrl(
+        {
+          grain: "ast",
+          status: "results-in",
+          urgency: "HIGH",
+          q: "E. coli",
+        },
+        now,
+      ),
     ).toBe(
-      "/Microbiology/worklist?grain=ast&status=results-in&urgency=HIGH&q=E.+coli",
+      "/Microbiology/worklist?grain=ast&status=results-in&from=2026-08-01&to=2026-08-31&urgency=HIGH&q=E.+coli",
+    );
+  });
+
+  it("defaults an AST worklist period to this month and round-trips surveillance filters", () => {
+    const state = parseMicrobiologyWorklistSearch(
+      "?grain=ast&specimen=urine&specimen=blood&origin=INPATIENT&organism=organism-1&significance=NORMAL_FLORA",
+      now,
+    );
+
+    expect(state).toMatchObject({
+      from: "2026-08-01",
+      to: "2026-08-31",
+      specimen: ["blood", "urine"],
+      origin: ["INPATIENT"],
+      organism: ["organism-1"],
+      significance: ["NORMAL_FLORA"],
+    });
+    expect(getMicrobiologyWorklistUrl(state, now)).toBe(
+      "/Microbiology/worklist?grain=ast&from=2026-08-01&to=2026-08-31&specimen=blood&specimen=urine&organism=organism-1&origin=INPATIENT&significance=NORMAL_FLORA",
     );
   });
 
   it("preserves the reviewed AST view as canonical worklist state", () => {
-    const url = getMicrobiologyWorklistUrl({
-      grain: "ast",
-      status: "reviewed",
-      q: "LAB-1001",
-    });
+    const url = getMicrobiologyWorklistUrl(
+      {
+        grain: "ast",
+        status: "reviewed",
+        q: "LAB-1001",
+      },
+      now,
+    );
 
     expect(url).toBe(
-      "/Microbiology/worklist?grain=ast&status=reviewed&q=LAB-1001",
+      "/Microbiology/worklist?grain=ast&status=reviewed&from=2026-08-01&to=2026-08-31&q=LAB-1001",
     );
     expect(parseMicrobiologyWorklistSearch(url.split("?")[1])).toMatchObject({
       grain: "ast",
@@ -61,6 +88,12 @@ describe("MicrobiologyRoutes", () => {
     ).toEqual({
       grain: "cultures",
       status: "",
+      from: "",
+      to: "",
+      specimen: [],
+      organism: [],
+      origin: [],
+      significance: [],
       workflow: "BACTERIOLOGY",
       stage: "",
       urgency: "",
@@ -84,6 +117,12 @@ describe("MicrobiologyRoutes", () => {
     ).toMatchObject({
       grain: "cultures",
       status: "",
+      from: "",
+      to: "",
+      specimen: [],
+      organism: [],
+      origin: [],
+      significance: [],
     });
   });
 
@@ -104,6 +143,12 @@ describe("MicrobiologyRoutes", () => {
     ).toEqual({
       grain: "cultures",
       status: "",
+      from: "",
+      to: "",
+      specimen: [],
+      organism: [],
+      origin: [],
+      significance: [],
       workflow: "BACTERIOLOGY",
       urgency: "HIGH",
       stage: "",
@@ -123,16 +168,20 @@ describe("MicrobiologyRoutes", () => {
   });
 
   it("preserves the exact AST run and worklist grain in a case URL", () => {
-    const url = getMicrobiologyCaseUrl("case-1", {
-      grain: "ast",
-      status: "results-in",
-      section: "ast",
-      astIsolateId: "isolate-1",
-      astRunId: "run / 1",
-    });
+    const url = getMicrobiologyCaseUrl(
+      "case-1",
+      {
+        grain: "ast",
+        status: "results-in",
+        section: "ast",
+        astIsolateId: "isolate-1",
+        astRunId: "run / 1",
+      },
+      now,
+    );
 
     expect(url).toBe(
-      "/Microbiology/cases/case-1?grain=ast&status=results-in&section=ast&astIsolateId=isolate-1&astRunId=run+%2F+1",
+      "/Microbiology/cases/case-1?grain=ast&status=results-in&from=2026-08-01&to=2026-08-31&section=ast&astIsolateId=isolate-1&astRunId=run+%2F+1",
     );
     expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
       grain: "ast",
@@ -261,16 +310,20 @@ describe("MicrobiologyRoutes", () => {
   });
 
   it("keeps a new AST attempt focused on its source run", () => {
-    const url = getMicrobiologyCaseUrl("case-1", {
-      grain: "ast",
-      section: "ast",
-      action: "new-ast-attempt",
-      astIsolateId: "isolate-1",
-      astRunId: "run-1",
-    });
+    const url = getMicrobiologyCaseUrl(
+      "case-1",
+      {
+        grain: "ast",
+        section: "ast",
+        action: "new-ast-attempt",
+        astIsolateId: "isolate-1",
+        astRunId: "run-1",
+      },
+      now,
+    );
 
     expect(url).toBe(
-      "/Microbiology/cases/case-1?grain=ast&section=ast&astIsolateId=isolate-1&astRunId=run-1&action=new-ast-attempt",
+      "/Microbiology/cases/case-1?grain=ast&from=2026-08-01&to=2026-08-31&section=ast&astIsolateId=isolate-1&astRunId=run-1&action=new-ast-attempt",
     );
     expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
       grain: "ast",

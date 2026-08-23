@@ -161,6 +161,13 @@
   padding-top: var(--microbiology-spacing-04);
 }
 
+.microbiology-worklist__surveillance {
+  border-block: 1px solid var(--microbiology-border-subtle);
+  display: grid;
+  gap: var(--microbiology-spacing-04);
+  padding-block: var(--microbiology-spacing-05);
+}
+
 .microbiology-worklist__filter-header {
   align-items: center;
   display: flex;

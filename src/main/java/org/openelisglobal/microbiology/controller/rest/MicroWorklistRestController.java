@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.controller.rest;
 
+import java.util.List;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
@@ -25,14 +26,23 @@ public class MicroWorklistRestController extends BaseRestController {
     @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')")
     public ResponseEntity<MicroWorklistPageForm> getWorklistRows(@RequestParam(required = false) String grain,
             @RequestParam(required = false) String status, @RequestParam(required = false) String workflow,
-            @RequestParam(required = false) String stage, @RequestParam(required = false) String urgency,
-            @RequestParam(required = false) String due, @RequestParam(required = false) String q,
-            @RequestParam(required = false) String sort, @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) String from, @RequestParam(required = false) String to,
+            @RequestParam(required = false) List<String> specimen,
+            @RequestParam(required = false) List<String> organism, @RequestParam(required = false) List<String> origin,
+            @RequestParam(required = false) List<String> significance, @RequestParam(required = false) String stage,
+            @RequestParam(required = false) String urgency, @RequestParam(required = false) String due,
+            @RequestParam(required = false) String q, @RequestParam(required = false) String sort,
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
         query.grain = grain;
         query.status = status;
         query.workflow = workflow;
+        query.from = from;
+        query.to = to;
+        query.specimen = specimen;
+        query.organism = organism;
+        query.origin = origin;
+        query.significance = significance;
         query.stage = stage;
         query.urgency = urgency;
         query.due = due;

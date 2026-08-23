@@ -312,6 +312,8 @@ export const getWorklistRows = (query = {}) =>
     [
       "grain",
       "status",
+      "from",
+      "to",
       "workflow",
       "stage",
       "urgency",
@@ -325,6 +327,9 @@ export const getWorklistRows = (query = {}) =>
         params.set(key, query[key]);
       }
     });
+    ["specimen", "organism", "origin", "significance"].forEach((key) =>
+      (query[key] || []).forEach((value) => params.append(key, value)),
+    );
     const search = params.toString();
     getFromOpenElisServer(
       `/rest/microbiology/worklist${search ? `?${search}` : ""}`,

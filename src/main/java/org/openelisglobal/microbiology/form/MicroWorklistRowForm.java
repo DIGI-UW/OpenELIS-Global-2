@@ -13,6 +13,9 @@ public class MicroWorklistRowForm {
     public String accessionNumber;
     public String patientDisplay;
     public String specimenDisplay;
+    public Timestamp collectionDate;
+    public String specimenTypeId;
+    public String patientOrigin;
     public String workflowType;
     public String stage;
     public String priority;
@@ -25,6 +28,8 @@ public class MicroWorklistRowForm {
     public String isolateId;
     public String isolateLabel;
     public String organismDisplay;
+    public String organismId;
+    public String isolateSignificance;
     public String astRunId;
     public String panelId;
     public String panelName;

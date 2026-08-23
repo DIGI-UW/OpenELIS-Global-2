@@ -76,8 +76,10 @@ This roadmap uses four simple iteration markers:
 
 - `[ ]` means a future iteration that has not started.
 - `[*]` means the single iteration currently being worked.
-- `[x]` means implementation is complete and ready for user validation.
-- `[✓]` means the iteration has been validated by the user.
+- `[x]` means implementation and focused automated validation are complete,
+  required pull-request checks are green, user-visible behavior is deployed to
+  the review host, and the iteration is ready for user validation.
+- `[✓]` means the iteration has been explicitly validated by the user.
 
 Keep only these durable markers in the roadmap. Detailed PR and CI state stays
 in GitHub, deployment state stays on the review host, and UAT results stay in

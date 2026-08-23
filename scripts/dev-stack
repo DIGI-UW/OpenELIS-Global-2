@@ -373,6 +373,21 @@ def build_application(context: StackContext, environment: dict[str, str]) -> Non
         raise RuntimeError(f"Build did not produce {war}")
 
 
+def recreate_backend(context: StackContext, environment: dict[str, str]) -> None:
+    run(
+        compose_command(
+            context,
+            "up",
+            "-d",
+            "--no-deps",
+            "--force-recreate",
+            "oe.openelis.org",
+        ),
+        cwd=context.project_dir,
+        environment=environment,
+    )
+
+
 def stage_analyzer_plugins(context: StackContext, environment: dict[str, str]) -> None:
     java = context.repo_root / "scripts" / "run-java21"
     plugins = context.repo_root / "plugins" / "pom.xml"
@@ -759,6 +774,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             environment,
             refresh_running_backend=backend_was_running and not args.skip_build,
         )
+        if not args.skip_build:
+            recreate_backend(context, environment)
         reload_proxy(context, environment)
         configure_tls(context, environment)
         if not args.no_wait:

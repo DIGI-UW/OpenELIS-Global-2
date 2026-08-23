@@ -8,11 +8,13 @@ import { vi } from "vitest";
 import MicrobiologyWorklist from "../MicrobiologyWorklist";
 import messages from "../../../languages/en.json";
 
+const now = new Date(2026, 7, 4, 12, 0, 0);
+
 const renderWorklist = (service, initialEntry = "/Microbiology/worklist") =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <IntlProvider locale="en" messages={messages}>
-        <MicrobiologyWorklist service={service} />
+        <MicrobiologyWorklist service={service} now={now} />
         <Route
           render={({ location }) => (
             <output data-testid="microbiology-current-url">
@@ -92,6 +94,12 @@ describe("MicrobiologyWorklist", () => {
     expect(service.getWorklistRows).toHaveBeenCalledWith({
       grain: "cultures",
       status: "",
+      from: "",
+      to: "",
+      specimen: [],
+      organism: [],
+      origin: [],
+      significance: [],
       workflow: "",
       stage: "",
       urgency: "",
@@ -250,6 +258,12 @@ describe("MicrobiologyWorklist", () => {
       expect(service.getWorklistRows).toHaveBeenLastCalledWith({
         grain: "cultures",
         status: "",
+        from: "",
+        to: "",
+        specimen: [],
+        organism: [],
+        origin: [],
+        significance: [],
         workflow: "",
         stage: "AST_IN_PROGRESS",
         urgency: "",
@@ -259,6 +273,57 @@ describe("MicrobiologyWorklist", () => {
         page: 1,
         pageSize: 20,
       }),
+    );
+  });
+
+  it("exposes canonical AST surveillance scope and transfers no operational state to WHONET", async () => {
+    const service = {
+      getWorklistRows: vi.fn().mockResolvedValue({
+        rows: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+        filterOptions: {
+          specimenTypes: [{ id: "blood", label: "Blood" }],
+          organisms: [{ id: "organism-1", label: "E. coli" }],
+          patientOrigins: [{ id: "INPATIENT", label: "Inpatient" }],
+          significance: [
+            { id: "CLINICALLY_SIGNIFICANT", label: "Clinically significant" },
+          ],
+        },
+      }),
+    };
+
+    renderWorklist(
+      service,
+      "/Microbiology/worklist?grain=ast&status=results-in&from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=CLINICALLY_SIGNIFICANT&workflow=BACTERIOLOGY&urgency=HIGH&q=LAB-001&sort=newest&page=3&pageSize=50",
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Surveillance scope" }),
+    ).toBeVisible();
+    expect(screen.getByLabelText("Reporting period")).toHaveValue("THIS_MONTH");
+    expect(screen.getByLabelText("From")).toHaveValue("2026-08-01");
+    expect(screen.getByLabelText("To")).toHaveValue("2026-08-31");
+    expect(service.getWorklistRows).toHaveBeenCalledWith(
+      expect.objectContaining({
+        grain: "ast",
+        from: "2026-08-01",
+        to: "2026-08-31",
+        specimen: ["blood"],
+        organism: ["organism-1"],
+        origin: ["INPATIENT"],
+        significance: ["CLINICALLY_SIGNIFICANT"],
+        status: "results-in",
+        q: "LAB-001",
+        page: 3,
+      }),
+    );
+    expect(
+      screen.getByRole("link", { name: "Export to WHONET" }),
+    ).toHaveAttribute(
+      "href",
+      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&source=ast-worklist&step=configure&page=1&pageSize=20",
     );
   });
 
@@ -454,7 +519,7 @@ describe("MicrobiologyWorklist", () => {
     await user.keyboard("{Enter}");
 
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "/Microbiology/cases/case-1?grain=ast&status=results-in&section=ast&astIsolateId=isolate-1&astRunId=run-1",
+      "/Microbiology/cases/case-1?grain=ast&status=results-in&from=2026-08-01&to=2026-08-31&section=ast&astIsolateId=isolate-1&astRunId=run-1",
     );
   });
 
@@ -598,7 +663,7 @@ describe("MicrobiologyWorklist", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?grain=ast",
+        "/Microbiology/worklist?grain=ast&from=2026-08-01&to=2026-08-31",
       ),
     );
     const row = await screen.findByTestId("microbiology-worklist-row-run-1");
@@ -612,14 +677,14 @@ describe("MicrobiologyWorklist", () => {
     expect(row).toHaveTextContent("MDR");
     expect(screen.getByRole("columnheader", { name: "Flags" })).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Export to WHONET (Phase 1B)" }),
-    ).toBeDisabled();
+      screen.getByRole("link", { name: "Export to WHONET" }),
+    ).toHaveAttribute("href", expect.stringContaining("source=ast-worklist"));
 
     await user.click(screen.getByRole("button", { name: "Row actions" }));
     await user.click(await screen.findByText("Open case"));
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?grain=ast&section=ast&astIsolateId=isolate-1&astRunId=run-1",
+        "/Microbiology/cases/case-1?grain=ast&from=2026-08-01&to=2026-08-31&section=ast&astIsolateId=isolate-1&astRunId=run-1",
       ),
     );
   });
@@ -710,7 +775,7 @@ describe("MicrobiologyWorklist", () => {
     await user.selectOptions(statusFilter, "reviewed");
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?grain=ast&status=reviewed",
+        "/Microbiology/worklist?grain=ast&status=reviewed&from=2026-08-01&to=2026-08-31",
       ),
     );
     const row = await screen.findByTestId("microbiology-worklist-row-run-1");
@@ -724,7 +789,7 @@ describe("MicrobiologyWorklist", () => {
     await user.click(viewReviewedAst);
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?grain=ast&status=reviewed&section=ast&astIsolateId=isolate-1&astRunId=run-1&astView=reviewed",
+        "/Microbiology/cases/case-1?grain=ast&status=reviewed&from=2026-08-01&to=2026-08-31&section=ast&astIsolateId=isolate-1&astRunId=run-1&astView=reviewed",
       ),
     );
   });
@@ -753,14 +818,14 @@ describe("MicrobiologyWorklist", () => {
     });
     expect(resultsIn).toHaveAttribute(
       "href",
-      "/Microbiology/worklist?grain=ast&status=results-in",
+      "/Microbiology/worklist?grain=ast&status=results-in&from=2026-08-01&to=2026-08-31",
     );
     resultsIn.focus();
     expect(resultsIn).toHaveFocus();
     await user.keyboard("{Enter}");
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?grain=ast&status=results-in",
+        "/Microbiology/worklist?grain=ast&status=results-in&from=2026-08-01&to=2026-08-31",
       ),
     );
   });
