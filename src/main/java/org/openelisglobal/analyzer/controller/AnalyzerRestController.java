@@ -1,6 +1,5 @@
 package org.openelisglobal.analyzer.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -14,8 +13,6 @@ import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
-import org.openelisglobal.analyzer.service.BridgeHttpClient;
-import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
@@ -31,7 +28,6 @@ import org.openelisglobal.common.services.PluginMenuService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -54,9 +50,6 @@ public class AnalyzerRestController extends BaseRestController {
     private AnalyzerFieldService analyzerFieldService;
 
     @Autowired
-    private SerialPortService serialPortService;
-
-    @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerQueryService analyzerQueryService;
 
     @Autowired
@@ -72,25 +65,7 @@ public class AnalyzerRestController extends BaseRestController {
     private PluginMenuService pluginService;
 
     @Autowired
-    private BridgeHttpClient bridgeHttpClient;
-
-    @Autowired
     private AnalyzerErrorService analyzerErrorService;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    /**
-     * Bridge URL for outbound analyzer communication. When set, all test-connection
-     * and query operations route through the bridge instead of direct TCP. This is
-     * the production architecture — OE never connects directly to analyzers.
-     *
-     * <p>
-     * Set via Spring property {@code analyzer.bridge.url} or env var
-     * {@code ANALYZER_BRIDGE_URL}. The bridge is mandatory — OE never connects
-     * directly to analyzers.
-     */
-    @Value("${analyzer.bridge.url:}")
-    private String analyzerBridgeUrl;
 
     /**
      * GET /rest/analyzer/analyzers Retrieve all analyzers with their
@@ -271,61 +246,6 @@ public class AnalyzerRestController extends BaseRestController {
             logger.error("Error creating analyzer", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        }
-    }
-
-    /**
-     * POST /rest/analyzer/analyzers/{id}/test-connection Test TCP connection to
-     * analyzer.
-     */
-    @PostMapping("/analyzers/{id}/test-connection")
-    public ResponseEntity<Map<String, Object>> testConnection(@PathVariable String id) {
-        try {
-            Analyzer analyzer = analyzerService.get(id);
-            if (analyzer == null) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Analyzer not found: " + id);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-            }
-
-            // All connectivity checks route through the bridge — OE never
-            // directly tests analyzer transports (bridge is mandatory).
-            Map<String, Object> response;
-            Integer analyzerIdInt = Integer.valueOf(id);
-            var serialConfig = serialPortService.getByAnalyzerId(analyzerIdInt);
-
-            if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
-                response = testFileViaBridge(analyzer.getImportDirectory());
-            } else if (serialConfig.isPresent()) {
-                response = testSerialViaBridge(serialConfig.get().getPortName());
-            } else if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
-                response = testTcpAnalyzerConnection(analyzer);
-            } else {
-                response = new LinkedHashMap<>();
-                response.put("success", false);
-                response.put("message", "No transport configured (missing IP/port, file import, or serial config)");
-            }
-
-            response.put("analyzerId", id);
-            response.put("analyzerName", analyzer.getName());
-            response.put("protocol",
-                    analyzer.getProtocolVersion() != null ? analyzer.getProtocolVersion().name() : null);
-            response.put("communicationMode", analyzer.getEffectiveCommunicationMode().name());
-            if (analyzer.getIpAddress() != null) {
-                response.put("ipAddress", analyzer.getIpAddress());
-            }
-            if (analyzer.getPort() != null) {
-                response.put("port", analyzer.getPort());
-            }
-
-            // Always return 200 with success status in response body
-            // Client should check response.success to determine if connection worked
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            logger.error("Error testing connection", e);
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
@@ -632,318 +552,6 @@ public class AnalyzerRestController extends BaseRestController {
         return pluginAnalyzerService.getAnalyzerPlugins().stream().map(plugin -> plugin.getClass().getName())
                 .collect(Collectors.toSet());
     }
-
-    /**
-     * Unified TCP analyzer test-connection. Always checks bridge health and always
-     * attempts TCP to the analyzer. The communication mode determines how results
-     * are interpreted:
-     *
-     * <p>
-     * Success requires both bridge health AND TCP reachability when IP/port are
-     * configured, regardless of communication mode. If the user configured IP/port,
-     * a network failure should be surfaced. The communication mode determines the
-     * messaging context (push vs pull), not whether TCP matters.
-     * </p>
-     *
-     * <ul>
-     * <li>{@code ANALYZER_INITIATED}: Analyzer pushes to bridge. TCP failure
-     * messaging notes that the analyzer may still reach the bridge even if OE
-     * cannot reach the analyzer directly.</li>
-     * <li>{@code LIS_INITIATED}: OE/bridge reaches the analyzer for queries/orders.
-     * TCP failure is critical.</li>
-     * <li>{@code BOTH}: Bidirectional — both paths must work.</li>
-     * </ul>
-     */
-    private Map<String, Object> testTcpAnalyzerConnection(Analyzer analyzer) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        long startTime = System.currentTimeMillis();
-
-        CommunicationMode mode = analyzer.getEffectiveCommunicationMode();
-        String ip = analyzer.getIpAddress();
-        Integer port = analyzer.getPort();
-
-        // Step 1: Bridge health (bridge is mandatory for all analyzer communication)
-        boolean bridgeHealthy = false;
-        String bridgeMessage = null;
-        if (analyzerBridgeUrl != null && !analyzerBridgeUrl.isBlank()) {
-            Map<String, Object> bridgeResult = checkBridgeHealth();
-            bridgeHealthy = Boolean.TRUE.equals(bridgeResult.get("healthy"));
-            bridgeMessage = (String) bridgeResult.get("message");
-            response.put("bridgeHealthy", bridgeHealthy);
-            response.put("bridgeMessage", bridgeMessage);
-        } else {
-            response.put("bridgeHealthy", false);
-            response.put("bridgeMessage", "Bridge URL not configured (analyzer.bridge.url)");
-            logger.warn("No analyzer.bridge.url configured — bridge is required for production.");
-        }
-
-        // Step 2: Test analyzer reachability via bridge (bridge is on analyzer
-        // networks)
-        boolean tcpReachable = false;
-        String tcpMessage = null;
-        if (ip != null && port != null && analyzerBridgeUrl != null && !analyzerBridgeUrl.isBlank()) {
-            // TCP-only for connectivity test — protocol handshakes (ASTM ENQ, MLLP)
-            // can cause contention with active analyzers. Reachability is what matters.
-            Map<String, Object> tcpResult = testConnectivityViaBridge(ip, port, "TCP");
-            tcpReachable = Boolean.TRUE.equals(tcpResult.get("reachable"));
-            tcpMessage = (String) tcpResult.get("message");
-            response.put("tcpReachable", tcpReachable);
-            response.put("tcpMessage", tcpMessage);
-        } else if (ip != null && port != null) {
-            response.put("tcpReachable", false);
-            response.put("tcpMessage", "analyzer.testConnection.tcp.bridgeNotConfigured");
-            response.put("tcpMessageKey", "analyzer.testConnection.tcp.bridgeNotConfigured");
-        }
-
-        // Step 3: Interpret results based on communication mode
-        boolean success;
-        StringBuilder message = new StringBuilder();
-
-        // If IP/port is configured, TCP must succeed — regardless of mode.
-        // Mode affects the messaging context, not whether TCP matters.
-        boolean tcpConfigured = ip != null && port != null;
-        success = bridgeHealthy && (!tcpConfigured || tcpReachable);
-
-        switch (mode) {
-        case ANALYZER_INITIATED:
-            response.put("connectionType", "Analyzer-initiated via bridge");
-            if (success) {
-                message.append("Bridge listener ready.");
-                if (tcpReachable) {
-                    message.append(" Analyzer reachable at ").append(ip).append(":").append(port).append(".");
-                }
-                message.append(" Analyzer will connect to bridge when sending results.");
-            } else {
-                if (!bridgeHealthy) {
-                    message.append("Bridge not healthy — analyzer cannot connect. ");
-                    message.append(bridgeMessage != null ? bridgeMessage : "");
-                }
-                if (tcpConfigured && !tcpReachable) {
-                    message.append("Analyzer not reachable at ").append(ip).append(":").append(port).append(". ");
-                    message.append(tcpMessage != null ? tcpMessage : "");
-                }
-            }
-            break;
-
-        case LIS_INITIATED:
-            response.put("connectionType", "LIS-initiated via bridge");
-            if (success) {
-                message.append("Bridge ready. Analyzer reachable at ").append(ip).append(":").append(port)
-                        .append(" — ready for LIS-initiated communication.");
-            } else {
-                if (!bridgeHealthy) {
-                    message.append("Bridge not healthy — cannot route to analyzer. ");
-                    message.append(bridgeMessage != null ? bridgeMessage : "");
-                }
-                if (tcpConfigured && !tcpReachable) {
-                    message.append("Cannot reach analyzer at ").append(ip).append(":").append(port)
-                            .append(" — verify analyzer is powered on and listening. ");
-                    message.append(tcpMessage != null ? tcpMessage : "");
-                }
-            }
-            break;
-
-        case BOTH:
-            response.put("connectionType", "Bidirectional via bridge");
-            if (success) {
-                message.append("Bidirectional communication verified. Bridge ready, analyzer reachable at ").append(ip)
-                        .append(":").append(port).append(".");
-            } else {
-                if (!bridgeHealthy) {
-                    message.append("Bridge not healthy. ");
-                }
-                if (tcpConfigured && !tcpReachable) {
-                    message.append("Analyzer not reachable at ").append(ip).append(":").append(port).append(". ");
-                }
-            }
-            break;
-
-        default:
-            message.append("Unknown communication mode: ").append(mode);
-        }
-
-        response.put("success", success);
-        response.put("message", message.toString().trim());
-        response.put("responseTimeMs", System.currentTimeMillis() - startTime);
-        return response;
-    }
-
-    /**
-     * Test analyzer connectivity by delegating to the bridge's
-     * {@code /api/test-connectivity} endpoint. The bridge is on analyzer networks
-     * and performs the actual TCP/ASTM/MLLP check. OE never opens direct sockets to
-     * analyzer IPs.
-     *
-     * @param host     Analyzer IP address
-     * @param port     Analyzer port
-     * @param protocol "HL7", "ASTM", or "TCP" (determines handshake type)
-     * @return Map with reachable (boolean) and message (String)
-     */
-    private Map<String, Object> testConnectivityViaBridge(String host, Integer port, String protocol) {
-        try {
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("transport", "TCP");
-            payload.put("host", host);
-            payload.put("port", port);
-            payload.put("protocol", protocol != null ? protocol : "TCP");
-            return callBridgeTestConnectivity(objectMapper.writeValueAsString(payload));
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            return Map.of("reachable", false, "message", "analyzer.testConnection.requestBuildFailed", "messageKey",
-                    "analyzer.testConnection.requestBuildFailed", "messageArgs",
-                    Map.of("detail", String.valueOf(e.getMessage())));
-        }
-    }
-
-    /**
-     * Call the bridge's {@code /api/test-connectivity} endpoint with arbitrary JSON
-     * payload. Used for TCP, FILE, and SERIAL transports.
-     */
-    private Map<String, Object> callBridgeTestConnectivity(String json) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        String endpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/api/test-connectivity";
-
-        try {
-            BridgeHttpClient.BridgeResponse resp = bridgeHttpClient.post(endpoint, json,
-                    java.time.Duration.ofSeconds(10));
-            int status = resp.status;
-            String body = resp.body;
-
-            if (status == 200) {
-                try {
-                    Map<String, Object> bridgeResponse = objectMapper.readValue(body,
-                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
-                            });
-                    result.putAll(bridgeResponse);
-                } catch (Exception parseEx) {
-                    result.put("reachable", false);
-                    result.put("message", "analyzer.testConnection.bridge.unparseableResponse");
-                    result.put("messageKey", "analyzer.testConnection.bridge.unparseableResponse");
-                }
-            } else {
-                result.put("reachable", false);
-                result.put("message", "analyzer.testConnection.bridge.httpStatus");
-                result.put("messageKey", "analyzer.testConnection.bridge.httpStatus");
-                result.put("messageArgs", Map.of("status", status));
-            }
-
-            logger.info("Bridge test-connectivity: reachable={}", result.get("reachable"));
-        } catch (Exception e) {
-            result.put("reachable", false);
-            result.put("message", "analyzer.testConnection.bridge.unreachable");
-            result.put("messageKey", "analyzer.testConnection.bridge.unreachable");
-            result.put("messageArgs", Map.of("detail", String.valueOf(e.getMessage())));
-            logger.error("Bridge test-connectivity failed", e);
-        }
-
-        return result;
-    }
-
-    /**
-     * Test FILE analyzer connectivity via bridge. The bridge checks if the import
-     * directory exists and is accessible from its filesystem.
-     */
-    private Map<String, Object> testFileViaBridge(String importDirectory) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        if (analyzerBridgeUrl == null || analyzerBridgeUrl.isBlank()) {
-            response.put("success", false);
-            response.put("message", "analyzer.testConnection.bridge.notConfigured");
-            response.put("messageKey", "analyzer.testConnection.bridge.notConfigured");
-            return response;
-        }
-
-        Map<String, Object> result;
-        try {
-            result = callBridgeTestConnectivity(
-                    objectMapper.writeValueAsString(Map.of("transport", "FILE", "path", importDirectory)));
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            response.put("success", false);
-            response.put("message", "analyzer.testConnection.requestBuildFailed");
-            response.put("messageKey", "analyzer.testConnection.requestBuildFailed");
-            response.put("messageArgs", Map.of("detail", String.valueOf(e.getMessage())));
-            return response;
-        }
-        response.put("success", Boolean.TRUE.equals(result.get("reachable")));
-        response.put("message", result.getOrDefault("message", ""));
-        response.put("connectionType", "FILE via bridge");
-        return response;
-    }
-
-    /**
-     * Test SERIAL analyzer connectivity via bridge. The bridge checks if the serial
-     * device path exists and is accessible.
-     */
-    private Map<String, Object> testSerialViaBridge(String portName) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        if (analyzerBridgeUrl == null || analyzerBridgeUrl.isBlank()) {
-            response.put("success", false);
-            response.put("message", "analyzer.testConnection.bridge.notConfigured");
-            response.put("messageKey", "analyzer.testConnection.bridge.notConfigured");
-            return response;
-        }
-
-        Map<String, Object> result;
-        try {
-            result = callBridgeTestConnectivity(
-                    objectMapper.writeValueAsString(Map.of("transport", "SERIAL", "path", portName)));
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            response.put("success", false);
-            response.put("message", "analyzer.testConnection.requestBuildFailed");
-            response.put("messageKey", "analyzer.testConnection.requestBuildFailed");
-            response.put("messageArgs", Map.of("detail", String.valueOf(e.getMessage())));
-            return response;
-        }
-        response.put("success", Boolean.TRUE.equals(result.get("reachable")));
-        response.put("message", result.getOrDefault("message", ""));
-        response.put("connectionType", "Serial via bridge");
-        return response;
-    }
-
-    /**
-     * Check bridge health via Spring Boot Actuator endpoint.
-     *
-     * @return Map with {@code healthy} (boolean) and {@code message} (String)
-     */
-    private Map<String, Object> checkBridgeHealth() {
-        Map<String, Object> result = new LinkedHashMap<>();
-        String healthUrl = analyzerBridgeUrl.replaceAll("/+$", "") + "/actuator/health";
-
-        try {
-            BridgeHttpClient.BridgeResponse resp = bridgeHttpClient.get(healthUrl, java.time.Duration.ofSeconds(5));
-            int status = resp.status;
-            String body = resp.body;
-
-            boolean healthy = false;
-            if (status == 200) {
-                try {
-                    Map<String, Object> healthJson = objectMapper.readValue(body,
-                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
-                            });
-                    healthy = "UP".equals(healthJson.get("status"));
-                } catch (Exception parseEx) {
-                    logger.warn("Could not parse bridge health JSON: {}", parseEx.getMessage());
-                }
-            }
-            result.put("healthy", healthy);
-            String healthMessage = healthy ? "Bridge healthy (status UP)"
-                    : "Bridge returned HTTP " + status + " (status: "
-                            + (body.length() > 200 ? body.substring(0, 200) + "..." : body) + ")";
-            result.put("message", healthMessage);
-            logger.info("Bridge health check: {} (HTTP {})", healthy ? "UP" : "NOT UP", status);
-        } catch (Exception e) {
-            result.put("healthy", false);
-            result.put("message", "analyzer.testConnection.bridge.healthCheckFailed");
-            result.put("messageKey", "analyzer.testConnection.bridge.healthCheckFailed");
-            result.put("messageArgs", Map.of("url", healthUrl, "detail", String.valueOf(e.getMessage())));
-            logger.error("Bridge health check failed: {}", healthUrl, e);
-        }
-
-        return result;
-    }
-
-    // testFileConfiguration() and testSerialConfiguration() removed — replaced
-    // by testFileViaBridge() and testSerialViaBridge() which route through the
-    // bridge's /api/test-connectivity endpoint. OE never checks file/serial
-    // transports directly — the bridge owns those transports.
 
     /**
      * POST /rest/analyzer/analyzers/{id}/query Start an asynchronous query job for

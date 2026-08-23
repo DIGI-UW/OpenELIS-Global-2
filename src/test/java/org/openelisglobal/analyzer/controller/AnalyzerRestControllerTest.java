@@ -233,38 +233,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: POST /rest/analyzer/analyzers/{id}/test-connection tests connection
-     */
-    @Test
-    public void testTestConnection_WithValidConfig_ReturnsSuccess() throws Exception {
-        // Arrange: Create analyzer first
-        String uniqueName = "TEST-Connection-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
-                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
-
-        MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
-                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withProfile(createBody)))
-                .andReturn(); // Don't assert status yet - we'll check it
-
-        int status = createResult.getResponse().getStatus();
-        String responseBody = createResult.getResponse().getContentAsString();
-
-        // Assert creation succeeded
-        assertEquals("Analyzer creation should succeed", 201, status);
-
-        // Extract analyzer ID from response (simplified parsing)
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
-
-        // Act & Assert: Test connection endpoint should work and return expected fields
-        // Note: success will be false since there's no actual analyzer running
-        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").exists()).andExpect(jsonPath("$.analyzerId").value(analyzerId))
-                .andExpect(jsonPath("$.ipAddress").value(testIp)).andExpect(jsonPath("$.port").value(5000));
-    }
-
-    /**
      * Test: GET /rest/analyzer/analyzers/{id} returns analyzer by ID
      */
     @Test
@@ -581,12 +549,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .content(updateBody)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(analyzerId));
     }
 
-    /**
-     * Test: POST /rest/analyzer/analyzers/{id}/test-connection with HL7 protocol
-     * returns real connectivity result (not hardcoded success)
-     */
     @Test
-    public void testTestConnection_WithHl7Protocol_ReturnsExpectedFields() throws Exception {
+    public void testConnectionWithoutBridgeConfigurationUsesRegisteredProbeContract() throws Exception {
         String uniqueName = "TEST-HL7-Connection-" + System.currentTimeMillis();
         String createBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + testIp + "\"," + "\"port\":5380,"
                 + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
@@ -600,39 +564,9 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
         analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
 
-        // Test connection: should return real result (not hardcoded success)
         mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").exists()).andExpect(jsonPath("$.analyzerId").value(analyzerId))
-                .andExpect(jsonPath("$.ipAddress").value(testIp)).andExpect(jsonPath("$.port").value(5380))
-                .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
-                .andExpect(jsonPath("$.protocol").value("HL7_V2_3_1"))
-                // Must have TCP reachability info (not just hardcoded success)
-                .andExpect(jsonPath("$.tcpReachable").exists()).andExpect(jsonPath("$.message").exists());
-    }
-
-    /**
-     * Test: POST /rest/analyzer/analyzers/{id}/test-connection with HL7 protocol
-     * and no IP/port returns proper error
-     */
-    @Test
-    public void testTestConnection_WithHl7Protocol_NoIpPort_ReturnsConfigError() throws Exception {
-        String uniqueName = "TEST-HL7-NoIP-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[]}";
-
-        MvcResult createResult = mockMvc.perform(post("/rest/analyzer/analyzers")
-                .contentType(MediaType.APPLICATION_JSON).content(AnalyzerTestCleanup.withHl7Profile(createBody)))
-                .andReturn();
-        assertEquals(201, createResult.getResponse().getStatus());
-
-        String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
-
-        // Test connection without IP/port should fail with config error
-        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.message").exists());
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.messageKey").value("analyzer.testConnection.bridge.notConfigured"));
     }
 
     /**
