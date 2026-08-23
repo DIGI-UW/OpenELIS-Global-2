@@ -13,6 +13,7 @@ import org.junit.Test;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
@@ -47,6 +48,9 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
 
     @Autowired
     private ReferenceTablesService referenceTablesService;
+
+    @Autowired
+    private ObservationHistoryTypeService observationHistoryTypeService;
 
     @Autowired
     private DataSource dataSource;
@@ -151,6 +155,24 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
 
         assertEquals("fixture loading must not rewind sequences outside the explicit synchronization allowlist",
                 sequenceValueBefore, readSequenceLastValue("dictionary_seq"));
+    }
+
+    @Test
+    public void loadingObservationFixture_doesNotReplaceCanonicalHistoryTypes() throws Exception {
+        int seedSizeBefore = observationHistoryTypeService.getAll().size();
+        assertNotNull("SampleRecordStatus must exist before fixture load",
+                observationHistoryTypeService.getByName("SampleRecordStatus"));
+        assertNotNull("PatientRecordStatus must exist before fixture load",
+                observationHistoryTypeService.getByName("PatientRecordStatus"));
+
+        executeDataSetWithStateManagement("testdata/observation-history.xml");
+
+        assertNotNull("SampleRecordStatus was wiped by the fixture loader",
+                observationHistoryTypeService.getByName("SampleRecordStatus"));
+        assertNotNull("PatientRecordStatus was wiped by the fixture loader",
+                observationHistoryTypeService.getByName("PatientRecordStatus"));
+        assertTrue("Observation history type seed shrank after fixture load",
+                observationHistoryTypeService.getAll().size() >= seedSizeBefore);
     }
 
     private int countReferenceTables() throws Exception {

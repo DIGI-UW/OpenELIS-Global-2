@@ -746,8 +746,7 @@ public class MicroWhonetDatasetServiceTest {
 
     private void stubPatientContext(String caseId, String sampleItemId, String patientId, String accession,
             String sampleTypeId, String whonetCode) {
-        stubPatientContext(caseId, sampleItemId, patientId, accession, sampleTypeId, whonetCode,
-                "2026-07-09 09:00:00");
+        stubPatientContext(caseId, sampleItemId, patientId, accession, sampleTypeId, whonetCode, "2026-07-09 09:00:00");
     }
 
     private void stubPatientContext(String caseId, String sampleItemId, String patientId, String accession,
