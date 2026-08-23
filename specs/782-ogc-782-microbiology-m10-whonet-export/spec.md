@@ -39,8 +39,8 @@ and inclusion policy and preview what will be exported before creating a file.
    after significance and de-duplication, and the rows eligible for export.
 3. Reloading the canonical URL reproduces the selected period, inclusion policy,
    de-duplication policy, preview page, and page size.
-4. Only finalized routine bacteriology cases in the selected period contribute
-   export rows.
+4. Only finalized routine bacteriology cases whose specimen collection date is
+   in the selected period contribute export rows.
 
 ### US2 - Repair mapping gaps in context (Priority: P1)
 
@@ -91,7 +91,7 @@ Configure, Preview, and Generate workflow.
 ## Functional Requirements
 
 - **FR-001**: The system MUST select finalized routine bacteriology cases by a
-  user-visible reporting period.
+  user-visible reporting period based on specimen collection date.
 - **FR-002**: The system MUST default to the previous complete calendar month
   and clinically significant isolates.
 - **FR-003**: The system MUST offer no de-duplication and a deterministic
@@ -245,3 +245,43 @@ exports do not mix unlike populations.
   historical missing values remain distinguishable as Unspecified.
 - **FR-023**: Purpose selection and export inclusion MUST be bookmarkable,
   accessible, auditable, and enforced consistently by preview and generation.
+
+## Follow-on Story - Carry An AST Worklist Surveillance Scope
+
+As a surveillance or laboratory reporting user, I can define a structured
+surveillance scope while viewing AST work and carry that scope into the WHONET
+generator without confusing operational queue state with export criteria.
+
+**Acceptance scenarios**
+
+1. Reporting-period membership is based on specimen collection date. The AST
+   worklist may include open work, but only finalized routine bacteriology cases
+   contribute to preview or generation.
+2. Direct entry from Reports defaults to Last Month. The page offers
+   full-calendar This Month, Last Month, This Quarter, and Custom controls. Entry
+   from the AST worklist without an active period defaults to This Month.
+3. The AST worklist provides canonical, URL-backed filters for reporting period,
+   specimen type, patient origin, organism, and isolate significance and applies
+   them to the displayed AST rows.
+4. Export to WHONET transfers only those structured surveillance filters.
+   Worklist status, workflow, stage, urgency, due action, free-text search, sort,
+   and paging never alter the export population.
+5. The generator identifies worklist-provided scope, allows every transferred
+   value to be changed, and provides one clear action that removes the source and
+   transferred scope and restores the direct-entry defaults.
+
+**Requirements**
+
+- **FR-024**: Reporting-period membership and the default first-isolate
+  chronology MUST use specimen collection date. A later configurable
+  first-isolate window basis may change de-duplication chronology but MUST NOT
+  change reporting-period membership.
+- **FR-025**: Reporting-period presets and entry-point defaults MUST use the
+  complete calendar boundaries and defaults stated above.
+- **FR-026**: The AST worklist MUST apply each structured surveillance filter to
+  its rows, and the worklist and generator MUST use the same normalized
+  definitions and preserve them in canonical URLs.
+- **FR-027**: Operational worklist state MUST NOT be inferred, translated, or
+  applied as export criteria.
+- **FR-028**: Worklist provenance and clearing behavior MUST be explicit,
+  accessible, bookmarkable, and must not create a competing export workflow.

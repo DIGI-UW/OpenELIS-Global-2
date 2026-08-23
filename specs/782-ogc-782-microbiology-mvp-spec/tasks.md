@@ -184,10 +184,11 @@ capability is available; it does not own macro authoring or administration.
   default action queue, retain them in a bookmarkable Reviewed view with a
   read-only View action, and keep reasoned repeat/retest setup inside the case.
 
-The active product iteration is M-09 reporting-period presets and the
-AST-worklist export deep link in Phase 1B. Human acceptance and the shared
-offline and reagent-policy dependencies remain independent work and do not
-reorder that product sequence.
+The active product iteration resolves the M-07/M-09 scope gap by defining one
+reporting-period basis and one explicit set of filters that can move from the
+AST worklist into M-09. Human acceptance and the shared offline and
+reagent-policy dependencies remain independent work and do not reorder that
+product sequence.
 
 ### Phase 1B Clinical Depth
 
@@ -208,9 +209,22 @@ reorder that product sequence.
   pre-release corrections, and complete the M-09 screening filter. New orders
   default visibly to clinical purpose; historical missing values remain
   Unspecified; screening and unspecified records require explicit inclusion.
-- [*] Complete M-09 reporting-period presets and enable the AST-worklist Export
-  to WHONET deep link so its active scope pre-fills the generator and can be
-  cleared.
+- [*] Complete M-09 reporting periods and the AST-worklist export handoff. Use
+  specimen collection date as the reporting-period basis while exporting only
+  finalized bacteriology cases. Provide full-calendar This Month, Last Month,
+  This Quarter, and Custom presets. A direct Reports entry defaults to Last
+  Month; an AST-worklist entry without an active period defaults to This Month.
+  Add canonical, URL-backed AST-worklist filters for reporting period, specimen
+  type, patient origin, organism, and isolate significance, and carry only those
+  structured surveillance filters into the existing Reports-owned WHONET
+  generator. Status, workflow, stage, urgency, due action, free-text search,
+  sort, and paging remain operational worklist state and must never change the
+  export population. The generator identifies worklist-provided scope, permits
+  every transferred value to be edited, and provides one clear action that
+  removes the source marker and transferred scope and restores the direct-entry
+  defaults. Reporting-period membership is independent of the later configurable
+  first-isolate window basis; until that control exists, the current seven-day
+  option also orders isolates by specimen collection date.
 - [ ] Complete M-09 advanced first-isolate behavior behind a progressive
   disclosure: window length and basis, source scope, contaminant handling,
   repeat-row handling, and susceptibility-profile sensitivity.
