@@ -17,6 +17,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzers: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
+  updateAnalyzer: vi.fn(),
 }));
 
 const renderList = () =>

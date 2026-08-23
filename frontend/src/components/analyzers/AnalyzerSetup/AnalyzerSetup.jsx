@@ -16,6 +16,7 @@ import {
   getAnalyzer,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
+  updateAnalyzer,
 } from "../../../services/analyzerService";
 
 import "./AnalyzerSetup.scss";
@@ -158,37 +159,48 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
     }
 
     setSubmitting(true);
-    createAnalyzer(
-      {
-        name: analyzerName.trim(),
-        profileId: selectedType.profileId,
-        profileRevision: selectedType.revision,
-        status: "SETUP",
-        testUnitIds: selectedLabUnitIds,
-      },
-      (response) => {
-        setSubmitting(false);
-        if (
-          !response?.id ||
-          response.error ||
-          Number(response.statusCode) >= 400
-        ) {
-          setSaveError(true);
-          return;
-        }
+    const payload = {
+      name: analyzerName.trim(),
+      profileId: selectedType.profileId,
+      profileRevision: selectedType.revision,
+      status: "SETUP",
+      testUnitIds: selectedLabUnitIds,
+    };
+    const handleSaved = (response) => {
+      setSubmitting(false);
+      if (
+        !response?.id ||
+        response.error ||
+        Number(response.statusCode) >= 400
+      ) {
+        setSaveError(true);
+        return;
+      }
 
-        setCandidate(response);
-        const params = new URLSearchParams(location.search);
-        params.set("setup", "verify");
-        params.set("analyzerId", String(response.id));
-        params.set("profile", selectedType.profileId);
-        params.set("revision", String(selectedType.revision));
-        history.push({
-          pathname: location.pathname,
-          search: params.toString(),
-        });
-      },
-    );
+      setCandidate(response);
+      const instrumentParams = new URLSearchParams(location.search);
+      instrumentParams.set("setup", "instrument");
+      instrumentParams.set("analyzerId", String(response.id));
+      instrumentParams.set("profile", selectedType.profileId);
+      instrumentParams.set("revision", String(selectedType.revision));
+      history.replace({
+        pathname: location.pathname,
+        search: instrumentParams.toString(),
+      });
+
+      const verifyParams = new URLSearchParams(instrumentParams);
+      verifyParams.set("setup", "verify");
+      history.push({
+        pathname: location.pathname,
+        search: verifyParams.toString(),
+      });
+    };
+
+    if (candidate?.id) {
+      updateAnalyzer(candidate.id, payload, handleSaved);
+    } else {
+      createAnalyzer(payload, handleSaved);
+    }
   };
 
   const returnParams = new URLSearchParams(location.search);

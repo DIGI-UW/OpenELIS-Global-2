@@ -391,12 +391,13 @@ public class AnalyzerRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> updateAnalyzer(@PathVariable String id, @RequestBody AnalyzerForm form,
             HttpServletRequest request) {
         try {
-            Analyzer analyzer = analyzerService.get(id);
-            if (analyzer == null) {
+            Optional<Analyzer> analyzerToUpdate = analyzerService.getWithType(id);
+            if (analyzerToUpdate.isEmpty()) {
                 Map<String, Object> error = new LinkedHashMap<>();
                 error.put("error", "Analyzer not found: " + id);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
+            Analyzer analyzer = analyzerToUpdate.get();
 
             // Manual validation for optional fields
             if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
