@@ -196,14 +196,21 @@ confirmed decision applies to the next matching message.
 opens inline and keeps the list visible. Setup progresses through Instrument,
 Verify, and Connect; completed sections collapse to summaries. Analyzer ID,
 step, selected profile revision, and return state are bookmarkable.
+Standalone create/edit routes, compatibility redirects, and a separate
+connection-test modal are not part of the workflow.
 
 Instrument selects an existing Analyzer Type, names the analyzer, and assigns
 one or more active lab units. An unlisted instrument links to the separate
 Analyzer Types authoring workflow and returns after a profile is published.
 
 Connect creates or edits the Bridge-owned connection through generic fields.
+Its communication choices and LIS-initiated capability come from the pinned
+profile revision; OpenELIS does not infer them from profile identity, protocol,
+or application constants.
 The connection test shows structured success, failure, timeout, missing-setting,
 and endpoint information, and the latest evidence remains visible after reload.
+The UI does not replace Bridge evidence with a simulated activity log or a
+generic status-only result.
 It never silently changes the selected data flow. A failed two-way test may
 offer an explicit Bridge-described results-only choice; the user must choose it.
 
