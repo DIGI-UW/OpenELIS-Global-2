@@ -30,9 +30,9 @@ import {
   type AnalyzersResponse,
   type AnalyzerTypeCatalog,
 } from "../../../services/analyzerService";
-// AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
+import AnalyzerSetup from "../AnalyzerSetup/AnalyzerSetup";
 
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
@@ -111,6 +111,25 @@ const AnalyzersList = () => {
   // way to see what was just edited. This persists for 5s in the list view.
   const [listNotification, setListNotification] =
     useState<ListNotification | null>(null);
+
+  const setupStep = new URLSearchParams(location.search).get("setup");
+  const visibleSetupStep = ["instrument", "verify", "connect"].includes(
+    setupStep || "",
+  )
+    ? setupStep
+    : null;
+
+  const openSetup = () => {
+    const params = new URLSearchParams(location.search);
+    params.set("setup", "instrument");
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
+
+  const closeSetup = () => {
+    const params = new URLSearchParams(location.search);
+    params.delete("setup");
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
 
   const loadAnalyzers = useCallback(
     (
@@ -348,11 +367,15 @@ const AnalyzersList = () => {
           kind="primary"
           renderIcon={Add}
           data-testid="add-analyzer-button"
-          onClick={() => history.push("/analyzers/new")}
+          onClick={openSetup}
         >
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>
       </div>
+
+      {visibleSetupStep && (
+        <AnalyzerSetup currentStep={visibleSetupStep} onClose={closeSetup} />
+      )}
 
       <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">
         <Column lg={4} md={2} sm={2}>
