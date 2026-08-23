@@ -1,11 +1,11 @@
 # OGC-1054 Analyzer Feature Authoritative Roadmap
 
-**Updated:** 2026-08-19
+**Updated:** 2026-08-23
 **Epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
 **Historical foundation pull request:** [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792)
-**First product-review gate:** Full MVP deployed to
+**Review target:** CI-green checkpoint PR builds are published to
 [`https://analyzers.openelis-global.org`](https://analyzers.openelis-global.org/login)
-with current Grist UAT and MP4 evidence
+for iterative product review; only G0 can accept the full MVP
 
 This document establishes the single engineering roadmap for Analyzer Types,
 mapping, guided setup, analyzer QC/configuration, and safe analyzer traffic.
@@ -116,6 +116,12 @@ decisions.
     Generic lookup by profile data/pins is expected. Named profiles appear only
     as profile data and parameterized fixtures; all validators, consumers,
     handlers, and UI composition are generic.
+11. **Reviewable work is published before merge.** Once a coherent checkpoint
+    candidate is pushed in its owning PRs and its applicable automated gates are
+    green, deploy that exact stacked candidate to the analyzer review instance
+    and sync its applicable Grist steps. Review feedback is fixed in the same
+    checkpoint. A preview deployment is not checkpoint acceptance and never
+    changes a roadmap marker.
 
 ## Authority Order
 
@@ -427,13 +433,26 @@ confirmation surface. Any Resolve or Edit action leaves setup for that same
 Analyzer Types editor with a return URL; it never opens a second or
 analyzer-specific editor.
 
+The lab-facing navigation has one Analyzer dashboard and one distinct Analyzer
+Types manager. `/analyzers` is the sole analyzer-instance list and inline
+create/edit/setup entry. `/analyzers/types` owns reusable profile lifecycle and
+its subordinate mapping view. Operational QC and analyzer attention are linked
+workflows, not additional analyzer-configuration dashboards. Once inline setup
+replaces `/analyzers/new` and `/analyzers/:id/edit`, those standalone routes and
+components are removed; G0 contains no compatibility redirect or duplicate
+navigation entry for them.
+
 ### Analyzer mock owns reproducible instruments
 
 `tools/analyzer-mock-server` owns deterministic test instruments and fixtures.
 It must exercise the Bridge through real ASTM, HL7, and FILE transports for
 integration acceptance. Its legacy direct-to-OpenELIS HTTP modes may be used
 only to characterize or retire legacy behavior; they cannot prove the target
-runtime architecture.
+runtime architecture. Keep the mock deliberately thin: it emulates only the
+instrument transport, messages, connection behavior, and failure cases needed
+by an accepted scenario. It does not own profile lifecycle, OpenELIS business
+rules, or a duplicate product workflow. Add mock code only when a failing
+transport-level test proves an accepted scenario is missing.
 
 ### Review tooling owns review provenance
 
@@ -532,12 +551,14 @@ acceptance criterion until reimplemented and accepted at the owning checkpoint.
 
 Therefore neither PR #3792 nor the July deployment is the OGC-1054 MVP.
 
-The baseline claims above are grounded in current OpenELIS, Bridge, and analyzer
-mock routes, services, runtime code, fixtures, and tests. `openelis-work`
-contributes only the functional and visual outcomes crosswalked below; it does
-not supply these implementation conclusions.
+The table below records the pre-execution `develop` baseline established during
+R0. It is historical context, not a live status ledger; checkpoint markers and
+acceptance criteria govern current status. Named paths may disappear when their
+owning removal checkpoint becomes review-ready. `openelis-work` contributes only
+functional and visual outcomes; it does not supply these implementation
+conclusions.
 
-| Current-code claim                              | Reproducible code evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| R0 baseline claim                               | Reproducible code evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Setup remains separate routed pages             | [`frontend/src/App.jsx`](../../frontend/src/App.jsx) and [`AnalyzersList.tsx`](../../frontend/src/components/analyzers/AnalyzersList/AnalyzersList.tsx) route Add, Edit, Mappings, QC Rules, and Control Lots separately.                                                                                                                                                                                                                                                                                                                                   |
 | Qualitative binding is not catalog-safe         | [`QualitativeResultMapping.java`](../../src/main/java/org/openelisglobal/analyzer/valueholder/QualitativeResultMapping.java) and [`QualitativeResultMappingForm.java`](../../src/main/java/org/openelisglobal/analyzer/form/QualitativeResultMappingForm.java) persist free-text `openelisCode`.                                                                                                                                                                                                                                                            |
@@ -673,7 +694,7 @@ gates.
 | 7           | Instrument not listed links to the separate Analyzer Types create/Duplicate Profile workflow without developer fields, then returns to setup.                                                          | M1 + M3; MVP-003/010; `AN-MVP-002`    |
 | 8           | Method-dependent control-lot validation remains visible and actionable inside the separate OpenELIS Quality Control workflow; it never becomes an analyzer readiness blocker.                          | M3; MVP-015/022; `AN-MVP-009`         |
 | 9           | Type lifecycle uses deactivate/reactivate in M1; M2 removes Copy Mappings; M3 replaces analyzer-instance hard delete with audited deactivate/reactivate.                                               | M1 + M2 + M3; MVP-004/009             |
-| Deferred    | Real mock-to-Bridge probes cover role-appropriate settings, success, failure, timeout, supported direction, and visible Results-only degradation.                                                      | BR-M2 + M3 + MOCK-M4; MVP-013/014/021 |
+| Deferred    | Real mock-to-Bridge probes cover role-appropriate settings, success, failure, timeout, supported direction, and an explicit supported Results-only choice after Two-way failure.                         | BR-M3 + OE-M3 + MOCK-M4; MVP-013/014/021 |
 | Untested    | M4 owns live capture/reconciliation, draft-type population, hold/alert/resolve, and deterministic next-message behavior for unknown traffic.                                                           | M4; MVP-018/019/020                   |
 | Preserve    | Inline setup, searchable selection, readable summaries, lab units, live blockers, catalog-safe result choices, and absence of developer fields remain functional regressions.                          | M1-M3; MVP-001/007/010/016/022        |
 | Withdrawn   | The report's withdrawn picker-search and direction-default observations add no defect requirement; later UI automation must use focused visible controls.                                              | M3/G0; MVP-010/014/023                |
@@ -682,7 +703,8 @@ gates.
 ## Execution Contract
 
 These are engineering validation milestones, not partial product acceptance.
-The first product review requested from the user is G0, the full deployed MVP.
+Review happens against CI-green checkpoint PR deployments throughout the train;
+G0 is the first and only full-MVP human acceptance gate.
 There is one active implementation checkpoint at a time and no
 architecture-selection prompt in the workstream. Once that checkpoint is
 review-ready, the next stacked checkpoint may start while review continues;
@@ -759,8 +781,11 @@ of integration.
 No separate checkpoint files are required. The roadmap defines the exit gate;
 tests, commits, CI, review, and merge remain where they naturally live in Git
 and GitHub. A checkpoint PR links its assigned acceptance IDs and contains the
-red-green-refactor history needed for review. Only G0 creates a standalone
-bundle because remote human UAT and MP4 must be bound to one exact deployment.
+red-green-refactor history needed for review. Each UI checkpoint also publishes
+its exact review candidate and verifies the live overlay/checklist; those
+ordinary deployment and review facts remain in the PR. Only G0 creates a
+standalone bundle because final human UAT and MP4 must be bound to one unchanged
+deployment.
 
 An ambiguity is blocking when resolving it could change clinical safety,
 repository ownership, durable data semantics, a cross-repository contract, or
@@ -815,11 +840,13 @@ E0/Bridge contracts control when it starts.
 - [x] **E0 - Engineering contract and clean replacement boundary.** Bridge #45
       and OE #4055 are review-ready only after the profile contract and parity
       fixtures are corrected under this amendment.
-- [*] **M1 - Established Bridge profile lifecycle and Analyzer Types.** Active
-  checkpoint. Bridge #46 and OE #4056 must be rewired to the corrected E0
-  contract before any later checkpoint starts.
-- [ ] **M2 - Safe mapping editor.** Future.
-- [ ] **M3 - Guided setup, connectivity, and linked operational QC.** Future.
+- [x] **M1 - Established Bridge profile lifecycle and Analyzer Types.**
+  Review-ready on Bridge #46, analyzer-mock #40, and OE #4056 using the
+  corrected E0 contract and exact priority-profile revisions.
+- [x] **M2 - Safe mapping editor.** Review-ready on Bridge #47 and the paired
+  OpenELIS M2 PR.
+- [*] **M3 - Guided setup, connectivity, and linked operational QC.** Active
+  checkpoint.
 - [ ] **M4 - Safe traffic and integrated MVP.** Future.
 - [ ] **G0 - Full MVP deployment and human acceptance.** Future.
 - [ ] **R1.1 - Mature alert operations.** Future.
@@ -871,14 +898,16 @@ does not get an empty placeholder PR.
 | ----- | ----- | ------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | 1     | BR-E0 | `codex/ogc-1054-e0-contracts`         | Bridge `develop` | Strict additive evolution of the established profile contract plus registration/normalized-traffic contracts and GeneXpert/Fluoro compatibility fixtures | OE-E0        |
 | 2     | BR-M1 | `codex/ogc-1054-m1-profile-lifecycle` | BR-E0 branch     | Catalog, validation, revision, Duplicate/Update/Publish lifecycle, and curated shipped profiles around the established system                            | OE-M1        |
-| 3     | BR-M2 | `codex/ogc-1054-m2-mapping-qc`        | BR-M1 branch     | Mapping identity, control-result recognition, capability, and connection evidence contract; no classifier fallback                                       | OE-M2, OE-M3 |
-| 4     | BR-M4 | `codex/ogc-1054-m4-safe-traffic`      | BR-M2 branch     | Patient/recognized-control/unknown/FILE normalized traffic with preserved raw context                                                                    | OE-M4        |
+| 3     | BR-M2 | `codex/ogc-1054-m2-mapping-qc`        | BR-M1 branch     | Mapping identity, control-result recognition, and capability contracts; no classifier fallback                                                            | OE-M2        |
+| 4     | BR-M3 | `codex/ogc-1054-m3-connect-probes`    | BR-M2 branch     | Profile-pinned, role-aware connection probes with structured endpoint/outcome evidence; remove the raw generic probe path                                  | OE-M3        |
+| 5     | BR-M4 | `codex/ogc-1054-m4-safe-traffic`      | BR-M3 branch     | Patient/recognized-control/unknown/FILE normalized traffic with preserved raw context                                                                    | OE-M4        |
 
 ### Analyzer mock stack
 
-| Order | ID      | Fixed branch                 | Initial PR base | Scope                                                                                                                                                | Required by |
-| ----- | ------- | ---------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1     | MOCK-M4 | `codex/ogc-1054-m4-fixtures` | mock `main`     | Deterministic ASTM, HL7, and FILE patient, recognized-control, nonmatch, unknown, connection, failure, and supported two-way fixtures sent to Bridge | OE-M4       |
+| Order | ID      | Fixed branch                            | Initial PR base | Scope                                                                                                                                                  | Required by |
+| ----- | ------- | --------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| 1     | MOCK-M1 | `codex/ogc-1054-m1-profile-parity`      | mock `main`     | Exact priority-profile revision pins and deterministic GeneXpert/Fluoro transport parity; QuantStudio only when it passes the same publication gate    | OE-M1       |
+| 2     | MOCK-M4 | `codex/ogc-1054-m4-fixtures`            | merged MOCK-M1  | Deterministic ASTM, HL7, and FILE patient, recognized-control, nonmatch, unknown, connection, failure, and supported two-way fixtures sent to Bridge   | OE-M4       |
 
 OpenELIS PRs that depend on a companion update the ordinary submodule pointer
 and link its PR. A companion merges before the first OpenELIS consumer that
@@ -893,14 +922,16 @@ The MVP acceptance order is:
 3. BR-E0
 4. OE-E0
 5. BR-M1
-6. OE-M1
-7. BR-M2
-8. OE-M2
-9. OE-M3
-10. BR-M4
-11. MOCK-M4
-12. OE-M4
-13. OE-G0
+6. MOCK-M1
+7. OE-M1
+8. BR-M2
+9. OE-M2
+10. BR-M3
+11. OE-M3
+12. BR-M4
+13. MOCK-M4
+14. OE-M4
+15. OE-G0
 
 Only the item marked `[*]` is under active implementation. Its immediate
 successor cannot start until it reaches `[x]`, and a later item cannot merge or
@@ -996,7 +1027,11 @@ accepted against a second or incomplete profile contract.
    plain-language explainer and aggregate counts shown by the functional mock.
 3. Support shipped and site-created types, create, Duplicate Profile, unique
    naming, source lineage, deactivate/reactivate, and audit/history in the
-   separate Analyzer Types workflow.
+   separate Analyzer Types workflow. Create reserves a unique, incomplete
+   Bridge-owned draft that is not selectable until it is complete and
+   published. Duplicate Profile starts a separate copied draft with source
+   lineage. Publishing either kind creates immutable revision 1; creating,
+   duplicating, or publishing never moves an existing analyzer.
 4. Make search and filters URL-backed and use reusable Carbon page, breadcrumb,
    status, table, empty-state, and notification components.
 5. Persist a selected profile ID/revision plus explicit local site binding and
@@ -1055,6 +1090,9 @@ rejected server-side.
    canonical URL/query state, linkable breadcrumbs, a readable completion
    summary, reload, back, and forward behavior. Do not add a fourth setup
    section unless the functional specification is amended.
+   `/analyzers` remains the sole analyzer-instance dashboard and setup entry;
+   remove the superseded standalone create/edit routes and navigation when this
+   replacement is green.
 2. Provide searchable type selection. Instrument not listed links to the
    separate Analyzer Types create/Duplicate Profile workflow and returns with
    the new type selectable; analyzer setup never creates or silently mutates a
@@ -1064,11 +1102,16 @@ rejected server-side.
    only when the pinned profile revision, site binding, explicit exclusion, or
    recognition fingerprint changes. Operational-QC changes do not invalidate
    analyzer verification.
-5. Execute probes in Bridge and show protocol-appropriate evidence; separate
-   connection initiator from Results only/Two-way capability. Collect only
-   role-applicable settings, show the endpoint a lab must configure, and degrade
-   an unreachable Two-way probe visibly to Results only without blocking
-   supported one-way setup.
+5. In BR-M3, execute profile-pinned probes and return protocol-appropriate
+   structured evidence; separate connection initiator from Results only/Two-way
+   capability. Collect only role-applicable settings and show the endpoint a lab
+   must configure. When a Two-way probe fails and the pinned profile supports
+   Results only, offer that as an explicit user choice; never rewrite the saved
+   mode automatically. For a Bridge receiver/listener, OpenELIS neither asks for
+   nor registers a per-analyzer listen address or port: Bridge derives the
+   advertised endpoint from the pinned profile's protocol/lower-layer behavior
+   and its live listener configuration. Analyzer host/port settings apply only
+   when the selected role requires Bridge to connect to the instrument.
 6. Provide an analyzer-scoped link into the canonical OpenELIS Quality Control
    workflow, preserving analyzer context and a breadcrumb/back path. Retain
    `QCControlLot`, `QCResult`, QC statistics, Westgard configuration/evaluation,
@@ -1082,10 +1125,16 @@ rejected server-side.
    ready when it is validly bound or explicitly excluded where offered and its
    ID is part of the current confirmation; the workflow does not display a
    false 100% mapping claim.
+8. Correct the `QCResultCreatedEventListenerTest` fixture so it supplies
+   `QCResultDAO`, reloads the persisted result, verifies that the reloaded result
+   reaches Westgard evaluation and violation handling, and fails on an
+   unintended listener exception. A test that passes only because the listener
+   catches and logs a missing-dependency failure is not acceptance evidence.
 
-**Exit:** MVP-010 through MVP-016 and applicable MVP-022 criteria pass; a lab
-administrator can activate a complete analyzer without developer fields or file
-edits, and runtime setup occurs in Bridge.
+**Exit:** MVP-010 through MVP-016 and applicable MVP-022 criteria pass in OE-M3
+and BR-M3; a lab administrator can activate a complete analyzer without
+developer fields or file edits, runtime setup/probes occur in Bridge, and no
+second analyzer-instance create/edit screen remains.
 
 ### M4 - Safe traffic and integrated MVP (OGC-1058 safety scope)
 
@@ -1117,7 +1166,7 @@ edits, and runtime setup occurs in Bridge.
 **Exit:** MVP-017 through MVP-023 pass, all prior criteria remain green, and the
 top of the three repository stacks forms one reproducible release candidate.
 
-### G0 - Full MVP deployment and first product review
+### G0 - Full MVP deployment and human acceptance
 
 1. Create OE-G0 from OE-M4 and verify its ordinary Git/submodule state selects
    the intended OpenELIS, Bridge, mock, and profile-catalog versions.
@@ -1126,9 +1175,10 @@ top of the three repository stacks forms one reproducible release candidate.
    deployment command.
 3. Load deterministic fixtures as a deployment precondition. No Playwright user
    story may seed or mutate state through an API.
-4. Create/publish the Grist story and steps below through native Grist MCP or
-   the Grist UI, verify the served revision, and keep old foundation steps
-   unpublished rather than deleting or renaming them.
+4. Freeze and verify the already-synchronized Grist story and 17 stable steps
+   below through native Grist MCP or the Grist UI. Confirm the served revision,
+   and keep old foundation stories unpublished rather than deleting or renaming
+   them.
 5. Run the focused non-video remote UI story first. Inspect test output, browser
    console, screenshots, trace, runtime state, and desktop/mobile captures.
 6. Compare captures with the current `openelis-work` functional/visual intent
@@ -1213,17 +1263,17 @@ and site validation.
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | MVP-001 | Analyzer Types lists shipped and site types with a plain-language explainer, aggregate counts, source, status, completeness, usage, and attention state.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Service/integration + RTL + UI E2E                    |
 | MVP-002 | Search and filters round-trip through the URL and restore identical visible state after reload/back/forward.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | RTL with router + UI E2E                              |
-| MVP-003 | Analyzer Types provides Create and Duplicate Profile as separate profile-management actions. Duplicate Profile creates a new profile identity with a unique name, initial revision, source lineage, actor, and time; changing it cannot mutate the source profile or analyzers pinned to the source.                                                                                                                                                                                                                                                                                                                                                                                                                            | Bridge contract + OpenELIS integration + UI E2E       |
+| MVP-003 | Analyzer Types provides Create and Duplicate Profile as separate profile-management actions. Create reserves a unique incomplete draft that cannot be selected by analyzer setup before publication. Duplicate Profile starts a separate complete copied draft with a unique name and visible source lineage. Publishing either kind creates immutable revision 1 with actor and time; draft changes and publication cannot mutate the source profile or move analyzers pinned to another revision.                                                                                                                                                                                                                                                                                   | Bridge contract + OpenELIS integration + UI E2E       |
 | MVP-004 | Deactivation prevents new use but preserves existing history; reactivation is audited; hard delete is unavailable.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Service/integration + RTL                             |
 | MVP-005 | Analyzer Types has the sole reusable mapping editor. It displays every accepted distinct profile result, including unmatched results, while proven aliases remain one definition; local lookup never skips or falsely completes one. Verify links to that editor with a return URL and contains no second/per-analyzer editor.                                                                                                                                                                                                                                                                                                                                                                                                  | Contract + service + RTL + UI E2E                     |
 | MVP-006 | Test selection searches the complete active catalog by name/code/LOINC; only a unique candidate may be suggested, while unresolved/explicitly-excluded choices remain independent per row and never block work on other rows.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | JUnit 4 + RTL + UI E2E                                |
 | MVP-007 | Every applicable qualitative row can select only an active Result Option owned by its Test; selection enables save, server-derived value/label persist, and reload restores the binding.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | JUnit 4 + RTL + UI E2E                                |
 | MVP-008 | Every active profile revision has exactly one valid `controlResultRecognition` mode. `RULES` has one or more valid OR matchers. `NONE` has no rules and a required author affirmation that the interface transports no control results; unknown/undocumented behavior cannot publish as `NONE`. Missing/invalid combinations are not selectable. Structured Analyzer Types authoring and Verify render human-readable behavior separately from operational QC; neither exposes regex, raw JSON, or raw matcher fields.                                                                                                                                                                                                          | Bridge schema/unit + OpenELIS contract + RTL + UI E2E |
 | MVP-009 | Editing a referenced Analyzer Type requires explicit Update shared or Duplicate Profile scope and identifies affected analyzers. Update shared publishes a new immutable revision under the same identity; Duplicate Profile creates a new identity/revision. Existing analyzers remain on their pinned revision and show Update available until one is explicitly moved, re-verified, and synchronized. No Copy Mappings, clone, per-analyzer override, copied snapshot, or implicit bulk update bypass exists.                                                                                                                                                                                                                | Bridge/OpenELIS integration + RTL + UI E2E            |
-| MVP-010 | Inline setup supports searchable existing-type selection, name, readable lab units, Verify, Connect, and a completion summary. Instrument not listed links to separate Analyzer Types creation and returns with the created type selectable. Loaded profile/mapping/recognition/result counts and saved analyzer fields survive reload.                                                                                                                                                                                                                                                                                                                                                                                         | RTL + UI E2E                                          |
+| MVP-010 | `/analyzers` is the sole analyzer-instance dashboard and inline create/edit/setup entry. Setup supports searchable existing-type selection, name, readable lab units, Verify, Connect, and a completion summary. Instrument not listed links to the separate Analyzer Types manager and returns with the created type selectable. Loaded profile/mapping/recognition/result counts and saved analyzer fields survive reload. No standalone create/edit screen, duplicate navigation entry, or compatibility route remains.                                                                                                                                                                                                                 | RTL + UI E2E                                          |
 | MVP-011 | Every page has one semantic `h1`, linkable breadcrumbs, and canonical URL/query state.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | RTL + UI E2E                                          |
 | MVP-012 | Confirmation records actor, time, profile ID/revision, binding fingerprint, recognition fingerprint, and every confirmed/excluded source-row ID. Selecting another profile revision or changing a binding, exclusion, or recognition definition creates a draft candidate and stales only that candidate; the last active candidate remains unchanged until verified/synchronized. Operational-QC and connection-test changes do not stale either candidate.                                                                                                                                                                                                                                                                    | JUnit 4 integration + audit assertion                 |
-| MVP-013 | Bridge connection testing uses only role-applicable settings and returns visible success, failure, missing-configuration, and timeout evidence plus the endpoint to configure.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Bridge test + RTL + UI E2E                            |
+| MVP-013 | Bridge connection testing uses only role-applicable settings and returns visible success, failure, missing-configuration, and timeout evidence plus the endpoint to configure. For Bridge receiver/listener modes, the endpoint is derived from the pinned profile and live Bridge listener configuration; OpenELIS neither collects nor registers a per-analyzer listen address/port. Analyzer host/port fields appear only for roles where Bridge connects to the instrument.                                                                                                                                                                                                                                                          | Bridge contract + OpenELIS consumer + RTL + UI E2E    |
 | MVP-014 | Setup uses the pinned profile revision's declared communication/data-flow default and offers only supported modes. A failed round-trip is visible and may lead to an explicit supported results-only choice; it never silently rewrites the candidate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Bridge contract + RTL + UI E2E                        |
 | MVP-015 | An analyzer-scoped Quality Control link opens the canonical OpenELIS QC workflow with analyzer context and a return path. `QCControlLot`, `QCResult`, QC statistics, Westgard configuration/evaluation, violations, and alerts remain the operational path; `AnalyzerQcRule` and `QcRun` do not. Valid/invalid QC changes never alter analyzer verification or activation blockers.                                                                                                                                                                                                                                                                                                                                             | JUnit 4 analyzer/QC + RTL + UI E2E                    |
 | MVP-016 | Every transition into `ACTIVE` succeeds if and only if one candidate has: an existing active schema-valid pinned profile revision; a nonblank analyzer name; at least one active lab unit; supported connection/data-flow modes and all profile-required instance fields; every declared test/result row validly bound or explicitly excluded where offered with exactly matching confirmed row IDs; current recognition confirmation for the same revision/fingerprint, including explicit `NONE`; and a Bridge acknowledgment matching analyzer ID, profile ID/revision, and canonical desired-state fingerprint. Each false predicate produces one visible blocker. Operational QC and connection-test outcomes never block. | JUnit 4 + contract + UI E2E                           |
@@ -1301,18 +1351,31 @@ The final code-quality gate uses `digi-uw/code-qa` for spec/code alignment,
 meaningful coverage, simplicity and legacy removal, cross-repository companion
 status, and the final acceptance package.
 
+Until the repository-wide TypeScript baseline is green, every OpenELIS
+checkpoint still runs and reports `npm run typecheck` with the same toolchain as
+its immediate predecessor. New or changed OGC-1054 files must have zero
+diagnostics, and the total diagnostic count must not increase from that
+predecessor. Do not suppress diagnostics, omit the command, or claim a global
+pass. Repairing unrelated baseline diagnostics belongs in a separate PR and is
+not silently absorbed into this feature stack.
+
 ## Full MVP Grist Checklist
 
-Create one published Grist story for instance `analyzers`, host
-`analyzers.openelis-global.org`, traceability key `OGC-1054`, and the full MVP
-PR links. Create these stable, required steps only when OE-G0 is deployed. Keep
-old foundation stories unpublished; do not rename their keys or reuse their
-answers.
+Maintain one published Grist review for instance `analyzers`, host
+`analyzers.openelis-global.org`, traceability key `OGC-1054`, and the current PR
+links. Synchronize these 17 stable, required steps before the next checkpoint
+preview and keep them visible in the Review overlay throughout implementation.
+An interim reviewer executes the steps supported by that exact checkpoint and
+leaves future steps unmarked; an interim report is feedback, not acceptance.
+G0 requires a fresh pass on all 17 steps by the named human product reviewer
+against one unchanged final deployment. Keep old foundation reviews unpublished;
+do not rename these keys or reuse answers from another deployment/checklist
+revision.
 
 | Step key     | Reviewer action                                                                                                                                                                | Expected result                                                                                                                                                                                                                                                                        |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AN-MVP-001` | Open Analyzer Types, search/filter, and inspect one shipped type.                                                                                                              | Source, status, completeness, usage, protocol, mapping, control-recognition mode, and attention information are understandable.                                                                                                                                                        |
-| `AN-MVP-002` | In Analyzer Types, create a type or use Duplicate Profile; return to analyzer setup and select it.                                                                             | A unique profile identity/revision with source lineage is created without developer fields or file edits; the source and existing analyzers remain unchanged.                                                                                                                          |
+| `AN-MVP-002` | In Analyzer Types, start Create and observe the incomplete draft state; then Duplicate Profile, publish the copied draft, return to analyzer setup, and select it.                | Create does not expose an incomplete type to setup. The published duplicate has a unique profile identity/revision and source lineage without developer fields or file edits; the source and existing analyzers remain unchanged.                                                       |
 | `AN-MVP-003` | Open the Analyzer Types mapping editor, resolve one unmatched test, explicitly exclude another, then return to Verify.                                                         | The same sole editor is used; every accepted distinct result remains visible and proven aliases are not duplicated; complete catalog search works; selections persist independently; no per-analyzer editor appears.                                                                   |
 | `AN-MVP-004` | Map a qualitative analyzer value.                                                                                                                                              | Only active options for that mapped Test are selectable; reload preserves the binding.                                                                                                                                                                                                 |
 | `AN-MVP-005` | Inspect structured authoring and Verify for `RULES`/affirmed `NONE`; publish with Update shared and Duplicate Profile; explicitly adopt one new revision.                      | Recognition is human-readable and separate from operational QC; `NONE` states that no controls are transported; no raw/fallback state appears; analyzers remain pinned/show Update available until explicit adoption, re-verification, and sync; duplicate identity/lineage are clear. |
@@ -1334,6 +1397,30 @@ must execute every user action above through visible controls. Protocol path and
 delivery guarantees are proven separately by harness contracts.
 
 ## Final Deployment And UAT Contract
+
+### Checkpoint preview deployment
+
+Once a UI checkpoint's owning PRs contain a coherent candidate and all
+applicable automated gates are green, publish the exact pushed top OpenELIS
+commit with its required Bridge/mock revisions to
+`analyzers.openelis-global.org`. The candidate may be unmerged; deployment is
+how the product reviewer inspects a PR before merge. Record the deployment link
+and observed findings in the owning PR, then fix findings in that same
+checkpoint.
+
+Use only the review-tooling targeted command
+`./deploy.sh app deploy analyzers --ref <commit> --scope app`. Before and after
+deployment, verify the analyzer target/health and verify that the AMR target
+metadata and health are unchanged. Do not run a full-host deployment, restart
+the shared router/Grist services, reseed AMR, or alter AMR containers while
+publishing an analyzer checkpoint. A Grist content edit should appear through
+the live checklist service without a widget deployment; verify both the served
+checklist revision and the visible Review overlay. Change review-tooling code
+only in its own PR when a failing tooling contract proves that is necessary.
+
+Preview review never changes `[x]`, `[*]`, or `[✓]` and never carries acceptance
+forward to a later deployment. G0 repeats the complete review against the final
+candidate and is the only source of full-MVP human acceptance and MP4 evidence.
 
 `/__review/target.json` (with `/__review/build.json` as its compatibility alias)
 must identify the verified application repository/ref/commit, review-tooling
@@ -1397,6 +1484,12 @@ implementation directive. Record the MP4 only after defects are resolved.
 The canonical MVP review host is `analyzers.openelis-global.org`. The previously
 written `analyzers.openelis-work.org` value is retired and is not a deployment or
 Grist-publication target.
+
+The analyzer instance model has one dashboard (`/analyzers`), one separate
+reusable Analyzer Types manager (`/analyzers/types`), and links to canonical
+operational-QC and attention workflows. Specialized linked workflows are not
+alternate analyzer setup/admin screens, and superseded standalone create/edit
+routes do not survive G0.
 
 No architecture question remains open: Bridge is the analyzer runtime,
 established-profile catalog, and control-result-recognition owner; OpenELIS owns local
