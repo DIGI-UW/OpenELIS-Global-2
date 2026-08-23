@@ -115,6 +115,7 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         exportQuery.specimen = List.of(scenario.sampleTypeId);
         exportQuery.organism = List.of(scenario.organismId);
         exportQuery.significance = List.of(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
+        exportQuery.includeUnspecified = true;
         exportQuery.dedup = "FIRST_ISOLATE_7_DAY";
         exportQuery.page = 1;
         exportQuery.pageSize = 20;
