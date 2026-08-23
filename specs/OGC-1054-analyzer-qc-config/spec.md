@@ -235,17 +235,23 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
 - Add Analyzer expands inline while the analyzer list remains available.
 - The canonical sequence is Instrument, Verify, and Connect. Each section has
   linkable URL/query state and a breadcrumb path; completion has a readable
-  summary, not an invented fourth setup section.
+  summary, not an invented fourth setup section. Analyzer-list setup and
+  connection actions deep-link to that state. No standalone create/edit route,
+  redirect, compatibility route, or separate connection-test modal remains.
 - Instrument selection is searchable and selects an existing Analyzer Type.
   An unlisted instrument links to the separate Analyzer Types create/duplicate
   workflow and returns to analyzer setup with the new type selectable.
 - Setup begins with the selected profile revision's declared communication and
-  data-flow defaults. Only modes supported by that profile are offered. A
-  failed round-trip probe is shown visibly and may support an explicit user
-  choice to use a supported results-only mode; it never silently rewrites the
-  profile or instance configuration.
-- Connection testing reports success, failure, timeout, and missing
-  configuration in plain language and shows the endpoint the lab must configure.
+  data-flow default and LIS-initiated capability. Only modes supported by that
+  profile are offered; OpenELIS does not infer capability from the default,
+  profile identity, protocol, or application constants. A failed round-trip
+  probe is shown visibly and may support an explicit user choice to use a
+  supported results-only mode; it never silently rewrites the profile or
+  instance configuration.
+- Inline Connect reports Bridge's structured success, failure, timeout, and
+  missing-configuration evidence in plain language and shows the endpoint the
+  lab must configure. It does not replace that evidence with a simulated
+  activity log or generic status-only result.
 - Binding/control-recognition verification and operational-QC state are distinct.
   Operational QC never blocks creating, connecting, or activating an analyzer.
 - Operational QC is configured and reviewed in the existing OpenELIS Quality

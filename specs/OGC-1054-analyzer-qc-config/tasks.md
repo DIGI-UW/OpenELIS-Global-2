@@ -137,17 +137,25 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
    activation predicate on initial activation and re-entry from error/offline,
    draft-versus-active candidate isolation, operational-QC independence, and
    pinned Bridge acknowledgment matching.
-2. Write failing Bridge probe/capability tests.
+2. Write failing Bridge probe/capability and OE consumer tests proving that
+   supported modes come from the pinned profile's declared default and
+   LIS-initiated capability, receiver endpoints come from Bridge listener
+   configuration, and no application fallback infers either value.
 3. Write RTL real-router tests for Instrument, Verify, Connect, separate
    Analyzer Types create/Duplicate Profile return, the completion
-   summary, breadcrumbs, URL state, history, and reload.
+   summary, breadcrumbs, URL state, history, reload, role-applicable fields,
+   structured probe evidence, and explicit supported Results-only fallback.
 4. Write integration/RTL tests for the analyzer-scoped canonical Quality Control
    link and prove valid/invalid operational-QC changes do not alter verification
    or activation blockers.
-5. Implement the unified Carbon workflow with no developer fields or duplicate
-   setup path.
-6. Run a focused visible browser story and inspect desktop/mobile captures.
-7. Run the M3 exit gate and submit the checkpoint PRs for review.
+5. Implement the unified Carbon workflow with no developer fields, standalone
+   create/edit route, separate connection-test modal, redirect, compatibility
+   route, or duplicate setup action.
+6. Run a focused visible browser story and inspect console, trace,
+   desktop/mobile captures, and bookmark/reload behavior.
+7. Run the M3 exit gate, publish the exact analyzer-only candidate without
+   changing AMR, verify the applicable stable Grist steps in the Review overlay,
+   and submit the checkpoint PRs for review.
 
 ## M4 - Safe Traffic
 
