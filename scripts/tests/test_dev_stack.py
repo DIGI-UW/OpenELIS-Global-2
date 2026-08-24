@@ -1,7 +1,10 @@
 import importlib.machinery
 import importlib.util
+import os
 import pathlib
 import re
+import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -144,6 +147,56 @@ class DevStackContractTest(unittest.TestCase):
                 context, {"DEV_STACK_BUILD_FRONTEND": "false"}
             )
         )
+
+    def test_frontend_build_detects_non_mounted_runtime_inputs(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+
+        with patch.object(
+            self.dev_stack.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess([], 0),
+        ) as run:
+            self.dev_stack.frontend_dependencies_changed(context, {})
+
+        command = run.call_args.args[0]
+        self.assertIn("frontend/vite.config.ts", command)
+        self.assertIn("frontend/index.html", command)
+        self.assertIn("frontend/tsconfig.json", command)
+        self.assertIn("frontend/.npmrc", command)
+
+    def test_run_java21_honors_selected_java_21_home(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            java_home = root / "selected-java"
+            java_bin = java_home / "bin"
+            java_bin.mkdir(parents=True)
+            java = java_bin / "java"
+            java.write_text(
+                "#!/bin/sh\n"
+                "echo '    java.specification.version = 21' >&2\n",
+                encoding="utf-8",
+            )
+            java.chmod(0o755)
+            environment = os.environ.copy()
+            environment["JAVA_HOME"] = str(java_home)
+            environment["SDKMAN_DIR"] = str(root / "missing-sdkman")
+            environment.pop("JAVA_HOME_21", None)
+
+            result = subprocess.run(
+                [
+                    str(REPO_ROOT / "scripts" / "run-java21"),
+                    "sh",
+                    "-c",
+                    'printf "%s" "$JAVA_HOME"',
+                ],
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, str(java_home))
 
     def test_proxy_resolves_replaceable_services_through_docker_dns(self):
         for config_name in ("nginx.conf.template", "nginx.conf"):

@@ -6,32 +6,58 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SDKMAN_DIR="${SDKMAN_DIR:-$HOME/.sdkman}"
 SDKMANRC="$PROJECT_ROOT/.sdkmanrc"
 
-if [[ ! -r "$SDKMANRC" ]]; then
-    echo "OpenELIS SDKMAN configuration is missing at $SDKMANRC" >&2
-    exit 1
+java_specification_version() {
+    "$1" -XshowSettings:properties -version 2>&1 \
+        | awk -F'= ' '/java.specification.version/ { print $2; exit }'
+}
+
+java_home_property() {
+    "$1" -XshowSettings:properties -version 2>&1 \
+        | awk -F'= ' '/java.home/ { print $2; exit }'
+}
+
+is_java21() {
+    [[ -x "$1" ]] && [[ "$(java_specification_version "$1")" == "21" ]]
+}
+
+SELECTED_JAVA_HOME=""
+if [[ -n "${JAVA_HOME_21:-}" ]]; then
+    if ! is_java21 "$JAVA_HOME_21/bin/java"; then
+        echo "JAVA_HOME_21 does not point to a Java 21 installation: $JAVA_HOME_21" >&2
+        exit 1
+    fi
+    SELECTED_JAVA_HOME="$JAVA_HOME_21"
+elif [[ -n "${JAVA_HOME:-}" ]] && is_java21 "$JAVA_HOME/bin/java"; then
+    SELECTED_JAVA_HOME="$JAVA_HOME"
+elif command -v java >/dev/null 2>&1 \
+    && [[ "$(java_specification_version "$(command -v java)")" == "21" ]]; then
+    SELECTED_JAVA_HOME="$(java_home_property "$(command -v java)")"
+else
+    if [[ ! -r "$SDKMANRC" ]]; then
+        echo "OpenELIS requires Java 21; no valid selected Java or SDKMAN configuration was found" >&2
+        exit 1
+    fi
+    JAVA_VERSION="$(awk -F= '$1 == "java" { print $2; exit }' "$SDKMANRC")"
+    SDKMAN_JAVA_HOME="$SDKMAN_DIR/candidates/java/$JAVA_VERSION"
+    if [[ -z "$JAVA_VERSION" ]] || ! is_java21 "$SDKMAN_JAVA_HOME/bin/java"; then
+        echo "Java $JAVA_VERSION is not installed under SDKMAN at $SDKMAN_JAVA_HOME" >&2
+        exit 1
+    fi
+    SELECTED_JAVA_HOME="$SDKMAN_JAVA_HOME"
 fi
 
-JAVA_VERSION="$(awk -F= '$1 == "java" { print $2; exit }' "$SDKMANRC")"
-JAVA_HOME="${JAVA_HOME_21:-$SDKMAN_DIR/candidates/java/$JAVA_VERSION}"
-
-if [[ -z "$JAVA_VERSION" || ! -x "$JAVA_HOME/bin/java" ]]; then
-    echo "Java $JAVA_VERSION is not installed under SDKMAN at $JAVA_HOME" >&2
-    exit 1
-fi
-
+JAVA_HOME="$SELECTED_JAVA_HOME"
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
 
-JAVA_SPECIFICATION_VERSION="$({ java -XshowSettings:properties -version; } 2>&1 \
-    | awk -F'= ' '/java.specification.version/ { print $2; exit }')"
-
+JAVA_SPECIFICATION_VERSION="$(java_specification_version "$JAVA_HOME/bin/java")"
 if [[ "$JAVA_SPECIFICATION_VERSION" != "21" ]]; then
     echo "OpenELIS requires Java 21; selected Java $JAVA_SPECIFICATION_VERSION" >&2
     exit 1
 fi
 
 if [[ "$#" -eq 0 ]]; then
-    java -version
+    "$JAVA_HOME/bin/java" -version
     exit 0
 fi
 

@@ -124,7 +124,16 @@ def frontend_dependencies_changed(
     override = environment.get("DEV_STACK_BUILD_FRONTEND")
     if override is not None:
         return override.lower() == "true"
-    paths = ("frontend/package.json", "frontend/package-lock.json", "frontend/Dockerfile")
+    paths = (
+        "frontend/.dockerignore",
+        "frontend/.npmrc",
+        "frontend/Dockerfile",
+        "frontend/index.html",
+        "frontend/package-lock.json",
+        "frontend/package.json",
+        "frontend/tsconfig.json",
+        "frontend/vite.config.ts",
+    )
     try:
         result = subprocess.run(
             ["git", "diff", "--quiet", "origin/develop", "--", *paths],
