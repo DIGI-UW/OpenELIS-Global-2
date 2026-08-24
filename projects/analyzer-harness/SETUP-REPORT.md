@@ -1,5 +1,10 @@
 # Analyzer Harness Setup Report
 
+> Historical infrastructure snapshot from 2026-02-03. It does not define the
+> current analyzer architecture, delivery state, credentials, or acceptance. See
+> `specs/OGC-1054-analyzer-qc-config/spec.md` and
+> `specs/roadmaps/ogc-1054-analyzer-feature-roadmap.md`.
+
 **Date**: 2026-02-03  
 **Status**: ✅ Complete and Operational  
 **URL**: https://analyzers.openelis-global.org/  
@@ -963,8 +968,8 @@ docker logs analyzer-harness-astm-simulator-1 | grep "H|"
   `tools/analyzer-mock-server/templates/`
 - **E2E Test Coverage**: Expand Cypress tests for default config loading
   workflow
-- **Documentation**: Add screenshots to
-  `specs/011-madagascar-analyzer-integration/docs/`
+- **Documentation**: Historical proposal; current UI evidence follows the
+  canonical OGC-1054 roadmap.
 
 ---
 
@@ -985,15 +990,14 @@ docker logs analyzer-harness-astm-simulator-1 | grep "H|"
 
 **Documentation:**
 
-- Canonical roadmap: `specs/roadmaps/madagascar-analyzer-roadmap.md`
+- Historical Madagascar pointer: `specs/roadmaps/madagascar-analyzer-roadmap.md`
 - Harness README: `projects/analyzer-harness/README.md`
 - Historical feature spec (context only, not current source of truth):
   `specs/011-madagascar-analyzer-integration/spec.md`
 - Supported analyzers (retired 2026-04-18):
   `.specify/plan-archive/011-supported-analyzers.md` — current truth is
   `projects/analyzer-harness/seed-analyzers.sh`
-- Plan:
-  `specs/011-madagascar-analyzer-integration/plans/analyzer_fixtures_e2e_manual_5a1cd559.plan.md`
+- Historical implementation plans: available in Git history only
 - Constitution: `.specify/memory/constitution.md` (Principle V - Testing)
 - Agents guide: `AGENTS.md` (Testing Strategy, TDD Workflow)
 

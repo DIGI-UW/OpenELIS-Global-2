@@ -18,13 +18,14 @@ Current implementation follows these boundaries:
 - Analyzer Bridge owns profiles and analyzer-facing runtime behavior,
   including protocols, listeners, parsing, probes, control recognition, FILE
   watching/transport, and outbound analyzer communication.
-- OpenELIS owns analyzer instances, lab units, generic site-entered values,
+- OpenELIS owns analyzer records, lab units, Bridge connection references,
   local catalog bindings, verification/audit, activation intent, held results,
   review, alerts, and separate operational Quality Control.
 - A Bridge profile defines analyzer-type communication behavior and the
-  configuration fields/defaults for a new OpenELIS analyzer instance.
-- OpenELIS pins an immutable profile revision and uses an abstract Bridge
-  interface. It does not interpret or reproduce analyzer runtime behavior.
+  configuration fields/defaults for a new Bridge connection.
+- Bridge pins the immutable profile revision and durably owns entered
+  connection values. OpenELIS uses an abstract Bridge interface and does not
+  interpret, store, or reproduce analyzer runtime behavior.
 - The analyzer mock provides deterministic representative instrument traffic;
   it does not own product configuration or workflow behavior.
 
