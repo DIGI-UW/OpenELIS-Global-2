@@ -1,6 +1,7 @@
 package org.openelisglobal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -20,10 +21,12 @@ public class FixtureLoaderSequenceSynchronizationTest extends BaseWebContextSens
 
         try (Connection connection = dataSource.getConnection();
                 Statement statement = connection.createStatement();
-                ResultSet result = statement.executeQuery(
-                        "SELECT MAX(id), nextval('clinlims.observation_history_seq') FROM clinlims.observation_history")) {
+                ResultSet result = statement
+                        .executeQuery("SELECT (SELECT MAX(id) FROM clinlims.observation_history), last_value, is_called"
+                                + " FROM clinlims.observation_history_seq")) {
             result.next();
             assertEquals(result.getLong(1) + 1, result.getLong(2));
+            assertFalse(result.getBoolean(3));
         }
     }
 }
