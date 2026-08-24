@@ -15,6 +15,12 @@ public interface EQAPanelService extends BaseObjectService<EQAPanel, Long> {
      * makes both wizard modes — split an existing pool, or define samples by hand —
      * the same call.
      *
+     * <p>
+     * Blind codes are filled in only for an IN_HOUSE scheme. A provider panel
+     * (T-24) is shipped as physical material identified by its sample code and is
+     * never blinded into local orders, so a blind code on one would assert
+     * something untrue about it.
+     *
      * @throws IllegalArgumentException when the panel has no scheme or no samples
      */
     EQAPanel create(EQAPanel panel, List<EQAPanelSample> samples, String sysUserId);
@@ -28,6 +34,18 @@ public interface EQAPanelService extends BaseObjectService<EQAPanel, Long> {
      * test picker with this rather than failing at seal.
      */
     List<String> getTestableTestIds();
+
+    /**
+     * The analyte a panel target for this test is stored against. Both wizards pick
+     * the orderable test rather than the analyte behind it — analyte is a catalog
+     * detail no bench user thinks in — so both need this resolution, and it lives
+     * here rather than once per caller. A test with several analytes takes the
+     * first, which is the single-result shape every EQA analyte has today.
+     *
+     * @throws IllegalArgumentException when the test is unknown or carries no
+     *                                  analyte
+     */
+    Long analyteIdForTest(String testId);
 
     /**
      * PREPARING → SEALED (FR-V2.1-11). Refuses a panel with no samples, any sample

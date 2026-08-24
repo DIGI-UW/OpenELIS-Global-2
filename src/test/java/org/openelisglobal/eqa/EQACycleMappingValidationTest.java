@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.Test;
 import org.openelisglobal.eqa.valueholder.EQACycle;
+import org.openelisglobal.eqa.valueholder.EQACycleParticipant;
+import org.openelisglobal.eqa.valueholder.EQACycleParticipantStatus;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
@@ -77,6 +79,20 @@ public class EQACycleMappingValidationTest {
     public void schemeTypeVocabularyMatchesTheCheckConstraint() {
         assertEquals(Arrays.asList("INTERNATIONAL_PT", "REGIONAL_PT", "INTER_LAB_SPLIT", "IN_HOUSE"),
                 names(EQASchemeType.values()));
+    }
+
+    /** Matched against eqa_cycle_participant_status_chk in liquibase/qa/032. */
+    @Test
+    public void cycleParticipantStatusVocabularyMatchesTheCheckConstraint() {
+        assertEquals(Arrays.asList("ACTIVE", "WITHDRAWN"), names(EQACycleParticipantStatus.values()));
+    }
+
+    @Test
+    public void cycleParticipantDefaultsToActive() {
+        EQACycleParticipant participant = new EQACycleParticipant();
+        assertEquals("a roster row counts until it is withdrawn", EQACycleParticipantStatus.ACTIVE,
+                participant.getStatus());
+        assertNull("enrolledAt is stamped at persist time", participant.getEnrolledAt());
     }
 
     @Test

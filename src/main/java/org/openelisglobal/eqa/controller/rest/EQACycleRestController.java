@@ -1,6 +1,7 @@
 package org.openelisglobal.eqa.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,6 +13,8 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.eqa.service.EQACycleService;
+import org.openelisglobal.eqa.service.EQACycleService.PanelSampleRequest;
+import org.openelisglobal.eqa.service.EQACycleService.ProviderCycleRequest;
 import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
 import org.openelisglobal.eqa.service.EQAReportCommentService;
@@ -19,7 +22,10 @@ import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
+import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
+import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
@@ -198,7 +204,7 @@ public class EQACycleRestController extends BaseRestController {
         }
         EQACycle cycle = cycleService.create(schemeId, integerField(body, "cycleNumber"),
                 stringField(body, "cycleName"), dateField(body, "plannedStartDate"), dateField(body, "plannedEndDate"),
-                getSysUserId(request));
+                enumField(body, "distributionMethod", EQADistributionMethod.class), getSysUserId(request));
         return toCycleDto(cycle);
     }
 
@@ -302,6 +308,91 @@ public class EQACycleRestController extends BaseRestController {
         return analyte;
     }
 
+    /**
+     * The five-step cycle wizard's single write (FR-V2.5-02). One POST creates the
+     * cycle, its panel, its panel samples and its participant roster, and leaves it
+     * in prep — the service does all of that in one transaction, so a rejected
+     * wizard leaves nothing half-created behind.
+     *
+     * <p>
+     * Running a cycle for other laboratories is the provider's job, so this
+     * declares the provider lane rather than the class's read roles.
+     */
+    @PostMapping(value = "/provider/cycles", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PROVIDER)
+    public ResponseEntity<Map<String, Object>> createProviderCycle(HttpServletRequest request,
+            @RequestBody Map<String, Object> body) {
+        ProviderCycleRequest wizard = new ProviderCycleRequest(longField(body, "schemeId"),
+                integerField(body, "cycleNumber"), stringField(body, "cycleName"), dateField(body, "plannedStartDate"),
+                dateField(body, "plannedEndDate"), stringField(body, "panelName"),
+                enumField(body, "sourceType", EQAPanelSourceType.class), stringField(body, "lotNumber"),
+                stringField(body, "vendorName"), stringField(body, "vendorLot"),
+                stringField(body, "vendorCertificateRef"), sampleRequests(body.get("samples")),
+                longListField(body, "participantOrganizationIds"), enumField(body, "storageTemp", EQAStorageTemp.class),
+                dateField(body, "expirationDate"), enumField(body, "distributionMethod", EQADistributionMethod.class));
+
+        EQACycle created = cycleService.createProviderCycle(wizard, getSysUserId(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toCycleDto(created));
+    }
+
+    private List<PanelSampleRequest> sampleRequests(Object raw) {
+        if (!(raw instanceof List<?> rows)) {
+            throw new IllegalArgumentException("samples must be a list");
+        }
+        List<PanelSampleRequest> samples = new ArrayList<>();
+        for (Object row : rows) {
+            if (!(row instanceof Map<?, ?> map)) {
+                throw new IllegalArgumentException("Each sample must be an object");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> sample = (Map<String, Object>) map;
+            samples.add(new PanelSampleRequest(stringField(sample, "sampleCode"), stringField(sample, "testId"),
+                    stringField(sample, "targetValue"), stringField(sample, "targetUnit"),
+                    decimalField(sample, "acceptanceRangeLow"), decimalField(sample, "acceptanceRangeHigh")));
+        }
+        return samples;
+    }
+
+    private List<Long> longListField(Map<String, Object> body, String key) {
+        Object value = body.get(key);
+        if (!(value instanceof List<?> raw)) {
+            throw new IllegalArgumentException(key + " must be a list of ids");
+        }
+        List<Long> ids = new ArrayList<>();
+        for (Object element : raw) {
+            try {
+                ids.add(Long.valueOf(String.valueOf(element).trim()));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(key + " must be a list of ids");
+            }
+        }
+        return ids;
+    }
+
+    private <E extends Enum<E>> E enumField(Map<String, Object> body, String key, Class<E> type) {
+        String value = stringField(body, key);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Enum.valueOf(type, value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(key + " is not one of " + List.of(type.getEnumConstants()));
+        }
+    }
+
+    private BigDecimal decimalField(Map<String, Object> body, String key) {
+        String value = stringField(body, key);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(key + " must be a number");
+        }
+    }
+
     /** Computed, never stored (FR-V2.1-18). */
     @GetMapping(value = "/cycles/{id}/participant-state", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> participantState(@PathVariable Long id, @RequestParam Long labEnrollmentId) {
@@ -397,6 +488,8 @@ public class EQACycleRestController extends BaseRestController {
             // and stands T-14's auto-submit down.
             dto.put("requiresCycleReview", Boolean.TRUE.equals(cycle.getScheme().getRequiresCycleReview()));
         }
+        dto.put("distributionMethod",
+                cycle.getDistributionMethod() == null ? null : cycle.getDistributionMethod().name());
         dto.put("plannedStartDate",
                 cycle.getPlannedStartDate() == null ? null : cycle.getPlannedStartDate().toString());
         dto.put("plannedEndDate", cycle.getPlannedEndDate() == null ? null : cycle.getPlannedEndDate().toString());

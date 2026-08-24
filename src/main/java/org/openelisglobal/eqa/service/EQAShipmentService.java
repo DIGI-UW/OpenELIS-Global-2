@@ -17,16 +17,17 @@ import java.util.Map;
 public interface EQAShipmentService {
 
     /**
-     * Provider cycles: those whose scheme has at least one active participant
-     * enrollment, which is what makes this lab the provider (FR-V2.5-01).
+     * The provider scheme list (FR-V2.5-01): one row per scheme this lab provides —
+     * meaning at least one other laboratory is actively enrolled — each carrying
+     * its cycles with their participant and panel counts.
      *
      * <p>
-     * ponytail: the provider cycle list T-24 will own properly; this is the minimum
-     * that makes the workbench reachable. It walks every cycle and asks each scheme
-     * for its participant count, which is fine at a few hundred cycles — T-24
-     * should replace it with a query that filters and counts in the database.
+     * Four grouped queries regardless of how many schemes or cycles there are: the
+     * schemes with their enrollment counts, their cycles, panel counts per cycle,
+     * roster rows per cycle. This is what replaced T-25's walk over every cycle in
+     * the database asking each scheme for its count.
      */
-    List<Map<String, Object>> getProviderCycles();
+    List<Map<String, Object>> getProviderSchemes();
 
     /**
      * Prep state for one cycle: participant count, and per panel the produced /
@@ -48,7 +49,7 @@ public interface EQAShipmentService {
     Map<String, Object> savePrep(Long panelId, Integer aliquotsProduced, Integer aliquotsReserved,
             Boolean homogeneityQcPassed, String homogeneityQcNotes, String sysUserId);
 
-    /** One row per active participant of the cycle's scheme (FR-V2.5-13). */
+    /** One row per laboratory on the cycle's participant roster (FR-V2.5-13). */
     List<Map<String, Object>> getShipmentRows(Long cycleId);
 
     /**

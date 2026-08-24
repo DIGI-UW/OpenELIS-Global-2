@@ -20,11 +20,6 @@ import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
 import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
 import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.testanalyte.service.TestAnalyteService;
-import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -63,15 +58,6 @@ public class EQAPanelRestController extends BaseRestController {
     private final EQALabelPDFService labelPDFService;
     private final EQAProgramService programService;
     private final EQACycleService cycleService;
-
-    // Field-injected: TestService sits in a bean graph that does not tolerate
-    // being pulled into another constructor (the EQA services hit the same
-    // cycle and resolved it the same way).
-    @Autowired
-    private TestService testService;
-
-    @Autowired
-    private TestAnalyteService testAnalyteService;
 
     public EQAPanelRestController(EQAPanelService panelService, EQABlindingService blindingService,
             EQALabelPDFService labelPDFService, EQAProgramService programService, EQACycleService cycleService) {
@@ -162,7 +148,7 @@ public class EQAPanelRestController extends BaseRestController {
         sample.setBlindCode(stringOrNull(spec.get("blindCode")));
         Long analyteId = longOrNull(spec.get("analyteId"));
         if (analyteId == null) {
-            analyteId = analyteOfTest(stringOrNull(spec.get("testId")));
+            analyteId = panelService.analyteIdForTest(stringOrNull(spec.get("testId")));
         }
         if (analyteId == null) {
             throw new IllegalArgumentException("Every panel sample needs an analyte");
@@ -257,27 +243,6 @@ public class EQAPanelRestController extends BaseRestController {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Not a numeric id: " + value);
         }
-    }
-
-    /**
-     * The wizard picks the orderable test, not the analyte behind it — analyte is a
-     * catalog detail no bench user thinks in. A test with several analytes takes
-     * the first, which is the single-result shape every EQA analyte has today.
-     */
-    private Long analyteOfTest(String testId) {
-        if (testId == null) {
-            return null;
-        }
-        Test test = testService.get(testId);
-        if (test == null) {
-            throw new IllegalArgumentException("Unknown test " + testId);
-        }
-        List<TestAnalyte> analytes = testAnalyteService.getAllTestAnalytesPerTest(test);
-        if (analytes.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Test " + test.getName() + " has no analyte, so it cannot carry a panel target");
-        }
-        return Long.valueOf(analytes.get(0).getAnalyte().getId());
     }
 
     private static String stringOrNull(Object value) {

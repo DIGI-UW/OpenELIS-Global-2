@@ -93,6 +93,9 @@
         <class>org.openelisglobal.eqa.valueholder.EQAPanelReceipt</class>
         <class>org.openelisglobal.eqa.valueholder.EQAAnalystCompetencyEvent</class>
 
+        <!-- EQA V2.5 T-24 — OGC-613: per-cycle participant roster -->
+        <class>org.openelisglobal.eqa.valueholder.EQACycleParticipant</class>
+
         <!-- Quality Control / Internal Control entities (005-eqa-module QC/IC) -->
         <class>org.openelisglobal.qc.valueholder.QCRuleConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCFrequencyConfig</class>

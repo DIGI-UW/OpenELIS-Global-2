@@ -19,6 +19,9 @@ import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPanelStatus;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
+import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,6 +85,14 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
         panel.setSysUserId(sysUserId);
         panel.setId(eqaPanelDAO.insert(panel));
 
+        // Only an in-house panel gets blind codes. They exist so a participant
+        // analyst cannot recognise the material, and at distribution each one
+        // becomes a lab order's accession number (V2.4) — neither applies to a
+        // provider panel, which is shipped physically and identified to the
+        // receiving lab by its sample code. Stamping "IH-" codes on provider
+        // material would be a claim about how it was blinded that is not true.
+        boolean blinded = panel.getScheme().getSchemeType() == EQASchemeType.IN_HOUSE;
+
         int position = 1;
         for (EQAPanelSample sample : samples) {
             sample.setPanel(panel);
@@ -92,7 +103,7 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
             // The blind code becomes an accession number at distribution, so it has
             // to be unique lab-wide: the panel id is the only identifier in hand
             // that already is.
-            if (GenericValidator.isBlankOrNull(sample.getBlindCode())) {
+            if (blinded && GenericValidator.isBlankOrNull(sample.getBlindCode())) {
                 sample.setBlindCode(String.format("IH-%d-%02d", panel.getId(), position));
             }
             sample.setId(eqaPanelSampleDAO.insert(sample));
@@ -185,6 +196,32 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
             rows.add(toPanelDto(panel));
         }
         return rows;
+    }
+
+    /**
+     * {@link TestService} is resolved at call time, never injected: injecting it
+     * into a service drags TestServiceImpl into early creation, whose static
+     * initializer reaches TypeOfSampleServiceImpl, which injects TestService back —
+     * an unresolvable cycle that fails Tomcat startup while the integration tests
+     * still pass. Same reason EQAPanelRestController field-injects it rather than
+     * taking it in its constructor.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Long analyteIdForTest(String testId) {
+        if (GenericValidator.isBlankOrNull(testId)) {
+            return null;
+        }
+        Test test = SpringContext.getBean(TestService.class).get(testId);
+        if (test == null) {
+            throw new IllegalArgumentException("Unknown test " + testId);
+        }
+        List<TestAnalyte> analytes = testAnalyteService.getAllTestAnalytesPerTest(test);
+        if (analytes.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Test " + test.getName() + " has no analyte, so it cannot carry a panel target");
+        }
+        return Long.valueOf(analytes.get(0).getAnalyte().getId());
     }
 
     @Override

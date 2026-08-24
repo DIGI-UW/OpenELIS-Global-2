@@ -116,6 +116,7 @@ public abstract class EQASpineTestBase extends BaseWebContextSensitiveTest {
         jdbc.update("DELETE FROM clinlims.eqa_scheme_analyst");
         jdbc.update("DELETE FROM clinlims.eqa_participant_result");
         jdbc.update("DELETE FROM clinlims.eqa_cycle_state_transition");
+        jdbc.update("DELETE FROM clinlims.eqa_cycle_participant");
         jdbc.update("DELETE FROM clinlims.eqa_round");
         jdbc.update("DELETE FROM clinlims.eqa_cycle");
         jdbc.update("DELETE FROM clinlims.eqa_lab_program_enrollment WHERE id BETWEEN 9900 AND 9999");

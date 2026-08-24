@@ -87,6 +87,7 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAProgramRestController#updateTestAssignments", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAProgramRestController#updateAnalysts", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQASubmissionRestController#approveLateSubmission", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQACycleRestController#createProviderCycle", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#savePrep", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#saveShipment", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#ship", EQAGuards.PROVIDER);

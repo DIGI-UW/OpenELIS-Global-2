@@ -1,15 +1,21 @@
 package org.openelisglobal.eqa.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,8 +27,10 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.eqa.controller.rest.EQACycleRestController;
 import org.openelisglobal.eqa.service.EQACycleService;
+import org.openelisglobal.eqa.service.EQACycleService.ProviderCycleRequest;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
@@ -104,5 +112,56 @@ public class EQACycleRestControllerTest {
     @Test
     public void newStateIsRequired() {
         assertEquals(400, controller.transition(request, 7L, Map.of("reason", "no state")).getStatusCode().value());
+    }
+
+    // ---- OGC-613: the JSON-to-enum seam on the wizard's single POST ----
+
+    @Test
+    public void theWizardsDistributionMethodReachesTheServiceAsAnEnum() {
+        when(cycleService.createProviderCycle(any(), anyString())).thenReturn(new EQACycle());
+
+        controller.createProviderCycle(request, wizardBody("mixed"));
+
+        ArgumentCaptor<ProviderCycleRequest> sent = ArgumentCaptor.forClass(ProviderCycleRequest.class);
+        verify(cycleService).createProviderCycle(sent.capture(), anyString());
+        assertEquals("a lower-case body value must still arrive as the enum constant",
+                EQADistributionMethod.MIXED, sent.getValue().distributionMethod());
+    }
+
+    @Test
+    public void aCycleCreatedWithNoStatedMethodCarriesNone() {
+        when(cycleService.createProviderCycle(any(), anyString())).thenReturn(new EQACycle());
+
+        controller.createProviderCycle(request, wizardBody(null));
+
+        ArgumentCaptor<ProviderCycleRequest> sent = ArgumentCaptor.forClass(ProviderCycleRequest.class);
+        verify(cycleService).createProviderCycle(sent.capture(), anyString());
+        assertNull(sent.getValue().distributionMethod());
+    }
+
+    @Test
+    public void anUnknownMethodIsRefusedRatherThanDroppedSilently() {
+        try {
+            controller.createProviderCycle(request, wizardBody("carrier-pigeon"));
+            fail("a method the enum does not carry must not be written as null");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("distributionMethod"));
+        }
+        verify(cycleService, never()).createProviderCycle(any(), anyString());
+    }
+
+    /**
+     * The smallest body createProviderCycle accepts, plus the method under test.
+     */
+    private Map<String, Object> wizardBody(String distributionMethod) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("schemeId", 3);
+        body.put("panelName", "HIV VL panel");
+        body.put("samples", List.of(Map.of("sampleCode", "PS-1", "testId", "55")));
+        body.put("participantOrganizationIds", List.of(100));
+        if (distributionMethod != null) {
+            body.put("distributionMethod", distributionMethod);
+        }
+        return body;
     }
 }

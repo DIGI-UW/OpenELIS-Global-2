@@ -45,9 +45,10 @@ public class EQAShipmentRestController extends BaseRestController {
         this.shipmentService = shipmentService;
     }
 
-    @GetMapping(value = "/provider/cycles", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<Map<String, Object>> providerCycles() {
-        return shipmentService.getProviderCycles();
+    /** The provider scheme list (FR-V2.5-01), each scheme carrying its cycles. */
+    @GetMapping(value = "/provider/schemes", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> providerSchemes() {
+        return shipmentService.getProviderSchemes();
     }
 
     @GetMapping(value = "/cycles/{cycleId}/prep", produces = MediaType.APPLICATION_JSON_VALUE)

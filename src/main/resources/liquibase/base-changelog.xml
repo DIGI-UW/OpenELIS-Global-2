@@ -110,6 +110,7 @@
   <!-- EQA V2 — OGC-610: point My Cycles at its real route, hide the rows with no page -->
   <include file="liquibase/qa/029-fix-eqa-my-cycles-menu-url.xml" />
 
+
   <!-- EQA V2.2 — OGC-610: automatic-submission retry bookkeeping (FR-V2.2-05) -->
   <include file="liquibase/qa/030-add-eqa-cycle-submission-retry.xml" />
 
@@ -118,4 +119,12 @@
   <!-- EQA V2.3 — OGC-611: oversight menu rows, re-activated as their pages ship.
        Must follow 029, which hid them. -->
   <include file="liquibase/qa/033-eqa-oversight-menu-rows.xml" />
+
+  <!-- EQA V2.5 — OGC-613: per-cycle participant roster; re-activates the provider
+       menu row qa/029 hid, now that its page exists. Slot 035: 032 went to the
+       report comments above and 033 to another open PR while this was in flight. -->
+  <include file="liquibase/qa/035-eqa-cycle-participant.xml" />
+
+  <!-- EQA V2.5 — OGC-613: the cycle wizard's distribution method (qa-064/065) -->
+  <include file="liquibase/qa/034-eqa-cycle-distribution-method.xml" />
 </databaseChangeLog>

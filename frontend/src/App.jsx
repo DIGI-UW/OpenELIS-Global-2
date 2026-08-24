@@ -31,6 +31,8 @@ import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard"
 import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
 import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
+import ProviderSchemeList from "./components/eqa/Provider/ProviderSchemeList";
+import CycleWizard from "./components/eqa/Provider/CycleWizard";
 import ProviderWorkbenchPage from "./components/eqa/Provider/Workbench/ProviderWorkbenchPage";
 import InHousePanelsPage from "./components/eqa/InHouse/InHousePanelsPage";
 import FollowUpQueuePage from "./components/eqa/FollowUp/FollowUpQueuePage";
@@ -827,19 +829,38 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
-                {/* Provider prep + shipping workbenches (T-25). Same page with
-                    and without a cycle: without one it lists provider cycles,
-                    which is what makes it reachable until T-24 ships the
-                    scheme list qa/019's menu row points at. */}
+                {/* Provider lane (T-24 + T-25): the scheme list is the entry
+                    point qa/030 points the menu row at, the wizard creates a
+                    cycle, and the workbenches run the one it created. */}
                 <SecureRoute
-                  path="/qa/eqa/provider/cycles/:cycleId/workbench"
+                  path="/qa/eqa/provider/schemes/:schemeId/cycles/new"
                   exact
-                  component={() => <ProviderWorkbenchPage />}
+                  component={() => <CycleWizard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Both of these 404'd after the provider lane moved: the FRS path is
+                    what qa/019 seeded into the menu, and /provider/workbench is the URL
+                    the cycle picker shipped at before the scheme list replaced it. */}
+                <Redirect
+                  exact
+                  from="/eqa/management/provider/schemes"
+                  to="/qa/eqa/provider/schemes"
+                />
+                <Redirect
+                  exact
+                  from="/qa/eqa/provider/workbench"
+                  to="/qa/eqa/provider/schemes"
+                />
+                <SecureRoute
+                  path="/qa/eqa/provider/schemes"
+                  exact
+                  component={() => <ProviderSchemeList />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
                 <SecureRoute
-                  path="/qa/eqa/provider/workbench"
+                  path="/qa/eqa/provider/cycles/:cycleId/workbench"
                   exact
                   component={() => <ProviderWorkbenchPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}

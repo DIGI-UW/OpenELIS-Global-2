@@ -25,18 +25,6 @@ export const fetchPanelsForScheme = (schemeId, callback) => {
   );
 };
 
-// The standard test list, narrowed to the tests that carry an analyte: a panel
-// target is stored against an analyte, so offering the rest is a dead end the
-// wizard would only discover at seal.
-export const fetchTests = (callback) => {
-  getFromOpenElisServer("/rest/eqa/testable-tests", (testable) => {
-    const usable = new Set((testable || []).map(String));
-    getFromOpenElisServer("/rest/test-list", (tests) =>
-      callback((tests || []).filter((test) => usable.has(String(test.id)))),
-    );
-  });
-};
-
 export const fetchAnalysts = (schemeId, callback) => {
   getFromOpenElisServer(`/rest/eqa/programs/${schemeId}/analysts`, (data) =>
     callback(data || []),
@@ -53,22 +41,6 @@ export const saveAnalystRoster = (schemeId, systemUserIds, callback) => {
   putToOpenElisServer(
     `/rest/eqa/programs/${schemeId}/analysts`,
     JSON.stringify({ systemUserIds }),
-    callback,
-  );
-};
-
-export const createCycle = (payload, callback) => {
-  postToOpenElisServerJsonResponse(
-    "/rest/eqa/cycles",
-    JSON.stringify(payload),
-    callback,
-  );
-};
-
-export const createPanel = (payload, callback) => {
-  postToOpenElisServerJsonResponse(
-    "/rest/eqa/panels",
-    JSON.stringify(payload),
     callback,
   );
 };
