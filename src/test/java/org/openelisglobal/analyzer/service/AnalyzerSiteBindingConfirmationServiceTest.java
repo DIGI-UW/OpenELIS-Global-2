@@ -197,6 +197,34 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
     }
 
     @Test
+    public void exactSavedRowsAreRequiredForAConfirmationToRemainCurrent() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setConfirmedRowsJson(
+                new ObjectMapper().writeValueAsString(List.of(new AnalyzerSiteBindingSourceRow("RAW-A", null))));
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+
+        assertEquals(Optional.empty(), service.findCurrent(candidate, RECOGNITION_FINGERPRINT));
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE,
+                service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
+    }
+
+    @Test
+    public void malformedSavedRowsAreStaleInsteadOfBreakingVerificationStatus() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setConfirmedRowsJson("not-json");
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+
+        assertEquals(Optional.empty(), service.findCurrent(candidate, RECOGNITION_FINGERPRINT));
+        AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
+        assertEquals(List.of(), status.confirmedRows());
+    }
+
+    @Test
     public void rejectsCatalogBindingsThatAreNoLongerCurrentBeforeWriting() {
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
 
