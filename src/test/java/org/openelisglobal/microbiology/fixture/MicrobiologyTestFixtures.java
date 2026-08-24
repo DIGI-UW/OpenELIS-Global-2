@@ -74,10 +74,11 @@ public class MicrobiologyTestFixtures {
     }
 
     public String createMethodId() {
+        String suffix = uniqueSuffix();
         Method method = new Method();
-        method.setMethodName("Microbiology test");
+        method.setMethodName("Micro " + suffix);
         method.setDescription("Service-created microbiology integration test method");
-        method.setCode("MCR" + uniqueSuffix());
+        method.setCode("MCR" + suffix);
         method.setIsActive(IActionConstants.YES);
         method.setSysUserId(defaultUserId());
         return methodService.insert(method);
