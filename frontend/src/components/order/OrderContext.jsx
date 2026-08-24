@@ -866,13 +866,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         referralItems: [],
         useReferral: false,
         orderEntryOnly: true, // Flag for backend to skip sample validation
-        sampleOrderItems: buildSubmissionSampleOrderItems(
-          {
-            ...orderData.sampleOrderItems,
-            // Include per-sample vector observations merged above.
-            environmentalFields: envFields,
-          },
-        ),
+        sampleOrderItems: buildSubmissionSampleOrderItems({
+          ...orderData.sampleOrderItems,
+          // Include per-sample vector observations merged above.
+          environmentalFields: envFields,
+        }),
         initialSampleConditionList: [],
         testSectionList: [],
       };
