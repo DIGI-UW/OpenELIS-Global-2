@@ -44,7 +44,7 @@ public class TestSectionTestAssignServiceImpl implements TestSectionTestAssignSe
 
         List<Test> updated = new ArrayList<>();
         for (String testId : testIds) {
-            Test test = testService.get(testId);
+            Test test = testService.getTestById(testId);
             if (test == null) {
                 throw new LIMSRuntimeException("Test not found: " + testId);
             }

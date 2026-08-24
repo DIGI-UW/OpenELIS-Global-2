@@ -10,8 +10,9 @@
  *   sections
  *
  * Mirrors the SampleTypeManagement (OGC-296) surface so the catalog admin
- * screens stay consistent. Creation goes through the legacy
- * /rest/TestSectionCreate flow, which also wires role modules.
+ * screens stay consistent. Creation posts to /rest/lab-units-management,
+ * which wires the same role modules as the legacy /rest/TestSectionCreate
+ * flow.
  */
 
 import React, {

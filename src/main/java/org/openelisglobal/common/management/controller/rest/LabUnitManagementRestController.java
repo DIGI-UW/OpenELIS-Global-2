@@ -225,7 +225,10 @@ public class LabUnitManagementRestController extends BaseRestController {
     public ResponseEntity<ApiResponse<List<LabUnitManagementDTO>>> getAllLabUnits() {
         try {
             List<TestSection> sections = new ArrayList<>(testSectionService.getAllTestSections());
-            sections.sort(Comparator.comparingInt(TestSection::getSortOrderInt));
+            // Same tie-break as moveToSortOrderPosition, so the positions this list
+            // shows match where a display-order move lands while rows share a sortOrder.
+            sections.sort(Comparator.comparingInt(TestSection::getSortOrderInt).thenComparing(TestSection::getId,
+                    Comparator.comparing(id -> Integer.parseInt(id))));
             List<LabUnitManagementDTO> dtos = new ArrayList<>();
             for (TestSection section : sections) {
                 // The "user" sentinel means "orderer chooses the section" —
