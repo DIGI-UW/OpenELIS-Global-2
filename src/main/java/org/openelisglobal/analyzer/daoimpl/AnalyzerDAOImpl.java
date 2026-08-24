@@ -99,7 +99,9 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
     @Override
     @Transactional(readOnly = true)
     public List<Analyzer> findAllWithTypes() {
-        String hql = "SELECT a FROM Analyzer a LEFT JOIN FETCH a.analyzerType";
+        String hql = "SELECT a FROM Analyzer a " + "LEFT JOIN FETCH a.analyzerType "
+                + "LEFT JOIN FETCH a.activeCandidate " + "LEFT JOIN FETCH a.siteBindingRevision revision "
+                + "LEFT JOIN FETCH revision.siteBinding binding " + "LEFT JOIN FETCH binding.profileBinding";
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         return query.list();
     }
@@ -107,7 +109,10 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
     @Override
     @Transactional(readOnly = true)
     public Optional<Analyzer> findByIdWithType(String id) {
-        String hql = "SELECT a FROM Analyzer a LEFT JOIN FETCH a.analyzerType WHERE a.id = :id";
+        String hql = "SELECT a FROM Analyzer a " + "LEFT JOIN FETCH a.analyzerType "
+                + "LEFT JOIN FETCH a.activeCandidate " + "LEFT JOIN FETCH a.siteBindingRevision revision "
+                + "LEFT JOIN FETCH revision.siteBinding binding "
+                + "LEFT JOIN FETCH binding.profileBinding WHERE a.id = :id";
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         query.setParameter("id", id);
         Analyzer result = query.uniqueResult();

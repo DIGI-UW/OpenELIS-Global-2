@@ -200,6 +200,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             var activeCandidate = activationCandidateService.retain(analyzer, saved.revision(), storedVerification,
                     secondDocuments, TEST_SYS_USER_ID);
             analyzer.setActiveCandidate(activeCandidate);
+            analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
             analyzerDAO.update(analyzer);
 
             entityManager.flush();
@@ -234,6 +235,18 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
                     parseJson(retainedCandidates.get(0).getBridgeRegistrationJson()));
             Analyzer reloadedAnalyzer = analyzerDAO.get(analyzer.getId()).orElseThrow();
             assertEquals(activeCandidate.getId(), reloadedAnalyzer.getActiveCandidate().getId());
+
+            Analyzer detachedAnalyzer = analyzerDAO.findAllWithTypes().stream()
+                    .filter(candidateAnalyzer -> analyzer.getId().equals(candidateAnalyzer.getId())).findFirst()
+                    .orElseThrow();
+            entityManager.clear();
+            AnalyzerService detachedAnalyzerService = mock(AnalyzerService.class);
+            when(detachedAnalyzerService.getAllWithTypes()).thenReturn(List.of(detachedAnalyzer));
+            BridgeRegistrationService bridgeRegistrationService = new BridgeRegistrationService(detachedAnalyzerService,
+                    mock(BridgeHttpClient.class), "https://bridge.example",
+                    Clock.fixed(Instant.parse("2026-08-23T20:02:00Z"), ZoneOffset.UTC));
+            assertEquals(secondDocuments.registration(),
+                    bridgeRegistrationService.buildDesiredState().path("analyzers").path(analyzer.getId()));
 
             status.setRollbackOnly();
         });
