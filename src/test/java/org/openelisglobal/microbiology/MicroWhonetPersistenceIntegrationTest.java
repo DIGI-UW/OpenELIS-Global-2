@@ -116,17 +116,17 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         assertTrue(preview.rows.stream().anyMatch(row -> scenario.accessionNumber.equals(row.accessionNumber)));
 
         MicroWhonetExportResult result = reportService.generateMicrobiologyExport(exportQuery, performedBy);
-        String digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(result.content));
+        String digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(result.getContent()));
         MicroWhonetExportRun persisted = exportRunDAO.getAll().stream()
                 .filter(candidate -> digest.equals(candidate.getContentSha256())).findFirst().orElseThrow();
 
         assertEquals(performedBy, persisted.getGeneratedBy());
-        assertEquals(result.fileName, persisted.getFileName());
+        assertEquals(result.getFileName(), persisted.getFileName());
         assertEquals(preview.totalCases, persisted.getCaseCount());
         assertEquals(preview.exportableIsolates, persisted.getIsolateCount());
         assertEquals(preview.exportedRows, persisted.getRowCount());
         assertEquals(preview.excludedRows, persisted.getExcludedRowCount());
-        assertTrue(
-                new String(result.content, java.nio.charset.StandardCharsets.UTF_8).contains(scenario.accessionNumber));
+        assertTrue(new String(result.getContent(), java.nio.charset.StandardCharsets.UTF_8)
+                .contains(scenario.accessionNumber));
     }
 }

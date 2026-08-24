@@ -1,5 +1,6 @@
 package org.openelisglobal.reports.service;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -48,13 +49,13 @@ public class WHONetReportServiceMicrobiologyTest {
                 "2026-07-09", "Blood", "CIP", "eco", "S", "MIC", "", "");
         when(datasetService.compile(query)).thenReturn(new MicroWhonetDataset(preview, List.of(row)));
 
-        MicroWhonetExportResult result = service.generateMicrobiologyExport(query, "authenticated-user");
+        MicroWhonetExportResult result = service.generateMicrobiologyExport(query, " authenticated-user ");
 
-        String csv = new String(result.content, StandardCharsets.UTF_8);
+        String csv = new String(result.getContent(), StandardCharsets.UTF_8);
         assertTrue(csv.startsWith("\"NATIONAL_ID\",\"FIRST_NAME\""));
         assertTrue(csv.contains("\"Ada, \"\"A\"\"\n\""));
         assertTrue(csv.contains("\"CIP\",\"eco\",\"S\",\"MIC\""));
-        assertEquals("WHONET_2026-07-01_to_2026-07-31.csv", result.fileName);
+        assertEquals("WHONET_2026-07-01_to_2026-07-31.csv", result.getFileName());
 
         ArgumentCaptor<MicroWhonetExportRun> audit = ArgumentCaptor.forClass(MicroWhonetExportRun.class);
         verify(exportRunDAO).insert(audit.capture());
@@ -76,6 +77,19 @@ public class WHONetReportServiceMicrobiologyTest {
         }
 
         verify(exportRunDAO, never()).insert(any(MicroWhonetExportRun.class));
+    }
+
+    @Test
+    public void exportResultDefensivelyCopiesContent() {
+        byte[] source = new byte[] { 1, 2, 3 };
+        MicroWhonetExportResult result = new MicroWhonetExportResult("WHONET.csv", source);
+
+        source[0] = 9;
+        byte[] returned = result.getContent();
+        returned[1] = 8;
+
+        assertEquals("WHONET.csv", result.getFileName());
+        assertArrayEquals(new byte[] { 1, 2, 3 }, result.getContent());
     }
 
     private MicroWhonetExportQueryForm query() {

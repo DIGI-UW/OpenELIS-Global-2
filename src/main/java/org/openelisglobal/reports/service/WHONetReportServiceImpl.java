@@ -189,7 +189,8 @@ public class WHONetReportServiceImpl implements WHONetReportService {
     @Transactional
     public MicroWhonetExportResult generateMicrobiologyExport(MicroWhonetExportQueryForm query,
             String authenticatedUserId) {
-        if (authenticatedUserId == null || authenticatedUserId.trim().isEmpty()) {
+        String normalizedUserId = authenticatedUserId == null ? null : authenticatedUserId.trim();
+        if (normalizedUserId == null || normalizedUserId.isEmpty()) {
             throw new IllegalArgumentException("Authenticated user is required");
         }
         MicroWhonetDataset dataset = microWhonetDatasetService.compile(query);
@@ -212,7 +213,7 @@ public class WHONetReportServiceImpl implements WHONetReportService {
         run.setFileName(fileName);
         run.setContentSha256(sha256(content));
         run.setGeneratedAt(new Timestamp(System.currentTimeMillis()));
-        run.setGeneratedBy(authenticatedUserId);
+        run.setGeneratedBy(normalizedUserId);
         microWhonetExportRunDAO.insert(run);
         return new MicroWhonetExportResult(fileName, content);
     }
