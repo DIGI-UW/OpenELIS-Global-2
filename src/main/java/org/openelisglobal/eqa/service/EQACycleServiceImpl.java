@@ -24,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
@@ -34,6 +35,7 @@ import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelReceiptDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
+import org.openelisglobal.eqa.dao.EQARoundDAO;
 import org.openelisglobal.eqa.service.EQAPrepGate.PanelRequirement;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleParticipant;
@@ -46,6 +48,7 @@ import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramEnrollment;
+import org.openelisglobal.eqa.valueholder.EQARound;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
@@ -114,6 +117,9 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
 
     @Autowired
     private EQACycleParticipantDAO eqaCycleParticipantDAO;
+
+    @Autowired
+    private EQARoundDAO eqaRoundDAO;
 
     @Autowired
     private EQAPanelService eqaPanelService;
@@ -367,6 +373,25 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
             participant.setOrganizationId(organizationId);
             participant.setSysUserId(sysUserId);
             eqaCycleParticipantDAO.insert(participant);
+        }
+
+        // FR-V2.2-14: the 7/3/1-day digest is driven off eqa_round.submission_deadline,
+        // so a cycle with no round is invisible to it however close its deadline is.
+        // The planned end date is that deadline, and this is the only place it is
+        // known, so round 1 is written here rather than left to blinding.
+        //
+        // Only when a deadline was actually given: with none, there is nothing to
+        // remind anyone about, and leaving the row out keeps the existing behaviour
+        // where blinding creates round 1 and derives the deadline from the panel's
+        // unblind date.
+        if (request.plannedEndDate() != null) {
+            EQARound round = new EQARound();
+            round.setFhirUuid(UUID.randomUUID());
+            round.setCycle(cycle);
+            round.setRoundNumber(1);
+            round.setSubmissionDeadline(new Timestamp(request.plannedEndDate().getTime()));
+            round.setSysUserId(sysUserId);
+            eqaRoundDAO.insert(round);
         }
 
         // Step 5 is "confirm & begin prep", so the wizard leaves the cycle where the

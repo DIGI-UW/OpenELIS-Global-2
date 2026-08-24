@@ -8,6 +8,7 @@ import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -296,6 +297,48 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
         } catch (Exception expected) {
             assertConstraintViolation(expected, "eqa_cycle_distribution_method_chk");
         }
+    }
+
+    /**
+     * FR-V2.2-14: the digest only ever looks at eqa_round, so the round is what
+     * makes a wizard-built cycle reachable by it. Asserting through the scheduler's
+     * own query rather than a row count is the point — a round that exists but
+     * falls outside that window still leaves the cycle unremindable.
+     */
+    @Test
+    public void theWizardWritesTheRoundTheDeadlineDigestReadsFrom() {
+        EQACycle created = cycleService.createProviderCycle(request(List.of(ORG_A, ORG_B)), USER);
+
+        assertEquals("round 1, once", Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.eqa_round WHERE cycle_id = ?", Integer.class, created.getId()));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT round_number FROM clinlims.eqa_round WHERE cycle_id = ?", Integer.class, created.getId()));
+        // The planned end date the wizard collected, not today and not the panel's
+        // expiry: a deadline off by a month fires the 7/3/1 reminders at the wrong
+        // time, which is worse than not firing them.
+        assertEquals(Timestamp.valueOf("2026-10-01 00:00:00"),
+                jdbc.queryForObject("SELECT submission_deadline FROM clinlims.eqa_round WHERE cycle_id = ?",
+                        Timestamp.class, created.getId()));
+
+        List<Long> visibleToDigest = eqaRoundDAO
+                .findWithSubmissionDeadlineBetween(Timestamp.valueOf("2026-09-30 00:00:00"),
+                        Timestamp.valueOf("2026-10-02 00:00:00"))
+                .stream().map(round -> round.getCycle().getId()).toList();
+        assertTrue("the scheduler's own query must return this cycle's round",
+                visibleToDigest.contains(created.getId()));
+    }
+
+    /**
+     * With no deadline there is nothing to remind anyone about, and writing an
+     * empty round would take the reuse branch in blinding's findOrCreateRound,
+     * costing the deadline it derives from the panel's unblind date.
+     */
+    @Test
+    public void aCycleWithNoPlannedEndDateWritesNoRound() {
+        EQACycle created = cycleService.createProviderCycle(withCycleNumber(11), USER);
+
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.eqa_round WHERE cycle_id = ?", Integer.class, created.getId()));
     }
 
     private ProviderCycleRequest request(List<Long> participants) {
