@@ -7,7 +7,7 @@ Casey-owned product artifacts.
 
 ## Source Evidence
 
-- Repo: `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`
+- Repo: current checkout root (`./`)
 - Analyzer profile files: `projects/analyzer-profiles/{astm,hl7,file}/`
 - Analyzer profile schema:
   `projects/analyzer-profiles/schema/analyzer-defaults-1.0.schema.json`
