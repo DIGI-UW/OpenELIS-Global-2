@@ -19,11 +19,13 @@ public class AnalyzerSiteBindingConfirmationLiquibaseTest {
     private static final Path VERSION_ROOT = Path.of("src", "main", "resources", "liquibase", "3.5.x.x");
     private static final Path BASE_CHANGELOG = VERSION_ROOT.resolve("base.xml");
     private static final Path MIGRATION = VERSION_ROOT.resolve("089-analyzer-site-binding-confirmation.xml");
+    private static final Path EVIDENCE_MIGRATION = VERSION_ROOT.resolve("090-analyzer-verification-evidence.xml");
 
     @Test
     public void versionedChangelogIncludesConfirmationMigration() throws Exception {
-        assertTrue(elements(parse(BASE_CHANGELOG), "include").stream().anyMatch(
-                include -> "089-analyzer-site-binding-confirmation.xml".equals(include.getAttribute("file"))));
+        Set<String> includes = attributes(elements(parse(BASE_CHANGELOG), "include"), "file");
+        assertTrue(includes.contains("089-analyzer-site-binding-confirmation.xml"));
+        assertTrue(includes.contains("090-analyzer-verification-evidence.xml"));
     }
 
     @Test
@@ -42,6 +44,18 @@ public class AnalyzerSiteBindingConfirmationLiquibaseTest {
                 .contains("fk_analyzer_site_binding_confirmation_revision"));
         assertTrue(attributes(elements(migration, "column"), "value").contains("analyzer_site_binding_confirmation"));
         assertTrue("confirmation migration requires rollback", !elements(migration, "rollback").isEmpty());
+    }
+
+    @Test
+    public void evidenceMigrationPreservesHistoryAndAddsDurableCandidateEvidence() throws Exception {
+        Document migration = parse(EVIDENCE_MIGRATION);
+
+        assertTrue("verification history must not be deleted", elements(migration, "delete").isEmpty());
+        assertTrue(attributes(elements(migration, "column"), "name").contains("profile_revision_fingerprint"));
+        assertTrue(attributes(elements(migration, "column"), "name").contains("audit_event_id"));
+        assertTrue(attributes(elements(migration, "addForeignKeyConstraint"), "constraintName")
+                .contains("fk_analyzer_confirmation_audit_event"));
+        assertTrue("verification evidence migration requires rollback", !elements(migration, "rollback").isEmpty());
     }
 
     private static Document parse(Path path) throws Exception {

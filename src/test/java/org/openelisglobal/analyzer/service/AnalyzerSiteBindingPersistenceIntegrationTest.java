@@ -23,7 +23,9 @@ import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingRevisionDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingTestDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
-import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
+import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
@@ -31,6 +33,7 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -56,6 +59,12 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
     @Autowired
     private AnalyzerSiteBindingConfirmationDAO confirmationDAO;
+
+    @Autowired
+    private HistoryService historyService;
+
+    @Autowired
+    private ReferenceTablesService referenceTablesService;
 
     @Autowired
     private DataSource dataSource;
@@ -93,7 +102,6 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
             TestService testService = mock(TestService.class);
             TestResultService testResultService = mock(TestResultService.class);
-            AuditTrailService auditTrailService = mock(AuditTrailService.class);
             SystemUserService systemUserService = mock(SystemUserService.class);
             AnalyzerMappingCatalogService mappingCatalogService = mock(AnalyzerMappingCatalogService.class);
             SystemUser actor = new SystemUser();
@@ -109,6 +117,9 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             when(mappingCatalogService.getActiveResultOptions(testId)).thenReturn(
                     List.of(new AnalyzerMappingCatalogService.ResultOption(resultOptionId, "POSITIVE", "Positive")));
 
+            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
+            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
+            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
             AnalyzerSiteBindingService siteBindingService = new AnalyzerSiteBindingServiceImpl(siteBindingDAO,
                     revisionDAO, siteBindingTestDAO, siteBindingResultDAO, auditTrailService, testService,
                     testResultService);
@@ -153,7 +164,10 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
             AnalyzerSiteBindingConfirmationView confirmation = confirmationService.getStatus(reloaded,
                     RECOGNITION_FINGERPRINT);
+            var storedConfirmation = confirmationDAO.findByRevisionId(reloaded.revision().getId()).orElseThrow();
             assertEquals(AnalyzerSiteBindingConfirmationView.State.CURRENT, confirmation.state());
+            assertEquals(PROFILE_FINGERPRINT, storedConfirmation.getProfileRevisionFingerprint());
+            assertNotNull(storedConfirmation.getAuditEventId());
             assertEquals(TEST_SYS_USER_ID, confirmation.confirmedBy());
             assertEquals("Integration Reviewer", confirmation.confirmedByDisplayName());
             assertNotNull(confirmation.confirmedAt());
@@ -170,6 +184,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
                     {
                       "profileMeta":{"id":"placeholder","displayName":"Persistence Test Analyzer"},
                       "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                      "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
                       "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP"},
                       "catalog":{
                         "revision":1,

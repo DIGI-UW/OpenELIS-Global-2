@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.valueholder;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -18,6 +19,7 @@ import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 @Entity
 @Table(name = "analyzer_site_binding_confirmation", schema = "clinlims")
@@ -45,6 +47,10 @@ public class AnalyzerSiteBindingConfirmation extends BaseObject<String> {
     private int profileRevision;
 
     @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
+    @Column(name = "profile_revision_fingerprint", length = 71, updatable = false)
+    private String profileRevisionFingerprint;
+
+    @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
     @Column(name = "binding_fingerprint", length = 71, nullable = false, updatable = false)
     private String bindingFingerprint;
 
@@ -63,6 +69,10 @@ public class AnalyzerSiteBindingConfirmation extends BaseObject<String> {
 
     @Column(name = "confirmed_at", nullable = false, updatable = false)
     private Timestamp confirmedAt;
+
+    @Column(name = "audit_event_id", precision = 10, scale = 0)
+    @Convert(converter = StringToIntegerConverter.class)
+    private String auditEventId;
 
     @PrePersist
     protected void prepareForInsert() {
@@ -103,6 +113,14 @@ public class AnalyzerSiteBindingConfirmation extends BaseObject<String> {
 
     public void setProfileRevision(int profileRevision) {
         this.profileRevision = profileRevision;
+    }
+
+    public String getProfileRevisionFingerprint() {
+        return profileRevisionFingerprint;
+    }
+
+    public void setProfileRevisionFingerprint(String profileRevisionFingerprint) {
+        this.profileRevisionFingerprint = profileRevisionFingerprint;
     }
 
     public String getBindingFingerprint() {
@@ -151,5 +169,13 @@ public class AnalyzerSiteBindingConfirmation extends BaseObject<String> {
 
     public void setConfirmedAt(Timestamp confirmedAt) {
         this.confirmedAt = confirmedAt;
+    }
+
+    public String getAuditEventId() {
+        return auditEventId;
+    }
+
+    public void setAuditEventId(String auditEventId) {
+        this.auditEventId = auditEventId;
     }
 }

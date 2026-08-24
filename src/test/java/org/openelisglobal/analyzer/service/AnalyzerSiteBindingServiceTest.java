@@ -331,6 +331,7 @@ public class AnalyzerSiteBindingServiceTest {
                 {
                   "profileMeta":{"id":"site.mock-hematology","displayName":"Mock Hematology"},
                   "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                  "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
                   "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
                   "catalog":{
                     "revision":3,

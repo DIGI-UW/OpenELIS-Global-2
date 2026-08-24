@@ -160,6 +160,19 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
     }
 
     @Test
+    public void reportsHistoricalConfirmationWithoutDurableEvidenceAsStale() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setProfileRevisionFingerprint(null);
+        stored.setAuditEventId(null);
+        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+
+        AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
+    }
+
+    @Test
     public void reportsAConfirmationAsStaleWhenItsCatalogBindingIsNoLongerCurrent() throws Exception {
         AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         when(confirmationDAO.findLatestByBindingId("51"))

@@ -372,5 +372,6 @@
   <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
   <include relativeToChangelogFile="true" file="088-remove-analyzer-qc-rule.xml"/>
   <include relativeToChangelogFile="true" file="089-analyzer-site-binding-confirmation.xml"/>
+  <include relativeToChangelogFile="true" file="090-analyzer-verification-evidence.xml"/>
 
 </databaseChangeLog>
