@@ -36,6 +36,7 @@ import CycleWizard from "./components/eqa/Provider/CycleWizard";
 import ProviderWorkbenchPage from "./components/eqa/Provider/Workbench/ProviderWorkbenchPage";
 import InHousePanelsPage from "./components/eqa/InHouse/InHousePanelsPage";
 import FollowUpQueuePage from "./components/eqa/FollowUp/FollowUpQueuePage";
+import ProviderFollowupRegister from "./components/eqa/FollowUp/ProviderFollowupRegister";
 import LabPerformancePage from "./components/eqa/Performance/LabPerformancePage";
 import BlindingWizard from "./components/eqa/InHouse/BlindingWizard";
 import MyProgramsPage from "./components/eqa/MyProgramsPage";
@@ -879,6 +880,15 @@ export default function App() {
                   path="/qa/eqa/follow-up-queue"
                   exact
                   component={() => <FollowUpQueuePage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Provider-side counterpart (T-27): follow-up with other labs,
+                    which never becomes a local non-conformity. */}
+                <SecureRoute
+                  path="/qa/eqa/provider/follow-ups"
+                  exact
+                  component={() => <ProviderFollowupRegister />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />

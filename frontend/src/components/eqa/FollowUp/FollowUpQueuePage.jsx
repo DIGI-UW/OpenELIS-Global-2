@@ -26,7 +26,13 @@ import { Link as RouterLink } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { formatDateOnly, hasQaPermission } from "../../utils/Utils";
-import { hintStyle, kpiLabelStyle, kpiValueStyle } from "../eqaCommon";
+import {
+  csvCell,
+  downloadCsv,
+  hintStyle,
+  kpiLabelStyle,
+  kpiValueStyle,
+} from "../eqaCommon";
 import {
   dismissFollowUp,
   escalateFollowUp,
@@ -70,8 +76,6 @@ const daysSince = (value) => {
 const zLabel = (value) =>
   value === null || value === undefined || value === "" ? "—" : value;
 
-const csvCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-
 /**
  * One CSV line per result, not per queue row: the register is cycle-grain but
  * the accreditation reader wants the analyte that failed.
@@ -109,17 +113,6 @@ export const queueCsv = (rows, sourceLabelOf, reasonLabelOf) => {
     );
   });
   return [header.map(csvCell).join(","), ...lines].join("\n");
-};
-
-const downloadCsv = (content, filename) => {
-  const url = URL.createObjectURL(
-    new Blob([content], { type: "text/csv;charset=utf-8;" }),
-  );
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
 };
 
 /**
@@ -331,20 +324,30 @@ const FollowUpQueuePage = () => {
                 count: rows.length,
               })}
             </strong>
-            <Button
-              kind="ghost"
-              size="sm"
-              renderIcon={Download}
-              disabled={rows.length === 0}
-              onClick={() =>
-                downloadCsv(
-                  queueCsv(rows, sourceLabelOf, reasonLabelOf),
-                  "eqa-follow-up-queue.csv",
-                )
-              }
-            >
-              {t("eqa.queue.exportCsv", "Export CSV")}
-            </Button>
+            <div>
+              <Button
+                kind="ghost"
+                size="sm"
+                as={RouterLink}
+                to="/qa/eqa/provider/follow-ups"
+              >
+                {t("eqa.provider.followups.open", "Follow-up register")}
+              </Button>
+              <Button
+                kind="ghost"
+                size="sm"
+                renderIcon={Download}
+                disabled={rows.length === 0}
+                onClick={() =>
+                  downloadCsv(
+                    queueCsv(rows, sourceLabelOf, reasonLabelOf),
+                    "eqa-follow-up-queue.csv",
+                  )
+                }
+              >
+                {t("eqa.queue.exportCsv", "Export CSV")}
+              </Button>
+            </div>
           </div>
 
           {loading ? (

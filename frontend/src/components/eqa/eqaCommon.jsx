@@ -37,6 +37,22 @@ const STATUS_TAG = {
   closed: "gray",
 };
 
+/** RFC 4180 cell: everything quoted, embedded quotes doubled. */
+export const csvCell = (value) =>
+  `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+/** Hands the browser a CSV without a round trip to the server. */
+export const downloadCsv = (content, filename) => {
+  const url = URL.createObjectURL(
+    new Blob([content], { type: "text/csv;charset=utf-8;" }),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 /** One cycle-state tag, so no page has to keep its own copy of the palette. */
 export const CycleStatusTag = ({ status }) => {
   const intl = useIntl();

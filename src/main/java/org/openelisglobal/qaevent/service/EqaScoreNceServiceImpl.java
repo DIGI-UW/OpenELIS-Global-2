@@ -162,6 +162,14 @@ public class EqaScoreNceServiceImpl implements EqaScoreNceService {
     @Override
     public NcEvent escalateFollowup(Long followupId, String sysUserId) {
         EQAParticipantFollowup followup = followupService.get(followupId);
+        // AC-V2.5-10, enforced rather than merely structural (T-27): a row about
+        // another laboratory is the provider's register entry, and a local
+        // non-conformity would put another lab's failure in this lab's QMS.
+        Long self = followupService.selfOrganizationId();
+        if (self == null || !self.equals(followup.getParticipantOrgId())) {
+            throw new IllegalStateException("Follow-up " + followupId + " is about another laboratory;"
+                    + " escalate it in the provider follow-up register, not as a local non-conformity");
+        }
         List<Long> resultIds = followupService.resultIdsFor(followup);
         String triggerId = String.valueOf(followupId);
 

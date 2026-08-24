@@ -91,6 +91,16 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAShipmentRestController#savePrep", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#saveShipment", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#ship", EQAGuards.PROVIDER);
+        // T-26: receipt monitoring, reprovisioning and score return are provider work
+        WRITE_GUARDS.put("EQAShipmentRestController#markDelivered", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAShipmentRestController#sendRepeat", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAShipmentRestController#distributeScores", EQAGuards.PROVIDER);
+        // Scoring writes verdicts and advances the cycle, as intakeScores does
+        WRITE_GUARDS.put("EQAShipmentRestController#score", EQAGuards.MANAGE);
+        // T-27: the provider follow-up register's triage
+        WRITE_GUARDS.put("EQAFollowupRestController#triage", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAFollowupRestController#notifyParticipant", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAFollowupRestController#repeat", EQAGuards.PROVIDER);
         // Score intake is the provider's verdict coming back (FR-V2.2-08)
         WRITE_GUARDS.put("EQASubmissionRestController#intakeScores", EQAGuards.MANAGE);
         // Participant lane — bench work, so the legacy roles still admit it
