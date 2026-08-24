@@ -111,6 +111,15 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
                 .orElseGet(AnalyzerSiteBindingConfirmationView::unconfirmed);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AnalyzerSiteBindingConfirmation> findCurrent(AnalyzerSiteBindingSnapshot candidate,
+            String recognitionFingerprint) {
+        CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
+        return confirmationDAO.findByRevisionId(candidate.revision().getId()).filter(
+                confirmation -> isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate));
+    }
+
     private static CandidateContext requireCandidate(AnalyzerSiteBindingSnapshot candidate,
             String recognitionFingerprint) {
         if (candidate == null || candidate.binding() == null || candidate.binding().getId() == null

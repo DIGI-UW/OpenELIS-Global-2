@@ -3,8 +3,10 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -106,11 +108,7 @@ public class AnalyzerActivationServiceTest {
 
     @Test
     public void promotesOnlyAfterTheExactCandidateIsAcknowledgedAndRetained() {
-        BridgeRegisteredCandidate acknowledgement = acknowledgement();
-        when(registrationService.synchronizeCandidate(ANALYZER_ID, registration)).thenReturn(
-                new BridgeRegistrationResult(true, Set.of(ANALYZER_ID), null, Map.of(ANALYZER_ID, acknowledgement)));
-        when(candidateFactory.create(analyzer, snapshot, confirmation, registration, acknowledgement))
-                .thenReturn(documents);
+        BridgeRegisteredCandidate acknowledgement = acknowledgeCandidate();
         when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
                 .thenReturn(retained);
 
@@ -149,6 +147,48 @@ public class AnalyzerActivationServiceTest {
         verify(candidateService, never()).retain(any(), any(), any(), any(), any());
         verify(analyzerService, never()).update(any(Analyzer.class));
         verify(registrationService, never()).synchronize();
+    }
+
+    @Test
+    public void restoresBridgeDesiredStateWhenTheAcknowledgedCandidateCannotBeRetained() {
+        acknowledgeCandidate();
+        when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
+                .thenThrow(new IllegalStateException("database unavailable"));
+
+        assertThrows(IllegalStateException.class, () -> service.activate(ANALYZER_ID, ACTOR));
+
+        verify(registrationService).synchronize();
+        assertUnchanged();
+    }
+
+    @Test
+    public void restoresTheAnalyzerAndBridgeWhenFinalPromotionCannotBePersisted() {
+        acknowledgeCandidate();
+        when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
+                .thenReturn(retained);
+        doThrow(new IllegalStateException("database unavailable")).when(analyzerService).update(analyzer);
+
+        assertThrows(IllegalStateException.class, () -> service.activate(ANALYZER_ID, ACTOR));
+
+        verify(registrationService).synchronize();
+        assertUnchanged();
+    }
+
+    private BridgeRegisteredCandidate acknowledgeCandidate() {
+        BridgeRegisteredCandidate acknowledgement = acknowledgement();
+        when(registrationService.synchronizeCandidate(ANALYZER_ID, registration)).thenReturn(
+                new BridgeRegistrationResult(true, Set.of(ANALYZER_ID), null, Map.of(ANALYZER_ID, acknowledgement)));
+        when(candidateFactory.create(analyzer, snapshot, confirmation, registration, acknowledgement))
+                .thenReturn(documents);
+        return acknowledgement;
+    }
+
+    private void assertUnchanged() {
+        assertEquals(Analyzer.AnalyzerStatus.VALIDATION, analyzer.getStatus());
+        assertFalse(analyzer.isActive());
+        assertNull(analyzer.getActiveCandidate());
+        assertNull(analyzer.getLastActivatedDate());
+        assertNull(analyzer.getSysUserId());
     }
 
     private static Analyzer analyzer() {
