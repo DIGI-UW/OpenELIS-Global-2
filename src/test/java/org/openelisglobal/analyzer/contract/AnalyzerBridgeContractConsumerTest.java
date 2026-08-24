@@ -70,24 +70,45 @@ public class AnalyzerBridgeContractConsumerTest {
     }
 
     @Test
-    public void registrationAcknowledgesExactCandidateWithoutOpenElisQcState() throws IOException {
-        JsonNode requested = fixture("registration-next.json");
-        JsonNode result = fixture("registration-result.json");
+    public void durableConnectionContractsExposeGenericFieldsAndOptimisticConcurrency() throws IOException {
+        JsonNode create = fixture("connection-create.json");
+        JsonNode update = fixture("connection-update.json");
+        JsonNode connection = fixture("analyzer-connection.json");
 
-        assertConforms("registration-sync.schema.json", requested);
-        assertConforms("registration-sync-result.schema.json", result);
+        assertConforms("connection-create.schema.json", create);
+        assertConforms("connection-update.schema.json", update);
+        assertConforms("analyzer-connection.schema.json", connection);
 
-        JsonNode analyzer = requested.path("analyzers").path("42");
-        JsonNode acknowledgement = result.path("registrations").path("42");
-        assertTrue(analyzer.path("desiredStateFingerprint").asText().matches(FINGERPRINT_PATTERN));
-        assertFalse(analyzer.has("siteBindingRevision"));
-        assertFalse(analyzer.has("operationalQc"));
-        assertFalse(analyzer.has("qcRules"));
-        assertFalse(analyzer.has("controlLots"));
-        assertFalse(analyzer.has("oeAnalyzerId"));
-        assertFalse(acknowledgement.has("oeAnalyzerId"));
-        assertEquals(analyzer.path("profileRef"), acknowledgement.path("profileRef"));
-        assertEquals(analyzer.path("desiredStateFingerprint"), acknowledgement.path("desiredStateFingerprint"));
+        assertEquals(create.path("clientAnalyzerId"), connection.path("clientAnalyzerId"));
+        assertEquals(create.path("profileRef"), connection.path("profileRef"));
+        assertEquals(update.path("expectedConfigRevision").asInt() + 1, connection.path("configRevision").asInt());
+        assertTrue(connection.path("configFingerprint").asText().matches(FINGERPRINT_PATTERN));
+        assertTrue(connection.path("fields").isArray());
+        assertTrue(connection.path("fields").size() > 0);
+        assertFalse(connection.has("connection"));
+        assertFalse(connection.has("settings"));
+    }
+
+    @Test
+    public void probeAndActivationAcknowledgeTheExactSavedConnection() throws IOException {
+        JsonNode probeRequest = fixture("connection-probe-request.json");
+        JsonNode probeResult = fixture("connection-probe-result.json");
+        JsonNode command = fixture("connection-activate.json");
+        JsonNode acknowledgement = fixture("connection-activate-ack.json");
+
+        assertConforms("connection-probe-request.schema.json", probeRequest);
+        assertConforms("connection-probe-result.schema.json", probeResult);
+        assertConforms("connection-runtime-command.schema.json", command);
+        assertConforms("connection-runtime-ack.schema.json", acknowledgement);
+
+        assertEquals(probeRequest.path("requestId"), probeResult.path("requestId"));
+        assertEquals(probeRequest.path("connectionId"), probeResult.path("connectionId"));
+        assertTrue(probeResult.path("nonMutating").asBoolean());
+        assertEquals(command.path("commandId"), acknowledgement.path("commandId"));
+        assertEquals(command.path("connectionId"), acknowledgement.path("connectionId"));
+        assertEquals(command.path("expectedConfigRevision"), acknowledgement.path("configRevision"));
+        assertEquals("ACTIVE", acknowledgement.path("actualRuntimeState").asText());
+        assertTrue(acknowledgement.path("runtimeFingerprint").asText().matches(FINGERPRINT_PATTERN));
     }
 
     @Test
@@ -116,17 +137,18 @@ public class AnalyzerBridgeContractConsumerTest {
         ((com.fasterxml.jackson.databind.node.ObjectNode) profile).put("labUnitId", "123");
         assertFalse(validationMessages("analyzer-profile.schema.json", profile).isEmpty());
 
-        JsonNode registration = fixture("registration-initial.json").deepCopy();
-        ((com.fasterxml.jackson.databind.node.ObjectNode) registration.path("analyzers").path("42"))
-                .set("operationalQc", JSON.createObjectNode());
-        assertFalse(validationMessages("registration-sync.schema.json", registration).isEmpty());
+        JsonNode connection = fixture("connection-create.json").deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) connection).set("operationalQc", JSON.createObjectNode());
+        assertFalse(validationMessages("connection-create.schema.json", connection).isEmpty());
     }
 
     @Test
     public void noParallelProfileOrCompatibilityContractIsConsumable() {
         for (String removed : new String[] { "portable-profile.schema.json", "legacy-registration.schema.json",
-                "compatibility.json", "fixtures/portable-profile.json", "fixtures/portable-profile-none.json",
-                "fixtures/legacy-registration.json" }) {
+                "compatibility.json", "registration-sync.schema.json", "registration-sync-result.schema.json",
+                "fixtures/portable-profile.json", "fixtures/portable-profile-none.json",
+                "fixtures/legacy-registration.json", "fixtures/registration-initial.json",
+                "fixtures/registration-next.json", "fixtures/registration-result.json" }) {
             assertFalse(removed, Files.exists(CONTRACT_ROOT.resolve(removed)));
         }
     }
