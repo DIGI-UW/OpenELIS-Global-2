@@ -275,7 +275,7 @@ describe("AnalyzersList", () => {
     ).toBeVisible();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Deactivate analyzer" }),
+      screen.getByRole("button", { name: /Deactivate analyzer$/ }),
     );
 
     expect(deactivateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
@@ -285,6 +285,48 @@ describe("AnalyzersList", () => {
     expect(params.get("lifecycleAnalyzerId")).toBeNull();
     expect(params.get("search")).toBe("gene");
     expect(params.get("status")).toBe("ACTIVE");
+  });
+
+  test("keeps lifecycle evidence visible while a request is in flight", async () => {
+    const analyzer = createMockAnalyzer({ id: "42", status: "ACTIVE" });
+    let finishDeactivation;
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [analyzer] }));
+    });
+    deactivateAnalyzer.mockImplementation((_id, callback) => {
+      finishDeactivation = callback;
+    });
+
+    renderWithIntl(<AnalyzersList />);
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Deactivate analyzer$/ }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Cancel deactivation" }),
+    ).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(
+      screen.getByRole("heading", { name: "Deactivate analyzer" }),
+    ).toBeVisible();
+    expect(new URLSearchParams(window.location.search).get("lifecycle")).toBe(
+      "deactivate",
+    );
+
+    act(() => {
+      finishDeactivation({
+        analyzerId: "42",
+        status: "INACTIVE",
+        deactivated: true,
+      });
+    });
+    expect(
+      screen.queryByRole("heading", { name: "Deactivate analyzer" }),
+    ).not.toBeInTheDocument();
   });
 
   test("reactivates an inactive analyzer through the exact activation boundary", async () => {
@@ -360,9 +402,11 @@ describe("AnalyzersList", () => {
       await screen.findByTestId("analyzer-row-overflow-41"),
     );
     expect(screen.getByRole("menuitem", { name: "Reactivate" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Deactivate" })).toBeVisible();
     await userEvent.keyboard("{Escape}");
     await userEvent.click(screen.getByTestId("analyzer-row-overflow-42"));
     expect(screen.getByRole("menuitem", { name: "Reactivate" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Deactivate" })).toBeVisible();
   });
 
   test("opens an existing analyzer in linkable inline Instrument setup", async () => {

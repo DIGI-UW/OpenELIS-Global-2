@@ -29,7 +29,9 @@ import {
   type AnalyzersResponse,
   type AnalyzerTypeCatalog,
 } from "../../../services/analyzerService";
-import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
+import AnalyzerLifecycleModal, {
+  type AnalyzerLifecycleAction,
+} from "../AnalyzerLifecycleModal/AnalyzerLifecycleModal";
 import AnalyzerSetup, {
   type AnalyzerSetupStep,
 } from "../AnalyzerSetup/AnalyzerSetup";
@@ -43,11 +45,6 @@ interface AnalyzerStats {
   active: number;
   inactive: number;
   pluginWarnings: number;
-}
-
-interface AnalyzerModalState {
-  open: boolean;
-  analyzer: Analyzer | null;
 }
 
 interface AnalyzerTableRow {
@@ -73,13 +70,30 @@ const isAnalyzerSetupStep = (
 ): value is AnalyzerSetupStep =>
   value === "instrument" || value === "verify" || value === "connect";
 
+const isAnalyzerLifecycleAction = (
+  value: string | null,
+): value is AnalyzerLifecycleAction =>
+  value === "deactivate" || value === "reactivate";
+
+const lifecycleActionsFor = (
+  status: AnalyzerStatus,
+): AnalyzerLifecycleAction[] => {
+  if (status === "INACTIVE") {
+    return ["reactivate"];
+  }
+  if (status === "ERROR_PENDING" || status === "OFFLINE") {
+    return ["reactivate", "deactivate"];
+  }
+  return ["deactivate"];
+};
+
 const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [, setAnalyzers] = useState<Analyzer[]>([]);
+  const [analyzers, setAnalyzers] = useState<Analyzer[]>([]);
   const [filteredAnalyzers, setFilteredAnalyzers] = useState<Analyzer[]>([]);
   const [profileNames, setProfileNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -95,13 +109,21 @@ const AnalyzersList = () => {
     inactive: 0,
     pluginWarnings: 0,
   });
-  const [deleteModal, setDeleteModal] = useState<AnalyzerModalState>({
-    open: false,
-    analyzer: null,
-  });
-
-  const setupStep = new URLSearchParams(location.search).get("setup");
+  const queryParams = new URLSearchParams(location.search);
+  const setupStep = queryParams.get("setup");
   const visibleSetupStep = isAnalyzerSetupStep(setupStep) ? setupStep : null;
+  const lifecycleActionParam = queryParams.get("lifecycle");
+  const lifecycleAction = isAnalyzerLifecycleAction(lifecycleActionParam)
+    ? lifecycleActionParam
+    : null;
+  const lifecycleAnalyzerId = queryParams.get("lifecycleAnalyzerId");
+  const lifecycleAnalyzer = lifecycleAnalyzerId
+    ? analyzers.find((analyzer) => analyzer.id === lifecycleAnalyzerId) || null
+    : null;
+  const listSearch = queryParams.get("search") || "";
+  const listStatus = queryParams.get("status") || "";
+  const listTestUnit = queryParams.get("testUnit") || "";
+  const listAnalyzerType = queryParams.get("analyzerType") || "";
 
   const openSetup = () => {
     const params = new URLSearchParams(location.search);
@@ -145,6 +167,27 @@ const AnalyzersList = () => {
       pathname: `/analyzers/qc/instruments/${encodeURIComponent(analyzer.id)}`,
       search: params.toString(),
     });
+  };
+
+  const openLifecycle = (
+    analyzer: Analyzer,
+    action: AnalyzerLifecycleAction,
+  ) => {
+    if (!analyzer.id) {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    params.set("lifecycle", action);
+    params.set("lifecycleAnalyzerId", analyzer.id);
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
+
+  const closeLifecycle = () => {
+    const params = new URLSearchParams(location.search);
+    params.delete("lifecycle");
+    params.delete("lifecycleAnalyzerId");
+    history.replace({ pathname: "/analyzers", search: params.toString() });
   };
 
   const closeSetup = () => {
@@ -205,28 +248,23 @@ const AnalyzersList = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams(location.search);
-    const initialSearch = params.get("search") || "";
-    const initialStatus = params.get("status") || "";
-    const initialTestUnit = params.get("testUnit") || "";
-    const initialAnalyzerType = params.get("analyzerType") || "";
-    setSearchTerm(initialSearch);
+    setSearchTerm(listSearch);
     const initialFilters = {
-      status: initialStatus,
-      testUnit: initialTestUnit,
-      analyzerType: initialAnalyzerType,
+      status: listStatus,
+      testUnit: listTestUnit,
+      analyzerType: listAnalyzerType,
     };
     setFilters(initialFilters);
     loadAnalyzers(
       {
         ...initialFilters,
-        ...(initialSearch ? { search: initialSearch } : {}),
+        ...(listSearch ? { search: listSearch } : {}),
       },
       controller.signal,
     );
 
     return () => controller.abort();
-  }, [loadAnalyzers, location.search]);
+  }, [listAnalyzerType, listSearch, listStatus, listTestUnit, loadAnalyzers]);
 
   useEffect(() => {
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
@@ -710,19 +748,20 @@ const AnalyzersList = () => {
                                       }
                                       data-testid={`analyzer-action-quality-control-${row.id}`}
                                     />
-                                    <OverflowMenuItem
-                                      itemText={intl.formatMessage({
-                                        id: "analyzer.action.delete",
-                                      })}
-                                      isDelete
-                                      onClick={() => {
-                                        setDeleteModal({
-                                          open: true,
-                                          analyzer: analyzer,
-                                        });
-                                      }}
-                                      data-testid={`analyzer-action-delete-${row.id}`}
-                                    />
+                                    {lifecycleActionsFor(unifiedStatus).map(
+                                      (action) => (
+                                        <OverflowMenuItem
+                                          key={action}
+                                          itemText={intl.formatMessage({
+                                            id: `analyzer.action.${action}`,
+                                          })}
+                                          onClick={() =>
+                                            openLifecycle(analyzer, action)
+                                          }
+                                          data-testid={`analyzer-action-${action}-${row.id}`}
+                                        />
+                                      ),
+                                    )}
                                   </OverflowMenu>
                                 ) : null;
                               }
@@ -745,16 +784,14 @@ const AnalyzersList = () => {
         </Column>
       </Grid>
 
-      {deleteModal.open && (
-        <DeleteAnalyzerModal
-          analyzer={deleteModal.analyzer}
-          open={deleteModal.open}
-          onClose={() => {
-            setDeleteModal({ open: false, analyzer: null });
-          }}
-          onConfirm={() => {
-            loadAnalyzers();
-          }}
+      {lifecycleAction && lifecycleAnalyzer && (
+        <AnalyzerLifecycleModal
+          key={`${lifecycleAction}-${lifecycleAnalyzer.id}`}
+          action={lifecycleAction}
+          analyzer={lifecycleAnalyzer}
+          open
+          onClose={closeLifecycle}
+          onConfirm={() => loadAnalyzers()}
         />
       )}
     </div>

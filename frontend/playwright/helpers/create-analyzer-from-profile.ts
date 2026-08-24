@@ -14,7 +14,7 @@
 import { Page, expect } from "@playwright/test";
 import { AnalyzerSetupPage } from "../fixtures/analyzer-setup";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
-import { cleanupAnalyzerByName } from "./cleanup-analyzer";
+import { deactivateAnalyzerByName } from "./deactivate-analyzer";
 import {
   resolveMockSimulatorUrl,
   type AnalyzerTestConfig,
@@ -114,9 +114,6 @@ export async function createAnalyzerFromProfile(
   const list = new AnalyzerListPage(page);
   const setup = new AnalyzerSetupPage(page);
 
-  // Clean up any leftover from a previous failed run
-  await cleanupAnalyzerByName(page, config.name);
-
   // For TCP analyzers: create mock network to get a unique IP.
   // Delete any leftover network first (from a previous failed run).
   let assignedIp: string | null = null;
@@ -177,24 +174,24 @@ export async function createAnalyzerFromProfile(
 }
 
 /**
- * Delete an analyzer via the UI dashboard (teardown).
+ * Deactivate an analyzer via the UI dashboard.
  */
-export async function deleteAnalyzerFromDashboard(
+export async function deactivateAnalyzerFromDashboard(
   page: Page,
   analyzerName: string,
 ): Promise<void> {
-  await cleanupAnalyzerByName(page, analyzerName);
+  await deactivateAnalyzerByName(page, analyzerName);
 }
 
 /**
- * Cleanup uses the visible delete workflow, then removes the mock transport.
+ * Teardown uses the visible deactivate workflow, then removes the mock transport.
  */
 export async function teardownAnalyzer(
   page: Page,
   config: AnalyzerTestConfig,
 ): Promise<void> {
-  // Step 1: Soft-delete via UI (tests the production user flow)
-  await deleteAnalyzerFromDashboard(page, config.name);
+  // Step 1: Deactivate through the production user flow.
+  await deactivateAnalyzerFromDashboard(page, config.name);
 
   // Step 2: Remove mock network
   if (config.mockAnalyzerName) {

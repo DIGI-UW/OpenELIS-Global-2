@@ -26,10 +26,6 @@ type ApiCallback<T = AnalyzerApiResponse> = (
   extraParams?: ExtraParams,
 ) => void;
 type DataCallback<T> = (data: T) => void;
-type SuccessCallback = (
-  success: boolean,
-  error: AnalyzerApiError | null,
-) => void;
 
 export interface AnalyzerFilters {
   status?: string;
@@ -129,6 +125,16 @@ export interface AnalyzerActivationResultView extends Omit<
     code: string;
     args?: Record<string, unknown>;
   }>;
+}
+
+export interface AnalyzerDeactivationResultView extends Omit<
+  AnalyzerApiError,
+  "status"
+> {
+  analyzerId: string;
+  status: string;
+  deactivated: boolean;
+  failure?: string | null;
 }
 
 export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
@@ -427,76 +433,6 @@ export const updateAnalyzer = (
 };
 
 /**
- * Delete analyzer (soft delete - sets active=false)
- *
- * Note: Uses POST /delete endpoint instead of DELETE HTTP method due to Spring
- * Security 6 CSRF protection issues with DELETE requests.
- *
- * @param {String} id - Analyzer ID
- * @param {Function} callback - Callback function (success, error) => void
- */
-export const deleteAnalyzer = (id: string, callback: SuccessCallback) => {
-  const endpoint = `/rest/analyzer/analyzers/${id}/delete`;
-  const csrfToken = localStorage.getItem("CSRF");
-
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken || "",
-    },
-  })
-    .then(async (response) => {
-      // Read response body if present
-      let responseData = null;
-      try {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-          responseData = await response.json();
-        } else if (response.status !== 204) {
-          await response.text();
-        }
-      } catch {
-        // Response body could not be parsed
-      }
-
-      if (response.ok || response.status === 204 || response.status === 200) {
-        callback(true, null);
-      } else {
-        // Parse error response
-        let errorData;
-        try {
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.indexOf("application/json") !== -1) {
-            errorData = responseData || {
-              error: `HTTP ${response.status}: ${response.statusText}`,
-              status: response.status,
-              statusText: response.statusText,
-            };
-          } else {
-            errorData = {
-              error: `HTTP ${response.status}: ${response.statusText}`,
-              status: response.status,
-              statusText: response.statusText,
-            };
-          }
-        } catch {
-          errorData = {
-            error: `HTTP ${response.status}: ${response.statusText}`,
-            status: response.status,
-            statusText: response.statusText,
-          };
-        }
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
-};
-
-/**
  * Test TCP connection to analyzer
  * @param {String} id - Analyzer ID
  * @param {Function} callback - Callback function (response, extraParams) => void
@@ -533,7 +469,68 @@ export const activateAnalyzer = (
   id: string,
   callback: ApiCallback<AnalyzerActivationResultView>,
 ) => {
-  fetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/activate`, {
+  postAnalyzerLifecycle<AnalyzerActivationResultView>(
+    id,
+    "activate",
+    callback,
+    (error) => ({
+      analyzerId: id,
+      status: "UNKNOWN",
+      ready: false,
+      activated: false,
+      blockers: [],
+      error,
+      statusCode: 0,
+    }),
+  );
+};
+
+export const reactivateAnalyzer = (
+  id: string,
+  callback: ApiCallback<AnalyzerActivationResultView>,
+) => {
+  postAnalyzerLifecycle<AnalyzerActivationResultView>(
+    id,
+    "reactivate",
+    callback,
+    (error) => ({
+      analyzerId: id,
+      status: "UNKNOWN",
+      ready: false,
+      activated: false,
+      blockers: [],
+      error,
+      statusCode: 0,
+    }),
+  );
+};
+
+export const deactivateAnalyzer = (
+  id: string,
+  callback: ApiCallback<AnalyzerDeactivationResultView>,
+) => {
+  postAnalyzerLifecycle<AnalyzerDeactivationResultView>(
+    id,
+    "deactivate",
+    callback,
+    (error) => ({
+      analyzerId: id,
+      status: "UNKNOWN",
+      deactivated: false,
+      failure: error,
+      error,
+      statusCode: 0,
+    }),
+  );
+};
+
+const postAnalyzerLifecycle = <T extends object>(
+  id: string,
+  action: "activate" | "deactivate" | "reactivate",
+  callback: ApiCallback<T>,
+  networkFailure: (error: string) => T,
+) => {
+  fetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/${action}`, {
     credentials: "include",
     method: "POST",
     headers: {
@@ -552,18 +549,10 @@ export const activateAnalyzer = (
               statusText: response.statusText,
             }
           : {}),
-      } as AnalyzerActivationResultView);
+      } as T);
     })
     .catch((error: Error) => {
-      callback({
-        analyzerId: id,
-        status: "UNKNOWN",
-        ready: false,
-        activated: false,
-        blockers: [],
-        error: error.message || "Network error",
-        statusCode: 0,
-      });
+      callback(networkFailure(error.message || "Network error"));
     });
 };
 

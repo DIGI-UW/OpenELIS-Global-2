@@ -1,7 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
-import { cleanupAnalyzerByName } from "../../../helpers/cleanup-analyzer";
+import { deactivateAnalyzerByName } from "../../../helpers/deactivate-analyzer";
 
 const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
@@ -54,7 +54,7 @@ test.describe("Real GeneXpert Test Connection (Manual Only)", () => {
     ).toHaveCount(0);
 
     if (!process.env.SKIP_CLEANUP) {
-      await cleanupAnalyzerByName(page, analyzerName);
+      await deactivateAnalyzerByName(page, analyzerName);
     }
   });
 });
