@@ -1,5 +1,12 @@
 # Tasks: Westgard QC Rules Dashboard (OGC-41)
 
+> **Superseded analyzer-identification tasks:** Entries involving
+> `AnalyzerQcRule`, OpenELIS-pushed classifiers, or profile-to-rule copying are
+> historical and must not be resumed. The
+> [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+> owns their one-way removal. The retained work here is OpenELIS operational
+> Quality Control only.
+
 **Input**: [spec.md](spec.md), [plan.md](plan.md) **Jira**:
 [OGC-41](https://uwdigi.atlassian.net/browse/OGC-41) **Organization**: By
 milestone (Constitution Principle IX) **Tests**: MANDATORY (Constitution
@@ -42,9 +49,8 @@ Westgard evaluation → violation → alert → dashboard.
       REJECTION rule.
 
 - [ ] T003 [M1] Verify end-to-end pipeline after file drop:
-
-  1. Bridge logs show QC identification (rule match on CNEG prefix or STANDARD
-     field) and FHIR bundle with `meta.tag code="QC"`
+  1. Bridge logs show the pinned profile revision recognized the control and
+     emitted a FHIR bundle with `meta.tag code="QC"`
   2. OE logs show `QCResultProcessingService` creating a QCResult with z-score
      ~3.6
   3. OE logs show `QCResultCreatedEventListener` firing async evaluation
@@ -65,14 +71,14 @@ Westgard evaluation → violation → alert → dashboard.
 
 **Goal**: Verify Spring wiring for all QC REST endpoints. 4 controllers, 0 tests
 currently. **Pattern**: Follow `BaseWebContextSensitiveTest` + MockMvc pattern
-from [Testing Roadmap](.specify/guides/testing-roadmap.md#backend-testing).
+from
+[Testing Roadmap](../../.specify/guides/testing-roadmap.md#backend-testing).
 **Test data**: Use existing QC test builders (QCControlLotBuilder,
 QCResultBuilder, etc.) from `src/test/java/org/openelisglobal/qc/`.
 
 - [ ] T005 [P] [M1] Write controller tests for `QCRestController` in
       `src/test/java/org/openelisglobal/qc/controller/QCRestControllerTest.java`.
       Test endpoints:
-
   - GET `/rest/qc/control-lots` → 200 + list response
   - GET `/rest/qc/controlLot/{id}` → 200 + lot detail
   - POST `/rest/qc/controlLot` → 201 + created lot
@@ -85,7 +91,6 @@ QCResultBuilder, etc.) from `src/test/java/org/openelisglobal/qc/`.
 - [ ] T006 [P] [M1] Write controller tests for `QCChartDataRestController` in
       `src/test/java/org/openelisglobal/qc/controller/QCChartDataRestControllerTest.java`.
       Test endpoints:
-
   - GET `/rest/qc/charts/{controlLotId}` → 200 + chart data with points array
   - GET `/rest/qc/charts/{controlLotId}/statistics` → 200 + mean/SD/reference
     lines **Reference**:
@@ -104,13 +109,13 @@ QCResultBuilder, etc.) from `src/test/java/org/openelisglobal/qc/`.
 
 **Goal**: 1 E2E test proving QC dashboard routing + API + UI in CI. **Pattern**:
 Follow
-[Playwright best practices](.specify/guides/playwright-best-practices.md). Use
+[Playwright best practices](../../.specify/guides/playwright-best-practices.md).
+Use
 `/plan-record-playwright` for planning, `/write-playwright-test` for authoring.
 Register in `harness-foundational` project.
 
 - [ ] T008 [M1] Plan the Playwright QC smoke test via `/plan-record-playwright`.
       Test outline:
-
   1. Auth setup (reuse existing `auth.setup.ts`)
   2. Navigate to `/analyzers/qc/db`
   3. Assert: `[data-testid="qc-summary-tiles"]` visible
@@ -186,7 +191,6 @@ deploy and eventual merge to develop.
       action for REJECTION severity.
 
 - [ ] T020 [M2] Implement DAO + Service (5-layer) for corrective actions:
-
   - `src/main/java/org/openelisglobal/qc/dao/QCCorrectiveActionDAO.java`
   - `src/main/java/org/openelisglobal/qc/dao/QCCorrectiveActionDAOImpl.java`
   - `src/main/java/org/openelisglobal/qc/service/QCCorrectiveActionService.java`
@@ -197,7 +201,6 @@ deploy and eventual merge to develop.
 
 - [ ] T022 [M2] Add REST endpoints to existing `QCRestController` or new
       controller:
-
   - POST `/rest/qc/violations/{id}/corrective-action` → create action
   - PUT `/rest/qc/corrective-actions/{id}` → update status/notes
   - GET `/rest/qc/corrective-actions?status=PENDING` → list active actions
@@ -269,21 +272,18 @@ on**: M1 merged
       `develop`
 
 - [ ] T034 [P] [M4] Write unit tests for `QCTrendService`:
-
   - Compliance percentage over time (by date range)
   - Violation frequency distribution by rule type
   - Instruments with recurring violations **File**:
     `src/test/java/org/openelisglobal/qc/service/QCTrendServiceTest.java`
 
 - [ ] T035 [M4] Implement `QCTrendService` + DAO queries:
-
   - `getComplianceTrend(dateRange, instrumentId?, testId?)` → time series
   - `getViolationFrequency(dateRange)` → rule_code → count map
   - `getRecurringViolationInstruments(dateRange, threshold)` → list **File**:
     `src/main/java/org/openelisglobal/qc/service/QCTrendServiceImpl.java`
 
 - [ ] T036 [M4] Add REST endpoints for trend data:
-
   - GET `/rest/qc/trends/compliance?from=&to=&instrumentId=` → time series
   - GET `/rest/qc/trends/violation-frequency?from=&to=` → distribution **File**:
     Add to `QCRestController.java` or new `QCTrendRestController.java`
@@ -325,14 +325,12 @@ on**: M2, M3, M4 merged
       `develop`
 
 - [ ] T043 [P] [M5] Write unit tests for manual re-evaluation service:
-
   - Evaluate a date range without persisting violations (preview mode)
   - Evaluate specific rule subsets
   - Re-evaluate after statistics recalculation **File**:
     `src/test/java/org/openelisglobal/qc/service/QCManualEvaluationServiceTest.java`
 
 - [ ] T044 [M5] Implement manual re-evaluation service + endpoint:
-
   - POST `/rest/qc/evaluate-range` with `{ lotId, from, to, preview, rules[] }`
   - Returns evaluation results without persisting when `preview=true` **File**:
     `src/main/java/org/openelisglobal/qc/service/QCManualEvaluationServiceImpl.java`
@@ -349,7 +347,6 @@ on**: M2, M3, M4 merged
       export API. Add export button to chart toolbar.
 
 - [ ] T048 [M5] Add manual evaluation UI: date range picker + rule checkboxes
-
   - "Evaluate" button + preview toggle. Display results in a table below the
     chart without navigating away. **File**:
     `frontend/src/components/qc/charts/ManualEvaluationPanel.jsx`

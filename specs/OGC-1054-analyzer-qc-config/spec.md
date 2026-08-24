@@ -2,7 +2,7 @@
 
 **Feature:** OGC-1054 analyzer management
 **Roadmap:** [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
-**Updated:** 2026-08-19
+**Updated:** 2026-08-24
 
 ## Source Contract
 
@@ -244,16 +244,14 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
 - Instrument selection is searchable and selects an existing Analyzer Type.
   An unlisted instrument links to the separate Analyzer Types create/duplicate
   workflow and returns to analyzer setup with the new type selectable.
-- For network/socket profiles, setup begins with the selected revision's
-  declared communication/data-flow default and explicit LIS-initiated
-  capability. Missing or invalid capability is a profile-contract error, not a
-  false value. For FILE profiles, setup uses declared FILE behavior and the
-  site-entered directory without inventing network data-flow, address, or port
-  values. Only modes supported by the profile are offered; OpenELIS does not
-  infer capability from a default, profile identity, protocol, or application
-  constant. A failed round-trip probe is shown visibly and may support an
-  explicit user choice to use a supported results-only mode; it never silently
-  rewrites the profile or instance configuration.
+- Bridge supplies one generic, revision-specific description of the site values
+  setup must collect, including choices, requiredness, conditions, and defaults.
+  OpenELIS renders and retains those values without interpreting protocol,
+  transport, role, direction, FILE/network behavior, or runtime compatibility.
+  Missing or invalid profile behavior is a Bridge contract error, never an
+  OpenELIS fallback. A failed round-trip probe is shown visibly and may expose
+  an explicit Bridge-described results-only choice; it never silently rewrites
+  the profile or instance configuration.
 - Inline Connect reports Bridge's structured success, failure, timeout, and
   missing-configuration evidence in plain language and shows the endpoint the
   lab must configure. It does not replace that evidence with a simulated
@@ -270,9 +268,9 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
   activation, and changing it does not stale mapping verification.
 - Every transition into `ACTIVE` applies the same exact predicate. One candidate
   must have an existing active schema-valid pinned profile revision; a nonblank
-  analyzer name; at least one active lab unit; supported connection/data-flow
-  modes and every profile-required instance field; every declared test/result
-  row validly bound or explicitly excluded where offered with matching
+  analyzer name; at least one active lab unit; generic site values accepted and
+  materialized by Bridge against that exact revision; every declared
+  test/result row validly bound or explicitly excluded where offered with matching
   confirmed row IDs; current recognition confirmation for the same revision and
   fingerprint, including explicit `NONE` (no automatic recognition); and a Bridge
   acknowledgment matching analyzer ID, profile ID/revision, and canonical

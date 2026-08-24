@@ -3,7 +3,7 @@
 **Control:** Governed by the single active marker in the
 [roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 **Spec:** [spec.md](./spec.md)
-**Updated:** 2026-08-19
+**Updated:** 2026-08-24
 
 ## Planning Rules
 
@@ -57,11 +57,12 @@ and downloadable UAT report. It does not own application fixtures or behavior.
 3. OpenELIS composes the selected profile revision with site instance values,
    local catalog bindings, verification, and operational state. It stores a pin
    and never becomes a second profile authority.
-4. The existing profile corpus is curated profile by profile. A semantically
+4. The MVP curates only the evidence-backed priority profiles. A semantically
    valid emitted result remains distinct; a proven alternate spelling becomes
    an alias; incorrect, unsupported, or duplicate content is corrected or
-   removed. Current rows and equal LOINCs do not create preservation rules, and
-   no `LEGACY_UNBOUND` configuration concept exists.
+   removed. Every other source profile remains excluded until later evidence-
+   based curation. Current rows and equal LOINCs do not create preservation
+   rules, and no `LEGACY_UNBOUND` configuration concept exists.
 5. Qualitative mappings bind to active Result Options belonging to the mapped
    local Test.
 6. Every active Bridge profile revision declares explicit control-result
@@ -109,9 +110,10 @@ feature commits or preserve legacy writers as compatibility paths.
 Complete the Bridge-profile/OpenELIS-binding ADR and versioned producer/consumer
 contracts as a strict additive evolution of the established profile system.
 Use GeneXpert ASTM and FluoroCycler as blocking compatibility fixtures for both
-profile jobs. Record an evidence-based disposition for all 20 source profiles,
-but publish only priority profiles whose contract, mock transport, Bridge
-behavior, and assembled visible result flow pass together. Define
+profile jobs. Curate and publish only the priority GeneXpert ASTM,
+FluoroCycler FILE, and QuantStudio FILE profiles whose contract, mock
+transport, Bridge behavior, and assembled visible result flow pass together;
+exclude every other source file from runtime until later evidence exists. Define
 `controlResultRecognition`, revision retention, revision-scoped site bindings,
 activation-candidate fingerprints, exact Bridge acknowledgment, and the one-way
 removal of copied configuration, `defaultConfigId`, OE profile
@@ -123,15 +125,15 @@ or product-mock-derived persistence.
 
 Implement Bridge profile lifecycle and the composed OpenELIS Analyzer Types
 experience around the accepted established contract. Ship the evidence-backed
-priority catalog from Bridge, fetch complete profile defaults in OE setup, and
-persist explicit revision pins plus site values without copied profile
-authority. Complete
+priority catalog from Bridge, fetch its generic field descriptions and defaults
+in OpenELIS setup, and persist explicit revision pins plus generic site values
+without copied profile authority. Complete
 URL-backed search/filter state, breadcrumbs, lifecycle, usage, completeness,
-audit, and lab-safe Create/Duplicate/Update/Publish behavior. GeneXpert and
-Fluoro form defaults, Bridge registration/runtime, and mock traffic must retain
-assembled parity before the OE-hosted path is removed. Remaining source profiles
-are standardized in later bounded profile-data iterations and never remain as
-an OE runtime fallback.
+audit, and lab-safe Create/Duplicate/Update/Publish behavior. GeneXpert,
+FluoroCycler, and QuantStudio defaults, Bridge registration/runtime, and mock
+traffic must retain assembled parity before the OpenELIS-hosted path is removed.
+Remaining source profiles are standardized in later bounded profile-data
+iterations and never remain as an OpenELIS runtime fallback.
 
 ### M2 - Safe Mapping
 
@@ -146,17 +148,16 @@ path.
 ### M3 - Guided Setup And Linked Operational QC
 
 Implement the linkable Instrument, Verify, and Connect sequence with a readable
-completion summary. For network/socket profiles, consume the pinned revision's
-declared default and explicit LIS-initiated capability without application
-inference; for FILE profiles, consume declared FILE behavior without fabricating
-network fields. Render Bridge's structured probe evidence inline. Validate and
-probe the exact draft candidate transiently through the pinned-profile contract
-without desired-state synchronization or mutation of the active Bridge runtime.
-Remove the standalone create/edit and connection-modal paths once the
-replacement is green. Keep Bridge probes and capabilities separate from
-OpenELIS operational-QC policy. Link to the canonical QC workflow, but permit
-activation only from the exact non-QC predicates in `MVP-016`, applied to every
-transition into `ACTIVE`.
+completion summary. Consume the exact revision's Bridge-generated generic setup
+description; OpenELIS renders and stores its described site values without
+protocol, transport, role, direction, or FILE/network decisions. Render
+Bridge's structured probe evidence inline. Validate and probe the exact draft
+candidate transiently through the pinned-profile contract without desired-state
+synchronization or mutation of the active Bridge runtime. Remove the standalone
+create/edit and connection-modal paths once the replacement is green. Keep
+Bridge probes and capabilities separate from OpenELIS operational-QC policy.
+Link to the canonical QC workflow, but permit activation only from the exact
+non-QC predicates in `MVP-016`, applied to every transition into `ACTIVE`.
 
 ### M4 - Safe Traffic
 

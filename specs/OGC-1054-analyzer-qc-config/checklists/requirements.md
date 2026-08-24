@@ -30,6 +30,9 @@ It validates the specification, not implementation progress.
       behavior and defaults for a new OpenELIS analyzer instance.
 - [x] GeneXpert ASTM and FluoroCycler are blocking, unabridged compatibility
       fixtures for profile-contract changes.
+- [x] The MVP runtime catalog is limited to evidence-backed GeneXpert ASTM,
+      FluoroCycler FILE, and QuantStudio FILE profiles; every other source file
+      remains excluded until a later contract/mock/assembled-flow gate passes.
 - [x] Bridge profiles explicitly own control-result recognition with
       deterministic `RULES`/affirmed-`NONE` semantics, no undocumented-as-`NONE`
       shortcut, and no hidden fallback.
@@ -38,6 +41,10 @@ It validates the specification, not implementation progress.
       OpenELIS does not preserve an authoritative copied-profile snapshot.
 - [x] OpenELIS owns local bindings, audit, operational QC, activation, held
       results, alerts, and review.
+- [x] Bridge supplies the exact revision's generic site-field description;
+      OpenELIS renders and retains those values without protocol, transport,
+      role, direction, FILE/network, probe, registration, or outbound-routing
+      decisions.
 - [x] Operational QC is separate from analyzer activation; `AnalyzerQcRule` is
       classified for removal rather than retained as operational QC.
 - [x] Analyzer mock proves real ASTM, HL7, and FILE transport through Bridge.
@@ -60,7 +67,8 @@ It validates the specification, not implementation progress.
       including live reconciliation and draft-type learning.
 - [x] G0 binds human UAT and MP4 to one exact deployment and checklist.
 - [x] Schema/catalog existence cannot prove profile compatibility; the matrix
-      requires OE defaults, Bridge runtime, mock transport, and assembled parity.
+      requires OpenELIS generic descriptor/default rendering, Bridge runtime,
+      mock transport, and assembled parity.
 
 ## Iterations
 
@@ -76,8 +84,14 @@ It validates the specification, not implementation progress.
 
 ## TDD And Test Levels
 
+- [x] Each behavior identifies its exact acceptance statement, owner,
+      forbidden behavior, and proof before production code changes.
+- [x] Affected existing tests are classified as retain, rewrite, move, or
+      delete before they may contribute acceptance evidence.
 - [x] Each behavior starts with a failing test at the layer owning the rule.
 - [x] Cross-repository behavior has producer/consumer and real-transport proof.
+- [x] Each completed behavior runs spec/code alignment, meaningful coverage,
+      simplicity/legacy-removal, and companion checks before the next behavior.
 - [x] RTL uses a real router for URL, breadcrumb, reload, and history behavior.
 - [x] Playwright uses visible controls and user-facing assertions only.
 - [x] The final remote acceptance package is created only after non-video

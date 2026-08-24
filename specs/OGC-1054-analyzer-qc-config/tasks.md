@@ -64,8 +64,10 @@ state bookkeeping.
    and FILE messages.
 3. Replace the thin profile schema with a strict additive evolution of the
    established contract and semantic validation.
-4. Produce evidence-based retain/correct/alias/split/remove dispositions for all
-   20 profiles; do not mechanically preserve rows or create `LEGACY_UNBOUND`.
+4. Curate the priority GeneXpert ASTM, FluoroCycler FILE, and QuantStudio FILE
+   profiles from evidence. Exclude every other source file from the published
+   runtime catalog until later contract, mock, and assembled-flow evidence
+   exists; do not mechanically preserve rows or create `LEGACY_UNBOUND`.
 5. Define immutable revision retention, revision-scoped site bindings,
    activation fingerprints, exact Bridge acknowledgment, and a clean OE
    consumer that stores a pin rather than a profile snapshot.
@@ -84,17 +86,17 @@ state bookkeeping.
    changes.
 3. Rewire the catalog to the corrected E0 contract and ship only priority
    profiles whose complete contract, mock transport, Bridge behavior, and
-   assembled visible result flow pass together. The 20 E0 dispositions are not
-   a publication-count gate; unproven files remain outside runtime and receive
-   no OE fallback.
-4. Prove GeneXpert/Fluoro profile defaults, registration/runtime, and mock
-   traffic retain parity; apply the same gate to every additional M1 seed
-   profile. Accepted distinct results remain distinct and proven aliases are
-   not duplicated.
+   assembled visible result flow pass together. Unproven files remain outside
+   runtime and receive no OpenELIS fallback.
+4. Prove GeneXpert, FluoroCycler, and QuantStudio profile defaults,
+   registration/runtime, and mock traffic retain parity; apply the same gate to
+   every additional later seed profile. Accepted distinct results remain
+   distinct and proven aliases are not duplicated.
 5. Implement lab-safe Create/Duplicate/Update/Publish, lineage, pinned revisions,
    lifecycle, completeness, usage, and attention state, including the explainer
    and aggregate counts.
-6. Fetch and apply the selected revision's actual defaults in OE; frontend
+6. Fetch the selected revision's generic field description and defaults; render
+   and retain the values generically in OpenELIS. Frontend or server
    protocol/communication constants cannot act as profile defaults.
 7. Implement URL-backed list/detail state and breadcrumbs using reusable Carbon
    components.
@@ -140,18 +142,21 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
    deactivation removes the runtime registration without deleting configuration
    or history, failed synchronization restores the prior state, and explicit
    reactivation uses the same predicate and acknowledgement boundary.
-2. Write failing Bridge probe/capability and OE consumer tests proving that
-   network/socket modes come from the pinned revision's declared default and
-   explicit LIS-initiated capability, missing capability is rejected rather
-   than converted to `false`, FILE setup fabricates no network fields, receiver
-   endpoints come from Bridge listener configuration, and no application
+2. Audit affected setup, registration, activation, dispatch, and frontend tests
+   as retain, rewrite, move, or delete. Then write failing Bridge producer and
+   OpenELIS consumer tests proving that the exact revision supplies one generic
+   setup description; OpenELIS sends only the profile reference and generic
+   site values; Bridge alone validates and materializes protocol, transport,
+   role, direction, listener, parser, and runtime behavior; and no application
    fallback infers any value. Prove the exact draft candidate is validated and
    probed transiently without desired-state synchronization or mutation of an
-   existing active Bridge runtime registration.
+   existing active Bridge runtime registration. Prove a synthetic valid profile
+   can change its described fields without an OpenELIS production-code change.
 3. Write RTL real-router tests for Instrument, Verify, Connect, separate
    Analyzer Types create/Duplicate Profile return, the completion
-   summary, breadcrumbs, URL state, history, reload, role-applicable fields,
-   structured probe evidence, and explicit supported Results-only fallback.
+   summary, breadcrumbs, URL state, history, reload, generic described fields,
+   structured probe evidence, and an explicit Bridge-described Results-only
+   choice where applicable.
 4. Write integration/RTL tests for the analyzer-scoped canonical Quality Control
    link and prove valid/invalid operational-QC changes do not alter verification
    or activation blockers.
@@ -161,7 +166,9 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
    audited deactivate/reactivate actions through the same lifecycle boundary.
 6. Run a focused visible browser story and inspect console, trace,
    desktop/mobile captures, and bookmark/reload behavior.
-7. Run the M3 exit gate, publish the exact analyzer-only candidate without
+7. Run the per-slice spec/code alignment, meaningful-coverage, simplicity,
+   legacy-removal, and companion gates after every behavior. Then run the M3
+   exit gate, publish the exact analyzer-only candidate without
    changing AMR, verify the applicable stable Grist steps in the Review overlay,
    and submit the checkpoint PRs for review.
 
