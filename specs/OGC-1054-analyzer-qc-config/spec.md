@@ -217,6 +217,9 @@ The connection test shows structured success, failure, timeout, missing-setting,
 and endpoint information, and the latest evidence remains visible after reload.
 The UI does not replace Bridge evidence with a simulated activity log or a
 generic status-only result.
+Bridge validates and probes the exact draft candidate transiently through the
+pinned-profile contract. A connection test does not synchronize desired state
+or create, replace, start, stop, or otherwise mutate active Bridge runtime.
 It never silently changes the selected data flow. A failed two-way test may
 offer an explicit Bridge-described results-only choice; the user must choose it.
 
