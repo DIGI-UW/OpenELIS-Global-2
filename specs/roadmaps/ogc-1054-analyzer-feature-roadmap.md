@@ -73,6 +73,9 @@ automated gates are green. Branch-only builds are not review targets. Preview
 feedback is fixed in the owning checkpoint PR; preview deployment does not
 change a roadmap marker or constitute acceptance.
 
+Open a companion repository PR only when a failing versioned contract proves
+that repository owns a required change. Do not create empty companion PRs.
+
 Checkpoint names and order package bounded work for review; they do not prove a
 code-level dependency. Derive dependencies from current code, versioned
 contracts, tests, and history. Do not remove a working behavior merely because
