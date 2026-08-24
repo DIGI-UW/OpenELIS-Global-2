@@ -198,6 +198,40 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void createAnalyzer_CannotSetActiveStatusDirectly() throws Exception {
+        String uniqueName = "TEST-Direct-Active-Create-" + System.currentTimeMillis();
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"status\":\"ACTIVE\",\"testUnitIds\":[]}";
+
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                .content(AnalyzerTestCleanup.withProfile(requestBody))).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorKey").value("analyzer.lifecycle.statusManaged"));
+
+        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.analyzer WHERE name = ?",
+                Integer.class, uniqueName);
+        assertEquals(Integer.valueOf(0), count);
+    }
+
+    @Test
+    public void updateAnalyzer_CannotSetActiveStatusDirectly() throws Exception {
+        String uniqueName = "TEST-Direct-Active-Update-" + System.currentTimeMillis();
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(
+                        AnalyzerTestCleanup.withProfile("{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[]}")))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("SETUP")).andReturn();
+        Map<String, Object> created = objectMapper.readValue(createResult.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        String analyzerId = String.valueOf(created.get("id"));
+
+        mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"ACTIVE\"}")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorKey").value("analyzer.lifecycle.statusManaged"));
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SETUP"));
+    }
+
+    @Test
     public void testCreateAnalyzer_SameProfileRevisionCanConfigureMultipleInstances() throws Exception {
         long suffix = System.currentTimeMillis();
         String firstBody = "{\"name\":\"TEST-Shared-Profile-A-" + suffix + "\",\"testUnitIds\":[]}";

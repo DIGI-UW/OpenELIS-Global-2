@@ -82,14 +82,14 @@ public class AnalyzerStatusEventListenersTest {
     // === onAllMappingsActivated Tests ===
 
     @Test
-    public void testOnAllMappingsActivated_WhenInValidation_TriggersActiveTransition() {
+    public void testOnAllMappingsActivated_WhenInValidation_DoesNotActivate() {
         testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
         when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         AllMappingsActivatedEvent event = new AllMappingsActivatedEvent(this, "1");
         eventListeners.onAllMappingsActivated(event);
 
-        verify(transitionService).transitionToActive("1");
+        verify(transitionService, never()).transitionToActive(anyString());
     }
 
     @Test
@@ -165,14 +165,14 @@ public class AnalyzerStatusEventListenersTest {
     // === onAllErrorsAcknowledged Tests ===
 
     @Test
-    public void testOnAllErrorsAcknowledged_WhenErrorPending_TriggersActiveTransition() {
+    public void testOnAllErrorsAcknowledged_WhenErrorPending_DoesNotActivate() {
         testAnalyzer.setStatus(AnalyzerStatus.ERROR_PENDING);
         when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         AllErrorsAcknowledgedEvent event = new AllErrorsAcknowledgedEvent(this, "1");
         eventListeners.onAllErrorsAcknowledged(event);
 
-        verify(transitionService).transitionToActiveFromError("1");
+        verify(transitionService, never()).transitionToActiveFromError(anyString());
     }
 
     @Test
@@ -189,14 +189,14 @@ public class AnalyzerStatusEventListenersTest {
     // === onConnectionTestSucceeded Tests ===
 
     @Test
-    public void testOnConnectionTestSucceeded_WhenOffline_TriggersActiveTransition() {
+    public void testOnConnectionTestSucceeded_WhenOffline_DoesNotActivate() {
         testAnalyzer.setStatus(AnalyzerStatus.OFFLINE);
         when(analyzerService.get("1")).thenReturn(testAnalyzer);
 
         ConnectionTestSucceededEvent event = new ConnectionTestSucceededEvent(this, "1");
         eventListeners.onConnectionTestSucceeded(event);
 
-        verify(transitionService).transitionToActiveFromOffline("1");
+        verify(transitionService, never()).transitionToActiveFromOffline(anyString());
     }
 
     @Test

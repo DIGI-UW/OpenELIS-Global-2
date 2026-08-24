@@ -105,8 +105,8 @@ public class AnalyzerServiceStatusTest {
     }
 
     @Test
-    public void testValidateStatusTransition_FromValidation_ToActive_Allowed() {
-        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.VALIDATION, AnalyzerStatus.ACTIVE));
+    public void testValidateStatusTransition_FromValidation_ToActive_NotAllowedOutsideActivationService() {
+        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.VALIDATION, AnalyzerStatus.ACTIVE));
     }
 
     @Test
@@ -126,15 +126,13 @@ public class AnalyzerServiceStatusTest {
     }
 
     @Test
-    public void testValidateStatusTransition_FromErrorPending_ToActive_Allowed() {
-        // All errors acknowledged
-        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.ERROR_PENDING, AnalyzerStatus.ACTIVE));
+    public void testValidateStatusTransition_FromErrorPending_ToActive_NotAllowedOutsideActivationService() {
+        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.ERROR_PENDING, AnalyzerStatus.ACTIVE));
     }
 
     @Test
-    public void testValidateStatusTransition_FromOffline_ToActive_Allowed() {
-        // Connection restored
-        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.OFFLINE, AnalyzerStatus.ACTIVE));
+    public void testValidateStatusTransition_FromOffline_ToActive_NotAllowedOutsideActivationService() {
+        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.OFFLINE, AnalyzerStatus.ACTIVE));
     }
 
     @Test
