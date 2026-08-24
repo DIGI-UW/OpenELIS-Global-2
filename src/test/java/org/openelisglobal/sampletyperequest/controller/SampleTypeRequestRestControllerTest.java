@@ -192,6 +192,26 @@ public class SampleTypeRequestRestControllerTest {
         assertSame(method, dto.getRequestedTestDetails().get(0).getMethods().get(0));
     }
 
+    @Test
+    public void getPendingRequests_fallsBackToAlignedIdsAndNamesWhenCatalogDetailsAreIncomplete() {
+        SampleTypeRequest pending = buildRequest(11, "123", SampleTypeRequest.Status.REQUESTED);
+        pending.setRequestedTests("42,missing-test");
+        org.openelisglobal.test.valueholder.Test cultureTest = org.mockito.Mockito
+                .mock(org.openelisglobal.test.valueholder.Test.class);
+        when(cultureTest.getId()).thenReturn("42");
+        when(cultureTest.getLocalizedName()).thenReturn("Blood culture");
+        when(cultureTest.getDescription()).thenReturn("Blood culture");
+        when(sampleTypeRequestService.getPendingRequestsBySampleId("123")).thenReturn(List.of(pending));
+        when(testService.getTestById("42")).thenReturn(cultureTest);
+        when(testService.getTestById("missing-test")).thenReturn(null);
+        when(testMethodService.getLinkedMethodDtos("42")).thenReturn(List.of());
+
+        SampleTypeRequestDTO dto = controller.getPendingRequests("123").getBody().get(0);
+
+        assertEquals("Blood culture,missing-test", dto.getRequestedTestNames());
+        assertEquals(List.of(), dto.getRequestedTestDetails());
+    }
+
     // ─── createRequest ────────────────────────────────────────────────────────
 
     @Test
@@ -448,7 +468,8 @@ public class SampleTypeRequestRestControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         SampleTypeRequestDTO dto = response.getBody().get(0);
-        assertEquals("Blood Glucose", dto.getRequestedTestNames());
+        assertEquals("Blood Glucose,8", dto.getRequestedTestNames());
+        assertEquals(List.of(), dto.getRequestedTestDetails());
     }
 
     @org.junit.Test
