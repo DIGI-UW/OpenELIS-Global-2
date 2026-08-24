@@ -16,6 +16,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
+import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -48,6 +49,9 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
 
     @Autowired
     private MicroCaseService caseService;
+
+    @Autowired
+    private MicroCaseAnalysisService caseAnalysisService;
 
     @Autowired
     private MicroCaseOrderDetailService orderDetailService;
@@ -90,6 +94,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         assertNotNull(savedAnalysis);
         assertEquals(1, firstCases.size());
         assertOrderDetail(firstCases.getFirst(), orderDetail);
+        assertCaseAnalysisLink(firstCases.getFirst(), savedAnalysis);
 
         SamplePatientUpdateData repeatedSave = orderUpdate(sample, savedItem.getId());
         persist(repeatedSave, orderDetail);
@@ -104,6 +109,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         assertEquals(1, repeatedCases.size());
         assertEquals(firstCases.getFirst().getId(), repeatedCases.getFirst().getId());
         assertOrderDetail(repeatedCases.getFirst(), orderDetail);
+        assertCaseAnalysisLink(repeatedCases.getFirst(), repeatedAnalysis);
     }
 
     private Sample newSample() {
@@ -161,5 +167,12 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         assertEquals(expected.numberOfSets, actual.getNumberOfSets());
         assertEquals(expected.clinicalHistory, actual.getClinicalHistory());
         assertEquals(expected.antibioticExposure, actual.getAntibioticExposure());
+    }
+
+    private void assertCaseAnalysisLink(MicroCase microCase, Analysis analysis) {
+        var links = caseAnalysisService.getCaseAnalyses(microCase.getId());
+        assertEquals(1, links.size());
+        assertEquals(microCase.getId(), links.getFirst().getCaseId());
+        assertEquals(analysis.getId(), links.getFirst().getAnalysisId());
     }
 }
