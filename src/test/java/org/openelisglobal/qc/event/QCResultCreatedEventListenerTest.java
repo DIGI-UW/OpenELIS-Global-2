@@ -62,12 +62,15 @@ public class QCResultCreatedEventListenerTest {
 
     @Test
     public void testHandleQCResultCreated_WithNoViolations_ShouldNotCreateViolation() {
+        givenPersistedTestResult();
         when(ruleEvaluationService.evaluateAllRules("R1")).thenReturn(Collections.emptyList());
 
         listener.handleQCResultCreated(testEvent);
 
         verify(ruleEvaluationService).evaluateAllRules("R1");
         verify(violationService, never()).createViolation(any(), any());
+        verify(resultDAO).update(testResult);
+        assertEquals("ACCEPTED", testResult.getResultStatus());
     }
 
     @Test
@@ -82,6 +85,7 @@ public class QCResultCreatedEventListenerTest {
 
     @Test
     public void testHandleQCResultCreated_WithSingleViolation_ShouldCreateOneViolation() {
+        givenPersistedTestResult();
         RuleEvaluationResult violation = RuleEvaluationResult.violation("1₃ₛ", "REJECTION", Arrays.asList("R1"),
                 "Result exceeds 3SD");
 
@@ -120,6 +124,7 @@ public class QCResultCreatedEventListenerTest {
 
     @Test
     public void testHandleQCResultCreated_WithMultipleViolations_ShouldCreateMultipleViolations() {
+        givenPersistedTestResult();
         RuleEvaluationResult violation1 = RuleEvaluationResult.violation("1₃ₛ", "REJECTION", Arrays.asList("R1"),
                 "Result exceeds 3SD");
         RuleEvaluationResult violation2 = RuleEvaluationResult.violation("2₂ₛ", "REJECTION", Arrays.asList("R0", "R1"),
@@ -141,6 +146,7 @@ public class QCResultCreatedEventListenerTest {
 
     @Test
     public void testHandleQCResultCreated_WithMixedResults_ShouldOnlyCreateForViolations() {
+        givenPersistedTestResult();
         RuleEvaluationResult violation = RuleEvaluationResult.violation("1₃ₛ", "REJECTION", Arrays.asList("R1"),
                 "Result exceeds 3SD");
         RuleEvaluationResult noViolation = RuleEvaluationResult.noViolation("2₂ₛ");
@@ -160,6 +166,7 @@ public class QCResultCreatedEventListenerTest {
 
     @Test
     public void testHandleQCResultCreated_WithWarningViolation_ShouldCreateWarningViolation() {
+        givenPersistedTestResult();
         RuleEvaluationResult warning = RuleEvaluationResult.violation("1₂ₛ", "WARNING", Arrays.asList("R1"),
                 "Result exceeds 2SD");
 
@@ -179,8 +186,8 @@ public class QCResultCreatedEventListenerTest {
 
     @Test
     public void testHandleQCResultCreated_WhenEvaluationThrows_ShouldNotPropagate() {
-        when(ruleEvaluationService.evaluateAllRules("R1"))
-                .thenThrow(new RuntimeException("Database error"));
+        givenPersistedTestResult();
+        when(ruleEvaluationService.evaluateAllRules("R1")).thenThrow(new RuntimeException("Database error"));
 
         // Should not throw
         listener.handleQCResultCreated(testEvent);
@@ -190,6 +197,7 @@ public class QCResultCreatedEventListenerTest {
 
     @Test
     public void testHandleQCResultCreated_WhenViolationServiceReturnsNull_ShouldContinue() {
+        givenPersistedTestResult();
         RuleEvaluationResult violation = RuleEvaluationResult.violation("1₃ₛ", "REJECTION", Arrays.asList("R1"),
                 "Result exceeds 3SD");
 
@@ -200,6 +208,17 @@ public class QCResultCreatedEventListenerTest {
         listener.handleQCResultCreated(testEvent);
 
         verify(violationService).createViolation(violation, testResult);
+    }
+
+    @Test
+    public void testHandleQCResultCreated_WhenPersistedResultIsMissing_ShouldStopBeforeEvaluation() {
+        when(resultDAO.get("R1")).thenReturn(Optional.empty());
+
+        listener.handleQCResultCreated(testEvent);
+
+        verify(ruleEvaluationService, never()).evaluateAllRules(anyString());
+        verify(violationService, never()).createViolation(any(), any());
+        verify(resultDAO, never()).update(any());
     }
 
     // ===================== Event accessors tests =====================
@@ -218,5 +237,9 @@ public class QCResultCreatedEventListenerTest {
         assertNull(nullEvent.getResultId());
         assertNull(nullEvent.getControlLotId());
         assertNull(nullEvent.getResult());
+    }
+
+    private void givenPersistedTestResult() {
+        when(resultDAO.get("R1")).thenReturn(Optional.of(testResult));
     }
 }
