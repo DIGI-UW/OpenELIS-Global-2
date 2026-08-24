@@ -15,6 +15,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerActivationCandidate;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
@@ -56,6 +57,7 @@ public class HibernateMappingValidationTest {
 
         // Annotation-based entities (no XML entity references)
         configuration.addAnnotatedClass(Analyzer.class); // Migrated in Phase 1
+        configuration.addAnnotatedClass(AnalyzerActivationCandidate.class);
         configuration.addAnnotatedClass(AnalyzerProfileBinding.class);
         configuration.addAnnotatedClass(AnalyzerSiteBinding.class);
         configuration.addAnnotatedClass(AnalyzerSiteBindingConfirmation.class);
@@ -102,6 +104,8 @@ public class HibernateMappingValidationTest {
     public void testAnalyzerMappingsLoadSuccessfully() {
         // Verify each entity is registered in Hibernate metamodel
         assertNotNull("Analyzer should be registered", sessionFactory.getMetamodel().entity(Analyzer.class)); // Phase 1
+        assertNotNull("AnalyzerActivationCandidate should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerActivationCandidate.class));
         assertNotNull("AnalyzerProfileBinding should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerProfileBinding.class));
         assertNotNull("AnalyzerSiteBinding should be registered",
@@ -145,12 +149,12 @@ public class HibernateMappingValidationTest {
      */
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
-        Class<?>[] entities = { Analyzer.class, AnalyzerProfileBinding.class, AnalyzerSiteBinding.class,
-                AnalyzerSiteBindingConfirmation.class, AnalyzerSiteBindingRevision.class, AnalyzerSiteBindingTest.class,
-                AnalyzerSiteBindingResult.class, AnalyzerType.class, AnalyzerField.class, AnalyzerResults.class,
-                AnalyzerTestMapping.class, AnalyzerFieldMapping.class, QualitativeResultMapping.class,
-                UnitMapping.class, AnalyzerError.class, CustomFieldType.class, ValidationRuleConfiguration.class,
-                SerialPortConfiguration.class };
+        Class<?>[] entities = { Analyzer.class, AnalyzerActivationCandidate.class, AnalyzerProfileBinding.class,
+                AnalyzerSiteBinding.class, AnalyzerSiteBindingConfirmation.class, AnalyzerSiteBindingRevision.class,
+                AnalyzerSiteBindingTest.class, AnalyzerSiteBindingResult.class, AnalyzerType.class, AnalyzerField.class,
+                AnalyzerResults.class, AnalyzerTestMapping.class, AnalyzerFieldMapping.class,
+                QualitativeResultMapping.class, UnitMapping.class, AnalyzerError.class, CustomFieldType.class,
+                ValidationRuleConfiguration.class, SerialPortConfiguration.class };
 
         for (Class<?> entityClass : entities) {
             // Check each entity independently for getter conflicts
