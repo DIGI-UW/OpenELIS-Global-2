@@ -180,14 +180,13 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, userId);
         isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),
-                referenceData.organism().getDisplayName(),
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
-                "MALDI_TOF", new BigDecimal("99.5"), userId);
+                referenceData.organism().getDisplayName(), MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new BigDecimal("99.5"), userId);
         MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(),
                 referenceData.standard().getId(), userId);
         astService.getPanelAntibiotics(referenceData.panel().getId())
-                .forEach(ordered -> astService.recordReading(run.getId(),
-                ordered.getAntibioticId(), MicroAstMethod.MIC, new BigDecimal("4"), userId));
+                .forEach(ordered -> astService.recordReading(run.getId(), ordered.getAntibioticId(), MicroAstMethod.MIC,
+                        new BigDecimal("4"), userId));
         astService.reviewRun(run.getId(), userId);
         reportReleaseService.releaseFinal(microCase.getId(), userId);
         return new FinalCase(microCase.getId(), isolate.getId(), referenceData.organism().getId(),
