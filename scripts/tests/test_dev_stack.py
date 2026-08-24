@@ -428,6 +428,34 @@ class DevStackContractTest(unittest.TestCase):
             ).read_text(),
         )
 
+    def test_up_recreates_a_running_backend_exactly_once_after_build(self):
+        with (
+            patch.object(self.dev_stack, "ensure_local_env"),
+            patch.object(self.dev_stack, "ensure_submodules"),
+            patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
+            patch.object(self.dev_stack, "service_is_running", return_value=True),
+            patch.object(self.dev_stack, "heal_war_mount"),
+            patch.object(self.dev_stack, "build_application"),
+            patch.object(self.dev_stack, "stage_analyzer_plugins"),
+            patch.object(self.dev_stack, "build_images"),
+            patch.object(self.dev_stack, "reload_proxy"),
+            patch.object(self.dev_stack, "configure_tls"),
+            patch.object(self.dev_stack, "print_endpoints"),
+            patch.object(self.dev_stack, "run") as run,
+        ):
+            self.dev_stack.main(["up", "--no-wait", "--no-scenarios"])
+
+        recreates = [
+            call.args[0]
+            for call in run.call_args_list
+            if "--force-recreate" in call.args[0]
+        ]
+        self.assertEqual(len(recreates), 1)
+        self.assertEqual(
+            recreates[0][-5:],
+            ["up", "-d", "--no-deps", "--force-recreate", "oe.openelis.org"],
+        )
+
     def test_harness_refreshes_repository_owned_menu_configuration(self):
         bootstrap = (
             REPO_ROOT / "projects" / "analyzer-harness" / "bootstrap.sh"
