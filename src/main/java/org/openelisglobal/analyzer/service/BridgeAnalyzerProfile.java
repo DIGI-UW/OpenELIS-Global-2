@@ -3,6 +3,10 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
+import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
+import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 
 /** Typed view of the established Bridge-owned analyzer profile contract. */
 public final class BridgeAnalyzerProfile {
@@ -96,8 +100,8 @@ public final class BridgeAnalyzerProfile {
             throw new IllegalArgumentException(
                     "Bridge analyzer profile supports_lis_initiated is required for " + protocolName);
         }
-        InstanceDefaults defaults = new InstanceDefaults(nullableText(configDefaults, "transport"),
-                nullableText(configDefaults, "connectionRole"), nullableInteger(configDefaults, "port"));
+        InstanceDefaults defaults = new InstanceDefaults(nullableText(configDefaults, "defaultTransport"),
+                nullableText(configDefaults, "connectionRole"), nullableInteger(configDefaults, "defaultPort"));
         return new BridgeAnalyzerProfile(document, profileId, revision, fingerprint,
                 requiredText(profileMeta, "displayName"), firstText(document, profileMeta, "manufacturer"),
                 nullableText(document, "model"), requiredText(catalog, "source"), requiredText(catalog, "status"),
@@ -174,6 +178,59 @@ public final class BridgeAnalyzerProfile {
         return instanceDefaults;
     }
 
+    public ProtocolVersion resolvedProtocolVersion() {
+        return "FILE".equals(protocol) ? null : ProtocolVersion.fromValue(protocolVersion);
+    }
+
+    public CommunicationMode resolvedCommunicationMode() {
+        return CommunicationMode.fromValue(communicationMode);
+    }
+
+    public AnalyzerTransportMode resolvedTransportMode() {
+        if ("FILE".equals(protocol)) {
+            return AnalyzerTransportMode.FILE;
+        }
+        return AnalyzerTransportMode.fromProfileValue(instanceDefaults.defaultTransport());
+    }
+
+    public AnalyzerConnectionRole resolvedConnectionRole() {
+        if ("FILE".equals(protocol)) {
+            return AnalyzerConnectionRole.RECEIVER;
+        }
+        return AnalyzerConnectionRole.fromProfileValue(instanceDefaults.connectionRole());
+    }
+
+    public boolean declaresTransport(AnalyzerTransportMode selected) {
+        if ("FILE".equals(protocol)) {
+            return selected == AnalyzerTransportMode.FILE;
+        }
+        if (selected == null) {
+            return false;
+        }
+        for (JsonNode transport : document.path("transport")) {
+            if (selected == AnalyzerTransportMode.fromProfileValue(transport.asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean supportsDataFlow(CommunicationMode selected) {
+        if ("FILE".equals(protocol)) {
+            return selected == null;
+        }
+        if (selected == null) {
+            return false;
+        }
+        boolean inboundResults = document.path("capabilities").path("inboundResults").asBoolean(false);
+        boolean outboundOrders = document.path("capabilities").path("outboundOrders").asBoolean(false);
+        return switch (selected) {
+        case ANALYZER_INITIATED -> inboundResults;
+        case LIS_INITIATED -> Boolean.TRUE.equals(supportsLisInitiated) && outboundOrders;
+        case BOTH -> inboundResults && Boolean.TRUE.equals(supportsLisInitiated) && outboundOrders;
+        };
+    }
+
     private static String requiredText(JsonNode node, String field) {
         String value = nullableText(node, field);
         if (value == null) {
@@ -233,6 +290,6 @@ public final class BridgeAnalyzerProfile {
     public record NormalizedCoding(String system, String code, String display) {
     }
 
-    public record InstanceDefaults(String transport, String connectionRole, Integer port) {
+    public record InstanceDefaults(String defaultTransport, String connectionRole, Integer port) {
     }
 }

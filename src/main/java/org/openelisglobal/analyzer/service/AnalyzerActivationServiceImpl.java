@@ -24,6 +24,8 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     private static final String PROFILE_BLOCKER = "analyzer.activation.blocker.profile";
     private static final String NAME_BLOCKER = "analyzer.activation.blocker.name";
     private static final String LAB_UNIT_BLOCKER = "analyzer.activation.blocker.labUnit";
+    private static final String TRANSPORT_BLOCKER = "analyzer.activation.blocker.transport";
+    private static final String DATA_FLOW_BLOCKER = "analyzer.activation.blocker.dataFlow";
     private static final String VERIFICATION_BLOCKER = "analyzer.activation.blocker.verification";
     private static final String CONNECTION_BLOCKER = "analyzer.activation.blocker.connection";
     private static final String BRIDGE_ACKNOWLEDGEMENT_BLOCKER = "analyzer.activation.blocker.bridgeAcknowledgement";
@@ -162,6 +164,13 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
                 if (!"ACTIVE".equals(profile.status())
                         || !Objects.equals(profileBinding.getProfileFingerprint(), profile.revisionFingerprint())) {
                     blockers.add(new AnalyzerActivationBlocker(PROFILE_BLOCKER));
+                } else {
+                    if (!profile.declaresTransport(analyzer.getTransportMode())) {
+                        blockers.add(new AnalyzerActivationBlocker(TRANSPORT_BLOCKER));
+                    }
+                    if (!profile.supportsDataFlow(analyzer.getCommunicationMode())) {
+                        blockers.add(new AnalyzerActivationBlocker(DATA_FLOW_BLOCKER));
+                    }
                 }
             } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
                 blockers.add(new AnalyzerActivationBlocker(PROFILE_BLOCKER));
