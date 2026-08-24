@@ -252,8 +252,10 @@ Work these slices in order within the active paired PRs:
 5. **Guided Carbon UI:** preserve the inline Instrument/Verify/Connect workflow,
    lab-unit selection, summaries, URL state, breadcrumbs, and return paths;
    replace the protocol-specific form with a reusable descriptor renderer.
-6. **Lifecycle:** show every local and Bridge blocker; activate/deactivate the
-   exact revision; make probe evidence visible but non-gating.
+6. **Lifecycle:** make one OpenELIS lifecycle service the only writer that can
+   move an analyzer into `ACTIVE`; show every local and Bridge blocker;
+   activate/deactivate the exact revision; keep draft edits from mutating the
+   last active candidate; and make probe evidence visible but non-gating.
 7. **QC link:** open the existing analyzer-scoped OE QC workflow and prove QC
    changes never alter setup verification or activation; use the same analyzer
    permission at the visible route and REST boundary.
@@ -269,6 +271,9 @@ Exit:
 - no OE connection value, protocol/transport branch, full-state writer,
   `AnalyzerQcRule`, duplicate create/edit route, or duplicate connection modal
   remains;
+- create/update payloads and mapping, connection, error, or offline events
+  cannot activate an analyzer or bypass the lifecycle service, and no hard
+  delete path remains;
 - analyzer setup, probe, lifecycle, and linked QC reject unrelated
   authenticated roles at the endpoint and visible-route boundaries; and
 - focused backend, RTL, contract, assembled, accessibility, and visual gates
