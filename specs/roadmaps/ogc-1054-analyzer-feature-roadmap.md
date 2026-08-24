@@ -254,8 +254,10 @@ Work these slices in order within the active paired PRs:
    replace the protocol-specific form with a reusable descriptor renderer.
 6. **Lifecycle:** make one OpenELIS lifecycle service the only writer that can
    move an analyzer into `ACTIVE`; show every local and Bridge blocker;
-   activate/deactivate the exact revision; keep draft edits from mutating the
-   last active candidate; and make probe evidence visible but non-gating.
+   build and synchronize one immutable candidate; require its exact Bridge
+   acknowledgment; activate/deactivate that exact revision; keep draft edits
+   from mutating the last active candidate; and make probe evidence visible but
+   non-gating.
 7. **QC link:** open the existing analyzer-scoped OE QC workflow and prove QC
    changes never alter setup verification or activation; use the same analyzer
    permission at the visible route and REST boundary.
