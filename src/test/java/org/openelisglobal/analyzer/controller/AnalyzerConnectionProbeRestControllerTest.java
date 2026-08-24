@@ -57,14 +57,13 @@ public class AnalyzerConnectionProbeRestControllerTest {
     }
 
     @Test
-    public void reportsAnUnacknowledgedCandidateAsConflict() throws Exception {
-        when(service.probe("77")).thenThrow(new AnalyzerConnectionProbeException(
-                "analyzer.testConnection.bridge.notSynchronized", Map.of("detail", "Bridge unavailable")));
+    public void reportsAnUnknownAnalyzerAsNotFound() throws Exception {
+        when(service.probe("77"))
+                .thenThrow(new AnalyzerConnectionProbeException("analyzer.testConnection.analyzerNotFound"));
 
         mockMvc.perform(post("/rest/analyzer/analyzers/77/test-connection"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.messageKey").value("analyzer.testConnection.bridge.notSynchronized"))
-                .andExpect(jsonPath("$.messageArgs.detail").value("Bridge unavailable"));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.messageKey").value("analyzer.testConnection.analyzerNotFound"));
     }
 
     private static AnalyzerConnectionProbeView evidence() {
