@@ -38,6 +38,15 @@ const fullMonth = (monthOffset: number) => {
   };
 };
 
+const fullCurrentQuarter = () => {
+  const now = new Date();
+  const firstMonth = Math.floor(now.getMonth() / 3) * 3;
+  return {
+    from: localDate(new Date(now.getFullYear(), firstMonth, 1)),
+    to: localDate(new Date(now.getFullYear(), firstMonth + 3, 0)),
+  };
+};
+
 test.describe("OGC-782 R12 AST worklist to WHONET handoff", () => {
   test("transfers only the editable surveillance population and clears to Reports defaults", async ({
     page,
@@ -45,6 +54,7 @@ test.describe("OGC-782 R12 AST worklist to WHONET handoff", () => {
     test.setTimeout(120_000);
     const seeded = await seedMicrobiologyWhonetWorklistHandoffCase(page);
     const currentMonth = fullMonth(0);
+    const currentQuarter = fullCurrentQuarter();
     const lastMonth = fullMonth(-1);
 
     await test.step("Open the reviewed AST worklist with its calendar-month default", async () => {
@@ -89,7 +99,11 @@ test.describe("OGC-782 R12 AST worklist to WHONET handoff", () => {
         /^Specimen types/,
         "UAT micro specimen",
       );
-      await selectWhonetFilterOption(page, /^Organisms/, "Escherichia coli");
+      await selectWhonetFilterOption(
+        page,
+        /^Organisms/,
+        whonetFixtureLabels.worklistHandoffOrganism,
+      );
       await selectWhonetFilterOption(
         page,
         /^Patient origins/,
@@ -147,6 +161,38 @@ test.describe("OGC-782 R12 AST worklist to WHONET handoff", () => {
       ).toBeEnabled();
       await page.getByLabel("Reporting period").selectOption("THIS_QUARTER");
       await expect(page).toHaveURL(/source=ast-worklist/);
+      await expect(page.getByLabel("Reporting period")).toHaveValue(
+        "THIS_QUARTER",
+      );
+      await expect(
+        page.getByRole("textbox", { name: "From", exact: true }),
+      ).toHaveValue(currentQuarter.from);
+      await expect(
+        page.getByRole("textbox", { name: "To", exact: true }),
+      ).toHaveValue(currentQuarter.to);
+      await selectWhonetFilterOption(
+        page,
+        /^Patient origins/,
+        whonetFixtureLabels.inpatient,
+      );
+      const editedUrl = new URL(page.url());
+      expect(editedUrl.searchParams.has("origin")).toBe(false);
+      expect(editedUrl.searchParams.getAll("specimen")).toEqual([
+        seeded.sampleTypeId,
+      ]);
+      expect(editedUrl.searchParams.getAll("organism")).toEqual([
+        seeded.organismId,
+      ]);
+      expect(editedUrl.searchParams.getAll("significance")).toEqual([
+        "CLINICALLY_SIGNIFICANT",
+      ]);
+
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expectWhonetExportReady(page);
+      await expect(page).toHaveURL(editedUrl.toString());
+      await expect(
+        page.getByText("Scope provided by the AST worklist"),
+      ).toBeVisible();
       await expect(page.getByLabel("Reporting period")).toHaveValue(
         "THIS_QUARTER",
       );

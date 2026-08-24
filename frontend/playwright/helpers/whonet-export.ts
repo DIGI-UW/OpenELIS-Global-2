@@ -103,6 +103,7 @@ export const expectWhonetExportReady = async (page: Page) => {
 export const whonetFixtureLabels = {
   specimen: (accessionNumber: string) =>
     `UAT WHONET specimen ${accessionNumber.replace(/^UATMICRO/, "")}`,
+  worklistHandoffOrganism: "Escherichia coli (UAT)",
   mappedOrganism: "Reference organism (UAT)",
   unmappedOrganism: (accessionNumber: string) =>
     `WHONET mapping pending (UAT ${accessionNumber.replace(/^UATMICRO/, "")})`,
