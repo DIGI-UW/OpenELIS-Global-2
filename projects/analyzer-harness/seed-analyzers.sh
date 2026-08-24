@@ -9,11 +9,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-CLEAN=true
-if [[ "$#" -gt 0 && "$1" == "--no-clean" ]]; then
-  CLEAN=false
-fi
-
 if [ -f "$REPO_ROOT/.env" ]; then
   set -a
   . "$REPO_ROOT/.env"
@@ -41,12 +36,17 @@ fetch_json() {
   local url="$1"
   local output="$2"
   local label="$3"
+  local attempt
   local status
-  status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$output" -w "%{http_code}" -u "$TEST_USER:$TEST_PASS" "$url")"
-  if [ "$status" != "200" ]; then
-    echo "ERROR: $label returned HTTP $status" >&2
-    return 1
-  fi
+  for attempt in 1 2 3 4 5; do
+    status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$output" -w "%{http_code}" -u "$TEST_USER:$TEST_PASS" "$url" || true)"
+    if [ "$status" = "200" ]; then
+      return 0
+    fi
+    [ "$attempt" -lt 5 ] && sleep "$attempt"
+  done
+  echo "ERROR: $label returned HTTP $status after $attempt attempts" >&2
+  return 1
 }
 
 resolve_active_revision() {
@@ -75,7 +75,7 @@ print(revision)
 PY
 }
 
-analyzer_exists() {
+find_analyzer_id() {
   local analyzer_name="$1"
   fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
   python3 - "$ANALYZERS_FILE" "$analyzer_name" <<'PY'
@@ -84,42 +84,18 @@ import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     analyzers = json.load(handle).get("analyzers", [])
-raise SystemExit(0 if any(item.get("name") == sys.argv[2] for item in analyzers) else 1)
+matches = [item for item in analyzers if item.get("name") == sys.argv[2]]
+if len(matches) > 1:
+    raise SystemExit(f"expected at most one analyzer named {sys.argv[2]!r}; found {len(matches)}")
+if matches:
+    analyzer_id = matches[0].get("id")
+    if analyzer_id is None:
+        raise SystemExit(f"analyzer named {sys.argv[2]!r} has no ID")
+    print(analyzer_id)
 PY
 }
 
-delete_harness_analyzers() {
-  fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
-  while IFS=$'\t' read -r analyzer_id analyzer_name; do
-    [ -z "$analyzer_id" ] && continue
-    local status
-    status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$RESPONSE_FILE" -w "%{http_code}" -X POST -u "$TEST_USER:$TEST_PASS" "$ANALYZER_API/$analyzer_id/delete")"
-    if [ "$status" != "200" ]; then
-      echo "ERROR: Failed to delete harness analyzer $analyzer_name (HTTP $status)" >&2
-      return 1
-    fi
-    echo "  Deleted: $analyzer_name"
-  done < <(
-    python3 - "$ANALYZERS_FILE" <<'PY'
-import json
-import sys
-
-names = {
-    "Cepheid GeneXpert (ASTM Mode)",
-    "QuantStudio 5",
-    "QuantStudio 7",
-    "FluoroCycler XT",
-}
-with open(sys.argv[1], encoding="utf-8") as handle:
-    analyzers = json.load(handle).get("analyzers", [])
-for analyzer in analyzers:
-    if analyzer.get("name") in names:
-        print(f"{analyzer.get('id', '')}\t{analyzer['name']}")
-PY
-  )
-}
-
-create_profile_analyzer() {
+reconcile_profile_analyzer() {
   local name="$1"
   local profile_id="$2"
   local profile_revision="$3"
@@ -129,11 +105,6 @@ create_profile_analyzer() {
   [ "$#" -ge 4 ] && ip_address="$4"
   [ "$#" -ge 5 ] && port="$5"
   [ "$#" -ge 6 ] && import_directory="$6"
-
-  if analyzer_exists "$name"; then
-    echo "  Exists:  $name (skipped)"
-    return 0
-  fi
 
   local payload
   payload="$(
@@ -157,14 +128,29 @@ print(json.dumps(payload, separators=(",", ":")))
 PY
   )"
 
+  local analyzer_id
+  analyzer_id="$(find_analyzer_id "$name")"
+  local method="POST"
+  local url="$ANALYZER_API"
+  local expected_status="201"
+  local action="create"
+  local action_label="Created"
+  if [ -n "$analyzer_id" ]; then
+    method="PUT"
+    url="$ANALYZER_API/$analyzer_id"
+    expected_status="200"
+    action="update"
+    action_label="Updated"
+  fi
+
   local status
-  status="$(curl -sk --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X POST "$ANALYZER_API" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
-  if [ "$status" != "201" ]; then
-    echo "ERROR: Failed to create $name (HTTP $status)" >&2
+  status="$(curl -sk --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" -d "$payload")"
+  if [ "$status" != "$expected_status" ]; then
+    echo "ERROR: Failed to $action $name (HTTP $status)" >&2
     sed 's/^/  /' "$RESPONSE_FILE" >&2
     return 1
   fi
-  echo "  Created: $name ($profile_id@$profile_revision)"
+  echo "  $action_label: $name ($profile_id@$profile_revision)"
 }
 
 lookup_mock_network_ip() {
@@ -256,11 +242,7 @@ echo "  $GENEXPERT_PROFILE_ID@$GENEXPERT_REVISION"
 echo "  $FLUOROCYCLER_PROFILE_ID@$FLUOROCYCLER_REVISION"
 echo "  $QUANTSTUDIO_PROFILE_ID@$QUANTSTUDIO_REVISION"
 
-if [ "$CLEAN" = true ]; then
-  echo "Removing only the named harness analyzers..."
-  delete_harness_analyzers
-  curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
-fi
+curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
 
 echo "Creating GeneXpert mock transport..."
 GENEXPERT_IP="$(create_mock_network "genexpert" "genexpert_astm" 9600)"
@@ -271,10 +253,10 @@ fi
 echo "  genexpert -> $GENEXPERT_IP:9600"
 
 echo "Creating profile-pinned analyzer instances..."
-create_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" "$GENEXPERT_IP" "9600"
-create_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" "" "" "/data/analyzer-imports/quantstudio-5/incoming"
-create_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" "" "" "/data/analyzer-imports/quantstudio-7/incoming"
-create_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" "" "" "/data/analyzer-imports/fluorocycler-xt/incoming"
+reconcile_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" "$GENEXPERT_IP" "9600"
+reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" "" "" "/data/analyzer-imports/quantstudio-5/incoming"
+reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" "" "" "/data/analyzer-imports/quantstudio-7/incoming"
+reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" "" "" "/data/analyzer-imports/fluorocycler-xt/incoming"
 
 verify_profile_pins
 echo "Done. Four instances use the three validated M1 Bridge profile families."
