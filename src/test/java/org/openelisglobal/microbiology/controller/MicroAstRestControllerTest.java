@@ -76,7 +76,7 @@ public class MicroAstRestControllerTest {
         MicroAstRestController controller = new MicroAstRestController(service);
 
         ResponseEntity<MicroAstRunForm> created = controller.startRepeatRun("run-1", request, requestFor("42"));
-        controller.selectReportableRun("run-2", new MicroAstRunRequestForm(), requestFor("42"));
+        controller.selectReportableRun("run-2", requestFor("42"));
 
         assertEquals("run-1", created.getBody().sourceRunId);
         assertEquals(MicroAstAttemptType.REPEAT.name(), created.getBody().attemptType);
@@ -89,8 +89,8 @@ public class MicroAstRestControllerTest {
         PreAuthorize repeat = MicroAstRestController.class.getMethod("startRepeatRun", String.class,
                 MicroAstRunRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
                 .getAnnotation(PreAuthorize.class);
-        PreAuthorize selection = MicroAstRestController.class.getMethod("selectReportableRun", String.class,
-                MicroAstRunRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
+        PreAuthorize selection = MicroAstRestController.class
+                .getMethod("selectReportableRun", String.class, jakarta.servlet.http.HttpServletRequest.class)
                 .getAnnotation(PreAuthorize.class);
 
         assertEquals("isAuthenticated()", repeat.value());
