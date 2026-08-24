@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.microbiology.controller.rest.MicroWhonetExportRestController;
+import org.openelisglobal.microbiology.controller.rest.MicrobiologyRestExceptionHandler;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.reports.service.MicroWhonetExportResult;
@@ -64,12 +65,13 @@ public class MicroWhonetExportRestControllerTest {
         WHONetReportService service = org.mockito.Mockito.mock(WHONetReportService.class);
         when(service.previewMicrobiologyExport(any(MicroWhonetExportQueryForm.class)))
                 .thenThrow(new IllegalArgumentException("to must be on or after from"));
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new MicroWhonetExportRestController(service)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new MicroWhonetExportRestController(service))
+                .setControllerAdvice(new MicrobiologyRestExceptionHandler()).build();
 
         mvc.perform(get("/rest/microbiology/whonet/preview").param("from", "2026-07-31").param("to", "2026-07-01")
                 .param("significance", "ALL").param("dedup", "NONE").param("page", "2").param("pageSize", "50"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("MICROBIOLOGY_REFERENCE_INVALID"))
+                .andExpect(jsonPath("$.error").value("MICROBIOLOGY_VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.message").value("to must be on or after from"));
 
         ArgumentCaptor<MicroWhonetExportQueryForm> query = ArgumentCaptor.forClass(MicroWhonetExportQueryForm.class);
