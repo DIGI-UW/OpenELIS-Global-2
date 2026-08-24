@@ -1,7 +1,11 @@
 package org.openelisglobal.common.management.controller.rest;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -9,10 +13,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.dao.UserModuleService;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
+import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -35,9 +43,12 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     @Autowired
     private TypeOfSampleService typeOfSampleService;
 
+    @Autowired
+    private SampleTypeTerminologyMappingService terminologyService;
+
     @Before
     public void resetSharedServiceMocks() {
-        reset(typeOfSampleService);
+        reset(typeOfSampleService, terminologyService);
     }
 
     @Test
@@ -146,6 +157,33 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"BLD\"}]}"))
                 .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void terminology_AdminRole_PreservesUnchangedLegacyWhonetMapping() throws Exception {
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setId("1");
+        when(typeOfSampleService.getTypeOfSampleById("1")).thenReturn(typeOfSample);
+        SampleTypeTerminologyMapping existingWhonet = new SampleTypeTerminologyMapping();
+        existingWhonet.setSampleTypeId("1");
+        existingWhonet.setSource("WHONET");
+        existingWhonet.setCode("BLD");
+        existingWhonet.setRelationship("SAME_AS");
+        existingWhonet.setIsActive("Y");
+        when(terminologyService.getActiveBySampleTypeId("1")).thenReturn(List.of(existingWhonet));
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(42);
+
+        mockMvc.perform(put("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionData).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"BLD\",\"relationship\":\"SAME_AS\"},"
+                        + "{\"source\":\"LOINC\",\"code\":\"600-7\",\"relationship\":\"SAME_AS\"}]}"))
+                .andExpect(status().isOk());
+
+        verify(terminologyService).saveMappingsForSampleType(eq("1"),
+                argThat(mappings -> mappings.size() == 2 && mappings.stream()
+                        .anyMatch(mapping -> "WHONET".equals(mapping.getSource()) && "BLD".equals(mapping.getCode()))),
+                anyString());
     }
 
     // Bidirectional associated-tests endpoints carry the same ADMIN gate.
