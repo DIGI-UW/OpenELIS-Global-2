@@ -28,10 +28,11 @@ elaborate it and may not override its scope, architecture, checkpoint order, or
 acceptance IDs. A conflict is fixed in the owning artifact and this roadmap
 before implementation continues.
 
-The implementation is a coordinated three-repository PR train, not one large
-cross-cutting PR. OpenELIS, Analyzer Bridge, and analyzer mock each have a
-linear stack. Companion PRs at one checkpoint share a contract revision and
-must pass together before the next checkpoint starts.
+The implementation is a coordinated, ownership-based PR train, not one large
+cross-cutting PR. OpenELIS, Analyzer Bridge, and analyzer mock each keep a
+linear stack when that repository must change. Companion PRs at one checkpoint
+share a contract revision and must pass together before the next checkpoint
+starts; a repository whose existing code passes the contract gets no empty PR.
 
 ## Non-Negotiable Source Boundary
 
@@ -255,7 +256,7 @@ not inputs to this roadmap.
 | Analyzer instance          | A configured instrument at a lab, associated with one pinned profile revision, lab units, status, Bridge runtime registration, and a link to operational QC                                                      |
 | Activation candidate       | The exact profile revision, site-binding/recognition fingerprints, and analyzer-instance/runtime configuration proposed for verification and Bridge synchronization                                              |
 | PR #3792 foundation        | Historical source for selected route, mapping, QC, and test behavior; it is not in the new PR train and is not the OGC-1054 MVP                                                                                  |
-| Coordinated PR train       | Three linear, cross-linked repository stacks: OpenELIS, Analyzer Bridge, and analyzer mock                                                                                                                       |
+| Coordinated PR train       | Linear, cross-linked OpenELIS, Analyzer Bridge, and analyzer-mock stacks, with a checkpoint PR only where an owning test proves that repository must change                                                                                 |
 | OGC-1054 MVP               | A complete lab-admin workflow to manage an Analyzer Type, map and verify it, configure and activate an analyzer, and safely receive and resolve known and unknown traffic without developer-edited configuration |
 | Full OGC-1054 rollout      | The accepted MVP plus mature alert operations, profile revision diff/bulk adoption/rollback, distribution hardening, and exact-build full-feature acceptance                                                     |
 | Full analyzer program      | OGC-1054 plus multi-component ingestion, Results/Validation integration, per-instrument validation, maintenance, access control, and site rollout                                                                |
@@ -847,7 +848,9 @@ E0/Bridge contracts control when it starts.
 - [x] **M2 - Safe mapping editor.** Review-ready on Bridge #47 and OpenELIS
   #4118.
 - [*] **M3 - Guided setup, connectivity, and linked operational QC.** Active
-  checkpoint.
+  on Analyzer Bridge PR #48 and OpenELIS PR #4125. The accepted analyzer-mock
+  implementation remains the fixture source unless a failing transport
+  contract proves that it must change.
 - [ ] **M4 - Safe traffic and integrated MVP.** Future.
 - [ ] **G0 - Full MVP deployment and human acceptance.** Future.
 - [ ] **R1.1 - Mature alert operations.** Future.
@@ -1103,9 +1106,10 @@ and complete it before starting the next:
    blocker set through the lab-facing workflow;
 6. replace hard delete and implicit recovery with audited
    deactivate/reactivate through the same lifecycle boundary;
-7. prove profile-pinned, role-appropriate connectivity with the existing
-   priority analyzer fixtures, changing Bridge or mock code only when a failing
-   owning contract requires it; and
+7. prove profile-pinned, role-appropriate connectivity for the currently
+   published priority set: GeneXpert ASTM, FluoroCycler FILE, and QuantStudio
+   FILE. Change Bridge or mock production code only when a failing owning
+   contract requires it; and
 8. run the integrated, legacy-removal, Carbon/URL, desktop/mobile, and
    cross-repository gates, then publish the exact analyzer-only candidate and
    applicable Grist steps for review.
@@ -1187,11 +1191,17 @@ and CI. M3 remains the sole `[*]` block until its complete exit gate passes.
     site binding, history, held results, and operational-QC links. No hidden
     delete endpoint, direct status writer, event-driven activation path, or
     compatibility lifecycle route remains enabled.
-11. Exercise each priority analyzer's role-appropriate connectivity against
-    the existing analyzer-mock transport fixture as part of the Bridge/OE
-    contract gate. M3 mock scope is limited to deterministic instrument traffic
-    and connection behavior required by those priority fixtures. The mock owns
-    no profile lifecycle, mapping, activation, QC, review, or duplicate product
+11. Exercise GeneXpert ASTM, FluoroCycler FILE, and QuantStudio FILE
+    role-appropriate connectivity against the existing analyzer-mock transport
+    fixtures as part of the Bridge/OE contract gate. Resolve each mock
+    template's exact `profileRef` through the accepted profile catalog/adapter;
+    mock templates contain only simulation/fixture inputs and do not duplicate
+    profile-owned communication behavior or OpenELIS instance defaults. These
+    cross-repository fixture tests must run under the repository's ordinary
+    test command; a test excluded by its filename or runner configuration is no
+    evidence. M3 mock scope is limited to deterministic instrument traffic and
+    connection behavior required by those priority fixtures. The mock owns no
+    profile lifecycle, mapping, activation, QC, review, or duplicate product
     workflow. Reuse the accepted mock implementation when it satisfies the
     contract; change the mock only when a failing versioned transport test
     proves missing analyzer behavior.
@@ -1207,12 +1217,13 @@ developer fields or file edits, and runtime setup/probes occur in Bridge. The
 only analyzer-administration surfaces are the `/analyzers` instance dashboard
 with inline setup and the distinct `/analyzers/types` reusable-type manager;
 the linked Quality Control workflow is not a third analyzer setup surface. No
-standalone create/edit or connection-test workflow remains. The exact green
-analyzer-only candidate is published to the review host without changing the
-AMR deployment. Stable Grist steps `AN-MVP-006` through `AN-MVP-010` and
-`AN-MVP-017` are served by the Review overlay against that exact candidate
-before M3 changes from `[*]` to `[x]`; this preview does not substitute for G0
-human acceptance.
+standalone create/edit or connection-test workflow remains. GeneXpert,
+FluoroCycler, and QuantStudio fixture gates run in the ordinary owning suites.
+The exact green analyzer-only candidate is published to the review host without
+changing the AMR deployment. Stable Grist steps `AN-MVP-006` through
+`AN-MVP-010` and `AN-MVP-017` are served by the Review overlay against that
+exact candidate before M3 changes from `[*]` to `[x]`; this preview does not
+substitute for G0 human acceptance.
 
 ### M4 - Safe traffic and integrated MVP (OGC-1058 safety scope)
 
