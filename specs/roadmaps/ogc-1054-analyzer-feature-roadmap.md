@@ -1,6 +1,6 @@
 # OGC-1054 Analyzer Feature Authoritative Roadmap
 
-**Updated:** 2026-08-23
+**Updated:** 2026-08-24
 **Epic:** [OGC-1054](https://uwdigi.atlassian.net/browse/OGC-1054)
 **Historical foundation pull request:** [#3792](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3792)
 **Review target:** CI-green checkpoint PR builds are published to
@@ -119,9 +119,10 @@ decisions.
 11. **Reviewable work is published before merge.** Once a coherent checkpoint
     candidate is pushed in its owning PRs and its applicable automated gates are
     green, deploy that exact stacked candidate to the analyzer review instance
-    and sync its applicable Grist steps. Review feedback is fixed in the same
-    checkpoint. A preview deployment is not checkpoint acceptance and never
-    changes a roadmap marker.
+    and sync its applicable Grist steps. Every active checkpoint opens its
+    owning PR before its first preview deployment; a branch-only build is never
+    a review target. Review feedback is fixed in the same checkpoint. A preview
+    deployment is not checkpoint acceptance and never changes a roadmap marker.
 
 ## Authority Order
 
@@ -843,8 +844,8 @@ E0/Bridge contracts control when it starts.
 - [x] **M1 - Established Bridge profile lifecycle and Analyzer Types.**
   Review-ready on Bridge #46, analyzer-mock #40, and OE #4056 using the
   corrected E0 contract and exact priority-profile revisions.
-- [x] **M2 - Safe mapping editor.** Review-ready on Bridge #47 and the paired
-  OpenELIS M2 PR.
+- [x] **M2 - Safe mapping editor.** Review-ready on Bridge #47 and OpenELIS
+  #4118.
 - [*] **M3 - Guided setup, connectivity, and linked operational QC.** Active
   checkpoint.
 - [ ] **M4 - Safe traffic and integrated MVP.** Future.
