@@ -20,29 +20,44 @@ import {
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
-const formatEventType = (value = "") => {
-  const words = value.toLowerCase().split("_").filter(Boolean);
-  return words.length
-    ? words
-        .map((word, index) =>
-          word === "ast" || word === "qc"
-            ? word.toUpperCase()
-            : index === 0
-              ? word.charAt(0).toUpperCase() + word.slice(1)
-              : word,
-        )
-        .join(" ")
-    : "-";
+const EVENT_TYPE_MESSAGES = {
+  AST_RESULT_AVAILABLE: "analyzer.importIssues.event.astResultAvailable",
+  AST_QC_FAIL: "analyzer.importIssues.event.astQcFail",
 };
 
-const formatFailureReason = (intl, value) => {
-  if (value === "AST_ANALYZER_RUN_NOT_MATCHED") {
-    return intl.formatMessage({
-      id: "analyzer.importIssues.failure.astRunNotMatched",
-    });
-  }
-  return formatEventType(value);
+const FAILURE_REASON_MESSAGES = {
+  AST_ANALYZER_RUN_NOT_MATCHED:
+    "analyzer.importIssues.failure.astRunNotMatched",
+  AST_ANALYZER_EVENT_PROCESSING_FAILED:
+    "analyzer.importIssues.failure.processingFailed",
 };
+
+const formatCode = (intl, value, messageIds, fallbackId) => {
+  if (!value) {
+    return "-";
+  }
+  const messageId = messageIds[value];
+  if (messageId) {
+    return intl.formatMessage({ id: messageId });
+  }
+  return intl.formatMessage({ id: fallbackId }, { code: value });
+};
+
+const formatEventType = (intl, value) =>
+  formatCode(
+    intl,
+    value,
+    EVENT_TYPE_MESSAGES,
+    "analyzer.importIssues.event.unknown",
+  );
+
+const formatFailureReason = (intl, value) =>
+  formatCode(
+    intl,
+    value,
+    FAILURE_REASON_MESSAGES,
+    "analyzer.importIssues.failure.unknown",
+  );
 
 const ImportIssuesTable = ({ headers, rows, title, description }) => (
   <DataTable rows={rows} headers={headers}>
@@ -150,7 +165,7 @@ const ImportIssuesPanel = () => {
 
   const eventRows = issues.eventRows.map((event) => ({
     id: String(event.id),
-    eventType: <Tag type="red">{formatEventType(event.eventType)}</Tag>,
+    eventType: <Tag type="red">{formatEventType(intl, event.eventType)}</Tag>,
     sourceId: event.sourceId || "-",
     targetReference: event.targetReference || "-",
     failureReason: formatFailureReason(intl, event.failureReason),

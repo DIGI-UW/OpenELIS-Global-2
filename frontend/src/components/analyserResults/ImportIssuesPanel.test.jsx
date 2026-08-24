@@ -9,9 +9,9 @@ vi.mock("../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
 }));
 
-const renderPanel = () =>
+const renderPanel = ({ locale = "en", panelMessages = messages } = {}) =>
   render(
-    <IntlProvider locale="en" messages={messages}>
+    <IntlProvider locale={locale} messages={panelMessages}>
       <ImportIssuesPanel />
     </IntlProvider>,
   );
@@ -63,6 +63,50 @@ describe("ImportIssuesPanel", () => {
     );
     expect(
       screen.queryByRole("button", { name: /retry|reprocess/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("localizes analyzer event labels and unknown failure fallbacks", async () => {
+    getFromOpenElisServer.mockImplementationOnce((_url, callback) => {
+      callback({
+        status: "success",
+        data: {
+          eventRows: [
+            {
+              id: "92",
+              eventType: "AST_QC_FAIL",
+              sourceId: "card-405",
+              failureReason: "AST_ANALYZER_CARD_MISMATCH",
+              receivedAt: "2026-08-19T16:30:00Z",
+            },
+          ],
+          rows: [],
+        },
+      });
+    });
+
+    renderPanel({
+      locale: "fr",
+      panelMessages: {
+        ...messages,
+        "analyzer.importIssues.event.astQcFail":
+          "Echec du controle qualite AST",
+        "analyzer.importIssues.failure.unknown":
+          "Echec du traitement de l'evenement analyseur ({code})",
+      },
+    });
+
+    expect(
+      await screen.findByText("Echec du controle qualite AST"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Echec du traitement de l'evenement analyseur (AST_ANALYZER_CARD_MISMATCH)",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("AST QC fail")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("AST analyzer card mismatch"),
     ).not.toBeInTheDocument();
   });
 });
