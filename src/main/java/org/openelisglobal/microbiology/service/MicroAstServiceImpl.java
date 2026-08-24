@@ -82,9 +82,8 @@ public class MicroAstServiceImpl implements MicroAstService {
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
             MicroAstInterpretationService interpretationService, MicroCaseAmendmentDAO amendmentDAO,
-            MicroReagentLotService reagentLotService, MicroOrganismDAO organismDAO,
-            SampleItemService sampleItemService, MicroAstPanelDAO panelDAO,
-            MicroAstOverrideEventDAO overrideEventDAO, SystemUserService systemUserService,
+            MicroReagentLotService reagentLotService, MicroOrganismDAO organismDAO, SampleItemService sampleItemService,
+            MicroAstPanelDAO panelDAO, MicroAstOverrideEventDAO overrideEventDAO, SystemUserService systemUserService,
             MicroAstPanelAntibioticDAO panelAntibioticDAO, MicroAstRunAntibioticDAO runAntibioticDAO,
             MicroAntibioticDAO antibioticDAO) {
         this.runDAO = runDAO;
@@ -494,7 +493,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
-        requireMutableRun(run, isolate.getCaseId());
+        MicroCase microCase = requireMutableRun(run, isolate.getCaseId());
         if (!MicroAstRunStatus.AWAITING_RESULTS.name().equals(run.getStatus())
                 && !MicroAstRunStatus.RESULTS_IN.name().equals(run.getStatus())) {
             throw new MicroAstConflictException("AST_RUN_NOT_AWAITING_ANALYZER_RESULTS");
@@ -524,7 +523,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setSourceEventId(trimToNull(batch.sourceEventId()));
 
         for (MicroAstAnalyzerReading analyzerReading : batch.readings()) {
-            appendAnalyzerReading(run, isolate, analyzerReading, performedBy);
+            appendAnalyzerReading(run, isolate, microCase, analyzerReading, performedBy);
         }
         if (Boolean.FALSE.equals(batch.qcPassed())) {
             run.setQcState("FAILED");
@@ -744,15 +743,14 @@ public class MicroAstServiceImpl implements MicroAstService {
         return List.copyOf(latestByAntibiotic.values());
     }
 
-    private void appendAnalyzerReading(MicroAstRun run, MicroIsolate isolate, MicroAstAnalyzerReading analyzerReading,
-            String performedBy) {
+    private void appendAnalyzerReading(MicroAstRun run, MicroIsolate isolate, MicroCase microCase,
+            MicroAstAnalyzerReading analyzerReading, String performedBy) {
         MicroCaseServiceImpl.requireText(analyzerReading.antibioticId(), "antibioticId");
         if (runAntibioticDAO.getByRunIdAndAntibioticId(run.getId(), analyzerReading.antibioticId()).isEmpty()) {
             throw new MicroAstConflictException("AST_ANTIBIOTIC_NOT_ORDERED");
         }
         MicroAstMethod method = measurementTypeFor(run);
-        MicroOrganism organism = organismDAO.get(isolate.getOrganismId()).orElse(null);
-        MicroBreakpointRule rule = findRule(run, isolate, organism, analyzerReading.antibioticId(), method);
+        MicroBreakpointRule rule = findRule(run, isolate, microCase, analyzerReading.antibioticId(), method);
         MicroAstReading reading = new MicroAstReading();
         reading.setAstRunId(run.getId());
         reading.setAntibioticId(analyzerReading.antibioticId());

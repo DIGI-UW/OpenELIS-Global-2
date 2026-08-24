@@ -57,9 +57,9 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationSta
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 /**
  * A run started with an explicit standard interprets readings against that
@@ -124,8 +124,7 @@ public class MicroAstServiceTest {
     public void setUp() {
         service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
                 interpretationService, amendmentDAO, reagentLotService, organismDAO, sampleItemService, panelDAO,
-                overrideEventDAO,
-                systemUserService, panelAntibioticDAO, runAntibioticDAO, antibioticDAO);
+                overrideEventDAO, systemUserService, panelAntibioticDAO, runAntibioticDAO, antibioticDAO);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
         MicroOrganism organism = new MicroOrganism();
         organism.setId("org-1");
