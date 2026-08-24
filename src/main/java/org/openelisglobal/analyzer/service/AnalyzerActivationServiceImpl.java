@@ -163,7 +163,9 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
                         profileBinding.getProfileRevision());
                 BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(profileRevision.profile());
                 if (!"ACTIVE".equals(profile.status())
-                        || !Objects.equals(profileBinding.getProfileFingerprint(), profile.revisionFingerprint())) {
+                        || !Objects.equals(profileBinding.getProfileFingerprint(), profile.revisionFingerprint())
+                        || analyzer.getType() == null
+                        || !profile.protocol().equalsIgnoreCase(analyzer.getType().trim())) {
                     blockers.add(new AnalyzerActivationBlocker(PROFILE_BLOCKER));
                 } else {
                     if (!profile.declaresTransport(analyzer.getTransportMode())) {
