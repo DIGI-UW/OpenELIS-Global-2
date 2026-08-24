@@ -112,6 +112,14 @@ For every bounded behavior change:
 
 No later UI, screenshot, or video can waive a lower-layer failure.
 
+Acceptance tests define the allowed system positively. Do not retain
+source-file, class-name, or string blacklists for deleted implementations: the
+possible wrong implementations are unbounded, and such checks are not
+behavioral evidence. Delete superseded code, migrations, tests, and guidance;
+use closed schemas, typed provider/consumer contracts, persistence and
+migration integration, and assembled behavior to prove the resulting
+architecture.
+
 ## Checkpoints
 
 ### R0 - Canonical Roadmap And Architecture
@@ -133,20 +141,23 @@ Exit:
 
 ### F0 - Acceptance Foundation
 
-Deliver repository guards and fixtures that fail for:
+Deliver closed contract fixtures and executable owner tests proving:
 
-- OE-persisted analyzer-facing values or complete desired-state sync;
-- hard-coded profile, manufacturer, model, analyzer code, or default values;
-- an OE FILE poller/parser, `AnalyzerQcRule`, `QcRun`, duplicate editor/queue,
-  or legacy compatibility path;
-- loss of either profile job; and
-- Playwright user stories that use API calls or hidden fixture mutation.
+- the OpenELIS analyzer contract contains only LIMS-owned state and a Bridge
+  connection reference;
+- the Bridge profile contract retains communication behavior and
+  new-connection defaults through generic consumers;
+- Bridge owns connection/runtime behavior and FILE transport;
+- migration has one explicit outcome for each released analyzer; and
+- Playwright user stories interact only through visible UI, enforced by the
+  existing syntax-aware lint rule.
 
 Priority profile fixtures prove the same profile data drives Bridge and mock
-behavior. A synthetic valid profile proves OE has no fixed connection schema.
+behavior. A synthetic valid profile proves OE renders the declared Bridge
+contract without a fixed connection schema.
 
-Exit: guards are demonstrated red against the wrong architecture and green
-against only the accepted contracts.
+Exit: invalid contract fixtures are demonstrated red, accepted fixtures and
+owning behavior are green, and no deleted implementation remains in the diff.
 
 ### E0 - Versioned Contracts And Migration Boundary
 
@@ -164,8 +175,8 @@ concurrency; secrets are masked; probes are non-mutating; restart restores the
 acknowledged active revision. The migration never infers a profile from a name,
 plugin class, protocol, code, or LOINC.
 
-Exit: both repositories consume the same fixtures, and absence tests reject the
-old full-state registration and copied-profile contracts.
+Exit: both repositories consume the same closed fixtures, and provider/consumer
+tests accept only the reference and command contracts declared here.
 
 ### M1 - Bridge Profiles And Analyzer Types
 
@@ -289,19 +300,19 @@ site rollout.
 | MVP-006 | Qualitative mappings target only active Result Options of the mapped Test; invalid/inactive/cross-test choices fail. | OE service/integration + RTL |
 | MVP-007 | Recognition is explicit `RULES` or affirmed `NONE`, evaluated only by Bridge, and shown as a plain-language confirmation. | Bridge profile/runtime + OE consumer/RTL |
 | MVP-008 | Verification records exact profile/binding/recognition fingerprints, row states, actor, and time; relevant changes stale it, QC changes do not. | OE persistence/audit integration |
-| MVP-009 | Mapping has one Analyzer Types editor with URL-backed state and return paths; no per-analyzer editor or duplicate queue exists. | Repository guard + real-router RTL + UI E2E |
+| MVP-009 | Mapping has one Analyzer Types editor with URL-backed state and return paths; no per-analyzer editor or duplicate queue exists. | Routing integration + real-router RTL + UI E2E |
 | MVP-010 | Add Analyzer is inline on `/analyzers`; Instrument, Verify, and Connect reveal in order and retain list context. | RTL + UI E2E |
 | MVP-011 | Meaningful routes, query state, breadcrumbs, reload, back, forward, headings, and lab-unit labels are deterministic. | Real-router RTL + accessibility/UI E2E |
-| MVP-012 | Released OE analyzer configurations migrate once to explicit Bridge profile pins/connections with complete outcomes; old schema/code/tool is absent from G0 runtime. | Migration integration + repository/schema guards |
+| MVP-012 | Released OE analyzer configurations migrate once to explicit Bridge profile pins/connections with complete outcomes; old schema/code/tool is absent from G0 runtime. | Migration integration + final-schema integration |
 | MVP-013 | Bridge durably creates and edits a profile-pinned connection; OE renders generic fields and stores no analyzer-facing value. | Cross-repo contract + persistence + RTL |
-| MVP-014 | Probe is structured and non-mutating; synthetic profile fields and defaults change without OE production or schema changes. | Bridge tests + OE consumer guard/RTL |
+| MVP-014 | Probe is structured and non-mutating; synthetic profile fields and defaults change without OE production or schema changes. | Bridge tests + OE consumer contract/RTL |
 | MVP-015 | Analyzer-scoped Quality Control opens the canonical OE workflow; QC changes never alter verification or activation. | OE analyzer/QC integration + RTL + UI E2E |
 | MVP-016 | Activation/deactivation uses the exact connection/profile/config/runtime acknowledgment, shows each blocker, preserves history, and never depends on QC or probe success. | OE/Bridge contract + lifecycle integration + RTL |
-| MVP-017 | Connection commands are concurrency-safe/idempotent and Bridge restart restores the exact active revision; OE performs no full-state replay. | Bridge restart/contract + OE repository guard |
+| MVP-017 | Connection commands are concurrency-safe/idempotent and Bridge restart restores the exact active revision; OE performs no full-state replay. | Bridge restart/contract + OE service integration |
 | MVP-018 | Known patient and recognized-control traffic reaches the correct OE workflow with source identity and raw context. | Bridge/mock transport + OE assembled integration + UI E2E |
 | MVP-019 | Unknown tests/values are durably held, visibly flagged, and never clinically posted or dropped. | OE persistence/integration + UI E2E |
 | MVP-020 | Resolution accepts only valid local catalog targets, is audited, and changes the next matching result deterministically. | OE integration + UI E2E |
-| MVP-021 | ASTM, HL7, and FILE fixtures prove patient/control/nonmatch/unknown behavior; FILE watching exists only in Bridge. | Bridge/mock suites + repository guard |
+| MVP-021 | ASTM, HL7, and FILE fixtures prove patient/control/nonmatch/unknown behavior; FILE watching exists only in Bridge. | Bridge/mock suites + assembled integration |
 | MVP-022 | New UI uses reusable Carbon components, React Intl, one semantic heading, keyboard/focus behavior, and no overlapping text at desktop/mobile sizes. | RTL/a11y + inspected screenshots |
 | MVP-023 | Analyzer dashboard, Analyzer Types, setup, mapping, and QC links form one consistent visual workflow compared with `openelis-work@main`. | Desktop/mobile visual review + named human UAT |
 | MVP-024 | One unchanged deployment identifies exact component builds and checklist revision across tests, screenshots, trace, MP4, and report. | Build manifest + review-tooling report |

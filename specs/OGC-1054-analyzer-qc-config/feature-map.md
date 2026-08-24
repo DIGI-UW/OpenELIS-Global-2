@@ -132,7 +132,7 @@ carried as a legacy catalog.
 | `InstanceAwareAnalyzerRouter` | Routes using OpenELIS runtime details | Remove; dispatch through the referenced Bridge connection identity |
 | Protocol-specific setup branches | OpenELIS understands FILE/network/runtime fields | Replace with one generic Bridge-described Carbon form |
 | Activation candidate full-registration JSON | Preserves the wrong desired-state model | Replace with explicit local verification and Bridge acknowledgment references |
-| `AnalyzerQcRule` | Mixed control recognition with operational QC | Production path already removed in M2; keep removal guards |
+| `AnalyzerQcRule` | Mixed control recognition with operational QC | Production path removed in M2; no replacement or compatibility path |
 | `/analyzers/errors` duplicate dashboard | Second unresolved-result workflow | Remove; use one held-result/review workflow |
 | Bridge profile runtime and probes | Correct owner, currently fed by transient OE registration | Retain executors; back them with durable Bridge connections |
 | Analyzer mock priority traffic | Useful deterministic instrument evidence | Retain; remove direct-to-OE and obsolete alias behavior after parity |
@@ -214,8 +214,8 @@ request.
    restoration without changing protocol executors unnecessarily.
 5. Replace OpenELIS full-state registration and fixed connection storage with
    the connection reference and generic mediator.
-6. Run the migration fixture, repository guards, owner tests, cross-repository
-   contracts, router-based UI tests, and assembled priority mock traffic.
+6. Run the migration fixture, closed owner contracts, persistence and migration
+   integration, router-based UI tests, and assembled priority mock traffic.
 7. Publish the same tested build to the shared analyzer demo without touching
    the AMR deployment, inspect evidence, then update Grist wording.
 
