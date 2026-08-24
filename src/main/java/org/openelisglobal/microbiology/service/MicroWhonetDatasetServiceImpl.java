@@ -1,10 +1,10 @@
 package org.openelisglobal.microbiology.service;
 
 import java.sql.Timestamp;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -61,9 +61,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     private static final String SAME_SOURCE = "SAME_SOURCE";
     private static final String INSENSITIVE = "INSENSITIVE";
     private static final String SENSITIVE = "SENSITIVE";
-    private static final Map<String, Long> FIRST_ISOLATE_WINDOWS = Map.of(FIRST_ISOLATE_7_DAY,
-            Duration.ofDays(7).toMillis(), FIRST_ISOLATE_14_DAY, Duration.ofDays(14).toMillis(), FIRST_ISOLATE_30_DAY,
-            Duration.ofDays(30).toMillis());
+    private static final Map<String, Integer> FIRST_ISOLATE_WINDOWS = Map.of(FIRST_ISOLATE_7_DAY, 7,
+            FIRST_ISOLATE_14_DAY, 14, FIRST_ISOLATE_30_DAY, 30);
     private static final Set<String> WHONET_INTERPRETATIONS = Set.of("S", "I", "R");
 
     private final MicroCaseDAO caseDAO;
@@ -398,8 +397,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         if (NONE.equals(query.dedup)) {
             return sorted;
         }
-        long windowMillis = FIRST_ISOLATE_WINDOWS.get(query.dedup);
-        Map<String, Timestamp> firstByPatientOrganism = new HashMap<>();
+        int windowDays = FIRST_ISOLATE_WINDOWS.get(query.dedup);
+        Map<String, LocalDate> firstByPatientOrganism = new HashMap<>();
         List<Candidate> included = new ArrayList<>();
         for (Candidate candidate : sorted) {
             String patientKey = hasText(candidate.context.patientId) ? candidate.context.patientId
@@ -415,11 +414,11 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
             if (SENSITIVE.equals(query.profileSensitivity)) {
                 key += "|PROFILE:" + susceptibilityProfile(candidate, astData);
             }
-            Timestamp candidateTimestamp = dedupTimestamp(candidate, basis);
-            Timestamp first = firstByPatientOrganism.get(key);
-            if (first == null || candidateTimestamp.getTime() - first.getTime() >= windowMillis) {
+            LocalDate candidateDate = dedupDate(candidate, basis);
+            LocalDate first = firstByPatientOrganism.get(key);
+            if (first == null || ChronoUnit.DAYS.between(first, candidateDate) >= windowDays) {
                 included.add(candidate);
-                firstByPatientOrganism.put(key, candidateTimestamp);
+                firstByPatientOrganism.put(key, candidateDate);
             }
         }
         return included;
@@ -432,6 +431,10 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
             throw new IllegalArgumentException("Selected de-duplication date is unavailable");
         }
         return timestamp;
+    }
+
+    private LocalDate dedupDate(Candidate candidate, String basis) {
+        return dedupTimestamp(candidate, basis).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
     private String susceptibilityProfile(Candidate candidate, AstData astData) {

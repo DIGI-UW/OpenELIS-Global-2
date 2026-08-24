@@ -13,6 +13,8 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -623,7 +625,7 @@ public class MicroWhonetDatasetServiceTest {
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
         stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "2026-07-10 10:00:00");
-        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002", "2026-07-17 09:59:59");
+        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002", "2026-07-16 23:59:59");
         stubPatientContext("case-3", "item-3", "patient-1", "LAB-003", "2026-07-17 10:00:00");
 
         MicroWhonetPreviewForm preview = service.compile(query("FIRST_ISOLATE_7_DAY")).getPreview();
@@ -634,6 +636,34 @@ public class MicroWhonetDatasetServiceTest {
         assertTrue(preview.rows.stream().anyMatch(row -> "case-1".equals(row.caseId)));
         assertFalse(preview.rows.stream().anyMatch(row -> "case-2".equals(row.caseId)));
         assertTrue(preview.rows.stream().anyMatch(row -> "case-3".equals(row.caseId)));
+    }
+
+    @Test
+    public void sevenDayBoundaryUsesCalendarDaysAcrossDaylightSavingTransition() {
+        MicroCase firstCase = finalizedCase("case-1", "item-1", "2026-03-01 18:00:00");
+        MicroCase boundaryCase = finalizedCase("case-2", "item-2", "2026-03-08 17:00:00");
+        MicroIsolate first = isolate("isolate-1", "case-1", "organism-1");
+        MicroIsolate boundary = isolate("isolate-2", "case-2", "organism-1");
+        MicroAstRun firstRun = reviewedRun("run-1", "isolate-1");
+        MicroAstRun boundaryRun = reviewedRun("run-2", "isolate-2");
+        stubDataset(List.of(firstCase, boundaryCase), List.of(first, boundary), List.of(firstRun, boundaryRun),
+                List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
+                        reading("reading-2", "run-2", "antibiotic-1", "S")));
+        stubMappedReferences();
+        ZoneId laboratoryZone = ZoneId.of("America/Los_Angeles");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001",
+                Timestamp.from(ZonedDateTime.of(2026, 3, 1, 10, 0, 0, 0, laboratoryZone).toInstant()));
+        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002",
+                Timestamp.from(ZonedDateTime.of(2026, 3, 8, 10, 0, 0, 0, laboratoryZone).toInstant()));
+        MicroWhonetExportQueryForm query = query("FIRST_ISOLATE_7_DAY");
+        query.from = "2026-03-01";
+        query.to = "2026-03-31";
+
+        MicroWhonetPreviewForm preview = service.compile(query).getPreview();
+
+        assertEquals(2, preview.afterDeduplication);
+        assertTrue(preview.rows.stream().anyMatch(row -> "case-1".equals(row.caseId)));
+        assertTrue(preview.rows.stream().anyMatch(row -> "case-2".equals(row.caseId)));
     }
 
     @Test
@@ -648,8 +678,8 @@ public class MicroWhonetDatasetServiceTest {
                 List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
                         reading("reading-2", "run-2", "antibiotic-1", "S")));
         stubMappedReferences();
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
-        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "2026-07-15 10:00:00");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002", "2026-07-15 10:00:00");
 
         MicroWhonetPreviewForm fourteenDay = service.compile(query("FIRST_ISOLATE_14_DAY")).getPreview();
         MicroWhonetPreviewForm thirtyDay = service.compile(query("FIRST_ISOLATE_30_DAY")).getPreview();
@@ -670,8 +700,8 @@ public class MicroWhonetDatasetServiceTest {
                 List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
                         reading("reading-2", "run-2", "antibiotic-1", "R")));
         stubMappedReferences();
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
-        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "2026-07-04 10:00:00");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002", "2026-07-04 10:00:00");
 
         MicroWhonetExportQueryForm collectionQuery = query("FIRST_ISOLATE_7_DAY");
         MicroWhonetExportQueryForm releaseQuery = query("FIRST_ISOLATE_7_DAY");
@@ -695,9 +725,9 @@ public class MicroWhonetDatasetServiceTest {
                 List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
                         reading("reading-2", "run-2", "antibiotic-1", "S")));
         stubMappedReferences();
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "sample-type-blood", "BLD",
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "sample-type-blood", "BLD",
                 "2026-07-01 10:00:00");
-        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "sample-type-urine", "URN",
+        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002", "sample-type-urine", "URN",
                 "2026-07-02 10:00:00");
 
         MicroWhonetExportQueryForm anySource = query("FIRST_ISOLATE_7_DAY");
@@ -721,8 +751,8 @@ public class MicroWhonetDatasetServiceTest {
                 List.of(contaminantRun, clinicalRun), List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
                         reading("reading-2", "run-2", "antibiotic-1", "R")));
         stubMappedReferences();
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
-        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "2026-07-02 10:00:00");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002", "2026-07-02 10:00:00");
         MicroWhonetExportQueryForm includeContaminant = query("FIRST_ISOLATE_7_DAY");
         includeContaminant.significance = List.of(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name(),
                 MicroIsolateSignificance.CONTAMINANT.name());
@@ -746,8 +776,8 @@ public class MicroWhonetDatasetServiceTest {
                 List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
                         reading("reading-2", "run-2", "antibiotic-1", "R")));
         stubMappedReferences();
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
-        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "2026-07-02 10:00:00");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002", "2026-07-02 10:00:00");
 
         MicroWhonetExportQueryForm insensitive = query("FIRST_ISOLATE_7_DAY");
         MicroWhonetExportQueryForm sensitive = query("FIRST_ISOLATE_7_DAY");
@@ -896,9 +926,19 @@ public class MicroWhonetDatasetServiceTest {
 
     private void stubPatientContext(String caseId, String sampleItemId, String patientId, String accession,
             String sampleTypeId, String whonetCode, String collectionDate) {
+        stubPatientContext(caseId, sampleItemId, patientId, accession, sampleTypeId, whonetCode,
+                Timestamp.valueOf(collectionDate));
+    }
+
+    private void stubPatientContext(String caseId, String sampleItemId, String patientId, String accession,
+            Timestamp collectionTimestamp) {
+        stubPatientContext(caseId, sampleItemId, patientId, accession, "sample-type-1", "BLD", collectionTimestamp);
+    }
+
+    private void stubPatientContext(String caseId, String sampleItemId, String patientId, String accession,
+            String sampleTypeId, String whonetCode, Timestamp collectionTimestamp) {
         patientContextsBySampleItem.put(sampleItemId,
                 new MicroWhonetPatientContext(sampleItemId, patientId, "NAT-001", "Ada", "Lovelace", "F", null,
-                        accession, null, Timestamp.valueOf(collectionDate), sampleTypeId, "Blood", whonetCode, null,
-                        null));
+                        accession, null, collectionTimestamp, sampleTypeId, "Blood", whonetCode, null, null));
     }
 }
