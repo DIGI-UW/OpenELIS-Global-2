@@ -222,7 +222,6 @@ const MicrobiologyCaseView = ({
   const [inoculations, setInoculations] = useState([]);
   const [actionError, setActionError] = useState("");
   const focusedSectionRef = useRef(null);
-  const previousFocusedActionRef = useRef(routeState.action);
 
   const loadReagentOverview = () => {
     if (!service.getReagentLotOverview) {
@@ -544,8 +543,6 @@ const MicrobiologyCaseView = ({
   });
 
   useEffect(() => {
-    const previousAction = previousFocusedActionRef.current;
-    previousFocusedActionRef.current = routeState.action;
     const actionOwnsFocus = [
       "report-nce",
       "mark-lost",
@@ -554,23 +551,22 @@ const MicrobiologyCaseView = ({
       "mark-positive",
       "mark-no-growth",
     ].includes(routeState.action);
-    const inlineActionRestoresFocus =
-      !routeState.action &&
-      ["start-inoculation", "add-subculture"].includes(previousAction);
     if (
       loading ||
       error ||
       !caseDetail ||
       routeState.section !== focusedSection ||
       !focusedSectionRef.current ||
-      actionOwnsFocus ||
-      inlineActionRestoresFocus
+      actionOwnsFocus
     ) {
       return;
     }
-    const frame = window.requestAnimationFrame(() =>
-      focusedSectionRef.current?.focus(),
-    );
+    const section = focusedSectionRef.current;
+    const frame = window.requestAnimationFrame(() => {
+      if (!section.contains(document.activeElement)) {
+        section.focus();
+      }
+    });
     return () => window.cancelAnimationFrame(frame);
   }, [
     error,

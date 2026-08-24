@@ -133,6 +133,60 @@ describe("MicrobiologyCaseView", () => {
     expect(screen.getByLabelText("Bottle or plate ID")).toHaveFocus();
   });
 
+  it("focuses the setup section after canceling a deep-linked inoculation action", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?section=setup&action=start-inoculation",
+    );
+
+    expect(await screen.findByLabelText("Bottle or plate ID")).toHaveFocus();
+    const setupSection = screen.getByTestId("microbiology-case-section-setup");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?section=setup",
+      ),
+    );
+    await waitFor(() => expect(setupSection).toHaveFocus());
+  });
+
+  it("focuses the selected section when leaving a deep-linked inoculation action", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      getCaseTimeline: vi.fn().mockResolvedValue(caseDetail.activities),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?section=setup&action=start-inoculation",
+    );
+
+    expect(await screen.findByLabelText("Bottle or plate ID")).toHaveFocus();
+    await user.click(getAccordionButton("Timeline"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?section=timeline",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-case-section-timeline"),
+      ).toHaveFocus(),
+    );
+  });
+
   it("mounts only the canonical active accordion body", async () => {
     const service = {
       ...astServiceStubs,
