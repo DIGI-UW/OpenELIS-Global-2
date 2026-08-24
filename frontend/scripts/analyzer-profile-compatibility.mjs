@@ -65,7 +65,7 @@ function validateRecognition(profile, violations) {
     violations,
     Array.isArray(profile.configDefaults?.qcRules) &&
       profile.configDefaults.qcRules.length > 0,
-    "the established fixture must contain control-identification evidence",
+    "the source profile must contain control-identification evidence for curation",
   );
 }
 
@@ -139,7 +139,7 @@ export function findProfileCompatibilityViolations(profile) {
   addViolation(
     violations,
     hasEntries(profile.configDefaults),
-    "configDefaults must contain profile-owned instance defaults",
+    "configDefaults must contain profile-owned new-connection defaults",
   );
 
   if (!isRecord(profile.protocol) || !hasEntries(profile.configDefaults)) {
@@ -238,6 +238,12 @@ const isAnalyzerProductionPath = (filePath) =>
   filePath.startsWith("protocols/") ||
   /^(?:api|server|profile_adapter)\.py$/.test(filePath);
 
+const oeRuntimeConfiguration =
+  /\b(?:ipAddress|protocolVersion|communicationMode|transportMode|connectionRole|importDirectory|filePattern|columnMappingsJson|fileFormat|delimiter|hasHeader|skipRows|identifierPattern)\b/;
+
+const oeCompleteRegistrationSync =
+  /\/api\/analyzers\/sync\b|\b(?:desiredStateFingerprint|desiredStateRevision|registration-sync|registerWithBridge)\b/;
+
 export function findAddedProfileBoundaryViolations(diff, fixtures) {
   const violations = [];
   let filePath = "";
@@ -268,6 +274,18 @@ export function findAddedProfileBoundaryViolations(diff, fixtures) {
       )
     ) {
       rules.push("copied-profile-authority");
+    }
+    if (
+      isOeProductionPath(filePath) &&
+      oeRuntimeConfiguration.test(addedSource)
+    ) {
+      rules.push("oe-runtime-configuration-authority");
+    }
+    if (
+      isOeProductionPath(filePath) &&
+      oeCompleteRegistrationSync.test(addedSource)
+    ) {
+      rules.push("oe-complete-registration-sync");
     }
     if (
       isOeProductionPath(filePath) &&

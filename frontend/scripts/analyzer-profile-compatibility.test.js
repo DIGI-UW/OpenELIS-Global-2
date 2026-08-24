@@ -30,7 +30,7 @@ const fixtures = fixturePaths.map((relativePath) => ({
 describe.each(fixtures)(
   "$relativePath compatibility fixture",
   ({ profile }) => {
-    test("proves communication and instance-default responsibilities", () => {
+    test("proves communication and new-connection default responsibilities", () => {
       expect(findProfileCompatibilityViolations(profile)).toEqual([]);
     });
 
@@ -45,7 +45,7 @@ describe.each(fixtures)(
       expect(findProfileCompatibilityViolations(thinProjection)).toEqual(
         expect.arrayContaining([
           "protocol must remain a typed object",
-          "configDefaults must contain profile-owned instance defaults",
+          "configDefaults must contain profile-owned new-connection defaults",
         ]),
       );
     });
@@ -88,7 +88,7 @@ describe("profile implementation policy", () => {
     ]);
   });
 
-  test("allows defaults read from the selected profile", () => {
+  test("does not confuse data-driven lookup with a hardcoded default", () => {
     const source = [
       "const defaults = selectedProfile.configDefaults;",
       "const protocolVersion = selectedProfile.protocol.version;",
@@ -123,6 +123,39 @@ describe("profile implementation policy", () => {
       "hardcoded-profile-special-case",
       "hidden-control-classifier-fallback",
     ]);
+  });
+
+  test("rejects OpenELIS runtime configuration and complete registration sync", () => {
+    const diff = [
+      "diff --git a/src/main/java/org/openelisglobal/analyzer/valueholder/Analyzer.java b/src/main/java/org/openelisglobal/analyzer/valueholder/Analyzer.java",
+      "+++ b/src/main/java/org/openelisglobal/analyzer/valueholder/Analyzer.java",
+      "+private String ipAddress, importDirectory;",
+      "diff --git a/src/main/java/org/openelisglobal/analyzer/service/BridgeRegistrationService.java b/src/main/java/org/openelisglobal/analyzer/service/BridgeRegistrationService.java",
+      "+++ b/src/main/java/org/openelisglobal/analyzer/service/BridgeRegistrationService.java",
+      '+client.post("/api/analyzers/sync", desiredStateFingerprint);',
+    ].join("\n");
+
+    expect(
+      findAddedProfileBoundaryViolations(diff, fixtures).map(
+        (violation) => violation.rule,
+      ),
+    ).toEqual([
+      "oe-runtime-configuration-authority",
+      "oe-complete-registration-sync",
+    ]);
+  });
+
+  test("allows an OpenELIS connection reference and Bridge-owned defaults", () => {
+    const diff = [
+      "diff --git a/src/main/java/org/openelisglobal/analyzer/valueholder/Analyzer.java b/src/main/java/org/openelisglobal/analyzer/valueholder/Analyzer.java",
+      "+++ b/src/main/java/org/openelisglobal/analyzer/valueholder/Analyzer.java",
+      "+private String bridgeConnectionId;",
+      "diff --git a/src/main/java/org/itech/ahb/runtime/ConnectionFactory.java b/src/main/java/org/itech/ahb/runtime/ConnectionFactory.java",
+      "+++ b/src/main/java/org/itech/ahb/runtime/ConnectionFactory.java",
+      "+return materialize(profile.protocol(), profile.configDefaults(), connection.values());",
+    ].join("\n");
+
+    expect(findAddedProfileBoundaryViolations(diff, fixtures)).toEqual([]);
   });
 
   test("allows deletions, tests, profile data, and generic production lookup", () => {
