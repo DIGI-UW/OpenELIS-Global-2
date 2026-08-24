@@ -7,6 +7,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -26,6 +27,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,14 +45,17 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
     private final MicroAntibioticDAO antibioticDAO;
     private final MicroBreakpointStandardDAO standardDAO;
     private final MicroBreakpointRuleDAO ruleDAO;
+    private final TypeOfSampleService typeOfSampleService;
     private final Map<String, ImportPreview> previews = new ConcurrentHashMap<>();
 
     public MicroBreakpointImportServiceImpl(MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
-            MicroBreakpointStandardDAO standardDAO, MicroBreakpointRuleDAO ruleDAO) {
+            MicroBreakpointStandardDAO standardDAO, MicroBreakpointRuleDAO ruleDAO,
+            TypeOfSampleService typeOfSampleService) {
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
         this.standardDAO = standardDAO;
         this.ruleDAO = ruleDAO;
+        this.typeOfSampleService = typeOfSampleService;
     }
 
     @Override
@@ -114,13 +119,27 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         try (CSVParser parser = CSVParser.parse(csv, format)) {
             validateHeaders(parser.getHeaderMap());
             ImportPreview preview = new ImportPreview();
+            List<ImportRow> parsedRows = new ArrayList<>();
             for (CSVRecord record : parser) {
                 preview.totalRows++;
                 try {
-                    preview.validRows.add(parseRow(record));
+                    parsedRows.add(parseRow(record));
                 } catch (IllegalArgumentException exception) {
                     preview.errors.add(error((int) record.getRecordNumber() + 1, exception.getMessage(),
                             CSVFormat.DEFAULT.format(record.values())));
+                }
+            }
+            Map<String, List<ImportRow>> rowsByNaturalKey = new LinkedHashMap<>();
+            for (ImportRow row : parsedRows) {
+                rowsByNaturalKey.computeIfAbsent(naturalKey(row), ignored -> new ArrayList<>()).add(row);
+            }
+            for (List<ImportRow> rows : rowsByNaturalKey.values()) {
+                if (rows.size() == 1) {
+                    preview.validRows.add(rows.get(0));
+                } else {
+                    for (ImportRow row : rows) {
+                        preview.errors.add(error(row.rowNumber, "Duplicate breakpoint key in import", row.sourceRow));
+                    }
                 }
             }
             return preview;
@@ -141,7 +160,10 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
 
         String organismValue = required(record, "organism_or_group");
         if (organismValue.regionMatches(true, 0, "group:", 0, "group:".length())) {
-            row.organismGroup = requiredText(organismValue.substring("group:".length()), "organism group");
+            String requestedGroup = requiredText(organismValue.substring("group:".length()), "organism group");
+            row.organismGroup = organismDAO.getActiveOrganisms().stream().map(MicroOrganism::getOrganismGroup)
+                    .filter(group -> group != null && group.equalsIgnoreCase(requestedGroup)).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown organism group: " + requestedGroup));
         } else {
             MicroOrganism organism = organismDAO.findByDisplayNameIgnoreCase(organismValue)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown organism: " + organismValue));
@@ -163,6 +185,9 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         default -> rawMethod;
         };
         row.specimenTypeId = blankToNull(record.get("specimen_type_id"));
+        if (row.specimenTypeId != null && typeOfSampleService.getTypeOfSampleById(row.specimenTypeId) == null) {
+            throw new IllegalArgumentException("Unknown specimen type: " + row.specimenTypeId);
+        }
         row.breakpointType = required(record, "breakpoint_type").toUpperCase(Locale.ROOT);
         if (!BREAKPOINT_TYPES.contains(row.breakpointType)) {
             throw new IllegalArgumentException("Unsupported breakpoint type: " + row.breakpointType);
@@ -179,6 +204,9 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
     private MicroBreakpointStandard findOrCreateStandard(String authority, String version, String actorId) {
         Optional<MicroBreakpointStandard> existing = standardDAO.findByAuthorityAndVersion(authority, version);
         if (existing.isPresent()) {
+            if ("ARCHIVED".equals(existing.get().getLifecycleStatus())) {
+                throw new IllegalArgumentException("Cannot import into archived breakpoint standard");
+            }
             return existing.get();
         }
         MicroBreakpointStandard standard = new MicroBreakpointStandard();
@@ -262,6 +290,11 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 row.antibioticId, row.method, nullToEmpty(row.specimenTypeId), row.breakpointType,
                 decimalText(row.susceptibleValue), decimalText(row.intermediateLowerValue),
                 decimalText(row.intermediateUpperValue), decimalText(row.resistantValue), row.units);
+    }
+
+    private String naturalKey(ImportRow row) {
+        return String.join("|", row.authority, row.version, nullToEmpty(row.organismId), nullToEmpty(row.organismGroup),
+                row.antibioticId, row.method, nullToEmpty(row.specimenTypeId), row.breakpointType);
     }
 
     private String hash(String value) {

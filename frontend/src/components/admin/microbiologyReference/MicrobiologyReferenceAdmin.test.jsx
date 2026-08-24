@@ -19,6 +19,7 @@ vi.mock("./api", () => ({
 
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter, Route } from "react-router-dom";
@@ -63,6 +64,48 @@ beforeEach(() => {
 });
 
 describe("microbiology reference administration", () => {
+  it("offers only workflow identifiers supported by the backend", () => {
+    const values = REFERENCE_DEFINITIONS["culture-setups"].fields
+      .find((field) => field.key === "workflowType")
+      .options.map((option) => option.value);
+
+    expect(values).toEqual(["BACTERIOLOGY", "MYCOBACTERIOLOGY_TB", "MYCOLOGY"]);
+  });
+
+  it("loads the complete antibiotic option list for AST panels", async () => {
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+    getReferenceOptions.mockResolvedValue([]);
+
+    renderPage(<AstPanelPage query={query} setQuery={vi.fn()} />);
+
+    await waitFor(() =>
+      expect(getReferenceOptions).toHaveBeenCalledWith(
+        "antibiotics",
+        expect.any(AbortSignal),
+      ),
+    );
+  });
+
+  it("does not show a breakpoint detail breadcrumb for another section", async () => {
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+    window.history.pushState(
+      {},
+      "",
+      "/MasterListsPage/MicrobiologyReference/organisms/not-a-breakpoint",
+    );
+
+    renderPage(
+      <Route path="/MasterListsPage/MicrobiologyReference/:section/:detailId?">
+        <MicrobiologyReferenceAdmin />
+      </Route>,
+    );
+
+    await screen.findByRole("tab", { name: "Organisms" });
+    expect(
+      screen.queryByText(messages["microbiology.admin.breakpoints.detail"]),
+    ).not.toBeInTheDocument();
+  });
+
   it("connects each Carbon tab to an existing tab panel", async () => {
     getReferencePage.mockResolvedValue({ rows: [], total: 0 });
     window.history.pushState(

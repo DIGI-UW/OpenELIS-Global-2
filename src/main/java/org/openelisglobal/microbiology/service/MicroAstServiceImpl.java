@@ -8,6 +8,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
@@ -24,6 +25,8 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,11 +45,14 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroAstInterpretationService interpretationService;
     private final MicroCaseAmendmentDAO amendmentDAO;
     private final MicroReagentLotService reagentLotService;
+    private final MicroOrganismDAO organismDAO;
+    private final SampleItemService sampleItemService;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
             MicroAstInterpretationService interpretationService, MicroCaseAmendmentDAO amendmentDAO,
-            MicroReagentLotService reagentLotService) {
+            MicroReagentLotService reagentLotService, MicroOrganismDAO organismDAO,
+            SampleItemService sampleItemService) {
         this.runDAO = runDAO;
         this.readingDAO = readingDAO;
         this.isolateDAO = isolateDAO;
@@ -56,6 +62,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         this.interpretationService = interpretationService;
         this.amendmentDAO = amendmentDAO;
         this.reagentLotService = reagentLotService;
+        this.organismDAO = organismDAO;
+        this.sampleItemService = sampleItemService;
     }
 
     @Override
@@ -165,9 +173,9 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = runDAO.get(runId).orElseThrow(() -> new IllegalArgumentException("AST run not found"));
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
-        requireMutableRun(run, isolate.getCaseId());
+        MicroCase microCase = requireMutableRun(run, isolate.getCaseId());
         snapshotOrValidateMethod(run, method);
-        MicroBreakpointRule rule = findRule(run, isolate, antibioticId, method);
+        MicroBreakpointRule rule = findRule(run, isolate, microCase, antibioticId, method);
         MicroAstInterpretation interpretation = interpretationService.interpret(rule, method, rawValue);
 
         MicroAstReading reading = new MicroAstReading();
@@ -282,8 +290,8 @@ public class MicroAstServiceImpl implements MicroAstService {
      * choice when present, otherwise the configured default so runs started before
      * this field existed, or without an explicit choice, keep working.
      */
-    private MicroBreakpointRule findRule(MicroAstRun run, MicroIsolate isolate, String antibioticId,
-            MicroAstMethod method) {
+    private MicroBreakpointRule findRule(MicroAstRun run, MicroIsolate isolate, MicroCase microCase,
+            String antibioticId, MicroAstMethod method) {
         String standardId = run.getBreakpointStandardId();
         if (standardId == null || standardId.trim().isEmpty()) {
             MicroBreakpointStandard standard = breakpointService.getActiveStandard(DEFAULT_BREAKPOINT_AUTHORITY,
@@ -293,8 +301,15 @@ public class MicroAstServiceImpl implements MicroAstService {
             }
             standardId = standard.getId();
         }
-        return breakpointService.findBreakpointRule(standardId, isolate.getOrganismId(), null, antibioticId,
-                method.name(), null, method.name());
+        String organismGroup = isolate.getOrganismId() == null ? null
+                : organismDAO.get(isolate.getOrganismId()).map(value -> value.getOrganismGroup()).orElse(null);
+        String specimenTypeId = null;
+        if (microCase.getSampleItemId() != null) {
+            SampleItem sampleItem = sampleItemService.getData(microCase.getSampleItemId());
+            specimenTypeId = sampleItem == null ? null : sampleItemService.getTypeOfSampleId(sampleItem);
+        }
+        return breakpointService.findBreakpointRule(standardId, isolate.getOrganismId(), organismGroup, antibioticId,
+                method.name(), specimenTypeId, method.name());
     }
 
     private void snapshotOrValidateMethod(MicroAstRun run, MicroAstMethod method) {
@@ -320,15 +335,16 @@ public class MicroAstServiceImpl implements MicroAstService {
         return microCase;
     }
 
-    private void requireMutableRun(MicroAstRun run, String caseId) {
+    private MicroCase requireMutableRun(MicroAstRun run, String caseId) {
         MicroCase microCase = requireMutableCase(caseId);
         if (!isAmendmentInProgress(microCase)) {
-            return;
+            return microCase;
         }
         MicroCaseAmendment amendment = requireOpenAmendment(caseId);
         if (!amendment.getId().equals(run.getAmendmentId())) {
             throw new MicroAmendmentConflictException("AMENDMENT_NEW_AST_RUN_REQUIRED");
         }
+        return microCase;
     }
 
     private MicroCaseAmendment requireOpenAmendment(String caseId) {

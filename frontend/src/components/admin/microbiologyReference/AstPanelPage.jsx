@@ -30,7 +30,12 @@ import {
 } from "@carbon/react";
 import { Add, ArrowDown, ArrowUp, TrashCan } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { getAstPanel, getReferencePage, publishAstPanel } from "./api";
+import {
+  getAstPanel,
+  getReferenceOptions,
+  getReferencePage,
+  publishAstPanel,
+} from "./api";
 import { buildReferenceRequestQuery } from "./queryState";
 
 const emptyPanel = {
@@ -58,16 +63,18 @@ const AstPanelPage = ({ query, setQuery }) => {
     async (signal) => {
       setLoading(true);
       try {
-        const [panels, antibioticPage] = await Promise.all([
+        const [panels, antibioticOptions] = await Promise.all([
           getReferencePage("ast-panels", requestQuery, signal),
-          getReferencePage(
-            "antibiotics",
-            "status=ACTIVE&sort=name&page=1&pageSize=100",
-            signal,
-          ),
+          getReferenceOptions("antibiotics", signal),
         ]);
         setPage(panels);
-        setAntibiotics(antibioticPage.rows || []);
+        setAntibiotics(
+          (antibioticOptions || []).map((option) => ({
+            id: option.id,
+            displayName: option.label,
+            whonetCode: option.code,
+          })),
+        );
         setError("");
       } catch (requestError) {
         if (requestError.name !== "AbortError") setError(requestError.message);
@@ -450,7 +457,7 @@ const AstPanelPage = ({ query, setQuery }) => {
                   })}
                 />
                 <SelectItem
-                  value="MYCOBACTERIOLOGY"
+                  value="MYCOBACTERIOLOGY_TB"
                   text={intl.formatMessage({
                     id: "microbiology.workflow.mycobacteriology",
                   })}

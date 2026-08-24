@@ -154,9 +154,11 @@ export const REFERENCE_DEFINITIONS = {
         type: "select",
         options: [
           option("BACTERIOLOGY", "microbiology.workflow.bacteriology"),
-          option("MYCOBACTERIOLOGY", "microbiology.workflow.mycobacteriology"),
+          option(
+            "MYCOBACTERIOLOGY_TB",
+            "microbiology.workflow.mycobacteriology",
+          ),
           option("MYCOLOGY", "microbiology.workflow.mycology"),
-          option("PARASITOLOGY", "microbiology.workflow.parasitology"),
         ],
       },
       {

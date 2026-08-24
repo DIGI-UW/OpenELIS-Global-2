@@ -65,7 +65,7 @@ const MicrobiologyReferenceAdmin = () => {
       isCurrentPage: !detailId,
     },
   ];
-  if (detailId) {
+  if (section === "breakpoints" && detailId) {
     breadcrumbs.push({
       label: "microbiology.admin.breakpoints.detail",
       link: sectionPath(basePath, section, detailId),
