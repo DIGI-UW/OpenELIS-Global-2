@@ -60,8 +60,7 @@ public class AnalyzerFieldMappingRestControllerTest extends AuthenticatedAnalyze
                 + AnalyzerTestCleanup.uniqueIp() + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
-                        .content(AnalyzerTestCleanup.withProfile(createBody)))
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();

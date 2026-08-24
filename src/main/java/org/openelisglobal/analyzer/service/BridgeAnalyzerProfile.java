@@ -3,10 +3,6 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
-import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
-import org.openelisglobal.analyzer.valueholder.CommunicationMode;
-import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 
 /** Typed view of the established Bridge-owned analyzer profile contract. */
 public final class BridgeAnalyzerProfile {
@@ -156,28 +152,6 @@ public final class BridgeAnalyzerProfile {
 
     public InstanceDefaults instanceDefaults() {
         return instanceDefaults;
-    }
-
-    public ProtocolVersion resolvedProtocolVersion() {
-        return "FILE".equals(protocol) ? null : ProtocolVersion.fromValue(protocolVersion);
-    }
-
-    public CommunicationMode resolvedCommunicationMode() {
-        return CommunicationMode.fromValue(communicationMode);
-    }
-
-    public AnalyzerTransportMode resolvedTransportMode() {
-        if ("FILE".equals(protocol)) {
-            return AnalyzerTransportMode.FILE;
-        }
-        return AnalyzerTransportMode.fromProfileValue(instanceDefaults.defaultTransport());
-    }
-
-    public AnalyzerConnectionRole resolvedConnectionRole() {
-        if ("FILE".equals(protocol)) {
-            return AnalyzerConnectionRole.RECEIVER;
-        }
-        return AnalyzerConnectionRole.fromProfileValue(instanceDefaults.connectionRole());
     }
 
     private static String requiredText(JsonNode node, String field) {

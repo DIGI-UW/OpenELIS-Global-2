@@ -26,6 +26,7 @@ public class AnalyzerForm {
     @Size(min = 1, max = 100, message = "Analyzer name must be between 1 and 100 characters")
     private String name;
 
+    @NotBlank(message = "Analyzer type is required")
     private String analyzerType;
 
     private String ipAddress; // Optional - validated in controller if provided
@@ -42,15 +43,7 @@ public class AnalyzerForm {
 
     private String pluginTypeId; // FK to analyzer_type table (the plugin that handles messages)
 
-    private String profileId;
-
-    private Integer profileRevision;
-
     private String communicationMode; // ANALYZER_INITIATED, LIS_INITIATED, BOTH (nullable = infer from protocol)
-
-    private String transportMode;
-
-    private String connectionRole;
 
     private String importDirectory;
 
@@ -148,44 +141,12 @@ public class AnalyzerForm {
         this.pluginTypeId = pluginTypeId;
     }
 
-    public String getProfileId() {
-        return profileId;
-    }
-
-    public void setProfileId(String profileId) {
-        this.profileId = profileId;
-    }
-
-    public Integer getProfileRevision() {
-        return profileRevision;
-    }
-
-    public void setProfileRevision(Integer profileRevision) {
-        this.profileRevision = profileRevision;
-    }
-
     public String getCommunicationMode() {
         return communicationMode;
     }
 
     public void setCommunicationMode(String communicationMode) {
         this.communicationMode = communicationMode;
-    }
-
-    public String getTransportMode() {
-        return transportMode;
-    }
-
-    public void setTransportMode(String transportMode) {
-        this.transportMode = transportMode;
-    }
-
-    public String getConnectionRole() {
-        return connectionRole;
-    }
-
-    public void setConnectionRole(String connectionRole) {
-        this.connectionRole = connectionRole;
     }
 
     public String getImportDirectory() {

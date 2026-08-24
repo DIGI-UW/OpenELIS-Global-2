@@ -12,23 +12,16 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
-import org.openelisglobal.analyzer.service.AnalyzerProfileBindingException;
-import org.openelisglobal.analyzer.service.AnalyzerProfileBindingService;
 import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.service.BridgeHttpClient;
-import org.openelisglobal.analyzer.service.BridgeRegistrationResult;
-import org.openelisglobal.analyzer.service.BridgeRegistrationService;
 import org.openelisglobal.analyzer.service.QcRuleDto;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
@@ -80,13 +73,7 @@ public class AnalyzerRestController extends BaseRestController {
     private AnalyzerTypeService analyzerTypeService;
 
     @Autowired
-    private AnalyzerProfileBindingService analyzerProfileBindingService;
-
-    @Autowired
     private PluginMenuService pluginService;
-
-    @Autowired
-    private BridgeRegistrationService bridgeRegistrationService;
 
     @Autowired
     private BridgeHttpClient bridgeHttpClient;
@@ -181,10 +168,11 @@ public class AnalyzerRestController extends BaseRestController {
         try {
             // Collect all validation errors instead of failing on the first one
             List<String> validationErrors = new ArrayList<>();
-            AnalyzerTransportMode requestedTransport = null;
-            AnalyzerConnectionRole requestedConnectionRole = null;
             if (form.getName() == null || form.getName().trim().isEmpty()) {
                 validationErrors.add("Analyzer name is required");
+            }
+            if (form.getAnalyzerType() == null || form.getAnalyzerType().trim().isEmpty()) {
+                validationErrors.add("Analyzer type is required");
             }
             if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
                     && !form.getIpAddress().matches("^(\\d{1,3}\\.){3}\\d{1,3}$")) {
@@ -197,28 +185,18 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getPort() != null && (form.getPort() < 1 || form.getPort() > 65535)) {
                 validationErrors.add("Port must be between 1 and 65535");
             }
+            if (form.getProtocolVersion() != null && ProtocolVersion.fromValue(form.getProtocolVersion()) == null) {
+                String validValues = java.util.Arrays.stream(ProtocolVersion.values()).map(ProtocolVersion::name)
+                        .collect(Collectors.joining(", "));
+                validationErrors.add(
+                        "Invalid protocol version: " + form.getProtocolVersion() + ". Valid values: " + validValues);
+            }
             if (form.getCommunicationMode() != null && !form.getCommunicationMode().trim().isEmpty()
                     && CommunicationMode.fromValue(form.getCommunicationMode()) == null) {
                 String validValues = java.util.Arrays.stream(CommunicationMode.values()).map(CommunicationMode::name)
                         .collect(Collectors.joining(", "));
                 validationErrors.add("Invalid communication mode: " + form.getCommunicationMode() + ". Valid values: "
                         + validValues);
-            }
-            if (form.getTransportMode() != null && !form.getTransportMode().trim().isEmpty()) {
-                requestedTransport = AnalyzerTransportMode.fromProfileValue(form.getTransportMode());
-                if (requestedTransport == null) {
-                    validationErrors.add("Invalid analyzer transport mode");
-                }
-            }
-            if (form.getConnectionRole() != null && !form.getConnectionRole().trim().isEmpty()) {
-                requestedConnectionRole = AnalyzerConnectionRole.fromProfileValue(form.getConnectionRole());
-                if (requestedConnectionRole == null) {
-                    validationErrors.add("Invalid analyzer connection role");
-                }
-            }
-            if (form.getProfileId() == null || form.getProfileId().trim().isEmpty()
-                    || form.getProfileRevision() == null) {
-                validationErrors.add("Profile ID and profile revision are required");
             }
             if (!validationErrors.isEmpty()) {
                 Map<String, Object> error = AnalyzerControllerHelper.wrapError(String.join("; ", validationErrors));
@@ -232,18 +210,16 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.ensureFhirUuid();
             analyzer.setActive(true);
             analyzer.setName(form.getName());
+            analyzer.setType(form.getAnalyzerType());
             analyzer.setIpAddress(
                     form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty() ? form.getIpAddress() : null);
             analyzer.setPort(form.getPort());
+            if (form.getProtocolVersion() != null && !form.getProtocolVersion().trim().isEmpty()) {
+                analyzer.setProtocolVersion(ProtocolVersion.fromValue(form.getProtocolVersion()));
+            }
             if (form.getCommunicationMode() != null && !form.getCommunicationMode().trim().isEmpty()) {
                 CommunicationMode cm = CommunicationMode.fromValue(form.getCommunicationMode());
                 analyzer.setCommunicationMode(cm);
-            }
-            if (requestedTransport != null) {
-                analyzer.setTransportMode(requestedTransport);
-            }
-            if (requestedConnectionRole != null) {
-                analyzer.setConnectionRole(requestedConnectionRole);
             }
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
@@ -289,9 +265,6 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setSkipRows(form.getSkipRows());
             }
 
-            analyzerProfileBindingService.assignProfile(analyzer, form.getProfileId(), form.getProfileRevision(),
-                    getSysUserId(request));
-
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
             pluginService.registerAnalyzerMenuAndPermission(analyzer.getName(), analyzerId);
@@ -303,15 +276,8 @@ public class AnalyzerRestController extends BaseRestController {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }
 
-            BridgeRegistrationResult bridgeResult = bridgeRegistrationService.synchronize();
-
             Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
-            response.put("bridgeSynchronized", bridgeResult.complete());
-            response.put("bridgeAcknowledged", bridgeResult.acknowledged(analyzerId));
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (AnalyzerProfileBindingException e) {
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         } catch (LIMSRuntimeException e) {
             logger.error("Error creating analyzer: {}", e.getMessage(), e);
             return AnalyzerControllerHelper.mapExceptionToResponse(e);
@@ -464,11 +430,6 @@ public class AnalyzerRestController extends BaseRestController {
                 error.put("error", "Port must be between 1 and 65535");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
-            if ((form.getProfileId() == null) != (form.getProfileRevision() == null)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AnalyzerControllerHelper
-                        .wrapError("Profile ID and profile revision must be provided together"));
-            }
-
             // Update analyzer fields (2-table model: all fields on Analyzer directly)
             if (form.getName() != null && !form.getName().trim().isEmpty()) {
                 analyzer.setName(form.getName());
@@ -508,22 +469,6 @@ public class AnalyzerRestController extends BaseRestController {
                 }
                 analyzer.setCommunicationMode(cm);
             }
-            if (form.getTransportMode() != null && !form.getTransportMode().trim().isEmpty()) {
-                AnalyzerTransportMode transport = AnalyzerTransportMode.fromProfileValue(form.getTransportMode());
-                if (transport == null) {
-                    return ResponseEntity.badRequest()
-                            .body(AnalyzerControllerHelper.wrapError("Invalid analyzer transport mode"));
-                }
-                analyzer.setTransportMode(transport);
-            }
-            if (form.getConnectionRole() != null && !form.getConnectionRole().trim().isEmpty()) {
-                AnalyzerConnectionRole role = AnalyzerConnectionRole.fromProfileValue(form.getConnectionRole());
-                if (role == null) {
-                    return ResponseEntity.badRequest()
-                            .body(AnalyzerControllerHelper.wrapError("Invalid analyzer connection role"));
-                }
-                analyzer.setConnectionRole(role);
-            }
             if (form.getTestUnitIds() != null) {
                 analyzer.setTestUnitIds(form.getTestUnitIds());
             }
@@ -557,10 +502,6 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getSkipRows() != null) {
                 analyzer.setSkipRows(form.getSkipRows());
             }
-            if (form.getProfileId() != null) {
-                analyzerProfileBindingService.assignProfile(analyzer, form.getProfileId(), form.getProfileRevision(),
-                        getSysUserId(request));
-            }
             // Update lifecycle status if provided (SETUP → ACTIVE → INACTIVE → DELETED)
             if (form.getStatus() != null) {
                 try {
@@ -575,14 +516,8 @@ public class AnalyzerRestController extends BaseRestController {
 
             Analyzer updatedAnalyzer = analyzerService.getWithType(id)
                     .orElseThrow(() -> new LIMSRuntimeException("Failed to retrieve updated analyzer"));
-            BridgeRegistrationResult bridgeResult = bridgeRegistrationService.synchronize();
             Map<String, Object> response = analyzerToMap(updatedAnalyzer, getLoadedPluginClassNames());
-            response.put("bridgeSynchronized", bridgeResult.complete());
-            response.put("bridgeAcknowledged", bridgeResult.acknowledged(id));
             return ResponseEntity.ok(response);
-        } catch (AnalyzerProfileBindingException e) {
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         } catch (LIMSRuntimeException e) {
             logger.error("Error updating analyzer: {}", e.getMessage(), e);
             return AnalyzerControllerHelper.mapExceptionToResponse(e);
@@ -619,14 +554,12 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setSysUserId(getSysUserId(request));
             analyzerService.update(analyzer);
 
-            BridgeRegistrationResult bridgeResult = bridgeRegistrationService.synchronize();
             AnalyzerTestNameCache.getInstance().reloadCache();
 
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("message", "analyzer.delete.success");
             response.put("messageKey", "analyzer.delete.success");
             response.put("deleted", true);
-            response.put("bridgeSynchronized", bridgeResult.complete());
             return ResponseEntity.ok(response);
         } catch (org.hibernate.ObjectNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -650,27 +583,14 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("description", analyzer.getDescription());
         map.put("location", analyzer.getLocation());
 
-        AnalyzerProfileBinding pinnedProfile = analyzer.getPinnedProfileBinding();
-        if (pinnedProfile == null) {
-            // Plugin availability only applies to unbound analyzers that still use the
-            // OpenELIS plugin runtime. Profile-pinned analyzers run through Bridge.
-            boolean pluginLoaded;
-            if (analyzer.getAnalyzerType() != null) {
-                String className = analyzer.getAnalyzerType().getPluginClassName();
-                pluginLoaded = className != null && loadedPlugins.contains(className);
-            } else {
-                pluginLoaded = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId()) != null;
-                if (!pluginLoaded) {
-                    String analyzerName = analyzer.getName();
-                    pluginLoaded = loadedPlugins.stream().anyMatch(cn -> {
-                        String simpleName = cn.substring(cn.lastIndexOf('.') + 1);
-                        return simpleName.equals(analyzerName) || simpleName.equals(analyzerName + "Analyzer")
-                                || analyzerName.startsWith(simpleName.replaceAll("Analyzer$", ""));
-                    });
-                }
-            }
-            map.put("pluginLoaded", pluginLoaded);
+        boolean pluginLoaded;
+        if (analyzer.getAnalyzerType() != null) {
+            String className = analyzer.getAnalyzerType().getPluginClassName();
+            pluginLoaded = className != null && loadedPlugins.contains(className);
+        } else {
+            pluginLoaded = pluginAnalyzerService.getPluginByAnalyzerId(analyzer.getId()) != null;
         }
+        map.put("pluginLoaded", pluginLoaded);
 
         // Configuration fields (stored directly on Analyzer in 2-table model)
         map.put("ipAddress", analyzer.getIpAddress());
@@ -678,23 +598,9 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("protocolVersion", analyzer.getProtocolVersion() != null ? analyzer.getProtocolVersion().name() : null);
         map.put("communicationMode",
                 analyzer.getCommunicationMode() != null ? analyzer.getCommunicationMode().name() : null);
-        map.put("transportMode", analyzer.getTransportMode() != null ? analyzer.getTransportMode().name() : null);
-        map.put("connectionRole", analyzer.getConnectionRole() != null ? analyzer.getConnectionRole().name() : null);
         map.put("effectiveCommunicationMode", analyzer.getEffectiveCommunicationMode().name());
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
-
-        if (pinnedProfile == null) {
-            map.put("profileId", null);
-            map.put("profileRevision", null);
-            map.put("profileFingerprint", null);
-            map.put("profileBindingStatus", "UNBOUND");
-        } else {
-            map.put("profileId", pinnedProfile.getProfileId());
-            map.put("profileRevision", pinnedProfile.getProfileRevision());
-            map.put("profileFingerprint", pinnedProfile.getProfileFingerprint());
-            map.put("profileBindingStatus", "PINNED");
-        }
 
         // FILE transport fields (unified on analyzer table — same as TCP fields above).
         // The bridge is strictly read-only with respect to watched directories since

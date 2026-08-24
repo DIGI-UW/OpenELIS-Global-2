@@ -1,9 +1,6 @@
 package org.openelisglobal.analyzer.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -34,27 +31,6 @@ public final class AnalyzerTestCleanup {
      */
     public static String uniqueSourceId() {
         return "test-source-" + System.currentTimeMillis() + "-" + IP_COUNTER.incrementAndGet();
-    }
-
-    public static String withProfile(String requestJson) {
-        return withProfile(requestJson, AnalyzerTestProfileCatalog.PROFILE_ID,
-                AnalyzerTestProfileCatalog.PROFILE_REVISION);
-    }
-
-    public static String withHl7Profile(String requestJson) {
-        return withProfile(requestJson, AnalyzerTestProfileCatalog.HL7_PROFILE_ID,
-                AnalyzerTestProfileCatalog.HL7_PROFILE_REVISION);
-    }
-
-    private static String withProfile(String requestJson, String profileId, int profileRevision) {
-        try {
-            ObjectNode request = (ObjectNode) new ObjectMapper().readTree(requestJson);
-            request.put("profileId", profileId);
-            request.put("profileRevision", profileRevision);
-            return request.toString();
-        } catch (Exception exception) {
-            throw new IllegalArgumentException("Invalid analyzer test request JSON", exception);
-        }
     }
 
     /**

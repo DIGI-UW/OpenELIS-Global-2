@@ -86,10 +86,6 @@ public class Analyzer extends BaseObject<String> {
     @JoinColumn(name = "analyzer_type_id")
     private AnalyzerType analyzerType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "site_binding_revision_id")
-    private AnalyzerSiteBindingRevision siteBindingRevision;
-
     // --- Configuration fields (merged from analyzer_configuration) ---
 
     @Column(name = "ip_address", length = 15)
@@ -108,14 +104,6 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "communication_mode", length = 25)
     @Enumerated(EnumType.STRING)
     private CommunicationMode communicationMode;
-
-    @Column(name = "transport_mode", length = 16)
-    @Enumerated(EnumType.STRING)
-    private AnalyzerTransportMode transportMode;
-
-    @Column(name = "connection_role", length = 16)
-    @Enumerated(EnumType.STRING)
-    private AnalyzerConnectionRole connectionRole;
 
     // --- FILE transport fields (unified with TCP on analyzer table) ---
 
@@ -247,21 +235,6 @@ public class Analyzer extends BaseObject<String> {
         this.analyzerType = analyzerType;
     }
 
-    public AnalyzerSiteBindingRevision getSiteBindingRevision() {
-        return siteBindingRevision;
-    }
-
-    public void setSiteBindingRevision(AnalyzerSiteBindingRevision siteBindingRevision) {
-        this.siteBindingRevision = siteBindingRevision;
-    }
-
-    public AnalyzerProfileBinding getPinnedProfileBinding() {
-        if (siteBindingRevision == null || siteBindingRevision.getSiteBinding() == null) {
-            return null;
-        }
-        return siteBindingRevision.getSiteBinding().getProfileBinding();
-    }
-
     // --- Configuration field accessors (merged from analyzer_configuration) ---
 
     public String getIpAddress() {
@@ -294,22 +267,6 @@ public class Analyzer extends BaseObject<String> {
 
     public void setCommunicationMode(CommunicationMode communicationMode) {
         this.communicationMode = communicationMode;
-    }
-
-    public AnalyzerTransportMode getTransportMode() {
-        return transportMode;
-    }
-
-    public void setTransportMode(AnalyzerTransportMode transportMode) {
-        this.transportMode = transportMode;
-    }
-
-    public AnalyzerConnectionRole getConnectionRole() {
-        return connectionRole;
-    }
-
-    public void setConnectionRole(AnalyzerConnectionRole connectionRole) {
-        this.connectionRole = connectionRole;
     }
 
     /**
