@@ -106,8 +106,9 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         return confirmationDAO.findLatestByBindingId(candidate.binding().getId())
                 .map(confirmation -> toView(confirmation,
                         isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate)
-                                ? AnalyzerSiteBindingConfirmationView.State.CURRENT
-                                : AnalyzerSiteBindingConfirmationView.State.STALE))
+                                && hasExactSavedRows(candidate, confirmation)
+                                        ? AnalyzerSiteBindingConfirmationView.State.CURRENT
+                                        : AnalyzerSiteBindingConfirmationView.State.STALE))
                 .orElseGet(AnalyzerSiteBindingConfirmationView::unconfirmed);
     }
 
@@ -116,8 +117,9 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
     public Optional<AnalyzerSiteBindingConfirmation> findCurrent(AnalyzerSiteBindingSnapshot candidate,
             String recognitionFingerprint) {
         CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
-        return confirmationDAO.findByRevisionId(candidate.revision().getId()).filter(
-                confirmation -> isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate));
+        return confirmationDAO.findByRevisionId(candidate.revision().getId())
+                .filter(confirmation -> isCurrent(candidate, context, confirmation)
+                        && hasCurrentCatalogBindings(candidate) && hasExactSavedRows(candidate, confirmation));
     }
 
     private static CandidateContext requireCandidate(AnalyzerSiteBindingSnapshot candidate,
@@ -187,13 +189,25 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         return AnalyzerSiteBindingCatalogState.load(mappingCatalogService).validate(candidate).allRowsCurrent();
     }
 
+    private boolean hasExactSavedRows(AnalyzerSiteBindingSnapshot candidate,
+            AnalyzerSiteBindingConfirmation confirmation) {
+        try {
+            RowDisposition expected = expectedRows(candidate);
+            return expected.confirmed.equals(readRows(confirmation.getConfirmedRowsJson()))
+                    && expected.excluded.equals(readRows(confirmation.getExcludedRowsJson()));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return false;
+        }
+    }
+
     private AnalyzerSiteBindingConfirmationView toView(AnalyzerSiteBindingConfirmation confirmation,
             AnalyzerSiteBindingConfirmationView.State state) {
         return new AnalyzerSiteBindingConfirmationView(state, confirmation.getProfileId(),
                 confirmation.getProfileRevision(), confirmation.getBindingFingerprint(),
                 confirmation.getRecognitionFingerprint(), confirmation.getConfirmedBy(),
                 resolveActorDisplayName(confirmation.getConfirmedBy()), confirmation.getConfirmedAt().toInstant(),
-                readRows(confirmation.getConfirmedRowsJson()), readRows(confirmation.getExcludedRowsJson()));
+                readRowsForView(confirmation.getConfirmedRowsJson()),
+                readRowsForView(confirmation.getExcludedRowsJson()));
     }
 
     private String resolveActorDisplayName(String actorId) {
@@ -226,6 +240,14 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
             return normalizeRows(objectMapper.readValue(json, ROW_LIST), "stored");
         } catch (JsonProcessingException | IllegalArgumentException e) {
             throw new IllegalStateException("Stored analyzer mapping confirmation rows are invalid", e);
+        }
+    }
+
+    private List<AnalyzerSiteBindingSourceRow> readRowsForView(String json) {
+        try {
+            return readRows(json);
+        } catch (IllegalStateException exception) {
+            return List.of();
         }
     }
 
