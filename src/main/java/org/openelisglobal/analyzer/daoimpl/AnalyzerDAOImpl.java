@@ -34,6 +34,11 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
     }
 
     @Override
+    public void delete(Analyzer analyzer) {
+        throw new UnsupportedOperationException("Analyzer hard deletion is not supported");
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Optional<Analyzer> findByIpAddress(String ipAddress) {
         if (ipAddress == null || ipAddress.trim().isEmpty()) {

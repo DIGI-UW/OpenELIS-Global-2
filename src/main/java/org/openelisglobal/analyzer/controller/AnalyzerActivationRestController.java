@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.analyzer.service.AnalyzerActivationResult;
 import org.openelisglobal.analyzer.service.AnalyzerActivationService;
+import org.openelisglobal.analyzer.service.AnalyzerDeactivationResult;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +33,18 @@ public class AnalyzerActivationRestController extends BaseRestController {
     @PostMapping("/{id}/activate")
     public ResponseEntity<AnalyzerActivationResult> activate(@PathVariable String id, HttpServletRequest request) {
         AnalyzerActivationResult result = service.activate(id, getSysUserId(request));
+        return ResponseEntity.status(result.activated() ? HttpStatus.OK : HttpStatus.UNPROCESSABLE_ENTITY).body(result);
+    }
+
+    @PostMapping("/{id}/deactivate")
+    public ResponseEntity<AnalyzerDeactivationResult> deactivate(@PathVariable String id, HttpServletRequest request) {
+        AnalyzerDeactivationResult result = service.deactivate(id, getSysUserId(request));
+        return ResponseEntity.status(result.deactivated() ? HttpStatus.OK : HttpStatus.BAD_GATEWAY).body(result);
+    }
+
+    @PostMapping("/{id}/reactivate")
+    public ResponseEntity<AnalyzerActivationResult> reactivate(@PathVariable String id, HttpServletRequest request) {
+        AnalyzerActivationResult result = service.reactivate(id, getSysUserId(request));
         return ResponseEntity.status(result.activated() ? HttpStatus.OK : HttpStatus.UNPROCESSABLE_ENTITY).body(result);
     }
 }

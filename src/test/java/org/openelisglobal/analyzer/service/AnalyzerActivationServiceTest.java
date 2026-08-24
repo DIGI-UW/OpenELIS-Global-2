@@ -308,9 +308,9 @@ public class AnalyzerActivationServiceTest {
 
     @Test
     public void deactivationExceptionRestoresTheActiveAnalyzerAndBridgeState() {
-        makeActive();
-        doThrow(new IllegalStateException("Bridge unavailable")).doReturn(BridgeRegistrationResult.complete(Set.of()))
-                .when(registrationService).synchronize();
+        AnalyzerActivationCandidate activeCandidate = makeActive();
+        doThrow(new IllegalStateException("Bridge unavailable"))
+                .doReturn(new BridgeRegistrationResult(true, Set.of(), null)).when(registrationService).synchronize();
 
         AnalyzerDeactivationResult result = service.deactivate(ANALYZER_ID, ACTOR);
 
@@ -318,7 +318,7 @@ public class AnalyzerActivationServiceTest {
         assertEquals("Bridge unavailable", result.failure());
         assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
         assertTrue(analyzer.isActive());
-        assertEquals(retained, analyzer.getActiveCandidate());
+        assertEquals(activeCandidate, analyzer.getActiveCandidate());
         verify(analyzerService, times(2)).update(analyzer);
         verify(registrationService, times(2)).synchronize();
     }

@@ -471,9 +471,9 @@ public class Analyzer extends BaseObject<String> {
     /**
      * Enum for analyzer unified status field. Values must match database
      * constraint: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE,
-     * DELETED, PENDING_REGISTRATION
+     * PENDING_REGISTRATION
      */
     public enum AnalyzerStatus {
-        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, DELETED, PENDING_REGISTRATION
+        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, PENDING_REGISTRATION
     }
 }

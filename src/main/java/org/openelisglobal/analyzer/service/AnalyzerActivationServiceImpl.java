@@ -88,6 +88,17 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     @Transactional
     public AnalyzerActivationResult activate(String analyzerId, String actor) {
         Analyzer analyzer = findAnalyzer(analyzerId);
+        return activate(analyzer, actor);
+    }
+
+    @Override
+    @Transactional
+    public AnalyzerActivationResult reactivate(String analyzerId, String actor) {
+        Analyzer analyzer = findAnalyzer(analyzerId);
+        return activate(analyzer, actor);
+    }
+
+    private AnalyzerActivationResult activate(Analyzer analyzer, String actor) {
         String effectiveAnalyzerId = analyzer.getId();
         String effectiveActor = requireText(actor, "actor");
 
@@ -136,6 +147,43 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             }
             throw exception;
         }
+    }
+
+    @Override
+    @Transactional
+    public AnalyzerDeactivationResult deactivate(String analyzerId, String actor) {
+        Analyzer analyzer = findAnalyzer(analyzerId);
+        String effectiveActor = requireText(actor, "actor");
+        if (analyzer.getStatus() == Analyzer.AnalyzerStatus.INACTIVE) {
+            return AnalyzerDeactivationResult.deactivated(analyzer);
+        }
+
+        PreviousAnalyzerState previousState = PreviousAnalyzerState.capture(analyzer);
+        analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        analyzer.setActive(false);
+        analyzer.setSysUserId(effectiveActor);
+        analyzer.setLastupdatedFields();
+        analyzerService.update(analyzer);
+
+        try {
+            BridgeRegistrationResult synchronization = registrationService.synchronize();
+            if (synchronization.complete()) {
+                return AnalyzerDeactivationResult.deactivated(analyzer);
+            }
+            return restoreAfterFailedDeactivation(analyzer, previousState, effectiveActor, synchronization.failure());
+        } catch (RuntimeException exception) {
+            return restoreAfterFailedDeactivation(analyzer, previousState, effectiveActor, exception.getMessage());
+        }
+    }
+
+    private AnalyzerDeactivationResult restoreAfterFailedDeactivation(Analyzer analyzer,
+            PreviousAnalyzerState previousState, String actor, String failure) {
+        previousState.restore(analyzer);
+        analyzer.setSysUserId(actor);
+        analyzer.setLastupdatedFields();
+        analyzerService.update(analyzer);
+        registrationService.synchronize();
+        return AnalyzerDeactivationResult.failed(analyzer, failure);
     }
 
     private Analyzer findAnalyzer(String analyzerId) {

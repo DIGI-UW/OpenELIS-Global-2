@@ -20,7 +20,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
-import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -427,49 +426,6 @@ public class AnalyzerRestController extends BaseRestController {
             logger.error("Error updating analyzer", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        }
-    }
-
-    /**
-     * POST /rest/analyzer/analyzers/{id}/delete Delete analyzer.
-     *
-     * <p>
-     * Always performs a soft delete: sets status to DELETED and active to false.
-     * The analyzer record is retained for audit trail purposes. Uses POST instead
-     * of DELETE due to Spring Security 6 CSRF protection.
-     *
-     * @param id      Analyzer ID to delete
-     * @param request HTTP request (used to resolve the current user id for the
-     *                audit trail)
-     * @return 200 on success with deletion details, 404 if analyzer not found
-     */
-    @PostMapping("/analyzers/{id}/delete")
-    public ResponseEntity<Map<String, Object>> deleteAnalyzer(@PathVariable String id, HttpServletRequest request) {
-        try {
-            Analyzer analyzer = analyzerService.get(id);
-            if (analyzer == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-
-            analyzer.setStatus(AnalyzerStatus.DELETED);
-            analyzer.setActive(false);
-            analyzer.setSysUserId(getSysUserId(request));
-            analyzerService.update(analyzer);
-
-            AnalyzerTestNameCache.getInstance().reloadCache();
-
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("message", "analyzer.delete.success");
-            response.put("messageKey", "analyzer.delete.success");
-            response.put("deleted", true);
-            return ResponseEntity.ok(response);
-        } catch (org.hibernate.ObjectNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        } catch (Exception e) {
-            logger.error("Error deleting analyzer", e);
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
