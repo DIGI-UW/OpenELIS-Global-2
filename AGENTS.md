@@ -4,9 +4,10 @@
 
 For FILE-based analyzer workflows in OpenELIS Global 2:
 
-- Bridge is the runtime owner of directory watching/polling and file transport.
-- OpenELIS owns configuration, bridge registration, direct ingestion endpoint,
-  and result processing.
+- Bridge owns the analyzer connection, its runtime configuration, directory
+  watching/polling, parsing, archive/error handling, and file transport.
+- OpenELIS owns the lab-facing connection reference, local clinical bindings,
+  direct normalized ingestion endpoint, result processing, review, and audit.
 - An OpenELIS app-side FILE poller is outside the target architecture and must
   not be added. Any proposal to change this requires an explicit architecture
   decision that supersedes this ownership model.
@@ -33,21 +34,26 @@ source only.
   comparison, never as an implementation specification.
 
 For the target analyzer architecture, Analyzer Bridge owns portable analyzer
-profiles and analyzer-facing runtime behavior (listeners, parsing, probes,
-protocol execution, and FILE watching/transport). OpenELIS owns lab-facing
-orchestration, local clinical catalog bindings, audit, operational QC,
-activation, held results, and review. Do not recreate Bridge runtime behavior in
+profiles, durable analyzer connections and their runtime configuration, and
+analyzer-facing behavior (listeners, parsing, probes, protocol execution, and
+FILE watching/transport). OpenELIS owns lab-facing orchestration, the reference
+to a Bridge connection, lab units, local clinical catalog bindings,
+verification/audit, activation intent, operational QC, held results, and review.
+Do not recreate Bridge runtime or connection-configuration authority in
 OpenELIS.
 
 The established working analyzer profile system is the implementation baseline,
 not a disposable legacy model. A profile has exactly two jobs: define
 communication/runtime behavior for one analyzer type, and supply defaults for
-creating a new instance of that type in OpenELIS. Moving catalog packaging to
-Bridge, making revisions immutable, and adding lifecycle/management UX must
-evolve those semantics additively. Do not introduce a second profile contract,
-replace profile-owned defaults with frontend/server constants, or accept a
-profile-contract change without unabridged GeneXpert ASTM and FluoroCycler
-compatibility tests across OE setup, Bridge runtime, and analyzer mock traffic.
+creating a new Bridge connection for that type through the OpenELIS setup
+workflow. Bridge persists the connection's profile pin and runtime values;
+OpenELIS persists only its Bridge connection reference and LIMS-owned state.
+Moving catalog packaging to Bridge, making revisions immutable, and adding
+lifecycle/management UX must evolve those semantics additively. Do not introduce
+a second profile contract, replace profile-owned defaults with frontend/server
+constants, or accept a profile-contract change without unabridged GeneXpert ASTM
+and FluoroCycler compatibility tests across OE setup, Bridge runtime, and
+analyzer mock traffic.
 
 Existing profile content is curated from instrument evidence. A current row is
 retained, corrected, represented as a proven alias, split, or removed according
@@ -72,9 +78,12 @@ violations, and alerts) remains a separate linked workflow and must not gate
 analyzer activation or stale analyzer mapping/recognition verification.
 
 Published Bridge profile revisions are immutable and retained while referenced.
-An OpenELIS analyzer pins a profile ID/revision; Update shared and Duplicate
-Profile never move a configured analyzer implicitly, and OpenELIS must not keep
-an authoritative copied-profile snapshot or a per-analyzer mapping editor.
+A Bridge connection pins a profile ID/revision; an OpenELIS analyzer references
+that connection and records the acknowledged profile reference needed for local
+binding verification and audit. Update shared and Duplicate Profile never move a
+configured connection implicitly, and OpenELIS must not keep an authoritative
+copied-profile snapshot, runtime-configuration copy, or per-analyzer mapping
+editor.
 
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains

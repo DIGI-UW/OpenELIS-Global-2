@@ -1,246 +1,248 @@
-# OGC-1054 Feature Map
+# OGC-1054 Architecture Review
 
 **Updated:** 2026-08-24
 
-**Purpose:** Plain-language review aid for the analyzer feature
+**Delivery state:** [authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 
-**Status authority:** [Authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+**Product contract:** [functional specification](./spec.md)
 
-This page explains the feature without creating another source of delivery
-state. Roadmap markers change only in the authoritative roadmap. GitHub remains
-the source for pull-request and merge state.
+This is a review aid, not another status ledger. It explains what exists, what
+must change, and what must be proven before implementation resumes.
 
-## Start Here
+## Verdict
 
-| Question                      | Current answer                                                                                                                                                                                                    |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| What is the product outcome?  | A laboratory administrator chooses a reusable analyzer type, creates and verifies a local analyzer connection, connects it through Bridge, activates it, and safely reviews incoming patient and control results. |
-| What is active now?           | M3: guided setup, connection testing, activation, lifecycle, and the link to operational Quality Control.                                                                                                         |
-| Is the MVP accepted?          | No. M4 result traffic and G0 deployed human acceptance have not happened.                                                                                                                                         |
-| What is the immediate defect? | The current M3 code makes OpenELIS interpret analyzer protocol and transport details that belong in Bridge.                                                                                                       |
-| What must happen next?        | Correct the canonical M3 contract, remove or rewrite tests that require the wrong ownership, then replace the OpenELIS-specific runtime path with a generic Bridge-described setup path.                          |
+The stack contains useful profile management, mapping, guided-setup, lifecycle,
+and QC-link work. It is not yet the approved architecture or an accepted MVP.
 
-## Product Story
+The main correction is narrow but structural: current OpenELIS code stores and
+interprets analyzer connection details, then sends a complete runtime
+registration to Bridge. The target keeps the lab-facing workflow in OpenELIS
+while Bridge owns and persists the profile-pinned connection and all
+analyzer-facing behavior.
+
+The current remote M3 preview is reviewable but not acceptance-ready. Its
+visible Add Analyzer flow failed at **Continue to Verify** on 2026-08-24. No
+root cause is asserted until the owning tests and runtime evidence identify it.
+
+## Product Model
 
 ```mermaid
 flowchart LR
-    A[Choose an analyzer type] --> B[Create a named analyzer for a lab]
-    B --> C[Review local test and result bindings]
-    C --> D[Confirm analyzer control recognition]
-    D --> E[Enter the site values requested by Bridge]
-    E --> F[Test the connection through Bridge]
-    F --> G[Review blockers and activate]
-    G --> H[Receive patient and control results]
-    H --> I[Hold and resolve anything unknown]
-    H --> J[Use operational Quality Control separately]
+    P[Bridge profile revision<br/>one analyzer type] --> C[Bridge connection<br/>one configured instrument]
+    C --> A[OpenELIS analyzer<br/>one lab-facing record]
+    A --> B[Local test and result bindings]
+    A --> Q[Operational Quality Control]
+    C --> R[Bridge runtime]
+    R --> I[Physical analyzer or mock]
 ```
 
-The user should experience one analyzer dashboard, one separate Analyzer Types
-manager, and links to existing Quality Control and alert workflows. The user
-should never need to understand plugins, profile files, protocols, listeners,
-payloads, or Bridge internals.
+There are three objects, with one authority for each:
 
-## System Responsibilities
+| Object | Authority | Meaning |
+| --- | --- | --- |
+| Profile revision | Bridge | Immutable analyzer-type behavior and defaults for a new connection |
+| Analyzer connection | Bridge | Durable entered settings, exact profile pin, revision, probe evidence, and runtime state |
+| Analyzer | OpenELIS | Name, lab units, Bridge connection reference, local bindings, verification, activation intent, results, and QC links |
 
-| System              | Owns                                                                                                                                                                                                                                                                                                        | Must not own                                                                                                                                    |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Analyzer Bridge** | Reusable analyzer profiles and immutable revisions; the fields and defaults needed for site setup; protocol and transport behavior; listeners; parsing; connection tests; FILE watching and transport; control-result recognition; normalized output; runtime registration; outbound analyzer communication | OpenELIS laboratory units, local clinical catalog choices, operational Quality Control policy, result release, or user review decisions         |
-| **OpenELIS**        | Named analyzer instances; selected profile ID and revision; lab units; generic site-entered values; local Test and Result Option bindings; verification and audit; activation intent; held results; alerts; clinical review; operational Quality Control                                                    | ASTM, HL7, FILE, TCP, serial, listener, parser, or analyzer-specific runtime decisions; a copied profile; a second mapping editor; FILE polling |
-| **Analyzer mock**   | Realistic, deterministic instrument behavior and traffic for the priority analyzers                                                                                                                                                                                                                         | Profiles, mapping, activation, Quality Control, review, or other product workflows                                                              |
-| **Review tooling**  | Grist checklist delivery, build identity, checklist revision, review capture, and report export                                                                                                                                                                                                             | Product behavior, fixtures, or acceptance decisions                                                                                             |
+`Analyzer Type` is the lab-facing composition of a Bridge profile and its local
+OpenELIS catalog binding. It is not another profile implementation.
 
-### Correct Setup Boundary
+## One User Workflow
 
-```mermaid
-sequenceDiagram
-    actor User
-    participant OE as OpenELIS
-    participant BR as Analyzer Bridge
-    participant Instrument as Analyzer or mock
+1. A lab administrator opens **Analyzers** and starts **Add Analyzer** inline.
+2. They choose an Analyzer Type, name the physical instrument, and assign lab
+   units.
+3. They review the type's local Test, Result Option, and control-recognition
+   bindings.
+4. OpenELIS asks Bridge to create a connection pinned to the chosen profile
+   revision.
+5. OpenELIS renders Bridge-described setup fields and submits values back to
+   that connection without interpreting or storing them as runtime authority.
+6. The user runs a visible connection test, reviews blockers, and activates the
+   analyzer. Probe success is evidence, not an activation gate.
+7. Bridge receives and normalizes traffic. OpenELIS binds known results, holds
+   unknowns, and routes recognized controls into the separate QC workflow.
 
-    User->>OE: Select analyzer type and exact revision
-    OE->>BR: Request that revision's setup description
-    BR-->>OE: Generic fields, choices, requirements, and defaults
-    User->>OE: Enter site values and verify local bindings
-    OE->>BR: Send profile reference, analyzer identity, status, and generic values
-    BR->>BR: Validate and create protocol-specific runtime
-    BR-->>OE: Return exact acceptance or visible blockers
-    Instrument->>BR: Send analyzer traffic
-    BR-->>OE: Send normalized patient/control result with raw context
-    OE->>OE: Bind, hold, review, evaluate QC, and release as appropriate
-```
+The UI remains coherent in OpenELIS. Moving connection authority to Bridge does
+not create a second admin application.
 
-The decisive architecture test is:
+## Ownership Test
 
-> A valid profile revision can add, remove, or change a described site field
-> without changing OpenELIS production code.
+The boundary is correct only when all of these are true:
 
-OpenELIS may display and retain the field; it may not interpret its analyzer
-runtime meaning.
+- A valid profile may add, remove, or change a setup field without an OpenELIS
+  production-code or schema change.
+- Restarting Bridge restores the exact active connection and profile revision
+  without OpenELIS replaying a complete runtime definition.
+- OpenELIS can be inspected without finding an analyzer IP address, port,
+  credential, watch directory, delimiter, protocol mode, parser choice, or
+  other analyzer-facing value as configuration authority.
+- Operational QC changes neither analyzer verification nor activation.
+- Production behavior contains no branch for a named analyzer, profile ID,
+  vendor, model, test code, or fixture.
 
-## How Configuration Relates To A Profile
+## Profile Contract
 
-| Information                     | Authority | Meaning                                                                                                                                                         |
-| ------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Profile revision                | Bridge    | Immutable definition of one analyzer type: analyzer communication behavior plus the configuration fields and defaults for a new instance                        |
-| Site-entered values             | OpenELIS  | The lab's desired values for the generic fields described by the pinned profile revision                                                                        |
-| Effective runtime configuration | Bridge    | The pinned profile defaults merged with accepted site values and materialized into listeners, connections, parsers, routing, probes, and outbound behavior      |
-| Local laboratory configuration  | OpenELIS  | Analyzer name, lab units, Test and Result Option bindings, verification/audit, activation intent, held results, review, alerts, and operational Quality Control |
+A profile has exactly two jobs:
 
-OpenELIS keeps what the laboratory selected; Bridge alone decides what those
-values mean to an analyzer runtime. OpenELIS does not copy the profile or store
-Bridge's materialized runtime as a second authority. A new profile revision
-never changes an existing analyzer implicitly.
+1. define communication and runtime behavior for one analyzer type; and
+2. provide defaults for creating a new connection of that type.
 
-The missing interface in the current implementation is a versioned generic
-field description. The Bridge response must identify stable keys, input kinds,
-requiredness, choices, conditions, defaults, and display information. OpenELIS
-must render and retain those values without a protocol decision table. The
-registration and probe requests then contain the exact profile pin plus those
-generic values; Bridge validates and materializes both requests through the
-same profile-owned logic.
+The existing Bridge profile system is evolved in place. M1 must not introduce a
+second profile family, frontend defaults, or server constants that duplicate
+profile content.
 
-## Why The Boundary Drifted
+### Required In Every Published Revision
 
-This was an implementation and review failure, not an unresolved product
-choice.
+| Section | Requirement |
+| --- | --- |
+| Identity | Stable profile ID, immutable revision, display name, manufacturer/model metadata, lifecycle state |
+| Runtime | Complete protocol-conditional framing, transport, direction, identification, extraction, aggregation, and capabilities |
+| New-connection defaults | Stable field keys, input type, requiredness, choices/conditions, and safe defaults where a default is valid |
+| Vocabulary | Every evidence-backed emitted test/result concept and portable coding hints |
+| Control recognition | Explicit `RULES` definition or an affirmed `NONE`; no hidden fallback |
 
-| Evidence                                                                                                                                     | What it left behind                                                                                    |
-| -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| [OpenELIS PR #2767](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/2767) introduced fixed analyzer network fields                         | The OpenELIS analyzer record became an analyzer-runtime schema rather than an abstract instance record |
-| [OpenELIS PR #3195](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3195) moved FILE fields onto that record while making Bridge mandatory | Bridge owned execution, but OpenELIS still described FILE and network runtime configuration            |
-| [OpenELIS PR #3390](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3390) sent editable analyzer identification rules to Bridge            | Operational Quality Control and analyzer control recognition became one mixed path                     |
-| The pushed R0 runtime contract said OpenELIS sent connection choices and runtime configuration                                               | Detailed acceptance contradicted the roadmap's higher-level Bridge ownership rule                      |
-| Existing tests asserted concrete GeneXpert, HL7, and FILE payloads                                                                           | The examples could pass without proving that OpenELIS remained analyzer-agnostic                       |
+Protocol-specific sections are required only when that protocol needs them.
+Secrets and site-specific values may intentionally have no default. Portable
+coding hints are optional; an OpenELIS database identifier is forbidden.
 
-The required guard was absent: a synthetic valid profile must be able to add,
-remove, or change its described site fields without an OpenELIS production-code
-change. That guard is now mandatory for M3 and every later checkpoint.
+### Never In A Profile
 
-## Measured Remediation Surface
+- a concrete analyzer connection, site address, credential, or watch directory;
+- an OpenELIS lab unit, Test ID, Result Option ID, or operational-QC policy;
+- mutable shared state or an instruction to repoint existing connections; or
+- a hidden classifier, analyzer-name switch, or compatibility fallback.
 
-The 2026-08-24 source audit found protocol/transport-specific OpenELIS concepts
-in 25 production files and 27 test or evidence files. Of those, the active
-OGC-1054 stack introduced 12 production files and 17 test or evidence files;
-13 production files and 10 tests inherited the older model. These are affected
-files, not files that must all be discarded.
+MVP runtime publication is limited to the evidence-backed GeneXpert ASTM,
+FluoroCycler FILE, and QuantStudio FILE profiles. Other files are curated and
+returned one by one after contract and mock-transport proof; they are not
+carried as a legacy catalog.
 
-The direct replacement surface is the fixed OpenELIS connection fields and
-enums, profile-default interpretation, protocol-specific form branches,
-runtime-payload construction, activation checks that interpret runtime details,
-outbound host/protocol routing, and tests that require those behaviors. The
-profile catalog, immutable revisions, type-management workflow, local mappings,
-guided-setup shell, lab units, audit/lifecycle, operational Quality Control,
-Bridge transport/probe executors, and analyzer-mock traffic remain useful.
+## Current Code Disposition
 
-## Current Implementation Disposition
+| Current area | Finding | Action |
+| --- | --- | --- |
+| Bridge profile catalog and immutable revisions | Useful foundation built on the established profile concept | Retain; correct the single contract and prove priority-profile parity |
+| Analyzer Types UI and lifecycle | Useful lab-facing management surface | Retain; complete Carbon, URL, breadcrumb, and visual behavior |
+| Shared local mapping and verification | Correct OpenELIS responsibility | Retain; ensure one editor and catalog-bound targets only |
+| Guided Add Analyzer shell | Correct user journey and location | Retain the shell; replace its connection implementation |
+| OpenELIS `Analyzer` runtime fields | Stores address, port, modes, FILE settings, and other Bridge concerns | Migrate released values, then delete fields and schema |
+| OpenELIS `AnalyzerType` and plugin registry | Local runtime/type authority duplicates Bridge | Remove after consumers use the Bridge profile composition |
+| `BridgeRegistrationService` full-state sync | Makes OpenELIS the runtime source of truth | Replace with versioned Bridge connection commands |
+| `InstanceAwareAnalyzerRouter` | Routes using OpenELIS runtime details | Remove; dispatch through the referenced Bridge connection identity |
+| Protocol-specific setup branches | OpenELIS understands FILE/network/runtime fields | Replace with one generic Bridge-described Carbon form |
+| Activation candidate full-registration JSON | Preserves the wrong desired-state model | Replace with explicit local verification and Bridge acknowledgment references |
+| `AnalyzerQcRule` | Mixed control recognition with operational QC | Production path already removed in M2; keep removal guards |
+| `/analyzers/errors` duplicate dashboard | Second unresolved-result workflow | Remove; use one held-result/review workflow |
+| Bridge profile runtime and probes | Correct owner, currently fed by transient OE registration | Retain executors; back them with durable Bridge connections |
+| Analyzer mock priority traffic | Useful deterministic instrument evidence | Retain; remove direct-to-OE and obsolete alias behavior after parity |
 
-These labels describe what to do with current code. They are not roadmap
-markers.
+This does not discard all M1-M3 work. It replaces the connection-authority
+subset and removes inherited paths that contradict the target.
 
-| Area                           | Current implementation                                                                                                 | Disposition                                                                                     |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Existing Bridge profile system | Reusable profiles now have catalog lifecycle, publication metadata, immutable revisions, and priority profile fixtures | **Retain and verify** against the established GeneXpert and FluoroCycler behavior               |
-| Analyzer Types                 | Bridge-backed list, profile lifecycle actions, revision history, usage, and local readiness composition                | **Retain and audit** for complete Carbon, URL, and visual behavior                              |
-| Local mapping                  | One shared Analyzer Types mapping surface with Test and Result Option binding and confirmation                         | **Retain and audit**; remove any remaining duplicate or per-analyzer path                       |
-| Revision pinning               | Analyzer instances reference an exact profile revision and do not move automatically                                   | **Retain**                                                                                      |
-| Guided setup shell             | Inline setup, URL-backed steps, lab units, summary, lifecycle actions, and linked Quality Control work                 | **Retain the user workflow; refactor its connection section**                                   |
-| Connection form                | OpenELIS branches on FILE/network behavior and owns fixed transport fields                                             | **Replace** with one generic renderer driven by Bridge's setup description                      |
-| Profile default application    | OpenELIS parses protocol, transport, role, port, and communication defaults                                            | **Remove**; Bridge supplies the generic setup description and materializes runtime behavior     |
-| Runtime registration           | OpenELIS constructs protocol, data-flow, source, and transport-specific connection objects                             | **Replace** with profile reference plus generic site values                                     |
-| Activation checks              | OpenELIS checks transport and data-flow compatibility itself                                                           | **Replace** with local clinical checks plus exact Bridge acceptance of the candidate            |
-| Outbound orders                | OpenELIS sends analyzer protocol, host, and port                                                                       | **Replace** with analyzer identity and clinical order data; Bridge uses its active registration |
-| Operational Quality Control    | Existing control lots, QC results, statistics, Westgard evaluation, violations, and alerts remain separate             | **Retain**; never use them as analyzer activation blockers                                      |
-| Safe result traffic            | Complete known, unknown, held, resolved, alert, and visible verification story                                         | **Not yet delivered; M4**                                                                       |
-| Exact remote human acceptance  | One unchanged deployment, 17 Grist steps, inspected screenshots/trace/console, and MP4                                 | **Not yet delivered; G0**                                                                       |
+## Released-Data Migration
 
-## Roadmap In Plain Language
+OpenELIS release `3.2.2.0` already contains analyzer runtime fields. A real
+upgrade therefore needs a one-time migration, even though the feature is new
+and no legacy runtime is allowed at G0.
 
-| Checkpoint | Delivers                                                                             | Acceptance meaning                                                                                                    |
-| ---------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| **R0**     | One governing roadmap and architecture                                               | The work has one unambiguous source of direction                                                                      |
-| **F0**     | A small trustworthy foundation                                                       | Existing behavior and tests survive only when they match the target architecture                                      |
-| **E0**     | The versioned OpenELIS/Bridge contract and clean replacement boundary                | Both sides agree on ownership before feature work builds on it                                                        |
-| **M1**     | Reusable Analyzer Types and profile lifecycle                                        | Laboratories can manage reusable analyzer types without making OpenELIS the profile authority                         |
-| **M2**     | Local test/result binding and recognition confirmation                               | A laboratory can safely connect analyzer vocabulary to its local catalog                                              |
-| **M3**     | Guided setup, connection evidence, activation, lifecycle, and linked Quality Control | A complete analyzer can be configured and activated while Bridge owns runtime and Quality Control remains independent |
-| **M4**     | Real traffic, verification, held unknowns, resolution, and alerts                    | Realistic analyzer traffic is safe and understandable end to end                                                      |
-| **G0**     | Exact deployment and named human acceptance                                          | The full MVP, not merely a checkpoint, is accepted                                                                    |
-| **R1/R2**  | Broader analyzer catalog and operational rollout                                     | The accepted MVP expands without changing its ownership model                                                         |
+1. Quiesce analyzer configuration changes and analyzer traffic.
+2. Add the durable Bridge connection contract and an additive OpenELIS
+   connection reference.
+3. Run a repository-owned `plan` operation that reports every source analyzer
+   as migratable, needing correction, or intentionally excluded. It must not
+   infer a profile from names or silently invent values.
+4. Apply idempotently: create the pinned Bridge connection, verify its durable
+   revision, and record the reference in OpenELIS.
+5. Restart Bridge and verify that each migrated active connection restores
+   exactly.
+6. Remove the old writer, reader, endpoints, schema fields, migration utility,
+   and superseded tests before G0. Resume traffic only after verification.
 
-## Required Loop For Every Implementation Slice
+This is a bounded upgrade operation, not a dual writer or compatibility path.
+The analyzer demo data may be reset rather than migrated.
 
-Every bounded behavior change follows this sequence. A slice stops when any
-step fails; later UI or deployment evidence cannot waive an earlier failure.
+## Design And Remote Review
 
-1. **Select one acceptance statement.** Name the user behavior, owning system,
-   forbidden behavior, and required proof before editing production code.
-2. **Audit existing tests first.** Mark each affected test as retain, rewrite,
-   move to the owning repository, or delete. A current test is evidence only
-   after it matches the governing specification.
-3. **Record the expected failure.** Add the smallest failing test at the system
-   that owns the behavior. For a repository boundary, add producer and consumer
-   contract tests before either implementation changes.
-4. **Implement the smallest complete behavior.** Do not keep the superseded
-   writer, reader, route, field, or test beside the replacement.
-5. **Run the owning tests.** Unit, persistence, contract, frontend, mock, and
-   assembled tests prove only the behavior appropriate to their layer.
-6. **Run alignment before closing the slice.** Compare the changed code and
-   tests with the selected acceptance statement and the responsibility table
-   above. Run the relevant `digi-uw/code-qa` alignment, coverage, simplicity,
-   legacy-removal, and companion checks now, not only before merge.
-7. **Inspect the assembled user behavior when applicable.** Review console
-   output, trace, screenshots, runtime state, and desktop/mobile layout before
-   recording video or publishing a checkpoint.
-8. **Change roadmap state only at the formal gate.** Code existence and green
-   tests are insufficient when the required ownership, removal, integration,
-   or visible evidence is missing.
+`openelis-work@main` supplies functional and visual intent only. The current
+mock and the deployed preview agree on the main composition: analyzer list,
+inline Add Analyzer, staged Instrument/Verify/Connect sections, Analyzer Types,
+mapping review, and a visible connection result.
 
-### Slice Exit Questions
+| Review point | Current preview | Required correction |
+| --- | --- | --- |
+| Dashboard summary | Total, Active, Inactive | Show setup and attention states needed for work triage |
+| Setup | Inline Carbon flow is present | Save currently fails before Verify; repair from owning evidence |
+| Connection form | Fixed FILE/network concerns | Render Bridge-described fields generically |
+| Navigation | Exposes a separate Error Dashboard | Remove duplicate queue and link the canonical held-result flow |
+| Breadcrumbs | Present, with awkward trailing separators | One linkable path with deterministic route/query state |
+| Types | Separate manager with profile actions | Preserve this separation; clarify type versus connection |
+| Responsive proof | Not accepted | Compare inspected desktop and mobile screenshots to current mocks |
 
-Every answer must be **yes**:
+The analyzer review overlay is deployed and currently exposes 17 Grist steps
+with build metadata and checklist revision. After this architecture is approved,
+three step descriptions need synchronization: durable Bridge connection save
+and reload; activation independent of QC/probe with exact Bridge acknowledgment;
+and priority ASTM plus FILE traffic. Existing checkmarks do not accept a changed
+build.
 
-- Does the implementation satisfy the selected acceptance statement exactly?
-- Is the behavior implemented in the system that owns it?
-- Were contradictory tests removed, rewritten, or moved before relying on the
-  new green result?
-- Is there one active implementation path and no compatibility writer or
-  duplicate interface?
-- Do contract tests prove both sides of every changed repository boundary?
-- Do user-interface tests exercise real routing and user interaction rather
-  than asserting application programming interface behavior?
-- Does the assembled behavior still match the functional and visual intent in
-  `openelis-work@main` without using that repository as technical direction?
-- Is the pull request evidence strong enough to prove the full checkpoint exit,
-  rather than one example within it?
+## Pull-Request Train
 
-## Immediate M3 Remediation
+| Checkpoint | Pull requests | State |
+| --- | --- | --- |
+| R0 | OpenELIS #4049 | Review-ready; this correction belongs here |
+| F0 | OpenELIS #4053 | Review-ready, stacked |
+| E0 | OpenELIS #4055; Bridge #45 | Review-ready, stacked; contracts require correction after R0 approval |
+| M1 | OpenELIS #4056; Bridge #46; mock #40 | Review-ready, stacked; profile work must remain one evolved system |
+| M2 | OpenELIS #4118; Bridge #47 | Review-ready, stacked |
+| M3 | OpenELIS #4125; Bridge #48 | Active; production edits paused for this architecture review |
+| M4, G0 | Not opened | Future |
 
-1. Correct the canonical roadmap wording that currently lets OpenELIS interpret
-   connection details despite the fixed Bridge ownership rule.
-2. Inventory affected connection, registration, activation, dispatch, and UI
-   tests; delete, move, or rewrite every test that requires the wrong owner.
-3. Add failing Bridge producer and OpenELIS consumer tests for a generated
-   generic setup description and generic instance values.
-4. Make Bridge derive, validate, probe, and materialize runtime behavior from
-   the exact profile revision and entered values.
-5. Make OpenELIS render and persist those values generically, then remove its
-   transport decisions, fixed runtime fields, duplicate endpoints, and obsolete
-   tests.
-6. Prove that a synthetic valid profile can change its setup fields without an
-   OpenELIS production-code change.
-7. Re-run the complete M3 lower-level, cross-repository, assembled, desktop,
-   mobile, remote-preview, and Grist gates before calling M3 review-ready.
+Corrections stay in their owning existing pull requests and merge in roadmap
+order. There is no parallel remediation stack and no empty companion pull
+request.
+
+## First Slice After Approval
+
+1. Amend E0 producer and consumer contracts for a durable, revisioned Bridge
+   connection whose setup description is profile-driven.
+2. Audit affected tests before production edits; classify each as retain,
+   rewrite, move, or delete.
+3. Record failing Bridge persistence/restart tests and failing OpenELIS consumer
+   tests using a synthetic profile with fields unknown to OpenELIS.
+4. Implement Bridge create/read/update/probe/lifecycle persistence and restart
+   restoration without changing protocol executors unnecessarily.
+5. Replace OpenELIS full-state registration and fixed connection storage with
+   the connection reference and generic mediator.
+6. Run the migration fixture, repository guards, owner tests, cross-repository
+   contracts, router-based UI tests, and assembled priority mock traffic.
+7. Publish the same tested build to the shared analyzer demo without touching
+   the AMR deployment, inspect evidence, then update Grist wording.
+
+## Approval Points
+
+The ownership model is fixed. Three user-policy details are stated explicitly
+for confirmation before implementation resumes:
+
+1. **Incomplete mappings:** activation is allowed only after a human reviews
+   and acknowledges every unresolved/excluded item. Unknown incoming traffic is
+   held; unrelated mapped traffic continues. This matches the current product
+   mock's functional intent.
+2. **Failed two-way probe:** the UI offers an explicit switch to a supported
+   results-only mode when the profile allows it. There is no silent fallback.
+3. **Instrument type not listed:** setup links to the separate Analyzer Types
+   workflow to create or duplicate a profile; it does not author a profile
+   inside the analyzer-connection form.
+
+Approval of this page authorizes contract correction and the first TDD slice.
+It does not accept the current deployment or waive any roadmap gate.
 
 ## Review Sources
 
-- [Authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 - [Functional specification](./spec.md)
-- [Engineering plan](./plan.md)
-- [Acceptance matrix](./contracts/acceptance-matrix.md)
-- [UAT mapping](./contracts/uat-mapping.md)
-- [Profile-system remediation report](../roadmaps/ogc-1054-profile-system-remediation-report-2026-08-19.md)
-- [`openelis-work@main` analyzer designs](https://github.com/DIGI-UW/openelis-work/tree/main/designs/analyzer-integration) - functional and visual intent only
-- [R0 roadmap pull request](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4049)
-- [Active M3 OpenELIS pull request](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4125)
-- [Active M3 Bridge pull request](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/48)
+- [Authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+- [`openelis-work@main` analyzer designs](https://github.com/DIGI-UW/openelis-work/tree/main/designs/analyzer-integration), functional and visual intent only
+- [OGC-1057 design QA findings](https://github.com/DIGI-UW/openelis-work/blob/qa/ogc-1057-guided-setup-report/designs/analyzer-integration/ogc-1057-qa-report.md)
+- [R0 pull request #4049](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4049)
+- [Active OpenELIS M3 pull request #4125](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4125)
+- [Active Bridge M3 pull request #48](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/48)
