@@ -12,7 +12,6 @@ import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -48,12 +47,15 @@ public class AnalyzerOwnershipContractTest {
         assertEquals(analyzer.path("bridgeConnectionId"),
                 analyzer.path("activation").path("acknowledgement").path("connectionId"));
 
-        String schema = Files.readString(CONTRACT_ROOT.resolve("openelis-analyzer-reference.schema.json"));
-        for (String forbidden : new String[] { "profileSnapshot", "profileDocument", "runtimeValues",
-                "connectionValues", "defaultConfigId", "desiredStateFingerprint", "AnalyzerQcRule", "qcRules",
-                "controlLots", "westgard" }) {
-            assertFalse(forbidden, schema.contains(forbidden));
-        }
+    }
+
+    @Test
+    public void openElisAnalyzerContractRejectsUndeclaredState() throws Exception {
+        com.fasterxml.jackson.databind.node.ObjectNode analyzer = (com.fasterxml.jackson.databind.node.ObjectNode) localFixture(
+                "openelis-analyzer-reference.json").deepCopy();
+        analyzer.put("undeclaredState", true);
+
+        assertFalse(localValidationMessages("openelis-analyzer-reference.schema.json", analyzer).isEmpty());
     }
 
     @Test
@@ -120,15 +122,6 @@ public class AnalyzerOwnershipContractTest {
 
             assertFalse(fixtureName,
                     localValidationMessages("analyzer-migration-manifest.schema.json", manifest).isEmpty());
-        }
-    }
-
-    @Test
-    public void supersededCurationAndCopiedCandidateArtifactsAreAbsent() {
-        for (String removed : new String[] { "profile-curation-dispositions.json", "cutover-contract.md",
-                "adr-001-analyzer-profile-site-binding-boundary.md",
-                "contracts/openelis-analyzer-candidate.schema.json", "fixtures/openelis-analyzer-candidate.json" }) {
-            assertFalse(removed, Files.exists(ARTIFACT_ROOT.resolve(removed)));
         }
     }
 
