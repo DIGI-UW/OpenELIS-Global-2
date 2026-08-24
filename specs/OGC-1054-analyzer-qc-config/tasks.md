@@ -142,7 +142,9 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
    explicit LIS-initiated capability, missing capability is rejected rather
    than converted to `false`, FILE setup fabricates no network fields, receiver
    endpoints come from Bridge listener configuration, and no application
-   fallback infers any value.
+   fallback infers any value. Prove the exact draft candidate is validated and
+   probed transiently without desired-state synchronization or mutation of an
+   existing active Bridge runtime registration.
 3. Write RTL real-router tests for Instrument, Verify, Connect, separate
    Analyzer Types create/Duplicate Profile return, the completion
    summary, breadcrumbs, URL state, history, reload, role-applicable fields,

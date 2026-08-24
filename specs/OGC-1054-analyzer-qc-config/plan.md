@@ -149,11 +149,14 @@ Implement the linkable Instrument, Verify, and Connect sequence with a readable
 completion summary. For network/socket profiles, consume the pinned revision's
 declared default and explicit LIS-initiated capability without application
 inference; for FILE profiles, consume declared FILE behavior without fabricating
-network fields. Render Bridge's structured probe evidence inline. Remove the
-standalone create/edit and connection-modal paths once the replacement is
-green. Keep Bridge probes and capabilities separate from OpenELIS operational-QC
-policy. Link to the canonical QC workflow, but permit activation only from the
-exact non-QC predicates in `MVP-016`, applied to every transition into `ACTIVE`.
+network fields. Render Bridge's structured probe evidence inline. Validate and
+probe the exact draft candidate transiently through the pinned-profile contract
+without desired-state synchronization or mutation of the active Bridge runtime.
+Remove the standalone create/edit and connection-modal paths once the
+replacement is green. Keep Bridge probes and capabilities separate from
+OpenELIS operational-QC policy. Link to the canonical QC workflow, but permit
+activation only from the exact non-QC predicates in `MVP-016`, applied to every
+transition into `ACTIVE`.
 
 ### M4 - Safe Traffic
 

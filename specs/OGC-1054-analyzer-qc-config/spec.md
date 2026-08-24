@@ -257,7 +257,11 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
 - Inline Connect reports Bridge's structured success, failure, timeout, and
   missing-configuration evidence in plain language and shows the endpoint the
   lab must configure. It does not replace that evidence with a simulated
-  activity log or generic status-only result.
+  activity log or generic status-only result. Bridge validates and probes the
+  exact draft candidate transiently through the pinned-profile contract. A
+  connection test does not run desired-state synchronization or create,
+  replace, start, stop, or otherwise mutate the active Bridge runtime
+  registration.
 - Binding/control-recognition verification and operational-QC state are distinct.
   Operational QC never blocks creating, connecting, or activating an analyzer.
 - Operational QC is configured and reviewed in the existing OpenELIS Quality
