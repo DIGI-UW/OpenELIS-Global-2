@@ -1086,14 +1086,32 @@ rejected server-side.
 
 ### M3 - Guided setup, connectivity, and linked operational QC (OGC-1057)
 
-Execute M3 in this fixed acceptance-slice order: consume the pinned profile's
-connection capability; complete URL-backed inline Connect; remove the
-superseded standalone analyzer and connection-test interfaces; link the
-canonical operational-QC workflow; implement the exact non-QC activation
-predicate; then run the integrated gates and publish the analyzer-only review
-candidate with its Grist steps. These are execution slices, not additional
-roadmap states; M3 remains the sole `[*]` block until its complete exit gate
-passes.
+Resume M3 from current branch evidence, not from narrative assumptions. Select
+the first slice below whose acceptance is not proven in the M3 pull request,
+and complete it before starting the next:
+
+1. consume the pinned profile's connection capability, complete URL-backed
+   inline setup/Connect, and remove the superseded standalone interfaces;
+2. link the canonical operational-QC workflow without coupling it to analyzer
+   verification or activation;
+3. make one activation service the only `ACTIVE` writer and persist durable,
+   exact verification evidence;
+4. build and retain an immutable activation candidate, synchronize that exact
+   desired state, and require the matching Bridge acknowledgement;
+5. apply the complete non-QC activation predicate and expose the same precise
+   blocker set through the lab-facing workflow;
+6. replace hard delete and implicit recovery with audited
+   deactivate/reactivate through the same lifecycle boundary;
+7. prove profile-pinned, role-appropriate connectivity with the existing
+   priority analyzer fixtures, changing Bridge or mock code only when a failing
+   owning contract requires it; and
+8. run the integrated, legacy-removal, Carbon/URL, desktop/mobile, and
+   cross-repository gates, then publish the exact analyzer-only candidate and
+   applicable Grist steps for review.
+
+These are execution slices, not additional roadmap states or a second progress
+ledger. Test and review evidence stays in the owning commits, pull requests,
+and CI. M3 remains the sole `[*]` block until its complete exit gate passes.
 
 1. Complete one inline Instrument -> Verify -> Connect story in OE-M3 with
    canonical URL/query state, linkable breadcrumbs, a readable completion
@@ -1165,7 +1183,10 @@ passes.
     compatibility lifecycle route remains enabled.
 11. Exercise each priority analyzer's role-appropriate connectivity against
     the existing analyzer-mock transport fixture as part of the Bridge/OE
-    contract gate. Reuse the accepted mock implementation when it satisfies the
+    contract gate. M3 mock scope is limited to deterministic instrument traffic
+    and connection behavior required by those priority fixtures. The mock owns
+    no profile lifecycle, mapping, activation, QC, review, or duplicate product
+    workflow. Reuse the accepted mock implementation when it satisfies the
     contract; change the mock only when a failing versioned transport test
     proves missing analyzer behavior.
 12. Correct the `QCResultCreatedEventListenerTest` fixture so it supplies
