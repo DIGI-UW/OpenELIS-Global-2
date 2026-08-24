@@ -145,7 +145,7 @@ describe("WhonetExport", () => {
       await screen.findByRole("link", { name: "Fix specimen mapping" }),
     ).toHaveAttribute(
       "href",
-      `/MasterListsPage/SampleTypeManagement/sample-type-2/basic-info?focus=whonet&returnTo=${encodeURIComponent(previewUrl)}`,
+      `/MasterListsPage/SampleTypeEditor/sample-type-2/basic-info?focus=whonet&returnTo=${encodeURIComponent(previewUrl)}`,
     );
   });
 
