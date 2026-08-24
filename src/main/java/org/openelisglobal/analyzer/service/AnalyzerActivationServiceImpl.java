@@ -14,6 +14,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerActivationCandidate;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.test.service.TestSectionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     private final AnalyzerActivationCandidateService candidateService;
     private final Clock clock;
 
+    @Autowired
     public AnalyzerActivationServiceImpl(AnalyzerService analyzerService,
             BridgeProfileCatalogService profileCatalogService, AnalyzerSiteBindingService siteBindingService,
             AnalyzerSiteBindingConfirmationService confirmationService, TestSectionService testSectionService,
@@ -63,12 +65,28 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public AnalyzerActivationResult readiness(String analyzerId) {
+        Analyzer analyzer = findAnalyzer(analyzerId);
+        ActivationContext context = validateLocalCandidate(analyzer);
+        if (!context.blockers().isEmpty()) {
+            return AnalyzerActivationResult.blocked(analyzer, context.blockers());
+        }
+        try {
+            registrationService.buildActivationRegistration(analyzer);
+            return AnalyzerActivationResult.ready(analyzer);
+        } catch (BridgeRegistrationException exception) {
+            return AnalyzerActivationResult.blocked(analyzer, List.of(new AnalyzerActivationBlocker(CONNECTION_BLOCKER,
+                    Map.of("detail", String.valueOf(exception.getMessage())))));
+        }
+    }
+
+    @Override
     @Transactional
     public AnalyzerActivationResult activate(String analyzerId, String actor) {
-        String effectiveAnalyzerId = requireText(analyzerId, "analyzer ID");
+        Analyzer analyzer = findAnalyzer(analyzerId);
+        String effectiveAnalyzerId = analyzer.getId();
         String effectiveActor = requireText(actor, "actor");
-        Analyzer analyzer = analyzerService.getWithType(effectiveAnalyzerId)
-                .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + effectiveAnalyzerId));
 
         ActivationContext context = validateLocalCandidate(analyzer);
         if (!context.blockers().isEmpty()) {
@@ -115,6 +133,12 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             }
             throw exception;
         }
+    }
+
+    private Analyzer findAnalyzer(String analyzerId) {
+        String effectiveAnalyzerId = requireText(analyzerId, "analyzer ID");
+        return analyzerService.getWithType(effectiveAnalyzerId)
+                .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + effectiveAnalyzerId));
     }
 
     private ActivationContext validateLocalCandidate(Analyzer analyzer) {
