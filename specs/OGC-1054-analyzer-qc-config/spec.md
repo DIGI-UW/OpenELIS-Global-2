@@ -279,6 +279,12 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
   desired-state fingerprint. Each false predicate is one visible blocker. A QC
   rule, control lot, QC result, Westgard status, and connection-test outcome are
   never activation prerequisites.
+- After activation, a lab administrator can deactivate the analyzer so Bridge
+  stops new runtime use while the pinned type revision, site bindings, history,
+  held results, and operational-QC links remain intact. Reactivation is an
+  explicit audited action through the same activation predicate and exact
+  Bridge-acknowledgement boundary. No hard-delete action or hidden delete path
+  remains in the user interface, API, service, or repository.
 - Verify offers visible live capture. Every transmitted item reconciles as
   verified, new, or not seen; unknown items remain held. A draft type created
   in Analyzer Types may be populated from received rows, but analyzer setup

@@ -136,7 +136,10 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
 1. Write failing backend tests for setup verification/audit, each exact
    activation predicate on initial activation and re-entry from error/offline,
    draft-versus-active candidate isolation, operational-QC independence, and
-   pinned Bridge acknowledgment matching.
+   pinned Bridge acknowledgment matching. Add lifecycle tests proving that
+   deactivation removes the runtime registration without deleting configuration
+   or history, failed synchronization restores the prior state, and explicit
+   reactivation uses the same predicate and acknowledgement boundary.
 2. Write failing Bridge probe/capability and OE consumer tests proving that
    network/socket modes come from the pinned revision's declared default and
    explicit LIS-initiated capability, missing capability is rejected rather
@@ -154,7 +157,8 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
    or activation blockers.
 5. Implement the unified Carbon workflow with no developer fields, standalone
    create/edit route, separate connection-test modal, redirect, compatibility
-   route, or duplicate setup action.
+   route, duplicate setup action, or analyzer hard-delete path. Provide visible
+   audited deactivate/reactivate actions through the same lifecycle boundary.
 6. Run a focused visible browser story and inspect console, trace,
    desktop/mobile captures, and bookmark/reload behavior.
 7. Run the M3 exit gate, publish the exact analyzer-only candidate without
