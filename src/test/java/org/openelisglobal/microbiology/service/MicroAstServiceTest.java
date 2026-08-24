@@ -782,6 +782,40 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void analyzerResultsResolveOrganismGroupAndSpecimenContext() {
+        MicroAstRun run = awaitingAnalyzerRun();
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(runDAO.update(run)).thenReturn(run);
+        MicroOrganism organism = new MicroOrganism();
+        organism.setId("org-1");
+        organism.setOrganismGroup("Enterobacterales");
+        when(organismDAO.get("org-1")).thenReturn(Optional.of(organism));
+        MicroCase microCase = mutableCase();
+        microCase.setSampleItemId("item-1");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        SampleItem sampleItem = new SampleItem();
+        TypeOfSample specimenType = new TypeOfSample();
+        specimenType.setId("7");
+        sampleItem.setTypeOfSample(specimenType);
+        when(sampleItemService.getData("item-1")).thenReturn(sampleItem);
+        when(sampleItemService.getTypeOfSampleId(sampleItem)).thenReturn("7");
+        MicroBreakpointRule rule = new MicroBreakpointRule();
+        when(breakpointService.findBreakpointRule("eucast-std", "org-1", "Enterobacterales", "abx-1", "VITEK_2", "7",
+                "MIC")).thenReturn(rule);
+        when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
+                .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
+
+        service.applyAnalyzerResults(new MicroAstAnalyzerResultBatch("run-1", "event-1", "7", "card-42", "v9.02",
+                "org-analyzer", "E. coli", new BigDecimal("99.5"), List.of(), "qc-1", true, new Timestamp(1000),
+                new Timestamp(2000), List.of(),
+                List.of(new MicroAstAnalyzerReading("abx-1", new BigDecimal("4"), "ug/mL", null, "r-1"))), "1");
+
+        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", "Enterobacterales", "abx-1", "VITEK_2", "7",
+                "MIC");
+    }
+
+    @Test
     public void analyzerMismatchAndExpertFlagsBlockReviewUntilAcknowledged() {
         MicroAstRun run = awaitingAnalyzerRun();
         run.setStatus(MicroAstRunStatus.RESULTS_IN.name());
