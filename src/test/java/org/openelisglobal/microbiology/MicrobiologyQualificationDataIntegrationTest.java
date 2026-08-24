@@ -47,6 +47,7 @@ public class MicrobiologyQualificationDataIntegrationTest extends BaseWebContext
 
     @Test
     public void denseQualificationDatasetIsServiceCreatedAndRolledBackWithTheTestTransaction() {
+        fixtures.ensureRequiredWorkflowStatuses();
         MicrobiologyQualificationDataService qualificationService = new MicrobiologyQualificationDataService(
                 scenarioService, referenceService, breakpointService, configurationService, isolateService, astService,
                 caseService, true);

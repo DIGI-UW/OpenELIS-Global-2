@@ -149,7 +149,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
         fixtures.ensureSampleEnteredStatus();
         fixtures.ensureAnalysisNotStartedStatus();
         fixtures.ensureAnalysisFinalizedStatus();
-        methodId = fixtures.firstMethodId();
+        methodId = fixtures.createMethodId();
         referenceData = fixtures.createReferenceData(methodId);
     }
 

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioForm;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioRequestForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
@@ -43,6 +44,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MicrobiologyUatScenarioService scenarioService;
+
+    @Autowired
+    private MicrobiologyTestFixtures fixtures;
 
     @Autowired
     private MicrobiologyReferenceService referenceService;
@@ -137,7 +141,8 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     private FinalCase createFinalCase() {
-        String userId = fixturesUserId();
+        String userId = fixtures.defaultUserId();
+        fixtures.ensureRequiredWorkflowStatuses();
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
         request.scenario = "MVP";
         request.scenarioKey = "amendment-integration-" + UUID.randomUUID();
@@ -156,11 +161,6 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         astService.reviewRun(run.getId(), userId);
         reportReleaseService.releaseFinal(scenario.caseId, userId);
         return new FinalCase(scenario.caseId, isolate.getId(), userId);
-    }
-
-    private String fixturesUserId() {
-        return webApplicationContext.getBean(org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.class)
-                .defaultUserId();
     }
 
     private record FinalCase(String caseId, String isolateId, String userId) {

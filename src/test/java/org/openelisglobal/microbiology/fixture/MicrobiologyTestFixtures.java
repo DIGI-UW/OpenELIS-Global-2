@@ -73,12 +73,7 @@ public class MicrobiologyTestFixtures {
                 .getId();
     }
 
-    public String firstMethodId() {
-        List<Method> methods = methodService.getAllActiveMethods();
-        if (methods != null && !methods.isEmpty()) {
-            return methods.get(0).getId();
-        }
-
+    public String createMethodId() {
         Method method = new Method();
         method.setMethodName("Microbiology test");
         method.setDescription("Service-created microbiology integration test method");

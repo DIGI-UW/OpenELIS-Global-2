@@ -172,17 +172,17 @@ public class MicrobiologyTestFixturesTest {
     }
 
     @Test
-    public void provisionsMethodThroughServiceWhenNoActiveMethodExists() {
-        when(methodService.getAllActiveMethods()).thenReturn(List.of());
+    public void provisionsIsolatedMethodThroughService() {
         when(methodService.insert(any(Method.class))).thenReturn("55");
 
-        assertEquals("55", fixtures.firstMethodId());
+        assertEquals("55", fixtures.createMethodId());
 
         ArgumentCaptor<Method> methodCaptor = ArgumentCaptor.forClass(Method.class);
         verify(methodService).insert(methodCaptor.capture());
         assertEquals("Microbiology test", methodCaptor.getValue().getMethodName());
         assertEquals("Y", methodCaptor.getValue().getIsActive());
         assertEquals("7", methodCaptor.getValue().getSysUserId());
+        verify(methodService, never()).getAllActiveMethods();
     }
 
     private SystemUser systemUser(String id) {

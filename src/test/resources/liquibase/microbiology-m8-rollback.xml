@@ -7,6 +7,8 @@
     <include
         file="liquibase/3.5.x.x/060-microbiology-amendment-history.xml" />
     <include
+        file="liquibase/3.5.x.x/060a-microbiology-amendment-isolate-lifecycle.xml" />
+    <include
         file="liquibase/3.5.x.x/061-microbiology-ast-attempts.xml" />
     <include
         file="liquibase/3.5.x.x/062-microbiology-inventory-usage-link.xml" />

@@ -42,7 +42,7 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        methodId = fixtures.firstMethodId();
+        methodId = fixtures.createMethodId();
         sampleItemId = fixtures.createSampleWithSampleItem("OGC782M2").getId();
         referenceData = fixtures.createReferenceData(methodId);
     }

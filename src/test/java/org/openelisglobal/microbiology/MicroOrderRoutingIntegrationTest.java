@@ -35,7 +35,7 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        methodId = fixtures.firstMethodId();
+        methodId = fixtures.createMethodId();
         sampleItemId = fixtures.createSampleWithSampleItem("OGC782M3").getId();
         fixtures.createReferenceData(methodId);
         fixtures.createTbCultureSetup(methodId);
