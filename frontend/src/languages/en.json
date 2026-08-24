@@ -233,6 +233,7 @@
   "analyzer.action.configureConnection": "Configure connection",
   "analyzer.action.delete": "Delete",
   "analyzer.action.editSetup": "Edit setup",
+  "analyzer.action.qualityControl": "Quality Control",
   "analyzer.combinationName.notification": "The combination of analyzer and analyzer test name must be unique",
   "analyzer.delete.cancel": "Cancel",
   "analyzer.delete.delete": "Delete",

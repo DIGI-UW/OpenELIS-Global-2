@@ -134,6 +134,19 @@ const AnalyzersList = () => {
     history.push({ pathname: "/analyzers", search: params.toString() });
   };
 
+  const openQualityControl = (analyzer: Analyzer) => {
+    if (!analyzer.id) {
+      return;
+    }
+
+    const returnTo = `${location.pathname}${location.search}`;
+    const params = new URLSearchParams({ returnTo });
+    history.push({
+      pathname: `/analyzers/qc/instruments/${encodeURIComponent(analyzer.id)}`,
+      search: params.toString(),
+    });
+  };
+
   const closeSetup = () => {
     const params = new URLSearchParams(location.search);
     ["setup", "analyzerId", "profile", "revision"].forEach((key) =>
@@ -688,6 +701,15 @@ const AnalyzersList = () => {
                                           data-testid={`analyzer-action-configure-connection-${row.id}`}
                                         />
                                       )}
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.qualityControl",
+                                      })}
+                                      onClick={() =>
+                                        openQualityControl(analyzer)
+                                      }
+                                      data-testid={`analyzer-action-quality-control-${row.id}`}
+                                    />
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
                                         id: "analyzer.action.delete",

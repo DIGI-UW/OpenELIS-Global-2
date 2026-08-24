@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter, Route } from "react-router-dom";
@@ -59,15 +59,16 @@ describe("InstrumentDetailPage analyzer context", () => {
     ).toBeVisible();
 
     const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
-    expect(breadcrumb.getByRole("link", { name: "Analyzers" })).toHaveAttribute(
-      "href",
-      "/analyzers?search=gene&status=ACTIVE",
-    );
+    const breadcrumbQueries = within(breadcrumb);
     expect(
-      breadcrumb.getByRole("link", { name: "Quality Control Dashboard" }),
+      breadcrumbQueries.getByRole("link", { name: "Analyzers" }),
+    ).toHaveAttribute("href", "/analyzers?search=gene&status=ACTIVE");
+    expect(
+      breadcrumbQueries.getByRole("link", {
+        name: "Quality Control Dashboard",
+      }),
     ).toHaveAttribute("href", "/analyzers/qc/db");
-    expect(
-      breadcrumb.getByText("GeneXpert - Main Lab").closest("li"),
-    ).toHaveAttribute("aria-current", "page");
+    const currentCrumb = breadcrumb.querySelector('[aria-current="page"]');
+    expect(currentCrumb).toHaveTextContent("GeneXpert - Main Lab");
   });
 });
