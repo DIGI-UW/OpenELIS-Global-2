@@ -6,6 +6,7 @@ import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroWhonetContext;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +71,26 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
         query.setParameter("finalReleaseState", "FINAL_RELEASED");
         query.setParameter("fromInclusive", fromInclusive);
         query.setParameter("toExclusive", toExclusive);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroWhonetContext> getWhonetContextsByCaseIds(List<String> caseIds) {
+        if (caseIds == null || caseIds.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroWhonetContext> query = entityManager.unwrap(Session.class)
+                .createQuery("select new org.openelisglobal.microbiology.dao.MicroWhonetContext("
+                        + "c.id, c.sampleItemId, patient.id, patient.nationalId, person.firstName, person.lastName,"
+                        + " patient.gender, patient.birthDate, sample.accessionNumber, sample.enteredDate,"
+                        + " item.collectionDate, specimenType.description, sample.gpsLatitude, sample.gpsLongitude)"
+                        + " from MicroCase c join SampleItem item on item.id = c.sampleItemId"
+                        + " join item.sample sample left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id"
+                        + " left join Patient patient on patient.id = sampleHuman.patientId"
+                        + " left join patient.person person left join item.typeOfSample specimenType"
+                        + " where c.id in (:caseIds) order by c.id", MicroWhonetContext.class);
+        query.setParameterList("caseIds", caseIds);
         return query.list();
     }
 }

@@ -99,6 +99,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
       return undefined;
     }
     let active = true;
+    setPreview(null);
     setLoading(true);
     setError("");
     service

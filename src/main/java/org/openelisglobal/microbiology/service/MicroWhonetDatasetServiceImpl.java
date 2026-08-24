@@ -21,6 +21,7 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.dao.MicroWhonetContext;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewRowForm;
@@ -33,12 +34,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
-import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.reports.action.implementation.reportBeans.WHONETCSVRoutineColumnBuilder.WHONetRow;
-import org.openelisglobal.sample.valueholder.Sample;
-import org.openelisglobal.samplehuman.service.SampleHumanService;
-import org.openelisglobal.sampleitem.service.SampleItemService;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,20 +53,15 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     private final MicroAstReadingDAO astReadingDAO;
     private final MicroOrganismDAO organismDAO;
     private final MicroAntibioticDAO antibioticDAO;
-    private final SampleItemService sampleItemService;
-    private final SampleHumanService sampleHumanService;
 
     public MicroWhonetDatasetServiceImpl(MicroCaseDAO caseDAO, MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO,
-            MicroAstReadingDAO astReadingDAO, MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
-            SampleItemService sampleItemService, SampleHumanService sampleHumanService) {
+            MicroAstReadingDAO astReadingDAO, MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO) {
         this.caseDAO = caseDAO;
         this.isolateDAO = isolateDAO;
         this.astRunDAO = astRunDAO;
         this.astReadingDAO = astReadingDAO;
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
-        this.sampleItemService = sampleItemService;
-        this.sampleHumanService = sampleHumanService;
     }
 
     @Override
@@ -79,6 +70,9 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         NormalizedQuery query = normalize(requestedQuery);
         List<MicroCase> cases = caseDAO.getFinalizedBacteriologyByClosedAtRange(query.fromInclusive, query.toExclusive);
         List<String> caseIds = cases.stream().map(MicroCase::getId).toList();
+        Map<String, PatientContext> contextsByCase = caseDAO.getWhonetContextsByCaseIds(caseIds).stream()
+                .collect(Collectors.toMap(MicroWhonetContext::caseId, this::patientContext, (first, ignored) -> first,
+                        LinkedHashMap::new));
         Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
                 MicroIsolate::getCaseId);
         List<MicroIsolate> allIsolates = cases.stream()
@@ -86,7 +80,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
         List<Candidate> candidates = new ArrayList<>();
         for (MicroCase microCase : cases) {
-            PatientContext context = patientContext(microCase);
+            PatientContext context = contextsByCase.getOrDefault(microCase.getId(), new PatientContext());
             for (MicroIsolate isolate : valuesFor(isolatesByCase, microCase.getId())) {
                 if (ALL.equals(query.significance) || query.significance.equals(isolate.getSignificance())) {
                     candidates.add(new Candidate(microCase, isolate, context));
@@ -236,31 +230,23 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         return included;
     }
 
-    private PatientContext patientContext(MicroCase microCase) {
-        SampleItem sampleItem = sampleItemService.getData(microCase.getSampleItemId());
-        Sample sample = sampleItem == null ? null : sampleItem.getSample();
-        Patient patient = sample == null ? null : sampleHumanService.getPatientForSample(sample);
+    private PatientContext patientContext(MicroWhonetContext source) {
         PatientContext context = new PatientContext();
-        context.patientId = patient == null ? "" : safe(patient.getId());
-        context.nationalId = patient == null ? "" : safe(patient.getNationalId());
-        context.firstName = patient == null || patient.getPerson() == null ? ""
-                : safe(patient.getPerson().getFirstName());
-        context.lastName = patient == null || patient.getPerson() == null ? ""
-                : safe(patient.getPerson().getLastName());
-        context.gender = patient == null ? "" : safe(patient.getGender());
-        context.birthDate = patient == null || patient.getBirthDate() == null ? ""
-                : patient.getBirthDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        context.accessionNumber = sample == null ? "" : safe(sample.getAccessionNumber());
-        context.enteredDate = sample == null || sample.getEnteredDate() == null ? ""
-                : sample.getEnteredDate().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        context.collectionDate = sampleItem == null || sampleItem.getCollectionDate() == null ? ""
-                : sampleItem.getCollectionDate().toLocalDateTime().toLocalDate()
-                        .format(DateTimeFormatter.ISO_LOCAL_DATE);
-        context.specimenType = sampleItem == null || sampleItem.getTypeOfSample() == null ? ""
-                : safe(sampleItem.getTypeOfSample().getDescription());
-        context.latitude = sample == null || sample.getGpsLatitude() == null ? "" : sample.getGpsLatitude().toString();
-        context.longitude = sample == null || sample.getGpsLongitude() == null ? ""
-                : sample.getGpsLongitude().toString();
+        context.patientId = safe(source.patientId());
+        context.nationalId = safe(source.nationalId());
+        context.firstName = safe(source.firstName());
+        context.lastName = safe(source.lastName());
+        context.gender = safe(source.gender());
+        context.birthDate = source.birthDate() == null ? ""
+                : source.birthDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        context.accessionNumber = safe(source.accessionNumber());
+        context.enteredDate = source.enteredDate() == null ? ""
+                : source.enteredDate().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        context.collectionDate = source.collectionDate() == null ? ""
+                : source.collectionDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        context.specimenType = safe(source.specimenType());
+        context.latitude = source.latitude() == null ? "" : source.latitude().toString();
+        context.longitude = source.longitude() == null ? "" : source.longitude().toString();
         return context;
     }
 

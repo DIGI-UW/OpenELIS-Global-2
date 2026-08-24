@@ -237,4 +237,27 @@ describe("WhonetExport", () => {
       }),
     );
   });
+
+  it("clears a previous preview when a refreshed page request fails", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getWhonetPreview: vi
+        .fn()
+        .mockResolvedValueOnce({ ...preview, exportedRows: 42 })
+        .mockRejectedValueOnce({ status: 500 }),
+      generateWhonetExport: vi.fn(),
+    };
+
+    renderExport(service);
+    await screen.findByRole("cell", { name: "CIP" });
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(
+      await screen.findByText("The export request could not be completed."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("cell", { name: "CIP" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Generate CSV" }),
+    ).not.toBeInTheDocument();
+  });
 });

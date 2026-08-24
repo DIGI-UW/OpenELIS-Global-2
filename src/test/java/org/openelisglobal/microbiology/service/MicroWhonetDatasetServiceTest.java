@@ -11,7 +11,9 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,6 +26,7 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.dao.MicroWhonetContext;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
@@ -35,13 +38,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
-import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.sample.valueholder.Sample;
-import org.openelisglobal.samplehuman.service.SampleHumanService;
-import org.openelisglobal.sampleitem.service.SampleItemService;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroWhonetDatasetServiceTest {
@@ -58,17 +54,17 @@ public class MicroWhonetDatasetServiceTest {
     private MicroOrganismDAO organismDAO;
     @Mock
     private MicroAntibioticDAO antibioticDAO;
-    @Mock
-    private SampleItemService sampleItemService;
-    @Mock
-    private SampleHumanService sampleHumanService;
-
+    private final Map<String, MicroWhonetContext> contextsByCase = new HashMap<>();
     private MicroWhonetDatasetService service;
 
     @Before
     public void setUp() {
         service = new MicroWhonetDatasetServiceImpl(caseDAO, isolateDAO, astRunDAO, astReadingDAO, organismDAO,
-                antibioticDAO, sampleItemService, sampleHumanService);
+                antibioticDAO);
+        when(caseDAO.getWhonetContextsByCaseIds(any())).thenAnswer(invocation -> {
+            List<String> caseIds = invocation.getArgument(0);
+            return caseIds.stream().map(contextsByCase::get).filter(context -> context != null).toList();
+        });
     }
 
     @Test
@@ -89,7 +85,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
         when(antibioticDAO.get("antibiotic-2"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-2", "GEN", "Gentamicin")));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
 
@@ -125,7 +121,7 @@ public class MicroWhonetDatasetServiceTest {
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
         when(antibioticDAO.get("antibiotic-2")).thenReturn(Optional.of(antibiotic("antibiotic-2", "", "Gentamicin")));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
 
@@ -151,7 +147,7 @@ public class MicroWhonetDatasetServiceTest {
         when(astReadingDAO.getByRunIds(List.of("run-1")))
                 .thenReturn(List.of(reading("reading-1", "run-1", "antibiotic-1", "S")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "", "E. coli")));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
 
@@ -179,7 +175,7 @@ public class MicroWhonetDatasetServiceTest {
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
 
@@ -206,7 +202,7 @@ public class MicroWhonetDatasetServiceTest {
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
 
@@ -235,7 +231,7 @@ public class MicroWhonetDatasetServiceTest {
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
 
@@ -261,8 +257,8 @@ public class MicroWhonetDatasetServiceTest {
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
-        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
+        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002");
 
         MicroWhonetPreviewForm preview = service.compile(query("FIRST_ISOLATE_7_DAY")).getPreview();
 
@@ -272,6 +268,19 @@ public class MicroWhonetDatasetServiceTest {
         assertEquals("case-1", preview.rows.get(0).caseId);
         assertEquals("S", preview.rows.get(0).interpretation);
         assertFalse(preview.rows.stream().anyMatch(row -> "case-2".equals(row.caseId)));
+    }
+
+    @Test
+    public void compileDoesNotLoadPatientAndSpecimenContextOneCaseAtATime() {
+        MicroCase firstCase = finalizedCase("case-1", "item-1", "2026-07-10 10:00:00");
+        MicroCase secondCase = finalizedCase("case-2", "item-2", "2026-07-11 10:00:00");
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of(firstCase, secondCase));
+        when(isolateDAO.getByCaseIds(List.of("case-1", "case-2"))).thenReturn(List.of());
+
+        service.compile(query("NONE"));
+
+        verify(caseDAO).getWhonetContextsByCaseIds(List.of("case-1", "case-2"));
     }
 
     @Test
@@ -296,9 +305,9 @@ public class MicroWhonetDatasetServiceTest {
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
-        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002");
-        stubPatientContext("item-3", "sample-3", "patient-1", "LAB-003");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
+        stubPatientContext("case-2", "item-2", "patient-1", "LAB-002");
+        stubPatientContext("case-3", "item-3", "patient-1", "LAB-003");
 
         MicroWhonetPreviewForm preview = service.compile(query("FIRST_ISOLATE_7_DAY")).getPreview();
 
@@ -391,27 +400,8 @@ public class MicroWhonetDatasetServiceTest {
         return antibiotic;
     }
 
-    private void stubPatientContext(String sampleItemId, String sampleId, String patientId, String accession) {
-        Sample sample = new Sample();
-        sample.setId(sampleId);
-        sample.setAccessionNumber(accession);
-        SampleItem item = new SampleItem();
-        item.setId(sampleItemId);
-        item.setSample(sample);
-        item.setCollectionDate(Timestamp.valueOf("2026-07-09 09:00:00"));
-        TypeOfSample type = new TypeOfSample();
-        type.setDescription("Blood");
-        item.setTypeOfSample(type);
-        when(sampleItemService.getData(sampleItemId)).thenReturn(item);
-
-        Patient patient = new Patient();
-        patient.setId(patientId);
-        patient.setNationalId("NAT-001");
-        patient.setGender("F");
-        Person person = new Person();
-        person.setFirstName("Ada");
-        person.setLastName("Lovelace");
-        patient.setPerson(person);
-        when(sampleHumanService.getPatientForSample(sample)).thenReturn(patient);
+    private void stubPatientContext(String caseId, String sampleItemId, String patientId, String accession) {
+        contextsByCase.put(caseId, new MicroWhonetContext(caseId, sampleItemId, patientId, "NAT-001", "Ada", "Lovelace",
+                "F", null, accession, null, Timestamp.valueOf("2026-07-09 09:00:00"), "Blood", null, null));
     }
 }
