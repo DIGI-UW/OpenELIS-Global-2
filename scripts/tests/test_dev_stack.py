@@ -6,7 +6,7 @@ import re
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -103,6 +103,30 @@ class DevStackContractTest(unittest.TestCase):
         self.assertEqual(environment["DEV_STACK_HTTP_PORT"], "80")
         self.assertEqual(environment["DEV_STACK_HTTPS_PORT"], "443")
         self.assertEqual(environment["DEV_STACK_TLS"], "letsencrypt")
+
+    def test_json_requests_verify_https_certificates_by_default(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.status = 200
+        response.read.return_value = b"{}"
+
+        with patch.object(self.dev_stack, "urlopen", return_value=response) as open_url:
+            self.dev_stack.request_json("https://dev.example.org/status")
+
+        self.assertIsNone(open_url.call_args.kwargs["context"])
+
+    def test_json_requests_disable_verification_only_when_explicit(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.status = 200
+        response.read.return_value = b"{}"
+
+        with patch.object(self.dev_stack, "urlopen", return_value=response) as open_url:
+            self.dev_stack.request_json(
+                "https://localhost/status", verify_tls=False
+            )
+
+        self.assertEqual(open_url.call_args.kwargs["context"].verify_mode, 0)
 
     def test_endpoint_parser_accepts_ipv4_and_ipv6_compose_output(self):
         self.assertEqual(self.dev_stack.parse_published_port("127.0.0.1:49152"), 49152)
