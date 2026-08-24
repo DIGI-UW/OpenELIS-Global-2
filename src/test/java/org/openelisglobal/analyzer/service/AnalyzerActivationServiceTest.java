@@ -97,7 +97,8 @@ public class AnalyzerActivationServiceTest {
         when(profileCatalogService.getProfile(AnalyzerTestProfileCatalog.PROFILE_ID,
                 AnalyzerTestProfileCatalog.PROFILE_REVISION)).thenReturn(profileRevision());
         when(siteBindingService.findByRevisionId(snapshot.revision().getId())).thenReturn(Optional.of(snapshot));
-        when(confirmationService.findCurrent(snapshot, RECOGNITION_FINGERPRINT)).thenReturn(Optional.of(confirmation));
+        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+                .thenReturn(AnalyzerSiteBindingVerificationAssessment.current(confirmation));
         TestSection activeUnit = new TestSection();
         activeUnit.setId("4");
         activeUnit.setIsActive("Y");
@@ -192,6 +193,40 @@ public class AnalyzerActivationServiceTest {
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 
         assertEquals(List.of("analyzer.activation.blocker.dataFlow"),
+                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+        verify(registrationService, never()).buildActivationRegistration(analyzer);
+        verify(registrationService, never()).synchronizeCandidate(any(), any());
+    }
+
+    @Test
+    public void readinessReportsOnlyTheFalseVerificationPredicates() {
+        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+                .thenReturn(new AnalyzerSiteBindingVerificationAssessment(false, true, confirmation));
+
+        AnalyzerActivationResult staleMappings = service.readiness(ANALYZER_ID);
+
+        assertEquals(List.of("analyzer.activation.blocker.mappings"),
+                staleMappings.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+
+        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+                .thenReturn(new AnalyzerSiteBindingVerificationAssessment(true, false, confirmation));
+
+        AnalyzerActivationResult staleRecognition = service.readiness(ANALYZER_ID);
+
+        assertEquals(List.of("analyzer.activation.blocker.recognition"),
+                staleRecognition.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+        verify(registrationService, never()).buildActivationRegistration(analyzer);
+        verify(registrationService, never()).synchronizeCandidate(any(), any());
+    }
+
+    @Test
+    public void readinessReportsBothPredicatesWhenNothingHasBeenVerified() {
+        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+                .thenReturn(AnalyzerSiteBindingVerificationAssessment.unconfirmed());
+
+        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
+
+        assertEquals(List.of("analyzer.activation.blocker.mappings", "analyzer.activation.blocker.recognition"),
                 result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
         verify(registrationService, never()).buildActivationRegistration(analyzer);
         verify(registrationService, never()).synchronizeCandidate(any(), any());

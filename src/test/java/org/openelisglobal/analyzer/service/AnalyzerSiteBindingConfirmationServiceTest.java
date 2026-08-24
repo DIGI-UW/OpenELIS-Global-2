@@ -1,8 +1,10 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -151,12 +153,18 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
         when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
 
         AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate,
+                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
+        AnalyzerSiteBindingVerificationAssessment assessment = service.assessCurrent(candidate,
                 "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
 
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
         assertEquals(RECOGNITION_FINGERPRINT, status.recognitionFingerprint());
+        assertTrue(assessment.mappingsCurrent());
+        assertFalse(assessment.recognitionCurrent());
+        assertEquals(Optional.empty(), assessment.currentConfirmation());
     }
 
     @Test
@@ -197,13 +205,19 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
     @Test
     public void reportsAConfirmationAsStaleWhenItsCatalogBindingIsNoLongerCurrent() throws Exception {
         AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
-        when(confirmationDAO.findLatestByBindingId("51"))
-                .thenReturn(Optional.of(storedConfirmation(candidate, exactRequest())));
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
 
         AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+        AnalyzerSiteBindingVerificationAssessment assessment = service.assessCurrent(candidate,
+                RECOGNITION_FINGERPRINT);
 
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
+        assertFalse(assessment.mappingsCurrent());
+        assertTrue(assessment.recognitionCurrent());
+        assertEquals(Optional.empty(), assessment.currentConfirmation());
     }
 
     @Test
