@@ -8,6 +8,15 @@ type WhonetExportFilters = {
   significance?: string[];
   includeScreening?: boolean;
   includeUnspecified?: boolean;
+  dedup?:
+    | "NONE"
+    | "FIRST_ISOLATE_7_DAY"
+    | "FIRST_ISOLATE_14_DAY"
+    | "FIRST_ISOLATE_30_DAY";
+  dedupBasis?: "COLLECTION_DATE" | "RELEASE_DATE";
+  dedupScope?: "ANY_SOURCE" | "SAME_SOURCE";
+  excludeContaminants?: boolean;
+  profileSensitivity?: "INSENSITIVE" | "SENSITIVE";
 };
 
 export const buildWhonetExportQuery = (
@@ -17,7 +26,11 @@ export const buildWhonetExportQuery = (
   const params = new URLSearchParams({
     from: exportDate,
     to: exportDate,
-    dedup: "FIRST_ISOLATE_7_DAY",
+    dedup: filters.dedup || "FIRST_ISOLATE_7_DAY",
+    dedupBasis: filters.dedupBasis || "COLLECTION_DATE",
+    dedupScope: filters.dedupScope || "ANY_SOURCE",
+    excludeContaminants: String(filters.excludeContaminants ?? true),
+    profileSensitivity: filters.profileSensitivity || "INSENSITIVE",
     step: "configure",
     page: "1",
     pageSize: "100",
@@ -52,9 +65,16 @@ export const buildWhonetExportQuery = (
   ["includeScreening", "includeUnspecified"].forEach((key) =>
     canonical.set(key, params.get(key) || "false"),
   );
-  ["dedup", "step", "page", "pageSize"].forEach((key) =>
-    canonical.set(key, params.get(key) || ""),
-  );
+  [
+    "dedup",
+    "dedupBasis",
+    "dedupScope",
+    "excludeContaminants",
+    "profileSensitivity",
+    "step",
+    "page",
+    "pageSize",
+  ].forEach((key) => canonical.set(key, params.get(key) || ""));
   return canonical.toString();
 };
 

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -636,6 +637,129 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
+    public void configurableWindowIncludesAnIsolateAtFourteenDaysButCollapsesItAtThirtyDays() {
+        MicroCase firstCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
+        MicroCase boundaryCase = finalizedCase("case-2", "item-2", "2026-07-21 10:00:00");
+        MicroIsolate first = isolate("isolate-1", "case-1", "organism-1");
+        MicroIsolate boundary = isolate("isolate-2", "case-2", "organism-1");
+        MicroAstRun firstRun = reviewedRun("run-1", "isolate-1");
+        MicroAstRun boundaryRun = reviewedRun("run-2", "isolate-2");
+        stubDataset(List.of(firstCase, boundaryCase), List.of(first, boundary), List.of(firstRun, boundaryRun),
+                List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
+                        reading("reading-2", "run-2", "antibiotic-1", "S")));
+        stubMappedReferences();
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "2026-07-15 10:00:00");
+
+        MicroWhonetPreviewForm fourteenDay = service.compile(query("FIRST_ISOLATE_14_DAY")).getPreview();
+        MicroWhonetPreviewForm thirtyDay = service.compile(query("FIRST_ISOLATE_30_DAY")).getPreview();
+
+        assertEquals(2, fourteenDay.afterDeduplication);
+        assertEquals(1, thirtyDay.afterDeduplication);
+    }
+
+    @Test
+    public void releaseDateBasisChangesOnlyDeduplicationChronology() {
+        MicroCase firstCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
+        MicroCase secondCase = finalizedCase("case-2", "item-2", "2026-07-10 10:00:00");
+        MicroIsolate first = isolate("isolate-1", "case-1", "organism-1");
+        MicroIsolate second = isolate("isolate-2", "case-2", "organism-1");
+        MicroAstRun firstRun = reviewedRun("run-1", "isolate-1");
+        MicroAstRun secondRun = reviewedRun("run-2", "isolate-2");
+        stubDataset(List.of(firstCase, secondCase), List.of(first, second), List.of(firstRun, secondRun),
+                List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
+                        reading("reading-2", "run-2", "antibiotic-1", "R")));
+        stubMappedReferences();
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "2026-07-04 10:00:00");
+
+        MicroWhonetExportQueryForm collectionQuery = query("FIRST_ISOLATE_7_DAY");
+        MicroWhonetExportQueryForm releaseQuery = query("FIRST_ISOLATE_7_DAY");
+        releaseQuery.dedupBasis = "RELEASE_DATE";
+
+        assertEquals(1, service.compile(collectionQuery).getPreview().afterDeduplication);
+        assertEquals(2, service.compile(releaseQuery).getPreview().afterDeduplication);
+        verify(caseDAO, times(2)).getFinalizedBacteriologyByCollectionDateRange(
+                Timestamp.valueOf("2026-07-01 00:00:00"), Timestamp.valueOf("2026-08-01 00:00:00"));
+    }
+
+    @Test
+    public void sameSourceScopeRetainsDifferentSpecimenSourcesWithinTheWindow() {
+        MicroCase bloodCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
+        MicroCase urineCase = finalizedCase("case-2", "item-2", "2026-07-21 10:00:00");
+        MicroIsolate blood = isolate("isolate-1", "case-1", "organism-1");
+        MicroIsolate urine = isolate("isolate-2", "case-2", "organism-1");
+        MicroAstRun bloodRun = reviewedRun("run-1", "isolate-1");
+        MicroAstRun urineRun = reviewedRun("run-2", "isolate-2");
+        stubDataset(List.of(bloodCase, urineCase), List.of(blood, urine), List.of(bloodRun, urineRun),
+                List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
+                        reading("reading-2", "run-2", "antibiotic-1", "S")));
+        stubMappedReferences();
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "sample-type-blood", "BLD",
+                "2026-07-01 10:00:00");
+        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "sample-type-urine", "URN",
+                "2026-07-02 10:00:00");
+
+        MicroWhonetExportQueryForm anySource = query("FIRST_ISOLATE_7_DAY");
+        MicroWhonetExportQueryForm sameSource = query("FIRST_ISOLATE_7_DAY");
+        sameSource.dedupScope = "SAME_SOURCE";
+
+        assertEquals(1, service.compile(anySource).getPreview().afterDeduplication);
+        assertEquals(2, service.compile(sameSource).getPreview().afterDeduplication);
+    }
+
+    @Test
+    public void contaminantFirstHandlingRemovesAProbableContaminantBeforeSelection() {
+        MicroCase contaminantCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
+        MicroCase clinicalCase = finalizedCase("case-2", "item-2", "2026-07-21 10:00:00");
+        MicroIsolate contaminant = isolate("isolate-1", "case-1", "organism-1");
+        contaminant.setSignificance(MicroIsolateSignificance.CONTAMINANT.name());
+        MicroIsolate clinical = isolate("isolate-2", "case-2", "organism-1");
+        MicroAstRun contaminantRun = reviewedRun("run-1", "isolate-1");
+        MicroAstRun clinicalRun = reviewedRun("run-2", "isolate-2");
+        stubDataset(List.of(contaminantCase, clinicalCase), List.of(contaminant, clinical),
+                List.of(contaminantRun, clinicalRun), List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
+                        reading("reading-2", "run-2", "antibiotic-1", "R")));
+        stubMappedReferences();
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "2026-07-02 10:00:00");
+        MicroWhonetExportQueryForm includeContaminant = query("FIRST_ISOLATE_7_DAY");
+        includeContaminant.significance = List.of(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name(),
+                MicroIsolateSignificance.CONTAMINANT.name());
+
+        MicroWhonetPreviewForm preview = service.compile(includeContaminant).getPreview();
+
+        assertEquals(2, preview.afterSignificance);
+        assertEquals(1, preview.afterDeduplication);
+        assertEquals("case-2", preview.rows.get(0).caseId);
+    }
+
+    @Test
+    public void profileSensitiveSelectionRetainsAChangedReviewedSirProfile() {
+        MicroCase firstCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
+        MicroCase changedCase = finalizedCase("case-2", "item-2", "2026-07-21 10:00:00");
+        MicroIsolate first = isolate("isolate-1", "case-1", "organism-1");
+        MicroIsolate changed = isolate("isolate-2", "case-2", "organism-1");
+        MicroAstRun firstRun = reviewedRun("run-1", "isolate-1");
+        MicroAstRun changedRun = reviewedRun("run-2", "isolate-2");
+        stubDataset(List.of(firstCase, changedCase), List.of(first, changed), List.of(firstRun, changedRun),
+                List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
+                        reading("reading-2", "run-2", "antibiotic-1", "R")));
+        stubMappedReferences();
+        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        stubPatientContext("item-2", "sample-2", "patient-1", "LAB-002", "2026-07-02 10:00:00");
+
+        MicroWhonetExportQueryForm insensitive = query("FIRST_ISOLATE_7_DAY");
+        MicroWhonetExportQueryForm sensitive = query("FIRST_ISOLATE_7_DAY");
+        sensitive.profileSensitivity = "SENSITIVE";
+
+        assertEquals(1, service.compile(insensitive).getPreview().afterDeduplication);
+        MicroWhonetDataset sensitiveDataset = service.compile(sensitive);
+        assertEquals(2, sensitiveDataset.getPreview().afterDeduplication);
+        assertEquals("SENSITIVE", sensitiveDataset.getPopulationSelection().getProfileSensitivity());
+    }
+
+    @Test
     public void collectionDateRangeUsesInclusiveStartAndExclusiveDayAfterEnd() {
         when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
                 .thenReturn(List.of());
@@ -658,6 +782,27 @@ public class MicroWhonetDatasetServiceTest {
         query.page = 1;
         query.pageSize = 20;
         return query;
+    }
+
+    private void stubDataset(List<MicroCase> cases, List<MicroIsolate> isolates, List<MicroAstRun> runs,
+            List<MicroAstReading> readings) {
+        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(cases);
+        when(isolateDAO.getByCaseIds(cases.stream().map(MicroCase::getId).toList())).thenReturn(isolates);
+        when(astRunDAO.getByIsolateIds(any())).thenAnswer(invocation -> {
+            List<String> isolateIds = invocation.getArgument(0);
+            return runs.stream().filter(run -> isolateIds.contains(run.getIsolateId())).toList();
+        });
+        when(astReadingDAO.getByRunIds(any())).thenAnswer(invocation -> {
+            List<String> runIds = invocation.getArgument(0);
+            return readings.stream().filter(reading -> runIds.contains(reading.getAstRunId())).toList();
+        });
+    }
+
+    private void stubMappedReferences() {
+        when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
+        when(antibioticDAO.get("antibiotic-1"))
+                .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
     }
 
     private MicroCase finalizedCase(String id, String sampleItemId, String closedAt) {

@@ -7,7 +7,15 @@ const SIGNIFICANCE_VALUES = new Set([
   "NORMAL_FLORA",
   "UNKNOWN",
 ]);
-const DEDUP_POLICIES = new Set(["FIRST_ISOLATE_7_DAY", "NONE"]);
+const DEDUP_POLICIES = new Set([
+  "FIRST_ISOLATE_7_DAY",
+  "FIRST_ISOLATE_14_DAY",
+  "FIRST_ISOLATE_30_DAY",
+  "NONE",
+]);
+const DEDUP_BASES = new Set(["COLLECTION_DATE", "RELEASE_DATE"]);
+const DEDUP_SCOPES = new Set(["ANY_SOURCE", "SAME_SOURCE"]);
+const PROFILE_SENSITIVITIES = new Set(["INSENSITIVE", "SENSITIVE"]);
 const STEPS = new Set(["configure", "preview"]);
 const SOURCES = new Set(["ast-worklist"]);
 
@@ -73,6 +81,18 @@ const repeatedValues = (params, key, allowed) =>
 
 const enabled = (params, key) => params.get(key) === "true";
 
+const booleanValue = (params, key, fallback) => {
+  const value = params.get(key);
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return fallback;
+};
+
+const allowedValue = (params, key, allowed, fallback) => {
+  const value = params.get(key);
+  return allowed.has(value) ? value : fallback;
+};
+
 export const parseWhonetSearch = (search = "", now = new Date()) => {
   const params = new URLSearchParams(search);
   const requestedSource = params.get("source");
@@ -98,6 +118,20 @@ export const parseWhonetSearch = (search = "", now = new Date()) => {
     includeScreening: enabled(params, "includeScreening"),
     includeUnspecified: enabled(params, "includeUnspecified"),
     dedup: DEDUP_POLICIES.has(dedup) ? dedup : "FIRST_ISOLATE_7_DAY",
+    dedupBasis: allowedValue(
+      params,
+      "dedupBasis",
+      DEDUP_BASES,
+      "COLLECTION_DATE",
+    ),
+    dedupScope: allowedValue(params, "dedupScope", DEDUP_SCOPES, "ANY_SOURCE"),
+    excludeContaminants: booleanValue(params, "excludeContaminants", true),
+    profileSensitivity: allowedValue(
+      params,
+      "profileSensitivity",
+      PROFILE_SENSITIVITIES,
+      "INSENSITIVE",
+    ),
     step: STEPS.has(step) ? step : "configure",
     page: positiveInteger(params.get("page"), 1),
     pageSize: WHONET_PAGE_SIZES.includes(requestedPageSize)
@@ -109,16 +143,25 @@ export const parseWhonetSearch = (search = "", now = new Date()) => {
 
 export const buildWhonetSearch = (state, now = new Date()) => {
   const draft = new URLSearchParams();
-  ["from", "to", "dedup", "source", "step", "page", "pageSize"].forEach(
-    (key) => {
-      if (state[key] != null) draft.set(key, String(state[key]));
-    },
-  );
+  [
+    "from",
+    "to",
+    "dedup",
+    "dedupBasis",
+    "dedupScope",
+    "profileSensitivity",
+    "source",
+    "step",
+    "page",
+    "pageSize",
+  ].forEach((key) => {
+    if (state[key] != null) draft.set(key, String(state[key]));
+  });
   ["specimen", "organism", "origin", "significance"].forEach((key) =>
     values(state[key]).forEach((value) => draft.append(key, value)),
   );
-  ["includeScreening", "includeUnspecified"].forEach((key) =>
-    draft.set(key, String(Boolean(state[key]))),
+  ["includeScreening", "includeUnspecified", "excludeContaminants"].forEach(
+    (key) => draft.set(key, String(Boolean(state[key]))),
   );
   const normalized = parseWhonetSearch(draft.toString(), now);
   const params = new URLSearchParams();
@@ -130,6 +173,10 @@ export const buildWhonetSearch = (state, now = new Date()) => {
     params.set(key, String(normalized[key])),
   );
   params.set("dedup", String(normalized.dedup));
+  params.set("dedupBasis", String(normalized.dedupBasis));
+  params.set("dedupScope", String(normalized.dedupScope));
+  params.set("excludeContaminants", String(normalized.excludeContaminants));
+  params.set("profileSensitivity", String(normalized.profileSensitivity));
   if (normalized.source) params.set("source", normalized.source);
   ["step", "page", "pageSize"].forEach((key) =>
     params.set(key, String(normalized[key])),
@@ -202,6 +249,10 @@ export const toWhonetRequest = (state) => ({
   includeScreening: state.includeScreening,
   includeUnspecified: state.includeUnspecified,
   dedup: state.dedup,
+  dedupBasis: state.dedupBasis,
+  dedupScope: state.dedupScope,
+  excludeContaminants: state.excludeContaminants,
+  profileSensitivity: state.profileSensitivity,
   page: state.page,
   pageSize: state.pageSize,
 });

@@ -128,9 +128,9 @@ test.describe("OGC-782 WHONET manual export", () => {
       await expect(
         page.getByRole("combobox", { name: /^Inclusion/ }),
       ).toHaveAccessibleName(/Inclusion Total items selected: 1/);
-      await expect(page.getByLabel("De-duplication")).toHaveValue(
-        "FIRST_ISOLATE_7_DAY",
-      );
+      await expect(
+        page.getByRole("checkbox", { name: "Apply first-isolate selection" }),
+      ).toBeChecked();
       const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
       await expect(
         breadcrumb.getByRole("link", { name: "Home" }),
@@ -368,5 +368,75 @@ test.describe("OGC-782 WHONET manual export", () => {
         },
       ]);
     });
+  });
+
+  test("configures and restores the advanced first-isolate policy", async ({
+    page,
+  }) => {
+    const seeded = await seedMicrobiologyWhonetExport(page);
+    const initialQuery = buildWhonetExportQuery(seeded.exportDate);
+
+    await page.goto(`/Microbiology/whonet?${initialQuery}`, {
+      waitUntil: "commit",
+    });
+    await expectWhonetExportReady(page);
+
+    await page
+      .getByRole("button", { name: "Adjust first-isolate policy" })
+      .click();
+    await page
+      .getByRole("combobox", { name: "Window length" })
+      .selectOption("FIRST_ISOLATE_14_DAY");
+    await page.getByText("Final result-release date", { exact: true }).click();
+    await page.getByText("Same specimen source only", { exact: true }).click();
+    await page
+      .getByText("Exclude probable contaminants before selection", {
+        exact: true,
+      })
+      .click();
+    await page.getByText("Treat changed S/I/R as new", { exact: true }).click();
+
+    const configuredQuery = buildWhonetExportQuery(seeded.exportDate, {
+      dedup: "FIRST_ISOLATE_14_DAY",
+      dedupBasis: "RELEASE_DATE",
+      dedupScope: "SAME_SOURCE",
+      excludeContaminants: false,
+      profileSensitivity: "SENSITIVE",
+    });
+    await expect(page).toHaveURL(`/Microbiology/whonet?${configuredQuery}`);
+
+    await page.reload({ waitUntil: "commit" });
+    await expectWhonetExportReady(page);
+    await page
+      .getByRole("button", { name: "Adjust first-isolate policy" })
+      .click();
+    await expect(
+      page.getByRole("combobox", { name: "Window length" }),
+    ).toHaveValue("FIRST_ISOLATE_14_DAY");
+    await expect(
+      page.getByRole("radio", { name: "Final result-release date" }),
+    ).toBeChecked();
+    await expect(
+      page.getByRole("radio", { name: "Same specimen source only" }),
+    ).toBeChecked();
+    await expect(
+      page.getByRole("checkbox", {
+        name: "Exclude probable contaminants before selection",
+      }),
+    ).not.toBeChecked();
+    await expect(
+      page.getByRole("radio", { name: "Treat changed S/I/R as new" }),
+    ).toBeChecked();
+
+    await page.getByRole("button", { name: "Preview export" }).click();
+    await expect(page).toHaveURL(/step=preview/);
+    await expect(
+      page.getByRole("heading", { name: "Preview", exact: true }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(
+      page.locator(".whonet-export__metric").filter({
+        hasText: "After de-duplication",
+      }),
+    ).toBeVisible();
   });
 });

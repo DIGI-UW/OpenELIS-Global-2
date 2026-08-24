@@ -9,6 +9,15 @@ import {
 
 describe("WhonetRoutes", () => {
   const now = new Date(2026, 7, 4, 12, 0, 0);
+  const defaultDedupState = {
+    dedup: "FIRST_ISOLATE_7_DAY",
+    dedupBasis: "COLLECTION_DATE",
+    dedupScope: "ANY_SOURCE",
+    excludeContaminants: true,
+    profileSensitivity: "INSENSITIVE",
+  };
+  const defaultDedupQuery =
+    "dedup=FIRST_ISOLATE_7_DAY&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE";
 
   it("defaults to the previous complete month and emits every canonical field", () => {
     const state = parseWhonetSearch("", now);
@@ -22,14 +31,32 @@ describe("WhonetRoutes", () => {
       significance: ["CLINICALLY_SIGNIFICANT"],
       includeScreening: false,
       includeUnspecified: false,
-      dedup: "FIRST_ISOLATE_7_DAY",
+      ...defaultDedupState,
       step: "configure",
       page: 1,
       pageSize: 20,
       source: "",
     });
     expect(buildWhonetSearch(state, now)).toBe(
-      "from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
+      `from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&${defaultDedupQuery}&step=configure&page=1&pageSize=20`,
+    );
+  });
+
+  it("round-trips every approved advanced first-isolate policy field", () => {
+    const state = parseWhonetSearch(
+      "?from=2026-07-01&to=2026-07-31&dedup=FIRST_ISOLATE_14_DAY&dedupBasis=RELEASE_DATE&dedupScope=SAME_SOURCE&excludeContaminants=false&profileSensitivity=SENSITIVE&step=preview",
+      now,
+    );
+
+    expect(state).toMatchObject({
+      dedup: "FIRST_ISOLATE_14_DAY",
+      dedupBasis: "RELEASE_DATE",
+      dedupScope: "SAME_SOURCE",
+      excludeContaminants: false,
+      profileSensitivity: "SENSITIVE",
+    });
+    expect(buildWhonetSearch(state, now)).toContain(
+      "dedup=FIRST_ISOLATE_14_DAY&dedupBasis=RELEASE_DATE&dedupScope=SAME_SOURCE&excludeContaminants=false&profileSensitivity=SENSITIVE",
     );
   });
 
@@ -78,7 +105,7 @@ describe("WhonetRoutes", () => {
         now,
       ),
     ).toBe(
-      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&specimen=urine&organism=organism-2&origin=INPATIENT&significance=NORMAL_FLORA&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&source=ast-worklist&step=configure&page=1&pageSize=20",
+      `/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&specimen=urine&organism=organism-2&origin=INPATIENT&significance=NORMAL_FLORA&includeScreening=false&includeUnspecified=false&${defaultDedupQuery}&source=ast-worklist&step=configure&page=1&pageSize=20`,
     );
   });
 
@@ -127,7 +154,7 @@ describe("WhonetRoutes", () => {
       includeUnspecified: true,
     });
     expect(buildWhonetSearch(state, now)).toBe(
-      "from=2026-06-01&to=2026-06-30&specimen=blood&specimen=urine&organism=org-1&organism=org-2&origin=OUTPATIENT&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&includeScreening=true&includeUnspecified=true&dedup=NONE&step=preview&page=3&pageSize=50",
+      "from=2026-06-01&to=2026-06-30&specimen=blood&specimen=urine&organism=org-1&organism=org-2&origin=OUTPATIENT&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&includeScreening=true&includeUnspecified=true&dedup=NONE&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE&step=preview&page=3&pageSize=50",
     );
   });
 
@@ -160,7 +187,7 @@ describe("WhonetRoutes", () => {
       significance: ["CLINICALLY_SIGNIFICANT"],
       includeScreening: false,
       includeUnspecified: false,
-      dedup: "FIRST_ISOLATE_7_DAY",
+      ...defaultDedupState,
       step: "preview",
       page: 3,
       pageSize: 50,

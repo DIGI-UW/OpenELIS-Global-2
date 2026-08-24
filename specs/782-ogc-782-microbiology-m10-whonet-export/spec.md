@@ -285,3 +285,48 @@ generator without confusing operational queue state with export criteria.
   applied as export criteria.
 - **FR-028**: Worklist provenance and clearing behavior MUST be explicit,
   accessible, bookmarkable, and must not create a competing export workflow.
+
+## Follow-on Story - Configure First-Isolate Selection
+
+As a surveillance or laboratory reporting user, I can adjust how repeat
+patient-organism isolates are collapsed so that preview and generation apply the
+same transparent surveillance policy.
+
+**Acceptance scenarios**
+
+1. First-isolate selection defaults on with a seven-day window, specimen
+   collection date, any specimen source, probable contaminants excluded before
+   selection, and susceptibility-profile changes ignored.
+2. The user can select a 7-, 14-, or 30-day rolling window; collection or final
+   result-release date; any source or the same specimen source; whether probable
+   contaminants are removed before selection; and whether a changed reviewed
+   S/I/R profile counts as a new isolate within the window.
+3. Disabling first-isolate selection retains all otherwise eligible isolates.
+   When enabled, repeats are omitted from this release's preview and output.
+4. Preview counts, generated output, and export history use the same selected
+   policy. Reloading or sharing the canonical URL restores every selection.
+5. Every advanced choice includes a concise, plain-language explanation and is
+   operable by keyboard and assistive technology.
+
+**Requirements**
+
+- **FR-029**: A rolling first-isolate window MUST start with the earliest
+  eligible patient-organism isolate according to the selected date basis and
+  MUST start a new window at the exact selected-day boundary.
+- **FR-030**: Reporting-period membership MUST remain based on specimen
+  collection date even when result-release date is selected as the
+  de-duplication chronology.
+- **FR-031**: Same-source selection MUST distinguish specimen sources while
+  any-source selection MUST collapse the same patient-organism combination
+  across sources.
+- **FR-032**: When contaminant-first handling is enabled, probable contaminants
+  MUST be removed before choosing the representative first isolate.
+- **FR-033**: Profile-sensitive selection MUST treat a different reviewed,
+  reportable antibiotic S/I/R profile as a new isolate within the active
+  window; profile-insensitive selection MUST ignore that difference.
+- **FR-034**: Preview, generation, canonical URL state, and export history MUST
+  use one normalized first-isolate policy.
+- **FR-035**: Episode-based selection MUST remain unavailable until an episode
+  boundary is functionally defined. Retaining repeats with an R marker remains
+  part of qualified WHONET output work because the current export contract has
+  no first-or-repeat field.

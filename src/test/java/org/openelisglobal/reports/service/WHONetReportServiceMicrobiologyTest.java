@@ -2,6 +2,7 @@ package org.openelisglobal.reports.service;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -73,10 +74,15 @@ public class WHONetReportServiceMicrobiologyTest {
         query.organism = List.of("organism-1");
         query.origin = List.of("INPATIENT");
         query.significance = List.of("CLINICALLY_SIGNIFICANT", "CONTAMINANT");
+        query.dedupBasis = "RELEASE_DATE";
+        query.dedupScope = "SAME_SOURCE";
+        query.excludeContaminants = false;
+        query.profileSensitivity = "SENSITIVE";
         WHONetRow row = new WHONetRow("NAT-1", "Ada", "Lovelace", "F", "1990-01-01", "2026-07-10", "LAB-001",
                 "2026-07-09", "Blood", "CIP", "eco", "S", "MIC", "", "");
         MicroWhonetExportSelection selection = new MicroWhonetExportSelection(query.specimen, query.organism,
-                query.origin, query.significance);
+                query.origin, query.significance, false, false, query.dedupBasis, query.dedupScope,
+                query.excludeContaminants, query.profileSensitivity);
         when(datasetService.compile(query)).thenReturn(new MicroWhonetDataset(preview(true), List.of(row), selection));
 
         service.generateMicrobiologyExport(query, "authenticated-user");
@@ -89,6 +95,10 @@ public class WHONetReportServiceMicrobiologyTest {
         assertEquals(List.of("INPATIENT"), audit.getValue().getPopulationSelection().getOrigin());
         assertEquals(List.of("CLINICALLY_SIGNIFICANT", "CONTAMINANT"),
                 audit.getValue().getPopulationSelection().getSignificance());
+        assertEquals("RELEASE_DATE", audit.getValue().getPopulationSelection().getDedupBasis());
+        assertEquals("SAME_SOURCE", audit.getValue().getPopulationSelection().getDedupScope());
+        assertFalse(audit.getValue().getPopulationSelection().isExcludeContaminants());
+        assertEquals("SENSITIVE", audit.getValue().getPopulationSelection().getProfileSensitivity());
     }
 
     @Test

@@ -81,18 +81,31 @@
     }
   }
 
-  &__controls {
-    display: grid;
-    grid-template-columns: minmax(0, 20rem);
-    gap: $spacing-05;
+  &__first-isolate {
     margin-block-start: $spacing-05;
+    padding-block-start: $spacing-04;
+    border-block-start: 1px solid $border-subtle-01;
 
-    .cds--date-picker,
-    .cds--date-picker-container,
-    .cds--date-picker-input__wrapper,
-    .cds--date-picker__input {
-      inline-size: 100%;
+    .cds--accordion {
+      margin-block-start: $spacing-04;
     }
+  }
+
+  &__dedup-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: $spacing-06;
+    padding-block: $spacing-03 $spacing-05;
+  }
+
+  &__dedup-control {
+    min-inline-size: 0;
+  }
+
+  &__helper {
+    max-inline-size: 42rem;
+    margin: $spacing-02 0 0;
+    color: $text-secondary;
   }
 
   &__purpose-filters {
@@ -200,10 +213,6 @@
 
 @media (max-width: 66rem) {
   .whonet-export {
-    &__controls {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     &__metrics {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -212,7 +221,7 @@
 
 @media (max-width: 42rem) {
   .whonet-export {
-    &__controls,
+    &__dedup-grid,
     &__purpose-filters,
     &__metrics {
       grid-template-columns: minmax(0, 1fr);

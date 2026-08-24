@@ -9,6 +9,10 @@ public class MicroWhonetPreviewForm {
     public String to;
     public String significance;
     public String dedup;
+    public String dedupBasis;
+    public String dedupScope;
+    public boolean excludeContaminants;
+    public String profileSensitivity;
     public int totalCases;
     public int totalIsolates;
     public int afterSpecimen;
