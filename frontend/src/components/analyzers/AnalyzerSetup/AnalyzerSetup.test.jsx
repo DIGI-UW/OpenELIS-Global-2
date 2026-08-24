@@ -13,6 +13,7 @@ import {
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
   getAnalyzerTypeMapping,
+  testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
@@ -24,6 +25,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
   getAnalyzerTypeMapping: vi.fn(),
+  testConnection: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
 
@@ -37,6 +39,12 @@ const activeType = {
   source: "SHIPPED",
   status: "ACTIVE",
   protocol: "ASTM",
+  instanceDefaults: {
+    protocolVersion: "ASTM_LIS2_A2",
+    communicationMode: "BOTH",
+    supportsLisInitiated: true,
+    port: null,
+  },
 };
 
 const currentMapping = {
@@ -560,6 +568,416 @@ describe("AnalyzerSetup Instrument step", () => {
     );
     expect(new URLSearchParams(history.location.search).get("analyzerId")).toBe(
       "42",
+    );
+  });
+
+  it("restores a bookmarked Results only receiver and renders structured Bridge evidence inline", async () => {
+    const candidate = {
+      id: "42",
+      name: "GX bench 1",
+      profileId: activeType.profileId,
+      profileRevision: activeType.revision,
+      testUnitIds: ["7"],
+      status: "SETUP",
+      ipAddress: "10.20.30.40",
+      port: null,
+      communicationMode: "ANALYZER_INITIATED",
+      effectiveCommunicationMode: "ANALYZER_INITIATED",
+      transportMode: "TCP",
+      connectionRole: "RECEIVER",
+    };
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback({ ...candidate, ...payload }),
+    );
+    testConnection.mockImplementation((_id, callback) =>
+      callback({
+        schemaVersion: "1.0",
+        analyzerId: "42",
+        profileRef: {
+          profileId: activeType.profileId,
+          revision: activeType.revision,
+        },
+        desiredStateFingerprint: `sha256:${"e".repeat(64)}`,
+        connection: { mode: "TCP", role: "RECEIVER" },
+        dataFlow: "RESULTS_ONLY",
+        outcome: "SUCCESS",
+        configureEndpoint: {
+          kind: "NETWORK",
+          host: "bridge.lab.example",
+          port: 55000,
+        },
+        resultsOnlyAvailable: false,
+        checks: [
+          {
+            kind: "LISTENER",
+            status: "PASSED",
+            code: "listener.ready",
+            responseTimeMs: 3,
+          },
+        ],
+      }),
+    );
+    const entry = `/analyzers?search=gene&setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`;
+    const history = renderSetupWithHistory(entry);
+
+    expect(
+      await screen.findByRole("group", { name: "Data flow" }),
+    ).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Results only" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Two-way" })).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "Analyzer source address" }),
+    ).toHaveValue("10.20.30.40");
+    expect(
+      screen.queryByRole("spinbutton", { name: "Analyzer port" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Bridge listener port"),
+    ).not.toBeInTheDocument();
+    expect(history.location.pathname + history.location.search).toBe(entry);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Test connection" }),
+    );
+
+    await waitFor(() =>
+      expect(updateAnalyzer).toHaveBeenCalledWith(
+        "42",
+        {
+          ipAddress: "10.20.30.40",
+          port: null,
+          communicationMode: "ANALYZER_INITIATED",
+          transportMode: "TCP",
+          connectionRole: "RECEIVER",
+          importDirectory: null,
+        },
+        expect.any(Function),
+      ),
+    );
+    expect(testConnection).toHaveBeenCalledWith("42", expect.any(Function));
+    expect(await screen.findByText("Connection ready")).toBeVisible();
+    expect(screen.getByText("Bridge listener is ready.")).toBeVisible();
+    expect(screen.getByText("bridge.lab.example:55000")).toBeVisible();
+    expect(screen.queryByText("Connection log")).not.toBeInTheDocument();
+  });
+
+  it("keeps a failed Two-way choice until the user explicitly selects Results only", async () => {
+    const candidate = {
+      id: "42",
+      name: "GX bench 1",
+      profileId: activeType.profileId,
+      profileRevision: activeType.revision,
+      testUnitIds: ["7"],
+      status: "SETUP",
+      ipAddress: "10.20.30.40",
+      port: 9200,
+      communicationMode: "BOTH",
+      effectiveCommunicationMode: "BOTH",
+      transportMode: "TCP",
+      connectionRole: "RECEIVER",
+    };
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback({ ...candidate, ...payload }),
+    );
+    testConnection.mockImplementation((_id, callback) =>
+      callback({
+        schemaVersion: "1.0",
+        analyzerId: "42",
+        profileRef: {
+          profileId: activeType.profileId,
+          revision: activeType.revision,
+        },
+        desiredStateFingerprint: `sha256:${"f".repeat(64)}`,
+        connection: { mode: "TCP", role: "RECEIVER" },
+        dataFlow: "TWO_WAY",
+        outcome: "TIMEOUT",
+        configureEndpoint: {
+          kind: "NETWORK",
+          host: "bridge.lab.example",
+          port: 55000,
+        },
+        resultsOnlyAvailable: true,
+        checks: [
+          {
+            kind: "LISTENER",
+            status: "PASSED",
+            code: "listener.ready",
+            responseTimeMs: 2,
+          },
+          {
+            kind: "REMOTE_PROTOCOL",
+            status: "TIMED_OUT",
+            code: "remote.timeout",
+            responseTimeMs: 5000,
+          },
+          {
+            kind: "REMOTE_PROTOCOL",
+            status: "FAILED",
+            code: "remote.detail.unrecognized",
+            responseTimeMs: 5000,
+          },
+        ],
+      }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+
+    expect(await screen.findByRole("radio", { name: "Two-way" })).toBeChecked();
+    expect(
+      screen.getByRole("textbox", { name: "Analyzer address" }),
+    ).toHaveValue("10.20.30.40");
+    expect(
+      screen.getByRole("spinbutton", { name: "Analyzer port" }),
+    ).toHaveValue(9200);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Test connection" }),
+    );
+
+    expect(await screen.findByText("Connection timed out")).toBeVisible();
+    expect(
+      screen.getByText("The analyzer did not respond before the timeout."),
+    ).toBeVisible();
+    expect(screen.getByText("Connection check failed.")).toBeVisible();
+    expect(
+      screen.queryByText("remote.detail.unrecognized"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Two-way" })).toBeChecked();
+    expect(updateAnalyzer).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Use Results only" }),
+    );
+
+    expect(screen.getByRole("radio", { name: "Results only" })).toBeChecked();
+    expect(
+      screen.queryByRole("spinbutton", { name: "Analyzer port" }),
+    ).not.toBeInTheDocument();
+    expect(updateAnalyzer).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Test connection" }),
+    );
+    await waitFor(() => expect(updateAnalyzer).toHaveBeenCalledTimes(2));
+    expect(updateAnalyzer).toHaveBeenLastCalledWith(
+      "42",
+      {
+        ipAddress: "10.20.30.40",
+        port: null,
+        communicationMode: "ANALYZER_INITIATED",
+        transportMode: "TCP",
+        connectionRole: "RECEIVER",
+        importDirectory: null,
+      },
+      expect.any(Function),
+    );
+  });
+
+  it("configures a FILE analyzer without inventing network fields", async () => {
+    const fileType = {
+      ...activeType,
+      profileId: "shipped.fluorocycler-file",
+      revision: 2,
+      displayName: "FluoroCycler XT",
+      manufacturer: "Hain Lifescience",
+      model: "FluoroCycler XT",
+      protocol: "FILE",
+      instanceDefaults: {
+        protocolVersion: "FILE_SPREADSHEET",
+        communicationMode: null,
+        supportsLisInitiated: null,
+        port: null,
+      },
+    };
+    const candidate = {
+      id: "54",
+      name: "FluoroCycler bench 1",
+      profileId: fileType.profileId,
+      profileRevision: fileType.revision,
+      testUnitIds: ["7"],
+      status: "SETUP",
+      ipAddress: null,
+      port: null,
+      communicationMode: null,
+      effectiveCommunicationMode: null,
+      transportMode: "FILE",
+      connectionRole: "RECEIVER",
+      importDirectory: "/data/analyzers/fluorocycler",
+    };
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        schemaVersion: "1.0",
+        catalogFingerprint: `sha256:${"b".repeat(64)}`,
+        summary: { total: 1, inUse: 1, needsAttention: 0, deactivated: 0 },
+        types: [fileType],
+      }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback({ ...candidate, ...payload }),
+    );
+    testConnection.mockImplementation((_id, callback) =>
+      callback({
+        schemaVersion: "1.0",
+        analyzerId: "54",
+        profileRef: {
+          profileId: fileType.profileId,
+          revision: fileType.revision,
+        },
+        desiredStateFingerprint: `sha256:${"9".repeat(64)}`,
+        connection: { mode: "FILE", role: "RECEIVER" },
+        dataFlow: "RESULTS_ONLY",
+        outcome: "SUCCESS",
+        configureEndpoint: {
+          kind: "DIRECTORY",
+          path: "/data/analyzers/fluorocycler",
+        },
+        resultsOnlyAvailable: false,
+        checks: [
+          {
+            kind: "DIRECTORY",
+            status: "PASSED",
+            code: "directory.ready",
+            args: { path: "/data/analyzers/fluorocycler" },
+            responseTimeMs: 1,
+          },
+        ],
+      }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=connect&analyzerId=54&profile=${fileType.profileId}&revision=2`,
+    );
+
+    expect(
+      await screen.findByRole("textbox", { name: "Analyzer file directory" }),
+    ).toHaveValue("/data/analyzers/fluorocycler");
+    expect(
+      screen.queryByRole("group", { name: "Data flow" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "Analyzer address" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("spinbutton", { name: "Analyzer port" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Test connection" }),
+    );
+
+    await waitFor(() =>
+      expect(updateAnalyzer).toHaveBeenCalledWith(
+        "54",
+        {
+          ipAddress: null,
+          port: null,
+          communicationMode: null,
+          transportMode: "FILE",
+          connectionRole: "RECEIVER",
+          importDirectory: "/data/analyzers/fluorocycler",
+        },
+        expect.any(Function),
+      ),
+    );
+    expect(await screen.findByText("Directory is ready.")).toBeVisible();
+    expect(screen.getByText("/data/analyzers/fluorocycler")).toBeVisible();
+  });
+
+  it("uses a one-way profile default without offering unsupported Two-way setup", async () => {
+    const resultsOnlyType = {
+      ...activeType,
+      profileId: "site.results-only-astm",
+      displayName: "Results-only ASTM analyzer",
+      instanceDefaults: {
+        ...activeType.instanceDefaults,
+        communicationMode: "ANALYZER_INITIATED",
+        supportsLisInitiated: false,
+      },
+    };
+    const candidate = {
+      id: "61",
+      name: "Results-only bench 1",
+      profileId: resultsOnlyType.profileId,
+      profileRevision: resultsOnlyType.revision,
+      testUnitIds: ["7"],
+      status: "SETUP",
+      ipAddress: "10.30.40.50",
+      port: null,
+      communicationMode: null,
+      effectiveCommunicationMode: null,
+      transportMode: "TCP",
+      connectionRole: "RECEIVER",
+    };
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        schemaVersion: "1.0",
+        catalogFingerprint: `sha256:${"b".repeat(64)}`,
+        summary: { total: 1, inUse: 0, needsAttention: 0, deactivated: 0 },
+        types: [resultsOnlyType],
+      }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback({ ...candidate, ...payload }),
+    );
+    testConnection.mockImplementation((_id, callback) =>
+      callback({
+        schemaVersion: "1.0",
+        analyzerId: "61",
+        profileRef: {
+          profileId: resultsOnlyType.profileId,
+          revision: resultsOnlyType.revision,
+        },
+        desiredStateFingerprint: `sha256:${"8".repeat(64)}`,
+        connection: { mode: "TCP", role: "RECEIVER" },
+        dataFlow: "RESULTS_ONLY",
+        outcome: "SUCCESS",
+        configureEndpoint: {
+          kind: "NETWORK",
+          host: "bridge.lab.example",
+          port: 55000,
+        },
+        resultsOnlyAvailable: false,
+        checks: [
+          {
+            kind: "LISTENER",
+            status: "PASSED",
+            code: "listener.ready",
+            responseTimeMs: 2,
+          },
+        ],
+      }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=connect&analyzerId=61&profile=${resultsOnlyType.profileId}&revision=3`,
+    );
+
+    expect(
+      await screen.findByRole("radio", { name: "Results only" }),
+    ).toBeChecked();
+    expect(
+      screen.queryByRole("radio", { name: "Two-way" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("spinbutton", { name: "Analyzer port" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Test connection" }),
+    );
+
+    await waitFor(() =>
+      expect(updateAnalyzer).toHaveBeenCalledWith(
+        "61",
+        expect.objectContaining({
+          communicationMode: "ANALYZER_INITIATED",
+          port: null,
+        }),
+        expect.any(Function),
+      ),
     );
   });
 });
