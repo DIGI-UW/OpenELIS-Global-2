@@ -89,3 +89,35 @@ export const dismissFollowUp = (followupId, category, notes, callback) =>
     JSON.stringify({ category, notes }),
     withBody(callback),
   );
+
+// --- T-27: the provider-side register (FR-V2.5-05..08) ---
+
+/**
+ * Rows about other laboratories, in every status. The same view model as the
+ * queue: triage acts on the row, and the snapshot holds the failing results.
+ */
+export const fetchProviderRegister = (callback) =>
+  getFromOpenElisServer("/rest/eqa/provider/followups", (data) =>
+    callback((data || []).map(toViewModel)),
+  );
+
+export const triageFollowUp = (followupId, target, notes, callback) =>
+  postToOpenElisServerFullResponse(
+    `/rest/eqa/provider/followups/${followupId}/status`,
+    JSON.stringify({ target, notes }),
+    withBody(callback),
+  );
+
+export const notifyParticipant = (followupId, callback) =>
+  postToOpenElisServerFullResponse(
+    `/rest/eqa/provider/followups/${followupId}/notify`,
+    "{}",
+    withBody(callback),
+  );
+
+export const requestRepeatPanel = (followupId, overrideNote, callback) =>
+  postToOpenElisServerFullResponse(
+    `/rest/eqa/provider/followups/${followupId}/repeat`,
+    JSON.stringify({ overrideNote }),
+    withBody(callback),
+  );
