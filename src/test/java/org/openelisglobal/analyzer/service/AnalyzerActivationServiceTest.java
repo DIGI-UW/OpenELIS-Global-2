@@ -30,10 +30,13 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationCandidate;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 
@@ -165,6 +168,36 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void profileMustDeclareTheSelectedTransportBeforeActivation() {
+        BridgeProfileCatalog.ProfileRevision revision = profileRevision();
+        ObjectNode serialOnly = revision.profile().deepCopy();
+        serialOnly.putArray("transport").add("RS-232");
+        when(profileCatalogService.getProfile(AnalyzerTestProfileCatalog.PROFILE_ID,
+                AnalyzerTestProfileCatalog.PROFILE_REVISION))
+                .thenReturn(new BridgeProfileCatalog.ProfileRevision(serialOnly, revision.publication(),
+                        revision.controlRecognitionSummary()));
+
+        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
+
+        assertEquals(List.of("analyzer.activation.blocker.transport"),
+                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+        verify(registrationService, never()).buildActivationRegistration(analyzer);
+        verify(registrationService, never()).synchronizeCandidate(any(), any());
+    }
+
+    @Test
+    public void twoWayDataFlowRequiresThePinnedProfilesExplicitCapability() {
+        analyzer.setCommunicationMode(CommunicationMode.BOTH);
+
+        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
+
+        assertEquals(List.of("analyzer.activation.blocker.dataFlow"),
+                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+        verify(registrationService, never()).buildActivationRegistration(analyzer);
+        verify(registrationService, never()).synchronizeCandidate(any(), any());
+    }
+
+    @Test
     public void restoresBridgeDesiredStateWhenTheAcknowledgedCandidateCannotBeRetained() {
         acknowledgeCandidate();
         when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
@@ -213,6 +246,10 @@ public class AnalyzerActivationServiceTest {
         analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
         analyzer.setActive(false);
         analyzer.setTestUnitIds(List.of("4"));
+        analyzer.setType("ASTM");
+        analyzer.setTransportMode(AnalyzerTransportMode.TCP);
+        analyzer.setConnectionRole(AnalyzerConnectionRole.RECEIVER);
+        analyzer.setCommunicationMode(CommunicationMode.ANALYZER_INITIATED);
         return analyzer;
     }
 
