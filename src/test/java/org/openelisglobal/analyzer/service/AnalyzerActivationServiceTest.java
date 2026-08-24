@@ -150,6 +150,21 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void readinessValidatesTheDraftWithoutSynchronizingOrPersisting() {
+        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
+
+        assertTrue(result.ready());
+        assertFalse(result.activated());
+        assertTrue(result.blockers().isEmpty());
+        verify(registrationService, never()).synchronizeCandidate(any(), any());
+        verify(registrationService, never()).synchronize();
+        verify(candidateFactory, never()).create(any(), any(), any(), any(), any());
+        verify(candidateService, never()).retain(any(), any(), any(), any(), any());
+        verify(analyzerService, never()).update(any(Analyzer.class));
+        assertUnchanged();
+    }
+
+    @Test
     public void restoresBridgeDesiredStateWhenTheAcknowledgedCandidateCannotBeRetained() {
         acknowledgeCandidate();
         when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
