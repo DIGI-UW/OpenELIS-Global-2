@@ -68,6 +68,11 @@ may be stacked while predecessors are reviewed, but merge order is strict.
 Scope, architecture, contract, or acceptance changes require an approved
 roadmap amendment before production code follows them.
 
+Every review deployment comes from an open checkpoint PR whose applicable
+automated gates are green. Branch-only builds are not review targets. Preview
+feedback is fixed in the owning checkpoint PR; preview deployment does not
+change a roadmap marker or constitute acceptance.
+
 Checkpoint names and order package bounded work for review; they do not prove a
 code-level dependency. Derive dependencies from current code, versioned
 contracts, tests, and history. Do not remove a working behavior merely because
