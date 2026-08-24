@@ -117,6 +117,7 @@ public class MicrobiologyArchitectureTest {
     @Test
     public void fixtureGuardOnlyExemptsMigrationVerificationTests() {
         assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyM10LiquibaseRollbackTest.java")));
+        assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyCulturePurposeLiquibaseRollbackTest.java")));
         assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyWhonetExportSelectionLiquibaseTest.java")));
         assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyCulturePurposeLiquibaseTest.java")));
         assertFalse(isMigrationVerificationTest(Path.of("MicrobiologyLiquibaseFixtureTest.java")));
