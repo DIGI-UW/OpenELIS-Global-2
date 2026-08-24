@@ -64,6 +64,12 @@ may be stacked while predecessors are reviewed, but merge order is strict.
 Scope, architecture, contract, or acceptance changes require an approved
 roadmap amendment before production code follows them.
 
+Checkpoint names and order package bounded work for review; they do not prove a
+code-level dependency. Derive dependencies from current code, versioned
+contracts, tests, and history. Do not remove a working behavior merely because
+its target replacement is named in a later checkpoint: the assembled slice that
+removes it must also contain and test the replacement.
+
 ## Current Train
 
 - [x] **R0 - Canonical roadmap and architecture.** OpenELIS
