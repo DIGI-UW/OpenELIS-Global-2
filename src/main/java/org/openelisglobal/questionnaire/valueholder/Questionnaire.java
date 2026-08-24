@@ -48,7 +48,7 @@ public class Questionnaire extends BaseObject<Integer> {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @NotNull
-    private QuestionaireStatus status;
+    private QuestionnaireStatus status;
 
     @Column(name = "description", length = 255)
     private String description;
@@ -124,11 +124,11 @@ public class Questionnaire extends BaseObject<Integer> {
         this.questionnaireItems = questionnaireItems;
     }
 
-    public QuestionaireStatus getStatus() {
+    public QuestionnaireStatus getStatus() {
         return status;
     }
 
-    public void setStatus(QuestionaireStatus status) {
+    public void setStatus(QuestionnaireStatus status) {
         this.status = status;
     }
 
@@ -188,12 +188,12 @@ public class Questionnaire extends BaseObject<Integer> {
         this.purpose = purpose;
     }
 
-    public enum QuestionaireStatus {
+    public enum QuestionnaireStatus {
         DRAFT("Draft"), ACTIVE("Active"), RETIRED("Retired"), UNKNOWN("Unknown");
 
         private final String display;
 
-        QuestionaireStatus(String display) {
+        QuestionnaireStatus(String display) {
             this.display = display;
         }
 

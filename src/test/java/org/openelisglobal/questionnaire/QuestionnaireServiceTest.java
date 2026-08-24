@@ -55,7 +55,7 @@ public class QuestionnaireServiceTest extends BaseWebContextSensitiveTest {
         q.setQuestionnaireName("New Form");
         q.setDescription("Test questionnaire");
         q.setCode("Q001");
-        q.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        q.setStatus(Questionnaire.QuestionnaireStatus.ACTIVE);
         q.setPurpose("Testing");
         q.setHasItem(false);
         q.setFhirUuid(UUID.randomUUID());
@@ -80,7 +80,7 @@ public class QuestionnaireServiceTest extends BaseWebContextSensitiveTest {
         questionnaire.setQuestionnaireName("Vitals Form");
         questionnaire.setDescription("Vitals questionnaire");
         questionnaire.setCode("VF001");
-        questionnaire.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        questionnaire.setStatus(Questionnaire.QuestionnaireStatus.ACTIVE);
         questionnaire.setPurpose("Vitals capture");
         questionnaire.setHasItem(true);
         questionnaire.setFhirUuid(UUID.randomUUID());
@@ -136,7 +136,7 @@ public class QuestionnaireServiceTest extends BaseWebContextSensitiveTest {
         questionnaire.setQuestionnaireName("Nested Form");
         questionnaire.setDescription("Nested questionnaire");
         questionnaire.setCode("NF001");
-        questionnaire.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        questionnaire.setStatus(Questionnaire.QuestionnaireStatus.ACTIVE);
         questionnaire.setPurpose("Hierarchy testing");
         questionnaire.setHasItem(true);
         questionnaire.setFhirUuid(UUID.randomUUID());
@@ -197,7 +197,7 @@ public class QuestionnaireServiceTest extends BaseWebContextSensitiveTest {
         questionnaire.setQuestionnaireName("Choice Form");
         questionnaire.setDescription("Choice questionnaire");
         questionnaire.setCode("CF001");
-        questionnaire.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        questionnaire.setStatus(Questionnaire.QuestionnaireStatus.ACTIVE);
         questionnaire.setPurpose("Choice testing");
         questionnaire.setHasItem(true);
         questionnaire.setFhirUuid(UUID.randomUUID());
@@ -251,7 +251,7 @@ public class QuestionnaireServiceTest extends BaseWebContextSensitiveTest {
         questionnaire.setQuestionnaireName("Initial Form");
         questionnaire.setDescription("Initial value questionnaire");
         questionnaire.setCode("IF001");
-        questionnaire.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        questionnaire.setStatus(Questionnaire.QuestionnaireStatus.ACTIVE);
         questionnaire.setPurpose("Initial testing");
         questionnaire.setHasItem(true);
         questionnaire.setFhirUuid(UUID.randomUUID());
@@ -302,7 +302,7 @@ public class QuestionnaireServiceTest extends BaseWebContextSensitiveTest {
         questionnaire.setQuestionnaireName("Repeat Form");
         questionnaire.setDescription("Repeating item questionnaire");
         questionnaire.setCode("RF001");
-        questionnaire.setStatus(Questionnaire.QuestionaireStatus.ACTIVE);
+        questionnaire.setStatus(Questionnaire.QuestionnaireStatus.ACTIVE);
         questionnaire.setPurpose("Repeat testing");
         questionnaire.setHasItem(true);
         questionnaire.setFhirUuid(UUID.randomUUID());
@@ -331,5 +331,14 @@ public class QuestionnaireServiceTest extends BaseWebContextSensitiveTest {
         QuestionnaireItem savedItem = saved.getQuestionnaireItems().iterator().next();
 
         assertTrue(savedItem.isRepeats());
+    }
+
+    @Test
+    public void delete_shouldDeleteQuestionnaire() throws Exception {
+        Questionnaire questionaire = new Questionnaire();
+        questionaire.setId(1);
+        questionnaireService.delete(questionaire);
+        List<Questionnaire> questionnaires = questionnaireService.getAll();
+        assertEquals(3, questionnaires.size());
     }
 }
