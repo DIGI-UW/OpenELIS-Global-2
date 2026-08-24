@@ -72,8 +72,8 @@ if [ "$SKIP_IMAGES" != true ]; then
   echo "[2/2] Building harness Docker images (dev stack + parity image set)..."
   cd "$HARNESS_DIR"
 
-  # Dev stack: explicitly name the services that contain branch-local source
-  # (oe + frontend). Without explicit service names, `docker compose build`
+  # Dev stack: explicitly name every service that contains branch-local source.
+  # Without explicit service names, `docker compose build`
   # silently skips services that are missing a `build:` directive — which
   # masked the root cause of a class of bugs where the harness ran develop's
   # published images instead of the local branch. Explicit names make a
@@ -83,13 +83,15 @@ if [ "$SKIP_IMAGES" != true ]; then
   # selects the dev stage of the single multi-stage frontend/Dockerfile.
   # No separate base-image pre-build step needed (layer cache dedupes the
   # shared stages automatically).
-  docker compose "${LOCAL_COMPOSE_FILES[@]}" build oe.openelis.org frontend.openelis.org
+  docker compose "${LOCAL_COMPOSE_FILES[@]}" build oe.openelis.org frontend.openelis.org openelis-analyzer-bridge astm-simulator
 
   # Confirm the expected image tags exist locally so compose up doesn't
   # silently fall back to the pulled :develop tags.
   for tag in \
     itechuw/openelis-global-2-dev:develop \
-    itechuw/openelis-global-2-frontend-dev:develop; do
+    itechuw/openelis-global-2-frontend-dev:develop \
+    openelis-analyzer-bridge.harness \
+    openelis-astm-simulator.harness; do
     if ! docker image inspect "$tag" >/dev/null 2>&1; then
       echo "ERROR: expected image '$tag' not present after build." >&2
       echo "Check that the compose file has a 'build:' directive for the" >&2
@@ -101,7 +103,7 @@ if [ "$SKIP_IMAGES" != true ]; then
 
   cd "$REPO_ROOT"
   docker compose "${CI_COMPOSE_FILES[@]}" build
-  echo "  ✓ Images built (dev stack: oe + frontend; CI parity set)"
+  echo "  ✓ Images built (dev stack: OE + frontend + Bridge + mock; CI parity set)"
   echo ""
 else
   echo "[2/2] Skipping Docker image build (--skip-images)"
