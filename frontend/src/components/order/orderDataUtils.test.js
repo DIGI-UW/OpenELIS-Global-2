@@ -26,7 +26,7 @@ describe("buildLoadedOrderData", () => {
     expect(loaded.sampleOrderItems.labNo).toBe("20260806-001");
     expect(loaded.patientProperties.patientUpdateStatus).toBe("NO_ACTION");
     expect(loaded.microbiologyOrderDetail).toEqual({
-      culturePurpose: "",
+      culturePurpose: "CLINICAL_DIAGNOSTIC",
       cultureMethodId: "17",
       patientOrigin: "INPATIENT",
       admissionDate: "2026-08-03",
@@ -40,7 +40,7 @@ describe("buildLoadedOrderData", () => {
     const loaded = buildLoadedOrderData({ labNumber: "20260806-002" });
 
     expect(loaded.microbiologyOrderDetail).toEqual({
-      culturePurpose: "",
+      culturePurpose: "CLINICAL_DIAGNOSTIC",
       cultureMethodId: "",
       patientOrigin: "",
       admissionDate: "",
@@ -49,6 +49,15 @@ describe("buildLoadedOrderData", () => {
       antibioticExposure: false,
     });
   });
+
+  it("preserves an explicitly unspecified culture purpose from legacy data", () => {
+    const loaded = buildLoadedOrderData({
+      microbiologyOrderDetail: { culturePurpose: null },
+    });
+
+    expect(loaded.microbiologyOrderDetail.culturePurpose).toBe("");
+  });
+
   it("preserves loaded reference lists and environmental state", () => {
     const sampleTypes = [{ id: "1", value: "Blood" }];
     const loaded = buildLoadedOrderData(

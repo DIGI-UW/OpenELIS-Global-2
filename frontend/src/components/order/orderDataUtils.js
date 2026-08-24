@@ -13,7 +13,7 @@ export const buildLoadedOrderData = (response, prior = {}) => {
       "culturePurpose",
     )
       ? loadedMicrobiologyOrderDetail.culturePurpose || ""
-      : "",
+      : SampleOrderFormValues.microbiologyOrderDetail.culturePurpose,
   };
   delete microbiologyOrderDetail.criticalNotificationPreference;
 
