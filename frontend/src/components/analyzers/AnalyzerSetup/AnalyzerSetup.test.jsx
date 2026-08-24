@@ -8,8 +8,10 @@ import { IntlProvider } from "react-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  activateAnalyzer,
   createAnalyzer,
   getAnalyzer,
+  getAnalyzerActivationReadiness,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
   getAnalyzerTypeMapping,
@@ -20,8 +22,10 @@ import messages from "../../../languages/en.json";
 import AnalyzerSetup from "./AnalyzerSetup";
 
 vi.mock("../../../services/analyzerService", () => ({
+  activateAnalyzer: vi.fn(),
   createAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
+  getAnalyzerActivationReadiness: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
   getAnalyzerTypeMapping: vi.fn(),
@@ -129,12 +133,12 @@ const currentMapping = {
   },
 };
 
-const SetupHarness = () => {
+const SetupHarness = ({ onClose = vi.fn() }) => {
   const location = useLocation();
   const currentStep =
     new URLSearchParams(location.search).get("setup") || "instrument";
 
-  return <AnalyzerSetup currentStep={currentStep} onClose={vi.fn()} />;
+  return <AnalyzerSetup currentStep={currentStep} onClose={onClose} />;
 };
 
 const renderSetup = () =>
@@ -146,12 +150,12 @@ const renderSetup = () =>
     </BrowserRouter>,
   );
 
-const renderSetupWithHistory = (initialEntry) => {
+const renderSetupWithHistory = (initialEntry, onClose = vi.fn()) => {
   const history = createMemoryHistory({ initialEntries: [initialEntry] });
   render(
     <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
-        <SetupHarness />
+        <SetupHarness onClose={onClose} />
       </IntlProvider>
     </Router>,
   );
@@ -979,5 +983,116 @@ describe("AnalyzerSetup Instrument step", () => {
         expect.any(Function),
       ),
     );
+  });
+
+  it("shows exact mapping and recognition blockers in the Connect step", async () => {
+    const candidate = {
+      id: "42",
+      name: "GX bench 1",
+      profileId: activeType.profileId,
+      profileRevision: activeType.revision,
+      testUnitIds: ["7"],
+      status: "SETUP",
+      ipAddress: "10.20.30.40",
+      port: null,
+      communicationMode: "ANALYZER_INITIATED",
+      effectiveCommunicationMode: "ANALYZER_INITIATED",
+      transportMode: "TCP",
+      connectionRole: "RECEIVER",
+    };
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "SETUP",
+        ready: false,
+        activated: false,
+        blockers: [
+          { code: "analyzer.activation.blocker.mappings", args: {} },
+          { code: "analyzer.activation.blocker.recognition", args: {} },
+        ],
+      }),
+    );
+
+    renderSetupWithHistory(
+      `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+
+    expect(
+      await screen.findByText("Analyzer mappings must be verified again."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Control recognition must be verified again."),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Finish and activate" }),
+    ).toBeVisible();
+    expect(activateAnalyzer).not.toHaveBeenCalled();
+  });
+
+  it("saves current settings and activates without requiring a connection test", async () => {
+    const onClose = vi.fn();
+    const candidate = {
+      id: "42",
+      name: "GX bench 1",
+      profileId: activeType.profileId,
+      profileRevision: activeType.revision,
+      testUnitIds: ["7"],
+      status: "SETUP",
+      ipAddress: "10.20.30.40",
+      port: null,
+      communicationMode: "ANALYZER_INITIATED",
+      effectiveCommunicationMode: "ANALYZER_INITIATED",
+      transportMode: "TCP",
+      connectionRole: "RECEIVER",
+    };
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "SETUP",
+        ready: true,
+        activated: false,
+        blockers: [],
+      }),
+    );
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback({ ...candidate, ...payload }),
+    );
+    activateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        ready: true,
+        activated: true,
+        blockers: [],
+      }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+      onClose,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    );
+
+    await waitFor(() =>
+      expect(updateAnalyzer).toHaveBeenCalledWith(
+        "42",
+        {
+          ipAddress: "10.20.30.40",
+          port: null,
+          communicationMode: "ANALYZER_INITIATED",
+          transportMode: "TCP",
+          connectionRole: "RECEIVER",
+          importDirectory: null,
+        },
+        expect.any(Function),
+      ),
+    );
+    expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+    expect(testConnection).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
