@@ -2,14 +2,14 @@
 
 ## Purpose
 
-Use this guide after the spec PR is reviewed to start milestone implementation
-without re-reading every Confluence/Jira/mockup artifact from scratch.
+Use this guide to continue the MVP implementation without re-reading every
+source artifact from scratch.
 
 ## Preconditions
 
 1. Use Java 21.
-2. Keep work on the current feature/spec branch until implementation branches
-   are created.
+2. Use the existing PR #3789 delivery branch; M1-M7 are validation blocks in
+   that PR, not separate implementation branches.
 3. Read these files first:
    - `specs/782-ogc-782-microbiology-mvp-spec/spec.md`
    - `specs/782-ogc-782-microbiology-mvp-spec/plan.md`
@@ -20,15 +20,15 @@ without re-reading every Confluence/Jira/mockup artifact from scratch.
 
 ## Code QA Skills
 
-Use the `DIGI-UW/code-qa` skill suite as the verification companion for
-implementation PRs:
+The repository pins `DIGI-UW/code-qa` at `tools/code-qa`. Initialize that
+existing submodule; do not add a second copy or change `.gitmodules`:
 
 ```bash
-git submodule add https://github.com/DIGI-UW/code-qa tools/code-qa
+git submodule update --init tools/code-qa
 ```
 
-Then make the local skill installer scan `tools/code-qa/skills`, or otherwise
-make these skills available to the implementing agent:
+Make the local skill installer scan `tools/code-qa/skills`, or otherwise make
+these skills available to the implementing agent:
 
 - `meaningful-test-coverage`
 - `spec-code-alignment`
@@ -38,15 +38,13 @@ make these skills available to the implementing agent:
 The final MVP acceptance gate in `tasks.md` requires these workflows before
 marking the implementation complete.
 
-## Start The First Implementation Slice
+## Work In The Delivery PR
 
-Create the first milestone branch from the accepted spec branch:
-
-```bash
-git checkout develop
-git pull --rebase upstream develop
-git checkout -b feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations
-```
+Use PR #3789 on
+`feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`, based on
+`spec/782-ogc-782-microbiology-mvp-spec`. Complete and validate M1-M7 in order
+inside that PR. Post-MVP remediation uses separate coherent PRs stacked in
+sequence above #3789.
 
 M1 should implement only the catalog/reference foundation:
 

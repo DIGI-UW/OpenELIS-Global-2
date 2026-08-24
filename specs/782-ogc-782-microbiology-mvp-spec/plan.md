@@ -85,7 +85,10 @@ question. Remaining choices are engineering planning decisions captured in
 
 ## Milestone Plan
 
-_GATE: This feature exceeds three days; each milestone is intended as one PR._
+_GATE: This feature exceeds three days and must be delivered in independently
+verifiable behavior slices. The original M1-M7 implementation was consolidated
+historically in PR #3789. Every post-MVP remediation slice is delivered as one
+sequential stacked PR based on the preceding slice._
 
 ### Milestone Table
 
@@ -113,15 +116,15 @@ graph LR
 
 ### PR Strategy
 
-- **Spec PR**: `spec/782-ogc-782-microbiology-mvp-spec` -> `develop`
-- **Milestone PRs**:
-  - `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations`
-  - `feat/782-ogc-782-microbiology-mvp-m2-case-core`
-  - `feat/782-ogc-782-microbiology-mvp-m3-order-routing`
-  - `feat/782-ogc-782-microbiology-mvp-m4-case-workbench`
-  - `feat/782-ogc-782-microbiology-mvp-m5-manual-ast`
-  - `feat/782-ogc-782-microbiology-mvp-m6-worklists-critical`
-  - `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`
+- **Spec PR #3782**: `spec/782-ogc-782-microbiology-mvp-spec` -> `develop`.
+- **MVP implementation PR #3789**:
+  `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` ->
+  `spec/782-ogc-782-microbiology-mvp-spec`. M1-M7 are sequential validation
+  blocks within this one implementation PR.
+- **Superseded PRs**: #3783-#3788 were closed and are not part of the delivery
+  chain.
+- **Post-MVP remediation**: one coherent behavior slice per PR, with each PR
+  based on the preceding branch so GitHub represents the sequence as a stack.
 
 ## Project Structure
 
@@ -140,7 +143,7 @@ specs/782-ogc-782-microbiology-mvp-spec/
     └── microbiology-openapi.yaml
 ```
 
-### Source Code (future milestone branches)
+### Source Code (implementation branch)
 
 ```text
 src/main/java/org/openelisglobal/microbiology/
@@ -152,7 +155,7 @@ src/main/java/org/openelisglobal/microbiology/
 └── valueholder/
 
 src/main/resources/liquibase/3.5.x.x/
-└── 05x-microbiology-mvp-*.xml
+└── <next-available>-microbiology-mvp-*.xml
 
 src/test/java/org/openelisglobal/microbiology/
 ├── controller/
@@ -169,7 +172,7 @@ frontend/src/components/microbiology/
 frontend/src/pages/
 └── MicrobiologyPage.jsx
 
-frontend/tests/e2e/
+frontend/playwright/tests/foundational/core/
 └── microbiology-mvp.spec.ts
 ```
 

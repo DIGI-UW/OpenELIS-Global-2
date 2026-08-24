@@ -324,7 +324,9 @@ or missing mapping for export.
 - **CR-008**: Tests MUST be included for new backend behavior, frontend flows,
   and migration/ORM validity; backend tests use JUnit 4.
 - **CR-009**: Because the full module is larger than three days, implementation
-  MUST be split into validation milestones, each suitable for one PR.
+  MUST be split into independently verifiable behavior slices. Delivery and
+  review structure is defined by the engineering plan, not this product
+  contract.
 
 ### Key Entities
 
