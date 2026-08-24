@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Button,
   InlineNotification,
+  Loading,
   RadioButton,
   RadioButtonGroup,
   TextInput,
@@ -9,6 +10,8 @@ import {
 import { useIntl } from "react-intl";
 
 import {
+  activateAnalyzer,
+  getAnalyzerActivationReadiness,
   testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
@@ -58,19 +61,48 @@ const formatCheckMessage = (intl, check) => {
   });
 };
 
+const isActivationResult = (response, analyzerId) =>
+  Boolean(response) &&
+  !response.error &&
+  String(response.analyzerId) === String(analyzerId) &&
+  typeof response.ready === "boolean" &&
+  typeof response.activated === "boolean" &&
+  Array.isArray(response.blockers);
+
+const formatActivationBlocker = (intl, blocker) => {
+  const id = blocker?.code;
+  return intl.formatMessage(
+    {
+      id:
+        id && hasMessage(intl, id)
+          ? id
+          : "analyzer.setup.connect.activation.blockerUnknown",
+    },
+    blocker?.args,
+  );
+};
+
 const AnalyzerConnectionSetup = ({
   candidate,
   analyzerType,
   onCandidateChange,
+  onClose,
 }) => {
   const intl = useIntl();
   const [settings, setSettings] = useState(() =>
     initialSettings(candidate, analyzerType),
   );
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [action, setAction] = useState(null);
   const [probe, setProbe] = useState(null);
   const [error, setError] = useState(false);
+  const [readiness, setReadiness] = useState(null);
+  const [readinessLoading, setReadinessLoading] = useState(
+    Boolean(candidate?.id),
+  );
+  const [activationError, setActivationError] = useState(false);
+
+  const submitting = action !== null;
 
   const isFile =
     candidate?.transportMode === "FILE" || analyzerType?.protocol === "FILE";
@@ -95,10 +127,46 @@ const AnalyzerConnectionSetup = ({
     return value.path || value.url || null;
   }, [probe]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    if (candidate?.id) {
+      getAnalyzerActivationReadiness(
+        candidate.id,
+        (result) => {
+          setReadinessLoading(false);
+          if (!isActivationResult(result, candidate.id)) {
+            setReadiness(null);
+            setActivationError(true);
+            return;
+          }
+          setReadiness(result);
+        },
+        controller.signal,
+      );
+    }
+    return () => controller.abort();
+  }, [candidate?.id]);
+
+  const refreshReadiness = () => {
+    setReadinessLoading(true);
+    setActivationError(false);
+    getAnalyzerActivationReadiness(candidate.id, (result) => {
+      setReadinessLoading(false);
+      if (!isActivationResult(result, candidate.id)) {
+        setReadiness(null);
+        setActivationError(true);
+        return;
+      }
+      setReadiness(result);
+    });
+  };
+
   const updateSetting = (field, value) => {
     setSettings((previous) => ({ ...previous, [field]: value }));
     setProbe(null);
     setError(false);
+    setReadiness(null);
+    setActivationError(false);
   };
 
   const changeDataFlow = (nextDataFlow) => {
@@ -130,33 +198,39 @@ const AnalyzerConnectionSetup = ({
     );
   };
 
-  const runProbe = () => {
+  const connectionPayload = () => ({
+    ipAddress: isFile ? null : settings.ipAddress.trim(),
+    port: needsRemotePort ? Number(settings.port) : null,
+    communicationMode: isFile ? null : settings.communicationMode,
+    transportMode: settings.transportMode,
+    connectionRole: settings.connectionRole,
+    importDirectory: isFile ? settings.importDirectory.trim() : null,
+  });
+
+  const saveCandidate = (nextAction, onSaved) => {
     setSubmitAttempted(true);
     setError(false);
-    setProbe(null);
     if (!validate()) {
       return;
     }
 
-    setSubmitting(true);
-    const payload = {
-      ipAddress: isFile ? null : settings.ipAddress.trim(),
-      port: needsRemotePort ? Number(settings.port) : null,
-      communicationMode: isFile ? null : settings.communicationMode,
-      transportMode: settings.transportMode,
-      connectionRole: settings.connectionRole,
-      importDirectory: isFile ? settings.importDirectory.trim() : null,
-    };
-
-    updateAnalyzer(candidate.id, payload, (saved) => {
+    setAction(nextAction);
+    updateAnalyzer(candidate.id, connectionPayload(), (saved) => {
       if (isApiError(saved)) {
-        setSubmitting(false);
+        setAction(null);
         setError(true);
         return;
       }
       onCandidateChange?.(saved);
+      onSaved(saved);
+    });
+  };
+
+  const runProbe = () => {
+    setProbe(null);
+    saveCandidate("probe", () => {
       testConnection(candidate.id, (result) => {
-        setSubmitting(false);
+        setAction(null);
         const matchesCandidate =
           !isApiError(result) &&
           String(result.analyzerId) === String(candidate.id) &&
@@ -169,7 +243,34 @@ const AnalyzerConnectionSetup = ({
           return;
         }
         setProbe(result);
+        refreshReadiness();
       });
+    });
+  };
+
+  const finishAndActivate = () => {
+    setReadiness(null);
+    setActivationError(false);
+    saveCandidate("activate", (saved) => {
+      activateAnalyzer(candidate.id, (result) => {
+        setAction(null);
+        if (!isActivationResult(result, candidate.id)) {
+          setActivationError(true);
+          return;
+        }
+        setReadiness(result);
+        if (result.activated && result.status === "ACTIVE") {
+          onCandidateChange?.({ ...saved, status: "ACTIVE" });
+          onClose?.();
+        }
+      });
+    });
+  };
+
+  const saveAndFinishLater = () => {
+    saveCandidate("save", () => {
+      setAction(null);
+      onClose?.();
     });
   };
 
@@ -283,9 +384,10 @@ const AnalyzerConnectionSetup = ({
       <div className="analyzer-setup__connect-actions">
         <Button type="button" disabled={submitting} onClick={runProbe}>
           {intl.formatMessage({
-            id: submitting
-              ? "analyzer.setup.connect.testing"
-              : "analyzer.setup.connect.test",
+            id:
+              action === "probe"
+                ? "analyzer.setup.connect.testing"
+                : "analyzer.setup.connect.test",
           })}
         </Button>
       </div>
@@ -348,6 +450,91 @@ const AnalyzerConnectionSetup = ({
           )}
         </section>
       )}
+
+      <section
+        className="analyzer-setup__activation-readiness"
+        aria-labelledby="analyzer-setup-activation-readiness-title"
+      >
+        <h4 id="analyzer-setup-activation-readiness-title">
+          {intl.formatMessage({
+            id: "analyzer.setup.connect.activation.readiness",
+          })}
+        </h4>
+        {readinessLoading && (
+          <Loading
+            small
+            withOverlay={false}
+            description={intl.formatMessage({
+              id: "analyzer.setup.connect.activation.loading",
+            })}
+          />
+        )}
+        {activationError && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "analyzer.setup.connect.activation.error",
+            })}
+          />
+        )}
+        {readiness?.ready && (
+          <InlineNotification
+            kind="success"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: readiness.activated
+                ? "analyzer.setup.connect.activation.active"
+                : "analyzer.setup.connect.activation.ready",
+            })}
+          />
+        )}
+        {readiness?.blockers.map((blocker, index) => (
+          <InlineNotification
+            key={`${blocker.code}-${index}`}
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title={formatActivationBlocker(intl, blocker)}
+          />
+        ))}
+      </section>
+
+      <div className="analyzer-setup__completion-actions">
+        <Button type="button" disabled={submitting} onClick={finishAndActivate}>
+          {intl.formatMessage({
+            id:
+              action === "activate"
+                ? "analyzer.setup.connect.activation.activating"
+                : "analyzer.setup.connect.activation.finish",
+          })}
+        </Button>
+        <Button
+          type="button"
+          kind="secondary"
+          disabled={submitting}
+          onClick={saveAndFinishLater}
+        >
+          {intl.formatMessage({
+            id:
+              action === "save"
+                ? "analyzer.setup.connect.activation.saving"
+                : "analyzer.setup.connect.activation.saveLater",
+          })}
+        </Button>
+        <Button
+          type="button"
+          kind="ghost"
+          disabled={submitting}
+          onClick={onClose}
+        >
+          {intl.formatMessage({
+            id: "analyzer.setup.connect.activation.cancel",
+          })}
+        </Button>
+      </div>
     </div>
   );
 };

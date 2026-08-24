@@ -174,6 +174,25 @@
   gap: spacing.$spacing-04;
 }
 
+.analyzer-setup__activation-readiness {
+  border-top: 1px solid var(--cds-border-subtle-01);
+  display: grid;
+  gap: spacing.$spacing-03;
+  padding-top: spacing.$spacing-05;
+
+  h4 {
+    @include type.type-style("heading-compact-01");
+    color: var(--cds-text-primary);
+    margin: 0;
+  }
+}
+
+.analyzer-setup__completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-04;
+}
+
 .analyzer-setup__connect-evidence {
   border-top: 1px solid var(--cds-border-subtle-01);
   display: grid;

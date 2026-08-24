@@ -731,6 +731,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     candidate={candidate}
                     analyzerType={selectedType}
                     onCandidateChange={setCandidate}
+                    onClose={onClose}
                   />
                 ) : (
                   <Loading

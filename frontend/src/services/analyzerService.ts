@@ -117,6 +117,20 @@ export interface AnalyzerConnectionProbeView extends AnalyzerApiError {
   checks: AnalyzerConnectionProbeCheck[];
 }
 
+export interface AnalyzerActivationResultView extends Omit<
+  AnalyzerApiError,
+  "status"
+> {
+  analyzerId: string;
+  status: string;
+  ready: boolean;
+  activated: boolean;
+  blockers: Array<{
+    code: string;
+    args?: Record<string, unknown>;
+  }>;
+}
+
 export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
 
 export interface AnalyzerMappingTestOption {
@@ -501,6 +515,56 @@ export const testConnection = (
     callback,
     extraParams,
   );
+};
+
+export const getAnalyzerActivationReadiness = (
+  id: string,
+  callback: DataCallback<AnalyzerActivationResultView | undefined>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer/analyzers/${id}/activation-readiness`,
+    callback,
+    signal,
+  );
+};
+
+export const activateAnalyzer = (
+  id: string,
+  callback: ApiCallback<AnalyzerActivationResultView>,
+) => {
+  fetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/activate`, {
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
+    },
+    body: JSON.stringify({}),
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      callback({
+        ...json,
+        ...(!response.ok
+          ? {
+              statusCode: response.status,
+              statusText: response.statusText,
+            }
+          : {}),
+      } as AnalyzerActivationResultView);
+    })
+    .catch((error: Error) => {
+      callback({
+        analyzerId: id,
+        status: "UNKNOWN",
+        ready: false,
+        activated: false,
+        blockers: [],
+        error: error.message || "Network error",
+        statusCode: 0,
+      });
+    });
 };
 
 /**

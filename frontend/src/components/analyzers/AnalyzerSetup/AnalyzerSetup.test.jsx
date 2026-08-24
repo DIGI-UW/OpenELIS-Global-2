@@ -1095,4 +1095,48 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(testConnection).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("saves setup for later without activating or testing the connection", async () => {
+    const onClose = vi.fn();
+    const candidate = {
+      id: "42",
+      name: "GX bench 1",
+      profileId: activeType.profileId,
+      profileRevision: activeType.revision,
+      testUnitIds: ["7"],
+      status: "SETUP",
+      ipAddress: "10.20.30.40",
+      port: null,
+      communicationMode: "ANALYZER_INITIATED",
+      effectiveCommunicationMode: "ANALYZER_INITIATED",
+      transportMode: "TCP",
+      connectionRole: "RECEIVER",
+    };
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "SETUP",
+        ready: true,
+        activated: false,
+        blockers: [],
+      }),
+    );
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback({ ...candidate, ...payload }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+      onClose,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save and finish later" }),
+    );
+
+    await waitFor(() => expect(updateAnalyzer).toHaveBeenCalledTimes(1));
+    expect(activateAnalyzer).not.toHaveBeenCalled();
+    expect(testConnection).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
