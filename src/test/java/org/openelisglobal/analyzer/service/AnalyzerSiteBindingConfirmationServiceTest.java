@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +39,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
 
     private static final String BINDING_FINGERPRINT = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     private static final String RECOGNITION_FINGERPRINT = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+    private static final String PROFILE_FINGERPRINT = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     @Mock
     private AnalyzerSiteBindingConfirmationDAO confirmationDAO;
@@ -72,6 +74,8 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
             confirmation.setId("71");
             return confirmation.getId();
         });
+        when(auditTrailService.saveNewHistory(any(AnalyzerSiteBindingConfirmation.class), eq("17"),
+                eq("analyzer_site_binding_confirmation"))).thenReturn("91");
     }
 
     @Test
@@ -88,8 +92,10 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         assertSame(candidate.revision(), saved.getValue().getSiteBindingRevision());
         assertEquals("site.mock-analyzer", saved.getValue().getProfileId());
         assertEquals(2, saved.getValue().getProfileRevision());
+        assertEquals(PROFILE_FINGERPRINT, saved.getValue().getProfileRevisionFingerprint());
         assertEquals(BINDING_FINGERPRINT, saved.getValue().getBindingFingerprint());
         assertEquals(RECOGNITION_FINGERPRINT, saved.getValue().getRecognitionFingerprint());
+        assertEquals("91", saved.getValue().getAuditEventId());
         assertEquals("17", saved.getValue().getConfirmedBy());
         assertEquals(AnalyzerSiteBindingConfirmationView.State.CURRENT, confirmed.state());
         assertEquals("17", confirmed.confirmedBy());
@@ -202,6 +208,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         profile.setId("41");
         profile.setProfileId("site.mock-analyzer");
         profile.setProfileRevision(2);
+        profile.setProfileFingerprint(PROFILE_FINGERPRINT);
 
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setId("51");
@@ -251,8 +258,10 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         confirmation.setSiteBindingRevision(snapshot.revision());
         confirmation.setProfileId("site.mock-analyzer");
         confirmation.setProfileRevision(2);
+        confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
         confirmation.setBindingFingerprint(snapshot.revision().getBindingFingerprint());
         confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
+        confirmation.setAuditEventId("90");
         confirmation.setConfirmedRowsJson(mapper.writeValueAsString(request.confirmedRows()));
         confirmation.setExcludedRowsJson(mapper.writeValueAsString(request.excludedRows()));
         confirmation.setConfirmedBy("16");
