@@ -3,7 +3,7 @@
  *
  * Each test exercises the M1 profile publication gate:
  *   1. Create analyzer from profile via dashboard UI
- *   2. Test connection (TCP analyzers only)
+ *   2. Verify mappings and test the configured connection
  *   3. Push a result via mock server (ASTM, HL7, or FILE)
  *   4. Verify results appear on the AnalyzerResults page
  *   5. Delete analyzer (teardown)
@@ -22,7 +22,6 @@ import {
   createAnalyzerFromProfile,
   teardownAnalyzer,
 } from "../../../helpers/create-analyzer-from-profile";
-import { testAnalyzerConnection } from "../../../helpers/test-analyzer-connection";
 import { pushAnalyzerResult } from "../../../helpers/push-analyzer-result";
 import {
   accessionTextRegExp,
@@ -153,12 +152,7 @@ test.describe("M1 priority profile transport integrations", () => {
 
       // Step 1: Create analyzer from profile via dashboard UI
       const dynamicIp = await createAnalyzerFromProfile(page, config);
-      const analyzerRow = await findAnalyzerRow(page, config.name, testInfo);
-
-      // Step 2: Test connection (skip for FILE — no TCP)
-      if (config.protocol !== "FILE") {
-        await testAnalyzerConnection(page, analyzerRow);
-      }
+      await findAnalyzerRow(page, config.name, testInfo);
 
       // Override push destination with dynamic bridge IP for TCP analyzers
       let pushConfig = { ...config.push };

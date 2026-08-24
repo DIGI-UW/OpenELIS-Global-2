@@ -1,6 +1,6 @@
 import { expect, test } from "../../../helpers/test-base";
 import type { Locator, Page } from "@playwright/test";
-import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
+import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import {
   LONG_TIMEOUT,
@@ -201,19 +201,18 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(dialog).not.toBeVisible();
 
     const list = new AnalyzerListPage(page);
-    const form = new AnalyzerFormPage(page);
+    const setup = new AnalyzerSetupPage(page);
     await page
       .getByRole("navigation", { name: "Breadcrumb" })
       .getByRole("link", { name: "Analyzers", exact: true })
       .click();
     await list.expectLoaded();
     await list.clickAdd();
-    await form.expectOpen();
-    await form.profileDropdown
-      .locator('button[role="combobox"], .cds--list-box__field')
-      .click();
+    await setup.expectOpen();
+    await setup.typePicker.click();
+    await setup.typePicker.fill(draftName);
     await expect(
-      form.profileDropdown.getByRole("option", { name: draftName }),
+      page.getByRole("option", { name: new RegExp(draftName, "i") }),
     ).toHaveCount(0);
   });
 

@@ -53,7 +53,7 @@ import LandingPage from "./components/home/LandingPage";
  * surfaces as an E2E failure: the RouteErrorBoundary catches the
  * `TypeError: Failed to fetch dynamically imported module` and shows
  * its "module could not be loaded" fallback. Seen as a recurring
- * develop-CI flake on AnalyzerForm chunk fetch; the retry wrapper
+ * develop-CI flake on route chunk fetch; the retry wrapper
  * gives the browser three chances with backoff before giving up.
  *
  * Backoff is intentionally short (0.5s/1s/1.5s): the real failures
@@ -62,9 +62,8 @@ import LandingPage from "./components/home/LandingPage";
  * chunk is genuinely missing (e.g., deploy mismatch).
  */
 function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
-  // eslint-disable-next-line local/no-raw-react-lazy --
-  // This IS the lazyWithRetry helper: it legitimately wraps React.lazy
-  // with retry semantics. The rule flags direct callers elsewhere.
+  // This helper is the one legitimate wrapper around React.lazy.
+  // eslint-disable-next-line local/no-raw-react-lazy
   return React.lazy(async () => {
     let lastError;
     for (let attempt = 0; attempt < retries; attempt += 1) {
@@ -92,9 +91,6 @@ const AnalyzerTypesPage = lazyWithRetry(
 );
 const AnalyzerTypeMappingPage = lazyWithRetry(
   () => import("./pages/AnalyzerTypeMappingPage"),
-);
-const AnalyzerFormPage = lazyWithRetry(
-  () => import("./components/analyzers/AnalyzerForm/AnalyzerForm"),
 );
 import {
   QCDashboard,
@@ -1108,30 +1104,6 @@ export default function App() {
                   exact
                   component={() => <SampleManagement />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
-                />
-                <SecureRoute
-                  path="/analyzers/new"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/edit"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/analyzers"

@@ -1,8 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
-import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
+import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { cleanupAnalyzerByName } from "../../../helpers/cleanup-analyzer";
-import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
@@ -22,83 +21,37 @@ test.describe("Real GeneXpert Test Connection (Manual Only)", () => {
 
   const uniqueSuffix = Date.now();
   const analyzerName = `E2E-GeneXpert-Real-${uniqueSuffix}`;
-  let createdAnalyzerId: string;
-
-  test("creates analyzer pointing to real GeneXpert VM", async ({ page }) => {
+  test("creates and tests a real GeneXpert connection through inline setup", async ({
+    page,
+  }) => {
     const list = new AnalyzerListPage(page);
-    const form = new AnalyzerFormPage(page);
+    const setup = new AnalyzerSetupPage(page);
 
     await list.goto();
     await list.expectLoaded();
     await list.clickAdd();
-    await form.expectOpen();
+    await setup.expectOpen();
+    await setup.selectProfile("Cepheid GeneXpert (ASTM Mode)");
+    await setup.fillName(analyzerName);
+    await setup.selectFirstLabUnit();
+    await setup.continueToVerify();
+    await setup.continueToConnect();
+    await setup.fillNetworkAddress(GENEXPERT_HOST!);
+    await setup.fillPort(GENEXPERT_PORT);
+    await setup.testConnection();
 
-    await form.fillName(analyzerName);
+    const createdAnalyzerId = new URL(page.url()).searchParams.get(
+      "analyzerId",
+    );
+    expect(createdAnalyzerId).toBeTruthy();
+    await setup.close();
 
-    await form.selectProfile("Cepheid GeneXpert (ASTM Mode)");
-    await form.fillIpAddress(GENEXPERT_HOST!);
-    await form.fillPort(GENEXPERT_PORT);
-
-    await form.save();
-    await form.expectSuccessNotification();
-    await expect(form.surface).not.toBeVisible();
-
-    await list.goto();
-    await list.expectLoaded();
     await list.search(analyzerName);
-
     const rows = page.locator("tbody tr");
     await expect(rows).toHaveCount(1);
-
-    const row = rows.first();
-    const testid = await row.getAttribute("data-testid");
-    if (testid && testid.startsWith("analyzer-row-")) {
-      createdAnalyzerId = testid.replace("analyzer-row-", "");
-    }
-
-    expect(createdAnalyzerId).toBeTruthy();
-
-    const pluginWarning = page.locator(
-      `[data-testid="plugin-warning-${createdAnalyzerId}"]`,
-    );
-    await expect(pluginWarning).not.toBeVisible();
-  });
-
-  test("test-connection succeeds to real GeneXpert Dx VM", async ({ page }) => {
-    test.skip(!createdAnalyzerId, "Requires analyzer from previous test");
-
-    const list = new AnalyzerListPage(page);
-
-    await list.goto();
-    await list.expectLoaded();
-    await list.search(analyzerName);
-
-    await list.openOverflowMenu(createdAnalyzerId);
-    await list.clickAction(createdAnalyzerId, "test-connection");
-
-    const modal = page.locator('[data-testid="test-connection-modal"]');
-    await expect(modal).toBeVisible();
-
-    const info = page.locator('[data-testid="test-connection-analyzer-info"]');
-    await expect(info).toContainText(GENEXPERT_HOST!);
-    await expect(info).toContainText(GENEXPERT_PORT);
-
-    const testButton = page.locator(
-      '[data-testid="test-connection-test-button"]',
-    );
-    await testButton.click();
-
-    const successTag = page.locator('[data-testid="test-connection-success"]');
-    await expect(successTag).toBeVisible({ timeout: LONG_TIMEOUT });
-
-    const errorTag = page.locator('[data-testid="test-connection-error"]');
-    await expect(errorTag).not.toBeVisible();
-
-    const closeButton = page.locator(
-      '[data-testid="test-connection-close-button"]',
-    );
-    await closeButton.click();
-    await expect(modal).not.toBeVisible();
+    await expect(
+      page.locator(`[data-testid="plugin-warning-${createdAnalyzerId}"]`),
+    ).toHaveCount(0);
 
     if (!process.env.SKIP_CLEANUP) {
       await cleanupAnalyzerByName(page, analyzerName);

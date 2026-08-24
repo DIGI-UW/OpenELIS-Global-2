@@ -18,7 +18,6 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   Dropdown,
-  InlineNotification,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
@@ -30,7 +29,6 @@ import {
   type AnalyzersResponse,
   type AnalyzerTypeCatalog,
 } from "../../../services/analyzerService";
-import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 import AnalyzerSetup, {
   type AnalyzerSetupStep,
@@ -50,12 +48,6 @@ interface AnalyzerStats {
 interface AnalyzerModalState {
   open: boolean;
   analyzer: Analyzer | null;
-}
-
-interface ListNotification {
-  kind: "success" | "error" | "info" | "warning";
-  title: string;
-  subtitle?: string;
 }
 
 interface AnalyzerTableRow {
@@ -103,21 +95,10 @@ const AnalyzersList = () => {
     inactive: 0,
     pluginWarnings: 0,
   });
-  const [testConnectionModal, setTestConnectionModal] =
-    useState<AnalyzerModalState>({
-      open: false,
-      analyzer: null,
-    });
   const [deleteModal, setDeleteModal] = useState<AnalyzerModalState>({
     open: false,
     analyzer: null,
   });
-  // Banner shown in the list view after a successful save from AnalyzerForm.
-  // The form's own InlineNotification disappears when the modal closes 1s
-  // after save, and then loadAnalyzers() re-sorts the table — users had no
-  // way to see what was just edited. This persists for 5s in the list view.
-  const [listNotification, setListNotification] =
-    useState<ListNotification | null>(null);
 
   const setupStep = new URLSearchParams(location.search).get("setup");
   const visibleSetupStep = isAnalyzerSetupStep(setupStep) ? setupStep : null;
@@ -126,6 +107,30 @@ const AnalyzersList = () => {
     const params = new URLSearchParams(location.search);
     ["analyzerId", "profile", "revision"].forEach((key) => params.delete(key));
     params.set("setup", "instrument");
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
+
+  const openExistingSetup = (analyzer: Analyzer, step: AnalyzerSetupStep) => {
+    if (!analyzer.id) {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    params.set("setup", step);
+    params.set("analyzerId", analyzer.id);
+
+    if (
+      analyzer.profileId &&
+      Number.isInteger(Number(analyzer.profileRevision)) &&
+      Number(analyzer.profileRevision) >= 1
+    ) {
+      params.set("profile", analyzer.profileId);
+      params.set("revision", String(analyzer.profileRevision));
+    } else {
+      params.delete("profile");
+      params.delete("revision");
+    }
+
     history.push({ pathname: "/analyzers", search: params.toString() });
   };
 
@@ -531,18 +536,6 @@ const AnalyzersList = () => {
         </Grid>
       </div>
 
-      {listNotification && (
-        <InlineNotification
-          kind={listNotification.kind}
-          title={listNotification.title}
-          subtitle={listNotification.subtitle}
-          onCloseButtonClick={() => setListNotification(null)}
-          lowContrast
-          data-testid="analyzer-list-notification"
-          style={{ maxWidth: "100%", marginBottom: "1rem" }}
-        />
-      )}
-
       <Grid>
         <Column lg={16} md={8} sm={4}>
           {loading ? (
@@ -572,8 +565,8 @@ const AnalyzersList = () => {
                       <TableRow>
                         {headers.map((header) => (
                           <TableHeader
-                            key={header.key}
                             {...getHeaderProps({ header })}
+                            key={header.key}
                           >
                             {header.header}
                           </TableHeader>
@@ -589,8 +582,8 @@ const AnalyzersList = () => {
 
                         return (
                           <TableRow
-                            key={row.id}
                             {...getRowProps({ row })}
+                            key={row.id}
                             data-testid={`analyzer-row-${row.id}`}
                           >
                             {row.cells.map((cell) => {
@@ -667,27 +660,34 @@ const AnalyzersList = () => {
                                   >
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
-                                        id: "analyzer.action.testConnection",
-                                      })}
-                                      onClick={() => {
-                                        setTestConnectionModal({
-                                          open: true,
-                                          analyzer: analyzer,
-                                        });
-                                      }}
-                                      data-testid={`analyzer-action-test-connection-${row.id}`}
-                                    />
-                                    <OverflowMenuItem
-                                      itemText={intl.formatMessage({
-                                        id: "analyzer.action.edit",
+                                        id: "analyzer.action.editSetup",
                                       })}
                                       onClick={() =>
-                                        history.push(
-                                          `/analyzers/${analyzer.id}/edit`,
+                                        openExistingSetup(
+                                          analyzer,
+                                          "instrument",
                                         )
                                       }
-                                      data-testid={`analyzer-action-edit-${row.id}`}
+                                      data-testid={`analyzer-action-edit-setup-${row.id}`}
                                     />
+                                    {analyzer.profileId &&
+                                      Number.isInteger(
+                                        Number(analyzer.profileRevision),
+                                      ) &&
+                                      Number(analyzer.profileRevision) >= 1 && (
+                                        <OverflowMenuItem
+                                          itemText={intl.formatMessage({
+                                            id: "analyzer.action.configureConnection",
+                                          })}
+                                          onClick={() =>
+                                            openExistingSetup(
+                                              analyzer,
+                                              "connect",
+                                            )
+                                          }
+                                          data-testid={`analyzer-action-configure-connection-${row.id}`}
+                                        />
+                                      )}
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
                                         id: "analyzer.action.delete",
@@ -722,16 +722,6 @@ const AnalyzersList = () => {
           )}
         </Column>
       </Grid>
-
-      {testConnectionModal.open && (
-        <TestConnectionModal
-          analyzer={testConnectionModal.analyzer}
-          open={testConnectionModal.open}
-          onClose={() => {
-            setTestConnectionModal({ open: false, analyzer: null });
-          }}
-        />
-      )}
 
       {deleteModal.open && (
         <DeleteAnalyzerModal

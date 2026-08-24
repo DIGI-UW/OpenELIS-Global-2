@@ -86,6 +86,17 @@ describe("AnalyzersList", () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
+      bottom: 40,
+      height: 40,
+      left: 0,
+      right: 160,
+      top: 0,
+      width: 160,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
     window.history.replaceState({}, "", "/analyzers");
     getAnalyzerTypeCatalog.mockImplementation((callback) =>
       callback({
@@ -101,6 +112,10 @@ describe("AnalyzersList", () => {
       }),
     );
     getAnalyzerLabUnits.mockImplementation((callback) => callback([]));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   /**
@@ -238,7 +253,9 @@ describe("AnalyzersList", () => {
     await userEvent.click(
       await screen.findByTestId("analyzer-row-overflow-42"),
     );
-    await userEvent.click(screen.getByRole("menuitem", { name: "Edit setup" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit setup" }),
+    );
 
     const params = new URLSearchParams(window.location.search);
     expect(window.location.pathname).toBe("/analyzers");
@@ -271,7 +288,7 @@ describe("AnalyzersList", () => {
       await screen.findByTestId("analyzer-row-overflow-42"),
     );
     await userEvent.click(
-      screen.getByRole("menuitem", { name: "Configure connection" }),
+      await screen.findByRole("menuitem", { name: "Configure connection" }),
     );
 
     const params = new URLSearchParams(window.location.search);

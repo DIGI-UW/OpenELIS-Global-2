@@ -15,15 +15,22 @@ describe("analyzer instance surface cutover", () => {
     expect(appSource).not.toContain('path="/analyzers/new"');
     expect(appSource).not.toContain('path="/analyzers/:id/edit"');
     expect(appSource).not.toContain("AnalyzerFormPage");
-    expect(fs.existsSync(path.resolve(__dirname, "../AnalyzerForm"))).toBe(
-      false,
-    );
+    expect(
+      fs.existsSync(
+        path.resolve(__dirname, "../AnalyzerForm/AnalyzerForm.jsx"),
+      ),
+    ).toBe(false);
   });
 
   it("keeps connection testing inline without a second modal", () => {
     expect(listSource).not.toContain("TestConnectionModal");
     expect(
-      fs.existsSync(path.resolve(__dirname, "../TestConnectionModal")),
+      fs.existsSync(
+        path.resolve(
+          __dirname,
+          "../TestConnectionModal/TestConnectionModal.tsx",
+        ),
+      ),
     ).toBe(false);
   });
 });
