@@ -733,6 +733,33 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
+    public void missingDeduplicationDateExcludesOnlyTheAffectedCaseWithAWarning() {
+        MicroCase validCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
+        MicroCase missingDateCase = finalizedCase("case-2", "item-2", "2026-07-21 10:00:00");
+        MicroIsolate validIsolate = isolate("isolate-1", "case-1", "organism-1");
+        MicroIsolate missingDateIsolate = isolate("isolate-2", "case-2", "organism-1");
+        MicroAstRun validRun = reviewedRun("run-1", "isolate-1");
+        MicroAstRun missingDateRun = reviewedRun("run-2", "isolate-2");
+        stubDataset(List.of(validCase, missingDateCase), List.of(validIsolate, missingDateIsolate),
+                List.of(validRun, missingDateRun), List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
+                        reading("reading-2", "run-2", "antibiotic-1", "R")));
+        stubMappedReferences();
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        stubPatientContext("case-2", "item-2", "patient-2", "LAB-002", (Timestamp) null);
+
+        MicroWhonetPreviewForm preview = service.compile(query("FIRST_ISOLATE_7_DAY")).getPreview();
+
+        assertEquals(1, preview.afterDeduplication);
+        assertEquals(1, preview.exportedRows);
+        assertEquals(1, preview.excludedRows);
+        assertEquals("case-1", preview.rows.get(0).caseId);
+        assertEquals(1, preview.warnings.size());
+        assertEquals("DEDUPLICATION_DATE_REQUIRED", preview.warnings.get(0).code);
+        assertEquals("case-2", preview.warnings.get(0).resourceId);
+        assertEquals("LAB-002", preview.warnings.get(0).itemLabel);
+    }
+
+    @Test
     public void sameSourceScopeRetainsDifferentSpecimenSourcesWithinTheWindow() {
         MicroCase bloodCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
         MicroCase urineCase = finalizedCase("case-2", "item-2", "2026-07-21 10:00:00");

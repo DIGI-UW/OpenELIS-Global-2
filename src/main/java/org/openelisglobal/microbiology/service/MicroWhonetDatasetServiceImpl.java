@@ -126,6 +126,16 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         candidates = candidates.stream()
                 .filter(candidate -> query.significance.contains(candidate.isolate.getSignificance())).toList();
         int afterSignificance = candidates.size();
+        Map<String, MicroWhonetWarningForm> warnings = new LinkedHashMap<>();
+        String dedupBasis = NONE.equals(query.dedup) ? COLLECTION_DATE : query.dedupBasis;
+        List<Candidate> candidatesWithoutDedupDate = candidates.stream()
+                .filter(candidate -> dedupTimestamp(candidate, dedupBasis) == null).toList();
+        for (Candidate candidate : candidatesWithoutDedupDate) {
+            String label = hasText(candidate.context.accessionNumber) ? candidate.context.accessionNumber
+                    : candidate.isolate.getIsolateLabel();
+            addWarning(warnings, "DEDUPLICATION_DATE_REQUIRED", null, candidate.microCase.getId(), label, 1);
+        }
+        candidates = candidates.stream().filter(candidate -> dedupTimestamp(candidate, dedupBasis) != null).toList();
         if (!NONE.equals(query.dedup) && query.excludeContaminants) {
             candidates = candidates.stream().filter(candidate -> !MicroIsolateSignificance.CONTAMINANT.name()
                     .equals(candidate.isolate.getSignificance())).toList();
@@ -140,9 +150,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
         List<WHONetRow> exportRows = new ArrayList<>();
         List<MicroWhonetPreviewRowForm> previewRows = new ArrayList<>();
-        Map<String, MicroWhonetWarningForm> warnings = new LinkedHashMap<>();
         int exportableIsolates = 0;
-        int excludedRows = 0;
+        int excludedRows = candidatesWithoutDedupDate.size();
         for (Candidate candidate : candidates) {
             List<MicroAstReading> readings = readingsFor(candidate, astData);
             if (!hasText(candidate.context.specimenType)) {
@@ -428,9 +437,6 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         Timestamp timestamp = candidate.context.collectionTimestamp;
         if (RELEASE_DATE.equals(basis) && candidate.microCase.getClosedAt() != null) {
             timestamp = candidate.microCase.getClosedAt();
-        }
-        if (timestamp == null) {
-            throw new IllegalArgumentException("Selected de-duplication date is unavailable");
         }
         return timestamp;
     }
