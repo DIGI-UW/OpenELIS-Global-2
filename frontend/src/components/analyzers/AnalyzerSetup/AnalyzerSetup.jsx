@@ -294,7 +294,6 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
       name: analyzerName.trim(),
       profileId: selectedType.profileId,
       profileRevision: selectedType.revision,
-      status: "SETUP",
       testUnitIds: selectedLabUnitIds,
     };
     const handleSaved = (response) => {

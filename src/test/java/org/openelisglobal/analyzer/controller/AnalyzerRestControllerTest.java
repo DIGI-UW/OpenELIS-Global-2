@@ -97,8 +97,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAnalyzers_DoesNotExposeClassifierRulesOrOperationalControlLots() throws Exception {
         String uniqueName = "TEST-Fields-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
-                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + testIp + "\","
+                + "\"port\":5000,\"testUnitIds\":[]}";
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
                 .content(AnalyzerTestCleanup.withProfile(createBody))).andExpect(status().isCreated());
 
@@ -116,8 +116,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testCreateAnalyzer_WithValidData_ReturnsCreated() throws Exception {
         // Arrange: Create analyzer form JSON
         String uniqueName = "TEST-Analyzer-" + System.currentTimeMillis();
-        String requestBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
-                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + testIp + "\","
+                + "\"port\":5000,\"testUnitIds\":[]}";
 
         // Act & Assert: Endpoint should create analyzer
         MvcResult result = mockMvc
@@ -177,8 +177,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testCreateAnalyzer_GuidedCandidateReloadsProfileAndLabUnits() throws Exception {
         String uniqueName = "TEST-Guided-Candidate-" + System.currentTimeMillis();
-        String requestBody = "{\"name\":\"" + uniqueName + "\",\"status\":\"SETUP\","
-                + "\"testUnitIds\":[\"36\",\"136\"]}";
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[\"36\",\"136\"]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
@@ -205,13 +204,17 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals(List.of("36", "136"), reloaded.get("testUnitIds"));
 
         String updatedName = uniqueName + "-Updated";
-        String updateBody = "{\"name\":\"" + updatedName + "\",\"status\":\"SETUP\"," + "\"testUnitIds\":[\"136\"]}";
+        String updatedIpAddress = AnalyzerTestCleanup.uniqueIp();
+        String updateBody = "{\"name\":\"" + updatedName + "\",\"ipAddress\":\"" + updatedIpAddress
+                + "\",\"port\":9200,\"testUnitIds\":[\"136\"]}";
         mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
                 .content(AnalyzerTestCleanup.withProfile(updateBody))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(analyzerId)).andExpect(jsonPath("$.name").value(updatedName));
 
         MvcResult updatedReloadResult = mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value(updatedName)).andReturn();
+                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value(updatedName))
+                .andExpect(jsonPath("$.ipAddress").value(updatedIpAddress)).andExpect(jsonPath("$.port").value(9200))
+                .andReturn();
         Map<String, Object> updated = objectMapper.readValue(updatedReloadResult.getResponse().getContentAsString(),
                 new TypeReference<>() {
                 });
@@ -224,8 +227,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String requestBody = "{\"name\":\"" + uniqueName + "\",\"status\":\"ACTIVE\",\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
-                .content(AnalyzerTestCleanup.withProfile(requestBody))).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorKey").value("analyzer.lifecycle.statusManaged"));
+                .content(AnalyzerTestCleanup.withProfile(requestBody))).andExpect(status().isBadRequest());
 
         Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.analyzer WHERE name = ?",
                 Integer.class, uniqueName);
@@ -245,8 +247,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String analyzerId = String.valueOf(created.get("id"));
 
         mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"ACTIVE\"}")).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorKey").value("analyzer.lifecycle.statusManaged"));
+                .content("{\"status\":\"ACTIVE\"}")).andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SETUP"));
@@ -294,8 +295,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetAnalyzer_WithValidId_ReturnsAnalyzer() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Get-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
-                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + testIp + "\","
+                + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
@@ -332,8 +333,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testUpdateAnalyzer_WithValidData_ReturnsUpdated() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Update-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
-                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + testIp + "\","
+                + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
@@ -348,7 +349,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Update analyzer
-        String updateBody = "{\"name\":\"Updated Name\",\"analyzerType\":\"Hematology Analyzer\",\"active\":false}";
+        String updateBody = "{\"name\":\"Updated Name\"}";
 
         // Act & Assert: PUT endpoint should update analyzer
         mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
@@ -371,8 +372,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testDeleteAnalyzer_WithValidId_ReturnsNoContent() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Delete-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
-                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + testIp + "\","
+                + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
@@ -497,8 +498,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testGetAnalyzers_PluginAvailabilityOnlyAppliesToUnboundAnalyzers() throws Exception {
         String profileBackedName = "TEST-ProfileBacked-List-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + profileBackedName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"" + testIp + "\","
+        String createBody = "{\"name\":\"" + profileBackedName + "\",\"ipAddress\":\"" + testIp + "\","
                 + "\"port\":5000,\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
@@ -549,61 +549,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         return analyzerService.insert(analyzer);
     }
 
-    /**
-     * Test: POST /rest/analyzer/analyzers with non-numeric pluginTypeId should not
-     * throw NumberFormatException.
-     *
-     * Regression test for "For input string: generic-astm" bug: the frontend
-     * fallback list used hardcoded string IDs like "generic-astm" instead of
-     * database numeric IDs. The backend should gracefully resolve these by name
-     * rather than crashing with a 500.
-     */
-    @Test
-    public void testCreateAnalyzer_WithNonNumericPluginTypeId_ReturnsCreated() throws Exception {
-        String uniqueName = "TEST-NonNumericPlugin-" + System.currentTimeMillis();
-        String requestBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\","
-                + "\"pluginTypeId\":\"generic-astm\"," + "\"ipAddress\":\"" + testIp + "\",\"port\":1200}";
-
-        // Should return 201 (gracefully ignoring unresolvable pluginTypeId)
-        // instead of 500 NumberFormatException
-        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
-                .content(AnalyzerTestCleanup.withProfile(requestBody))).andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists()).andExpect(jsonPath("$.name").value(uniqueName));
-    }
-
-    /**
-     * Test: PUT /rest/analyzer/analyzers/{id} with non-numeric pluginTypeId should
-     * not throw NumberFormatException.
-     *
-     * Same regression test as above, but for the update path.
-     */
-    @Test
-    public void testUpdateAnalyzer_WithNonNumericPluginTypeId_ReturnsOk() throws Exception {
-        // Arrange: Create analyzer first (without pluginTypeId)
-        String uniqueName = "TEST-NonNumericPluginUpdate-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\"," + "\"ipAddress\":\""
-                + testIp + "\",\"port\":1200}";
-
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
-                        .content(AnalyzerTestCleanup.withProfile(createBody)))
-                .andExpect(status().isCreated()).andReturn();
-
-        String responseBody = createResult.getResponse().getContentAsString();
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
-                new TypeReference<Map<String, Object>>() {
-                });
-        String analyzerId = String.valueOf(responseMap.get("id"));
-
-        // Act: Update with non-numeric pluginTypeId "generic-astm"
-        String updateBody = "{\"pluginTypeId\":\"generic-astm\"}";
-
-        // Should return 200 (gracefully resolving by name) instead of 500
-        mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
-                .content(updateBody)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(analyzerId));
-    }
-
     @Test
     public void testConnectionWithoutBridgeConfigurationUsesRegisteredProbeContract() throws Exception {
         String uniqueName = "TEST-HL7-Connection-" + System.currentTimeMillis();
@@ -630,10 +575,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testCreateAnalyzer_WithCommunicationMode_PersistsMode() throws Exception {
         String uniqueName = "TEST-CommMode-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"CHEMISTRY\",\"ipAddress\":\"192.168.1.50\","
-                + "\"port\":6001,\"protocolVersion\":\"HL7_V2_3_1\","
-                + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"192.168.1.50\","
+                + "\"port\":6001,\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
 
         MvcResult result = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
@@ -656,7 +599,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testCreateAnalyzer_WithNullCommunicationMode_DefaultsToAnalyzerInitiated() throws Exception {
         String uniqueName = "TEST-NullCommMode-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\",\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[]}";
 
         MvcResult result = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)

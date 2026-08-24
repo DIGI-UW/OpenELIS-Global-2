@@ -37,6 +37,21 @@ public class AnalyzerInstanceLifecycleRemovalContractTest {
         assertTrue(migration.contains("<where>status = 'DELETED'</where>"));
     }
 
+    @Test
+    public void supersededAnalyzerFormHasNoRuntimeCompatibilityPath() throws Exception {
+        Path formRoot = JAVA_ROOT.resolve("form");
+        assertFalse("superseded AnalyzerForm remains", Files.exists(formRoot.resolve("AnalyzerForm.java")));
+
+        Path request = formRoot.resolve("AnalyzerInstanceRequest.java");
+        assertTrue("missing analyzer instance request", Files.isRegularFile(request));
+        String source = Files.readString(request);
+        assertFalse("instance request ignores unknown legacy fields", source.contains("JsonIgnoreProperties"));
+        for (String removed : new String[] { "status", "analyzerType", "protocolVersion", "identifierPattern",
+                "pluginTypeId", "filePattern", "fileFormat", "columnMappings", "delimiter", "hasHeader", "skipRows" }) {
+            assertFalse("instance request retains superseded field " + removed, source.contains(removed));
+        }
+    }
+
     private static void assertDoesNotContain(Path path, String text) throws Exception {
         assertTrue("missing source file: " + path, Files.isRegularFile(path));
         assertFalse(path + " contains " + text, Files.readString(path).contains(text));

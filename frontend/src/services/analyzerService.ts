@@ -1,7 +1,7 @@
 /**
  * Analyzer Service API Client
  *
- * Provides methods for CRUD operations on analyzers and analyzer field mappings
+ * Provides the lab-facing analyzer instance and Analyzer Type operations.
  * Follows OpenELIS pattern using getFromOpenElisServer, postToOpenElisServerJsonResponse, and fetch for PUT/DELETE
  *
  * Pattern Reference: AGENTS.md Section 5 (Frontend Data Fetching Pattern)
@@ -78,6 +78,19 @@ export interface AnalyzerTypeCatalog {
 export interface AnalyzerLabUnit {
   id: string;
   name: string;
+}
+
+export interface AnalyzerInstancePayload extends JsonObject {
+  name?: string;
+  profileId?: string;
+  profileRevision?: number;
+  testUnitIds?: string[];
+  ipAddress?: string | null;
+  port?: number | null;
+  communicationMode?: string | null;
+  transportMode?: string | null;
+  connectionRole?: string | null;
+  importDirectory?: string | null;
 }
 
 export interface AnalyzerConnectionProbeCheck {
@@ -359,12 +372,12 @@ export const getAnalyzerLabUnits = (
 
 /**
  * Create new analyzer
- * @param {Object} analyzerData - Analyzer data { name, analyzerType, ipAddress, port, testUnitIds, active }
+ * @param {Object} analyzerData - Profile pin, lab units, and role-applicable instance settings
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const createAnalyzer = (
-  analyzerData: Partial<Analyzer> & JsonObject,
+  analyzerData: AnalyzerInstancePayload,
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) => {
@@ -382,7 +395,7 @@ export const createAnalyzer = (
  */
 export const updateAnalyzer = (
   id: string,
-  analyzerData: Partial<Analyzer> & JsonObject,
+  analyzerData: AnalyzerInstancePayload,
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) => {

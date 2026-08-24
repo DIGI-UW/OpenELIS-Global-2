@@ -53,8 +53,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void testCreateAnalyzer_WithLoopbackIP_ReturnsBadRequest() throws Exception {
-        String body = "{\"name\":\"TEST-SEC-Loopback\",\"analyzerType\":\"Chemistry Analyzer\","
-                + "\"ipAddress\":\"127.0.0.1\",\"port\":5000,\"testUnitIds\":[]}";
+        String body = "{\"name\":\"TEST-SEC-Loopback\",\"ipAddress\":\"127.0.0.1\",\"port\":5000,"
+                + "\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
@@ -63,8 +63,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void testCreateAnalyzer_WithLinkLocalIP_ReturnsBadRequest() throws Exception {
-        String body = "{\"name\":\"TEST-SEC-LinkLocal\",\"analyzerType\":\"Chemistry Analyzer\","
-                + "\"ipAddress\":\"169.254.169.254\",\"port\":80,\"testUnitIds\":[]}";
+        String body = "{\"name\":\"TEST-SEC-LinkLocal\",\"ipAddress\":\"169.254.169.254\",\"port\":80,"
+                + "\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
@@ -73,8 +73,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void testCreateAnalyzer_WithMulticastIP_ReturnsBadRequest() throws Exception {
-        String body = "{\"name\":\"TEST-SEC-Multicast\",\"analyzerType\":\"Chemistry Analyzer\","
-                + "\"ipAddress\":\"224.0.0.1\",\"port\":5000,\"testUnitIds\":[]}";
+        String body = "{\"name\":\"TEST-SEC-Multicast\",\"ipAddress\":\"224.0.0.1\",\"port\":5000,"
+                + "\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
@@ -83,8 +83,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void testCreateAnalyzer_WithAnyLocalIP_ReturnsBadRequest() throws Exception {
-        String body = "{\"name\":\"TEST-SEC-AnyLocal\",\"analyzerType\":\"Chemistry Analyzer\","
-                + "\"ipAddress\":\"0.0.0.0\",\"port\":5000,\"testUnitIds\":[]}";
+        String body = "{\"name\":\"TEST-SEC-AnyLocal\",\"ipAddress\":\"0.0.0.0\",\"port\":5000,"
+                + "\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
@@ -96,8 +96,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
     @Test
     public void testCreateAnalyzer_WithPrivateIP_Succeeds() throws Exception {
         String uniqueName = "TEST-SEC-Private-" + System.currentTimeMillis();
-        String body = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\"," + "\"ipAddress\":\""
-                + AnalyzerTestCleanup.uniqueIp() + "\",\"port\":5000,\"testUnitIds\":[]}";
+        String body = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + AnalyzerTestCleanup.uniqueIp()
+                + "\",\"port\":5000,\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists());
@@ -109,8 +109,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
     public void testUpdateAnalyzer_WithLoopbackIP_ReturnsBadRequest() throws Exception {
         // Create a valid analyzer first
         String uniqueName = "TEST-SEC-Update-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\","
-                + "\"ipAddress\":\"" + AnalyzerTestCleanup.uniqueIp() + "\",\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"ipAddress\":\"" + AnalyzerTestCleanup.uniqueIp()
+                + "\",\"port\":5000,\"testUnitIds\":[]}";
 
         String createResponse = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -126,9 +126,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.error").value("Connection to this address is not permitted"));
     }
 
-    // File-import security tests removed: FileImportRestController deleted
-    // (FILE config is on Analyzer entity, managed through existing analyzer
-    // endpoints)
+    // FILE runtime validation is owned by Bridge; this controller accepts only the
+    // site directory required by the analyzer instance.
 
     // ── Helper ──────────────────────────────────────────────────────────
 
