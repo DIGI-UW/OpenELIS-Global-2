@@ -26,7 +26,8 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     private static final String LAB_UNIT_BLOCKER = "analyzer.activation.blocker.labUnit";
     private static final String TRANSPORT_BLOCKER = "analyzer.activation.blocker.transport";
     private static final String DATA_FLOW_BLOCKER = "analyzer.activation.blocker.dataFlow";
-    private static final String VERIFICATION_BLOCKER = "analyzer.activation.blocker.verification";
+    private static final String MAPPINGS_BLOCKER = "analyzer.activation.blocker.mappings";
+    private static final String RECOGNITION_BLOCKER = "analyzer.activation.blocker.recognition";
     private static final String CONNECTION_BLOCKER = "analyzer.activation.blocker.connection";
     private static final String BRIDGE_ACKNOWLEDGEMENT_BLOCKER = "analyzer.activation.blocker.bridgeAcknowledgement";
 
@@ -187,11 +188,20 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         if (siteBindingRevisionId != null && recognitionFingerprint != null) {
             snapshot = siteBindingService.findByRevisionId(siteBindingRevisionId).orElse(null);
             if (snapshot != null) {
-                confirmation = confirmationService.findCurrent(snapshot, recognitionFingerprint).orElse(null);
+                AnalyzerSiteBindingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot,
+                        recognitionFingerprint);
+                if (!assessment.mappingsCurrent()) {
+                    blockers.add(new AnalyzerActivationBlocker(MAPPINGS_BLOCKER));
+                }
+                if (!assessment.recognitionCurrent()) {
+                    blockers.add(new AnalyzerActivationBlocker(RECOGNITION_BLOCKER));
+                }
+                confirmation = assessment.currentConfirmation().orElse(null);
             }
         }
-        if (snapshot == null || confirmation == null) {
-            blockers.add(new AnalyzerActivationBlocker(VERIFICATION_BLOCKER));
+        if (snapshot == null) {
+            blockers.add(new AnalyzerActivationBlocker(MAPPINGS_BLOCKER));
+            blockers.add(new AnalyzerActivationBlocker(RECOGNITION_BLOCKER));
         }
         return new ActivationContext(snapshot, confirmation, List.copyOf(blockers));
     }

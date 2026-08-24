@@ -62,7 +62,7 @@ public class AnalyzerActivationRestControllerTest {
     @Test
     public void returnsEveryActivationBlockerWithoutChangingStatus() {
         AnalyzerActivationResult blocked = new AnalyzerActivationResult("77", Analyzer.AnalyzerStatus.VALIDATION, false,
-                false, List.of(new AnalyzerActivationBlocker("analyzer.activation.blocker.verification"),
+                false, List.of(new AnalyzerActivationBlocker("analyzer.activation.blocker.mappings"),
                         new AnalyzerActivationBlocker("analyzer.activation.blocker.connection")));
         when(service.activate("77", "17")).thenReturn(blocked);
 

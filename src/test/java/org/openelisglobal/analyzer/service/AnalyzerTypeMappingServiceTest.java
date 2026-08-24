@@ -266,47 +266,51 @@ public class AnalyzerTypeMappingServiceTest {
     }
 
     private BridgeProfileCatalog.ProfileRevision profileRevision() throws Exception {
-        JsonNode profile = objectMapper.readTree("""
-                {
-                  "profileMeta":{"id":"site.mock-analyzer","displayName":"Mock Analyzer"},
-                  "protocol":{"name":"ASTM","version":"LIS2-A2"},
-                  "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
-                  "catalog":{
-                    "revision":2,
-                    "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                    "source":"SITE",
-                    "status":"ACTIVE"
-                  },
-                  "default_test_mappings":[
-                    {
-                      "test_code":"RAW-A",
-                      "aliases":["RAW-A1","RAW-A2"],
-                      "test_name_hint":"First result",
-                      "loinc":"94500-6",
-                      "unit":"copies/mL",
-                      "result_type":"qualitative",
-                      "values":["POS","NEG"],
-                      "normalized_coding":{
-                        "system":"https://loinc.org",
-                        "code":"94500-6",
-                        "display":"SARS-CoV-2 RNA"
-                      }
-                    },
-                    {
-                      "test_code":"RAW-B",
-                      "test_name_hint":"Second result",
-                      "loinc":"94500-6",
-                      "result_type":"quantitative"
-                    },
-                    {
-                      "test_code":"RAW-C",
-                      "test_name_hint":"Ambiguous result",
-                      "loinc":"77777-7",
-                      "result_type":"quantitative"
-                    }
-                  ]
-                }
-                """);
+        JsonNode profile = objectMapper.readTree(
+                """
+                        {
+                          "profileMeta":{"id":"site.mock-analyzer","displayName":"Mock Analyzer"},
+                          "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                          "transport":["TCP/IP"],
+                          "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
+                          "capabilities":{"inboundResults":true,"outboundOrders":false,"connectionTest":true},
+                          "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP","aggregationMode":"PER_MESSAGE"},
+                          "catalog":{
+                            "revision":2,
+                            "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                            "source":"SITE",
+                            "status":"ACTIVE"
+                          },
+                          "default_test_mappings":[
+                            {
+                              "test_code":"RAW-A",
+                              "aliases":["RAW-A1","RAW-A2"],
+                              "test_name_hint":"First result",
+                              "loinc":"94500-6",
+                              "unit":"copies/mL",
+                              "result_type":"qualitative",
+                              "values":["POS","NEG"],
+                              "normalized_coding":{
+                                "system":"https://loinc.org",
+                                "code":"94500-6",
+                                "display":"SARS-CoV-2 RNA"
+                              }
+                            },
+                            {
+                              "test_code":"RAW-B",
+                              "test_name_hint":"Second result",
+                              "loinc":"94500-6",
+                              "result_type":"quantitative"
+                            },
+                            {
+                              "test_code":"RAW-C",
+                              "test_name_hint":"Ambiguous result",
+                              "loinc":"77777-7",
+                              "result_type":"quantitative"
+                            }
+                          ]
+                        }
+                        """);
         BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
                 recognitionFingerprint(), "RULES", "Control results match any configured condition.", false,
                 List.of(new BridgeProfileCatalog.ControlRecognitionSummary.Condition("qc-prefix",

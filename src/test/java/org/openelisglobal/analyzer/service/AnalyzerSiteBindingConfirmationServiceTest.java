@@ -188,7 +188,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         stored.setProfileRevision(3);
         when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
 
-        assertEquals(Optional.empty(), service.findCurrent(candidate, RECOGNITION_FINGERPRINT));
+        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
     }
 
     @Test
@@ -199,7 +199,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         stored.setConfirmedAt(null);
         when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
 
-        assertEquals(Optional.empty(), service.findCurrent(candidate, RECOGNITION_FINGERPRINT));
+        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
     }
 
     @Test
@@ -241,7 +241,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
         when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
 
-        assertEquals(Optional.empty(), service.findCurrent(candidate, RECOGNITION_FINGERPRINT));
+        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE,
                 service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
     }
@@ -254,7 +254,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
         when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
 
-        assertEquals(Optional.empty(), service.findCurrent(candidate, RECOGNITION_FINGERPRINT));
+        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
         AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
         assertEquals(List.of(), status.confirmedRows());

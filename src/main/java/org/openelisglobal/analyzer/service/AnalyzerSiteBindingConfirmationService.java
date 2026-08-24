@@ -1,8 +1,5 @@
 package org.openelisglobal.analyzer.service;
 
-import java.util.Optional;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
-
 public interface AnalyzerSiteBindingConfirmationService {
 
     AnalyzerSiteBindingConfirmationView confirm(AnalyzerSiteBindingSnapshot candidate, String recognitionFingerprint,
@@ -10,6 +7,6 @@ public interface AnalyzerSiteBindingConfirmationService {
 
     AnalyzerSiteBindingConfirmationView getStatus(AnalyzerSiteBindingSnapshot candidate, String recognitionFingerprint);
 
-    Optional<AnalyzerSiteBindingConfirmation> findCurrent(AnalyzerSiteBindingSnapshot candidate,
+    AnalyzerSiteBindingVerificationAssessment assessCurrent(AnalyzerSiteBindingSnapshot candidate,
             String recognitionFingerprint);
 }

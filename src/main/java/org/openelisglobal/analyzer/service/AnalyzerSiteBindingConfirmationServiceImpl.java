@@ -114,12 +114,21 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AnalyzerSiteBindingConfirmation> findCurrent(AnalyzerSiteBindingSnapshot candidate,
+    public AnalyzerSiteBindingVerificationAssessment assessCurrent(AnalyzerSiteBindingSnapshot candidate,
             String recognitionFingerprint) {
         CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
-        return confirmationDAO.findByRevisionId(candidate.revision().getId())
-                .filter(confirmation -> isCurrent(candidate, context, confirmation)
-                        && hasCurrentCatalogBindings(candidate) && hasExactSavedRows(candidate, confirmation));
+        Optional<AnalyzerSiteBindingConfirmation> stored = confirmationDAO
+                .findByRevisionId(candidate.revision().getId());
+        if (stored.isEmpty()) {
+            return AnalyzerSiteBindingVerificationAssessment.unconfirmed();
+        }
+        AnalyzerSiteBindingConfirmation confirmation = stored.get();
+        boolean durableCandidateMatch = isDurableCandidateMatch(candidate, context, confirmation);
+        boolean mappingsCurrent = durableCandidateMatch && hasCurrentCatalogBindings(candidate)
+                && hasExactSavedRows(candidate, confirmation);
+        boolean recognitionCurrent = durableCandidateMatch
+                && context.recognitionFingerprint.equals(confirmation.getRecognitionFingerprint());
+        return new AnalyzerSiteBindingVerificationAssessment(mappingsCurrent, recognitionCurrent, confirmation);
     }
 
     private static CandidateContext requireCandidate(AnalyzerSiteBindingSnapshot candidate,
@@ -178,12 +187,18 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
 
     private static boolean isCurrent(AnalyzerSiteBindingSnapshot candidate, CandidateContext context,
             AnalyzerSiteBindingConfirmation confirmation) {
-        return Objects.equals(candidate.revision().getId(), confirmation.getSiteBindingRevision().getId())
+        return isDurableCandidateMatch(candidate, context, confirmation)
+                && context.recognitionFingerprint.equals(confirmation.getRecognitionFingerprint());
+    }
+
+    private static boolean isDurableCandidateMatch(AnalyzerSiteBindingSnapshot candidate, CandidateContext context,
+            AnalyzerSiteBindingConfirmation confirmation) {
+        return confirmation.getSiteBindingRevision() != null
+                && Objects.equals(candidate.revision().getId(), confirmation.getSiteBindingRevision().getId())
                 && Objects.equals(context.profile.getProfileId(), confirmation.getProfileId())
                 && context.profile.getProfileRevision() == confirmation.getProfileRevision()
                 && context.profileRevisionFingerprint.equals(confirmation.getProfileRevisionFingerprint())
                 && context.bindingFingerprint.equals(confirmation.getBindingFingerprint())
-                && context.recognitionFingerprint.equals(confirmation.getRecognitionFingerprint())
                 && hasText(confirmation.getConfirmedBy()) && confirmation.getConfirmedAt() != null
                 && hasText(confirmation.getAuditEventId());
     }
