@@ -425,8 +425,10 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     }
 
     private Timestamp dedupTimestamp(Candidate candidate, String basis) {
-        Timestamp timestamp = RELEASE_DATE.equals(basis) ? candidate.microCase.getClosedAt()
-                : candidate.context.collectionTimestamp;
+        Timestamp timestamp = candidate.context.collectionTimestamp;
+        if (RELEASE_DATE.equals(basis) && candidate.microCase.getClosedAt() != null) {
+            timestamp = candidate.microCase.getClosedAt();
+        }
         if (timestamp == null) {
             throw new IllegalArgumentException("Selected de-duplication date is unavailable");
         }

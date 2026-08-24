@@ -714,6 +714,25 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
+    public void releaseDateBasisFallsBackToCollectionDateForLegacyFinalizedCases() {
+        MicroCase legacyCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
+        legacyCase.setClosedAt(null);
+        MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
+        MicroAstRun run = reviewedRun("run-1", "isolate-1");
+        stubDataset(List.of(legacyCase), List.of(isolate), List.of(run),
+                List.of(reading("reading-1", "run-1", "antibiotic-1", "S")));
+        stubMappedReferences();
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "2026-07-01 10:00:00");
+        MicroWhonetExportQueryForm query = query("FIRST_ISOLATE_7_DAY");
+        query.dedupBasis = "RELEASE_DATE";
+
+        MicroWhonetPreviewForm preview = service.compile(query).getPreview();
+
+        assertEquals(1, preview.afterDeduplication);
+        assertEquals("case-1", preview.rows.get(0).caseId);
+    }
+
+    @Test
     public void sameSourceScopeRetainsDifferentSpecimenSourcesWithinTheWindow() {
         MicroCase bloodCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
         MicroCase urineCase = finalizedCase("case-2", "item-2", "2026-07-21 10:00:00");
