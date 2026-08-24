@@ -173,6 +173,28 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
     }
 
     @Test
+    public void confirmationMustMatchTheExactPinnedProfileIdentity() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setProfileId("another.profile");
+        stored.setProfileRevision(3);
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+
+        assertEquals(Optional.empty(), service.findCurrent(candidate, RECOGNITION_FINGERPRINT));
+    }
+
+    @Test
+    public void confirmationRequiresItsDurableActorAndTime() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setConfirmedBy(null);
+        stored.setConfirmedAt(null);
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+
+        assertEquals(Optional.empty(), service.findCurrent(candidate, RECOGNITION_FINGERPRINT));
+    }
+
+    @Test
     public void reportsAConfirmationAsStaleWhenItsCatalogBindingIsNoLongerCurrent() throws Exception {
         AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         when(confirmationDAO.findLatestByBindingId("51"))
