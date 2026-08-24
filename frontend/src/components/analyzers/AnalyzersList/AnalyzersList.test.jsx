@@ -302,6 +302,28 @@ describe("AnalyzersList", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("opens the canonical Quality Control workflow with analyzer context and an exact return path", async () => {
+    window.history.replaceState({}, "", "/analyzers?search=gene&status=ACTIVE");
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer({ id: "42" })] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Quality Control" }),
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    expect(window.location.pathname).toBe("/analyzers/qc/instruments/42");
+    expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
+  });
+
   test("localizes the assigned test-unit count", async () => {
     getAnalyzers.mockImplementation((_filters, callback) => {
       act(() => {
