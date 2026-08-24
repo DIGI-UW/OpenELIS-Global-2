@@ -183,7 +183,7 @@ public class MicrobiologyUatScenarioService {
         }
         Patient patient = getOrCreateUatPatient(suffix, performedBy);
         ensurePatientLink(sample, patient, performedBy);
-        AstReferenceData astReferenceData = createAstReferenceData();
+        AstReferenceData astReferenceData = createAstReferenceData(performedBy);
         ReferenceAdminData referenceAdminData = REFERENCE_ADMIN_SCENARIO.equals(scenario)
                 ? createReferenceAdminData(astReferenceData, performedBy)
                 : null;
@@ -406,7 +406,7 @@ public class MicrobiologyUatScenarioService {
         }
     }
 
-    private AstReferenceData createAstReferenceData() {
+    private AstReferenceData createAstReferenceData(String performedBy) {
         MicroAntibiotic ciprofloxacin = configurationService.getOrCreateAntibiotic("Ciprofloxacin (UAT)", "CIPUAT",
                 "Fluoroquinolone");
         MicroAntibiotic gentamicin = configurationService.getOrCreateAntibiotic("Gentamicin (UAT)", "GENUAT",
@@ -420,6 +420,7 @@ public class MicrobiologyUatScenarioService {
                 new Date(System.currentTimeMillis()));
         configurationService.getOrCreateBreakpointRule(micBreakpointRule(standard.getId(), ciprofloxacin.getId()));
         configurationService.getOrCreateBreakpointRule(micBreakpointRule(standard.getId(), gentamicin.getId()));
+        breakpointAdminService.activate(standard.getId(), new Date(System.currentTimeMillis()), performedBy);
         return new AstReferenceData(panel, standard);
     }
 
@@ -428,8 +429,6 @@ public class MicrobiologyUatScenarioService {
         MicroOrganismAdminForm organism = getOrCreateReferenceOrganism(currentPanel.id, performedBy);
         MicroAntibioticAdminForm antibiotic = getOrCreateReferenceAntibiotic(performedBy);
 
-        breakpointAdminService.activate(astReferenceData.standard().getId(), new Date(System.currentTimeMillis()),
-                performedBy);
         String csv = "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,"
                 + "breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,"
                 + "resistant_value,units\n"

@@ -271,6 +271,8 @@ public class MicrobiologyUatScenarioServiceTest {
 
         service.provision(request, "1");
 
+        verify(breakpointAdminService).activate(anyString(), any(), anyString());
+
         ArgumentCaptor<InventoryItem> itemCaptor = ArgumentCaptor.forClass(InventoryItem.class);
         verify(inventoryItemService, times(2)).insert(itemCaptor.capture());
         assertEquals("UAT microbiology blood agar", itemCaptor.getAllValues().get(0).getName());
