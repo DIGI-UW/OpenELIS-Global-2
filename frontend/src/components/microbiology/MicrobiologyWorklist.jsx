@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Download,
   FilterRemove,
@@ -38,7 +38,9 @@ import {
 } from "@carbon/react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { hasRole, Roles } from "../utils/Utils";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import {
   getMicrobiologyCaseUrl,
@@ -230,6 +232,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const referenceNow = useMemo(() => now || new Date(), [now]);
   const filters = parseMicrobiologyWorklistSearch(
     location.search,
@@ -240,6 +243,11 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
     referenceNow,
   );
   const isAstGrain = filters.grain === "ast";
+  const canExportWhonet = [
+    Roles.GLOBAL_ADMIN,
+    Roles.RESULTS,
+    Roles.REPORTS,
+  ].some((role) => hasRole(userSessionDetails, role));
   const [worklistState, setWorklistState] = useState({
     current: {
       rows: [],
@@ -1145,16 +1153,18 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                               id: "microbiology.worklist.qcDashboard",
                             })}
                           </Button>
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            renderIcon={Download}
-                            href={whonetExportUrl}
-                          >
-                            {intl.formatMessage({
-                              id: "microbiology.worklist.whonetExport",
-                            })}
-                          </Button>
+                          {canExportWhonet && (
+                            <Button
+                              kind="ghost"
+                              size="sm"
+                              renderIcon={Download}
+                              href={whonetExportUrl}
+                            >
+                              {intl.formatMessage({
+                                id: "microbiology.worklist.whonetExport",
+                              })}
+                            </Button>
+                          )}
                         </>
                       )}
                     </TableToolbarContent>

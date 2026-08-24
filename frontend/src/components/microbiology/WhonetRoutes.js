@@ -155,7 +155,7 @@ export const getWhonetExportUrlFromWorklist = (
       normalizedValues(worklistState.significance, SIGNIFICANCE_VALUES).length >
       0
         ? normalizedValues(worklistState.significance, SIGNIFICANCE_VALUES)
-        : ["CLINICALLY_SIGNIFICANT"],
+        : [...SIGNIFICANCE_VALUES],
     source: "ast-worklist",
     step: "configure",
     page: 1,

@@ -7,14 +7,21 @@ import { MemoryRouter, Route } from "react-router-dom";
 import { vi } from "vitest";
 import MicrobiologyWorklist from "../MicrobiologyWorklist";
 import messages from "../../../languages/en.json";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 
 const now = new Date(2026, 7, 4, 12, 0, 0);
 
-const renderWorklist = (service, initialEntry = "/Microbiology/worklist") =>
+const renderWorklist = (
+  service,
+  initialEntry = "/Microbiology/worklist",
+  userSessionDetails = { roles: ["Global Administrator"] },
+) =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <IntlProvider locale="en" messages={messages}>
-        <MicrobiologyWorklist service={service} now={now} />
+        <UserSessionDetailsContext.Provider value={{ userSessionDetails }}>
+          <MicrobiologyWorklist service={service} now={now} />
+        </UserSessionDetailsContext.Provider>
         <Route
           render={({ location }) => (
             <output data-testid="microbiology-current-url">
@@ -325,6 +332,28 @@ describe("MicrobiologyWorklist", () => {
       "href",
       "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&source=ast-worklist&step=configure&page=1&pageSize=20",
     );
+  });
+
+  it("does not advertise WHONET export to validation-only users", async () => {
+    const service = {
+      getWorklistRows: vi.fn().mockResolvedValue({
+        rows: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+      }),
+    };
+
+    renderWorklist(service, "/Microbiology/worklist?grain=ast", {
+      roles: ["Validation"],
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "Microbiology worklist" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("link", { name: "Export to WHONET" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps the search control mounted while filtered rows revalidate", async () => {

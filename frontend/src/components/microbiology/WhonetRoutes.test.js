@@ -82,6 +82,25 @@ describe("WhonetRoutes", () => {
     );
   });
 
+  it("preserves an unrestricted worklist significance scope", () => {
+    expect(
+      getWhonetExportUrlFromWorklist(
+        {
+          grain: "ast",
+          from: "2026-08-01",
+          to: "2026-08-31",
+          specimen: [],
+          organism: [],
+          origin: [],
+          significance: [],
+        },
+        now,
+      ),
+    ).toBe(
+      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&significance=CLINICALLY_SIGNIFICANT&significance=CONTAMINANT&significance=NORMAL_FLORA&significance=UNKNOWN&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&source=ast-worklist&step=configure&page=1&pageSize=20",
+    );
+  });
+
   it("clears worklist provenance and restores direct Reports defaults", () => {
     const worklistState = parseWhonetSearch(
       "?from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=NORMAL_FLORA&source=ast-worklist",
