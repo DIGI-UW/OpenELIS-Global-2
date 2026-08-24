@@ -65,8 +65,8 @@ git config core.hooksPath
 # If not, run setup command above
 ```
 
-**Formatter not found?**
+**Required runtime or formatter not found?**
 
-- Ensure tools are installed (npm, maven, uv)
+- Install Maven for Spotless-managed files and Node.js/npm for frontend files
 - Install the Java version named in `.sdkmanrc`, or activate another Java 21 JDK
-- Hook gracefully skips missing formatters
+- A missing required tool or formatter failure stops the commit
