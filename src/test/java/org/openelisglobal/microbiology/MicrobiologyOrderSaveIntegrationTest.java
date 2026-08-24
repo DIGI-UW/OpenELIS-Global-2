@@ -68,7 +68,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
     public void setUp() throws Exception {
         super.setUp();
         userId = fixtures.defaultUserId();
-        String methodId = fixtures.firstMethodId();
+        String methodId = fixtures.createMethodId();
         fixtures.createReferenceData(methodId);
         cultureTest = fixtures.createCatalogCultureTest(methodId, MicroWorkflowType.BACTERIOLOGY);
         patient = fixtures.createPatient("OGC782M4");
