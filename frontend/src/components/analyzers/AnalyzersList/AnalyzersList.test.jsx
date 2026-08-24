@@ -216,6 +216,75 @@ describe("AnalyzersList", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("opens an existing analyzer in linkable inline Instrument setup", async () => {
+    window.history.replaceState({}, "", "/analyzers?search=gene");
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "42",
+              profileId: "shipped.genexpert-astm",
+              profileRevision: 3,
+              profileBindingStatus: "PINNED",
+            }),
+          ],
+        });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(screen.getByRole("menuitem", { name: "Edit setup" }));
+
+    const params = new URLSearchParams(window.location.search);
+    expect(window.location.pathname).toBe("/analyzers");
+    expect(params.get("search")).toBe("gene");
+    expect(params.get("setup")).toBe("instrument");
+    expect(params.get("analyzerId")).toBe("42");
+    expect(params.get("profile")).toBe("shipped.genexpert-astm");
+    expect(params.get("revision")).toBe("3");
+  });
+
+  test("opens connection settings through the same linkable inline setup", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "42",
+              profileId: "shipped.genexpert-astm",
+              profileRevision: 3,
+              profileBindingStatus: "PINNED",
+            }),
+          ],
+        });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Configure connection" }),
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    expect(window.location.pathname).toBe("/analyzers");
+    expect(params.get("setup")).toBe("connect");
+    expect(params.get("analyzerId")).toBe("42");
+    expect(params.get("profile")).toBe("shipped.genexpert-astm");
+    expect(params.get("revision")).toBe("3");
+    expect(
+      screen.queryByRole("menuitem", { name: "Test connection" }),
+    ).not.toBeInTheDocument();
+  });
+
   test("localizes the assigned test-unit count", async () => {
     getAnalyzers.mockImplementation((_filters, callback) => {
       act(() => {
