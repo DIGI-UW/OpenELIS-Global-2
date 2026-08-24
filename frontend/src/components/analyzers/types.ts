@@ -28,6 +28,21 @@ export interface Analyzer {
   profileRevision?: number | null;
   profileFingerprint?: string | null;
   profileBindingStatus?: "PINNED" | "UNBOUND" | string;
+  protocolVersion?: string | null;
+  communicationMode?:
+    | "ANALYZER_INITIATED"
+    | "LIS_INITIATED"
+    | "BOTH"
+    | string
+    | null;
+  effectiveCommunicationMode?:
+    | "ANALYZER_INITIATED"
+    | "LIS_INITIATED"
+    | "BOTH"
+    | string
+    | null;
+  transportMode?: "TCP" | "MLLP" | "SERIAL" | "FILE" | "HTTP" | string | null;
+  connectionRole?: "RECEIVER" | "INITIATOR" | string | null;
 }
 
 export interface AnalyzerApiError {

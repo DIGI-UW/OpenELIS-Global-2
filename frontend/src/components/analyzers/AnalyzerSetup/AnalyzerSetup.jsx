@@ -25,6 +25,7 @@ import {
   formatRecognitionCondition,
   formatRecognitionMode,
 } from "../AnalyzerTypeManagement/recognitionText";
+import AnalyzerConnectionSetup from "./AnalyzerConnectionSetup";
 
 import "./AnalyzerSetup.scss";
 
@@ -722,6 +723,24 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                   </div>
                 </div>
               )}
+              {state === "current" &&
+                step === "connect" &&
+                (candidate && selectedType ? (
+                  <AnalyzerConnectionSetup
+                    key={`${candidate.id}:${candidate.profileId}:${candidate.profileRevision}`}
+                    candidate={candidate}
+                    analyzerType={selectedType}
+                    onCandidateChange={setCandidate}
+                  />
+                ) : (
+                  <Loading
+                    small
+                    withOverlay={false}
+                    description={intl.formatMessage({
+                      id: "analyzer.setup.connect.loading",
+                    })}
+                  />
+                ))}
             </li>
           );
         })}

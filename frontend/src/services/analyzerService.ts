@@ -52,6 +52,12 @@ export interface AnalyzerTypeSummary {
   source: "SHIPPED" | "SITE" | string;
   status: "ACTIVE" | "INACTIVE" | string;
   protocol: AnalyzerProtocol;
+  instanceDefaults?: {
+    protocolVersion?: string | null;
+    communicationMode?: string | null;
+    supportsLisInitiated?: boolean | null;
+    port?: number | null;
+  } | null;
   parentProfileId?: string | null;
   parentRevision?: number | null;
   affectedAnalyzers?: Array<{
@@ -76,6 +82,39 @@ export interface AnalyzerTypeCatalog {
 export interface AnalyzerLabUnit {
   id: string;
   name: string;
+}
+
+export interface AnalyzerConnectionProbeCheck {
+  kind: string;
+  status: "PASSED" | "FAILED" | "TIMED_OUT" | "MISSING_CONFIGURATION" | string;
+  code: string;
+  responseTimeMs: number;
+  args?: Record<string, unknown>;
+}
+
+export interface AnalyzerConnectionProbeView extends AnalyzerApiError {
+  schemaVersion: string;
+  analyzerId: string;
+  profileRef: {
+    profileId: string;
+    revision: number;
+  };
+  desiredStateFingerprint: string;
+  connection: {
+    mode: string;
+    role: string;
+  };
+  dataFlow: "RESULTS_ONLY" | "TWO_WAY" | string;
+  outcome: "SUCCESS" | "FAILURE" | "TIMEOUT" | "MISSING_CONFIGURATION" | string;
+  configureEndpoint?: {
+    kind: string;
+    host?: string;
+    port?: number;
+    path?: string;
+    url?: string;
+  } | null;
+  resultsOnlyAvailable: boolean;
+  checks: AnalyzerConnectionProbeCheck[];
 }
 
 export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
@@ -451,7 +490,7 @@ export const deleteAnalyzer = (id: string, callback: SuccessCallback) => {
  */
 export const testConnection = (
   id: string,
-  callback: ApiCallback,
+  callback: ApiCallback<AnalyzerConnectionProbeView>,
   extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${id}/test-connection`;
