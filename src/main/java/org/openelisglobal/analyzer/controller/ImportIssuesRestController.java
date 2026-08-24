@@ -42,7 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/analyzer")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'ANALYSER_IMPORT')")
 public class ImportIssuesRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(ImportIssuesRestController.class);

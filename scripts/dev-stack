@@ -209,6 +209,44 @@ def output(
     return run(command, cwd=cwd, environment=environment, capture=True).stdout.strip()
 
 
+def service_is_running(
+    context: StackContext, environment: dict[str, str], service: str
+) -> bool:
+    result = run(
+        compose_command(context, "ps", "--status", "running", "-q", service),
+        cwd=context.project_dir,
+        environment=environment,
+        capture=True,
+    )
+    return bool(result.stdout.strip())
+
+
+def start_services(
+    context: StackContext,
+    environment: dict[str, str],
+    *,
+    refresh_running_backend: bool,
+) -> None:
+    run(
+        compose_command(context, "up", "-d", "--remove-orphans"),
+        cwd=context.project_dir,
+        environment=environment,
+    )
+    if refresh_running_backend:
+        run(
+            compose_command(
+                context,
+                "up",
+                "-d",
+                "--no-deps",
+                "--force-recreate",
+                "oe.openelis.org",
+            ),
+            cwd=context.project_dir,
+            environment=environment,
+        )
+
+
 def ensure_local_env(context: StackContext) -> None:
     env_file = context.repo_root / ".env"
     example = context.repo_root / ".env.example"
@@ -654,6 +692,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         ensure_local_env(context)
         ensure_submodules(context, environment)
         bootstrap_analyzer_harness(context, environment)
+        backend_was_running = service_is_running(
+            context, environment, "oe.openelis.org"
+        )
         heal_war_mount(context)
         if not args.skip_build:
             build_application(context, environment)
@@ -661,10 +702,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
             raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")
-        run(
-            compose_command(context, "up", "-d", "--remove-orphans"),
-            cwd=context.project_dir,
-            environment=environment,
+        start_services(
+            context,
+            environment,
+            refresh_running_backend=backend_was_running and not args.skip_build,
         )
         reload_proxy(context, environment)
         configure_tls(context, environment)
