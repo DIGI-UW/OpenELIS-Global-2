@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -30,6 +31,7 @@ import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -114,7 +116,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
 
     private Sample newSample() {
         Sample sample = new Sample();
-        sample.setAccessionNumber("M4" + System.nanoTime());
+        sample.setAccessionNumber("M4" + UUID.randomUUID().toString().replace("-", "").substring(0, 10));
         sample.setEnteredDate(new Date(System.currentTimeMillis()));
         sample.setReceivedTimestamp(Timestamp.from(Instant.now()));
         sample.setStatusId(fixtures.ensureSampleEnteredStatus());
@@ -143,7 +145,8 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         form.setPatientProperties(patientInfo);
         form.setMicrobiologyOrderDetail(orderDetail);
 
-        samplePatientEntryService.persistData(updateData, new PatientManagementUpdate(), patientInfo, form,
+        PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
+        samplePatientEntryService.persistData(updateData, patientUpdate, patientInfo, form,
                 new MockHttpServletRequest());
     }
 
