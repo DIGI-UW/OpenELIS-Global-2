@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
@@ -15,10 +16,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
@@ -39,13 +42,17 @@ public class MicroIsolateServiceTest {
     private MicroCaseActivityDAO activityDAO;
 
     @Mock
+    private MicroCaseAmendmentDAO amendmentDAO;
+
+    @Mock
     private MicroIdentificationHistoryService identificationHistoryService;
 
     private MicroIsolateService service;
 
     @Before
     public void setUp() {
-        service = new MicroIsolateServiceImpl(caseDAO, isolateDAO, activityDAO, identificationHistoryService);
+        service = new MicroIsolateServiceImpl(caseDAO, isolateDAO, activityDAO, amendmentDAO,
+                identificationHistoryService);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
         MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
         event.setId("event-1");
@@ -72,6 +79,25 @@ public class MicroIsolateServiceTest {
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1");
 
         assertNull(isolate.getOrganismId());
+    }
+
+    @Test
+    public void createIsolateDuringAmendmentLinksDraftToOpenAmendment() {
+        MicroCase amendmentCase = mutableCase();
+        amendmentCase.setStage(MicroCaseStage.AMENDED.name());
+        amendmentCase.setFinalReleaseState(MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name());
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(amendmentCase));
+        MicroCaseAmendment amendment = new MicroCaseAmendment();
+        amendment.setId("amendment-1");
+        amendment.setCaseId("case-1");
+        when(amendmentDAO.getOpenByCaseId("case-1")).thenReturn(amendment);
+
+        MicroIsolate isolate = service.createIsolate("case-1", "ISO-2", "org-2", "Second isolate",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "9");
+
+        assertEquals("amendment-1", isolate.getAmendmentId());
+        assertNull(isolate.getCancelledAt());
+        verify(isolateDAO).insert(isolate);
     }
 
     @Test
@@ -104,6 +130,23 @@ public class MicroIsolateServiceTest {
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "1");
 
         assertNull(updated.getOrganismId());
+    }
+
+    @Test
+    public void updateIdentificationRejectsCancelledAmendmentIsolate() {
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-cancelled");
+        isolate.setCaseId("case-1");
+        isolate.setCancelledAt(MicroCaseServiceImpl.now());
+        when(isolateDAO.get("iso-cancelled")).thenReturn(Optional.of(isolate));
+
+        try {
+            service.updateIdentification("iso-cancelled", "org-1", "E. coli",
+                    MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "1");
+            fail("Expected cancelled amendment isolate to remain immutable");
+        } catch (IllegalStateException expected) {
+            assertEquals("ISOLATE_CANCELLED", expected.getMessage());
+        }
     }
 
     @Test

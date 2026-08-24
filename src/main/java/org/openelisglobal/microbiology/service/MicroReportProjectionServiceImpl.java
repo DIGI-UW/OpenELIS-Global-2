@@ -133,7 +133,9 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
             if (!"REPORTABLE_AST_RUN_REQUIRED".equals(conflict.getMessage())) {
                 throw conflict;
             }
-            input = projectionInput(microCase, "");
+            input = MicroCaseStage.FINAL_RELEASED.name().equals(microCase.getStage())
+                    ? releasedProjectionInput(microCase)
+                    : projectionInput(microCase, "");
         }
         List<String> projectedResultIds = input.links().stream().map(MicroCaseAnalysis::getProjectedResultId)
                 .filter(this::hasText).toList();
@@ -155,6 +157,19 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
 
     private ProjectionInput projectionInput(MicroCase microCase, String content) {
         List<MicroCaseAnalysis> links = caseAnalysisDAO.getByCaseId(microCase.getId());
+        boolean mappingConfigured = !links.isEmpty() && links.stream().allMatch(this::hasReportConfiguration);
+        return new ProjectionInput(content, links, mappingConfigured);
+    }
+
+    private ProjectionInput releasedProjectionInput(MicroCase microCase) {
+        List<MicroCaseAnalysis> links = caseAnalysisDAO.getByCaseId(microCase.getId());
+        List<String> releasedValues = links.stream().map(MicroCaseAnalysis::getProjectedResultId).filter(this::hasText)
+                .map(resultService::getResultById).filter(result -> result != null && hasText(result.getValue()))
+                .map(result -> result.getValue().trim()).distinct().toList();
+        if (releasedValues.size() > 1) {
+            throw new IllegalStateException("FINAL_REPORT_BASELINE_AMBIGUOUS");
+        }
+        String content = releasedValues.isEmpty() ? "" : releasedValues.get(0);
         boolean mappingConfigured = !links.isEmpty() && links.stream().allMatch(this::hasReportConfiguration);
         return new ProjectionInput(content, links, mappingConfigured);
     }

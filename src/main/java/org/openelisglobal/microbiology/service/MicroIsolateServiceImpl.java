@@ -2,11 +2,15 @@ package org.openelisglobal.microbiology.service;
 
 import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
+import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
@@ -20,13 +24,15 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroCaseActivityDAO activityDAO;
+    private final MicroCaseAmendmentDAO amendmentDAO;
     private final MicroIdentificationHistoryService identificationHistoryService;
 
     public MicroIsolateServiceImpl(MicroCaseDAO caseDAO, MicroIsolateDAO isolateDAO, MicroCaseActivityDAO activityDAO,
-            MicroIdentificationHistoryService identificationHistoryService) {
+            MicroCaseAmendmentDAO amendmentDAO, MicroIdentificationHistoryService identificationHistoryService) {
         this.caseDAO = caseDAO;
         this.isolateDAO = isolateDAO;
         this.activityDAO = activityDAO;
+        this.amendmentDAO = amendmentDAO;
         this.identificationHistoryService = identificationHistoryService;
     }
 
@@ -41,6 +47,7 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
 
         MicroIsolate isolate = new MicroIsolate();
         isolate.setCaseId(caseId);
+        isolate.setAmendmentId(activeAmendmentId(microCase));
         isolate.setIsolateLabel(isolateLabel);
         isolate.setOrganismId(optionalId(organismId));
         isolate.setPreliminaryOrganismText(preliminaryOrganismText);
@@ -70,6 +77,9 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        if (isolate.getCancelledAt() != null) {
+            throw new MicroAmendmentConflictException("ISOLATE_CANCELLED");
+        }
         MicroCase microCase = caseDAO.get(isolate.getCaseId())
                 .orElseThrow(() -> new IllegalArgumentException("Case not found"));
         MicroCaseMutationGuard.requireMutable(microCase);
@@ -125,6 +135,18 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
 
     private String optionalId(String value) {
         return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private String activeAmendmentId(MicroCase microCase) {
+        if (!MicroCaseStage.AMENDED.name().equals(microCase.getStage())
+                || !MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name().equals(microCase.getFinalReleaseState())) {
+            return null;
+        }
+        MicroCaseAmendment amendment = amendmentDAO.getOpenByCaseId(microCase.getId());
+        if (amendment == null) {
+            throw new MicroAmendmentConflictException("AMENDMENT_NOT_OPEN");
+        }
+        return amendment.getId();
     }
 
     private void recordActivity(String caseId, MicroCaseActivityType activityType, String performedBy, String note,

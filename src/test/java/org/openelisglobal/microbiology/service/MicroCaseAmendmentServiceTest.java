@@ -19,6 +19,7 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -27,6 +28,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendmentStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroCaseAmendmentServiceTest {
@@ -47,6 +49,9 @@ public class MicroCaseAmendmentServiceTest {
     private MicroAstRunDAO astRunDAO;
 
     @Mock
+    private MicroIsolateDAO isolateDAO;
+
+    @Mock
     private MicroIdentificationHistoryService identificationHistoryService;
 
     private MicroCaseAmendmentService service;
@@ -54,7 +59,7 @@ public class MicroCaseAmendmentServiceTest {
     @Before
     public void setUp() {
         service = new MicroCaseAmendmentServiceImpl(caseDAO, amendmentDAO, activityDAO, reportVersionService, astRunDAO,
-                identificationHistoryService);
+                isolateDAO, identificationHistoryService);
     }
 
     @Test
@@ -168,6 +173,11 @@ public class MicroCaseAmendmentServiceTest {
         repeat.setReportable(true);
         when(astRunDAO.getByAmendmentId("amendment-2")).thenReturn(List.of(repeat));
         when(astRunDAO.get("run-1")).thenReturn(Optional.of(source));
+        MicroIsolate amendmentIsolate = new MicroIsolate();
+        amendmentIsolate.setId("isolate-2");
+        amendmentIsolate.setCaseId("case-1");
+        amendmentIsolate.setAmendmentId("amendment-2");
+        when(isolateDAO.getByAmendmentId("amendment-2")).thenReturn(List.of(amendmentIsolate));
 
         MicroCaseAmendment cancelled = service.cancelAmendment("case-1", "Correction no longer required", "9");
 
@@ -177,8 +187,10 @@ public class MicroCaseAmendmentServiceTest {
         assertEquals(true, source.isReportable());
         assertEquals(false, repeat.isReportable());
         assertEquals(MicroAstRunStatus.CANCELLED.name(), repeat.getStatus());
+        assertNotNull(amendmentIsolate.getCancelledAt());
         verify(astRunDAO).update(source);
         verify(astRunDAO).update(repeat);
+        verify(isolateDAO).update(amendmentIsolate);
         verify(identificationHistoryService).revertAmendment("amendment-2", "Correction no longer required", "9");
         verify(reportVersionService, never()).recordAmendedFinal(any(MicroCaseAmendment.class),
                 any(MicroReportProjectionResult.class), any(String.class));

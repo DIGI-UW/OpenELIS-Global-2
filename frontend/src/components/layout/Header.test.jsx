@@ -337,6 +337,14 @@ const renderHeader = (options = {}) => {
 };
 
 describe("Header Component - M2b Enhancement Tests", () => {
+  test("preserves stable selectors on Carbon parent menu labels", () => {
+    const { container } = renderHeader();
+
+    expect(container.querySelector("span#menu_sample")).toBeInTheDocument();
+    expect(container.querySelector("span#menu_results")).toBeInTheDocument();
+    expect(container.querySelector("span#menu_reports")).toBeInTheDocument();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.clear();

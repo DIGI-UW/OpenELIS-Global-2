@@ -514,10 +514,17 @@ function OEHeader({
       return (
         <SideNavMenu
           key={itemId}
-          title={intl.formatMessage({
-            id: menuItem.menu.displayKey,
-            defaultMessage: menuItem.menu.displayKey,
-          })}
+          title={
+            <span
+              id={menuItem.menu.elementId}
+              data-cy={menuItem.menu.elementId?.replace(/[^\w\s]/gi, "_")}
+            >
+              {intl.formatMessage({
+                id: menuItem.menu.displayKey,
+                defaultMessage: menuItem.menu.displayKey,
+              })}
+            </span>
+          }
           defaultExpanded={carbonExpanded}
           isActive={carbonIsActive}
           className={

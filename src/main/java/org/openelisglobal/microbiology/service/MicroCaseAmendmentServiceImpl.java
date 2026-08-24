@@ -6,6 +6,7 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -15,6 +16,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendmentStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,16 +28,18 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
     private final MicroCaseActivityDAO activityDAO;
     private final MicroReportVersionService reportVersionService;
     private final MicroAstRunDAO astRunDAO;
+    private final MicroIsolateDAO isolateDAO;
     private final MicroIdentificationHistoryService identificationHistoryService;
 
     public MicroCaseAmendmentServiceImpl(MicroCaseDAO caseDAO, MicroCaseAmendmentDAO amendmentDAO,
             MicroCaseActivityDAO activityDAO, MicroReportVersionService reportVersionService, MicroAstRunDAO astRunDAO,
-            MicroIdentificationHistoryService identificationHistoryService) {
+            MicroIsolateDAO isolateDAO, MicroIdentificationHistoryService identificationHistoryService) {
         this.caseDAO = caseDAO;
         this.amendmentDAO = amendmentDAO;
         this.activityDAO = activityDAO;
         this.reportVersionService = reportVersionService;
         this.astRunDAO = astRunDAO;
+        this.isolateDAO = isolateDAO;
         this.identificationHistoryService = identificationHistoryService;
     }
 
@@ -100,6 +104,11 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
             run.setStatus(MicroAstRunStatus.CANCELLED.name());
             astRunDAO.update(run);
             restoreSourceSelection(run);
+        }
+        Timestamp cancelledAt = MicroCaseServiceImpl.now();
+        for (MicroIsolate isolate : isolateDAO.getByAmendmentId(amendment.getId())) {
+            isolate.setCancelledAt(cancelledAt);
+            isolateDAO.update(isolate);
         }
         close(amendment, MicroCaseAmendmentStatus.CANCELLED, reason.trim(), performedBy);
         relock(microCase, performedBy);

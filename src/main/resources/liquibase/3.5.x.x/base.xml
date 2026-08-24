@@ -395,6 +395,7 @@
 
   <!-- OGC-782 M8: amendment, report-version, and re-identification history -->
   <include relativeToChangelogFile="true" file="060-microbiology-amendment-history.xml"/>
+  <include relativeToChangelogFile="true" file="060a-microbiology-amendment-isolate-lifecycle.xml"/>
 
   <!-- OGC-782 M8: repeat/retest AST provenance and reportable selection -->
   <include relativeToChangelogFile="true" file="061-microbiology-ast-attempts.xml"/>

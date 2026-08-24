@@ -21,6 +21,9 @@ public class MicroIsolate extends BaseObject<String> {
     @Column(name = "case_id", nullable = false, length = 36)
     private String caseId;
 
+    @Column(name = "amendment_id", length = 36)
+    private String amendmentId;
+
     @Column(name = "isolate_label", nullable = false, length = 40)
     private String isolateLabel;
 
@@ -39,6 +42,9 @@ public class MicroIsolate extends BaseObject<String> {
     @Column(name = "created_at", nullable = false)
     private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
 
+    @Column(name = "cancelled_at")
+    private Timestamp cancelledAt;
+
     @Override
     public String getId() {
         return id;
@@ -55,6 +61,14 @@ public class MicroIsolate extends BaseObject<String> {
 
     public void setCaseId(String caseId) {
         this.caseId = caseId;
+    }
+
+    public String getAmendmentId() {
+        return amendmentId;
+    }
+
+    public void setAmendmentId(String amendmentId) {
+        this.amendmentId = amendmentId;
     }
 
     public String getIsolateLabel() {
@@ -103,5 +117,13 @@ public class MicroIsolate extends BaseObject<String> {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Timestamp getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(Timestamp cancelledAt) {
+        this.cancelledAt = cancelledAt;
     }
 }
