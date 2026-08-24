@@ -5233,6 +5233,7 @@
   "notice.testCatalog.intake.awaitingSpecimen": "Awaiting specimen — this test runs on several specimens; resolve at collection.",
   "tag.testCatalog.finding.noSampleTypeLink": "No sample-type link",
   "error.testCatalog.codeExists": "A test with this code already exists.",
+  "error.testCatalog.description.inUse": "Another test already uses this description. Descriptions must be unique — change it and save again.",
   "notification.testCatalog.testCreated": "Test '{name}' created. Complete its configuration in the sections at left.",
   "label.testCatalog.basicInfo.code": "Code",
   "label.testCatalog.basicInfo.description": "Description",
