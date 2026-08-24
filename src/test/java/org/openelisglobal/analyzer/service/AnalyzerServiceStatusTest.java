@@ -245,15 +245,13 @@ public class AnalyzerServiceStatusTest {
     }
 
     @Test
-    public void testValidateStatusTransition_CompleteWorkflow_AllTransitionsValid() {
-        // Test the complete happy-path workflow:
-        // SETUP -> VALIDATION -> ACTIVE -> ERROR_PENDING -> ACTIVE -> OFFLINE -> ACTIVE
+    public void testValidateStatusTransition_ActiveEntryRequiresActivationService() {
         assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.SETUP, AnalyzerStatus.VALIDATION));
-        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.VALIDATION, AnalyzerStatus.ACTIVE));
+        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.VALIDATION, AnalyzerStatus.ACTIVE));
         assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.ACTIVE, AnalyzerStatus.ERROR_PENDING));
-        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.ERROR_PENDING, AnalyzerStatus.ACTIVE));
+        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.ERROR_PENDING, AnalyzerStatus.ACTIVE));
         assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.ACTIVE, AnalyzerStatus.OFFLINE));
-        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.OFFLINE, AnalyzerStatus.ACTIVE));
+        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.OFFLINE, AnalyzerStatus.ACTIVE));
     }
 
     // === findByIdentifierPatternMatch Tests (GenericASTM/GenericHL7 plugin

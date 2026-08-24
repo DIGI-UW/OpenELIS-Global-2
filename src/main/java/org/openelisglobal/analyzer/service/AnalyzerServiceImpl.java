@@ -248,6 +248,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         if (currentStatus == newStatus) {
             return true;
         }
+        if (newStatus == AnalyzerStatus.ACTIVE) {
+            return false;
+        }
         if (newStatus == AnalyzerStatus.INACTIVE) {
             return true;
         }
@@ -261,13 +264,13 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         case SETUP:
             return newStatus == AnalyzerStatus.VALIDATION;
         case VALIDATION:
-            return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.SETUP;
+            return newStatus == AnalyzerStatus.SETUP;
         case ACTIVE:
             return newStatus == AnalyzerStatus.ERROR_PENDING || newStatus == AnalyzerStatus.OFFLINE;
         case ERROR_PENDING:
-            return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.OFFLINE;
+            return newStatus == AnalyzerStatus.OFFLINE;
         case OFFLINE:
-            return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.ERROR_PENDING;
+            return newStatus == AnalyzerStatus.ERROR_PENDING;
         case DELETED:
             return newStatus == AnalyzerStatus.INACTIVE;
         case PENDING_REGISTRATION:

@@ -18,15 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Transitions analyzers from ACTIVE to OFFLINE after 7 days of inactivity. Runs
  * daily at 2 AM.
  * 
- * Architecture: - This scheduler handles time-based transitions (e.g., 7-day
- * inactivity check) - Event-driven transitions are handled by
- * AnalyzerStatusEventListeners - Core transition logic is in
- * AnalyzerStatusTransitionService
- * 
  * Includes monitoring and alerting for transition failures.
- * 
- * @see AnalyzerStatusTransitionService
- * @see AnalyzerStatusEventListeners
  */
 @Component
 public class AnalyzerLifecycleScheduler {

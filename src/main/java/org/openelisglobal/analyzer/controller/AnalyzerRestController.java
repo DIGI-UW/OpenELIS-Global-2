@@ -127,6 +127,9 @@ public class AnalyzerRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> createAnalyzer(@RequestBody AnalyzerForm form,
             HttpServletRequest request) {
         try {
+            if (form.getStatus() != null && !AnalyzerStatus.SETUP.name().equals(form.getStatus())) {
+                return lifecycleStatusManaged();
+            }
             // Collect all validation errors instead of failing on the first one
             List<String> validationErrors = new ArrayList<>();
             if (form.getName() == null || form.getName().trim().isEmpty()) {
@@ -194,13 +197,7 @@ public class AnalyzerRestController extends BaseRestController {
                 }
             }
 
-            String statusStr = form.getStatus() != null ? form.getStatus() : "SETUP";
-            try {
-                analyzer.setStatus(AnalyzerStatus.valueOf(statusStr));
-            } catch (IllegalArgumentException e) {
-                logger.warn("Invalid status value: {}, defaulting to SETUP", statusStr);
-                analyzer.setStatus(AnalyzerStatus.SETUP);
-            }
+            analyzer.setStatus(AnalyzerStatus.SETUP);
 
             // File import fields — allow the frontend to set these at creation time
             // so FILE analyzers can be fully configured in a single form submission.
@@ -318,6 +315,9 @@ public class AnalyzerRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
             Analyzer analyzer = analyzerToUpdate.get();
+            if (form.getStatus() != null && !analyzer.getStatus().name().equals(form.getStatus())) {
+                return lifecycleStatusManaged();
+            }
 
             // Manual validation for optional fields
             if (form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty()
@@ -409,15 +409,10 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getSkipRows() != null) {
                 analyzer.setSkipRows(form.getSkipRows());
             }
-            // Update lifecycle status if provided (SETUP → ACTIVE → INACTIVE → DELETED)
-            if (form.getStatus() != null) {
-                try {
-                    analyzer.setStatus(AnalyzerStatus.valueOf(form.getStatus()));
-                } catch (IllegalArgumentException e) {
-                    logger.warn("Invalid status value: {}, keeping existing status", form.getStatus());
-                }
+            if (form.getProfileId() != null) {
+                analyzerProfileBindingService.assignProfile(analyzer, form.getProfileId(), form.getProfileRevision(),
+                        getSysUserId(request));
             }
-
             analyzer.setSysUserId(getSysUserId(request));
             analyzerService.update(analyzer);
 
@@ -551,6 +546,12 @@ public class AnalyzerRestController extends BaseRestController {
     private Set<String> getLoadedPluginClassNames() {
         return pluginAnalyzerService.getAnalyzerPlugins().stream().map(plugin -> plugin.getClass().getName())
                 .collect(Collectors.toSet());
+    }
+
+    private static ResponseEntity<Map<String, Object>> lifecycleStatusManaged() {
+        Map<String, Object> body = AnalyzerControllerHelper.wrapError("analyzer.lifecycle.statusManaged");
+        body.put("errorKey", "analyzer.lifecycle.statusManaged");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     /**
