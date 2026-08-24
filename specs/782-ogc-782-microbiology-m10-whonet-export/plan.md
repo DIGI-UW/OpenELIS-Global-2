@@ -43,6 +43,25 @@ boundary rather than introducing a second export implementation.
     remaining legacy report implementation is separately tracked in
     [GitHub #3983](https://github.com/DIGI-UW/OpenELIS-Global-2/issues/3983)
     because direct callers may still exist.
+11. Advanced first-isolate requests retain the existing `NONE` and seven-day
+    policy identifiers and add 14- and 30-day identifiers. Separate normalized
+    values carry date basis, specimen-source scope, contaminant-first handling,
+    and susceptibility-profile sensitivity through preview and generation.
+12. Reporting-period selection continues to query finalized cases by specimen
+    collection time. De-duplication uses either that collection timestamp or
+    the case's final close timestamp, depending on the selected chronology.
+13. Same-source mode extends the patient-organism comparison key with the
+    authoritative sample-type identifier. Profile-sensitive mode extends it
+    with a stable, sorted profile of antibiotic identifier plus final reviewed
+    S/I/R interpretation from reportable AST runs.
+14. The existing export-run `dedup_policy` stores the selected window identifier.
+    The existing JSON population selection records the remaining normalized
+    policy fields, so this slice requires no database migration and remains
+    backward-compatible with earlier audit rows.
+15. Episode-based selection is not accepted by the API or shown in the UI until
+    its episode boundary is defined. Repeat rows remain dropped; adding the
+    `FIRST_OR_REPEAT` marker is part of the versioned, import-qualified output
+    contract rather than an isolated mutation of the legacy 15-column CSV.
 
 ## Data Flow
 

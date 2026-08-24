@@ -229,26 +229,23 @@ product sequence.
   option also orders isolates by specimen collection date.
 - [*] Complete M-09 advanced first-isolate behavior behind a progressive
   disclosure: window length and basis, source scope, contaminant handling,
-  repeat-row handling, and susceptibility-profile sensitivity.
+  and susceptibility-profile sensitivity. Preserve drop-repeat behavior for
+  this slice.
 
-  **R13 clarification required:** OpenELIS Work offers an episode-based window
-  but defines no episode boundary and references a missing
-  `whonet-export-design-review-v1.md`. It also requires retained repeats to
-  carry `FIRST_OR_REPEAT = R`, while the current approved export is a legacy
-  15-column contract without that field and qualified WHONET output is the next
-  roadmap slice. Recommended ruling: implement the defined 7/14/30-day windows,
-  date basis, source scope, contaminant-first handling, and profile sensitivity
-  now; defer episode-based behavior until its functional boundary is defined;
-  and implement retained repeat rows with the qualified output contract instead
-  of changing the unqualified legacy CSV in isolation. Piotr must rule before
-  R13 tests or application code proceed.
+  **R13 ruling:** Implement the defined 7/14/30-day windows, date basis, source
+  scope, contaminant-first handling, and profile sensitivity. Episode-based
+  behavior waits for a functional episode boundary. Retained repeats and their
+  `FIRST_OR_REPEAT = R` marker move with the qualified output contract instead
+  of changing the legacy 15-column CSV in isolation.
 - [ ] Complete M-09 readiness and repair for patient origins, patient types,
   departments, breakpoint standards, and phenotype flags, reusing each owning
   catalog and avoiding parallel mapping stores.
+- [ ] Define and implement episode-based first-isolate selection after the
+  functional episode boundary is approved.
 - [ ] Complete WHONET-compatible output qualification: current import
   validation, CSV/TXT choices, isolate-wide antibiotic columns, method suffixes,
-  phenotype options, demographics policy, and first-destination lab-profile
-  packaging.
+  phenotype options, demographics policy, retained-repeat markers, and
+  first-destination lab-profile packaging.
 - [ ] Complete export history and configure-once delivery with saved filters,
   monthly scheduling, failure/unmapped-item notification, and the approved
   deployment transport; resolve SFTP-primary/email-fallback behavior before

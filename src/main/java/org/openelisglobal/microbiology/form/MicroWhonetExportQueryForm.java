@@ -19,6 +19,10 @@ public class MicroWhonetExportQueryForm {
     public boolean includeScreening;
     public boolean includeUnspecified;
     public String dedup = "FIRST_ISOLATE_7_DAY";
+    public String dedupBasis = "COLLECTION_DATE";
+    public String dedupScope = "ANY_SOURCE";
+    public boolean excludeContaminants = true;
+    public String profileSensitivity = "INSENSITIVE";
     public int page = 1;
     public int pageSize = 20;
 
@@ -92,6 +96,38 @@ public class MicroWhonetExportQueryForm {
 
     public void setDedup(String dedup) {
         this.dedup = dedup;
+    }
+
+    public String getDedupBasis() {
+        return dedupBasis;
+    }
+
+    public void setDedupBasis(String dedupBasis) {
+        this.dedupBasis = dedupBasis;
+    }
+
+    public String getDedupScope() {
+        return dedupScope;
+    }
+
+    public void setDedupScope(String dedupScope) {
+        this.dedupScope = dedupScope;
+    }
+
+    public boolean isExcludeContaminants() {
+        return excludeContaminants;
+    }
+
+    public void setExcludeContaminants(boolean excludeContaminants) {
+        this.excludeContaminants = excludeContaminants;
+    }
+
+    public String getProfileSensitivity() {
+        return profileSensitivity;
+    }
+
+    public void setProfileSensitivity(String profileSensitivity) {
+        this.profileSensitivity = profileSensitivity;
     }
 
     public int getPage() {
