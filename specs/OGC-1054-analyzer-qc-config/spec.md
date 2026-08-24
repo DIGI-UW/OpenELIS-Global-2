@@ -198,15 +198,21 @@ Verify, and Connect; completed sections collapse to summaries. Analyzer ID,
 step, selected profile revision, and return state are bookmarkable.
 Standalone create/edit routes, compatibility redirects, and a separate
 connection-test modal are not part of the workflow.
+The only analyzer-administration surfaces are the Analyzer dashboard and the
+separate reusable Analyzer Types manager; linked Quality Control is not another
+analyzer setup surface.
 
 Instrument selects an existing Analyzer Type, names the analyzer, and assigns
 one or more active lab units. An unlisted instrument links to the separate
 Analyzer Types authoring workflow and returns after a profile is published.
 
 Connect creates or edits the Bridge-owned connection through generic fields.
-Its communication choices and LIS-initiated capability come from the pinned
-profile revision; OpenELIS does not infer them from profile identity, protocol,
-or application constants.
+For network/socket profiles, communication choices, defaults, and
+LIS-initiated capability come from the pinned profile revision; missing or
+invalid capability is a profile-contract error, not a false value. For FILE
+profiles, setup uses declared FILE behavior and the site-entered directory
+without inventing network address, port, or data-flow values. OpenELIS does not
+infer these values from profile identity, protocol, or application constants.
 The connection test shows structured success, failure, timeout, missing-setting,
 and endpoint information, and the latest evidence remains visible after reload.
 The UI does not replace Bridge evidence with a simulated activity log or a
