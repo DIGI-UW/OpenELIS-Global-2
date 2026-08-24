@@ -31,6 +31,19 @@ public interface EQAParticipantFollowupService extends BaseObjectService<EQAPart
     EQAParticipantFollowup enqueueForThisLab(EQAProgram scheme, EQACycle cycle, List<Map<String, Object>> rows,
             String sysUserId);
 
+    /**
+     * Open or extend the register row for a <em>participating laboratory</em> of a
+     * scheme this lab provides (T-26 scoring, FR-V2.5-05). Same table and same
+     * merge rules as {@link #enqueueForThisLab}; the participant organization is
+     * what tells the two registers apart.
+     *
+     * @param persistentFailure FR-V2.5-07: unacceptable in 2 of the participant's
+     *                          last 3 cycles, which flags the row and escalates it
+     *                          without waiting for a reviewer
+     */
+    EQAParticipantFollowup enqueueForOrganization(EQAProgram scheme, EQACycle cycle, Long participantOrgId,
+            List<Map<String, Object>> rows, boolean persistentFailure, String sysUserId);
+
     /** Queue rows for the Follow-Up Queue table, newest first. */
     List<Map<String, Object>> getQueueRows();
 

@@ -72,4 +72,29 @@ public interface EQAShipmentService {
      *                                  has no box, or has no courier recorded
      */
     List<Map<String, Object>> markShipped(Long cycleId, List<Long> organizationIds, String sysUserId);
+
+    /**
+     * Receipt monitor rows (T-26, FR-V2.5-14): the shipment rows plus what
+     * receiving adds — received date and the overdue verdict. Overdue = not
+     * delivered and today is past the expected delivery plus two business days.
+     */
+    List<Map<String, Object>> getReceiptRows(Long cycleId);
+
+    /**
+     * Provider-side manual receipt fallback (FR-V2.5-14): the participant lab
+     * confirmed arrival out of band, so the provider records the delivery. When the
+     * last active participant's box is delivered, the cycle advances shipped →
+     * delivered → submissions_open automatically. Idempotent on a delivered box.
+     */
+    Map<String, Object> markDelivered(Long cycleId, Long organizationId, String sysUserId);
+
+    /**
+     * Reprovision a participant (T-26, FR-V2.5-15): a new shipment recording which
+     * one it replaces, consuming one aliquot per panel sample — from the reserve
+     * first; dipping into unreserved production requires a written override note.
+     *
+     * @throws IllegalStateException when the inventory cannot cover the repeat, or
+     *                               the reserve is short and no note was given
+     */
+    Map<String, Object> sendRepeat(Long cycleId, Long organizationId, String overrideNote, String sysUserId);
 }

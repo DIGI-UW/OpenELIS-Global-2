@@ -32,6 +32,7 @@ import org.openelisglobal.eqa.valueholder.EQAPerformanceStatus;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAResult;
 import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
@@ -52,6 +53,13 @@ public class EQAFhirSubmissionServiceTest {
 
     @Mock
     private SystemUserService systemUserService;
+
+    /**
+     * The participant reference is resolved to the organization's FHIR uuid; with
+     * no organization behind the id these tests simply carry no performer.
+     */
+    @Mock
+    private OrganizationService organizationService;
 
     @InjectMocks
     private EQAFhirSubmissionServiceImpl submissionService;

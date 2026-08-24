@@ -2,6 +2,8 @@ package org.openelisglobal.eqa.service;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -13,6 +15,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQACycleParticipantDAO;
 import org.openelisglobal.eqa.dao.EQAPanelDAO;
+import org.openelisglobal.eqa.dao.EQAPanelReceiptDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.dao.EQAProgramEnrollmentDAO;
 import org.openelisglobal.eqa.service.EQAPrepGate.PanelRequirement;
@@ -20,6 +23,7 @@ import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleParticipant;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAPanelReceipt;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
@@ -41,6 +45,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class EQAShipmentServiceImpl implements EQAShipmentService {
 
+    /** FR-V2.5-14: the grace the monitor allows before a shipment reads overdue. */
+    private static final int OVERDUE_GRACE_BUSINESS_DAYS = 2;
+
     @Autowired
     private EQACycleDAO eqaCycleDAO;
 
@@ -58,6 +65,9 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
 
     @Autowired
     private EQACycleParticipantDAO eqaCycleParticipantDAO;
+
+    @Autowired
+    private EQAPanelReceiptDAO eqaPanelReceiptDAO;
 
     @Autowired
     private OrganizationService organizationService;
@@ -232,7 +242,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
 
         ShippingBox box = shippingBoxService.getBoxByBoxId(boxCode(cycleId, organizationId));
         if (box == null) {
-            box = createBox(cycle, organizationId, sysUserId);
+            box = createBox(cycle, organizationId, boxCode(cycleId, organizationId), sysUserId);
         } else if (box.getState() != BoxState.DRAFT && box.getState() != BoxState.READY_TO_SEND) {
             // Courier details of a box already in transit are history, not a draft.
             throw new IllegalStateException(
@@ -352,6 +362,159 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         return rows;
     }
 
+    // ---- FR-V2.5-14 receipt monitoring ----
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getReceiptRows(Long cycleId) {
+        EQACycle cycle = cycle(cycleId);
+        Map<Long, ShippingBox> latest = latestBoxes(cycleId);
+        Map<Integer, EQAPanelReceipt> receipts = receiptsByShipment(cycleId);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        // The cycle's roster (T-24), not the scheme's enrollments: a lab enrolled
+        // after this cycle was created is not one of its participants.
+        for (Long organizationId : eqaCycleService.participantOrganizationIds(cycle)) {
+            ShippingBox box = latest.get(organizationId);
+            rows.add(toReceiptRow(organizationId, box, box == null ? null : box.getShipment(), receipts));
+        }
+        return rows;
+    }
+
+    @Override
+    public Map<String, Object> markDelivered(Long cycleId, Long organizationId, String sysUserId) {
+        EQACycle cycle = cycle(cycleId);
+        requireParticipant(eqaCycleService.participantOrganizationIds(cycle), organizationId);
+        ShippingBox box = latestBoxes(cycleId).get(organizationId);
+        if (box == null || box.getShipment() == null) {
+            throw new IllegalArgumentException(
+                    "No shipment has been dispatched to organization " + organizationId + " for this cycle");
+        }
+        Shipment shipment = box.getShipment();
+        if (shipment.getStatus() == ShipmentStatus.DELIVERED) {
+            // Already receipted, by the participant (T-15) or by an earlier click.
+            return toReceiptRow(organizationId, box, shipment, receiptsByShipment(cycleId));
+        }
+        if (box.getState() != BoxState.SENT && box.getState() != BoxState.IN_TRANSIT) {
+            throw new IllegalStateException(
+                    "Box " + box.getBoxId() + " is " + box.getState() + ", so it cannot be recorded as delivered");
+        }
+
+        box = shippingBoxService.changeBoxState(box.getId(), BoxState.RECEIVED, userId(sysUserId));
+        // updateShipmentStatus stamps the actual delivery date with the status, as it
+        // does the shipped date on dispatch — one owner for "this shipment arrived".
+        shipment = shipmentService.updateShipmentStatus(shipment.getId(), ShipmentStatus.DELIVERED);
+        shipment.setSysUserId(sysUserId);
+        shipment.setSystemUserId(userId(sysUserId));
+
+        openSubmissionsIfAllDelivered(cycle, sysUserId);
+        return toReceiptRow(organizationId, box, shipment, receiptsByShipment(cycleId));
+    }
+
+    /**
+     * AC-V2.5-13: once every active participant holds its panel there is nothing
+     * left to wait for, so the cycle walks shipped → delivered → submissions_open
+     * on its own. Each edge keeps its own audit row, as the machine requires.
+     */
+    private void openSubmissionsIfAllDelivered(EQACycle cycle, String sysUserId) {
+        if (cycle.getStatus() != EQACycleStatus.SHIPPED) {
+            return;
+        }
+        Map<Long, ShippingBox> latest = latestBoxes(cycle.getId());
+        List<Long> participants = eqaCycleService.participantOrganizationIds(cycle);
+        if (participants.isEmpty()) {
+            return;
+        }
+        for (Long organizationId : participants) {
+            ShippingBox box = latest.get(organizationId);
+            if (box == null || box.getShipment() == null || box.getShipment().getStatus() != ShipmentStatus.DELIVERED) {
+                return;
+            }
+        }
+        for (EQACycleStatus next : List.of(EQACycleStatus.DELIVERED, EQACycleStatus.SUBMISSIONS_OPEN)) {
+            eqaCycleService.transition(cycle.getId(), next, EQAStateMachine.PROVIDER, EQATriggerType.AUTO,
+                    EQATriggerEvent.ALL_SHIPMENTS_DELIVERED, null, "Every participant panel is delivered", sysUserId);
+        }
+    }
+
+    // ---- FR-V2.5-15 reprovisioning ----
+
+    @Override
+    public Map<String, Object> sendRepeat(Long cycleId, Long organizationId, String overrideNote, String sysUserId) {
+        EQACycle cycle = cycle(cycleId);
+        requireParticipant(eqaCycleService.participantOrganizationIds(cycle), organizationId);
+        Map<Long, ShippingBox> latest = latestBoxes(cycleId);
+        ShippingBox original = latest.get(organizationId);
+        if (original == null || original.getShipment() == null || original.getShipment().getShippedDate() == null) {
+            throw new IllegalArgumentException("Nothing has been dispatched to organization " + organizationId
+                    + " yet, so there is no shipment to repeat");
+        }
+
+        // Validate the whole repeat against every panel before writing anything: a
+        // refused reprovision must leave the inventory exactly as it was.
+        List<EQAPanel> panels = panelsOf(cycleId);
+        if (panels.isEmpty()) {
+            throw new IllegalStateException("This cycle has no panel, so there is no material to repeat");
+        }
+        Map<Long, Integer> fromReserve = new LinkedHashMap<>();
+        Map<Long, Integer> needed = new LinkedHashMap<>();
+        for (EQAPanel panel : panels) {
+            int samples = sampleCount(panel.getId());
+            int reserved = zeroIfNull(panel.getAliquotsReserved());
+            int takeFromReserve = Math.min(reserved, samples);
+            int beyondReserve = samples - takeFromReserve;
+            if (beyondReserve > 0) {
+                // FR-V2.5-15: an empty reserve is a hard warning, not a refusal — but it
+                // takes a written justification, and the material still has to exist.
+                if (GenericValidator.isBlankOrNull(overrideNote)) {
+                    throw new IllegalStateException(
+                            "Panel " + panel.getPanelName() + " holds only " + reserved + " reserved aliquots of the "
+                                    + samples + " a repeat needs;" + " record an override note to send it anyway");
+                }
+                int headroom = zeroIfNull(panel.getAliquotsProduced()) - reserved
+                        - zeroIfNull(panel.getAliquotsShipped());
+                if (beyondReserve > headroom) {
+                    throw new IllegalStateException("Panel " + panel.getPanelName() + " has no aliquots left for a"
+                            + " repeat; produce more before reprovisioning");
+                }
+            }
+            fromReserve.put(panel.getId(), takeFromReserve);
+            needed.put(panel.getId(), samples);
+        }
+
+        Shipment previous = original.getShipment();
+        ShippingBox repeat = createBox(cycle, organizationId, nextRepeatCode(cycleId, organizationId, original),
+                sysUserId);
+        Shipment shipment = new Shipment();
+        shipment.setShippingBox(repeat);
+        shipment.setStatus(ShipmentStatus.PENDING);
+        shipment.setCourier(previous.getCourier());
+        shipment.setRepeatOfShipmentId(previous.getId());
+        shipment.setSysUserId(sysUserId);
+        shipment.setSystemUserId(userId(sysUserId));
+        if (!GenericValidator.isBlankOrNull(overrideNote)) {
+            repeat.setNotes(repeat.getNotes() + " — repeat, override: " + overrideNote);
+        }
+        shipment = shipmentService.createShipment(shipment);
+
+        // A repeat is dispatched by the act of sending it: there is no second decision
+        // to make, and the courier details come from the shipment it replaces.
+        repeat = shippingBoxService.changeBoxState(repeat.getId(), BoxState.READY_TO_SEND, userId(sysUserId));
+        repeat = shippingBoxService.changeBoxState(repeat.getId(), BoxState.SENT, userId(sysUserId));
+        shipment = shipmentService.updateShipmentStatus(shipment.getId(), ShipmentStatus.IN_TRANSIT);
+        shipment.setSysUserId(sysUserId);
+        shipment.setSystemUserId(userId(sysUserId));
+
+        // Repeat material comes out of the reserve first (FR-V2.5-15); whatever the
+        // reserve could not cover was justified above and comes out of production.
+        for (EQAPanel panel : panels) {
+            panel.setAliquotsReserved(zeroIfNull(panel.getAliquotsReserved()) - fromReserve.get(panel.getId()));
+            panel.setAliquotsShipped(zeroIfNull(panel.getAliquotsShipped()) + needed.get(panel.getId()));
+            panel.setSysUserId(sysUserId);
+            eqaPanelDAO.update(panel);
+        }
+        return toReceiptRow(organizationId, repeat, shipment, receiptsByShipment(cycleId));
+    }
+
     // ---- helpers ----
 
     private EQACycle cycle(Long cycleId) {
@@ -402,17 +565,133 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     }
 
     /**
+     * The box that currently represents each participant: its original, or the
+     * newest repeat once one has been sent (FR-V2.5-15). Repeats are suffixed
+     * {@code -R1}, {@code -R2}, … on the participant's base code — matched on that
+     * exact suffix rather than a bare prefix, because one organization id can be
+     * the prefix of another.
+     */
+    private Map<Long, ShippingBox> latestBoxes(Long cycleId) {
+        Map<Long, ShippingBox> latest = new LinkedHashMap<>();
+        Map<Long, Integer> generation = new LinkedHashMap<>();
+        for (ShippingBox box : shippingBoxService.getBoxesByEqaCycle(cycleId)) {
+            Long organizationId = box.getDestinationFacility() == null ? null
+                    : Long.valueOf(box.getDestinationFacility().getId());
+            if (organizationId == null) {
+                continue;
+            }
+            int repeat = repeatNumber(box.getBoxId(), boxCode(cycleId, organizationId));
+            if (repeat >= 0 && repeat >= generation.getOrDefault(organizationId, -1)) {
+                generation.put(organizationId, repeat);
+                latest.put(organizationId, box);
+            }
+        }
+        return latest;
+    }
+
+    /**
+     * 0 for the original, n for {@code -Rn}, -1 when the code is not this org's.
+     */
+    private static int repeatNumber(String boxId, String baseCode) {
+        if (baseCode.equals(boxId)) {
+            return 0;
+        }
+        if (boxId != null && boxId.startsWith(baseCode + "-R")) {
+            try {
+                return Integer.parseInt(boxId.substring(baseCode.length() + 2));
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+        }
+        return -1;
+    }
+
+    private String nextRepeatCode(Long cycleId, Long organizationId, ShippingBox current) {
+        String base = boxCode(cycleId, organizationId);
+        return base + "-R" + (repeatNumber(current.getBoxId(), base) + 1);
+    }
+
+    /**
+     * The participant-recorded receipts of this cycle, keyed by the shipment each
+     * one confirms. That FK is the only join back to an organization: a receipt's
+     * lab_enrollment_id belongs to the participant's own enrollment table, which
+     * carries no organization at all.
+     */
+    private Map<Integer, EQAPanelReceipt> receiptsByShipment(Long cycleId) {
+        Map<Integer, EQAPanelReceipt> receipts = new LinkedHashMap<>();
+        for (EQAPanelReceipt receipt : eqaPanelReceiptDAO.getAllMatching("cycle.id", cycleId)) {
+            if (receipt.getShipmentId() != null) {
+                receipts.put(receipt.getShipmentId(), receipt);
+            }
+        }
+        return receipts;
+    }
+
+    /**
+     * A shipment row plus what receiving adds: when it arrived, the participant's
+     * cold-chain and integrity findings when they recorded a receipt, the shipment
+     * this one repeats, and the single status the monitor renders.
+     */
+    private Map<String, Object> toReceiptRow(Long organizationId, ShippingBox box, Shipment shipment,
+            Map<Integer, EQAPanelReceipt> receipts) {
+        Map<String, Object> row = toShipmentRow(organizationId, box, shipment);
+        EQAPanelReceipt receipt = shipment == null ? null : receipts.get(shipment.getId());
+        boolean delivered = shipment != null && shipment.getStatus() == ShipmentStatus.DELIVERED;
+        boolean overdue = !delivered && shipment != null && isOverdue(shipment.getEstimatedDeliveryDate());
+
+        row.put("shipmentId", shipment == null ? null : shipment.getId());
+        row.put("receivedDate", shipment == null || shipment.getActualDeliveryDate() == null ? null
+                : shipment.getActualDeliveryDate().toString());
+        row.put("repeatOfShipmentId", shipment == null ? null : shipment.getRepeatOfShipmentId());
+        row.put("receivedTempC", receipt == null ? null : receipt.getReceivedTempC());
+        row.put("integrityOk", receipt == null ? null : receipt.getIntegrityOk());
+        row.put("integrityNotes", receipt == null ? null : receipt.getIntegrityNotes());
+        row.put("overdue", overdue);
+        row.put("receiptStatus", receiptStatus(shipment, receipt, delivered, overdue));
+        return row;
+    }
+
+    private String receiptStatus(Shipment shipment, EQAPanelReceipt receipt, boolean delivered, boolean overdue) {
+        if (delivered) {
+            return receipt != null && Boolean.FALSE.equals(receipt.getIntegrityOk()) ? "EXCEPTION" : "DELIVERED";
+        }
+        if (shipment == null || shipment.getShippedDate() == null) {
+            return "NOT_SHIPPED";
+        }
+        return overdue ? "OVERDUE" : "IN_TRANSIT";
+    }
+
+    /**
+     * FR-V2.5-14: overdue is two <em>business</em> days past the expected delivery
+     * — a Friday delivery is not chased on Sunday. A shipment with no expected date
+     * is never overdue: nothing was promised to be late against.
+     */
+    private static boolean isOverdue(Timestamp estimatedDelivery) {
+        if (estimatedDelivery == null) {
+            return false;
+        }
+        LocalDate due = estimatedDelivery.toLocalDateTime().toLocalDate();
+        for (int added = 0; added < OVERDUE_GRACE_BUSINESS_DAYS;) {
+            due = due.plusDays(1);
+            if (due.getDayOfWeek() != DayOfWeek.SATURDAY && due.getDayOfWeek() != DayOfWeek.SUNDAY) {
+                added++;
+            }
+        }
+        return LocalDate.now().isAfter(due);
+    }
+
+    /**
      * Creating the box publishes it to the FHIR store as a SupplyDelivery, as any
      * other shipping box would be (failures are logged, not fatal). Nothing on it
      * carries a target value.
      */
-    private ShippingBox createBox(EQACycle cycle, Long organizationId, String sysUserId) {
+    private ShippingBox createBox(EQACycle cycle, Long organizationId, String boxCode, String sysUserId) {
         Organization participant = organizationService.getOrganizationById(String.valueOf(organizationId));
         if (participant == null) {
             throw new IllegalArgumentException("Organization " + organizationId + " does not exist");
         }
         ShippingBox box = new ShippingBox();
-        box.setBoxId(boxCode(cycle.getId(), organizationId));
+        box.setBoxId(boxCode);
         box.setDestinationFacility(participant);
         box.setEqaCycleId(cycle.getId());
         box.setSystemUserId(userId(sysUserId));

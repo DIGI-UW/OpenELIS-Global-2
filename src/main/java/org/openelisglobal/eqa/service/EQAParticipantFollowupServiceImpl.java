@@ -71,7 +71,20 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         if (rows == null || rows.isEmpty()) {
             return null;
         }
-        Long orgId = Long.parseLong(selfOrganization(sysUserId).getId());
+        return enqueue(scheme, cycle, Long.parseLong(selfOrganization(sysUserId).getId()), rows, false, sysUserId);
+    }
+
+    @Override
+    public EQAParticipantFollowup enqueueForOrganization(EQAProgram scheme, EQACycle cycle, Long participantOrgId,
+            List<Map<String, Object>> rows, boolean persistentFailure, String sysUserId) {
+        if (rows == null || rows.isEmpty()) {
+            return null;
+        }
+        return enqueue(scheme, cycle, participantOrgId, rows, persistentFailure, sysUserId);
+    }
+
+    private EQAParticipantFollowup enqueue(EQAProgram scheme, EQACycle cycle, Long orgId,
+            List<Map<String, Object>> rows, boolean persistentFailure, String sysUserId) {
         String source = sourceLabel(scheme);
 
         for (EQAParticipantFollowup existing : followupDAO.getAllMatching("cycle.id", cycle.getId())) {
@@ -99,7 +112,8 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         followup.setScheme(scheme);
         followup.setCycle(cycle);
         followup.setParticipantOrgId(orgId);
-        followup.setFollowupStatus(EQAFollowupStatus.NOTIFIED);
+        followup.setFollowupStatus(persistentFailure ? EQAFollowupStatus.ESCALATED : EQAFollowupStatus.NOTIFIED);
+        followup.setPersistentFailureFlag(persistentFailure);
         followup.setNotifiedAt(DateUtil.getNowAsTimestamp());
         followup.setParticipantResultSummaryJson(mergeSummary(null, rows, source));
         followup.setSysUserId(sysUserId);

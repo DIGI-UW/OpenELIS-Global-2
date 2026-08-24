@@ -31,6 +31,8 @@ import org.openelisglobal.eqa.valueholder.EQADistribution;
 import org.openelisglobal.eqa.valueholder.EQAParticipantResult;
 import org.openelisglobal.eqa.valueholder.EQAResult;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +59,9 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
 
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
+
+    @Autowired
+    private OrganizationService organizationService;
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -304,9 +309,12 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         code.setText("EQA Results: " + distribution.getDistributionName());
         report.setCode(code);
 
-        Reference orgRef = new Reference();
-        orgRef.setReference(ResourceType.Organization + "/" + organizationId);
-        report.setSubject(orgRef);
+        // Same rule as the observation below: an Organization is the report's
+        // performer, and DiagnosticReport.subject would refuse it.
+        Reference reportPerformer = organizationReference(organizationId);
+        if (reportPerformer != null) {
+            report.addPerformer(reportPerformer);
+        }
 
         for (EQAResult result : results) {
             Reference obsRef = new Reference();
@@ -315,6 +323,23 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
         }
 
         return report;
+    }
+
+    /**
+     * The participating laboratory, referenced by its FHIR uuid. Referencing the
+     * OpenELIS numeric id makes the store try to auto-create a placeholder
+     * Organization under a numeric client-assigned id, which it refuses
+     * (HAPI-0960); an organization with no uuid yet is left unreferenced rather
+     * than sent as a broken link.
+     */
+    private Reference organizationReference(Long organizationId) {
+        Organization participant = organizationService.getOrganizationById(String.valueOf(organizationId));
+        if (participant == null || participant.getFhirUuid() == null) {
+            return null;
+        }
+        Reference reference = new Reference();
+        reference.setReference(ResourceType.Organization + "/" + participant.getFhirUuid());
+        return reference;
     }
 
     private Observation buildObservation(EQAResult result, EQADistribution distribution) {
@@ -338,9 +363,14 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
             observation.setValue(quantity);
         }
 
-        Reference orgRef = new Reference();
-        orgRef.setReference(ResourceType.Organization + "/" + result.getParticipantOrganizationId());
-        observation.setSubject(orgRef);
+        // The participating laboratory is the performer, not the subject: FHIR R4
+        // restricts Observation.subject to Patient|Group|Device|Location, so a store
+        // refuses an Organization there with HTTP 422 (found returning scores over
+        // FHIR on the dev stack, 2026-08-24 — this path had no live caller before).
+        Reference performer = organizationReference(result.getParticipantOrganizationId());
+        if (performer != null) {
+            observation.addPerformer(performer);
+        }
 
         if (result.getZScore() != null) {
             Observation.ObservationComponentComponent zScoreComponent = new Observation.ObservationComponentComponent();

@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.Map;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.eqa.service.EQAProviderScoringService;
 import org.openelisglobal.eqa.service.EQAShipmentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,9 +42,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class EQAShipmentRestController extends BaseRestController {
 
     private final EQAShipmentService shipmentService;
+    private final EQAProviderScoringService scoringService;
 
-    public EQAShipmentRestController(EQAShipmentService shipmentService) {
+    public EQAShipmentRestController(EQAShipmentService shipmentService, EQAProviderScoringService scoringService) {
         this.shipmentService = shipmentService;
+        this.scoringService = scoringService;
     }
 
     /** The provider scheme list (FR-V2.5-01), each scheme carrying its cycles. */
@@ -90,6 +94,60 @@ public class EQAShipmentRestController extends BaseRestController {
     public List<Map<String, Object>> ship(HttpServletRequest request, @PathVariable Long cycleId,
             @RequestBody Map<String, Object> body) {
         return shipmentService.markShipped(cycleId, longListField(body, "organizationIds"), getSysUserId(request));
+    }
+
+    // ---- T-26: receipt monitoring, reprovisioning, scoring (FR-V2.5-14/15/03/04)
+    // ----
+
+    @GetMapping(value = "/cycles/{cycleId}/receipts", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> receipts(@PathVariable Long cycleId) {
+        return shipmentService.getReceiptRows(cycleId);
+    }
+
+    @PostMapping(value = "/cycles/{cycleId}/receipts/{organizationId}/delivered", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PROVIDER)
+    public Map<String, Object> markDelivered(HttpServletRequest request, @PathVariable Long cycleId,
+            @PathVariable Long organizationId) {
+        return shipmentService.markDelivered(cycleId, organizationId, getSysUserId(request));
+    }
+
+    /**
+     * Reprovision: {"overrideNote": "..."} — required only when the reserve is
+     * short.
+     */
+    @PostMapping(value = "/cycles/{cycleId}/receipts/{organizationId}/repeat", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PROVIDER)
+    public Map<String, Object> sendRepeat(HttpServletRequest request, @PathVariable Long cycleId,
+            @PathVariable Long organizationId, @RequestBody(required = false) Map<String, Object> body) {
+        return shipmentService.sendRepeat(cycleId, organizationId,
+                body == null ? null : stringField(body, "overrideNote"), getSysUserId(request));
+    }
+
+    @GetMapping(value = "/cycles/{cycleId}/scores", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> scores(@PathVariable Long cycleId) {
+        return scoringService.getScoreRows(cycleId);
+    }
+
+    /**
+     * Scoring writes verdicts and advances the cycle, so it is a manage-level act.
+     */
+    @PostMapping(value = "/cycles/{cycleId}/score", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    public Map<String, Object> score(HttpServletRequest request, @PathVariable Long cycleId) {
+        return scoringService.scoreCycle(cycleId, getSysUserId(request));
+    }
+
+    @PostMapping(value = "/cycles/{cycleId}/scores/{organizationId}/distribute", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PROVIDER)
+    public Map<String, Object> distributeScores(@PathVariable Long cycleId, @PathVariable Long organizationId) {
+        return scoringService.distributeScores(cycleId, organizationId);
+    }
+
+    @GetMapping(value = "/cycles/{cycleId}/scores/{organizationId}/csv", produces = "text/csv")
+    public ResponseEntity<String> scoresCsv(@PathVariable Long cycleId, @PathVariable Long organizationId) {
+        String filename = "eqa-scores-cycle-" + cycleId + "-org-" + organizationId + ".csv";
+        return ResponseEntity.ok().header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .body(scoringService.buildScoreCsv(cycleId, organizationId));
     }
 
     private Boolean booleanField(Map<String, Object> body, String key) {

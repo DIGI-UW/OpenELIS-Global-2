@@ -9,6 +9,7 @@ import {
   patchToOpenElisServerFullResponse,
   postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
+import config from "../../../../config.json";
 
 /**
  * A list read must answer a list. `data || []` is not enough: a failed read
@@ -107,6 +108,56 @@ export const requestReadyToShip = (cycleId, callback) =>
  */
 export const fetchPanelSamples = (panelId, callback) =>
   getFromOpenElisServer(`/rest/eqa/panels/${panelId}/samples`, callback);
+
+// --- T-26 receipt monitoring, reprovisioning and scoring (FR-V2.5-14/15/03/04) ---
+
+export const fetchReceiptRows = (cycleId, callback) =>
+  getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/receipts`, (data) =>
+    callback(data || []),
+  );
+
+export const fetchScoreRows = (cycleId, callback) =>
+  getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/scores`, (data) =>
+    callback(data || []),
+  );
+
+export const markDelivered = (cycleId, organizationId, callback) =>
+  postToOpenElisServerFullResponse(
+    `/rest/eqa/cycles/${cycleId}/receipts/${organizationId}/delivered`,
+    "{}",
+    withBody(callback),
+  );
+
+/** The override note is only required when the panel's reserve is short. */
+export const sendRepeat = (cycleId, organizationId, overrideNote, callback) =>
+  postToOpenElisServerFullResponse(
+    `/rest/eqa/cycles/${cycleId}/receipts/${organizationId}/repeat`,
+    JSON.stringify({ overrideNote }),
+    withBody(callback),
+  );
+
+export const scoreCycle = (cycleId, callback) =>
+  postToOpenElisServerFullResponse(
+    `/rest/eqa/cycles/${cycleId}/score`,
+    "{}",
+    withBody(callback),
+  );
+
+export const distributeScores = (cycleId, organizationId, callback) =>
+  postToOpenElisServerFullResponse(
+    `/rest/eqa/cycles/${cycleId}/scores/${organizationId}/distribute`,
+    "{}",
+    withBody(callback),
+  );
+
+/**
+ * Server-rendered CSV, so the browser downloads it rather than rebuilding it.
+ * The base URL is required: the SPA is served from a different origin than the
+ * API, so a root-relative path 404s (found driving the page, 2026-08-24) — the
+ * same reason the performance report opens through config.serverBaseUrl.
+ */
+export const scoresCsvUrl = (cycleId, organizationId) =>
+  `${config.serverBaseUrl}/rest/eqa/cycles/${cycleId}/scores/${organizationId}/csv`;
 
 // --- OGC-934 report comments ---
 
