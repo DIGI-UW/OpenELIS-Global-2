@@ -230,6 +230,18 @@ product sequence.
 - [*] Complete M-09 advanced first-isolate behavior behind a progressive
   disclosure: window length and basis, source scope, contaminant handling,
   repeat-row handling, and susceptibility-profile sensitivity.
+
+  **R13 clarification required:** OpenELIS Work offers an episode-based window
+  but defines no episode boundary and references a missing
+  `whonet-export-design-review-v1.md`. It also requires retained repeats to
+  carry `FIRST_OR_REPEAT = R`, while the current approved export is a legacy
+  15-column contract without that field and qualified WHONET output is the next
+  roadmap slice. Recommended ruling: implement the defined 7/14/30-day windows,
+  date basis, source scope, contaminant-first handling, and profile sensitivity
+  now; defer episode-based behavior until its functional boundary is defined;
+  and implement retained repeat rows with the qualified output contract instead
+  of changing the unqualified legacy CSV in isolation. Piotr must rule before
+  R13 tests or application code proceed.
 - [ ] Complete M-09 readiness and repair for patient origins, patient types,
   departments, breakpoint standards, and phenotype flags, reusing each owning
   catalog and avoiding parallel mapping stores.
