@@ -8,6 +8,7 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroWhonetContext;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +59,17 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
     public List<MicroCase> getOpenCases() {
         Query<MicroCase> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroCase c where c.closedAt is null order by c.createdAt", MicroCase.class);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCase> getCasesWithReviewedAstRuns() {
+        Query<MicroCase> query = entityManager.unwrap(Session.class)
+                .createQuery("select distinct c from MicroCase c, MicroIsolate i, MicroAstRun r"
+                        + " where i.caseId = c.id and r.isolateId = i.id and r.status = :reviewedStatus"
+                        + " order by c.createdAt", MicroCase.class);
+        query.setParameter("reviewedStatus", MicroAstRunStatus.REVIEWED.name());
         return query.list();
     }
 
