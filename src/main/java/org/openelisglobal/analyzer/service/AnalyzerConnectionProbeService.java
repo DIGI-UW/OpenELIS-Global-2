@@ -1,17 +1,19 @@
 package org.openelisglobal.analyzer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriUtils;
 
 /**
- * Synchronizes one analyzer candidate and validates its Bridge probe evidence.
+ * Probes one saved analyzer draft and validates the exact Bridge evidence.
  */
 @Service
 public class AnalyzerConnectionProbeService {
@@ -26,13 +28,16 @@ public class AnalyzerConnectionProbeService {
             "HTTP_ENDPOINT");
     private static final Set<String> CHECK_STATUSES = Set.of("PASSED", "FAILED", "MISSING_CONFIGURATION", "TIMED_OUT");
 
+    private final AnalyzerService analyzerService;
     private final BridgeRegistrationService registrationService;
     private final BridgeHttpClient bridgeHttpClient;
     private final String bridgeBaseUrl;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public AnalyzerConnectionProbeService(BridgeRegistrationService registrationService,
-            BridgeHttpClient bridgeHttpClient, @Value("${analyzer.bridge.url:}") String bridgeBaseUrl) {
+    public AnalyzerConnectionProbeService(AnalyzerService analyzerService,
+            BridgeRegistrationService registrationService, BridgeHttpClient bridgeHttpClient,
+            @Value("${analyzer.bridge.url:}") String bridgeBaseUrl) {
+        this.analyzerService = analyzerService;
         this.registrationService = registrationService;
         this.bridgeHttpClient = bridgeHttpClient;
         this.bridgeBaseUrl = stripTrailingSlashes(bridgeBaseUrl);
@@ -43,16 +48,18 @@ public class AnalyzerConnectionProbeService {
         if (bridgeBaseUrl.isBlank()) {
             throw new AnalyzerConnectionProbeException("analyzer.testConnection.bridge.notConfigured");
         }
-        BridgeRegistrationResult registration = registrationService.synchronize();
-        BridgeRegisteredCandidate candidate = registration.candidate(normalizedId).orElseThrow(
-                () -> new AnalyzerConnectionProbeException("analyzer.testConnection.bridge.notSynchronized",
-                        Map.of("detail", registration.failure() == null ? "" : registration.failure())));
+        Analyzer analyzer = analyzerService.getWithType(normalizedId)
+                .orElseThrow(() -> new AnalyzerConnectionProbeException("analyzer.testConnection.analyzerNotFound"));
+        ObjectNode candidate = registrationService.buildProbeRegistration(analyzer);
+        String profileId = candidate.path("profileRef").path("profileId").asText();
+        int profileRevision = candidate.path("profileRef").path("revision").asInt();
+        String fingerprint = candidate.path("desiredStateFingerprint").asText();
 
         String endpoint = bridgeBaseUrl + "/api/analyzers/"
                 + UriUtils.encodePathSegment(normalizedId, StandardCharsets.UTF_8) + "/probe";
         BridgeHttpClient.BridgeResponse response;
         try {
-            response = bridgeHttpClient.post(endpoint, null, REQUEST_TIMEOUT);
+            response = bridgeHttpClient.post(endpoint, objectMapper.writeValueAsString(candidate), REQUEST_TIMEOUT);
         } catch (IOException exception) {
             throw new AnalyzerConnectionProbeException("analyzer.testConnection.bridge.unreachable",
                     Map.of("detail", String.valueOf(exception.getMessage())), exception);
@@ -69,10 +76,9 @@ public class AnalyzerConnectionProbeService {
             throw invalidEvidence(exception);
         }
         validate(evidence);
-        if (!normalizedId.equals(evidence.analyzerId())
-                || !candidate.profileId().equals(evidence.profileRef().profileId())
-                || candidate.profileRevision() != evidence.profileRef().revision()
-                || !candidate.desiredStateFingerprint().equals(evidence.desiredStateFingerprint())) {
+        if (!normalizedId.equals(evidence.analyzerId()) || !profileId.equals(evidence.profileRef().profileId())
+                || profileRevision != evidence.profileRef().revision()
+                || !fingerprint.equals(evidence.desiredStateFingerprint())) {
             throw new AnalyzerConnectionProbeException("analyzer.testConnection.bridge.staleEvidence");
         }
         return evidence;

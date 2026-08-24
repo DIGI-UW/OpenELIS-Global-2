@@ -36,7 +36,7 @@ public class AnalyzerConnectionProbeRestController {
     private static HttpStatus status(String messageKey) {
         return switch (messageKey) {
         case "analyzer.testConnection.analyzerIdMissing" -> HttpStatus.BAD_REQUEST;
-        case "analyzer.testConnection.bridge.notSynchronized" -> HttpStatus.CONFLICT;
+        case "analyzer.testConnection.analyzerNotFound" -> HttpStatus.NOT_FOUND;
         case "analyzer.testConnection.bridge.notConfigured" -> HttpStatus.SERVICE_UNAVAILABLE;
         default -> HttpStatus.BAD_GATEWAY;
         };
