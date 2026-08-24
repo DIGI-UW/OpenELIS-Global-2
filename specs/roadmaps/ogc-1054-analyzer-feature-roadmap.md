@@ -1086,6 +1086,15 @@ rejected server-side.
 
 ### M3 - Guided setup, connectivity, and linked operational QC (OGC-1057)
 
+Execute M3 in this fixed acceptance-slice order: consume the pinned profile's
+connection capability; complete URL-backed inline Connect; remove the
+superseded standalone analyzer and connection-test interfaces; link the
+canonical operational-QC workflow; implement the exact non-QC activation
+predicate; then run the integrated gates and publish the analyzer-only review
+candidate with its Grist steps. These are execution slices, not additional
+roadmap states; M3 remains the sole `[*]` block until its complete exit gate
+passes.
+
 1. Complete one inline Instrument -> Verify -> Connect story in OE-M3 with
    canonical URL/query state, linkable breadcrumbs, a readable completion
    summary, reload, back, and forward behavior. Do not add a fourth setup
@@ -1107,16 +1116,19 @@ rejected server-side.
    analyzer verification.
 5. In BR-M3, execute profile-pinned probes and return protocol-appropriate
    structured evidence; separate connection initiator from Results only/Two-way
-   capability. OE-M3 consumes the established profile contract's declared
-   communication mode and LIS-initiated capability from the pinned revision;
-   it does not infer supported modes from the selected default, protocol name,
-   analyzer identity, or frontend/server constants. Collect only
-   role-applicable settings and show the endpoint a lab must configure. When a
-   Two-way probe fails and the pinned profile supports Results only, offer that
-   as an explicit user choice; never rewrite the saved mode automatically. For
-   a Bridge receiver/listener, OpenELIS neither asks for nor registers a
-   per-analyzer listen address or port: Bridge derives the advertised endpoint
-   from the pinned profile's protocol/lower-layer behavior and its live listener
+   capability. For a network/socket profile, OE-M3 consumes the pinned
+   revision's declared communication mode and explicit LIS-initiated capability;
+   omission or invalidity is a contract error, not `false`. For a FILE profile,
+   Connect uses the declared FILE behavior plus the site directory and does not
+   invent network communication, data-flow, address, or port values. OpenELIS
+   never infers supported modes from the selected default, profile identity,
+   protocol name, or frontend/server constants. Collect only role-applicable
+   settings and show the endpoint a lab must configure. When a Two-way probe
+   fails and the pinned profile supports Results only, offer that as an explicit
+   user choice; never rewrite the saved mode automatically. For a Bridge
+   receiver/listener, OpenELIS neither asks for nor registers a per-analyzer
+   listen address or port: Bridge derives the advertised endpoint from the
+   pinned profile's protocol/lower-layer behavior and its live listener
    configuration. Analyzer host/port settings apply only when the selected role
    requires Bridge to connect to the instrument.
 6. Render Connect as part of the URL-backed setup workflow. Save applicable
@@ -1145,12 +1157,15 @@ rejected server-side.
 
 **Exit:** MVP-010 through MVP-016 and applicable MVP-022 criteria pass in OE-M3
 and BR-M3; a lab administrator can activate a complete analyzer without
-developer fields or file edits, runtime setup/probes occur in Bridge, and no
-second analyzer-instance create/edit or connection-test workflow remains. The
-exact green analyzer-only candidate is published to the review host without
-changing the AMR deployment, and the applicable stable Grist steps are served
-by the Review overlay before M3 changes from `[*]` to `[x]`; this preview does
-not substitute for G0 human acceptance.
+developer fields or file edits, and runtime setup/probes occur in Bridge. The
+only analyzer-administration surfaces are the `/analyzers` instance dashboard
+with inline setup and the distinct `/analyzers/types` reusable-type manager;
+the linked Quality Control workflow is not a third analyzer setup surface. No
+standalone create/edit or connection-test workflow remains. The exact green
+analyzer-only candidate is published to the review host without changing the
+AMR deployment, and the applicable stable Grist steps are served by the Review
+overlay before M3 changes from `[*]` to `[x]`; this preview does not substitute
+for G0 human acceptance.
 
 ### M4 - Safe traffic and integrated MVP (OGC-1058 safety scope)
 
@@ -1290,7 +1305,7 @@ and site validation.
 | MVP-011 | Every page has one semantic `h1`, linkable breadcrumbs, and canonical URL/query state.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | RTL + UI E2E                                          |
 | MVP-012 | Confirmation records actor, time, profile ID/revision, binding fingerprint, recognition fingerprint, and every confirmed/excluded source-row ID. Selecting another profile revision or changing a binding, exclusion, or recognition definition creates a draft candidate and stales only that candidate; the last active candidate remains unchanged until verified/synchronized. Operational-QC and connection-test changes do not stale either candidate.                                                                                                                                                                                                                                                                    | JUnit 4 integration + audit assertion                 |
 | MVP-013 | Bridge connection testing uses only role-applicable settings and returns visible structured success, failure, missing-configuration, and timeout evidence plus the endpoint to configure. Connect displays that evidence inline without a synthetic activity log, generic status-only result, or second modal. For Bridge receiver/listener modes, the endpoint is derived from the pinned profile and live Bridge listener configuration; OpenELIS neither collects nor registers a per-analyzer listen address/port. Analyzer host/port fields appear only for roles where Bridge connects to the instrument.                                                                                                                                                                 | Bridge contract + OpenELIS consumer + RTL + UI E2E    |
-| MVP-014 | Setup uses the pinned profile revision's declared communication/data-flow default and existing LIS-initiated capability and offers only supported modes. OpenELIS never infers capability from the default mode, profile identity, protocol, or application constants. A failed round-trip is visible and may lead to an explicit supported results-only choice; it never silently rewrites the candidate.                                                                                                                                                                                                                                                                                                                          | Bridge contract + RTL + UI E2E                        |
+| MVP-014 | For network/socket profiles, setup uses the pinned revision's declared communication/data-flow default and explicit LIS-initiated capability and offers only supported modes; omission or invalidity is a contract error. For FILE profiles, setup uses declared FILE behavior plus the site directory and displays no invented network data-flow, address, or port. OpenELIS never infers capability from a default, profile identity, protocol, or application constant. A failed round-trip is visible and may lead to an explicit supported results-only choice; it never silently rewrites the candidate.                                                                                                                                             | Bridge contract + RTL + UI E2E                        |
 | MVP-015 | An analyzer-scoped Quality Control link opens the canonical OpenELIS QC workflow with analyzer context and a return path. `QCControlLot`, `QCResult`, QC statistics, Westgard configuration/evaluation, violations, and alerts remain the operational path; `AnalyzerQcRule` and `QcRun` do not. Valid/invalid QC changes never alter analyzer verification or activation blockers.                                                                                                                                                                                                                                                                                                                                             | JUnit 4 analyzer/QC + RTL + UI E2E                    |
 | MVP-016 | Every transition into `ACTIVE` succeeds if and only if one candidate has: an existing active schema-valid pinned profile revision; a nonblank analyzer name; at least one active lab unit; supported connection/data-flow modes and all profile-required instance fields; every declared test/result row validly bound or explicitly excluded where offered with exactly matching confirmed row IDs; current recognition confirmation for the same revision/fingerprint, including explicit `NONE`; and a Bridge acknowledgment matching analyzer ID, profile ID/revision, and canonical desired-state fingerprint. Each false predicate produces one visible blocker. Operational QC and connection-test outcomes never block. | JUnit 4 + contract + UI E2E                           |
 | MVP-017 | Bridge desired-state synchronization is versioned, idempotent, and deterministic for the pinned profile revision and instance runtime configuration. Its schema contains no OE classifier rules, control lots, Westgard configuration, or other operational-QC state, and repeated identical sync produces no behavioral change.                                                                                                                                                                                                                                                                                                                                                                                                | Cross-repo contract tests                             |

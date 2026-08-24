@@ -146,13 +146,14 @@ path.
 ### M3 - Guided Setup And Linked Operational QC
 
 Implement the linkable Instrument, Verify, and Connect sequence with a readable
-completion summary. Consume the pinned profile's declared default and
-LIS-initiated capability without application inference, and render Bridge's
-structured probe evidence inline. Remove the standalone create/edit and
-connection-modal paths once the replacement is green. Keep Bridge probes and
-capabilities separate from OpenELIS operational-QC policy. Link to the canonical
-QC workflow, but permit activation only from the exact non-QC predicates in
-`MVP-016`, applied to every transition into `ACTIVE`.
+completion summary. For network/socket profiles, consume the pinned revision's
+declared default and explicit LIS-initiated capability without application
+inference; for FILE profiles, consume declared FILE behavior without fabricating
+network fields. Render Bridge's structured probe evidence inline. Remove the
+standalone create/edit and connection-modal paths once the replacement is
+green. Keep Bridge probes and capabilities separate from OpenELIS operational-QC
+policy. Link to the canonical QC workflow, but permit activation only from the
+exact non-QC predicates in `MVP-016`, applied to every transition into `ACTIVE`.
 
 ### M4 - Safe Traffic
 

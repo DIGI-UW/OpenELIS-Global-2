@@ -138,9 +138,11 @@ cross-cutting `MVP-011`, `MVP-012`, and `MVP-022`.
    draft-versus-active candidate isolation, operational-QC independence, and
    pinned Bridge acknowledgment matching.
 2. Write failing Bridge probe/capability and OE consumer tests proving that
-   supported modes come from the pinned profile's declared default and
-   LIS-initiated capability, receiver endpoints come from Bridge listener
-   configuration, and no application fallback infers either value.
+   network/socket modes come from the pinned revision's declared default and
+   explicit LIS-initiated capability, missing capability is rejected rather
+   than converted to `false`, FILE setup fabricates no network fields, receiver
+   endpoints come from Bridge listener configuration, and no application
+   fallback infers any value.
 3. Write RTL real-router tests for Instrument, Verify, Connect, separate
    Analyzer Types create/Duplicate Profile return, the completion
    summary, breadcrumbs, URL state, history, reload, role-applicable fields,

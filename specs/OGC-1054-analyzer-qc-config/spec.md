@@ -238,16 +238,22 @@ screenshots, trace, console review, and MP4 all identify one G0 deployment.
   summary, not an invented fourth setup section. Analyzer-list setup and
   connection actions deep-link to that state. No standalone create/edit route,
   redirect, compatibility route, or separate connection-test modal remains.
+  The only analyzer-administration surfaces are the Analyzer dashboard and the
+  distinct reusable Analyzer Types manager; linked Quality Control is not a
+  third analyzer setup surface.
 - Instrument selection is searchable and selects an existing Analyzer Type.
   An unlisted instrument links to the separate Analyzer Types create/duplicate
   workflow and returns to analyzer setup with the new type selectable.
-- Setup begins with the selected profile revision's declared communication and
-  data-flow default and LIS-initiated capability. Only modes supported by that
-  profile are offered; OpenELIS does not infer capability from the default,
-  profile identity, protocol, or application constants. A failed round-trip
-  probe is shown visibly and may support an explicit user choice to use a
-  supported results-only mode; it never silently rewrites the profile or
-  instance configuration.
+- For network/socket profiles, setup begins with the selected revision's
+  declared communication/data-flow default and explicit LIS-initiated
+  capability. Missing or invalid capability is a profile-contract error, not a
+  false value. For FILE profiles, setup uses declared FILE behavior and the
+  site-entered directory without inventing network data-flow, address, or port
+  values. Only modes supported by the profile are offered; OpenELIS does not
+  infer capability from a default, profile identity, protocol, or application
+  constant. A failed round-trip probe is shown visibly and may support an
+  explicit user choice to use a supported results-only mode; it never silently
+  rewrites the profile or instance configuration.
 - Inline Connect reports Bridge's structured success, failure, timeout, and
   missing-configuration evidence in plain language and shows the endpoint the
   lab must configure. It does not replace that evidence with a simulated
