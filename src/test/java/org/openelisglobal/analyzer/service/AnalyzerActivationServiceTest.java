@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -269,6 +270,65 @@ public class AnalyzerActivationServiceTest {
         assertUnchanged();
     }
 
+    @Test
+    public void deactivationPreservesThePinnedCandidateAndRequiresExactBridgeSync() {
+        AnalyzerActivationCandidate activeCandidate = makeActive();
+        when(registrationService.synchronize()).thenReturn(new BridgeRegistrationResult(true, Set.of(), null));
+
+        AnalyzerDeactivationResult result = service.deactivate(ANALYZER_ID, ACTOR);
+
+        assertTrue(result.deactivated());
+        assertEquals(Analyzer.AnalyzerStatus.INACTIVE, result.status());
+        assertEquals(Analyzer.AnalyzerStatus.INACTIVE, analyzer.getStatus());
+        assertFalse(analyzer.isActive());
+        assertEquals(activeCandidate, analyzer.getActiveCandidate());
+        assertEquals(ACTOR, analyzer.getSysUserId());
+        verify(analyzerService).update(analyzer);
+        verify(registrationService).synchronize();
+        verify(candidateService, never()).retain(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void failedDeactivationRestoresTheActiveAnalyzerAndBridgeState() {
+        AnalyzerActivationCandidate activeCandidate = makeActive();
+        when(registrationService.synchronize()).thenReturn(
+                new BridgeRegistrationResult(false, Set.of(), "Bridge unavailable"),
+                new BridgeRegistrationResult(true, Set.of(ANALYZER_ID), null));
+
+        AnalyzerDeactivationResult result = service.deactivate(ANALYZER_ID, ACTOR);
+
+        assertFalse(result.deactivated());
+        assertEquals("Bridge unavailable", result.failure());
+        assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
+        assertTrue(analyzer.isActive());
+        assertEquals(activeCandidate, analyzer.getActiveCandidate());
+        verify(analyzerService, times(2)).update(analyzer);
+        verify(registrationService, times(2)).synchronize();
+    }
+
+    @Test
+    public void reactivationUsesTheSameVerifiedCandidateAndAcknowledgementBoundary() {
+        AnalyzerActivationCandidate previousCandidate = new AnalyzerActivationCandidate();
+        analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        analyzer.setActive(false);
+        analyzer.setActiveCandidate(previousCandidate);
+        BridgeRegisteredCandidate acknowledgement = acknowledgeCandidate();
+        when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
+                .thenReturn(retained);
+
+        AnalyzerActivationResult result = service.reactivate(ANALYZER_ID, ACTOR);
+
+        assertTrue(result.activated());
+        assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
+        assertTrue(analyzer.isActive());
+        assertEquals(retained, analyzer.getActiveCandidate());
+        InOrder order = inOrder(registrationService, candidateFactory, candidateService, analyzerService);
+        order.verify(registrationService).synchronizeCandidate(ANALYZER_ID, registration);
+        order.verify(candidateFactory).create(analyzer, snapshot, confirmation, registration, acknowledgement);
+        order.verify(candidateService).retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR);
+        order.verify(analyzerService).update(analyzer);
+    }
+
     private BridgeRegisteredCandidate acknowledgeCandidate() {
         BridgeRegisteredCandidate acknowledgement = acknowledgement();
         when(registrationService.synchronizeCandidate(ANALYZER_ID, registration)).thenReturn(
@@ -276,6 +336,14 @@ public class AnalyzerActivationServiceTest {
         when(candidateFactory.create(analyzer, snapshot, confirmation, registration, acknowledgement))
                 .thenReturn(documents);
         return acknowledgement;
+    }
+
+    private AnalyzerActivationCandidate makeActive() {
+        AnalyzerActivationCandidate activeCandidate = new AnalyzerActivationCandidate();
+        analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        analyzer.setActive(true);
+        analyzer.setActiveCandidate(activeCandidate);
+        return activeCandidate;
     }
 
     private void assertUnchanged() {
