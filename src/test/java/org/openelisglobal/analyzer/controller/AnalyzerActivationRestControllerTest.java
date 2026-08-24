@@ -13,6 +13,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerActivationBlocker;
 import org.openelisglobal.analyzer.service.AnalyzerActivationResult;
 import org.openelisglobal.analyzer.service.AnalyzerActivationService;
+import org.openelisglobal.analyzer.service.AnalyzerDeactivationResult;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -67,6 +68,56 @@ public class AnalyzerActivationRestControllerTest {
         when(service.activate("77", "17")).thenReturn(blocked);
 
         ResponseEntity<AnalyzerActivationResult> response = controller.activate("77", authenticatedRequest(17));
+
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
+        assertEquals(blocked, response.getBody());
+    }
+
+    @Test
+    public void deactivatesThroughTheSoleLifecycleServiceWithTheAuthenticatedActor() {
+        AnalyzerDeactivationResult deactivated = new AnalyzerDeactivationResult("77", Analyzer.AnalyzerStatus.INACTIVE,
+                true, null);
+        when(service.deactivate("77", "17")).thenReturn(deactivated);
+
+        ResponseEntity<AnalyzerDeactivationResult> response = controller.deactivate("77", authenticatedRequest(17));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(deactivated, response.getBody());
+        verify(service).deactivate("77", "17");
+    }
+
+    @Test
+    public void reportsADeactivationSynchronizationFailureWithoutClaimingSuccess() {
+        AnalyzerDeactivationResult failed = new AnalyzerDeactivationResult("77", Analyzer.AnalyzerStatus.ACTIVE, false,
+                "Bridge unavailable");
+        when(service.deactivate("77", "17")).thenReturn(failed);
+
+        ResponseEntity<AnalyzerDeactivationResult> response = controller.deactivate("77", authenticatedRequest(17));
+
+        assertEquals(HttpStatus.BAD_GATEWAY, response.getStatusCode());
+        assertEquals(failed, response.getBody());
+    }
+
+    @Test
+    public void reactivatesThroughTheSameLifecycleBoundary() {
+        AnalyzerActivationResult activated = new AnalyzerActivationResult("77", Analyzer.AnalyzerStatus.ACTIVE, true,
+                true, List.of());
+        when(service.reactivate("77", "17")).thenReturn(activated);
+
+        ResponseEntity<AnalyzerActivationResult> response = controller.reactivate("77", authenticatedRequest(17));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(activated, response.getBody());
+        verify(service).reactivate("77", "17");
+    }
+
+    @Test
+    public void returnsEveryReactivationBlockerWithoutChangingStatus() {
+        AnalyzerActivationResult blocked = new AnalyzerActivationResult("77", Analyzer.AnalyzerStatus.INACTIVE, false,
+                false, List.of(new AnalyzerActivationBlocker("analyzer.activation.blocker.mappings")));
+        when(service.reactivate("77", "17")).thenReturn(blocked);
+
+        ResponseEntity<AnalyzerActivationResult> response = controller.reactivate("77", authenticatedRequest(17));
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
         assertEquals(blocked, response.getBody());

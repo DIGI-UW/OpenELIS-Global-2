@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -143,10 +144,8 @@ public class AnalyzerServiceStatusTest {
     }
 
     @Test
-    public void testValidateStatusTransition_ToDeleted_OnlyFromInactive() {
-        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.INACTIVE, AnalyzerStatus.DELETED));
-        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.ACTIVE, AnalyzerStatus.DELETED));
-        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.SETUP, AnalyzerStatus.DELETED));
+    public void testValidateStatusTransition_HasNoHardDeleteTarget() {
+        assertFalse(Arrays.stream(AnalyzerStatus.values()).anyMatch(status -> "DELETED".equals(status.name())));
     }
 
     // === canTransitionTo Tests ===
@@ -401,12 +400,6 @@ public class AnalyzerServiceStatusTest {
     public void testValidateStatusTransition_FromPendingRegistration_ToActive_NotAllowed() {
         assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.PENDING_REGISTRATION,
                 AnalyzerStatus.ACTIVE));
-    }
-
-    @Test
-    public void testValidateStatusTransition_FromPendingRegistration_ToDeleted_NotAllowed() {
-        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.PENDING_REGISTRATION,
-                AnalyzerStatus.DELETED));
     }
 
     @Test
