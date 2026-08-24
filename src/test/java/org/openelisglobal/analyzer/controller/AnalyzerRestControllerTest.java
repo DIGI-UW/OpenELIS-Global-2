@@ -141,6 +141,27 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void createAnalyzer_PersistsSetupCandidateAsRuntimeInactive() throws Exception {
+        String uniqueName = "TEST-Inactive-Setup-" + System.currentTimeMillis();
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[]}";
+
+        MvcResult result = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON)
+                        .content(AnalyzerTestCleanup.withProfile(requestBody)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("SETUP")).andReturn();
+
+        Map<String, Object> created = objectMapper.readValue(result.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        Map<String, Object> persisted = jdbcTemplate.queryForMap(
+                "SELECT status, is_active FROM clinlims.analyzer WHERE id = ?",
+                Integer.valueOf(String.valueOf(created.get("id"))));
+
+        assertEquals("SETUP", persisted.get("status"));
+        assertEquals(Boolean.FALSE, persisted.get("is_active"));
+    }
+
+    @Test
     public void testCreateAnalyzer_DerivesTypeAndDefaultsFromExactProfileRevision() throws Exception {
         String uniqueName = "TEST-Profile-Defaults-" + System.currentTimeMillis();
         String requestBody = "{\"name\":\"" + uniqueName + "\",\"testUnitIds\":[]}";
