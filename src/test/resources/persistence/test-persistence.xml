@@ -139,6 +139,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationCandidate</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>

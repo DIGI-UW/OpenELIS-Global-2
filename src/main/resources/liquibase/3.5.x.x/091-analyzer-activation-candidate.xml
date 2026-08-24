@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-1054-analyzer-activation-candidate" author="OGC">
+        <comment>
+            Retain each exact verified OpenELIS candidate and Bridge registration.
+            The analyzer points to the promoted candidate; older candidates remain
+            immutable audit evidence.
+        </comment>
+
+        <createSequence schemaName="clinlims" sequenceName="analyzer_activation_candidate_seq"
+            startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="analyzer_activation_candidate">
+            <column name="id" type="numeric(10)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_analyzer_activation_candidate"/>
+            </column>
+            <column name="analyzer_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="site_binding_revision_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="verification_confirmation_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="candidate_document_json" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bridge_registration_json" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="desired_state_fingerprint" type="VARCHAR(71)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_analyzer_activation_candidate_analyzer"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_activation_candidate"
+            baseColumnNames="analyzer_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_activation_candidate_binding_revision"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_activation_candidate"
+            baseColumnNames="site_binding_revision_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_site_binding_revision" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_activation_candidate_confirmation"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_activation_candidate"
+            baseColumnNames="verification_confirmation_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_site_binding_confirmation" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="analyzer_activation_candidate"
+            indexName="idx_analyzer_activation_candidate_analyzer">
+            <column name="analyzer_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.analyzer_activation_candidate
+            ADD CONSTRAINT chk_analyzer_activation_candidate_fingerprint
+            CHECK (desired_state_fingerprint ~ '^sha256:[0-9a-f]{64}$');
+        </sql>
+
+        <addColumn schemaName="clinlims" tableName="analyzer">
+            <column name="active_candidate_id" type="numeric(10)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_analyzer_active_candidate"
+            baseTableSchemaName="clinlims" baseTableName="analyzer"
+            baseColumnNames="active_candidate_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_activation_candidate" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="analyzer"
+            indexName="idx_analyzer_active_candidate">
+            <column name="active_candidate_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="analyzer"
+                constraintName="fk_analyzer_active_candidate"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer" columnName="active_candidate_id"/>
+            <dropTable schemaName="clinlims" tableName="analyzer_activation_candidate"/>
+            <dropSequence schemaName="clinlims" sequenceName="analyzer_activation_candidate_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-1054-analyzer-activation-candidate-audit" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(name) = 'analyzer_activation_candidate'
+            </sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="analyzer_activation_candidate"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'analyzer_activation_candidate'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

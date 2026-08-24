@@ -41,7 +41,7 @@ public class AnalyzerActivationCandidateServiceTest {
 
     @Before
     public void setUp() {
-        MockitoAnnotations.openMocks(this);
+        MockitoAnnotations.initMocks(this);
         service = new AnalyzerActivationCandidateServiceImpl(candidateDAO, auditTrailService);
     }
 
@@ -106,10 +106,12 @@ public class AnalyzerActivationCandidateServiceTest {
     private static Fixture fixture() {
         AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
         revision.setId("61");
+        revision.setBindingFingerprint(FINGERPRINT);
         AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
         confirmation.setId("71");
         confirmation.setSiteBindingRevision(revision);
         confirmation.setAuditEventId("91");
+        confirmation.setBindingFingerprint(FINGERPRINT);
         confirmation.setConfirmedAt(Timestamp.from(Instant.parse("2026-08-23T20:00:00Z")));
 
         Analyzer analyzer = new Analyzer();
@@ -122,7 +124,7 @@ public class AnalyzerActivationCandidateServiceTest {
         candidate.put("desiredRegistrationFingerprint", FINGERPRINT);
         ObjectNode verification = candidate.putObject("verification");
         verification.put("auditEventId", "91");
-        verification.put("siteBindingRevisionId", "61");
+        verification.put("siteBindingFingerprint", FINGERPRINT);
 
         ObjectNode registration = JSON.createObjectNode();
         registration.put("desiredStateFingerprint", FINGERPRINT);
