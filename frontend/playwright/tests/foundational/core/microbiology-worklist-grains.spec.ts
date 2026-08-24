@@ -177,7 +177,8 @@ test.describe("M-07 microbiology worklist grains", () => {
         url.searchParams.get("status") === "reviewed" &&
         url.searchParams.get("section") === "ast" &&
         url.searchParams.get("astIsolateId") === seeded.isolateId &&
-        url.searchParams.get("astRunId") === seeded.astRunId
+        url.searchParams.get("astRunId") === seeded.astRunId &&
+        url.searchParams.get("astView") === "reviewed"
       );
     });
     await expect(page.getByRole("heading", { name: "Manual AST" })).toBeVisible(

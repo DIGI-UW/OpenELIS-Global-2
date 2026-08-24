@@ -15,8 +15,6 @@ public interface MicroCaseDAO extends BaseDAO<MicroCase, String> {
 
     List<MicroCase> getOpenCases();
 
-    List<MicroCase> getCasesWithReviewedAstRuns();
-
     List<MicroCase> getFinalizedBacteriologyByClosedAtRange(Timestamp fromInclusive, Timestamp toExclusive);
 
     List<MicroWhonetContext> getWhonetContextsByCaseIds(List<String> caseIds);

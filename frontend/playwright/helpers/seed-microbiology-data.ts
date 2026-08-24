@@ -31,6 +31,16 @@ export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {
   astRunId: string;
 }
 
+const isReviewedMicrobiologyCase = (
+  seeded: SeededMicrobiologyCase,
+): seeded is SeededReviewedMicrobiologyCase =>
+  "isolateId" in seeded &&
+  typeof seeded.isolateId === "string" &&
+  seeded.isolateId.length > 0 &&
+  "astRunId" in seeded &&
+  typeof seeded.astRunId === "string" &&
+  seeded.astRunId.length > 0;
+
 export type SeededMicrobiologyAstWorklistCase = SeededReviewedMicrobiologyCase;
 
 export interface SeededDenseMicrobiologyCase extends SeededMicrobiologyCase {
@@ -591,10 +601,10 @@ export async function seedReviewedMicrobiologyCase(
   page: Page,
 ): Promise<SeededReviewedMicrobiologyCase> {
   const seeded = await provisionMicrobiologyScenario(page, "AST_REVIEWED");
-  if (!seeded.isolateId || !seeded.astRunId) {
+  if (!isReviewedMicrobiologyCase(seeded)) {
     throw new Error("Microbiology AST_REVIEWED scenario is incomplete");
   }
-  return seeded as SeededReviewedMicrobiologyCase;
+  return seeded;
 }
 
 export async function seedDenseMicrobiologyCase(

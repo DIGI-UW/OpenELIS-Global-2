@@ -52,6 +52,7 @@ const AstEntryPanel = ({
   saving: caseSaving,
   onAstUpdated,
   readOnly = false,
+  reviewedView = false,
   reagentRequirements = [],
   reagentUsages = [],
   initialIsolateId = "",
@@ -643,12 +644,18 @@ const AstEntryPanel = ({
       }
     });
 
-  const selectReportableRun = (runId) =>
-    runOperation(() => service.selectReportableAstRun(runId)).then((run) => {
-      if (run) {
-        setSelectedRunId(run.id);
-      }
-    });
+  const selectReportableRun = (runId) => {
+    if (reviewedView) {
+      return Promise.resolve();
+    }
+    return runOperation(() => service.selectReportableAstRun(runId)).then(
+      (run) => {
+        if (run) {
+          setSelectedRunId(run.id);
+        }
+      },
+    );
+  };
 
   return (
     <section
@@ -1141,7 +1148,7 @@ const AstEntryPanel = ({
               <AstAttemptTable
                 runs={runs}
                 selectedRunId={currentRun?.id || ""}
-                disabled={busy || readOnly}
+                disabled={busy || readOnly || reviewedView}
                 onView={viewRun}
                 onSelectReportable={selectReportableRun}
               />

@@ -118,6 +118,7 @@ describe("MicrobiologyRoutes", () => {
       targetId: "",
       astRunId: "",
       astIsolateId: "",
+      astView: "",
     });
   });
 
@@ -140,6 +141,27 @@ describe("MicrobiologyRoutes", () => {
       astIsolateId: "isolate-1",
       astRunId: "run / 1",
     });
+  });
+
+  it("keeps reviewed AST mode canonical only for the AST section", () => {
+    const url = getMicrobiologyCaseUrl("case-1", {
+      grain: "ast",
+      status: "reviewed",
+      section: "ast",
+      astIsolateId: "isolate-1",
+      astRunId: "run-1",
+      astView: "reviewed",
+    });
+
+    expect(url).toBe(
+      "/Microbiology/cases/case-1?grain=ast&status=reviewed&section=ast&astIsolateId=isolate-1&astRunId=run-1&astView=reviewed",
+    );
+    expect(parseMicrobiologyCaseSearch(url.split("?")[1]).astView).toBe(
+      "reviewed",
+    );
+    expect(
+      parseMicrobiologyCaseSearch("?section=isolates&astView=reviewed").astView,
+    ).toBe("");
   });
 
   it("keeps the amendment workflow addressable in the case URL", () => {

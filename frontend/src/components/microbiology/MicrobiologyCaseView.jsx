@@ -1098,7 +1098,7 @@ const MicrobiologyCaseView = ({
                 >
                   {!unassigned && (
                     <AstEntryPanel
-                      key={`${routeState.astIsolateId}:${routeState.astRunId}:${routeState.action}`}
+                      key={`${routeState.astIsolateId}:${routeState.astRunId}:${routeState.astView}:${routeState.action}`}
                       caseId={caseDetail.id}
                       workflowType={caseDetail.workflowType}
                       isolates={caseDetail.isolates}
@@ -1111,6 +1111,7 @@ const MicrobiologyCaseView = ({
                         loadReagentOverview();
                       }}
                       readOnly={finalReleased}
+                      reviewedView={routeState.astView === "reviewed"}
                       reagentRequirements={reagentOverview.requirements}
                       reagentUsages={reagentOverview.usages}
                       initialIsolateId={routeState.astIsolateId}

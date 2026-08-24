@@ -724,7 +724,7 @@ describe("MicrobiologyWorklist", () => {
     await user.click(viewReviewedAst);
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?grain=ast&status=reviewed&section=ast&astIsolateId=isolate-1&astRunId=run-1",
+        "/Microbiology/cases/case-1?grain=ast&status=reviewed&section=ast&astIsolateId=isolate-1&astRunId=run-1&astView=reviewed",
       ),
     );
   });

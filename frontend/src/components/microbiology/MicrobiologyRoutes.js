@@ -120,6 +120,9 @@ const toSearch = (state, caseState = {}) => {
     if (textValue(caseState.astRunId)) {
       params.set("astRunId", textValue(caseState.astRunId));
     }
+    if (caseState.astView === "reviewed") {
+      params.set("astView", "reviewed");
+    }
   }
   if (MICROBIOLOGY_CASE_ACTIONS.includes(caseState.action)) {
     params.set("action", caseState.action);
@@ -178,6 +181,10 @@ export const parseMicrobiologyCaseSearch = (search = "") => {
     astIsolateId:
       params.get("section") === "ast"
         ? textValue(params.get("astIsolateId"))
+        : "",
+    astView:
+      params.get("section") === "ast" && params.get("astView") === "reviewed"
+        ? "reviewed"
         : "",
   };
 };

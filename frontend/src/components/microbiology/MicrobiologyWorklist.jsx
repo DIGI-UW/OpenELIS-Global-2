@@ -1133,6 +1133,10 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                       section: "ast",
                                       astIsolateId: row.isolateId,
                                       astRunId: row.astRunId,
+                                      astView:
+                                        row.astStatus === "REVIEWED"
+                                          ? "reviewed"
+                                          : "",
                                     }
                                   : filters,
                               );

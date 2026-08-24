@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -20,6 +21,8 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistQuery;
+import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistRow;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
@@ -93,7 +96,9 @@ public class MicroWorklistServiceTest {
         panel.setName("Gram negative standard");
         java.sql.Timestamp lastActivityAt = java.sql.Timestamp.valueOf("2026-08-06 09:15:00");
         when(caseDAO.getOpenCases()).thenReturn(List.of(microCase));
-        when(caseDAO.getCasesWithReviewedAstRuns()).thenReturn(List.of(microCase));
+        when(astRunDAO.getReviewedWorklistPage(any(MicroReviewedAstWorklistQuery.class)))
+                .thenReturn(List.of(new MicroReviewedAstWorklistRow(microCase, isolate, run)));
+        when(astRunDAO.countReviewedWorklist(any(MicroReviewedAstWorklistQuery.class))).thenReturn(1L);
         when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
@@ -397,7 +402,9 @@ public class MicroWorklistServiceTest {
         MicroAstRun reviewed = astRun("run-reviewed", "iso-1", MicroAstRunStatus.REVIEWED);
 
         when(caseDAO.getOpenCases()).thenReturn(List.of(microCase));
-        when(caseDAO.getCasesWithReviewedAstRuns()).thenReturn(List.of(microCase));
+        when(astRunDAO.getReviewedWorklistPage(any(MicroReviewedAstWorklistQuery.class)))
+                .thenReturn(List.of(new MicroReviewedAstWorklistRow(microCase, isolate, reviewed)));
+        when(astRunDAO.countReviewedWorklist(any(MicroReviewedAstWorklistQuery.class))).thenReturn(1L);
         when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-ast"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("iso-1"))).thenReturn(List.of(inProgress, reviewed));
@@ -429,11 +436,9 @@ public class MicroWorklistServiceTest {
         isolate.setCaseId("case-released");
         MicroAstRun reviewed = astRun("run-reviewed", "iso-1", MicroAstRunStatus.REVIEWED);
 
-        when(caseDAO.getCasesWithReviewedAstRuns()).thenReturn(List.of(releasedCase));
-        when(caseDAO.getBySampleItemIds(List.of("sample-1"))).thenReturn(List.of(releasedCase));
-        when(isolateDAO.getByCaseIds(List.of("case-released"))).thenReturn(List.of(isolate));
-        when(astRunDAO.getByIsolateIds(List.of("iso-1"))).thenReturn(List.of(reviewed));
-        when(communicationDAO.getByCaseIds(List.of("case-released"))).thenReturn(List.of());
+        when(astRunDAO.getReviewedWorklistPage(any(MicroReviewedAstWorklistQuery.class)))
+                .thenReturn(List.of(new MicroReviewedAstWorklistRow(releasedCase, isolate, reviewed)));
+        when(astRunDAO.countReviewedWorklist(any(MicroReviewedAstWorklistQuery.class))).thenReturn(1L);
 
         MicroWorklistQueryForm reviewedQuery = new MicroWorklistQueryForm();
         reviewedQuery.grain = "ast";
@@ -445,8 +450,43 @@ public class MicroWorklistServiceTest {
         assertEquals("case-released", reviewedPage.rows.get(0).caseId);
         assertEquals("run-reviewed", reviewedPage.rows.get(0).astRunId);
         assertEquals("VIEW", reviewedPage.rows.get(0).dueAction);
-        verify(caseDAO).getCasesWithReviewedAstRuns();
         verify(caseDAO, never()).getOpenCases();
+    }
+
+    @Test
+    public void reviewedHistoryIsFilteredAndPagedBeforeRelatedContextLoads() {
+        MicroCase releasedCase = microCase("case-released", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.REVIEW_READY, "STAT");
+        releasedCase.setClosedAt(Timestamp.valueOf("2026-08-18 10:00:00"));
+        MicroIsolate isolate = significantIsolate("iso-1");
+        isolate.setCaseId("case-released");
+        MicroAstRun reviewed = astRun("run-reviewed", "iso-1", MicroAstRunStatus.REVIEWED);
+
+        when(astRunDAO.getReviewedWorklistPage(any(MicroReviewedAstWorklistQuery.class)))
+                .thenReturn(List.of(new MicroReviewedAstWorklistRow(releasedCase, isolate, reviewed)));
+        when(astRunDAO.countReviewedWorklist(any(MicroReviewedAstWorklistQuery.class))).thenReturn(245L);
+
+        MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        query.grain = "ast";
+        query.status = "reviewed";
+        query.workflow = "BACTERIOLOGY";
+        query.urgency = "HIGH";
+        query.q = "LAB-1001";
+        query.sort = "newest";
+        query.page = 3;
+        query.pageSize = 10;
+
+        MicroWorklistPageForm page = service.getWorklistPage(query);
+
+        assertEquals(245, page.total);
+        assertEquals(1, page.rows.size());
+        verify(astRunDAO).getReviewedWorklistPage(org.mockito.ArgumentMatchers
+                .argThat(reviewedQuery -> reviewedQuery.offset() == 20 && reviewedQuery.limit() == 10
+                        && "BACTERIOLOGY".equals(reviewedQuery.workflow()) && "HIGH".equals(reviewedQuery.urgency())
+                        && "LAB-1001".equals(reviewedQuery.search()) && "newest".equals(reviewedQuery.sort())));
+        verify(caseDAO, never()).getOpenCases();
+        verify(isolateDAO, never()).getByCaseIds(anyList());
+        verify(astRunDAO, never()).getByIsolateIds(anyList());
     }
 
     private MicroAstRun astRun(String id, String isolateId, MicroAstRunStatus status) {

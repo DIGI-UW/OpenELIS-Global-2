@@ -14,6 +14,8 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistQuery;
+import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistRow;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
@@ -68,9 +70,10 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     @Transactional(readOnly = true)
     public MicroWorklistPageForm getWorklistPage(MicroWorklistQueryForm query) {
         MicroWorklistQueryForm normalized = normalize(query);
-        List<MicroCase> worklistCases = AST_GRAIN.equals(normalized.grain) && "reviewed".equals(normalized.status)
-                ? caseDAO.getCasesWithReviewedAstRuns()
-                : caseDAO.getOpenCases();
+        if (AST_GRAIN.equals(normalized.grain) && "reviewed".equals(normalized.status)) {
+            return getReviewedAstWorklistPage(normalized);
+        }
+        List<MicroCase> worklistCases = caseDAO.getOpenCases();
         List<String> caseIds = worklistCases.stream().map(MicroCase::getId).toList();
         List<String> sampleItemIds = worklistCases.stream().map(MicroCase::getSampleItemId).distinct().toList();
         Map<String, List<MicroCase>> casesBySampleItem = groupBy(caseDAO.getBySampleItemIds(sampleItemIds),
@@ -121,6 +124,35 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         int firstRow = Math.min((page.page - 1) * page.pageSize, rows.size());
         int lastRow = Math.min(firstRow + page.pageSize, rows.size());
         page.rows.addAll(rows.subList(firstRow, lastRow));
+        return page;
+    }
+
+    private MicroWorklistPageForm getReviewedAstWorklistPage(MicroWorklistQueryForm query) {
+        MicroReviewedAstWorklistQuery reviewedQuery = new MicroReviewedAstWorklistQuery(query.workflow, query.stage,
+                query.urgency, query.due, query.q, query.sort, (query.page - 1) * query.pageSize, query.pageSize);
+        List<MicroReviewedAstWorklistRow> selected = astRunDAO.getReviewedWorklistPage(reviewedQuery);
+        List<MicroCase> cases = selected.stream().map(MicroReviewedAstWorklistRow::microCase).collect(
+                Collectors.toMap(MicroCase::getId, Function.identity(), (first, ignored) -> first, LinkedHashMap::new))
+                .values().stream().toList();
+        List<String> caseIds = cases.stream().map(MicroCase::getId).toList();
+        List<String> sampleItemIds = cases.stream().map(MicroCase::getSampleItemId).distinct().toList();
+        List<MicroWorklistRowForm> rows = selected.stream()
+                .map(item -> toAstRow(item.microCase(), item.isolate(), item.run())).toList();
+        Map<String, MicroWorklistSpecimenContext> specimens = indexBy(contextDAO.getSpecimenContexts(sampleItemIds),
+                MicroWorklistSpecimenContext::sampleItemId);
+        Map<String, MicroWorklistActivityContext> activities = indexBy(contextDAO.getLatestActivityContexts(caseIds),
+                MicroWorklistActivityContext::caseId);
+        List<String> panelIds = selected.stream().map(item -> item.run().getPanelId())
+                .filter(panelId -> panelId != null && !panelId.isBlank()).distinct().toList();
+        enrichRows(rows, specimens, activities, indexBy(panelDAO.getByIds(panelIds), MicroAstPanel::getId));
+
+        MicroWorklistPageForm page = new MicroWorklistPageForm();
+        page.total = (int) Math.min(Integer.MAX_VALUE, astRunDAO.countReviewedWorklist(reviewedQuery));
+        page.page = query.page;
+        page.pageSize = query.pageSize;
+        page.rows.addAll(rows);
+        page.recentActivity.addAll(toRecentActivityForms(
+                contextDAO.getRecentActivityContexts(caseIds, RECENT_ACTIVITY_LIMIT), cases, specimens));
         return page;
     }
 
