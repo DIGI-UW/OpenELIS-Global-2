@@ -110,7 +110,7 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
             detail.setUpdatedAt(MicroCaseServiceImpl.now());
             detail.setUpdatedBy(performedBy);
         }
-        apply(detail, request, true);
+        apply(detail, request, isNew);
         if (isNew) {
             orderDetailDAO.insert(detail);
         } else {

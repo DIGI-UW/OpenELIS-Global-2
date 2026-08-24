@@ -227,6 +227,25 @@ public class MicroCaseOrderDetailServiceTest {
     }
 
     @Test
+    public void saveOrderDraftAllowsHistoricalDraftToRemainUnclassified() {
+        MicroCaseOrderDetail existing = new MicroCaseOrderDetail();
+        existing.setId("detail-1");
+        existing.setSampleId("99");
+        when(orderDetailDAO.getDraftBySampleId("99")).thenReturn(existing);
+        Sample sample = new Sample();
+        sample.setId("99");
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.clinicalHistory = "Historical order context";
+
+        MicroCaseOrderDetail saved = service.saveOrderDraft(sample, request, "7");
+
+        assertNull(saved.getCulturePurpose());
+        assertEquals("Historical order context", saved.getClinicalHistory());
+        verify(orderDetailDAO).update(existing);
+        verify(orderDetailDAO, never()).insert(any(MicroCaseOrderDetail.class));
+    }
+
+    @Test
     public void saveOrderDetailAuditsAPreReleaseCulturePurposeCorrection() throws Exception {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
