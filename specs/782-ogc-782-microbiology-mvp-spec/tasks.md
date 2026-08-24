@@ -211,7 +211,7 @@ product sequence.
   pre-release corrections, and complete the M-09 screening filter. New orders
   default visibly to clinical purpose; historical missing values remain
   Unspecified; screening and unspecified records require explicit inclusion.
-- [*] Complete M-09 reporting periods and the AST-worklist export handoff. Use
+- [x] Complete M-09 reporting periods and the AST-worklist export handoff. Use
   specimen collection date as the reporting-period basis while exporting only
   finalized bacteriology cases. Provide full-calendar This Month, Last Month,
   This Quarter, and Custom presets. A direct Reports entry defaults to Last
