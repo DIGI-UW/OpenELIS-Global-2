@@ -227,6 +227,7 @@ const TerminologySection = ({ sampleTypeId }) => {
           <TableBody>
             {mappings.map((m, i) => {
               const editing = editingRows.has(i);
+              const sourceEditable = SOURCES.includes(m.source);
               return (
                 <TableRow
                   key={m.id || `new-${i}`}
@@ -304,19 +305,21 @@ const TerminologySection = ({ sampleTypeId }) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      hasIconOnly
-                      renderIcon={editing ? Checkmark : Edit}
-                      data-testid={`sampleType-edit-mapping-${i}`}
-                      iconDescription={intl.formatMessage({
-                        id: editing
-                          ? "label.button.close"
-                          : "label.button.edit",
-                      })}
-                      onClick={() => toggleEdit(i)}
-                    />
+                    {sourceEditable && (
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        hasIconOnly
+                        renderIcon={editing ? Checkmark : Edit}
+                        data-testid={`sampleType-edit-mapping-${i}`}
+                        iconDescription={intl.formatMessage({
+                          id: editing
+                            ? "label.button.close"
+                            : "label.button.edit",
+                        })}
+                        onClick={() => toggleEdit(i)}
+                      />
+                    )}
                     <Button
                       kind="ghost"
                       size="sm"

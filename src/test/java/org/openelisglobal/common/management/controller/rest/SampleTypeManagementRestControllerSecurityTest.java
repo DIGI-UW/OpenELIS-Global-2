@@ -160,6 +160,19 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
     }
 
     @Test
+    public void terminology_AdminRole_RejectsWhonetWhenActiveMappingsAreNull() throws Exception {
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setId("1");
+        when(typeOfSampleService.getTypeOfSampleById("1")).thenReturn(typeOfSample);
+        when(terminologyService.getActiveBySampleTypeId("1")).thenReturn(null);
+
+        mockMvc.perform(put("/rest/sample-types/1/terminology").with(user("admin").roles("ADMIN"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"BLD\"}]}"))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
     public void terminology_AdminRole_PreservesUnchangedLegacyWhonetMapping() throws Exception {
         TypeOfSample typeOfSample = new TypeOfSample();
         typeOfSample.setId("1");

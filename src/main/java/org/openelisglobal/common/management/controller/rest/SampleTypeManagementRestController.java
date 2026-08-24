@@ -502,7 +502,7 @@ public class SampleTypeManagementRestController extends BaseRestController {
 
     private static boolean isUnchangedLegacyWhonetMapping(TerminologyMappingDto requested,
             List<SampleTypeTerminologyMapping> activeMappings) {
-        if (!LEGACY_WHONET_SOURCE.equals(requested.source)) {
+        if (!LEGACY_WHONET_SOURCE.equals(requested.source) || activeMappings == null) {
             return false;
         }
         for (SampleTypeTerminologyMapping existing : activeMappings) {
