@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -148,7 +149,12 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         if (orderDetail.admissionDate != null && !orderDetail.admissionDate.isBlank()
                 && !"OUTPATIENT".equalsIgnoreCase(orderDetail.patientOrigin)
                 && sampleItem.getCollectionDate() != null) {
-            LocalDate admissionDate = LocalDate.parse(orderDetail.admissionDate);
+            LocalDate admissionDate;
+            try {
+                admissionDate = LocalDate.parse(orderDetail.admissionDate);
+            } catch (DateTimeParseException exception) {
+                throw new IllegalArgumentException("Admission date must be a valid ISO date", exception);
+            }
             LocalDate collectionDate = sampleItem.getCollectionDate().toLocalDateTime().toLocalDate();
             if (collectionDate.isBefore(admissionDate)) {
                 throw new IllegalArgumentException("Collection date cannot be before admission date");

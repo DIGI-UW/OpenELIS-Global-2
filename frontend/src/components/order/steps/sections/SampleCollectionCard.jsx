@@ -50,6 +50,11 @@ const SampleCollectionCard = ({
 }) => {
   const intl = useIntl();
   const hasInitializedDefaults = useRef(false);
+  const initializedSampleIdentity = useRef(null);
+  const sampleIdentity =
+    sample.sampleItemId ||
+    sample.sampleTypeRequestId ||
+    `sample-index-${sampleIndex}`;
   const { configurationProperties = {} } =
     useContext(ConfigurationContext) || {};
   const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
@@ -59,6 +64,10 @@ const SampleCollectionCard = ({
   );
 
   useEffect(() => {
+    if (initializedSampleIdentity.current !== sampleIdentity) {
+      initializedSampleIdentity.current = sampleIdentity;
+      hasInitializedDefaults.current = false;
+    }
     if (
       !hasInitializedDefaults.current &&
       !sample.sampleItemId &&
@@ -93,6 +102,7 @@ const SampleCollectionCard = ({
     }
   }, [
     sample.sampleItemId,
+    sampleIdentity,
     sample.collectionDate,
     sample.collectionTime,
     sample.receivedDate,

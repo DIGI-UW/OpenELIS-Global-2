@@ -23,6 +23,14 @@ import { Checkmark } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import TestAssignmentModal from "./TestAssignmentModal";
 
+export const getAssignableSamplesOfType = (samples = [], sampleTypeId) =>
+  samples
+    .map((sample, index) => ({ ...sample, index }))
+    .filter(
+      (sample) =>
+        sample.sampleTypeId === sampleTypeId && !sample.sampleRejected,
+    );
+
 /**
  * RequestedTestsSection - Shows ordered tests/panels with sample type assignment
  *
@@ -205,9 +213,7 @@ const RequestedTestsSection = ({
 
   // Get existing samples of a specific sample type
   const getSamplesOfType = (sampleTypeId) => {
-    return samples
-      .map((sample, index) => ({ ...sample, index }))
-      .filter((sample) => sample.sampleTypeId === sampleTypeId);
+    return getAssignableSamplesOfType(samples, sampleTypeId);
   };
 
   // Table headers

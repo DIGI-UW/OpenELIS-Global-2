@@ -235,6 +235,27 @@ public class MicroOrderRoutingServiceTest {
     }
 
     @Test
+    public void routeAnalysesRejectsInvalidCalendarAdmissionDate() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService, testMethodService, "");
+        MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.admissionDate = "2026-02-31";
+        SampleItem sampleItem = sampleItem("1001");
+        sampleItem.setCollectionDate(Timestamp.valueOf("2026-03-03 09:00:00"));
+
+        try {
+            service.routeAnalysesForSampleItem(sampleItem,
+                    List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1", orderDetail);
+            fail("Expected invalid admission date to be rejected");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Admission date must be a valid ISO date", expected.getMessage());
+        }
+
+        verify(caseService, never()).createOrGetCase(any(String.class), any(MicroWorkflowType.class), any(String.class),
+                any(String.class));
+    }
+
+    @Test
     public void routeAnalysesKeepsSiblingWorkflowOnItsOwnDefaultMethod() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
                 orderDetailService, caseAnalysisService, testMethodService, "");

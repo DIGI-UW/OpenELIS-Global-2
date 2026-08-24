@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { Add } from "@carbon/icons-react";
 import { Button, Stack, Tag, TextArea } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+import {
+  formatMicrobiologyActivityNote,
+  formatMicrobiologyEnum,
+} from "./MicrobiologyLabels";
 
 const RECENT_TIMELINE_EVENT_LIMIT = 30;
 
@@ -133,58 +136,65 @@ const CaseTimelinePanel = ({
       ) : (
         <>
           <ol className="microbiology-list">
-            {visibleActivities.map((activity) => (
-              <li
-                className="microbiology-list__row"
-                key={
-                  activity.id ||
-                  `${activity.activityType}-${activity.occurredAt}`
-                }
-              >
-                <div className="microbiology-inline-actions">
-                  <strong>
-                    {formatMicrobiologyEnum(activity.activityType, intl)}
-                  </strong>
-                  <Tag type="cool-gray" size="sm">
-                    {intl.formatMessage({
-                      id:
-                        activity.activityType === "MANUAL_NOTE"
-                          ? "microbiology.case.timeline.manual"
-                          : "microbiology.case.timeline.auto",
-                    })}
-                  </Tag>
-                </div>
-                {activity.note ? `: ${activity.note}` : ""}
-                {(activity.performedByDisplay ||
-                  activity.performedBy ||
-                  activity.occurredAt) && (
-                  <div className="microbiology-list__meta">
-                    {(activity.performedByDisplay || activity.performedBy) && (
-                      <span>
-                        {intl.formatMessage(
-                          {
-                            id: "microbiology.case.timeline.performedBy",
-                          },
-                          {
-                            actor:
-                              activity.performedByDisplay ||
-                              activity.performedBy,
-                          },
-                        )}
-                      </span>
-                    )}
-                    {activity.occurredAt && (
-                      <time dateTime={activity.occurredAt}>
-                        {intl.formatDate(activity.occurredAt, {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}
-                      </time>
-                    )}
+            {visibleActivities.map((activity) => {
+              const activityNote = formatMicrobiologyActivityNote(
+                activity,
+                intl,
+              );
+              return (
+                <li
+                  className="microbiology-list__row"
+                  key={
+                    activity.id ||
+                    `${activity.activityType}-${activity.occurredAt}`
+                  }
+                >
+                  <div className="microbiology-inline-actions">
+                    <strong>
+                      {formatMicrobiologyEnum(activity.activityType, intl)}
+                    </strong>
+                    <Tag type="cool-gray" size="sm">
+                      {intl.formatMessage({
+                        id:
+                          activity.activityType === "MANUAL_NOTE"
+                            ? "microbiology.case.timeline.manual"
+                            : "microbiology.case.timeline.auto",
+                      })}
+                    </Tag>
                   </div>
-                )}
-              </li>
-            ))}
+                  {activityNote ? `: ${activityNote}` : ""}
+                  {(activity.performedByDisplay ||
+                    activity.performedBy ||
+                    activity.occurredAt) && (
+                    <div className="microbiology-list__meta">
+                      {(activity.performedByDisplay ||
+                        activity.performedBy) && (
+                        <span>
+                          {intl.formatMessage(
+                            {
+                              id: "microbiology.case.timeline.performedBy",
+                            },
+                            {
+                              actor:
+                                activity.performedByDisplay ||
+                                activity.performedBy,
+                            },
+                          )}
+                        </span>
+                      )}
+                      {activity.occurredAt && (
+                        <time dateTime={activity.occurredAt}>
+                          {intl.formatDate(activity.occurredAt, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </time>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ol>
           {hasOlderEvents && (
             <Button

@@ -120,7 +120,7 @@ public class MicroCaseProtocolServiceImpl implements MicroCaseProtocolService {
         MicroCaseProtocolOptionForm previous = options.stream()
                 .filter(option -> previousMethodId != null && previousMethodId.equals(option.id)).findFirst()
                 .orElse(null);
-        String previousLabel = previous == null ? "Not set" : previous.label;
+        String previousLabel = previous == null ? "" : previous.label;
 
         microCase.setCultureMethodId(cultureMethodId);
         MicroCase updated = caseDAO.update(microCase);
@@ -130,7 +130,7 @@ public class MicroCaseProtocolServiceImpl implements MicroCaseProtocolService {
         activity.setActivityType(MicroCaseActivityType.CULTURE_PROTOCOL_CHANGED.name());
         activity.setOccurredAt(MicroCaseServiceImpl.now());
         activity.setPerformedBy(performedBy);
-        activity.setNote("Culture protocol changed from " + previousLabel + " to " + next.label + ": " + reason.trim());
+        activity.setNote(null);
         activity.setStructuredData(
                 toStructuredData(previousMethodId, cultureMethodId, previousLabel, next.label, reason.trim()));
         activityDAO.insert(activity);

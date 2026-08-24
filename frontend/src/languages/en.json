@@ -8578,6 +8578,7 @@
   "microbiology.protocol.set": "Set protocol",
   "microbiology.protocol.title": "Culture protocol",
   "microbiology.protocol.updated": "Protocol updated",
+  "microbiology.case.timeline.protocolChanged": "Culture protocol changed from {from} to {to}: {reason}",
   "microbiology.workflowChange.apply": "Apply workflow",
   "microbiology.workflowChange.error": "Workflow could not be changed",
   "microbiology.workflowChange.help": "Correct the workflow and Culture Method while preserving this case's existing history.",

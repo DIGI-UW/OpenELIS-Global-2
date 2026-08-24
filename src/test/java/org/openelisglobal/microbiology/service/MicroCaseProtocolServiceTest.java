@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -176,9 +177,7 @@ public class MicroCaseProtocolServiceTest {
         assertEquals(MicroCaseActivityType.CULTURE_PROTOCOL_CHANGED.name(), activity.getValue().getActivityType());
         assertEquals("42", activity.getValue().getPerformedBy());
         assertNotNull(activity.getValue().getOccurredAt());
-        assertTrue(activity.getValue().getNote().contains("Old protocol"));
-        assertTrue(activity.getValue().getNote().contains("Next protocol"));
-        assertTrue(activity.getValue().getNote().contains("Growth requires alternate media"));
+        assertNull(activity.getValue().getNote());
         JsonNode audit = new ObjectMapper().readTree(activity.getValue().getStructuredData());
         assertEquals("method-old", audit.get("fromMethodId").asText());
         assertEquals("method-next", audit.get("toMethodId").asText());

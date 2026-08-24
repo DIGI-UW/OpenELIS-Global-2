@@ -73,6 +73,35 @@ describe("CaseTimelinePanel", () => {
     expect(screen.getByRole("button", { name: "Add note" })).toHaveFocus();
   });
 
+  it("formats protocol audit facts through React Intl", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseTimelinePanel
+          timelineSectionId="timeline"
+          activities={[
+            {
+              id: "protocol-1",
+              activityType: "CULTURE_PROTOCOL_CHANGED",
+              note: null,
+              structuredData: JSON.stringify({
+                fromMethodName: "Old protocol",
+                toMethodName: "Next protocol",
+                reason: "Growth requires alternate media",
+              }),
+            },
+          ]}
+          onAddNote={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(
+      screen.getByText(
+        ": Culture protocol changed from Old protocol to Next protocol: Growth requires alternate media",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows the newest 30 events by default and preserves full history on demand", async () => {
     const user = userEvent.setup();
     const activities = Array.from({ length: 35 }, (_, index) => ({

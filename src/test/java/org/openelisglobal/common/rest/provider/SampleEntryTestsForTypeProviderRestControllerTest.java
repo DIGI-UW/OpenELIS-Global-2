@@ -2,6 +2,8 @@ package org.openelisglobal.common.rest.provider;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -145,5 +147,33 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
         assertEquals("BAP + CHOC", result.getTests().get(0).getMethods().get(0).mediaDefaults);
         assertEquals("5 days at 35 C", result.getTests().get(0).getMethods().get(0).incubationDefaults);
         assertEquals("aerobic + anaerobic", result.getTests().get(0).getMethods().get(0).atmosphereDefaults);
+    }
+
+    @Test
+    public void orderEntryMethodTrimsSupportedWorkflowMetadata() throws Exception {
+        TestMethodDto method = new TestMethodDto();
+        method.methodId = "7";
+
+        invokeOrderEntryMethod(method, " BACTERIOLOGY ");
+
+        verify(microbiologyReferenceService).getActiveCultureSetupForMethod("7", MicroWorkflowType.BACTERIOLOGY);
+    }
+
+    @Test
+    public void orderEntryMethodIgnoresInvalidWorkflowMetadata() throws Exception {
+        TestMethodDto method = new TestMethodDto();
+        method.methodId = "7";
+
+        invokeOrderEntryMethod(method, "NOT_A_WORKFLOW");
+
+        verify(microbiologyReferenceService, never()).getActiveCultureSetupForMethod(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    private void invokeOrderEntryMethod(TestMethodDto method, String workflowType) throws Exception {
+        java.lang.reflect.Method mapper = SampleEntryTestsForTypeProviderRestController.class
+                .getDeclaredMethod("toOrderEntryMethod", TestMethodDto.class, String.class);
+        mapper.setAccessible(true);
+        mapper.invoke(controller, method, workflowType);
     }
 }

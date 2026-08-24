@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
@@ -93,5 +94,69 @@ describe("SampleCollectionCard admission-date validation", () => {
     await userEvent.setup().clear(collectionDate);
 
     expect(collectionDate).toHaveValue("");
+  });
+
+  it("initializes defaults when a different pending request replaces the card", async () => {
+    const onUpdate = vi.fn();
+    const props = {
+      sampleIndex: 0,
+      sampleTypes: [],
+      unitOfMeasures: [],
+      serverReceivedDate: "2026-08-13",
+      serverReceivedTime: "10:00",
+      onUpdate,
+      onRemove: vi.fn(),
+      onPrintLabels: vi.fn(),
+      isReadOnly: false,
+      canRemove: false,
+    };
+    const { rerender } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleCollectionCard
+          {...props}
+          sample={{
+            sampleTypeRequestId: "request-old",
+            sampleTypeId: "5",
+            collectionDate: "2026-08-12",
+            collectionTime: "09:00",
+            receivedDate: "2026-08-12",
+            receivedTime: "09:05",
+            tests: [],
+            panels: [],
+          }}
+        />
+      </IntlProvider>,
+    );
+    onUpdate.mockClear();
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleCollectionCard
+          {...props}
+          sample={{
+            sampleTypeRequestId: "request-new",
+            sampleTypeId: "5",
+            collectionDate: "",
+            collectionTime: "",
+            receivedDate: "",
+            receivedTime: "",
+            tests: [],
+            panels: [],
+          }}
+        />
+      </IntlProvider>,
+    );
+
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        0,
+        expect.objectContaining({
+          collectionDate: expect.any(String),
+          collectionTime: expect.any(String),
+          receivedDate: "2026-08-13",
+          receivedTime: "10:00",
+        }),
+      ),
+    );
   });
 });

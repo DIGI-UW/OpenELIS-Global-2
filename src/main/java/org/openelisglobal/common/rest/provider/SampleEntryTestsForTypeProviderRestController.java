@@ -219,9 +219,16 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     }
 
     private OrderEntryMethod toOrderEntryMethod(TestMethodDto method, String workflowType) {
-        MicroCultureSetup setup = workflowType == null || workflowType.isBlank() ? null
-                : microbiologyReferenceService.getActiveCultureSetupForMethod(method.methodId,
-                        MicroWorkflowType.valueOf(workflowType));
+        MicroWorkflowType workflow = null;
+        if (workflowType != null && !workflowType.isBlank()) {
+            try {
+                workflow = MicroWorkflowType.valueOf(workflowType.trim());
+            } catch (IllegalArgumentException ignored) {
+                // Legacy catalog values must not break the complete Add Order response.
+            }
+        }
+        MicroCultureSetup setup = workflow == null ? null
+                : microbiologyReferenceService.getActiveCultureSetupForMethod(method.methodId, workflow);
         return new OrderEntryMethod(method, setup);
     }
 
