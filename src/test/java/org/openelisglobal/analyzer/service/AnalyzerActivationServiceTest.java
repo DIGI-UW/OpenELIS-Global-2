@@ -199,6 +199,18 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void analyzerProtocolMustMatchThePinnedProfile() {
+        analyzer.setType("HL7");
+
+        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
+
+        assertEquals(List.of("analyzer.activation.blocker.profile"),
+                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+        verify(registrationService, never()).buildActivationRegistration(analyzer);
+        verify(registrationService, never()).synchronizeCandidate(any(), any());
+    }
+
+    @Test
     public void readinessReportsOnlyTheFalseVerificationPredicates() {
         when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
                 .thenReturn(new AnalyzerSiteBindingVerificationAssessment(false, true, confirmation));
