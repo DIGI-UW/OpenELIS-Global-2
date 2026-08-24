@@ -8,12 +8,14 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.service.QCRuleViolationService;
 import org.openelisglobal.qc.service.WestgardRuleEvaluationService;
 import org.openelisglobal.qc.service.evaluator.RuleEvaluationResult;
@@ -33,6 +35,9 @@ public class QCResultCreatedEventListenerTest {
 
     @Mock
     private QCRuleViolationService violationService;
+
+    @Mock
+    private QCResultDAO resultDAO;
 
     @InjectMocks
     private QCResultCreatedEventListener listener;
@@ -89,6 +94,28 @@ public class QCResultCreatedEventListenerTest {
         listener.handleQCResultCreated(testEvent);
 
         verify(violationService).createViolation(violation, testResult);
+    }
+
+    @Test
+    public void testHandleQCResultCreated_ReloadsPersistedResultBeforeViolationHandling() {
+        QCResult eventResult = new QCResult();
+        eventResult.setId("R1");
+        eventResult.setControlLotId("LOT1");
+        QCResultCreatedEvent detachedEvent = new QCResultCreatedEvent(this, eventResult);
+        RuleEvaluationResult violation = RuleEvaluationResult.violation("1₃ₛ", "REJECTION", Arrays.asList("R1"),
+                "Result exceeds 3SD");
+
+        when(resultDAO.get("R1")).thenReturn(Optional.of(testResult));
+        when(ruleEvaluationService.evaluateAllRules("R1")).thenReturn(Arrays.asList(violation));
+        when(violationService.createViolation(violation, testResult)).thenReturn(new QCRuleViolation());
+
+        listener.handleQCResultCreated(detachedEvent);
+
+        verify(resultDAO).get("R1");
+        verify(ruleEvaluationService).evaluateAllRules("R1");
+        verify(violationService).createViolation(violation, testResult);
+        verify(resultDAO).update(testResult);
+        assertEquals("REJECTED", testResult.getResultStatus());
     }
 
     @Test
