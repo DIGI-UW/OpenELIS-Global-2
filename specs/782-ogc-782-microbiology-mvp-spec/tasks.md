@@ -227,7 +227,7 @@ product sequence.
   defaults. Reporting-period membership is independent of the later configurable
   first-isolate window basis; until that control exists, the current seven-day
   option also orders isolates by specimen collection date.
-- [ ] Complete M-09 advanced first-isolate behavior behind a progressive
+- [*] Complete M-09 advanced first-isolate behavior behind a progressive
   disclosure: window length and basis, source scope, contaminant handling,
   repeat-row handling, and susceptibility-profile sensitivity.
 - [ ] Complete M-09 readiness and repair for patient origins, patient types,
