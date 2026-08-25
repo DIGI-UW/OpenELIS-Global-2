@@ -10,8 +10,8 @@ import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
-import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
+import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.springframework.http.HttpStatus;
@@ -49,7 +49,8 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     @GetMapping("/{caseId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')")
     public ResponseEntity<MicroCaseDetailForm> getCaseDetail(@PathVariable String caseId, HttpServletRequest request) {
-        if (!accessService.canAccessCase(caseId, authenticatedUserId(request), userModuleService.isUserAdmin(request))) {
+        if (!accessService.canAccessCase(caseId, authenticatedUserId(request),
+                userModuleService.isUserAdmin(request))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         MicroCaseDetailForm detail = caseService.getCaseDetail(caseId);

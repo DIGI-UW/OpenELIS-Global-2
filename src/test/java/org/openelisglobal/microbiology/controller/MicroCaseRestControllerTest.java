@@ -107,8 +107,8 @@ public class MicroCaseRestControllerTest {
         ResponseEntity<MicroCaseDetailForm> response = controller(caseService,
                 org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class),
                 org.mockito.Mockito.mock(UserModuleService.class), stateService,
-                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).recordActivity("case-1", request,
-                        requestFor("42"));
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class))
+                .recordActivity("case-1", request, requestFor("42"));
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(MicroCaseStage.SETUP_RECORDED.name(), response.getBody().stage);
@@ -177,8 +177,8 @@ public class MicroCaseRestControllerTest {
 
         controller(caseService, org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class),
                 org.mockito.Mockito.mock(UserModuleService.class), stateService,
-                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).recordActivity("case-1", request,
-                        requestFor("42"));
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class))
+                .recordActivity("case-1", request, requestFor("42"));
 
         verify(stateService).advanceStage(eq("case-1"), eq(MicroCaseStage.SETUP_RECORDED), eq("42"),
                 eq("setup complete"));
