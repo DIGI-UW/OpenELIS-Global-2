@@ -234,6 +234,55 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     }
 
     @Test
+    public void sharedMappingCanReturnToTheContentOfAnEarlierRevision() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.executeWithoutResult(status -> {
+            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
+            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
+            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
+            AnalyzerSiteBindingService siteBindingService = new AnalyzerSiteBindingServiceImpl(siteBindingDAO,
+                    revisionDAO, siteBindingTestDAO, siteBindingResultDAO, auditTrailService, mock(TestService.class),
+                    mock(TestResultService.class));
+
+            String profileId = "site.revert." + UUID.randomUUID();
+            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
+            profileBinding.setProfileId(profileId);
+            profileBinding.setProfileRevision(1);
+            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
+            profileBinding.setSysUserId(TEST_SYS_USER_ID);
+            profileBindingDAO.insert(profileBinding);
+
+            AnalyzerSiteBindingSnapshot initial = siteBindingService.resolveInitialRevision(profileBinding,
+                    profile(profileId), TEST_SYS_USER_ID);
+            AnalyzerSiteBindingDraft excluded = new AnalyzerSiteBindingDraft(
+                    List.of(new AnalyzerSiteBindingTestDraft("RAW-A", AnalyzerSiteBindingMappingState.EXCLUDED, null)),
+                    List.of(new AnalyzerSiteBindingResultDraft("RAW-A", "POS", AnalyzerSiteBindingMappingState.EXCLUDED,
+                            null)));
+            AnalyzerSiteBindingSnapshot changed = siteBindingService.appendRevision(initial.binding(), excluded,
+                    TEST_SYS_USER_ID);
+            AnalyzerSiteBindingDraft restoredContent = new AnalyzerSiteBindingDraft(
+                    List.of(new AnalyzerSiteBindingTestDraft("RAW-A", AnalyzerSiteBindingMappingState.UNRESOLVED,
+                            null)),
+                    List.of(new AnalyzerSiteBindingResultDraft("RAW-A", "POS",
+                            AnalyzerSiteBindingMappingState.UNRESOLVED, null)));
+
+            AnalyzerSiteBindingSnapshot restored = siteBindingService.appendRevision(initial.binding(), restoredContent,
+                    TEST_SYS_USER_ID);
+            entityManager.flush();
+            entityManager.clear();
+
+            AnalyzerSiteBindingSnapshot current = siteBindingService
+                    .findCurrentByProfileBindingId(profileBinding.getId()).orElseThrow();
+            assertEquals(2, changed.revision().getRevisionNumber());
+            assertEquals(3, restored.revision().getRevisionNumber());
+            assertFalse(initial.revision().getId().equals(restored.revision().getId()));
+            assertEquals(initial.revision().getBindingFingerprint(), restored.revision().getBindingFingerprint());
+            assertEquals(restored.revision().getId(), current.revision().getId());
+            status.setRollbackOnly();
+        });
+    }
+
+    @Test
     public void bridgeConnectionReferencePersistsAfterReloadingTheLocalAnalyzer() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         ConnectionFixture fixture = transaction.execute(status -> {

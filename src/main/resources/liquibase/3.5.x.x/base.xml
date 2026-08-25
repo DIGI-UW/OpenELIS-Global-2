@@ -377,5 +377,6 @@
   <include relativeToChangelogFile="true" file="092-normalize-analyzer-deleted-status.xml"/>
   <include relativeToChangelogFile="true" file="093-remove-superseded-analyzer-runtime.xml"/>
   <include relativeToChangelogFile="true" file="094-remove-openelis-analyzer-connection-runtime.xml"/>
+  <include relativeToChangelogFile="true" file="095-allow-repeated-analyzer-site-binding-fingerprints.xml"/>
 
 </databaseChangeLog>

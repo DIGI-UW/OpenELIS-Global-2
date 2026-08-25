@@ -108,6 +108,11 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(analyzerRow).toContainText("Active");
     await expect(analyzerRow).toContainText(PROFILE_NAME);
     await expect(analyzerRow).not.toContainText(/\b\d+ units?\b/);
+    await list.search(analyzerName);
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get("search") === analyzerName,
+    );
+    await expect(analyzerRow).toBeVisible();
     await capture(page, testInfo, "m3-active-dashboard");
 
     await analyzerRow.getByRole("button", { name: "Actions" }).click();
@@ -133,7 +138,10 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     const qcBreadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
     await expect(
       qcBreadcrumb.getByRole("link", { name: "Analyzers" }),
-    ).toHaveAttribute("href", "/analyzers");
+    ).toHaveAttribute(
+      "href",
+      `/analyzers?search=${encodeURIComponent(analyzerName)}`,
+    );
     await capture(page, testInfo, "m3-linked-operational-qc");
 
     await qcBreadcrumb.getByRole("link", { name: "Analyzers" }).click();
