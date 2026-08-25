@@ -53,7 +53,10 @@ const ReagentUsageHistory = ({ usages = [] }) => {
               <TableCell>
                 {intl.formatMessage({
                   id: `microbiology.reagentLots.context.${usage.usageContext}`,
-                  defaultMessage: formatMicrobiologyEnum(usage.usageContext),
+                  defaultMessage: formatMicrobiologyEnum(
+                    usage.usageContext,
+                    intl,
+                  ),
                 })}
               </TableCell>
               <TableCell>
@@ -73,6 +76,7 @@ const ReagentUsageHistory = ({ usages = [] }) => {
                     id: `microbiology.reagentLots.status.${usage.currentLotStatus}`,
                     defaultMessage: formatMicrobiologyEnum(
                       usage.currentLotStatus,
+                      intl,
                     ),
                   })}
                 </Tag>

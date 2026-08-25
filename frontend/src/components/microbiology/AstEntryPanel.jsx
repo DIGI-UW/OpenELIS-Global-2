@@ -149,7 +149,7 @@ const AstEntryPanel = ({
           result?.status === 0
         ) {
           throw new Error(
-            formatMicrobiologyEnum(result.message || result.error),
+            formatMicrobiologyEnum(result.message || result.error, intl),
           );
         }
         return loadAstState().then(() => result);
@@ -639,6 +639,7 @@ const AstEntryPanel = ({
                         {
                           type: formatMicrobiologyEnum(
                             attemptType,
+                            intl,
                           ).toLowerCase(),
                         },
                       )}

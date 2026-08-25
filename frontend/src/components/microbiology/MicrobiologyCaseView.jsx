@@ -229,7 +229,7 @@ const MicrobiologyCaseView = ({
       .then((detail) => {
         if (!detail || detail.error || detail.statusCode >= 400) {
           throw new Error(
-            formatMicrobiologyEnum(detail?.message || detail?.error),
+            formatMicrobiologyEnum(detail?.message || detail?.error, intl),
           );
         }
         setCaseDetail(detail);

@@ -26,7 +26,7 @@ const ReagentLotPicker = ({
   const unavailableReasonLabel = (reason) =>
     intl.formatMessage({
       id: `microbiology.reagentLots.reason.${reason}`,
-      defaultMessage: formatMicrobiologyEnum(reason),
+      defaultMessage: formatMicrobiologyEnum(reason, intl),
     });
 
   return (
@@ -61,6 +61,7 @@ const ReagentLotPicker = ({
                     id: `microbiology.reagentLots.role.${requirement.usageType}`,
                     defaultMessage: formatMicrobiologyEnum(
                       requirement.usageType,
+                      intl,
                     ),
                   })}
                 </Tag>

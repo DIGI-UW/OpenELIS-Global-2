@@ -149,7 +149,7 @@ const AmendmentHistoryPanel = ({
           title={intl.formatMessage({
             id: "microbiology.amendment.actionError",
           })}
-          subtitle={formatMicrobiologyEnum(error)}
+          subtitle={formatMicrobiologyEnum(error, intl)}
         />
       )}
 
@@ -271,7 +271,7 @@ const AmendmentHistoryPanel = ({
                               : "warm-gray"
                         }
                       >
-                        {formatMicrobiologyEnum(amendment.status)}
+                        {formatMicrobiologyEnum(amendment.status, intl)}
                       </Tag>
                       {amendment.openedBy && (
                         <div className="microbiology-list__meta">
@@ -312,7 +312,7 @@ const AmendmentHistoryPanel = ({
                     <Tag
                       type={version.releaseType === "FINAL" ? "blue" : "purple"}
                     >
-                      {formatMicrobiologyEnum(version.releaseType)}
+                      {formatMicrobiologyEnum(version.releaseType, intl)}
                     </Tag>
                   </div>
                   <p>{version.content}</p>

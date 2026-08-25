@@ -75,7 +75,10 @@ const AstAttemptTable = ({
                 <TableCell>
                   <strong>{attemptLabel(run)}</strong>
                   <Tag type={run.attemptType === "ORIGINAL" ? "gray" : "cyan"}>
-                    {formatMicrobiologyEnum(run.attemptType || "ORIGINAL")}
+                    {formatMicrobiologyEnum(
+                      run.attemptType || "ORIGINAL",
+                      intl,
+                    )}
                   </Tag>
                 </TableCell>
                 <TableCell>
@@ -91,7 +94,7 @@ const AstAttemptTable = ({
                 <TableCell>{run.method || "-"}</TableCell>
                 <TableCell>
                   <Tag type={run.status === "REVIEWED" ? "green" : "cyan"}>
-                    {formatMicrobiologyEnum(run.status)}
+                    {formatMicrobiologyEnum(run.status, intl)}
                   </Tag>
                 </TableCell>
                 <TableCell>
