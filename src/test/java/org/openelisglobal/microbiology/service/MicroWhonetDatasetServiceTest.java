@@ -387,9 +387,9 @@ public class MicroWhonetDatasetServiceTest {
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
-        stubPatientContext("item-clinical", "sample-clinical", "patient-clinical", "LAB-CLINICAL");
-        stubPatientContext("item-screening", "sample-screening", "patient-screening", "LAB-SCREENING");
-        stubPatientContext("item-unspecified", "sample-unspecified", "patient-unspecified", "LAB-UNSPECIFIED");
+        stubPatientContext("case-clinical", "item-clinical", "patient-clinical", "LAB-CLINICAL");
+        stubPatientContext("case-screening", "item-screening", "patient-screening", "LAB-SCREENING");
+        stubPatientContext("case-unspecified", "item-unspecified", "patient-unspecified", "LAB-UNSPECIFIED");
 
         MicroWhonetDataset dataset = service.compile(query("NONE"));
 
@@ -425,8 +425,8 @@ public class MicroWhonetDatasetServiceTest {
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
-        stubPatientContext("item-screening", "sample-screening", "patient-screening", "LAB-SCREENING");
-        stubPatientContext("item-unspecified", "sample-unspecified", "patient-unspecified", "LAB-UNSPECIFIED");
+        stubPatientContext("case-screening", "item-screening", "patient-screening", "LAB-SCREENING");
+        stubPatientContext("case-unspecified", "item-unspecified", "patient-unspecified", "LAB-UNSPECIFIED");
         MicroWhonetExportQueryForm query = query("NONE");
         query.includeScreening = true;
         query.includeUnspecified = true;
@@ -496,7 +496,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(caseOrderDetailDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(unidentified));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetFilterOptionsForm options = service.getFilterOptions(query("NONE"));
 
@@ -519,7 +519,7 @@ public class MicroWhonetDatasetServiceTest {
         when(organismDAO.getByIds(List.of("organism-1"))).thenReturn(List.of(organism("organism-1", "eco", "E. coli")));
         when(patientOriginDAO.getByCodes(List.of("LEGACY_ORIGIN")))
                 .thenReturn(List.of(patientOrigin("LEGACY_ORIGIN", null)));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetFilterOptionsForm options = service.getFilterOptions(query("NONE"));
 

@@ -243,6 +243,7 @@ public class MicroOrderRoutingServiceTest {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
                 orderDetailService, caseAnalysisService, testMethodService, "");
         MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
+        orderDetail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         orderDetail.admissionDate = "2026-02-31";
         SampleItem sampleItem = sampleItem("1001");
         sampleItem.setCollectionDate(Timestamp.valueOf("2026-03-03 09:00:00"));
