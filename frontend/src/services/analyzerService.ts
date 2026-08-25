@@ -16,6 +16,7 @@ import type {
   AnalyzerApiError,
   AnalyzerApiResponse,
   AnalyzerProtocol,
+  AnalyzerProfileRef,
 } from "../components/analyzers/types";
 import config from "../config.json";
 
@@ -48,12 +49,6 @@ export interface AnalyzerTypeSummary {
   source: "SHIPPED" | "SITE" | string;
   status: "ACTIVE" | "INACTIVE" | string;
   protocol: AnalyzerProtocol;
-  instanceDefaults?: {
-    protocolVersion?: string | null;
-    communicationMode?: string | null;
-    supportsLisInitiated?: boolean | null;
-    port?: number | null;
-  } | null;
   parentProfileId?: string | null;
   parentRevision?: number | null;
   affectedAnalyzers?: Array<{
@@ -85,44 +80,31 @@ export interface AnalyzerInstancePayload extends JsonObject {
   profileId?: string;
   profileRevision?: number;
   testUnitIds?: string[];
-  ipAddress?: string | null;
-  port?: number | null;
-  communicationMode?: string | null;
-  transportMode?: string | null;
-  connectionRole?: string | null;
-  importDirectory?: string | null;
+  connectionValues?: Record<string, unknown>;
 }
 
 export interface AnalyzerConnectionProbeCheck {
-  kind: string;
-  status: "PASSED" | "FAILED" | "TIMED_OUT" | "MISSING_CONFIGURATION" | string;
-  code: string;
-  responseTimeMs: number;
-  args?: Record<string, unknown>;
+  key: string;
+  status: "PASSED" | "FAILED" | "SKIPPED" | string;
+  messageKey: string;
+  durationMillis: number;
+  details: Record<string, unknown>;
 }
 
-export interface AnalyzerConnectionProbeView extends AnalyzerApiError {
-  schemaVersion: string;
-  analyzerId: string;
-  profileRef: {
-    profileId: string;
-    revision: number;
-  };
-  desiredStateFingerprint: string;
-  connection: {
-    mode: string;
-    role: string;
-  };
-  dataFlow: "RESULTS_ONLY" | "TWO_WAY" | string;
-  outcome: "SUCCESS" | "FAILURE" | "TIMEOUT" | "MISSING_CONFIGURATION" | string;
-  configureEndpoint?: {
-    kind: string;
-    host?: string;
-    port?: number;
-    path?: string;
-    url?: string;
-  } | null;
-  resultsOnlyAvailable: boolean;
+export interface AnalyzerConnectionProbeView extends Omit<
+  AnalyzerApiError,
+  "status"
+> {
+  schemaVersion: "1.0";
+  requestId: string;
+  connectionId: string;
+  profileRef: AnalyzerProfileRef;
+  configRevision: number;
+  configFingerprint: string;
+  nonMutating: true;
+  status: "SUCCEEDED" | "FAILED" | "TIMEOUT" | "BLOCKED" | string;
+  startedAt: string;
+  completedAt: string;
   checks: AnalyzerConnectionProbeCheck[];
 }
 

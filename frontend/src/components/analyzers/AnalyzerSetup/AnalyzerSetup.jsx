@@ -724,11 +724,10 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
               )}
               {state === "current" &&
                 step === "connect" &&
-                (candidate && selectedType ? (
+                (candidate ? (
                   <AnalyzerConnectionSetup
                     key={`${candidate.id}:${candidate.profileId}:${candidate.profileRevision}`}
                     candidate={candidate}
-                    analyzerType={selectedType}
                     onCandidateChange={setCandidate}
                     onClose={onClose}
                   />

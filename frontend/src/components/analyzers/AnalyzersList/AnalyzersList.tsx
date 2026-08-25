@@ -360,14 +360,11 @@ const AnalyzersList = () => {
   ];
 
   const rows: AnalyzerTableRow[] = filteredAnalyzers.map((analyzer) => {
-    // Connection column: TCP analyzers show ip:port; FILE analyzers show
-    // the watched import directory so lab techs can verify the data source.
-    const connection =
-      analyzer.ipAddress && analyzer.port
-        ? `${analyzer.ipAddress}:${analyzer.port}`
-        : analyzer.importDirectory
-          ? analyzer.importDirectory
-          : "-";
+    const connection = intl.formatMessage({
+      id: analyzer.bridgeConnectionId
+        ? "analyzer.connection.reference.configured"
+        : "analyzer.connection.reference.missing",
+    });
 
     const unifiedStatus = analyzer.status || "SETUP";
     const profileName =

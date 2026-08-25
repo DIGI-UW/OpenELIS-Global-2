@@ -24,25 +24,26 @@ describe("analyzer TypeScript contracts", () => {
     >();
   });
 
-  test("allows analyzer identifiers and transport values returned by the API", () => {
+  test("keeps OpenELIS analyzer identity separate from its Bridge connection", () => {
     const analyzer: Analyzer = {
       id: "42",
       name: "GeneXpert",
       analyzerType: "ASTM",
       type: "ASTM",
-      ipAddress: "192.0.2.10",
-      port: "8080",
-      importDirectory: "/var/openelis/analyzers/incoming",
       testUnitIds: ["1001", 1002],
       active: true,
       pluginLoaded: false,
       protocol: "FILE",
+      profileId: "genexpert-astm",
+      profileRevision: 1,
+      bridgeConnectionId: "bridge-42",
+      connected: true,
     };
 
     expect(analyzer.testUnitIds).toEqual(["1001", 1002]);
     expectTypeOf<Analyzer["id"]>().toEqualTypeOf<string | undefined>();
-    expectTypeOf<Analyzer["port"]>().toEqualTypeOf<
-      string | number | undefined
+    expectTypeOf<Analyzer["bridgeConnectionId"]>().toEqualTypeOf<
+      string | null | undefined
     >();
     expectTypeOf<Analyzer["testUnitIds"]>().toEqualTypeOf<
       Array<string | number> | undefined
@@ -55,11 +56,14 @@ describe("analyzer TypeScript contracts", () => {
       messageKey: "analyzer.error.validation",
       messageArgs: { analyzerName: "GeneXpert" },
       fieldErrors: [
-        { field: "port", defaultMessage: "Port must be a valid number" },
+        {
+          field: "connectionValues",
+          defaultMessage: "Connection values are invalid",
+        },
       ],
     };
 
-    expect(error.fieldErrors?.[0]?.field).toBe("port");
+    expect(error.fieldErrors?.[0]?.field).toBe("connectionValues");
     expectTypeOf<AnalyzerApiError["messageArgs"]>().toEqualTypeOf<
       Record<string, unknown> | undefined
     >();

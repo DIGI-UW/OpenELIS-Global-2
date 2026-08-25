@@ -50,7 +50,9 @@ const AnalyzerLifecycleModal = ({
 
   const formatBlocker = (blocker: LifecycleBlocker) => {
     const id = blocker.code;
-    const known = Boolean(id && Object.hasOwn(intl.messages, id));
+    const known = Boolean(
+      id && Object.prototype.hasOwnProperty.call(intl.messages, id),
+    );
     return intl.formatMessage(
       {
         id: known ? id : "analyzer.setup.connect.activation.blockerUnknown",
