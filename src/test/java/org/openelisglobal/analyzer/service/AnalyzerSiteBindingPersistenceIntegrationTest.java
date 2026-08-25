@@ -60,6 +60,9 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     private AnalyzerInstanceLocalStateService analyzerInstanceLocalStateService;
 
     @Autowired
+    private AnalyzerService analyzerService;
+
+    @Autowired
     private AnalyzerSiteBindingDAO siteBindingDAO;
 
     @Autowired
@@ -340,11 +343,75 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         }
     }
 
+    @Test
+    public void connectionProbeReadsThePinnedProfileAfterTheAnalyzerTransactionCloses() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        ProbeFixture fixture = transaction.execute(status -> {
+            String profileId = "site.probe." + UUID.randomUUID();
+            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
+            profileBinding.setProfileId(profileId);
+            profileBinding.setProfileRevision(1);
+            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
+            profileBinding.setSysUserId(TEST_SYS_USER_ID);
+            profileBindingDAO.insert(profileBinding);
+
+            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
+            binding.setProfileBinding(profileBinding);
+            binding.setCreatedBy(TEST_SYS_USER_ID);
+            binding.setSysUserId(TEST_SYS_USER_ID);
+            siteBindingDAO.insert(binding);
+
+            AnalyzerSiteBindingRevision revision = bindingRevision(binding, 1, "sha256:" + "e".repeat(64));
+            Analyzer analyzer = new Analyzer();
+            analyzer.ensureFhirUuid();
+            analyzer.setName("Connection probe persistence test");
+            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+            analyzer.setActive(false);
+            analyzer.setSiteBindingRevision(revision);
+            analyzer.setTestUnitIds(List.of("1"));
+            analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
+            analyzer.setSysUserId(TEST_SYS_USER_ID);
+            analyzerDAO.insert(analyzer);
+            entityManager.flush();
+            return new ProbeFixture(analyzer.getId(), analyzer.getBridgeConnectionId(), revision.getId(),
+                    binding.getId(), profileBinding.getId(), profileId);
+        });
+
+        try {
+            BridgeAnalyzerConnectionClient bridgeClient = mock(BridgeAnalyzerConnectionClient.class);
+            ObjectNode connection = probeDocument(fixture, false);
+            ObjectNode evidence = probeDocument(fixture, true);
+            when(bridgeClient.getConnection(fixture.connectionId())).thenReturn(connection);
+            when(bridgeClient.probe(fixture.connectionId(), 1, "probe-after-transaction")).thenReturn(evidence);
+            AnalyzerConnectionProbeService probeService = new AnalyzerConnectionProbeService(analyzerService,
+                    bridgeClient, () -> "probe-after-transaction");
+
+            AnalyzerConnectionProbeView result = probeService.probe(fixture.analyzerId());
+
+            assertEquals("SUCCEEDED", result.status());
+            assertEquals(fixture.profileId(), result.profileRef().profileId());
+        } finally {
+            transaction.executeWithoutResult(status -> {
+                JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+                jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
+                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
+                        Long.valueOf(fixture.revisionId()));
+                jdbc.update("DELETE FROM analyzer_site_binding WHERE id = ?", Long.valueOf(fixture.bindingId()));
+                jdbc.update("DELETE FROM analyzer_profile_binding WHERE id = ?",
+                        Long.valueOf(fixture.profileBindingId()));
+            });
+        }
+    }
+
     private record ConnectionFixture(String analyzerId, String revisionId, String bindingId, String profileBindingId) {
     }
 
     private record BindingSelectionFixture(String analyzerId, String initialRevisionId, String reviewedRevisionId,
             String bindingId, String profileBindingId, String reviewedFingerprint) {
+    }
+
+    private record ProbeFixture(String analyzerId, String connectionId, String revisionId, String bindingId,
+            String profileBindingId, String profileId) {
     }
 
     private AnalyzerSiteBindingRevision bindingRevision(AnalyzerSiteBinding binding, int revisionNumber,
@@ -411,6 +478,29 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         acknowledgement.putArray("blockers");
         acknowledgement.put("acknowledgedAt", "2026-08-24T19:05:05Z");
         return acknowledgement;
+    }
+
+    private static ObjectNode probeDocument(ProbeFixture fixture, boolean evidence) {
+        ObjectNode document = new ObjectMapper().createObjectNode();
+        document.put("schemaVersion", "1.0");
+        document.put("connectionId", fixture.connectionId());
+        if (evidence) {
+            document.put("requestId", "probe-after-transaction");
+        } else {
+            document.put("clientAnalyzerId", fixture.analyzerId());
+        }
+        document.putObject("profileRef").put("profileId", fixture.profileId()).put("revision", 1).put("fingerprint",
+                PROFILE_FINGERPRINT);
+        document.put("configRevision", 1);
+        document.put("configFingerprint", "sha256:" + "f".repeat(64));
+        if (evidence) {
+            document.put("nonMutating", true);
+            document.put("status", "SUCCEEDED");
+            document.put("startedAt", "2026-08-25T16:00:00Z");
+            document.put("completedAt", "2026-08-25T16:00:01Z");
+            document.putArray("checks");
+        }
+        return document;
     }
 
     private static ObjectNode parseJson(String value) {
