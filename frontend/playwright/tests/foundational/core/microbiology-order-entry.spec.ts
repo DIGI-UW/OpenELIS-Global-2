@@ -105,6 +105,18 @@ async function collectAndRoute(page: Page) {
   return displayedCollectionDate;
 }
 
+async function expectOrderStepUrl(
+  page: Page,
+  step: "enter" | "collect",
+  labNumber: string,
+) {
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === `/order/clinical/${step}` &&
+      url.searchParams.get("order") === labNumber,
+  );
+}
+
 async function reloadThroughBarcode(page: Page, labNumber: string) {
   await page.reload({ waitUntil: "domcontentloaded" });
   const barcode = page.getByRole("searchbox", { name: "Scan barcode" });
@@ -116,11 +128,7 @@ async function reloadThroughBarcode(page: Page, labNumber: string) {
     { timeout: LONG_TIMEOUT },
   );
   await page.getByTestId("order-step-enter").click();
-  await expect(page).toHaveURL(
-    (url) =>
-      url.pathname === "/order/clinical/enter" &&
-      url.searchParams.get("order") === labNumber,
-  );
+  await expectOrderStepUrl(page, "enter", labNumber);
 }
 
 async function attachResponsiveEvidence(
@@ -251,7 +259,7 @@ test.describe("microbiology order entry on the supported workflow", () => {
     await expect(admissionDate).toBeEnabled();
 
     await page.getByTestId("order-step-collect").click();
-    await expect(page).toHaveURL(/\/order\/clinical\/collect$/i);
+    await expectOrderStepUrl(page, "collect", labNumber);
     const collectionDate = page
       .getByTestId("sample-collection-card-0")
       .getByLabel("Collection Date", { exact: false });
