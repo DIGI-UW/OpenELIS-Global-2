@@ -21,7 +21,9 @@ test.describe("Microbiology no-growth review and release", () => {
       ),
     );
     await expect(
-      page.getByRole("link", { name: "Microbiology worklist" }),
+      page
+        .getByRole("navigation", { name: "Breadcrumb" })
+        .getByRole("link", { name: "Microbiology worklist" }),
     ).toHaveAttribute(
       "href",
       `/Microbiology/worklist?q=${seeded.accessionNumber}&sort=newest`,
