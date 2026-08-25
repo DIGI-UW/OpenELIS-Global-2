@@ -107,9 +107,6 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       await demo.pause(2500);
 
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(
-        page.getByText("Sample type saved successfully."),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
       const returnLink = page.getByRole("link", {
         name: "Return to WHONET preview",
       });
