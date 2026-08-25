@@ -106,27 +106,19 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       });
       await demo.pause(2500);
 
-      const saveResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/rest/sample-types/${seeded.sampleTypeId}`) &&
-          response.request().method() === "PUT" &&
-          response.status() === 200,
-      );
       await page.getByRole("button", { name: "Save" }).click();
-      await saveResponse;
-      const refreshedPreview = page.waitForResponse(
-        (response) =>
-          response.url().includes("/rest/microbiology/whonet/preview?") &&
-          response.request().method() === "GET" &&
-          response.status() === 200,
-      );
-      await page
-        .getByRole("link", { name: "Return to WHONET preview" })
-        .click();
-      await refreshedPreview;
+      await expect(
+        page.getByText("Sample type saved successfully."),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      const returnLink = page.getByRole("link", {
+        name: "Return to WHONET preview",
+      });
+      await expect(returnLink).toBeVisible({ timeout: LONG_TIMEOUT });
+      await returnLink.click();
       await expect(page).toHaveURL(previewUrl);
+      await expect(
+        page.getByRole("heading", { name: "Preview", exact: true }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
 
       const mappedRows = page
         .getByRole("row")
