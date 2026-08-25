@@ -18,6 +18,7 @@ import {
   TabPanels,
   TabPanel,
   Loading,
+  InlineNotification,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation, useParams } from "react-router-dom";
@@ -131,6 +132,8 @@ const InstrumentDetailPage = () => {
   const analyteDetails = instrument.analyteDetails || [];
   const instrumentName =
     instrument.instrumentName || instrument.name || instrumentId;
+  const operationalQcNotConfigured =
+    instrument.complianceColor?.toUpperCase() === "NOT_CONFIGURED";
 
   return (
     <div
@@ -162,10 +165,19 @@ const InstrumentDetailPage = () => {
         >
           <div>
             <span className="instrument-detail-subtitle">
-              <span>{instrument.instrumentId}</span>
-              <span className="instrument-detail-type">
-                {instrument.instrumentType}
-              </span>
+              {instrument.instrumentType && (
+                <span className="instrument-detail-type">
+                  {instrument.instrumentType}
+                </span>
+              )}
+              {instrument.instrumentType && instrument.instrumentLocation && (
+                <span className="instrument-detail-subtitle__separator">
+                  &middot;
+                </span>
+              )}
+              {instrument.instrumentLocation && (
+                <span>{instrument.instrumentLocation}</span>
+              )}
             </span>
           </div>
           <Tag
@@ -177,6 +189,20 @@ const InstrumentDetailPage = () => {
             })}
           </Tag>
         </div>
+
+        {operationalQcNotConfigured && (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "qc.instrumentDetail.notConfigured.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "qc.instrumentDetail.notConfigured.description",
+            })}
+          />
+        )}
 
         {/* Analyte cards */}
         {analyteDetails.length > 0 && (

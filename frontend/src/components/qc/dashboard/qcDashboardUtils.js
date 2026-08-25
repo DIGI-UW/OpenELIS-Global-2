@@ -15,6 +15,8 @@ export const getComplianceTagType = (complianceColor) => {
       return "warm-gray";
     case "RED":
       return "red";
+    case "NOT_CONFIGURED":
+      return "gray";
     default:
       return "gray";
   }
@@ -31,8 +33,10 @@ export const getComplianceLabelKey = (complianceColor) => {
       return "qc.dashboard.instruments.status.yellow";
     case "RED":
       return "qc.dashboard.instruments.status.red";
+    case "NOT_CONFIGURED":
+      return "qc.dashboard.instruments.status.notConfigured";
     default:
-      return "qc.dashboard.instruments.status.green";
+      return "qc.dashboard.instruments.status.unknown";
   }
 };
 

@@ -41,8 +41,9 @@ describe("InstrumentDetailPage analyzer context", () => {
               instrumentName: "GeneXpert - Main Lab",
               instrumentType: "GeneXpert",
               instrumentLocation: "Molecular Biology",
-              complianceColor: "GREEN",
+              complianceColor: "NOT_CONFIGURED",
               analyteDetails: [],
+              activeControlLots: 0,
             }
           : [],
       );
@@ -96,5 +97,23 @@ describe("InstrumentDetailPage analyzer context", () => {
     expect(params.get("view")).toBe("activity");
     expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
     expect(activityTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("shows an unconfigured operational QC state without exposing a bare database id", async () => {
+    renderPage();
+
+    const statusHeader = await screen.findByTestId(
+      "instrument-detail-modal-header",
+    );
+    expect(within(statusHeader).getByText("Not configured")).toBeVisible();
+    expect(within(statusHeader).getByText("GeneXpert")).toBeVisible();
+    expect(within(statusHeader).getByText("Molecular Biology")).toBeVisible();
+    expect(within(statusHeader).queryByText("42")).not.toBeInTheDocument();
+    expect(screen.queryByText("In Control")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No active control lots or QC results are linked to this analyzer.",
+      ),
+    ).toBeVisible();
   });
 });
