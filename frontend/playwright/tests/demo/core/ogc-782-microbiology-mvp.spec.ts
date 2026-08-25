@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import { selectCarbonRadio } from "../../../helpers/microbiology-ui";
 import { seedMicrobiologyMvpCase } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -104,7 +105,10 @@ test.describe("OGC-782 microbiology MVP", () => {
       await setup.getByLabel("Media or bottle").fill("Blood culture bottle");
       await setup.getByLabel("Incubation").fill("35 C for 24 hours");
       await setup.getByLabel("Atmosphere").fill("Ambient");
-      await setup.getByRole("radio", { name: /UAT-MICRO-MEDIA-FEFO/ }).check();
+      await selectCarbonRadio(
+        page,
+        setup.getByRole("radio", { name: /UAT-MICRO-MEDIA-FEFO/ }),
+      );
       await captureCard(
         page,
         demo,

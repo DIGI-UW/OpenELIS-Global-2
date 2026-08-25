@@ -76,7 +76,7 @@ test.describe("Microbiology final-report amendments", () => {
       await page
         .getByLabel("Organism")
         .selectOption({ label: "Klebsiella pneumoniae (UAT)" });
-      await page.getByLabel("Identification method").selectOption("MALDI_TOF");
+      await page.getByLabel("ID method").selectOption("MALDI_TOF");
       const updateButton = page.getByRole("button", {
         name: "Save identification",
       });

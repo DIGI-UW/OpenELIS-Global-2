@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { LONG_TIMEOUT } from "./timeouts";
 
 export const openMicrobiologyCaseSection = async (
@@ -9,6 +9,13 @@ export const openMicrobiologyCaseSection = async (
     .getByTestId("microbiology-case-view")
     .getByRole("button", { name: sectionName, exact: true })
     .click();
+};
+
+export const selectCarbonRadio = async (page: Page, radio: Locator) => {
+  await radio.focus();
+  await expect(radio).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(radio).toBeChecked();
 };
 
 export const createAndIdentifyMicrobiologyIsolate = async (

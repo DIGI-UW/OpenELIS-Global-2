@@ -230,7 +230,8 @@ test.describe("microbiology worklist and critical communication", () => {
       page.getByTestId("microbiology-worklist-summary-critical"),
     ).toContainText("1");
 
-    await row.getByRole("button", { name: "Open case" }).click();
+    await row.getByRole("button", { name: "Row actions" }).click();
+    await page.getByRole("menuitem", { name: "Open case" }).click();
     await expect(page).toHaveURL(`${scopedCaseUrl}&section=setup`);
     await expect(
       page.getByRole("heading", { name: "Microbiology case" }),
