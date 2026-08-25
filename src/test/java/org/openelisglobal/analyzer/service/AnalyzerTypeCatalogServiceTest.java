@@ -101,7 +101,7 @@ public class AnalyzerTypeCatalogServiceTest {
                             {"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"},
                             {"test_code":"FLAG","loinc":"58410-2","result_type":"qualitative","values":["POS","NEG"]}
                           ],
-                          "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP","defaultPort":9100,"aggregationMode":"PER_MESSAGE"},
+                          "configDefaults":{"connectionRole":"SERVER","transport":"TCP/IP","port":9100,"aggregationMode":"PER_MESSAGE"},
                           "catalog":{
                             "revision":3,
                             "revisionFingerprint":"sha256:1111111111111111111111111111111111111111111111111111111111111111",
@@ -145,7 +145,7 @@ public class AnalyzerTypeCatalogServiceTest {
                           "protocol":{"name":"ASTM","version":"LIS2-A2"},
                           "communication":{"mode":"BOTH","supports_lis_initiated":true},
                           "default_test_mappings":[{"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"}],
-                          "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP","defaultPort":%d,"aggregationMode":"PER_MESSAGE"},
+                          "configDefaults":{"connectionRole":"SERVER","transport":"TCP/IP","port":%d,"aggregationMode":"PER_MESSAGE"},
                           "catalog":{
                             "revision":%d,
                             "revisionFingerprint":"sha256:3333333333333333333333333333333333333333333333333333333333333333",

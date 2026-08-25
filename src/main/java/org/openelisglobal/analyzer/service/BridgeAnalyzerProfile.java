@@ -81,8 +81,8 @@ public final class BridgeAnalyzerProfile {
 
         JsonNode lineage = catalog.path("lineage");
         JsonNode communication = document.path("communication");
-        InstanceDefaults defaults = new InstanceDefaults(nullableText(configDefaults, "defaultTransport"),
-                nullableText(configDefaults, "connectionRole"), nullableInteger(configDefaults, "defaultPort"));
+        InstanceDefaults defaults = new InstanceDefaults(nullableText(configDefaults, "transport"),
+                nullableText(configDefaults, "connectionRole"), nullableInteger(configDefaults, "port"));
         return new BridgeAnalyzerProfile(document, profileId, revision, fingerprint,
                 requiredText(profileMeta, "displayName"), firstText(document, profileMeta, "manufacturer"),
                 nullableText(document, "model"), requiredText(catalog, "source"), requiredText(catalog, "status"),
@@ -186,6 +186,6 @@ public final class BridgeAnalyzerProfile {
         }
     }
 
-    public record InstanceDefaults(String defaultTransport, String connectionRole, Integer port) {
+    public record InstanceDefaults(String transport, String connectionRole, Integer port) {
     }
 }

@@ -95,7 +95,7 @@ public class AnalyzerBridgeContractConsumerTest {
 
         assertEquals("E-1394-97", geneXpert.protocolVersion());
         assertEquals("BOTH", geneXpert.communicationMode());
-        assertEquals("TCP/IP", geneXpert.instanceDefaults().defaultTransport());
+        assertEquals("TCP/IP", geneXpert.instanceDefaults().transport());
     }
 
     @Test

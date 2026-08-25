@@ -32,8 +32,8 @@ public final class AnalyzerTestProfileCatalog {
         profile.putObject("protocol").put("name", "ASTM").put("version", "LIS2-A2");
         profile.putObject("communication").put("mode", "ANALYZER_INITIATED").put("supports_lis_initiated", false);
         profile.putArray("default_test_mappings");
-        profile.putObject("configDefaults").put("connectionRole", "SERVER").put("defaultTransport", "TCP/IP")
-                .put("defaultPort", 9100).put("aggregationMode", "PER_MESSAGE");
+        profile.putObject("configDefaults").put("connectionRole", "SERVER").put("transport", "TCP/IP").put("port", 9100)
+                .put("aggregationMode", "PER_MESSAGE");
         ObjectNode catalog = profile.putObject("catalog");
         catalog.put("revision", PROFILE_REVISION);
         catalog.put("revisionFingerprint", PROFILE_FINGERPRINT);
@@ -53,7 +53,7 @@ public final class AnalyzerTestProfileCatalog {
         profile.putObject("protocol").put("name", "HL7").put("version", "HL7 v2.3.1");
         profile.putObject("communication").put("mode", "ANALYZER_INITIATED").put("supports_lis_initiated", false);
         profile.putArray("default_test_mappings");
-        profile.putObject("configDefaults").put("connectionRole", "SERVER").put("defaultTransport", "MLLP")
+        profile.putObject("configDefaults").put("connectionRole", "SERVER").put("transport", "MLLP")
                 .put("aggregationMode", "PER_MESSAGE");
         ObjectNode catalog = profile.putObject("catalog");
         catalog.put("revision", HL7_PROFILE_REVISION);
