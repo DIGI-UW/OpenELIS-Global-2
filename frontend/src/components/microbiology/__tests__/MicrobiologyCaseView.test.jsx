@@ -592,6 +592,8 @@ describe("MicrobiologyCaseView", () => {
         screen.getByTestId("microbiology-isolates-card"),
       ).toHaveTextContent("ISO-1: Escherichia coli"),
     );
+    await user.click(getAccordionButton("Timeline"));
+    await screen.findByTestId("microbiology-case-section-timeline");
     expect(screen.getByText("Isolate Created")).toBeInTheDocument();
   });
 
@@ -657,7 +659,7 @@ describe("MicrobiologyCaseView", () => {
       screen.queryByRole("button", { name: "Start AST" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByLabelText("Mycobacteriology TB (Received)"),
+      screen.getByLabelText("Mycobacteriology/TB (Received)"),
     ).toHaveAttribute("href", "/Microbiology/cases/case-tb?section=case-info");
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
