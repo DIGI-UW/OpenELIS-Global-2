@@ -323,7 +323,13 @@ describe("MicrobiologyCaseView", () => {
     const openReports = within(
       screen.getByTestId("microbiology-current-step-action"),
     ).getByRole("button", { name: "Open Reports" });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-case-section-setup"),
+      ).toHaveFocus(),
+    );
     openReports.focus();
+    expect(openReports).toHaveFocus();
     await user.keyboard("{Enter}");
 
     await waitFor(() =>
