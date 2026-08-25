@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "analyzers": [
+    {
+      "sourceAnalyzerId": "42",
+      "sourceConfigFingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "displayName": "Released GeneXpert",
+      "legacyStatus": "ACTIVE",
+      "legacyActive": true,
+      "configuration": {
+        "transport": "RS-232",
+        "portName": "/dev/ttyUSB0",
+        "baudRate": 9600,
+        "dataBits": 8,
+        "stopBits": "ONE",
+        "parity": "NONE",
+        "flowControl": "NONE",
+        "protocolVersion": "ASTM_LIS2_A2",
+        "communicationMode": "BOTH",
+        "identifierPattern": "GENEXPERT|CEPHEID"
+      },
+      "sourceErrors": []
+    },
+    {
+      "sourceAnalyzerId": "43",
+      "sourceConfigFingerprint": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "displayName": "Released FluoroCycler XT",
+      "legacyStatus": "SETUP",
+      "legacyActive": false,
+      "configuration": {
+        "importDirectory": "/srv/analyzers/fluorocycler",
+        "filePattern": "*.{ods,ODS,xlsx,XLSX,xls,XLS}",
+        "fileFormat": "XLSX",
+        "hasHeader": true
+      },
+      "sourceErrors": []
+    },
+    {
+      "sourceAnalyzerId": "44",
+      "sourceConfigFingerprint": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "displayName": "Released QuantStudio",
+      "legacyStatus": "SETUP",
+      "legacyActive": false,
+      "configuration": {
+        "importDirectory": "/srv/analyzers/quantstudio",
+        "filePattern": "*.{xls,XLS,xlsx,XLSX}",
+        "fileFormat": "XLSX",
+        "hasHeader": true
+      },
+      "sourceErrors": []
+    }
+  ]
+}
