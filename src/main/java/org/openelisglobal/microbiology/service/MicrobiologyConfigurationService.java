@@ -16,6 +16,8 @@ public interface MicrobiologyConfigurationService {
 
     MicroOrganism createOrganism(MicroOrganism organism);
 
+    MicroOrganism getOrCreateOrganism(String displayName, String whonetCode, String organismGroup);
+
     MicroAntibiotic createAntibiotic(MicroAntibiotic antibiotic);
 
     MicroAntibiotic getOrCreateAntibiotic(String displayName, String whonetCode, String antibioticClass);

@@ -381,6 +381,8 @@ public class MicrobiologyUatScenarioService {
     }
 
     private void createAstReferenceData() {
+        configurationService.getOrCreateOrganism("Escherichia coli (UAT)", "ECOLUAT", "GRAM_NEGATIVE");
+        configurationService.getOrCreateOrganism("Klebsiella pneumoniae (UAT)", "KPNUAT", "GRAM_NEGATIVE");
         MicroAntibiotic ciprofloxacin = configurationService.getOrCreateAntibiotic("Ciprofloxacin (UAT)", "CIPUAT",
                 "Fluoroquinolone");
         MicroAntibiotic gentamicin = configurationService.getOrCreateAntibiotic("Gentamicin (UAT)", "GENUAT",
