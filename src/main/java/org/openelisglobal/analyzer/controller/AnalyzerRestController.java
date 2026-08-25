@@ -11,7 +11,6 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +35,6 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerFieldService analyzerFieldService;
-
-    @Autowired
-    private org.openelisglobal.analyzer.service.AnalyzerQueryService analyzerQueryService;
 
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService analyzerOrderDispatchService;
@@ -71,31 +67,6 @@ public class AnalyzerRestController extends BaseRestController {
             Map<String, Object> error = new LinkedHashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
-        }
-    }
-
-    /**
-     * POST /rest/analyzer/analyzers/{id}/query Start an asynchronous query job for
-     * an analyzer.
-     */
-    @PostMapping("/analyzers/{id}/query")
-    public ResponseEntity<Map<String, Object>> queryAnalyzer(@PathVariable String id) {
-        try {
-            String jobId = analyzerQueryService.startQuery(id);
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("jobId", jobId);
-            response.put("analyzerId", id);
-            response.put("status", "started");
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
-        } catch (LIMSRuntimeException e) {
-            // Push-only analyzers or missing TCP config → 422
-            logger.warn("Cannot query analyzer {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        } catch (Exception e) {
-            logger.error("Error starting query job for analyzer: {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 
@@ -145,27 +116,6 @@ public class AnalyzerRestController extends BaseRestController {
             logger.error("Unexpected error dispatching order for analyzer {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        }
-    }
-
-    /**
-     * GET /rest/analyzer/analyzers/{id}/query/{jobId}/status Get query job status.
-     */
-    @GetMapping("/analyzers/{id}/query/{jobId}/status")
-    public ResponseEntity<Map<String, Object>> getQueryStatus(@PathVariable String id, @PathVariable String jobId) {
-        try {
-            Map<String, Object> status = analyzerQueryService.getStatus(id, jobId);
-            if (status == null) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Query job not found or expired: " + jobId);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-            }
-            return ResponseEntity.ok(status);
-        } catch (Exception e) {
-            logger.error("Error getting query status for analyzer: {}, job: {}", id, jobId, e);
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
