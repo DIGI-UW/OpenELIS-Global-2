@@ -283,7 +283,80 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         }
     }
 
+    @Test
+    public void reviewedSharedBindingRevisionPersistsAfterReloadingTheLocalAnalyzer() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        BindingSelectionFixture fixture = transaction.execute(status -> {
+            String profileId = "site.selection." + UUID.randomUUID();
+            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
+            profileBinding.setProfileId(profileId);
+            profileBinding.setProfileRevision(1);
+            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
+            profileBinding.setSysUserId(TEST_SYS_USER_ID);
+            profileBindingDAO.insert(profileBinding);
+
+            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
+            binding.setProfileBinding(profileBinding);
+            binding.setCreatedBy(TEST_SYS_USER_ID);
+            binding.setSysUserId(TEST_SYS_USER_ID);
+            siteBindingDAO.insert(binding);
+
+            AnalyzerSiteBindingRevision initial = bindingRevision(binding, 1, "sha256:" + "c".repeat(64));
+            AnalyzerSiteBindingRevision reviewed = bindingRevision(binding, 2, "sha256:" + "d".repeat(64));
+
+            Analyzer analyzer = new Analyzer();
+            analyzer.ensureFhirUuid();
+            analyzer.setName("Binding selection persistence test");
+            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+            analyzer.setActive(false);
+            analyzer.setSiteBindingRevision(initial);
+            analyzer.setTestUnitIds(List.of("1"));
+            analyzer.setSysUserId(TEST_SYS_USER_ID);
+            analyzerDAO.insert(analyzer);
+            entityManager.flush();
+            return new BindingSelectionFixture(analyzer.getId(), initial.getId(), reviewed.getId(), binding.getId(),
+                    profileBinding.getId(), reviewed.getBindingFingerprint());
+        });
+
+        try {
+            analyzerInstanceLocalStateService.selectSiteBindingRevision(fixture.analyzerId(), fixture.bindingId(), 2,
+                    fixture.reviewedFingerprint(), TEST_SYS_USER_ID);
+
+            String persistedRevisionId = transaction.execute(
+                    status -> analyzerDAO.get(fixture.analyzerId()).orElseThrow().getSiteBindingRevision().getId());
+            assertEquals(fixture.reviewedRevisionId(), persistedRevisionId);
+        } finally {
+            transaction.executeWithoutResult(status -> {
+                JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+                jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
+                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
+                        Long.valueOf(fixture.reviewedRevisionId()));
+                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
+                        Long.valueOf(fixture.initialRevisionId()));
+                jdbc.update("DELETE FROM analyzer_site_binding WHERE id = ?", Long.valueOf(fixture.bindingId()));
+                jdbc.update("DELETE FROM analyzer_profile_binding WHERE id = ?",
+                        Long.valueOf(fixture.profileBindingId()));
+            });
+        }
+    }
+
     private record ConnectionFixture(String analyzerId, String revisionId, String bindingId, String profileBindingId) {
+    }
+
+    private record BindingSelectionFixture(String analyzerId, String initialRevisionId, String reviewedRevisionId,
+            String bindingId, String profileBindingId, String reviewedFingerprint) {
+    }
+
+    private AnalyzerSiteBindingRevision bindingRevision(AnalyzerSiteBinding binding, int revisionNumber,
+            String fingerprint) {
+        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        revision.setSiteBinding(binding);
+        revision.setRevisionNumber(revisionNumber);
+        revision.setBindingFingerprint(fingerprint);
+        revision.setCreatedBy(TEST_SYS_USER_ID);
+        revision.setSysUserId(TEST_SYS_USER_ID);
+        revisionDAO.insert(revision);
+        return revision;
     }
 
     private static ObjectNode profile(String profileId) {

@@ -59,6 +59,18 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
     @Override
     public AnalyzerInstanceView get(String analyzerId) {
         AnalyzerInstanceState state = localStateService.get(analyzerId);
+        return compose(state);
+    }
+
+    @Override
+    public AnalyzerInstanceView selectSiteBindingRevision(String analyzerId, String siteBindingId, int revision,
+            String bindingFingerprint, String actor) {
+        AnalyzerInstanceState state = localStateService.selectSiteBindingRevision(analyzerId, siteBindingId, revision,
+                bindingFingerprint, actor);
+        return compose(state);
+    }
+
+    private AnalyzerInstanceView compose(AnalyzerInstanceState state) {
         if (state.bridgeConnectionId() == null) {
             return new AnalyzerInstanceView(state, null, null);
         }

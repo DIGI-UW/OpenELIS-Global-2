@@ -12,4 +12,7 @@ public interface AnalyzerInstanceService {
     AnalyzerInstanceView get(String analyzerId);
 
     AnalyzerInstanceView update(String analyzerId, AnalyzerInstanceRequest request, String actor);
+
+    AnalyzerInstanceView selectSiteBindingRevision(String analyzerId, String siteBindingId, int revision,
+            String bindingFingerprint, String actor);
 }

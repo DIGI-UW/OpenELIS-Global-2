@@ -153,6 +153,21 @@ public class AnalyzerInstanceServiceTest {
         verify(localStateService).update("42", request, "17");
     }
 
+    @Test
+    public void selectsTheReviewedSiteBindingWithoutRewritingBridgeConfiguration() {
+        AnalyzerInstanceState connectedState = localState.withBridgeConnectionId("bridge-connection-42");
+        when(localStateService.selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64), "17"))
+                .thenReturn(connectedState);
+
+        AnalyzerInstanceView result = service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64),
+                "17");
+
+        assertTrue(result.connected());
+        assertEquals(bridgeConnection, result.connection());
+        verify(bridgeClient).getConnection("bridge-connection-42");
+        verify(bridgeClient, never()).updateConnection(any(), any());
+    }
+
     private static ObjectNode connection(String connectionId) {
         ObjectNode connection = JSON.createObjectNode();
         connection.put("schemaVersion", "1.0");

@@ -14,5 +14,8 @@ public interface AnalyzerInstanceLocalStateService {
 
     AnalyzerInstanceState update(String analyzerId, AnalyzerInstanceRequest request, String actor);
 
+    AnalyzerInstanceState selectSiteBindingRevision(String analyzerId, String siteBindingId, int revision,
+            String bindingFingerprint, String actor);
+
     AnalyzerInstanceState attachBridgeConnection(String analyzerId, String bridgeConnectionId, String actor);
 }

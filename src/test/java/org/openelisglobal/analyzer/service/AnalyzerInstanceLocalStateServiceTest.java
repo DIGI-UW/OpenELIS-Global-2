@@ -33,6 +33,9 @@ public class AnalyzerInstanceLocalStateServiceTest {
     @Mock
     private AnalyzerProfileBindingService profileBindingService;
 
+    @Mock
+    private AnalyzerSiteBindingService siteBindingService;
+
     private AnalyzerInstanceLocalStateService service;
     private AnalyzerInstanceRequest request;
 
@@ -43,7 +46,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         request.setProfileId("fixture.synthetic-connection");
         request.setProfileRevision(3);
         request.setTestUnitIds(List.of("7", " 8 "));
-        service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, profileBindingService);
+        service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, profileBindingService, siteBindingService);
     }
 
     @Test
@@ -104,6 +107,44 @@ public class AnalyzerInstanceLocalStateServiceTest {
         verify(analyzerService, never()).update(any(Analyzer.class));
     }
 
+    @Test
+    public void adoptsOnlyTheExactSharedBindingRevisionReviewedByTheUser() {
+        Analyzer analyzer = analyzer("42");
+        AnalyzerProfileBinding profile = bind(analyzer);
+        profile.setId("11");
+        AnalyzerSiteBindingRevision reviewedRevision = siteBindingRevision(profile, "12", "13", 2,
+                "sha256:" + "2".repeat(64));
+        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(siteBindingService.findCurrentByProfileBindingId("11"))
+                .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(reviewedRevision.getSiteBinding(),
+                        reviewedRevision, List.of(), List.of())));
+
+        AnalyzerInstanceState result = service.selectSiteBindingRevision("42", "12", 2,
+                reviewedRevision.getBindingFingerprint(), "17");
+
+        assertEquals(reviewedRevision, analyzer.getSiteBindingRevision());
+        assertEquals("fixture.synthetic-connection", result.profileId());
+        verify(analyzerService).update(analyzer);
+    }
+
+    @Test
+    public void rejectsAReviewedBindingRevisionThatIsNoLongerCurrent() {
+        Analyzer analyzer = analyzer("42");
+        AnalyzerProfileBinding profile = bind(analyzer);
+        profile.setId("11");
+        AnalyzerSiteBindingRevision currentRevision = siteBindingRevision(profile, "12", "13", 3,
+                "sha256:" + "3".repeat(64));
+        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(siteBindingService.findCurrentByProfileBindingId("11"))
+                .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(currentRevision.getSiteBinding(),
+                        currentRevision, List.of(), List.of())));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "2".repeat(64), "17"));
+
+        verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
     private static AnalyzerProfileBinding bind(Analyzer analyzer) {
         AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
         profile.setProfileId("fixture.synthetic-connection");
@@ -125,5 +166,18 @@ public class AnalyzerInstanceLocalStateServiceTest {
         analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
         analyzer.setActive(false);
         return analyzer;
+    }
+
+    private static AnalyzerSiteBindingRevision siteBindingRevision(AnalyzerProfileBinding profile, String bindingId,
+            String revisionId, int revisionNumber, String fingerprint) {
+        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
+        binding.setId(bindingId);
+        binding.setProfileBinding(profile);
+        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        revision.setId(revisionId);
+        revision.setSiteBinding(binding);
+        revision.setRevisionNumber(revisionNumber);
+        revision.setBindingFingerprint(fingerprint);
+        return revision;
     }
 }

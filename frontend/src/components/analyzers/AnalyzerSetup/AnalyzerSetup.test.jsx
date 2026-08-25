@@ -15,6 +15,7 @@ import {
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
   getAnalyzerTypeMapping,
+  selectAnalyzerSiteBinding,
   testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
@@ -29,6 +30,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
   getAnalyzerTypeMapping: vi.fn(),
+  selectAnalyzerSiteBinding: vi.fn(),
   testConnection: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
@@ -433,6 +435,9 @@ describe("AnalyzerSetup Instrument step", () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
     );
+    selectAnalyzerSiteBinding.mockImplementation((_id, _selection, callback) =>
+      callback(connectedCandidate()),
+    );
     const history = renderSetupWithHistory(entry);
 
     expect(
@@ -465,6 +470,15 @@ describe("AnalyzerSetup Instrument step", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Connect" }),
     );
+    expect(selectAnalyzerSiteBinding).toHaveBeenCalledWith(
+      "42",
+      {
+        siteBindingId: currentMapping.siteBindingId,
+        revision: currentMapping.siteBindingRevision,
+        bindingFingerprint: currentMapping.bindingFingerprint,
+      },
+      expect.any(Function),
+    );
     const params = new URLSearchParams(history.location.search);
     expect(params.get("search")).toBe("gene");
     expect(params.get("setup")).toBe("connect");
@@ -473,6 +487,30 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(params.get("revision")).toBe("3");
     expect(await screen.findByRole("spinbutton", { name: "Port" })).toHaveValue(
       55000,
+    );
+  });
+
+  it("stays on Verify and explains when the reviewed mapping revision changed", async () => {
+    const entry = `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`;
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(connectedCandidate()),
+    );
+    selectAnalyzerSiteBinding.mockImplementation((_id, _selection, callback) =>
+      callback({ error: "stale binding", statusCode: 400 }),
+    );
+    const history = renderSetupWithHistory(entry);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Continue to Connect" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Could not apply the reviewed mappings. Reload Verify and try again.",
+      ),
+    ).toBeVisible();
+    expect(new URLSearchParams(history.location.search).get("setup")).toBe(
+      "verify",
     );
   });
 

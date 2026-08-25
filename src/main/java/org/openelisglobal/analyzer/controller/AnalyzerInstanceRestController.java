@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
+import org.openelisglobal.analyzer.form.AnalyzerSiteBindingSelectionRequest;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
@@ -63,6 +64,13 @@ public class AnalyzerInstanceRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> update(@PathVariable String id,
             @Valid @RequestBody AnalyzerInstanceRequest input, HttpServletRequest request) {
         return ResponseEntity.ok(toMap(analyzerInstanceService.update(id, input, getSysUserId(request))));
+    }
+
+    @PutMapping("/{id}/site-binding")
+    public ResponseEntity<Map<String, Object>> selectSiteBindingRevision(@PathVariable String id,
+            @Valid @RequestBody AnalyzerSiteBindingSelectionRequest input, HttpServletRequest request) {
+        return ResponseEntity.ok(toMap(analyzerInstanceService.selectSiteBindingRevision(id, input.getSiteBindingId(),
+                input.getRevision(), input.getBindingFingerprint(), getSysUserId(request))));
     }
 
     private static Map<String, Object> toMap(AnalyzerInstanceView view) {

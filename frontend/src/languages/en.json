@@ -529,6 +529,8 @@
   "analyzer.setup.title": "Set up a new analyzer",
   "analyzer.setup.verify.attention": "Verification needs attention",
   "analyzer.setup.verify.continue": "Continue to Connect",
+  "analyzer.setup.verify.selecting": "Applying mappings...",
+  "analyzer.setup.verify.selectionError": "Could not apply the reviewed mappings. Reload Verify and try again.",
   "analyzer.setup.verify.counts": "Mapping readiness",
   "analyzer.setup.verify.heading": "Review analyzer type mappings",
   "analyzer.setup.verify.loadError": "Mapping verification could not be loaded.",

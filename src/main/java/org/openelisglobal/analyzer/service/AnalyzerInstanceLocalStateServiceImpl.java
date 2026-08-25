@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
@@ -14,12 +15,14 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
 
     private final AnalyzerService analyzerService;
     private final AnalyzerProfileBindingService profileBindingService;
+    private final AnalyzerSiteBindingService siteBindingService;
 
     @Autowired
     public AnalyzerInstanceLocalStateServiceImpl(AnalyzerService analyzerService,
-            AnalyzerProfileBindingService profileBindingService) {
+            AnalyzerProfileBindingService profileBindingService, AnalyzerSiteBindingService siteBindingService) {
         this.analyzerService = analyzerService;
         this.profileBindingService = profileBindingService;
+        this.siteBindingService = siteBindingService;
     }
 
     @Override
@@ -80,6 +83,33 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
         }
         analyzer.setName(requireText(request.getName(), "Analyzer name"));
         analyzer.setTestUnitIds(normalizeLabUnits(request.getTestUnitIds()));
+        analyzer.setSysUserId(requireText(actor, "actor"));
+        analyzerService.update(analyzer);
+        return state(analyzer);
+    }
+
+    @Override
+    @Transactional
+    public AnalyzerInstanceState selectSiteBindingRevision(String analyzerId, String siteBindingId, int revision,
+            String bindingFingerprint, String actor) {
+        Analyzer analyzer = find(analyzerId);
+        AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
+        if (profile == null || profile.getId() == null) {
+            throw new IllegalStateException("Analyzer profile binding is missing");
+        }
+        AnalyzerSiteBindingSnapshot current = siteBindingService.findCurrentByProfileBindingId(profile.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Analyzer Type mappings are missing"));
+        if (!Objects.equals(requireText(siteBindingId, "Site binding ID"), current.binding().getId())
+                || revision != current.revision().getRevisionNumber()
+                || !Objects.equals(requireText(bindingFingerprint, "Binding fingerprint"),
+                        current.revision().getBindingFingerprint())) {
+            throw new IllegalArgumentException("Analyzer Type mappings changed after Verify was loaded");
+        }
+        if (analyzer.getSiteBindingRevision() != null
+                && Objects.equals(analyzer.getSiteBindingRevision().getId(), current.revision().getId())) {
+            return state(analyzer);
+        }
+        analyzer.setSiteBindingRevision(current.revision());
         analyzer.setSysUserId(requireText(actor, "actor"));
         analyzerService.update(analyzer);
         return state(analyzer);

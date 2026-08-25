@@ -19,6 +19,7 @@ import {
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
   getAnalyzerTypeMapping,
+  selectAnalyzerSiteBinding,
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import {
@@ -49,6 +50,8 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [bindingSelectionError, setBindingSelectionError] = useState(false);
+  const [selectingBinding, setSelectingBinding] = useState(false);
 
   const analyzerId = new URLSearchParams(location.search).get("analyzerId");
 
@@ -350,12 +353,37 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
     : "/analyzers/types";
 
   const continueToConnect = () => {
-    if (!verification.complete) {
+    if (!verification.complete || selectingBinding) {
       return;
     }
-    const params = new URLSearchParams(location.search);
-    params.set("setup", "connect");
-    history.push({ pathname: location.pathname, search: params.toString() });
+    setSelectingBinding(true);
+    setBindingSelectionError(false);
+    selectAnalyzerSiteBinding(
+      candidate.id,
+      {
+        siteBindingId: mapping.siteBindingId,
+        revision: mapping.siteBindingRevision,
+        bindingFingerprint: mapping.bindingFingerprint,
+      },
+      (response) => {
+        setSelectingBinding(false);
+        if (
+          !response?.id ||
+          response.error ||
+          Number(response.statusCode) >= 400
+        ) {
+          setBindingSelectionError(true);
+          return;
+        }
+        setCandidate(response);
+        const params = new URLSearchParams(location.search);
+        params.set("setup", "connect");
+        history.push({
+          pathname: location.pathname,
+          search: params.toString(),
+        });
+      },
+    );
   };
 
   return (
@@ -700,6 +728,17 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                             )}
                           />
                         )}
+
+                      {bindingSelectionError && (
+                        <InlineNotification
+                          kind="error"
+                          lowContrast
+                          hideCloseButton
+                          title={intl.formatMessage({
+                            id: "analyzer.setup.verify.selectionError",
+                          })}
+                        />
+                      )}
                     </>
                   )}
 
@@ -712,11 +751,13 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     <Button
                       type="button"
                       renderIcon={ArrowRight}
-                      disabled={!verification.complete}
+                      disabled={!verification.complete || selectingBinding}
                       onClick={continueToConnect}
                     >
                       {intl.formatMessage({
-                        id: "analyzer.setup.verify.continue",
+                        id: selectingBinding
+                          ? "analyzer.setup.verify.selecting"
+                          : "analyzer.setup.verify.continue",
                       })}
                     </Button>
                   </div>

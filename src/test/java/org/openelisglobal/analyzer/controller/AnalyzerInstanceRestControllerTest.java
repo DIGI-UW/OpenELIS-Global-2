@@ -15,6 +15,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
+import org.openelisglobal.analyzer.form.AnalyzerSiteBindingSelectionRequest;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
@@ -91,6 +92,22 @@ public class AnalyzerInstanceRestControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("42", response.getBody().get("id"));
         verify(service).update("42", input, "17");
+    }
+
+    @Test
+    public void selectsTheExactReviewedSiteBindingRevision() {
+        AnalyzerSiteBindingSelectionRequest selection = new AnalyzerSiteBindingSelectionRequest();
+        selection.setSiteBindingId("12");
+        selection.setRevision(2);
+        selection.setBindingFingerprint("sha256:" + "3".repeat(64));
+        when(service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64), "17"))
+                .thenReturn(connectedView());
+
+        ResponseEntity<Map<String, Object>> response = controller.selectSiteBindingRevision("42", selection, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("42", response.getBody().get("id"));
+        verify(service).selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64), "17");
     }
 
     @Test

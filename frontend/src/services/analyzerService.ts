@@ -83,6 +83,12 @@ export interface AnalyzerInstancePayload extends JsonObject {
   connectionValues?: Record<string, unknown>;
 }
 
+export interface AnalyzerSiteBindingSelection extends JsonObject {
+  siteBindingId: string;
+  revision: number;
+  bindingFingerprint: string;
+}
+
 export interface AnalyzerConnectionProbeCheck {
   key: string;
   status: "PASSED" | "FAILED" | "SKIPPED" | string;
@@ -375,16 +381,12 @@ export const createAnalyzer = (
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const updateAnalyzer = (
-  id: string,
-  analyzerData: AnalyzerInstancePayload,
+const putAnalyzerJson = (
+  endpoint: string,
+  data: JsonObject,
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${id}`;
-  const payload = JSON.stringify(analyzerData);
-
-  // Use fetch directly to get JSON response (controllers return Map<String, Object>)
   fetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
     method: "PUT",
@@ -392,7 +394,7 @@ export const updateAnalyzer = (
       "Content-Type": "application/json",
       "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
-    body: payload,
+    body: JSON.stringify(data),
   })
     .then(async (response) => {
       if (!response.ok) {
@@ -426,6 +428,32 @@ export const updateAnalyzer = (
       );
     });
 };
+
+export const updateAnalyzer = (
+  id: string,
+  analyzerData: AnalyzerInstancePayload,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) =>
+  putAnalyzerJson(
+    `/rest/analyzer/analyzers/${id}`,
+    analyzerData,
+    callback,
+    extraParams,
+  );
+
+export const selectAnalyzerSiteBinding = (
+  id: string,
+  selection: AnalyzerSiteBindingSelection,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) =>
+  putAnalyzerJson(
+    `/rest/analyzer/analyzers/${id}/site-binding`,
+    selection,
+    callback,
+    extraParams,
+  );
 
 /**
  * Test TCP connection to analyzer
