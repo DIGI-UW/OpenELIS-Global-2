@@ -19,6 +19,7 @@ BASE_URL="${BASE_URL:-https://localhost}"
 MOCK_URL="${MOCK_URL:-http://localhost:8085}"
 ANALYZER_API="$BASE_URL/api/OpenELIS-Global/rest/analyzer/analyzers"
 TYPE_API="$BASE_URL/api/OpenELIS-Global/rest/analyzer-types"
+LAB_UNITS_API="$BASE_URL/api/OpenELIS-Global/rest/test-catalog/lab-units"
 
 TEST_USER="${TEST_USER:-admin}"
 TEST_PASS="${TEST_PASS:-adminADMIN!}"
@@ -29,8 +30,9 @@ QUANTSTUDIO_PROFILE_ID="quantstudio"
 
 CATALOG_FILE="$(mktemp)"
 ANALYZERS_FILE="$(mktemp)"
+LAB_UNITS_FILE="$(mktemp)"
 RESPONSE_FILE="$(mktemp)"
-trap 'rm -f "$CATALOG_FILE" "$ANALYZERS_FILE" "$RESPONSE_FILE"' EXIT
+trap 'rm -f "$CATALOG_FILE" "$ANALYZERS_FILE" "$LAB_UNITS_FILE" "$RESPONSE_FILE"' EXIT
 
 fetch_json() {
   local url="$1"
@@ -75,6 +77,23 @@ print(revision)
 PY
 }
 
+resolve_lab_unit_id() {
+  python3 - "$LAB_UNITS_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    lab_units = json.load(handle)
+
+if not isinstance(lab_units, list) or not lab_units:
+    raise SystemExit("expected at least one active lab unit")
+lab_unit_id = lab_units[0].get("id")
+if lab_unit_id is None or str(lab_unit_id).strip() == "":
+    raise SystemExit("first active lab unit has no ID")
+print(lab_unit_id)
+PY
+}
+
 find_analyzer_id() {
   local analyzer_name="$1"
   fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
@@ -104,15 +123,16 @@ reconcile_profile_analyzer() {
 
   local payload
   payload="$(
-    python3 - "$name" "$profile_id" "$profile_revision" "$connection_values" <<'PY'
+    python3 - "$name" "$profile_id" "$profile_revision" "$LAB_UNIT_ID" "$connection_values" <<'PY'
 import json
 import sys
 
-name, profile_id, revision, connection_values = sys.argv[1:]
+name, profile_id, revision, lab_unit_id, connection_values = sys.argv[1:]
 payload = {
     "name": name,
     "profileId": profile_id,
     "profileRevision": int(revision),
+    "testUnitIds": [lab_unit_id],
     "connectionValues": json.loads(connection_values),
 }
 print(json.dumps(payload, separators=(",", ":")))
@@ -232,6 +252,11 @@ QUANTSTUDIO_REVISION="$(resolve_active_revision "$QUANTSTUDIO_PROFILE_ID")"
 echo "  $GENEXPERT_PROFILE_ID@$GENEXPERT_REVISION"
 echo "  $FLUOROCYCLER_PROFILE_ID@$FLUOROCYCLER_REVISION"
 echo "  $QUANTSTUDIO_PROFILE_ID@$QUANTSTUDIO_REVISION"
+
+echo "Resolving an active lab unit from $LAB_UNITS_API..."
+fetch_json "$LAB_UNITS_API" "$LAB_UNITS_FILE" "Active lab units"
+LAB_UNIT_ID="$(resolve_lab_unit_id)"
+echo "  lab unit $LAB_UNIT_ID"
 
 curl -sk --connect-timeout 3 --max-time 10 -X DELETE "$MOCK_URL/analyzers/genexpert" >/dev/null 2>&1 || true
 
