@@ -25,7 +25,9 @@ import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingRevisionDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingTestDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -53,6 +55,9 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
     @Autowired
     private AnalyzerActivationRecordDAO activationRecordDAO;
+
+    @Autowired
+    private AnalyzerInstanceLocalStateService analyzerInstanceLocalStateService;
 
     @Autowired
     private AnalyzerSiteBindingDAO siteBindingDAO;
@@ -214,6 +219,71 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
             status.setRollbackOnly();
         });
+    }
+
+    @Test
+    public void bridgeConnectionReferencePersistsAfterReloadingTheLocalAnalyzer() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        ConnectionFixture fixture = transaction.execute(status -> {
+            String profileId = "site.connection." + UUID.randomUUID();
+            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
+            profileBinding.setProfileId(profileId);
+            profileBinding.setProfileRevision(1);
+            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
+            profileBinding.setSysUserId(TEST_SYS_USER_ID);
+            profileBindingDAO.insert(profileBinding);
+
+            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
+            binding.setProfileBinding(profileBinding);
+            binding.setCreatedBy(TEST_SYS_USER_ID);
+            binding.setSysUserId(TEST_SYS_USER_ID);
+            siteBindingDAO.insert(binding);
+
+            AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+            revision.setSiteBinding(binding);
+            revision.setRevisionNumber(1);
+            revision.setBindingFingerprint("sha256:" + "c".repeat(64));
+            revision.setCreatedBy(TEST_SYS_USER_ID);
+            revision.setSysUserId(TEST_SYS_USER_ID);
+            revisionDAO.insert(revision);
+
+            Analyzer analyzer = new Analyzer();
+            analyzer.ensureFhirUuid();
+            analyzer.setName("Connection reference persistence test");
+            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+            analyzer.setActive(false);
+            analyzer.setSiteBindingRevision(revision);
+            analyzer.setTestUnitIds(List.of("1"));
+            analyzer.setSysUserId(TEST_SYS_USER_ID);
+            analyzerDAO.insert(analyzer);
+
+            entityManager.flush();
+            return new ConnectionFixture(analyzer.getId(), revision.getId(), binding.getId(), profileBinding.getId());
+        });
+
+        try {
+            String connectionId = "bridge-" + UUID.randomUUID();
+            AnalyzerInstanceState attached = analyzerInstanceLocalStateService
+                    .attachBridgeConnection(fixture.analyzerId(), connectionId, TEST_SYS_USER_ID);
+
+            assertEquals(connectionId, attached.bridgeConnectionId());
+            String persistedConnectionId = transaction
+                    .execute(status -> analyzerDAO.get(fixture.analyzerId()).orElseThrow().getBridgeConnectionId());
+            assertEquals(connectionId, persistedConnectionId);
+        } finally {
+            transaction.executeWithoutResult(status -> {
+                JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+                jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
+                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
+                        Long.valueOf(fixture.revisionId()));
+                jdbc.update("DELETE FROM analyzer_site_binding WHERE id = ?", Long.valueOf(fixture.bindingId()));
+                jdbc.update("DELETE FROM analyzer_profile_binding WHERE id = ?",
+                        Long.valueOf(fixture.profileBindingId()));
+            });
+        }
+    }
+
+    private record ConnectionFixture(String analyzerId, String revisionId, String bindingId, String profileBindingId) {
     }
 
     private static ObjectNode profile(String profileId) {

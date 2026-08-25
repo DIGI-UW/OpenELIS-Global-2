@@ -81,7 +81,6 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
         analyzer.setName(requireText(request.getName(), "Analyzer name"));
         analyzer.setTestUnitIds(normalizeLabUnits(request.getTestUnitIds()));
         analyzer.setSysUserId(requireText(actor, "actor"));
-        analyzer.setLastupdatedFields();
         analyzerService.update(analyzer);
         return state(analyzer);
     }
@@ -99,7 +98,6 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
         }
         analyzer.setBridgeConnectionId(exactConnectionId);
         analyzer.setSysUserId(requireText(actor, "actor"));
-        analyzer.setLastupdatedFields();
         analyzerService.update(analyzer);
         return state(analyzer);
     }
