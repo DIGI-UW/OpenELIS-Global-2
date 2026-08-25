@@ -8,7 +8,6 @@ import { Router } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  activateAnalyzer,
   getAnalyzerActivationReadiness,
   testConnection,
   updateAnalyzer,
@@ -274,6 +273,30 @@ describe("AnalyzerConnectionSetup", () => {
     );
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(history.location.search).toContain("setup=connect");
+  });
+
+  it("saves an edited Carbon numeric field as the generic connection value", async () => {
+    renderConnection();
+    const port = await screen.findByRole("spinbutton", { name: "Port" });
+
+    await userEvent.clear(port);
+    await userEvent.type(port, "45587");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save and finish later" }),
+    );
+
+    await waitFor(() =>
+      expect(updateAnalyzer).toHaveBeenCalledWith(
+        "42",
+        expect.objectContaining({
+          connectionValues: expect.objectContaining({ port: 45587 }),
+        }),
+        expect.any(Function),
+      ),
+    );
+    expect(
+      screen.queryByText("This field is required."),
+    ).not.toBeInTheDocument();
   });
 
   it("shows required field validation before saving or probing", async () => {

@@ -721,6 +721,9 @@ const AnalyzersList = () => {
                                     aria-label={intl.formatMessage({
                                       id: "analyzer.table.actions",
                                     })}
+                                    iconDescription={intl.formatMessage({
+                                      id: "analyzer.table.actions",
+                                    })}
                                     data-testid={`analyzer-row-overflow-${row.id}`}
                                   >
                                     <OverflowMenuItem

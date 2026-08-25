@@ -105,7 +105,11 @@ export class AnalyzerSetupPage {
   async fillPort(port: string) {
     const input = this.surface.getByRole("spinbutton", { name: /port/i });
     if (await input.isVisible()) {
-      await input.fill(port);
+      await input.click();
+      await input.press("ControlOrMeta+A");
+      await input.pressSequentially(port);
+      await input.press("Tab");
+      await expect(input).toHaveValue(port);
     }
   }
 

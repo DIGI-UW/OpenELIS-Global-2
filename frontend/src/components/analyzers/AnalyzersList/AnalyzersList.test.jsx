@@ -30,7 +30,7 @@ vi.mock("../../../services/analyzerService", () => ({
 import React from "react";
 
 // 2. Testing Library (all utilities in one import)
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 
@@ -184,6 +184,14 @@ describe("AnalyzersList", () => {
       "href",
       "/",
     );
+    for (const name of ["Hematology Analyzer 1", "Chemistry Analyzer 1"]) {
+      expect(
+        within(screen.getByRole("row", { name: new RegExp(name) })).getByRole(
+          "button",
+          { name: "Actions" },
+        ),
+      ).toBeVisible();
+    }
   });
 
   test("positions row actions inside the viewport", async () => {

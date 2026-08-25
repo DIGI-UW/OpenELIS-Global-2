@@ -78,6 +78,21 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     );
 
     await setup.fillPort(listenerPort);
+    await page.getByRole("button", { name: "Save and finish later" }).click();
+    await expect(setup.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
+
+    let analyzerRow = page.getByRole("row", {
+      name: new RegExp(escapeRegExp(analyzerName), "i"),
+    });
+    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await analyzerRow.getByRole("button", { name: "Actions" }).click();
+    await page.getByRole("menuitem", { name: "Configure connection" }).click();
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get("setup") === "connect",
+    );
+    await expect(
+      setup.surface.getByRole("spinbutton", { name: /port/i }),
+    ).toHaveValue(listenerPort);
     await expect(page.getByText("Analyzer is ready to activate")).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
@@ -86,7 +101,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await page.getByRole("button", { name: "Finish and activate" }).click();
     await expect(setup.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
 
-    const analyzerRow = page.getByRole("row", {
+    analyzerRow = page.getByRole("row", {
       name: new RegExp(escapeRegExp(analyzerName), "i"),
     });
     await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
