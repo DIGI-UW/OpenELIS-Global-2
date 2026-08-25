@@ -69,7 +69,7 @@ describe("MicrobiologyCaseView", () => {
     fireEvent.change(screen.getByLabelText("Activity note"), {
       target: { value: "setup complete" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Record activity" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start inoculation" }));
 
     await waitFor(() =>
       expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
@@ -133,6 +133,6 @@ describe("MicrobiologyCaseView", () => {
         screen.getByTestId("microbiology-isolates-card"),
       ).toHaveTextContent("ISO-1: Escherichia coli"),
     );
-    expect(screen.getByText(/ISOLATE_CREATED/)).toBeInTheDocument();
+    expect(screen.getByText("Isolate Created")).toBeInTheDocument();
   });
 });

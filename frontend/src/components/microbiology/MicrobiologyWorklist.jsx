@@ -260,14 +260,14 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
       worklist.rows.map((row) => ({
         id: row.caseId,
         sampleItem: row.sampleItemId,
-        workflow: formatMicrobiologyEnum(row.workflowType),
-        stage: formatMicrobiologyEnum(row.stage),
-        due: formatMicrobiologyEnum(row.dueAction),
-        urgency: formatMicrobiologyEnum(row.urgency),
+        workflow: formatMicrobiologyEnum(row.workflowType, intl),
+        stage: formatMicrobiologyEnum(row.stage, intl),
+        due: formatMicrobiologyEnum(row.dueAction, intl),
+        urgency: formatMicrobiologyEnum(row.urgency, intl),
         context: row.siblingWorkflows?.join(", ") || "",
         action: row.caseId,
       })),
-    [worklist.rows],
+    [intl, worklist.rows],
   );
   const summaryTiles = [
     {
@@ -443,7 +443,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 <SelectItem
                   key={workflow}
                   value={workflow}
-                  text={formatMicrobiologyEnum(workflow)}
+                  text={formatMicrobiologyEnum(workflow, intl)}
                 />
               ))}
             </Select>
@@ -467,7 +467,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 <SelectItem
                   key={stage}
                   value={stage}
-                  text={formatMicrobiologyEnum(stage)}
+                  text={formatMicrobiologyEnum(stage, intl)}
                 />
               ))}
             </Select>
@@ -491,7 +491,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 <SelectItem
                   key={dueAction}
                   value={dueAction}
-                  text={formatMicrobiologyEnum(dueAction)}
+                  text={formatMicrobiologyEnum(dueAction, intl)}
                 />
               ))}
             </Select>
@@ -515,7 +515,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 <SelectItem
                   key={urgency}
                   value={urgency}
-                  text={formatMicrobiologyEnum(urgency)}
+                  text={formatMicrobiologyEnum(urgency, intl)}
                 />
               ))}
             </Select>
@@ -708,7 +708,12 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                                 })}
                                                 {": "}
                                                 {row.siblingWorkflows
-                                                  .map(formatMicrobiologyEnum)
+                                                  .map((workflow) =>
+                                                    formatMicrobiologyEnum(
+                                                      workflow,
+                                                      intl,
+                                                    ),
+                                                  )
                                                   .join(", ")}
                                               </span>
                                             )}

@@ -194,7 +194,7 @@ const CaseTimelinePanel = ({
                   }
                 >
                   <strong>
-                    {formatMicrobiologyEnum(activity.activityType)}
+                    {formatMicrobiologyEnum(activity.activityType, intl)}
                   </strong>
                   {activity.note ? `: ${activity.note}` : ""}
                   {activity.occurredAt && (

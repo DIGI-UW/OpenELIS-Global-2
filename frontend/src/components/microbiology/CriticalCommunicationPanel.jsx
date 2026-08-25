@@ -192,7 +192,7 @@ const CriticalCommunicationPanel = ({
               <SelectItem
                 key={type}
                 value={type}
-                text={formatMicrobiologyEnum(type)}
+                text={formatMicrobiologyEnum(type, intl)}
               />
             ))}
           </Select>
@@ -252,7 +252,7 @@ const CriticalCommunicationPanel = ({
               <SelectItem
                 key={method}
                 value={method}
-                text={formatMicrobiologyEnum(method)}
+                text={formatMicrobiologyEnum(method, intl)}
               />
             ))}
           </Select>
@@ -293,8 +293,11 @@ const CriticalCommunicationPanel = ({
                     {communication.message}
                   </p>
                   <p className="microbiology-list__meta">
-                    {formatMicrobiologyEnum(communication.targetType)} ·{" "}
-                    {formatMicrobiologyEnum(communication.communicationMethod)}
+                    {formatMicrobiologyEnum(communication.targetType, intl)} ·{" "}
+                    {formatMicrobiologyEnum(
+                      communication.communicationMethod,
+                      intl,
+                    )}
                   </p>
                   <Tag
                     type={statusTagType(communication.acknowledgementStatus)}
@@ -302,6 +305,7 @@ const CriticalCommunicationPanel = ({
                   >
                     {formatMicrobiologyEnum(
                       communication.acknowledgementStatus,
+                      intl,
                     )}
                   </Tag>
                   {communication.resolutionNote && (
