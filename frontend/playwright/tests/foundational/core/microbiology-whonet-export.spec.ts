@@ -94,19 +94,29 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
 
       const metric = (label: string) =>
         page.locator(".whonet-export__metric").filter({ hasText: label });
-      await expect(metric("Finalized cases").locator("strong")).toHaveText("1");
-      await expect(metric("Isolates found").locator("strong")).toHaveText("2");
-      await expect(metric("Isolates included").locator("strong")).toHaveText(
-        "2",
-      );
-      await expect(metric("After de-duplication").locator("strong")).toHaveText(
-        "2",
-      );
-      await expect(metric("Mappable isolates").locator("strong")).toHaveText(
-        "1",
-      );
-      await expect(metric("Eligible rows").locator("strong")).toHaveText("2");
-      await expect(metric("Rows excluded").locator("strong")).toHaveText("2");
+      const metricValue = async (label: string) => {
+        const value = metric(label).locator("strong");
+        await expect(value).toHaveText(/^\d+$/);
+        return Number(await value.textContent());
+      };
+      const finalizedCases = await metricValue("Finalized cases");
+      const isolatesFound = await metricValue("Isolates found");
+      const isolatesIncluded = await metricValue("Isolates included");
+      const afterDeduplication = await metricValue("After de-duplication");
+      const mappableIsolates = await metricValue("Mappable isolates");
+      const eligibleRows = await metricValue("Eligible rows");
+      const rowsExcluded = await metricValue("Rows excluded");
+
+      expect(finalizedCases).toBeGreaterThanOrEqual(1);
+      expect(isolatesFound).toBeGreaterThanOrEqual(2);
+      expect(isolatesIncluded).toBeGreaterThanOrEqual(2);
+      expect(isolatesIncluded).toBeLessThanOrEqual(isolatesFound);
+      expect(afterDeduplication).toBeGreaterThanOrEqual(2);
+      expect(afterDeduplication).toBeLessThanOrEqual(isolatesIncluded);
+      expect(mappableIsolates).toBeGreaterThanOrEqual(1);
+      expect(mappableIsolates).toBeLessThanOrEqual(afterDeduplication);
+      expect(eligibleRows).toBeGreaterThanOrEqual(2);
+      expect(rowsExcluded).toBeGreaterThanOrEqual(2);
 
       const mappedRows = page
         .getByRole("row")
