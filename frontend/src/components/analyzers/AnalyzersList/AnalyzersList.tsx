@@ -24,6 +24,7 @@ import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   getAnalyzers,
+  getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
   type AnalyzerFilters,
   type AnalyzersResponse,
@@ -96,6 +97,7 @@ const AnalyzersList = () => {
   const [analyzers, setAnalyzers] = useState<Analyzer[]>([]);
   const [filteredAnalyzers, setFilteredAnalyzers] = useState<Analyzer[]>([]);
   const [profileNames, setProfileNames] = useState<Record<string, string>>({});
+  const [labUnitNames, setLabUnitNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<AnalyzerFilters>({
@@ -243,6 +245,16 @@ const AnalyzersList = () => {
       );
       setProfileNames(names);
     }, controller.signal);
+    getAnalyzerLabUnits((units) => {
+      setLabUnitNames(
+        Object.fromEntries(
+          (Array.isArray(units) ? units : []).map((unit) => [
+            String(unit.id),
+            unit.name,
+          ]),
+        ),
+      );
+    }, controller.signal);
     return () => controller.abort();
   }, []);
 
@@ -386,10 +398,9 @@ const AnalyzersList = () => {
       connection: connection,
       testUnits:
         analyzer.testUnitIds && analyzer.testUnitIds.length > 0
-          ? intl.formatMessage(
-              { id: "analyzer.testUnits.count" },
-              { count: analyzer.testUnitIds.length },
-            )
+          ? analyzer.testUnitIds
+              .map((id) => labUnitNames[String(id)] || String(id))
+              .join(", ")
           : "-",
       status: unifiedStatus,
       lastModified: analyzer.lastModified

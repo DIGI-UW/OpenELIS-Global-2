@@ -386,6 +386,12 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
     );
   };
 
+  const editStep = (step) => {
+    const params = new URLSearchParams(location.search);
+    params.set("setup", step);
+    history.push({ pathname: location.pathname, search: params.toString() });
+  };
+
   return (
     <section
       className="analyzer-setup"
@@ -447,6 +453,25 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                 <h3>
                   {intl.formatMessage({ id: `analyzer.setup.${step}.title` })}
                 </h3>
+                {state === "complete" && (
+                  <Button
+                    type="button"
+                    kind="ghost"
+                    size="sm"
+                    className="analyzer-setup__step-edit"
+                    aria-label={intl.formatMessage(
+                      { id: "analyzer.setup.step.edit" },
+                      {
+                        step: intl.formatMessage({
+                          id: `analyzer.setup.${step}.title`,
+                        }),
+                      },
+                    )}
+                    onClick={() => editStep(step)}
+                  >
+                    {intl.formatMessage({ id: "button.edit" })}
+                  </Button>
+                )}
               </div>
               {state === "current" && step === "instrument" && (
                 <div className="analyzer-setup__instrument">
@@ -762,6 +787,11 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     </Button>
                   </div>
                 </div>
+              )}
+              {state === "complete" && step === "verify" && (
+                <p className="analyzer-setup__verify-summary">
+                  {intl.formatMessage({ id: "analyzer.setup.verify.summary" })}
+                </p>
               )}
               {state === "current" &&
                 step === "connect" &&

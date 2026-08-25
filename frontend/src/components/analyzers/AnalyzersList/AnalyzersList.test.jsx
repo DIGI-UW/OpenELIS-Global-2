@@ -504,21 +504,24 @@ describe("AnalyzersList", () => {
     expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
   });
 
-  test("localizes the assigned test-unit count", async () => {
+  test("renders assigned lab-unit labels from the shared catalog", async () => {
     getAnalyzers.mockImplementation((_filters, callback) => {
       act(() => {
         callback({ analyzers: [createMockAnalyzer()] });
       });
     });
+    getAnalyzerLabUnits.mockImplementation((callback) =>
+      callback([
+        { id: "1", name: "Molecular Biology" },
+        { id: "2", name: "Hematology" },
+      ]),
+    );
 
-    renderWithIntl(<AnalyzersList />, {
-      ...messages,
-      "analyzer.testUnits.count": "Localized {count} assigned",
-    });
+    renderWithIntl(<AnalyzersList />);
 
     expect(
       await screen.findByTestId("analyzer-test-units-1"),
-    ).toHaveTextContent("Localized 2 assigned");
+    ).toHaveTextContent("Molecular Biology, Hematology");
   });
 
   test("shows a visible loading state until the analyzer list resolves", async () => {

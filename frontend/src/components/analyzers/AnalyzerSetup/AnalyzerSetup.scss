@@ -73,6 +73,13 @@
   }
 }
 
+.analyzer-setup__verify-summary {
+  @include type.type-style("body-compact-01");
+  color: var(--cds-text-secondary);
+  margin: 0;
+  padding: 0 0 spacing.$spacing-05 calc(1.5rem + #{spacing.$spacing-04});
+}
+
 .analyzer-setup__verify {
   display: grid;
   gap: spacing.$spacing-05;
@@ -247,6 +254,10 @@
   }
 }
 
+.analyzer-setup__step-edit {
+  margin-left: auto;
+}
+
 .analyzer-setup__step-number {
   @include type.type-style("label-01");
   align-items: center;
@@ -289,6 +300,10 @@
   }
 
   .analyzer-setup__verify {
+    padding-left: 0;
+  }
+
+  .analyzer-setup__verify-summary {
     padding-left: 0;
   }
 

@@ -395,6 +395,45 @@ describe("AnalyzerSetup Instrument step", () => {
     ).toHaveAttribute("aria-current", "step");
   });
 
+  it("edits completed setup sections through bookmarkable URLs", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(connectedCandidate()),
+    );
+    const history = renderSetupWithHistory(
+      `/analyzers?search=gene&setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit Verify" }),
+    );
+
+    let params = new URLSearchParams(history.location.search);
+    expect(params.get("search")).toBe("gene");
+    expect(params.get("setup")).toBe("verify");
+    expect(params.get("analyzerId")).toBe("42");
+    expect(params.get("profile")).toBe(activeType.profileId);
+    expect(params.get("revision")).toBe("3");
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Verify" }).closest("li"),
+    ).toHaveAttribute("aria-current", "step");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit Instrument" }),
+    );
+
+    params = new URLSearchParams(history.location.search);
+    expect(params.get("search")).toBe("gene");
+    expect(params.get("setup")).toBe("instrument");
+    expect(params.get("analyzerId")).toBe("42");
+    expect(params.get("profile")).toBe(activeType.profileId);
+    expect(params.get("revision")).toBe("3");
+    expect(
+      screen
+        .getByRole("heading", { level: 3, name: "Instrument" })
+        .closest("li"),
+    ).toHaveAttribute("aria-current", "step");
+  });
+
   it("loads verification only for the persisted candidate profile revision", async () => {
     let loadCandidate;
     getAnalyzer.mockImplementation((_id, callback) => {
