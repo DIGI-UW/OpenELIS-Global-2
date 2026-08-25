@@ -85,7 +85,7 @@ test.describe("microbiology worklist and critical communication", () => {
       pageSize: "10",
     });
     const worklistUrl = `/Microbiology/worklist?${query}`;
-    const caseUrl = `/Microbiology/cases/${seeded.caseId}?${query}`;
+    const caseUrl = `/Microbiology/cases/${seeded.caseId}?${query}&section=setup`;
 
     const initialResponse = waitForWorklistResponse(page, {
       workflow: "BACTERIOLOGY",
@@ -225,13 +225,13 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(row).toContainText("High");
     await expect(row).toContainText("Critical communication");
-    await expect(row).toContainText("Mycobacteriology/TB");
+    await expect(row).toContainText("Linked · 2 workflows");
     await expect(
       page.getByTestId("microbiology-worklist-summary-critical"),
     ).toContainText("1");
 
     await row.getByRole("button", { name: "Open case" }).click();
-    await expect(page).toHaveURL(scopedCaseUrl);
+    await expect(page).toHaveURL(`${scopedCaseUrl}&section=setup`);
     await expect(
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });

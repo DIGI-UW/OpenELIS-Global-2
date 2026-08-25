@@ -81,7 +81,11 @@ async function reloadThroughBarcode(page: Page, labNumber: string) {
     { timeout: LONG_TIMEOUT },
   );
   await page.getByTestId("order-step-enter").click();
-  await expect(page).toHaveURL(/\/order\/clinical\/enter$/i);
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === "/order/clinical/enter" &&
+      url.searchParams.get("order") === labNumber,
+  );
 }
 
 test.describe("microbiology order entry on the supported workflow", () => {
