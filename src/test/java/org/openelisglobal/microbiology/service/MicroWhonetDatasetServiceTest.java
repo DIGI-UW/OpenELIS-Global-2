@@ -242,7 +242,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(unidentified));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of());
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
 
