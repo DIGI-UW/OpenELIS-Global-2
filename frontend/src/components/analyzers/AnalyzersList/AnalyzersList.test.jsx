@@ -237,6 +237,24 @@ describe("AnalyzersList", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("refreshes the analyzer dashboard when inline setup closes", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [createMockAnalyzer()] }));
+    });
+
+    renderWithIntl(<AnalyzersList />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add Analyzer" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close analyzer setup" }),
+    );
+
+    await waitFor(() => expect(getAnalyzers).toHaveBeenCalledTimes(2));
+    expect(window.location.pathname).toBe("/analyzers");
+    expect(new URLSearchParams(window.location.search).get("setup")).toBeNull();
+  });
+
   test("deactivates an active analyzer without exposing hard delete", async () => {
     window.history.replaceState({}, "", "/analyzers?search=gene&status=ACTIVE");
     const analyzer = createMockAnalyzer({

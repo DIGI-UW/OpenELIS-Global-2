@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Seed the M1 priority analyzer instances through the OpenELIS REST API.
 #
-# Profile content and revisions come from the Bridge catalog. This script owns
-# only harness instance values: names, network address/port, and FILE inboxes.
+# Profile content, revisions, and defaults come from the Bridge catalog. This
+# script owns only harness instance names and explicit connection values.
 
 set -euo pipefail
 
@@ -99,31 +99,21 @@ reconcile_profile_analyzer() {
   local name="$1"
   local profile_id="$2"
   local profile_revision="$3"
-  local ip_address=""
-  local port=""
-  local import_directory=""
-  [ "$#" -ge 4 ] && ip_address="$4"
-  [ "$#" -ge 5 ] && port="$5"
-  [ "$#" -ge 6 ] && import_directory="$6"
+  local connection_values="${4:-{}}"
 
   local payload
   payload="$(
-    python3 - "$name" "$profile_id" "$profile_revision" "$ip_address" "$port" "$import_directory" <<'PY'
+    python3 - "$name" "$profile_id" "$profile_revision" "$connection_values" <<'PY'
 import json
 import sys
 
-name, profile_id, revision, ip_address, port, import_directory = sys.argv[1:]
+name, profile_id, revision, connection_values = sys.argv[1:]
 payload = {
     "name": name,
     "profileId": profile_id,
     "profileRevision": int(revision),
+    "connectionValues": json.loads(connection_values),
 }
-if ip_address:
-    payload["ipAddress"] = ip_address
-if port:
-    payload["port"] = int(port)
-if import_directory:
-    payload["importDirectory"] = import_directory
 print(json.dumps(payload, separators=(",", ":")))
 PY
   )"
@@ -253,10 +243,10 @@ fi
 echo "  genexpert -> $GENEXPERT_IP:9600"
 
 echo "Creating profile-pinned analyzer instances..."
-reconcile_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" "$GENEXPERT_IP" "9600"
-reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" "" "" "/data/analyzer-imports/quantstudio-5/incoming"
-reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" "" "" "/data/analyzer-imports/quantstudio-7/incoming"
-reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" "" "" "/data/analyzer-imports/fluorocycler-xt/incoming"
+reconcile_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" '{"port":9600}'
+reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-5/incoming"}'
+reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-7/incoming"}'
+reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
 
 verify_profile_pins
 echo "Done. Four instances use the three validated M1 Bridge profile families."

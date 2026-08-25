@@ -192,14 +192,6 @@ const AnalyzersList = () => {
     history.replace({ pathname: "/analyzers", search: params.toString() });
   };
 
-  const closeSetup = () => {
-    const params = new URLSearchParams(location.search);
-    ["setup", "analyzerId", "profile", "revision"].forEach((key) =>
-      params.delete(key),
-    );
-    history.push({ pathname: "/analyzers", search: params.toString() });
-  };
-
   const loadAnalyzers = useCallback(
     (
       searchFilters: AnalyzerFilters = {},
@@ -233,6 +225,20 @@ const AnalyzersList = () => {
     },
     [],
   );
+
+  const closeSetup = () => {
+    const params = new URLSearchParams(location.search);
+    ["setup", "analyzerId", "profile", "revision"].forEach((key) =>
+      params.delete(key),
+    );
+    loadAnalyzers({
+      status: listStatus,
+      testUnit: listTestUnit,
+      analyzerType: listAnalyzerType,
+      ...(listSearch ? { search: listSearch } : {}),
+    });
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
 
   useEffect(() => {
     const controller = new AbortController();

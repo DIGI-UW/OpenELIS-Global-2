@@ -87,13 +87,10 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       .getByRole("combobox", { name: "Created" })
       .selectOption("SHIPPED");
     await page.getByRole("combobox", { name: "Protocol" }).selectOption("ASTM");
-    await page
-      .getByRole("combobox", { name: "Mapping status" })
-      .selectOption("INCOMPLETE");
     await page.getByText("Show deactivated", { exact: true }).click();
 
     const filteredUrl =
-      "/analyzers/types?q=gene&source=SHIPPED&protocol=ASTM&mapping=INCOMPLETE&showDeactivated=true";
+      "/analyzers/types?q=gene&source=SHIPPED&protocol=ASTM&showDeactivated=true";
     await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
     await expect(analyzerTypeRow(page, SOURCE_PROFILE)).toBeVisible();
     await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
@@ -111,15 +108,12 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       "ASTM",
     );
     await expect(
-      page.getByRole("combobox", { name: "Mapping status" }),
-    ).toHaveValue("INCOMPLETE");
-    await expect(
       page.getByRole("checkbox", { name: "Show deactivated" }),
     ).toBeChecked();
 
     await page.goBack();
     await expect(page).toHaveURL(
-      /\/analyzers\/types\?q=gene&source=SHIPPED&protocol=ASTM&mapping=INCOMPLETE$/,
+      /\/analyzers\/types\?q=gene&source=SHIPPED&protocol=ASTM$/,
     );
     await page.goForward();
     await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));

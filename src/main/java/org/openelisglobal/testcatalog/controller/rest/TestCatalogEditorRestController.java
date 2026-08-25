@@ -344,7 +344,7 @@ public class TestCatalogEditorRestController {
         if (testSectionService == null) {
             return options;
         }
-        for (TestSection section : testSectionService.getAllTestSections()) {
+        for (TestSection section : testSectionService.getAllActiveTestSections()) {
             LabUnitOption option = new LabUnitOption();
             option.id = section.getId();
             option.name = section.getLocalizedName();

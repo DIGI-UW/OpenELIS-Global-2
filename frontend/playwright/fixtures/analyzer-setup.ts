@@ -52,9 +52,24 @@ export class AnalyzerSetupPage {
 
   async selectFirstLabUnit() {
     await this.labUnitPicker.click();
-    const option = this.page.getByRole("option").first();
+    const option = this.page.locator('[role="option"]:visible').first();
     await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
     await option.click();
+    await this.page.keyboard.press("Escape");
+    await expect(option).not.toBeVisible({ timeout: UI_TIMEOUT });
+  }
+
+  async selectLabUnit(name: string) {
+    await this.labUnitPicker.click();
+    await this.labUnitPicker.fill(name);
+    const option = this.page
+      .locator('[role="option"]:visible')
+      .filter({ hasText: name })
+      .first();
+    await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
+    await option.click();
+    await this.page.keyboard.press("Escape");
+    await expect(option).not.toBeVisible({ timeout: UI_TIMEOUT });
   }
 
   async continueToVerify() {
@@ -88,7 +103,7 @@ export class AnalyzerSetupPage {
   }
 
   async fillPort(port: string) {
-    const input = this.page.getByRole("spinbutton", { name: "Analyzer port" });
+    const input = this.surface.getByRole("spinbutton", { name: /port/i });
     if (await input.isVisible()) {
       await input.fill(port);
     }
