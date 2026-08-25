@@ -807,10 +807,16 @@ describe("Header Component - M2b Enhancement Tests", () => {
       renderHeader({ menuData: configuredAdminMenu });
 
       const adminMenu = await screen.findByRole("button", { name: "Admin" });
+      expect(adminMenu).toHaveAttribute("id", "menu_administration");
       fireEvent.click(adminMenu);
-      expect(
-        screen.getByRole("link", { name: "Admin dashboard" }),
-      ).toHaveAttribute("href", "/MasterListsPage");
+      const adminDashboard = screen.getByRole("link", {
+        name: "Admin dashboard",
+      });
+      expect(adminDashboard).toHaveAttribute(
+        "id",
+        "menu_administration_dashboard_nav",
+      );
+      expect(adminDashboard).toHaveAttribute("href", "/MasterListsPage");
 
       const stuckEvents = screen.getByRole("link", {
         name: "Stuck analyzer events",
