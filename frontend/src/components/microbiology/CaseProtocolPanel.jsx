@@ -126,7 +126,7 @@ const CaseProtocolPanel = ({
         onClose();
       })
       .catch((saveError) => {
-        setError(formatMicrobiologyEnum(saveError?.message));
+        setError(formatMicrobiologyEnum(saveError?.message, intl));
       })
       .finally(() => setSaving(false));
   };
