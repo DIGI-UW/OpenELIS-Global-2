@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec/782-ogc-782-microbiology-mvp-spec`
 **Created**: 2026-06-27
-**Status**: Draft
+**Status**: Implementation validation
 **Input**: User description: "Create a microbiology-specific feature spec that distills the important features from Jira, Confluence, openelis-work specs/mockups, and repo research; reference the proper files; make the product behavior crystal clear for planning and implementation without letting product specs mandate technical implementation details."
 
 ## Source References
@@ -57,6 +57,22 @@ binding product requirements.
   as Casey-owned product requirements.
 - Mockups are visual workflow references, not implementation contracts.
 
+## MVP Scope Ruling
+
+Jira OGC-782 is the doc-only M-00 umbrella for the full microbiology module.
+This feature keeps `782` as its traceability number, but PR #3789 is the single
+implementation milestone for an agreed MVP slice across the related M-03,
+M-04, M-05, M-07, and M-11 outcomes. It does not claim that the OGC-782 Jira
+epic itself is an implementation ticket or that the full 17-epic bundle is
+complete.
+
+The merge-blocking MVP is routine bacteriology order routing and order details,
+case work, isolate identification, manual AST, worklist navigation, critical
+communication, preliminary/final report propagation, and WHONET readiness.
+Amendment/re-identification history, reagent/card lot linkage, expert rules,
+full WHONET export and mapping UI, operational TB processing, antibiograms, and
+GLASS reporting are explicit later work.
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Route a Microbiology Order (Priority: P1)
@@ -81,10 +97,10 @@ appears in the worklist with the correct workflow context.
 2. **Given** a test that is not configured for microbiology culture work,
    **When** the user places an order for that test, **Then** the microbiology
    order fields do not appear and no microbiology case is created.
-3. **Given** one physical specimen with both routine bacteriology and TB work
-   ordered, **When** the order is saved, **Then** the system represents those as
-   separate microbiology workflows for the same specimen without requiring
-   duplicate accessioning.
+3. **Given** one physical specimen has routine bacteriology work and a sibling
+   workflow reserved for TB work, **When** the worklist is reviewed, **Then**
+   the system distinguishes both workflow records without requiring duplicate
+   accessioning. Completing the TB laboratory workflow is not part of this MVP.
 
 ---
 
@@ -168,9 +184,10 @@ case action.
 2. **Given** a case receives a positive signal or AST results become ready for
    review, **When** the worklist refreshes, **Then** that case is visibly
    prioritized for action.
-3. **Given** a specimen has sibling bacteriology and TB workflows, **When** the
-   user views the worklist or either case, **Then** the relationship is visible
-   without merging their separate workflows.
+3. **Given** a specimen has sibling bacteriology and TB workflow records,
+   **When** the user views the worklist, **Then** both are distinguishable
+   without merging their lifecycles or implying that TB bench processing is
+   available.
 
 ---
 
@@ -252,8 +269,9 @@ or missing mapping for export.
   for culture setup, including culture setup default, patient origin, number of
   sets, clinical history, antibiotic exposure, and critical notification
   preference.
-- **FR-003**: The system MUST support separate bacteriology and TB workflows for
-  the same physical specimen without duplicate accessioning.
+- **FR-003**: The system MUST distinguish sibling bacteriology and TB workflow
+  records for the same physical specimen without duplicate accessioning. This
+  MVP does not provide the operational TB laboratory workflow.
 - **FR-004**: Users MUST be able to open a microbiology case and understand the
   current workflow, specimen context, stage, next action, and prior activity.
 - **FR-005**: Users MUST be able to record culture setup, incubation progress,
@@ -267,9 +285,6 @@ or missing mapping for export.
 - **FR-008**: Users MUST be able to enter manual AST readings and see
   susceptibility interpretation, including clear guidance when no standard
   breakpoint is available.
-- **FR-009**: Users MUST be able to review analyzer-ingested AST results when
-  available in later slices, and analyzer-ingested results MUST require human
-  review before final reporting.
 - **FR-010**: Users MUST be able to override AST interpretations with a reason
   while preserving the original reading for audit and review.
 - **FR-011**: Users MUST be able to repeat or retest AST without overwriting the
@@ -277,24 +292,23 @@ or missing mapping for export.
 - **FR-012**: The system MUST provide a shared microbiology worklist organized
   by case state, due action, urgency, and review need rather than per-case
   ownership.
-- **FR-013**: The worklist MUST allow users to filter, sort, and open cases or
-  AST work that needs action.
-- **FR-014**: The system MUST make sibling workflows on the same specimen
-  visible in the worklist and case view while keeping their lifecycles and
-  reports separate.
+- **FR-013**: The worklist MUST be discoverable from configured primary
+  navigation and allow users to filter, sort, and open cases or AST work that
+  needs action.
+- **FR-014**: The system MUST make sibling workflow records on the same specimen
+  distinguishable in the worklist while keeping their lifecycles and reports
+  separate.
 - **FR-015**: Users MUST be able to release preliminary reports when eligible
   and final reports only when readiness checks pass.
-- **FR-016**: The system MUST preserve report history when a case is amended or
-  reidentified after release.
 - **FR-017**: Users MUST be able to log critical communications for case,
   isolate, sample, or result context, including recipient, message, time,
   method, acknowledgment state, and follow-up.
 - **FR-018**: Critical communications MUST surface through the existing
-  operational alerts workflow rather than a parallel alerts experience.
+  operational alerts workflow rather than a parallel alerts experience, and an
+  acknowledgment from either workflow MUST remain synchronized.
 - **FR-019**: The system MUST support reference data needed for MVP
   microbiology work: organisms, antibiotics, AST panels, culture setup recipes,
-  breakpoint standards, patient origin, specimen mapping, and reagent/lot
-  linkage.
+  breakpoint standards, patient origin, and specimen mapping.
 - **FR-020**: The system MUST prepare finalized microbiology data for WHONET
   surveillance export by tracking export-relevant organism, specimen,
   antibiotic, breakpoint, and interpretation information.
@@ -305,6 +319,24 @@ or missing mapping for export.
 - **FR-022**: Product specs and Jira tickets for this feature MUST describe
   workflow behavior and acceptance outcomes, not required table names, service
   names, route names, or storage layout.
+- **FR-023**: Worklist and case destinations MUST preserve bookmarkable,
+  refresh-stable filter, sort, and active-section context, including when a
+  user opens a case and returns to the worklist.
+
+### Deferred Product Outcomes
+
+These outcomes remain valid module goals but are not acceptance criteria for
+PR #3789:
+
+- **V2-001**: Preserve versioned report history when a final case is amended or
+  reidentified. The MVP instead locks final cases against isolate and AST
+  mutation.
+- **V2-002**: Link reagent/card lots and richer multi-row AST run metadata.
+- **V2-003**: Provide full WHONET export and code-mapping administration.
+- **V2-004**: Provide operational TB, expert-rule, antibiogram, and GLASS
+  workflows.
+- **V2-005**: Review analyzer-ingested AST results with mandatory human review
+  before final reporting.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -334,7 +366,7 @@ These are product concepts. Engineering may choose the final storage and API
 shape during planning.
 
 - **Microbiology Case**: One microbiology workflow for one physical specimen,
-  from receipt through final or amended report.
+  from receipt through final report. Amendment history is later scope.
 - **Workflow Type**: The kind of microbiology work being performed, such as
   routine bacteriology or mycobacteriology/TB.
 - **Culture Setup Recipe**: The lab recipe for media, incubation, atmosphere,
@@ -367,18 +399,27 @@ shape during planning.
   review readiness, and report release using one case workflow.
 - **SC-003**: A case with incomplete required work cannot be final-released, and
   the user can identify the blocking item without consulting paper logs.
-- **SC-004**: A user can distinguish sibling bacteriology and TB workflows for
-  the same specimen in both the worklist and case context.
+- **SC-004**: A user can distinguish sibling bacteriology and TB workflow
+  records for the same specimen in worklist context without implying that the
+  TB bench workflow is implemented.
 - **SC-005**: AST override history preserves the original reading, the changed
   interpretation, actor, time, and justification.
 - **SC-006**: A user can log a critical communication without being blocked by
   incomplete provider directory data.
-- **SC-007**: Worklist users can find urgent positive/growth/AST-review work
-  within 30 seconds in a seeded test dataset of at least 200 in-flight items.
+- **SC-007**: Worklist users can identify urgent positive, growth, and
+  AST-review work through visible priority, due-action, filter, and sort
+  controls.
 - **SC-008**: All MVP user-facing microbiology strings are represented by i18n
   keys and can be rendered in English.
 - **SC-009**: Engineering planning can produce implementation tasks without
   needing Casey artifacts to decide schema, API, route, or service ownership.
+- **SC-010**: A user can reach the worklist from primary navigation, bookmark a
+  filtered view, open a case, refresh either page, and return without losing
+  the relevant worklist or case-section context.
+
+The source M-NFR target for a 200-item worklist and sub-second read p95 remains
+unverified performance-qualification work. PR #3789 must not claim that target
+until a repeatable service-created data set and measurements exist.
 
 ## Planning Notes
 

@@ -1,5 +1,6 @@
 package org.openelisglobal;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -8,6 +9,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import javax.sql.DataSource;
 import org.junit.Test;
+import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +44,9 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private PersonService personService;
 
     /**
      * Seed tables that should survive any fixture load. Mirrors the constant on
@@ -78,12 +84,45 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
                 + "from BaseWebContextSensitiveTest.PROTECTED_SEED_TABLES?", seedSizeAfter >= seedSizeBefore);
     }
 
+    @Test
+    public void loadingFixtureWithExplicitPersonIds_advancesSequenceForServiceInsert() throws Exception {
+        executeDataSetWithStateManagement("testdata/person.xml");
+
+        Person person = new Person();
+        person.setFirstName("Sequence");
+        person.setLastName("Canary");
+        person.setSysUserId(TEST_SYS_USER_ID);
+        String insertedId = personService.insert(person);
+
+        assertNotNull(personService.get(insertedId));
+        assertTrue("service insert reused a fixture-owned Person id", Integer.parseInt(insertedId) > 3);
+    }
+
+    @Test
+    public void loadingFixture_doesNotRewindUnrelatedCachedSequence() throws Exception {
+        long sequenceValueBefore = readSequenceLastValue("dictionary_seq");
+
+        executeDataSetWithStateManagement("testdata/dictionary.xml");
+
+        assertEquals("fixture loading must not rewind sequences outside the explicit synchronization allowlist",
+                sequenceValueBefore, readSequenceLastValue("dictionary_seq"));
+    }
+
     private int countReferenceTables() throws Exception {
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(*) FROM clinlims.reference_tables");
                 ResultSet rs = stmt.executeQuery()) {
             rs.next();
             return rs.getInt(1);
+        }
+    }
+
+    private long readSequenceLastValue(String sequenceName) throws Exception {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement stmt = conn.prepareStatement("SELECT last_value FROM clinlims." + sequenceName);
+                ResultSet rs = stmt.executeQuery()) {
+            rs.next();
+            return rs.getLong(1);
         }
     }
 }

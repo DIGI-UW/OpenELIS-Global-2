@@ -8,6 +8,10 @@ public class MicroCaseDetailForm {
 
     public String id;
     public String sampleItemId;
+    public String patientId;
+    public String patientName;
+    public String accessionNumber;
+    public String specimenType;
     public String workflowType;
     public String stage;
     public String priority;
@@ -17,6 +21,7 @@ public class MicroCaseDetailForm {
     public Timestamp closedAt;
     public String closedBy;
     public String finalReleaseState;
+    public MicroCaseOrderDetailForm orderDetail;
     public List<MicroCaseActivityForm> activities = new ArrayList<>();
     public List<MicroIsolateForm> isolates = new ArrayList<>();
 }

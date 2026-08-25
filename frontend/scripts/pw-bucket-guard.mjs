@@ -8,6 +8,7 @@ const testsRoot = path.resolve(projectRoot, "playwright/tests");
 const BUCKETS = [
   "CORE_DEMO_TESTS",
   "CORE_FOUNDATIONAL_TESTS",
+  "CORE_LIVE_UAT_TESTS",
   "HARNESS_DEMO_TESTS",
   "HARNESS_FOUNDATIONAL_TESTS",
   "HARNESS_MANUAL_ONLY_TESTS",

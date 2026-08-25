@@ -17,6 +17,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
+import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -62,5 +63,13 @@ public class MicroCaseStateServiceTest {
             verify(caseDAO, never()).update(any(MicroCase.class));
             verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
         }
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void advanceStageRejectsChangesAfterFinalRelease() {
+        microCase.setStage(MicroCaseStage.FINAL_RELEASED.name());
+        microCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
+
+        service.advanceStage("case-1", MicroCaseStage.AMENDED, "1", "not supported in MVP");
     }
 }

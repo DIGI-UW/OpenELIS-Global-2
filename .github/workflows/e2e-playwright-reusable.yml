@@ -272,6 +272,10 @@ jobs:
       # ── Container Startup ───────────────────────────────────────────────────
 
       - name: Start containers (no rebuild)
+        env:
+          # The fixture provisioner is intentionally disabled in normal deployments.
+          # Core E2E uses the ADMIN-gated endpoint to build its disposable scenario.
+          OE_UAT_SCENARIOS_ENABLED: "true"
         run: |
           COMPOSE_CMD=(docker compose)
           IFS=',' read -ra FILES <<< "${{ inputs.compose_files }}"

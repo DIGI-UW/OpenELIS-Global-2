@@ -35,10 +35,11 @@ validation tests, Vitest/React Testing Library, Playwright-first E2E planning
 served by the existing OpenELIS web app
 **Project Type**: Web application with traditional Spring MVC backend and React
 frontend
-**Performance Goals**: Worklist users can find urgent positive/growth/AST-review
-work within 30 seconds in a seeded data set of at least 200 in-flight cases;
-REST reads for worklist and case detail should target sub-second p95 in that
-seeded data set; individual ORM validation tests must run in under 5 seconds
+**Performance Goals**: Worklist users can identify urgent
+positive/growth/AST-review work through deterministic priority and filter
+controls; individual ORM validation tests must run in under 5 seconds. The
+source M-NFR 200-case/sub-second-p95 target requires a separate, repeatable
+performance qualification and is not claimed by this MVP
 **Constraints**: Service-layer transactions only; no controller transactions;
 Carbon-only UI; React Intl for all user-facing text; Liquibase-only schema
 changes with rollback; configuration-driven variation; no product artifact may
@@ -78,17 +79,19 @@ _GATE: Passed before Phase 0 research. Re-check after Phase 1 design._
 
 ## Clarification Result
 
-`/speckit.clarify` was applied conceptually against the active spec. No
-critical product ambiguities were detected that justified stopping for a formal
-question. Remaining choices are engineering planning decisions captured in
-`research.md` and this plan.
+The implementation audit resolved material scope ambiguity. Final cases are
+mutation-locked; amendment and re-identification history are V2. The sibling TB
+record proves shared-specimen separation only; operational TB processing is V2.
+Reagent/card lots, full WHONET export/mapping, and the unmeasured 200-case
+performance target are not MVP claims.
 
 ## Milestone Plan
 
 _GATE: This feature exceeds three days and must be delivered in independently
-verifiable behavior slices. The original M1-M7 implementation was consolidated
-historically in PR #3789. Every post-MVP remediation slice is delivered as one
-sequential stacked PR based on the preceding slice._
+verifiable behavior slices. The MVP implementation is grouped into four native
+stack layers: foundations and order routing; case workbench and manual AST;
+worklist and critical communication; and release, reporting, and integrated
+proof. Later slices stack sequentially above the completed MVP layers._
 
 ### Milestone Table
 
@@ -100,7 +103,7 @@ sequential stacked PR based on the preceding slice._
 | M4 | `m4-case-workbench` | REST and React case workbench for setup, incubation/growth/no-growth/rejection events, isolate creation/update, and case history | US2 | MockMvc controller tests, React interaction tests, Playwright case-workflow smoke plan | M3 |
 | M5 | `m5-manual-ast` | Manual AST setup, readings, S/I/R interpretation, no-breakpoint handling, repeat/retest, review, and override audit | US3 | Breakpoint interpretation unit tests, AST persistence integration tests, frontend AST interaction tests | M4 |
 | M6 | `m6-worklists-critical` | Shared microbiology worklist, due-action prioritization, sibling visibility, critical communication log, and operational alert surfacing | US4, US5 | Worklist filter/sort tests, alert integration tests, critical communication audit tests, accessibility checks | M5 |
-| M7 | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, report release handoff, amendment-safe history, and WHONET readiness extension over finalized cases | US5, US6 | Release-blocking integration tests, WHONET readiness tests, Playwright release/readiness flow | M6 |
+| M7 | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2 | US5, US6 | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow | M6 |
 
 ### Milestone Dependency Graph
 
@@ -117,12 +120,16 @@ graph LR
 ### PR Strategy
 
 - **Spec PR #3782**: `spec/782-ogc-782-microbiology-mvp-spec` -> `develop`.
-- **MVP implementation PR #3789**:
+- **Foundations and order routing PR #3789**:
   `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` ->
-  `spec/782-ogc-782-microbiology-mvp-spec`. M1-M7 are sequential validation
-  blocks within this one implementation PR.
-- **Superseded PRs**: #3783-#3788 were closed and are not part of the delivery
-  chain.
+  `spec/782-ogc-782-microbiology-mvp-spec`. Covers M1-M3.
+- **Case workbench and manual AST**:
+  `feat/782-ogc-782-microbiology-mvp-workbench-ast`. Covers M4-M5.
+- **Worklist and critical communication**:
+  `feat/782-ogc-782-microbiology-mvp-worklist-critical`. Covers M6.
+- **Release, reporting, and integrated proof**:
+  `feat/782-ogc-782-microbiology-mvp-release-reporting`. Covers M7 and MVP
+  closure.
 - **Post-MVP remediation**: one coherent behavior slice per PR, with each PR
   based on the preceding branch so GitHub represents the sequence as a stack.
 
@@ -232,6 +239,22 @@ inside product requirements.
   CSRF, and payload shape.
 - E2E setup uses API/fixture setup rather than UI setup and does not stub the
   mutation endpoint under test.
+
+### Navigation And Review Contract
+
+- Register Microbiology through the existing configuration-driven menu,
+  targeting `/Microbiology/worklist`.
+- Use `/Microbiology/cases/:caseId` for case destinations and preserve legacy
+  route redirects without creating a second workflow implementation.
+- Compose worklist state with `workflow`, `urgency`, `due`, and `sort` query
+  parameters; compose case progress with `section` while carrying worklist
+  context through case navigation and back-navigation.
+- Cover the navigation and URL behavior in the registered `core-app`
+  Playwright project, not only through an interactive browser walkthrough.
+- Use the external OpenELIS UAT Review Harness for deployed human review.
+  Grist is the authoring source of truth for the `amr` checklist, the AMR
+  overlay reads `/__review/uat-amr.json` live, and no static checklist publish
+  step is required.
 
 ### Checkpoint Validations
 
