@@ -8,6 +8,7 @@ import { Router } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  activateAnalyzer,
   getAnalyzerActivationReadiness,
   testConnection,
   updateAnalyzer,
@@ -400,5 +401,35 @@ describe("AnalyzerConnectionSetup", () => {
     await waitFor(() => expect(updateAnalyzer).toHaveBeenCalledTimes(1));
     const payload = updateAnalyzer.mock.calls[0][1];
     expect(payload.connectionValues).not.toHaveProperty("apiToken");
+  });
+
+  it("saves an active analyzer without offering or repeating activation", async () => {
+    const onClose = vi.fn();
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        ready: true,
+        activated: true,
+        blockers: [],
+      }),
+    );
+    renderConnection({ onClose });
+
+    expect(
+      await screen.findByRole("button", { name: "Save changes" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Finish and activate" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save and finish later" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(updateAnalyzer).toHaveBeenCalledTimes(1));
+    expect(activateAnalyzer).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

@@ -125,6 +125,15 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(page).toHaveURL(
       (url) => url.searchParams.get("setup") === "connect",
     );
+    await expect(
+      page.getByRole("button", { name: "Save changes" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Finish and activate" }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Save and finish later" }),
+    ).not.toBeVisible();
     await setup.testConnection();
     await page
       .getByRole("heading", { name: "Connection evidence" })

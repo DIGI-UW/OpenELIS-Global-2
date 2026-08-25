@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, InlineNotification, Loading } from "@carbon/react";
 import { useIntl } from "react-intl";
 
@@ -13,6 +13,8 @@ import AnalyzerConnectionFields, {
   invalidConnectionFields,
   serializeConnectionValues,
 } from "./AnalyzerConnectionFields";
+
+const EMPTY_FIELDS = [];
 
 const isApiError = (response) =>
   !response ||
@@ -104,15 +106,7 @@ const formatActivationBlocker = (intl, blocker) => {
 
 const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
   const intl = useIntl();
-  const fields = useMemo(
-    () => candidate?.connection?.fields || [],
-    [candidate?.connection?.fields],
-  );
-  const connectionIdentity = [
-    candidate?.bridgeConnectionId,
-    candidate?.connection?.configRevision,
-    candidate?.connection?.configFingerprint,
-  ].join(":");
+  const fields = candidate?.connection?.fields || EMPTY_FIELDS;
   const [settings, setSettings] = useState(() =>
     initializeConnectionValues(fields),
   );
@@ -128,14 +122,8 @@ const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
   const [activationError, setActivationError] = useState(false);
 
   const submitting = action !== null;
-
-  useEffect(() => {
-    setSettings(initializeConnectionValues(fields));
-    setChangedSecrets(new Set());
-    setSubmitAttempted(false);
-    setProbe(null);
-    setError(false);
-  }, [connectionIdentity, fields]);
+  const alreadyActive =
+    candidate?.status === "ACTIVE" || readiness?.activated === true;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -216,6 +204,11 @@ const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
         setError(true);
         return;
       }
+      setSettings(initializeConnectionValues(saved.connection.fields || []));
+      setChangedSecrets(new Set());
+      setSubmitAttempted(false);
+      setProbe(null);
+      setError(false);
       onCandidateChange?.(saved);
       onSaved(saved);
     });
@@ -382,27 +375,37 @@ const AnalyzerConnectionSetup = ({ candidate, onCandidateChange, onClose }) => {
       </section>
 
       <div className="analyzer-setup__completion-actions">
-        <Button type="button" disabled={submitting} onClick={finishAndActivate}>
+        <Button
+          type="button"
+          disabled={submitting}
+          onClick={alreadyActive ? saveAndFinishLater : finishAndActivate}
+        >
           {intl.formatMessage({
             id:
               action === "activate"
                 ? "analyzer.setup.connect.activation.activating"
-                : "analyzer.setup.connect.activation.finish",
+                : action === "save"
+                  ? "analyzer.setup.connect.activation.saving"
+                  : alreadyActive
+                    ? "analyzer.setup.connect.activation.saveChanges"
+                    : "analyzer.setup.connect.activation.finish",
           })}
         </Button>
-        <Button
-          type="button"
-          kind="secondary"
-          disabled={submitting}
-          onClick={saveAndFinishLater}
-        >
-          {intl.formatMessage({
-            id:
-              action === "save"
-                ? "analyzer.setup.connect.activation.saving"
-                : "analyzer.setup.connect.activation.saveLater",
-          })}
-        </Button>
+        {!alreadyActive && (
+          <Button
+            type="button"
+            kind="secondary"
+            disabled={submitting}
+            onClick={saveAndFinishLater}
+          >
+            {intl.formatMessage({
+              id:
+                action === "save"
+                  ? "analyzer.setup.connect.activation.saving"
+                  : "analyzer.setup.connect.activation.saveLater",
+            })}
+          </Button>
+        )}
         <Button
           type="button"
           kind="ghost"

@@ -442,6 +442,7 @@
   "analyzer.setup.connect.activation.loading": "Checking analyzer readiness",
   "analyzer.setup.connect.activation.readiness": "Activation readiness",
   "analyzer.setup.connect.activation.ready": "Analyzer is ready to activate",
+  "analyzer.setup.connect.activation.saveChanges": "Save changes",
   "analyzer.setup.connect.activation.saveLater": "Save and finish later",
   "analyzer.setup.connect.activation.saving": "Saving analyzer",
   "analyzer.setup.connect.analyzerAddress": "Analyzer address",
