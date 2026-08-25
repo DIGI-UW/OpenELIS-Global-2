@@ -6,7 +6,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.analyzer.dao.AnalyzerPluginConfigDAO;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +25,6 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
 
     @Autowired
     private AnalyzerPluginConfigDAO analyzerPluginConfigDAO;
-
-    @Autowired
-    private AnalyzerService analyzerService;
 
     public AnalyzerPluginConfigServiceImpl() {
         super(AnalyzerPluginConfig.class);
@@ -53,7 +49,7 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
 
     @Override
     public AnalyzerPluginConfig upsert(String analyzerId, Map<String, Object> config, String sysUserId) {
-        validateConfig(analyzerId, config);
+        validateConfig(config);
         AnalyzerPluginConfig entity = getOrCreate(analyzerId, sysUserId);
         entity.setConfig(toJson(config));
         entity.setSysUserId(sysUserId);
@@ -65,25 +61,6 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
     public Map<String, Object> getConfigAsMap(String analyzerId) {
         return analyzerPluginConfigDAO.findByAnalyzerId(analyzerId).map(AnalyzerPluginConfig::getConfig)
                 .map(this::parseConfigMap).orElseGet(LinkedHashMap::new);
-    }
-
-    @Override
-    public void applyConfigDefaults(String analyzerId, Object configDefaults, String sysUserId) {
-        if (!(configDefaults instanceof Map)) {
-            return;
-        }
-        @SuppressWarnings("unchecked")
-        Map<String, Object> defaultsMap = (Map<String, Object>) configDefaults;
-        if (defaultsMap.isEmpty()) {
-            return;
-        }
-        AnalyzerPluginConfig entity = getOrCreate(analyzerId, sysUserId);
-        Map<String, Object> existing = parseConfigMap(entity.getConfig());
-        Map<String, Object> merged = new LinkedHashMap<>(defaultsMap);
-        merged.putAll(existing);
-        entity.setConfig(toJson(merged));
-        entity.setSysUserId(sysUserId);
-        update(entity);
     }
 
     private Map<String, Object> parseConfigMap(String json) {
@@ -105,13 +82,12 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         }
     }
 
-    private void validateConfig(String analyzerId, Map<String, Object> config) {
+    private void validateConfig(Map<String, Object> config) {
         if (config == null) {
             return;
         }
         validateAggregationWindow(config);
         validateTransforms(config);
-        validateConnectionRole(analyzerId, config);
     }
 
     private void validateAggregationWindow(Map<String, Object> config) {
@@ -165,38 +141,6 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
                 }
             }
         }
-    }
-
-    private void validateConnectionRole(String analyzerId, Map<String, Object> config) {
-        String connectionRole = normalizedString(config.get("connectionRole"));
-        if (connectionRole == null) {
-            return;
-        }
-        if ("SERVER".equals(connectionRole)) {
-            Integer listenPort = toPositiveInteger(config.get("serverListenPort"), true,
-                    "serverListenPort is required and must be > 0 when connectionRole is SERVER");
-            Analyzer conflictingAnalyzer = analyzerService.findActiveByListenPort(listenPort).orElse(null);
-            if (conflictingAnalyzer != null
-                    && !String.valueOf(conflictingAnalyzer.getId()).equals(String.valueOf(analyzerId))) {
-                throw new IllegalArgumentException(
-                        "serverListenPort " + listenPort + " is already used by active analyzer '"
-                                + conflictingAnalyzer.getName() + "' (id " + conflictingAnalyzer.getId() + ")");
-            }
-            return;
-        }
-        if ("CLIENT".equals(connectionRole)) {
-            String targetIp = normalizedString(config.get("clientTargetIp"));
-            Integer targetPort = toPositiveInteger(config.get("clientTargetPort"), true,
-                    "clientTargetPort is required and must be > 0 when connectionRole is CLIENT");
-            if (targetIp == null) {
-                throw new IllegalArgumentException("clientTargetIp is required when connectionRole is CLIENT");
-            }
-            if (targetPort == null) {
-                throw new IllegalArgumentException("clientTargetPort is required when connectionRole is CLIENT");
-            }
-            return;
-        }
-        throw new IllegalArgumentException("connectionRole must be SERVER or CLIENT");
     }
 
     private String normalizedString(Object value) {

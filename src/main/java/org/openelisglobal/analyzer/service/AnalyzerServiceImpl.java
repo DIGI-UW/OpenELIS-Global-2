@@ -59,30 +59,10 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                 .orElse(matches.get(matches.size() - 1));
     }
 
-    // --- Methods migrated from AnalyzerConfigurationService ---
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> getByIpAddress(String ipAddress) {
-        return baseObjectDAO.findByIpAddress(ipAddress);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> getByIpAddressAndPort(String ipAddress, Integer port) {
-        return baseObjectDAO.findByIpAddressAndPort(ipAddress, port);
-    }
-
     @Override
     @Transactional(readOnly = true)
     public Optional<Analyzer> getByName(String name) {
         return baseObjectDAO.findByName(name);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> findActiveByListenPort(Integer port) {
-        return baseObjectDAO.findActiveByPort(port);
     }
 
     @Override

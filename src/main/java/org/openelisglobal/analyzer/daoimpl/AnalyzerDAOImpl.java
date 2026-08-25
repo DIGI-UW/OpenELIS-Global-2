@@ -21,7 +21,6 @@ import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.log.LogEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,25 +39,6 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Analyzer> findByIpAddress(String ipAddress) {
-        if (ipAddress == null || ipAddress.trim().isEmpty()) {
-            return Optional.empty();
-        }
-        try {
-            String hql = "FROM Analyzer a WHERE a.ipAddress = :ipAddress";
-            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
-            query.setParameter("ipAddress", ipAddress.trim());
-            Analyzer result = query.uniqueResult();
-            return Optional.ofNullable(result);
-        } catch (org.hibernate.NonUniqueResultException e) {
-            LogEvent.logWarn("AnalyzerDAOImpl", "findByIpAddress",
-                    "Multiple analyzers share IP " + ipAddress + " — falling through to next identification strategy");
-            return Optional.empty();
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Optional<Analyzer> findByName(String name) {
         if (name == null || name.trim().isEmpty()) {
             return Optional.empty();
@@ -71,24 +51,6 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
             return Optional.ofNullable(result);
         } catch (org.hibernate.NonUniqueResultException e) {
             throw new LIMSRuntimeException("Multiple Analyzers found for name: " + name, e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> findActiveByPort(Integer port) {
-        if (port == null || port < 1) {
-            return Optional.empty();
-        }
-        try {
-            String hql = "FROM Analyzer a WHERE a.port = :port AND a.status = :status";
-            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
-            query.setParameter("port", port);
-            query.setParameter("status", Analyzer.AnalyzerStatus.ACTIVE);
-            Analyzer result = query.uniqueResult();
-            return Optional.ofNullable(result);
-        } catch (org.hibernate.NonUniqueResultException e) {
-            throw new LIMSRuntimeException("Multiple active analyzers found for port: " + port, e);
         }
     }
 
@@ -121,24 +83,6 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
         query.setParameter("id", id);
         Analyzer result = query.uniqueResult();
         return Optional.ofNullable(result);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> findByIpAddressAndPort(String ipAddress, Integer port) {
-        if (ipAddress == null || ipAddress.trim().isEmpty() || port == null || port < 1) {
-            return Optional.empty();
-        }
-        try {
-            String hql = "FROM Analyzer a WHERE a.ipAddress = :ipAddress AND a.port = :port";
-            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
-            query.setParameter("ipAddress", ipAddress.trim());
-            query.setParameter("port", port);
-            Analyzer result = query.uniqueResult();
-            return Optional.ofNullable(result);
-        } catch (org.hibernate.NonUniqueResultException e) {
-            throw new LIMSRuntimeException("Multiple Analyzers found for IP " + ipAddress + " and port " + port, e);
-        }
     }
 
     @Override

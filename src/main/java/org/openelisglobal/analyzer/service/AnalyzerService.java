@@ -12,13 +12,7 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
 
     Analyzer getAnalyzerByName(String name);
 
-    Optional<Analyzer> getByIpAddress(String ipAddress);
-
-    Optional<Analyzer> getByIpAddressAndPort(String ipAddress, Integer port);
-
     Optional<Analyzer> getByName(String name);
-
-    Optional<Analyzer> findActiveByListenPort(Integer port);
 
     Optional<Analyzer> findByIdentifierPatternMatch(String analyzerIdentifier);
 

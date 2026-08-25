@@ -129,7 +129,7 @@ public class AnalyzerInstanceServiceTest {
     }
 
     @Test
-    public void updatesSyntheticFieldsUsingTheCurrentGenericBridgeDescriptors() {
+    public void updatesOnlyTheRequestedSyntheticFieldsWithoutReplayingBridgeState() {
         bridgeConnection.withArray("fields").addObject().put("key", "futureTextField").put("currentValue", "original");
         bridgeConnection.withArray("fields").addObject().put("key", "futureNumberField").put("currentValue", 4100);
         ObjectNode requestedValues = JSON.createObjectNode();
@@ -147,7 +147,7 @@ public class AnalyzerInstanceServiceTest {
                 updateRequest.capture());
         ObjectNode sent = updateRequest.getValue();
         assertEquals(1, sent.path("expectedConfigRevision").asInt());
-        assertEquals("original", sent.path("values").path("futureTextField").asText());
+        assertFalse(sent.path("values").has("futureTextField"));
         assertEquals(4317, sent.path("values").path("futureNumberField").asInt());
         assertEquals(updatedConnection, result.connection());
         verify(localStateService).update("42", request, "17");

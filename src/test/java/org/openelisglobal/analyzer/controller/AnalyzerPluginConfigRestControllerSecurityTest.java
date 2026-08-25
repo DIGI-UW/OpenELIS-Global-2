@@ -71,7 +71,7 @@ public class AnalyzerPluginConfigRestControllerSecurityTest extends SecuritySlic
         AnalyzerPluginConfigService analyzerPluginConfigService() {
             AnalyzerPluginConfigService service = mock(AnalyzerPluginConfigService.class);
             when(service.getOrCreate("101", "1")).thenReturn(new AnalyzerPluginConfig());
-            when(service.getConfigAsMap("101")).thenReturn(Map.of("connectionRole", "SERVER"));
+            when(service.getConfigAsMap("101")).thenReturn(Map.of("aggregationMode", "PER_MESSAGE"));
             return service;
         }
 

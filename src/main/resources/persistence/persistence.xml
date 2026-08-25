@@ -114,7 +114,6 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>
 
         <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration M2) -->
-        <class>org.openelisglobal.analyzer.valueholder.SerialPortConfiguration</class>
         <!-- Migrated from HBM to JPA annotations (004-astm-analyzer-mapping) -->
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>

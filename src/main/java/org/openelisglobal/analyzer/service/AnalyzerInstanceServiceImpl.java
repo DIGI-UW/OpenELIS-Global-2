@@ -137,18 +137,8 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
         bridgeRequest.put("displayName", state.name());
         bridgeRequest.putObject("profileRef").put("profileId", state.profileId())
                 .put("revision", state.profileRevision()).put("fingerprint", state.profileFingerprint());
-        ObjectNode values = objectMapper.createObjectNode();
-        for (JsonNode field : current.path("fields")) {
-            String key = field.path("key").asText(null);
-            if (key != null && !key.isBlank() && field.has("currentValue")) {
-                values.set(key, field.path("currentValue").deepCopy());
-            }
-        }
         ObjectNode requestedValues = request.getConnectionValues();
-        if (requestedValues != null) {
-            requestedValues.fields().forEachRemaining(entry -> values.set(entry.getKey(), entry.getValue().deepCopy()));
-        }
-        bridgeRequest.set("values", values);
+        bridgeRequest.set("values", requestedValues == null ? objectMapper.createObjectNode() : requestedValues);
         return bridgeRequest;
     }
 

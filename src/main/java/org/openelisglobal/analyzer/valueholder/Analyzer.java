@@ -28,9 +28,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Pattern;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -96,47 +93,6 @@ public class Analyzer extends BaseObject<String> {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "latest_activation_record_id")
     private AnalyzerActivationRecord latestActivationRecord;
-    // --- Configuration fields (merged from analyzer_configuration) ---
-
-    @Column(name = "ip_address", length = 15)
-    @Pattern(regexp = "^(\\d{1,3}\\.){3}\\d{1,3}$", message = "Invalid IPv4 address")
-    private String ipAddress;
-
-    @Column(name = "port")
-    @Min(1)
-    @Max(65535)
-    private Integer port;
-
-    @Column(name = "protocol_version", length = 20)
-    @Enumerated(EnumType.STRING)
-    private ProtocolVersion protocolVersion;
-
-    @Column(name = "communication_mode", length = 25)
-    @Enumerated(EnumType.STRING)
-    private CommunicationMode communicationMode;
-
-    // --- FILE transport fields (unified with TCP on analyzer table) ---
-
-    @Column(name = "import_directory", length = 500)
-    private String importDirectory;
-
-    @Column(name = "file_pattern", length = 100)
-    private String filePattern;
-
-    @Column(name = "column_mappings_json", columnDefinition = "TEXT")
-    private String columnMappingsJson;
-
-    @Column(name = "file_format", length = 30)
-    private String fileFormat;
-
-    @Column(name = "delimiter", length = 10)
-    private String delimiter;
-
-    @Column(name = "has_header")
-    private Boolean hasHeader;
-
-    @Column(name = "skip_rows")
-    private Integer skipRows;
 
     /**
      * Raw source identifier from bridge discovery (IPv4, IPv6, hostname, file path,
@@ -274,143 +230,6 @@ public class Analyzer extends BaseObject<String> {
             return null;
         }
         return siteBindingRevision.getSiteBinding().getProfileBinding();
-    }
-
-    // --- Configuration field accessors (merged from analyzer_configuration) ---
-
-    public String getIpAddress() {
-        return ipAddress;
-    }
-
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-    }
-
-    public Integer getPort() {
-        return port;
-    }
-
-    public void setPort(Integer port) {
-        this.port = port;
-    }
-
-    public ProtocolVersion getProtocolVersion() {
-        return protocolVersion;
-    }
-
-    public void setProtocolVersion(ProtocolVersion protocolVersion) {
-        this.protocolVersion = protocolVersion;
-    }
-
-    public CommunicationMode getCommunicationMode() {
-        return communicationMode;
-    }
-
-    public void setCommunicationMode(CommunicationMode communicationMode) {
-        this.communicationMode = communicationMode;
-    }
-
-    /**
-     * Returns the effective communication mode, falling back to
-     * {@link CommunicationMode#ANALYZER_INITIATED} when not explicitly set.
-     */
-    public CommunicationMode getEffectiveCommunicationMode() {
-        return communicationMode != null ? communicationMode : CommunicationMode.ANALYZER_INITIATED;
-    }
-
-    // --- FILE transport field accessors ---
-
-    public String getImportDirectory() {
-        return importDirectory;
-    }
-
-    public void setImportDirectory(String importDirectory) {
-        this.importDirectory = importDirectory;
-    }
-
-    public String getFilePattern() {
-        return filePattern;
-    }
-
-    public void setFilePattern(String filePattern) {
-        this.filePattern = filePattern;
-    }
-
-    public String getColumnMappingsJson() {
-        return columnMappingsJson;
-    }
-
-    public void setColumnMappingsJson(String columnMappingsJson) {
-        this.columnMappingsJson = columnMappingsJson;
-    }
-
-    public String getFileFormat() {
-        return fileFormat;
-    }
-
-    public void setFileFormat(String fileFormat) {
-        this.fileFormat = fileFormat;
-    }
-
-    public String getDelimiter() {
-        return delimiter;
-    }
-
-    public void setDelimiter(String delimiter) {
-        this.delimiter = delimiter;
-    }
-
-    public Boolean getHasHeader() {
-        return hasHeader;
-    }
-
-    public void setHasHeader(Boolean hasHeader) {
-        this.hasHeader = hasHeader;
-    }
-
-    public Integer getSkipRows() {
-        return skipRows;
-    }
-
-    public void setSkipRows(Integer skipRows) {
-        this.skipRows = skipRows;
-    }
-
-    /**
-     * Deserialize column mappings JSON to Map. Returns empty map if null/empty.
-     */
-    public java.util.Map<String, String> getColumnMappings() {
-        if (columnMappingsJson == null || columnMappingsJson.isBlank()) {
-            return java.util.Collections.emptyMap();
-        }
-        try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            return mapper.readValue(columnMappingsJson,
-                    new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {
-                    });
-        } catch (Exception e) {
-            org.openelisglobal.common.log.LogEvent.logWarn("Analyzer", "getColumnMappings",
-                    "Failed to parse column mappings JSON: " + e.getMessage());
-            return java.util.Collections.emptyMap();
-        }
-    }
-
-    /**
-     * Serialize column mappings Map to JSON.
-     */
-    public void setColumnMappings(java.util.Map<String, String> columnMappings) {
-        if (columnMappings == null || columnMappings.isEmpty()) {
-            this.columnMappingsJson = null;
-            return;
-        }
-        try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            this.columnMappingsJson = mapper.writeValueAsString(columnMappings);
-        } catch (Exception e) {
-            org.openelisglobal.common.log.LogEvent.logWarn("Analyzer", "setColumnMappings",
-                    "Failed to serialize column mappings: " + e.getMessage());
-            this.columnMappingsJson = null;
-        }
     }
 
     public List<String> getTestUnitIds() {

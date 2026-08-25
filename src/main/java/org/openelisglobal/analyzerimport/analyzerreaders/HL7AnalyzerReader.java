@@ -48,8 +48,6 @@ public class HL7AnalyzerReader extends AnalyzerReader {
      * analyzer database primary key.
      */
     private String bridgeAnalyzerIdentifier;
-    private String clientIpAddress;
-    private Integer clientPort;
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -141,30 +139,9 @@ public class HL7AnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * Set client IP from bridge X-Source-Id header. Used by
-     * {@link #identifyAnalyzerFromHeaders()} for deterministic analyzer lookup.
-     */
-    public void setClientIpAddress(String ip) {
-        this.clientIpAddress = ip;
-    }
-
-    /**
-     * Set client port from bridge X-Source-Port header. Used by
-     * {@link #identifyAnalyzerFromHeaders()} for deterministic analyzer lookup.
-     */
-    public void setClientPort(Integer port) {
-        this.clientPort = port;
-    }
-
-    /**
-     * Identify analyzer from bridge headers using tiered strategy:
-     * <ol>
-     * <li>Bridge X-Analyzer-Id (identifier-pattern match against MSH-3+MSH-4
-     * composite)</li>
-     * <li>IP+port exact match (from X-Source-Id + X-Source-Port)</li>
-     * <li>IP-only match (from X-Source-Id)</li>
-     * </ol>
-     * Falls back to empty if no headers set or no match found.
+     * Identify an analyzer from the Bridge-provided external identifier. The raw
+     * reader and identifier-pattern fallback are removed in M4 after normalized
+     * traffic reaches parity.
      */
     private Optional<Analyzer> identifyAnalyzerFromHeaders() {
         try {
@@ -186,28 +163,7 @@ public class HL7AnalyzerReader extends AnalyzerReader {
                     return match;
                 }
                 LogEvent.logWarn(getClass().getSimpleName(), "identifyAnalyzerFromHeaders",
-                        "No analyzer matched X-Analyzer-Id '" + bridgeAnalyzerIdentifier
-                                + "' using identifier patterns — falling back to IP-based lookup");
-            }
-
-            // Strategy 1: Exact IP+port lookup
-            if (clientIpAddress != null && !clientIpAddress.trim().isEmpty() && clientPort != null) {
-                Optional<Analyzer> match = analyzerService.getByIpAddressAndPort(clientIpAddress.trim(), clientPort);
-                if (match.isPresent()) {
-                    LogEvent.logDebug(getClass().getSimpleName(), "identifyAnalyzerFromHeaders",
-                            "Identified analyzer from IP+port: " + clientIpAddress + ":" + clientPort);
-                    return match;
-                }
-            }
-
-            // Strategy 1: IP-only lookup
-            if (clientIpAddress != null && !clientIpAddress.trim().isEmpty()) {
-                Optional<Analyzer> match = analyzerService.getByIpAddress(clientIpAddress.trim());
-                if (match.isPresent()) {
-                    LogEvent.logDebug(getClass().getSimpleName(), "identifyAnalyzerFromHeaders",
-                            "Identified analyzer from IP: " + clientIpAddress);
-                    return match;
-                }
+                        "No analyzer matched X-Analyzer-Id '" + bridgeAnalyzerIdentifier + "'");
             }
 
             return Optional.empty();
