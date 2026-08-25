@@ -3,11 +3,11 @@ package org.openelisglobal.microbiology;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
+import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
@@ -17,12 +17,13 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
-    private javax.sql.DataSource dataSource;
+    private MicrobiologyTestFixtures fixtures;
 
     @Autowired
     private MicroCaseService caseService;
@@ -33,33 +34,27 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroIsolateService isolateService;
 
-    private MicrobiologyTestFixtures fixtures;
     private String sampleItemId;
     private String methodId;
+    private ReferenceData referenceData;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        fixtures = new MicrobiologyTestFixtures(new JdbcTemplate(dataSource));
         methodId = fixtures.firstMethodId();
-        sampleItemId = fixtures.insertSampleWithSampleItem("OGC782-M2-" + System.nanoTime());
-        fixtures.insertReferenceData(methodId);
-    }
-
-    @After
-    public void tearDown() {
-        cleanup();
+        sampleItemId = fixtures.createSampleWithSampleItem("OGC782M2").getId();
+        referenceData = fixtures.createReferenceData(methodId);
     }
 
     @Test
     public void caseIdentityIsUniquePerSampleItemAndWorkflowWithSiblingSupport() {
         MicroCase first = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         MicroCase duplicate = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         MicroCase sibling = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.MYCOBACTERIOLOGY_TB, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
 
         assertEquals(first.getId(), duplicate.getId());
         assertEquals(sampleItemId, sibling.getSampleItemId());
@@ -69,12 +64,12 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void compiledCaseDetailIncludesTimelineAndIsolatesWithoutControllerTraversal() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
-        stateService.advanceStage(microCase.getId(), MicroCaseStage.SETUP_RECORDED,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID, "setup complete");
-        isolateService.createIsolate(microCase.getId(), "ISO-1", MicrobiologyTestFixtures.ORGANISM_ID,
-                "Escherichia coli", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
+        stateService.advanceStage(microCase.getId(), MicroCaseStage.SETUP_RECORDED, fixtures.defaultUserId(),
+                "setup complete");
+        isolateService.createIsolate(microCase.getId(), "ISO-1", referenceData.organism().getId(),
+                referenceData.organism().getDisplayName(), MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                fixtures.defaultUserId());
 
         MicroCaseDetailForm detail = caseService.getCaseDetail(microCase.getId());
 
@@ -84,11 +79,4 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
         assertTrue(detail.activities.size() >= 3);
     }
 
-    private void cleanup() {
-        if (fixtures != null && sampleItemId != null) {
-            fixtures.deleteCaseDataForSampleItem(sampleItemId);
-            fixtures.deleteSampleItemAndSample(sampleItemId);
-            fixtures.deleteReferenceData();
-        }
-    }
 }
