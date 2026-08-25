@@ -42,9 +42,20 @@ const InstrumentDetailPage = () => {
     instrumentId: null,
     instrument: null,
   });
-  const [activeSubTab, setActiveSubTab] = useState(0);
   const loading = instrumentResponse.instrumentId !== instrumentId;
   const instrument = loading ? null : instrumentResponse.instrument;
+  const activeSubTab =
+    new URLSearchParams(location.search).get("view") === "chart" ? 1 : 0;
+
+  const selectSubTab = ({ selectedIndex }) => {
+    const params = new URLSearchParams(location.search);
+    params.set("view", selectedIndex === 1 ? "chart" : "activity");
+    history.replace({
+      pathname: location.pathname,
+      search: params.toString(),
+      hash: location.hash,
+    });
+  };
 
   const requestedReturnPath = new URLSearchParams(location.search).get(
     "returnTo",
@@ -197,10 +208,7 @@ const InstrumentDetailPage = () => {
         )}
 
         {/* Tabs */}
-        <Tabs
-          selectedIndex={activeSubTab}
-          onChange={({ selectedIndex }) => setActiveSubTab(selectedIndex)}
-        >
+        <Tabs selectedIndex={activeSubTab} onChange={selectSubTab}>
           <TabList aria-label="Instrument detail tabs">
             <Tab data-testid="tab-activity-timeline">
               {intl.formatMessage({

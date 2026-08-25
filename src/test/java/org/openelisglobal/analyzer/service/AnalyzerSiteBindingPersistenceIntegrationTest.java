@@ -32,6 +32,8 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.qc.service.QCControlLotService;
+import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -62,6 +64,9 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
     @Autowired
     private AnalyzerInstanceLocalStateService analyzerInstanceLocalStateService;
+
+    @Autowired
+    private QCControlLotService controlLotService;
 
     @Autowired
     private AnalyzerService analyzerService;
@@ -487,6 +492,29 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
                     profileCatalogService, siteBindingService, confirmationService, testSectionService, bridgeClient,
                     activationRecordService, java.time.Clock.systemUTC(), () -> "activate-persistence",
                     () -> "deactivate-persistence");
+
+            AnalyzerActivationResult readinessBeforeQc = activationService.readiness(analyzer.getId());
+            String confirmationIdBeforeQc = confirmationDAO.findByRevisionId(revision.getId()).orElseThrow().getId();
+
+            QCControlLot controlLot = new QCControlLot();
+            controlLot.setId(UUID.randomUUID().toString());
+            controlLot.setLotNumber("ACTIVATION-INDEPENDENCE-" + UUID.randomUUID());
+            controlLot.setProductName("Activation independence control");
+            controlLot.setControlLevel("NORMAL");
+            controlLot.setTestId("1");
+            controlLot.setInstrumentId(analyzer.getId());
+            controlLot.setCalculationMethod("MANUFACTURER_FIXED");
+            controlLot.setManufacturerMean(100.0);
+            controlLot.setManufacturerStdDev(5.0);
+            controlLot.setActivationDate(new java.sql.Timestamp(System.currentTimeMillis()));
+            controlLot.setSystemUserId(Integer.valueOf(TEST_SYS_USER_ID));
+            controlLotService.createControlLot(controlLot);
+
+            AnalyzerActivationResult readinessAfterQc = activationService.readiness(analyzer.getId());
+            String confirmationIdAfterQc = confirmationDAO.findByRevisionId(revision.getId()).orElseThrow().getId();
+            assertTrue(readinessBeforeQc.ready());
+            assertTrue(readinessAfterQc.ready());
+            assertEquals(confirmationIdBeforeQc, confirmationIdAfterQc);
 
             AnalyzerActivationResult result = activationService.activate(analyzer.getId(), TEST_SYS_USER_ID);
             entityManager.flush();

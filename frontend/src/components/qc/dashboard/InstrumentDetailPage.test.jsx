@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter, Route } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -70,5 +71,30 @@ describe("InstrumentDetailPage analyzer context", () => {
     ).toHaveAttribute("href", "/analyzers/qc/db");
     const currentCrumb = breadcrumb.querySelector('[aria-current="page"]');
     expect(currentCrumb).toHaveTextContent("GeneXpert - Main Lab");
+  });
+
+  it("restores the selected QC view from the URL and preserves the analyzer return path", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/qc/instruments/42?returnTo=%2Fanalyzers%3Fsearch%3Dgene%26status%3DACTIVE&view=chart",
+    );
+
+    renderPage();
+
+    const chartTab = await screen.findByRole("tab", {
+      name: "Control Chart",
+    });
+    const activityTab = screen.getByRole("tab", {
+      name: "Activity Timeline",
+    });
+    expect(chartTab).toHaveAttribute("aria-selected", "true");
+
+    await userEvent.click(activityTab);
+
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("view")).toBe("activity");
+    expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
+    expect(activityTab).toHaveAttribute("aria-selected", "true");
   });
 });
