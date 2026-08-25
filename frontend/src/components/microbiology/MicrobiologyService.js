@@ -214,55 +214,6 @@ export const closeCriticalCommunication = (communicationId, payload) =>
     );
   });
 
-export const getReportProjection = (caseId) =>
-  new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/cases/${caseId}/release/preview`,
-      resolve,
-    );
-  });
-
-export const releasePreliminaryReport = (caseId) =>
-  new Promise((resolve) => {
-    postToOpenElisServerJsonResponse(
-      `/rest/microbiology/cases/${caseId}/release/preliminary`,
-      JSON.stringify({}),
-      resolve,
-    );
-  });
-
-export const releaseFinalReport = (caseId) =>
-  new Promise((resolve) => {
-    postToOpenElisServerJsonResponse(
-      `/rest/microbiology/cases/${caseId}/release/final`,
-      JSON.stringify({}),
-      resolve,
-    );
-  });
-
-export const saveOrderDetail = (caseId, payload) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/cases/${caseId}/order-detail`,
-      JSON.stringify(payload),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
-    );
-  });
-
-export const getWhonetReadiness = (caseId) =>
-  new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/cases/${caseId}/whonet-readiness`,
-      resolve,
-    );
-  });
-
 const MicrobiologyService = {
   getCaseDetail,
   recordCaseActivity,
@@ -284,11 +235,6 @@ const MicrobiologyService = {
   logCriticalCommunication,
   acknowledgeCriticalCommunication,
   closeCriticalCommunication,
-  getReportProjection,
-  releasePreliminaryReport,
-  releaseFinalReport,
-  saveOrderDetail,
-  getWhonetReadiness,
 };
 
 export default MicrobiologyService;
