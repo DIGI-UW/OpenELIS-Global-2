@@ -126,6 +126,9 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       (url) => url.searchParams.get("setup") === "connect",
     );
     await setup.testConnection();
+    await page
+      .getByRole("heading", { name: "Connection evidence" })
+      .scrollIntoViewIfNeeded();
     await capture(page, testInfo, "m3-connection-evidence");
     await setup.close();
     await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
