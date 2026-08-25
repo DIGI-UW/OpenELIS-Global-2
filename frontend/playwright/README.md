@@ -65,6 +65,10 @@ produces a merged HTML report artifact:
 No `workflow_dispatch` manual workflows exist for Playwright. Video recording
 is local-only via the `-video` project variants.
 
+Analyzer-ingress scenarios require `ANALYZER_INGRESS_USER` and
+`ANALYZER_INGRESS_PASS`. CI supplies the configured test account; local runs
+must provide an account authorized for analyzer import.
+
 ## Fixtures
 
 CI workflows load fixtures via the unified loader script:
