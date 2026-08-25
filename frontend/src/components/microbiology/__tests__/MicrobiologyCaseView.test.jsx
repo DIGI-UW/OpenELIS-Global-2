@@ -29,6 +29,8 @@ const renderCase = (service) =>
 const astServiceStubs = {
   getAstPanels: vi.fn().mockResolvedValue([]),
   getAntibiotics: vi.fn().mockResolvedValue([]),
+  getOrganisms: vi.fn().mockResolvedValue([]),
+  getBreakpointStandards: vi.fn().mockResolvedValue([]),
   getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
   getCaseReadiness: vi.fn().mockResolvedValue({
     finalReleaseReady: true,
@@ -38,6 +40,7 @@ const astServiceStubs = {
   recordAstReading: vi.fn(),
   overrideAstReading: vi.fn(),
   reviewAstRun: vi.fn(),
+  updateIsolateIdentification: vi.fn(),
 };
 
 describe("MicrobiologyCaseView", () => {
@@ -122,13 +125,11 @@ describe("MicrobiologyCaseView", () => {
         significance: "CLINICALLY_SIGNIFICANT",
       }),
     );
-    expect(
-      await screen.findByText(
-        (_, element) =>
-          element?.tagName.toLowerCase() === "li" &&
-          element.textContent === "ISO-1: Escherichia coli",
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-isolates-card"),
+      ).toHaveTextContent("ISO-1: Escherichia coli"),
+    );
     expect(screen.getByText(/ISOLATE_CREATED/)).toBeInTheDocument();
   });
 });

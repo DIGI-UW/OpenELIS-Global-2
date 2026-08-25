@@ -56,6 +56,16 @@ const MicrobiologyCaseView = ({
     });
   };
 
+  const updateIdentification = (isolateId, payload) => {
+    setSaving(true);
+    return service.updateIsolateIdentification(isolateId, payload).then(() => {
+      service.getCaseDetail(caseId).then((detail) => {
+        setCaseDetail(detail);
+        setSaving(false);
+      });
+    });
+  };
+
   if (loading) {
     return <Loading withOverlay={false} />;
   }
@@ -95,7 +105,9 @@ const MicrobiologyCaseView = ({
           caseId={caseDetail.id}
           isolates={caseDetail.isolates}
           onCreateIsolate={createIsolate}
+          onUpdateIdentification={updateIdentification}
           saving={saving}
+          service={service}
         />
         <AstEntryPanel
           caseId={caseDetail.id}

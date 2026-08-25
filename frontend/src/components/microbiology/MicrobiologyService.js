@@ -27,6 +27,21 @@ export const createIsolate = (payload) =>
     );
   });
 
+export const updateIsolateIdentification = (isolateId, payload) =>
+  new Promise((resolve) => {
+    putToOpenElisServerFullResponse(
+      `/rest/microbiology/isolates/${encodeURIComponent(isolateId)}/identification`,
+      JSON.stringify(payload),
+      (response) => {
+        if (!response) {
+          resolve({ status: 0 });
+          return;
+        }
+        response.json().then(resolve);
+      },
+    );
+  });
+
 export const saveOrderDetail = (caseId, payload) =>
   new Promise((resolve) => {
     putToOpenElisServerFullResponse(
@@ -55,6 +70,19 @@ export const getAstPanels = (workflowType) =>
 export const getAntibiotics = () =>
   new Promise((resolve) => {
     getFromOpenElisServer("/rest/microbiology/reference/antibiotics", resolve);
+  });
+
+export const getOrganisms = () =>
+  new Promise((resolve) => {
+    getFromOpenElisServer("/rest/microbiology/reference/organisms", resolve);
+  });
+
+export const getBreakpointStandards = () =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      "/rest/microbiology/reference/breakpoint-standards",
+      resolve,
+    );
   });
 
 export const getAstRunsForIsolate = (isolateId) =>
@@ -119,9 +147,12 @@ const MicrobiologyService = {
   getCaseDetail,
   recordCaseActivity,
   createIsolate,
+  updateIsolateIdentification,
   saveOrderDetail,
   getAstPanels,
   getAntibiotics,
+  getOrganisms,
+  getBreakpointStandards,
   getAstRunsForIsolate,
   startAstRun,
   recordAstReading,
