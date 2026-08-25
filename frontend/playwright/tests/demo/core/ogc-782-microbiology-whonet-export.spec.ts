@@ -87,7 +87,7 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       const previewLocation = new URL(previewUrl);
       const previewReturnTo = `${previewLocation.pathname}${previewLocation.search}`;
       const repairHref =
-        `/MasterListsPage/SampleTypeManagement/${seeded.sampleTypeId}/basic-info?` +
+        `/MasterListsPage/SampleTypeEditor/${seeded.sampleTypeId}/basic-info?` +
         new URLSearchParams({
           focus: "whonet",
           returnTo: previewReturnTo,

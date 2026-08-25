@@ -128,7 +128,7 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       const previewReturnTo = `${previewLocation.pathname}${previewLocation.search}`;
       const mappingReadiness = page.getByLabel("Mapping readiness");
       const specimenRepairHref =
-        `/MasterListsPage/SampleTypeManagement/${seeded.sampleTypeId}/basic-info?` +
+        `/MasterListsPage/SampleTypeEditor/${seeded.sampleTypeId}/basic-info?` +
         new URLSearchParams({
           focus: "whonet",
           returnTo: previewReturnTo,
@@ -150,7 +150,7 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       await specimenRepairLink.click();
       await expect(page).toHaveURL(
         new RegExp(
-          `/MasterListsPage/SampleTypeManagement/${seeded.sampleTypeId}/basic-info`,
+          `/MasterListsPage/SampleTypeEditor/${seeded.sampleTypeId}/basic-info`,
         ),
       );
       const specimenCode = page.getByLabel("WHONET specimen code");
