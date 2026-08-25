@@ -102,7 +102,9 @@ test.describe("microbiology worklist and critical communication", () => {
       "BACTERIOLOGY",
     );
     await expect(
-      page.getByPlaceholder("Search sample or workflow"),
+      page.getByPlaceholder(
+        "Search lab number, patient, specimen, or workflow",
+      ),
     ).toHaveValue(seeded.caseId);
     await expect(page.getByLabel("Sort", { exact: true })).toHaveValue(
       "newest",

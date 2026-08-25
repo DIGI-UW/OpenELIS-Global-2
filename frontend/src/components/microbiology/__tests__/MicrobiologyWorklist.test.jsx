@@ -116,6 +116,8 @@ describe("MicrobiologyWorklist", () => {
     expect(worklistRow).toHaveTextContent("Morgan Lee");
     expect(worklistRow).toHaveTextContent("Linked · 2 workflows");
     expect(worklistRow).toHaveTextContent("AST Review");
+    expect(worklistRow).toHaveTextContent("High");
+    expect(worklistRow).not.toHaveTextContent("Stat");
     expect(worklistRow).toHaveTextContent("Critical communication");
     expect(
       screen.getByTestId("microbiology-worklist-siblings"),

@@ -72,7 +72,7 @@ test.describe("Microbiology final-report amendments", () => {
     await test.step("Record a reasoned isolate re-identification", async () => {
       await accordionButton(page, "Isolates").click();
       await expect(page).toHaveURL(/section=isolates$/);
-      await page.getByRole("button", { name: "Update identification" }).click();
+      await page.getByRole("button", { name: "Reidentify" }).click();
       await page
         .getByLabel("Organism")
         .selectOption({ label: "Klebsiella pneumoniae (UAT)" });
@@ -140,7 +140,7 @@ test.describe("Microbiology final-report amendments", () => {
         timeout: LONG_TIMEOUT,
       });
       await expect(
-        page.getByRole("button", { name: "Update identification" }),
+        page.getByRole("button", { name: "Reidentify" }),
       ).toBeDisabled();
       await expect(
         page.getByRole("button", { name: "Create isolate" }),

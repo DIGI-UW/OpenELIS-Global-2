@@ -78,7 +78,7 @@ test.describe("Microbiology repeat AST attempts", () => {
       await page
         .getByLabel("Antibiotic", { exact: true })
         .selectOption({ label: "Ciprofloxacin (UAT)" });
-      await page.getByLabel("Result value").fill("32");
+      await page.getByLabel("MIC (ug/mL)").fill("32");
       await page.getByRole("button", { name: "Record AST reading" }).click();
       await expect(
         page.getByTestId("microbiology-ast-interpretation"),

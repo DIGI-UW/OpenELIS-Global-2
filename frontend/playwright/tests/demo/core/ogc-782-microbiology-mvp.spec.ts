@@ -93,7 +93,10 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Record setup activity", async () => {
       await demo.step(2, "Start inoculation and write the activity timeline");
-      await accordionButton(page, "Inoculation").click();
+      await page
+        .getByTestId("microbiology-current-step-action")
+        .getByRole("button", { name: "Open Inoculation" })
+        .click();
       await expect(page).toHaveURL(/section=setup/);
       await page.getByLabel("Media or bottle").fill("Blood culture bottle");
       await page.getByLabel("Incubation").fill("35 C for 24 hours");

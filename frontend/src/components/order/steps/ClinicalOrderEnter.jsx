@@ -400,6 +400,7 @@ const ClinicalOrderEnter = () => {
         <ProgramSection
           orderData={orderData}
           setOrderData={setOrderData}
+          samples={samples}
           isReadOnly={isReadOnly && !isEditMode}
         />
 

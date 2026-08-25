@@ -503,7 +503,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                     id: "microbiology.worklist.notStarted",
                   }),
               priority: formatMicrobiologyEnum(
-                row.priority || row.urgency,
+                row.urgency || row.priority,
                 intl,
               ),
               action: row.caseId,
@@ -520,7 +520,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
               stage: formatMicrobiologyEnum(row.stage, intl),
               due: formatMicrobiologyEnum(row.dueAction, intl),
               priority: formatMicrobiologyEnum(
-                row.priority || row.urgency,
+                row.urgency || row.priority,
                 intl,
               ),
               lastActivity:

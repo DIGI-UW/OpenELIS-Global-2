@@ -50,7 +50,7 @@ async function saveEntryAndOpenCollect(page: Page) {
   const saveAndNext = page.getByRole("button", { name: "Save & Next" });
   await expect(saveAndNext).toBeEnabled({ timeout: LONG_TIMEOUT });
   await saveAndNext.click();
-  await expect(page).toHaveURL(/\/order\/collect$/i, {
+  await expect(page).toHaveURL(/\/order\/clinical\/collect$/i, {
     timeout: LONG_TIMEOUT,
   });
   await expect(
@@ -65,7 +65,7 @@ async function collectAndRoute(page: Page) {
   const saveAndNext = page.getByRole("button", { name: "Save & Next" });
   await expect(saveAndNext).toBeEnabled({ timeout: LONG_TIMEOUT });
   await saveAndNext.click();
-  await expect(page).toHaveURL(/\/order\/label$/i, {
+  await expect(page).toHaveURL(/\/order\/clinical\/label$/i, {
     timeout: LONG_TIMEOUT,
   });
 }
@@ -81,7 +81,7 @@ async function reloadThroughBarcode(page: Page, labNumber: string) {
     { timeout: LONG_TIMEOUT },
   );
   await page.getByTestId("order-step-enter").click();
-  await expect(page).toHaveURL(/\/order\/enter$/i);
+  await expect(page).toHaveURL(/\/order\/clinical\/enter$/i);
 }
 
 test.describe("microbiology order entry on the supported workflow", () => {
@@ -125,7 +125,7 @@ test.describe("microbiology order entry on the supported workflow", () => {
     ).toBeChecked();
 
     await page.getByTestId("order-step-collect").click();
-    await expect(page).toHaveURL(/\/order\/collect$/i);
+    await expect(page).toHaveURL(/\/order\/clinical\/collect$/i);
     await collectAndRoute(page);
 
     await page.goto(
