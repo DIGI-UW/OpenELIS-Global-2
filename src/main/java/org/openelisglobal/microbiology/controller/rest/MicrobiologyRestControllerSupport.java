@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 abstract class MicrobiologyRestControllerSupport extends BaseRestController {
     static final String BENCH_ACCESS = "hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')";
     static final String SUPERVISOR_ACCESS = "hasAnyRole('ADMIN', 'VALIDATION')";
+
     protected String authenticatedUserId(HttpServletRequest request) {
         String userId = getSysUserId(request);
         if (userId == null || userId.trim().isEmpty()) {
