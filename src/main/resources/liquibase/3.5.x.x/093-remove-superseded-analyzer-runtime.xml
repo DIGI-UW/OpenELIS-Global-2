@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-1054-remove-analyzer-activation-candidate" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_activation_candidate"/>
+        </preConditions>
+        <comment>
+            Remove the superseded OpenELIS full-state activation candidate. Durable
+            Bridge connections and immutable OpenELIS activation records replace it.
+        </comment>
+
+        <dropForeignKeyConstraint baseTableName="analyzer"
+            constraintName="fk_analyzer_active_candidate"/>
+        <dropIndex tableName="analyzer"
+            indexName="idx_analyzer_active_candidate"/>
+        <dropColumn tableName="analyzer" columnName="active_candidate_id"/>
+        <dropTable tableName="analyzer_activation_candidate"/>
+        <dropSequence sequenceName="analyzer_activation_candidate_seq"/>
+        <delete tableName="reference_tables">
+            <where>LOWER(name) = 'analyzer_activation_candidate'</where>
+        </delete>
+
+        <rollback>
+            <createSequence sequenceName="analyzer_activation_candidate_seq"
+                startValue="1" incrementBy="1"/>
+            <createTable tableName="analyzer_activation_candidate">
+                <column name="id" type="numeric(10)">
+                    <constraints primaryKey="true" nullable="false"
+                        primaryKeyName="pk_analyzer_activation_candidate"/>
+                </column>
+                <column name="analyzer_id" type="numeric(10)">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="site_binding_revision_id" type="numeric(10)">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="verification_confirmation_id" type="numeric(10)">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="candidate_document_json" type="TEXT">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="bridge_registration_json" type="TEXT">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="desired_state_fingerprint" type="VARCHAR(71)">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="created_by" type="VARCHAR(36)">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="last_updated" type="TIMESTAMP"/>
+            </createTable>
+            <addForeignKeyConstraint constraintName="fk_analyzer_activation_candidate_analyzer"
+                baseTableName="analyzer_activation_candidate"
+                baseColumnNames="analyzer_id"
+                referencedTableName="analyzer" referencedColumnNames="id"/>
+            <addForeignKeyConstraint constraintName="fk_analyzer_activation_candidate_binding_revision"
+                baseTableName="analyzer_activation_candidate"
+                baseColumnNames="site_binding_revision_id"
+                referencedTableName="analyzer_site_binding_revision" referencedColumnNames="id"/>
+            <addForeignKeyConstraint constraintName="fk_analyzer_activation_candidate_confirmation"
+                baseTableName="analyzer_activation_candidate"
+                baseColumnNames="verification_confirmation_id"
+                referencedTableName="analyzer_site_binding_confirmation" referencedColumnNames="id"/>
+            <createIndex tableName="analyzer_activation_candidate"
+                indexName="idx_analyzer_activation_candidate_analyzer">
+                <column name="analyzer_id"/>
+            </createIndex>
+            <sql>
+                ALTER TABLE analyzer_activation_candidate
+                ADD CONSTRAINT chk_analyzer_activation_candidate_fingerprint
+                CHECK (desired_state_fingerprint ~ '^sha256:[0-9a-f]{64}$');
+            </sql>
+            <addColumn tableName="analyzer">
+                <column name="active_candidate_id" type="numeric(10)"/>
+            </addColumn>
+            <addForeignKeyConstraint constraintName="fk_analyzer_active_candidate"
+                baseTableName="analyzer"
+                baseColumnNames="active_candidate_id"
+                referencedTableName="analyzer_activation_candidate" referencedColumnNames="id"/>
+            <createIndex tableName="analyzer"
+                indexName="idx_analyzer_active_candidate">
+                <column name="active_candidate_id"/>
+            </createIndex>
+            <insert tableName="reference_tables">
+                <column name="id" valueSequenceNext="reference_tables_seq"/>
+                <column name="name" value="analyzer_activation_candidate"/>
+                <column name="keep_history" value="Y"/>
+                <column name="lastupdated" valueDate="now()"/>
+            </insert>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-1054-remove-analyzer-site-transport" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="analyzer" columnName="transport_mode"/>
+        </preConditions>
+        <comment>
+            Remove analyzer-facing transport and role values from OpenELIS. The
+            pinned Bridge connection owns these values and runtime behavior.
+        </comment>
+
+        <sql>
+            ALTER TABLE analyzer DROP CONSTRAINT IF EXISTS chk_analyzer_connection_role;
+            ALTER TABLE analyzer DROP CONSTRAINT IF EXISTS chk_analyzer_transport_mode;
+        </sql>
+        <dropColumn tableName="analyzer" columnName="connection_role"/>
+        <dropColumn tableName="analyzer" columnName="transport_mode"/>
+
+        <rollback>
+            <addColumn tableName="analyzer">
+                <column name="transport_mode" type="VARCHAR(16)"/>
+                <column name="connection_role" type="VARCHAR(16)"/>
+            </addColumn>
+            <sql>
+                ALTER TABLE analyzer
+                ADD CONSTRAINT chk_analyzer_transport_mode
+                CHECK (transport_mode IS NULL OR transport_mode IN ('TCP', 'MLLP', 'SERIAL', 'FILE', 'HTTP'));
+                ALTER TABLE analyzer
+                ADD CONSTRAINT chk_analyzer_connection_role
+                CHECK (connection_role IS NULL OR connection_role IN ('RECEIVER', 'INITIATOR'));
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

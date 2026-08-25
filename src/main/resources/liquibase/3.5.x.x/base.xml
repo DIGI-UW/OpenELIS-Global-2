@@ -375,5 +375,6 @@
   <include relativeToChangelogFile="true" file="090-analyzer-verification-evidence.xml"/>
   <include relativeToChangelogFile="true" file="091-analyzer-activation-record.xml"/>
   <include relativeToChangelogFile="true" file="092-normalize-analyzer-deleted-status.xml"/>
+  <include relativeToChangelogFile="true" file="093-remove-superseded-analyzer-runtime.xml"/>
 
 </databaseChangeLog>
