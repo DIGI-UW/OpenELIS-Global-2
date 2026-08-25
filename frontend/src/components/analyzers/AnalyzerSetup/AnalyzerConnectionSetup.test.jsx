@@ -328,6 +328,45 @@ describe("AnalyzerConnectionSetup", () => {
     expect(screen.getByText("Bridge listener")).toBeVisible();
   });
 
+  it("renders structured failure evidence when an equivalent saved revision advances", async () => {
+    testConnection.mockImplementation((_id, callback) =>
+      callback({
+        schemaVersion: "1.0",
+        requestId: "probe-failed-1",
+        connectionId: connection.connectionId,
+        profileRef,
+        configRevision: connection.configRevision + 1,
+        configFingerprint: connection.configFingerprint,
+        nonMutating: true,
+        status: "FAILED",
+        startedAt: "2026-08-25T00:01:00Z",
+        completedAt: "2026-08-25T00:01:01Z",
+        checks: [
+          {
+            key: "listener",
+            status: "FAILED",
+            messageKey: "listener.not.listening",
+            durationMillis: 3,
+            details: { port: 12001 },
+          },
+        ],
+      }),
+    );
+    renderConnection();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Test connection" }),
+    );
+
+    expect(await screen.findByText("Connection failed")).toBeVisible();
+    expect(
+      screen.getByText("The Bridge listener is not accepting connections."),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("Connection settings could not be saved or tested."),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not resend a masked secret unless the user replaces it", async () => {
     renderConnection();
 

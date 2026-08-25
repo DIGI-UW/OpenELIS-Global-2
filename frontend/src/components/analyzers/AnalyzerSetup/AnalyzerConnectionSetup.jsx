@@ -82,7 +82,7 @@ const isProbeResult = (response, saved) => {
     response.profileRef?.profileId === saved.profileId &&
     Number(response.profileRef?.revision) === Number(saved.profileRevision) &&
     response.profileRef?.fingerprint === saved.profileFingerprint &&
-    Number(response.configRevision) === Number(connection.configRevision) &&
+    Number(response.configRevision) >= 1 &&
     response.configFingerprint === connection.configFingerprint &&
     response.nonMutating === true &&
     Array.isArray(response.checks)
