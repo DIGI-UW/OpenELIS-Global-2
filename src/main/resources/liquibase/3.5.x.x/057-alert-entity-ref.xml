@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Additive support for string-keyed alert entities such as microbiology
+       critical communications, without touching
+       the existing numeric alert_entity_id column or its Freezer/Equipment/
+       Sample callers. Exactly one of alert_entity_id / alert_entity_ref must
+       be set per row. -->
+  <changeSet id="OGC-782-alert-entity-ref-column" author="OGC">
+    <addColumn tableName="alert" schemaName="clinlims">
+      <column name="alert_entity_ref" type="varchar(64)"/>
+    </addColumn>
+
+    <dropNotNullConstraint tableName="alert" schemaName="clinlims" columnName="alert_entity_id" columnDataType="bigint"/>
+
+    <sql>
+      ALTER TABLE clinlims.alert
+        ADD CONSTRAINT chk_alert_entity_id_or_ref
+        CHECK (
+          (alert_entity_id IS NOT NULL AND alert_entity_ref IS NULL)
+          OR (alert_entity_id IS NULL AND alert_entity_ref IS NOT NULL)
+        );
+
+      ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+      ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+      CHECK (alert_type IN (
+        'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+        'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+        'REQUIRED_BY_DEADLINE', 'REFERRAL_CRITICAL_RESULT', 'REFERRAL_REJECTED', 'CRITICAL_RESULT',
+        'MICROBIOLOGY_CRITICAL'
+      ));
+    </sql>
+
+    <createIndex schemaName="clinlims" tableName="alert" indexName="idx_alert_entity_ref">
+      <column name="alert_entity_type"/>
+      <column name="alert_entity_ref"/>
+    </createIndex>
+
+    <rollback>
+      <dropIndex schemaName="clinlims" tableName="alert" indexName="idx_alert_entity_ref"/>
+      <sql>
+        ALTER TABLE clinlims.alert DROP CONSTRAINT chk_alert_type;
+        ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+        CHECK (alert_type IN (
+          'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+          'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+          'REQUIRED_BY_DEADLINE', 'REFERRAL_CRITICAL_RESULT', 'REFERRAL_REJECTED', 'CRITICAL_RESULT'
+        ));
+        ALTER TABLE clinlims.alert DROP CONSTRAINT chk_alert_entity_id_or_ref;
+      </sql>
+      <addNotNullConstraint tableName="alert" schemaName="clinlims" columnName="alert_entity_id" columnDataType="bigint"/>
+      <dropColumn tableName="alert" schemaName="clinlims" columnName="alert_entity_ref"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

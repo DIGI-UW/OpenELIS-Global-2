@@ -105,6 +105,7 @@ public class AlertRestController extends ControllerUtills {
         dto.setAlertType(alert.getAlertType() != null ? alert.getAlertType().name() : null);
         dto.setAlertEntityType(alert.getAlertEntityType());
         dto.setAlertEntityId(alert.getAlertEntityId());
+        dto.setAlertEntityRef(alert.getAlertEntityRef());
         dto.setSeverity(alert.getSeverity() != null ? alert.getSeverity().name() : null);
         dto.setStatus(alert.getStatus() != null ? alert.getStatus().name() : null);
         dto.setStartTime(alert.getStartTime());

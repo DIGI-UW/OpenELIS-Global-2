@@ -21,8 +21,20 @@ public class MicroCriticalCommunication extends BaseObject<String> {
     @Column(name = "case_id", nullable = false, length = 36)
     private String caseId;
 
+    @Column(name = "target_type", nullable = false, length = 40)
+    private String targetType = MicroCriticalCommunicationTargetType.CASE.name();
+
+    @Column(name = "target_id", nullable = false, length = 64)
+    private String targetId;
+
     @Column(name = "recipient")
     private String recipient;
+
+    @Column(name = "recipient_contact")
+    private String recipientContact;
+
+    @Column(name = "communication_method", nullable = false, length = 40)
+    private String communicationMethod = "PHONE";
 
     @Column(name = "message", nullable = false)
     private String message;
@@ -41,6 +53,18 @@ public class MicroCriticalCommunication extends BaseObject<String> {
 
     @Column(name = "acknowledged_by", length = 20)
     private String acknowledgedBy;
+
+    @Column(name = "closed_at")
+    private Timestamp closedAt;
+
+    @Column(name = "closed_by", length = 20)
+    private String closedBy;
+
+    @Column(name = "resolution_note")
+    private String resolutionNote;
+
+    @Column(name = "alert_id")
+    private Long alertId;
 
     @Column(name = "follow_up_needed", nullable = false)
     private Boolean followUpNeeded = Boolean.FALSE;
@@ -66,12 +90,44 @@ public class MicroCriticalCommunication extends BaseObject<String> {
         this.caseId = caseId;
     }
 
+    public String getTargetType() {
+        return targetType;
+    }
+
+    public void setTargetType(String targetType) {
+        this.targetType = targetType;
+    }
+
+    public String getTargetId() {
+        return targetId;
+    }
+
+    public void setTargetId(String targetId) {
+        this.targetId = targetId;
+    }
+
     public String getRecipient() {
         return recipient;
     }
 
     public void setRecipient(String recipient) {
         this.recipient = recipient;
+    }
+
+    public String getRecipientContact() {
+        return recipientContact;
+    }
+
+    public void setRecipientContact(String recipientContact) {
+        this.recipientContact = recipientContact;
+    }
+
+    public String getCommunicationMethod() {
+        return communicationMethod;
+    }
+
+    public void setCommunicationMethod(String communicationMethod) {
+        this.communicationMethod = communicationMethod;
     }
 
     public String getMessage() {
@@ -120,6 +176,38 @@ public class MicroCriticalCommunication extends BaseObject<String> {
 
     public void setAcknowledgedBy(String acknowledgedBy) {
         this.acknowledgedBy = acknowledgedBy;
+    }
+
+    public Timestamp getClosedAt() {
+        return closedAt;
+    }
+
+    public void setClosedAt(Timestamp closedAt) {
+        this.closedAt = closedAt;
+    }
+
+    public String getClosedBy() {
+        return closedBy;
+    }
+
+    public void setClosedBy(String closedBy) {
+        this.closedBy = closedBy;
+    }
+
+    public String getResolutionNote() {
+        return resolutionNote;
+    }
+
+    public void setResolutionNote(String resolutionNote) {
+        this.resolutionNote = resolutionNote;
+    }
+
+    public Long getAlertId() {
+        return alertId;
+    }
+
+    public void setAlertId(Long alertId) {
+        this.alertId = alertId;
     }
 
     public Boolean getFollowUpNeeded() {

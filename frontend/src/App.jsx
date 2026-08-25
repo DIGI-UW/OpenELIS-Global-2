@@ -123,6 +123,14 @@ import {
 } from "./components/resultPage/unified/routeGates";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
+import {
+  getMicrobiologyCaseUrl,
+  getMicrobiologyWorklistUrl,
+  MICROBIOLOGY_CASE_PATH,
+  MICROBIOLOGY_WORKLIST_PATH,
+  parseMicrobiologyCaseSearch,
+  parseMicrobiologyWorklistSearch,
+} from "./components/microbiology/MicrobiologyRoutes";
 import { languages, languageMessages } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
@@ -572,7 +580,7 @@ export default function App() {
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
-                  path="/MicrobiologyCaseView/:caseId"
+                  path={`${MICROBIOLOGY_CASE_PATH}/:caseId`}
                   exact
                   component={() => (
                     <Suspense fallback={null}>
@@ -582,7 +590,7 @@ export default function App() {
                   role=""
                 />
                 <SecureRoute
-                  path="/MicrobiologyWorklist"
+                  path={MICROBIOLOGY_WORKLIST_PATH}
                   exact
                   component={() => (
                     <Suspense fallback={null}>
@@ -590,6 +598,29 @@ export default function App() {
                     </Suspense>
                   )}
                   role=""
+                />
+                <Route
+                  path="/MicrobiologyCaseView/:caseId"
+                  exact
+                  render={({ location, match }) => (
+                    <Redirect
+                      to={getMicrobiologyCaseUrl(
+                        match.params.caseId,
+                        parseMicrobiologyCaseSearch(location.search),
+                      )}
+                    />
+                  )}
+                />
+                <Route
+                  path="/MicrobiologyWorklist"
+                  exact
+                  render={({ location }) => (
+                    <Redirect
+                      to={getMicrobiologyWorklistUrl(
+                        parseMicrobiologyWorklistSearch(location.search),
+                      )}
+                    />
+                  )}
                 />
                 <SecureRoute
                   path="/GenericSample/Order"

@@ -34,6 +34,17 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
             String contextDataJson);
 
     /**
+     * Create a new alert for a string-keyed entity (e.g. a microbiology critical
+     * communication UUID). Counterpart to
+     * {@link #createAlert(AlertType, String, Long, AlertSeverity, String, String)}
+     * for entities that are not keyed by a database sequence. Same deduplication
+     * and event-publishing behavior, keyed by (alertType, entityType, entityRef)
+     * instead of (alertType, entityType, entityId).
+     */
+    Alert createAlert(AlertType alertType, String entityType, String entityRef, AlertSeverity severity, String message,
+            String contextDataJson);
+
+    /**
      * Acknowledge an alert (transition OPEN → ACKNOWLEDGED).
      *
      * <p>
@@ -66,6 +77,18 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @return List of alerts for the entity
      */
     List<Alert> getAlertsByEntity(String entityType, Long entityId);
+
+    /**
+     * Get all alerts for a string-keyed entity. Counterpart to
+     * {@link #getAlertsByEntity(String, Long)} for entities not keyed by a database
+     * sequence.
+     *
+     * @param entityType Entity class name (e.g.,
+     *                   "MicrobiologyCriticalCommunication")
+     * @param entityRef  Entity reference (e.g. a UUID string)
+     * @return List of alerts for the entity
+     */
+    List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
 
     /**
      * Count active alerts (OPEN or ACKNOWLEDGED) for a specific entity.

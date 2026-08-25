@@ -71,5 +71,12 @@ public enum AlertType {
      * A saved result outside its authored critical bounds (OGC-1022 R3); entity is
      * the ANALYSIS carrying the value
      */
-    CRITICAL_RESULT
+    CRITICAL_RESULT,
+
+    /**
+     * Microbiology critical communication requiring acknowledgment. The clinical
+     * communication remains authoritative; this type projects it into the shared
+     * alert workflow.
+     */
+    MICROBIOLOGY_CRITICAL
 }

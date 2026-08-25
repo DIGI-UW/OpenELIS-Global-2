@@ -27,4 +27,16 @@ public class MicroCriticalCommunicationDAOImpl extends BaseDAOImpl<MicroCritical
         query.setParameter("caseId", caseId);
         return query.list();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroCriticalCommunication getByAlertId(Long alertId) {
+        if (alertId == null) {
+            return null;
+        }
+        Query<MicroCriticalCommunication> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroCriticalCommunication c where c.alertId = :alertId", MicroCriticalCommunication.class);
+        query.setParameter("alertId", alertId);
+        return query.uniqueResult();
+    }
 }
