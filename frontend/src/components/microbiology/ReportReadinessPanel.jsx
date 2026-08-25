@@ -133,7 +133,7 @@ const ReportReadinessPanel = ({
         <span className="microbiology-status-dot microbiology-status-dot--warning">
           !
         </span>
-        {formatMicrobiologyEnum(blocker)}
+        {formatMicrobiologyEnum(blocker, intl)}
       </li>
     ));
   };
@@ -156,7 +156,7 @@ const ReportReadinessPanel = ({
         {effectiveReleaseState && (
           <div data-testid="microbiology-release-state">
             <Tag type={finalReleased ? "green" : "blue"}>
-              {formatMicrobiologyEnum(effectiveReleaseState)}
+              {formatMicrobiologyEnum(effectiveReleaseState, intl)}
             </Tag>
           </div>
         )}

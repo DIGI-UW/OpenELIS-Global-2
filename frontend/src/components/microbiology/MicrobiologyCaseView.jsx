@@ -259,7 +259,7 @@ const MicrobiologyCaseView = ({
               <span>
                 {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
                 <strong>
-                  {formatMicrobiologyEnum(caseDetail.workflowType)}
+                  {formatMicrobiologyEnum(caseDetail.workflowType, intl)}
                 </strong>
               </span>
               {caseDetail.patientName && (
@@ -287,7 +287,7 @@ const MicrobiologyCaseView = ({
             </div>
           </div>
           <Tag type={caseDetail.stage === "FINAL_RELEASED" ? "green" : "blue"}>
-            {formatMicrobiologyEnum(caseDetail.stage)}
+            {formatMicrobiologyEnum(caseDetail.stage, intl)}
           </Tag>
         </header>
 
@@ -359,7 +359,7 @@ const MicrobiologyCaseView = ({
                   </span>
                   <span>
                     {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
-                    {formatMicrobiologyEnum(caseDetail.workflowType)}
+                    {formatMicrobiologyEnum(caseDetail.workflowType, intl)}
                   </span>
                 </Layer>
               </AccordionItem>
