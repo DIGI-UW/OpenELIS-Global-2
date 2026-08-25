@@ -45,7 +45,6 @@ import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
-import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -73,9 +72,6 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SampleItemService sampleItemService;
-
-    @Autowired
-    private TypeOfSampleService typeOfSampleService;
 
     @Autowired
     private MicroIsolateService isolateService;
@@ -169,9 +165,7 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         String methodId = fixtures.createMethodId();
         ReferenceData referenceData = fixtures.createReferenceData(methodId);
         SampleItem sampleItem = fixtures.createSampleWithSampleItem("OGC782M8A");
-        sampleItem.setTypeOfSample(typeOfSampleService.getAllTypeOfSamples().stream()
-                .filter(type -> type.getLocalization() != null).findFirst()
-                .orElseThrow(() -> new IllegalStateException("A configured specimen type is required")));
+        sampleItem.setTypeOfSample(fixtures.createTypeOfSample());
         sampleItem.setSysUserId(userId);
         sampleItemService.update(sampleItem);
         MicroCase microCase = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.BACTERIOLOGY, methodId,

@@ -13,6 +13,8 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.service.MicrobiologyConfigurationService;
@@ -33,7 +35,10 @@ import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service-backed microbiology integration fixtures. Test code never owns
@@ -46,19 +51,24 @@ public class MicrobiologyTestFixtures {
     private final SampleService sampleService;
     private final SampleItemService sampleItemService;
     private final TestService testService;
+    private final TypeOfSampleService typeOfSampleService;
+    private final LocalizationService localizationService;
     private final IStatusService statusService;
     private final StatusOfSampleService statusOfSampleService;
     private final SystemUserService systemUserService;
     private final MicrobiologyConfigurationService configurationService;
 
     public MicrobiologyTestFixtures(MethodService methodService, SampleService sampleService,
-            SampleItemService sampleItemService, TestService testService, IStatusService statusService,
+            SampleItemService sampleItemService, TestService testService, TypeOfSampleService typeOfSampleService,
+            LocalizationService localizationService, IStatusService statusService,
             StatusOfSampleService statusOfSampleService, SystemUserService systemUserService,
             MicrobiologyConfigurationService configurationService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
         this.testService = testService;
+        this.typeOfSampleService = typeOfSampleService;
+        this.localizationService = localizationService;
         this.statusService = statusService;
         this.statusOfSampleService = statusOfSampleService;
         this.systemUserService = systemUserService;
@@ -82,6 +92,29 @@ public class MicrobiologyTestFixtures {
         method.setIsActive(IActionConstants.YES);
         method.setSysUserId(defaultUserId());
         return methodService.insert(method);
+    }
+
+    @Transactional
+    public TypeOfSample createTypeOfSample() {
+        String suffix = uniqueSuffix();
+        String description = "Micro specimen " + suffix.substring(0, 5);
+        String userId = defaultUserId();
+
+        Localization localization = new Localization();
+        localization.setDescription("Microbiology integration test specimen type");
+        localization.setEnglish(description);
+        localization.setSysUserId(userId);
+        localizationService.insert(localization);
+
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setDescription(description);
+        typeOfSample.setDomain("H");
+        typeOfSample.setLocalAbbreviation("M" + suffix.substring(0, 9));
+        typeOfSample.setActive(true);
+        typeOfSample.setLocalization(localization);
+        typeOfSample.setSysUserId(userId);
+        typeOfSample.setId(typeOfSampleService.insert(typeOfSample));
+        return typeOfSample;
     }
 
     public SampleItem createSampleWithSampleItem(String accessionPrefix) {
