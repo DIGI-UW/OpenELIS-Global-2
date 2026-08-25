@@ -17,14 +17,8 @@ import org.springframework.stereotype.Component;
  * The single HTTP client for every OE2 → analyzer-bridge call.
  *
  * <p>
- * The connection + TLS setup used to be hand-rolled in five places —
- * registration, drift sync, query, test-connectivity/health, and order dispatch
- * — each opening its own {@code HttpURLConnection}/{@code HttpClient} and (in
- * four of them) pasting the same ~13-line trust-all {@code SSLContext} block.
- * The fifth, order dispatch, silently omitted that block and so failed PKIX
- * against the bridge's self-signed cert while every other path worked. Routing
- * all bridge traffic through this one component is what makes that class of
- * "one path forgot the TLS config" bug impossible to reintroduce.
+ * Durable profile, connection, probe, and runtime-command calls share this
+ * connection and TLS setup.
  *
  * <p>
  * The bridge presents a self-signed cert on the internal OE2↔bridge hop, so

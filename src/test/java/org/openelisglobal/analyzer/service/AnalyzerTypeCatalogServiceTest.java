@@ -92,10 +92,9 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("ACTIVE", active.status());
         assertEquals("ASTM", active.protocol());
         JsonNode serializedActive = objectMapper.valueToTree(active);
-        assertEquals("ASTM_LIS2_A2", serializedActive.at("/instanceDefaults/protocolVersion").asText());
-        assertEquals("BOTH", serializedActive.at("/instanceDefaults/communicationMode").asText());
-        assertEquals(true, serializedActive.at("/instanceDefaults/supportsLisInitiated").asBoolean());
-        assertEquals(9100, serializedActive.at("/instanceDefaults/port").asInt());
+        assertEquals("LIS2-A2", serializedActive.path("protocolVersion").asText());
+        assertEquals("BOTH", serializedActive.path("communicationMode").asText());
+        assertFalse(serializedActive.has("instanceDefaults"));
         assertEquals(2, active.testMappings().total());
         assertEquals(1, active.testMappings().mapped());
         assertEquals(1, active.testMappings().excluded());

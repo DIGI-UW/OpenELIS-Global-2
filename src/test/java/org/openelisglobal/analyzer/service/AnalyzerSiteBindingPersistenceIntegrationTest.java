@@ -223,7 +223,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
                       "profileMeta":{"id":"placeholder","displayName":"Persistence Test Analyzer"},
                       "protocol":{"name":"ASTM","version":"LIS2-A2"},
                       "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
-                      "configDefaults":{"connectionRole":"SERVER","defaultTransport":"TCP/IP"},
+                      "configDefaults":{"connectionRole":"SERVER","transport":"TCP/IP"},
                       "catalog":{
                         "revision":1,
                         "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

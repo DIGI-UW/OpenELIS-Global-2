@@ -3,10 +3,6 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
-import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
-import org.openelisglobal.analyzer.valueholder.CommunicationMode;
-import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 
 /** Typed view of the established Bridge-owned analyzer profile contract. */
 public final class BridgeAnalyzerProfile {
@@ -25,16 +21,14 @@ public final class BridgeAnalyzerProfile {
     private final String protocol;
     private final String protocolVersion;
     private final String communicationMode;
-    private final Boolean supportsLisInitiated;
     private final String parentProfileId;
     private final Integer parentRevision;
     private final List<TestDefinition> testDefinitions;
-    private final InstanceDefaults instanceDefaults;
 
     private BridgeAnalyzerProfile(JsonNode document, String profileId, int revision, String revisionFingerprint,
             String displayName, String manufacturer, String model, String source, String status, String protocol,
-            String protocolVersion, String communicationMode, Boolean supportsLisInitiated, String parentProfileId,
-            Integer parentRevision, List<TestDefinition> testDefinitions, InstanceDefaults instanceDefaults) {
+            String protocolVersion, String communicationMode, String parentProfileId, Integer parentRevision,
+            List<TestDefinition> testDefinitions) {
         this.document = document.deepCopy();
         this.profileId = profileId;
         this.revision = revision;
@@ -47,11 +41,9 @@ public final class BridgeAnalyzerProfile {
         this.protocol = protocol;
         this.protocolVersion = protocolVersion;
         this.communicationMode = communicationMode;
-        this.supportsLisInitiated = supportsLisInitiated;
         this.parentProfileId = parentProfileId;
         this.parentRevision = parentRevision;
         this.testDefinitions = List.copyOf(testDefinitions);
-        this.instanceDefaults = instanceDefaults;
     }
 
     public static BridgeAnalyzerProfile from(JsonNode document) {
@@ -61,9 +53,7 @@ public final class BridgeAnalyzerProfile {
         JsonNode profileMeta = document.path("profileMeta");
         JsonNode catalog = document.path("catalog");
         JsonNode protocol = document.path("protocol");
-        JsonNode configDefaults = document.path("configDefaults");
         String profileId = requiredText(profileMeta, "id");
-        String protocolName = requiredText(protocol, "name");
         int revision = catalog.path("revision").asInt(-1);
         if (revision < 1) {
             throw new IllegalArgumentException("Bridge analyzer profile revision must be at least 1");
@@ -95,19 +85,11 @@ public final class BridgeAnalyzerProfile {
 
         JsonNode lineage = catalog.path("lineage");
         JsonNode communication = document.path("communication");
-        Boolean supportsLisInitiated = nullableBoolean(communication, "supports_lis_initiated");
-        if (!"FILE".equals(protocolName) && supportsLisInitiated == null) {
-            throw new IllegalArgumentException(
-                    "Bridge analyzer profile supports_lis_initiated is required for " + protocolName);
-        }
-        InstanceDefaults defaults = new InstanceDefaults(nullableText(configDefaults, "defaultTransport"),
-                nullableText(configDefaults, "connectionRole"), nullableInteger(configDefaults, "defaultPort"));
         return new BridgeAnalyzerProfile(document, profileId, revision, fingerprint,
                 requiredText(profileMeta, "displayName"), firstText(document, profileMeta, "manufacturer"),
                 nullableText(document, "model"), requiredText(catalog, "source"), requiredText(catalog, "status"),
-                protocolName, nullableText(protocol, "version"), nullableText(communication, "mode"),
-                supportsLisInitiated, nullableText(lineage, "parentProfileId"),
-                nullableInteger(lineage, "parentRevision"), tests, defaults);
+                requiredText(protocol, "name"), nullableText(protocol, "version"), nullableText(communication, "mode"),
+                nullableText(lineage, "parentProfileId"), nullableInteger(lineage, "parentRevision"), tests);
     }
 
     public JsonNode document() {
@@ -158,10 +140,6 @@ public final class BridgeAnalyzerProfile {
         return communicationMode;
     }
 
-    public Boolean supportsLisInitiated() {
-        return supportsLisInitiated;
-    }
-
     public String parentProfileId() {
         return parentProfileId;
     }
@@ -172,63 +150,6 @@ public final class BridgeAnalyzerProfile {
 
     public List<TestDefinition> testDefinitions() {
         return testDefinitions;
-    }
-
-    public InstanceDefaults instanceDefaults() {
-        return instanceDefaults;
-    }
-
-    public ProtocolVersion resolvedProtocolVersion() {
-        return "FILE".equals(protocol) ? null : ProtocolVersion.fromValue(protocolVersion);
-    }
-
-    public CommunicationMode resolvedCommunicationMode() {
-        return CommunicationMode.fromValue(communicationMode);
-    }
-
-    public AnalyzerTransportMode resolvedTransportMode() {
-        if ("FILE".equals(protocol)) {
-            return AnalyzerTransportMode.FILE;
-        }
-        return AnalyzerTransportMode.fromProfileValue(instanceDefaults.defaultTransport());
-    }
-
-    public AnalyzerConnectionRole resolvedConnectionRole() {
-        if ("FILE".equals(protocol)) {
-            return AnalyzerConnectionRole.RECEIVER;
-        }
-        return AnalyzerConnectionRole.fromProfileValue(instanceDefaults.connectionRole());
-    }
-
-    public boolean declaresTransport(AnalyzerTransportMode selected) {
-        if ("FILE".equals(protocol)) {
-            return selected == AnalyzerTransportMode.FILE;
-        }
-        if (selected == null) {
-            return false;
-        }
-        for (JsonNode transport : document.path("transport")) {
-            if (selected == AnalyzerTransportMode.fromProfileValue(transport.asText())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean supportsDataFlow(CommunicationMode selected) {
-        if ("FILE".equals(protocol)) {
-            return selected == null;
-        }
-        if (selected == null) {
-            return false;
-        }
-        boolean inboundResults = document.path("capabilities").path("inboundResults").asBoolean(false);
-        boolean outboundOrders = document.path("capabilities").path("outboundOrders").asBoolean(false);
-        return switch (selected) {
-        case ANALYZER_INITIATED -> inboundResults;
-        case LIS_INITIATED -> Boolean.TRUE.equals(supportsLisInitiated) && outboundOrders;
-        case BOTH -> inboundResults && Boolean.TRUE.equals(supportsLisInitiated) && outboundOrders;
-        };
     }
 
     private static String requiredText(JsonNode node, String field) {
@@ -257,17 +178,6 @@ public final class BridgeAnalyzerProfile {
         return value.isIntegralNumber() && value.canConvertToInt() ? value.asInt() : null;
     }
 
-    private static Boolean nullableBoolean(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        if (value.isMissingNode() || value.isNull()) {
-            return null;
-        }
-        if (!value.isBoolean()) {
-            throw new IllegalArgumentException("Bridge analyzer profile " + field + " must be a boolean");
-        }
-        return value.asBoolean();
-    }
-
     private static List<String> textList(JsonNode values, String label) {
         List<String> result = new ArrayList<>();
         for (JsonNode value : values) {
@@ -290,6 +200,4 @@ public final class BridgeAnalyzerProfile {
     public record NormalizedCoding(String system, String code, String display) {
     }
 
-    public record InstanceDefaults(String defaultTransport, String connectionRole, Integer port) {
-    }
 }
