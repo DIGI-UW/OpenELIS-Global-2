@@ -44,6 +44,7 @@ import "./AnalyzersList.css";
 interface AnalyzerStats {
   total: number;
   active: number;
+  setup: number;
   inactive: number;
   pluginWarnings: number;
 }
@@ -51,11 +52,10 @@ interface AnalyzerStats {
 interface AnalyzerTableRow {
   id: string;
   name: string;
-  type: string;
   connection: string;
-  testUnits: string;
+  labUnits: string;
+  type: string;
   status: AnalyzerStatus;
-  lastModified: string;
   actions: string;
   _analyzer: Analyzer;
 }
@@ -111,6 +111,7 @@ const AnalyzersList = () => {
   const [stats, setStats] = useState<AnalyzerStats>({
     total: 0,
     active: 0,
+    setup: 0,
     inactive: 0,
     pluginWarnings: 0,
   });
@@ -211,6 +212,9 @@ const AnalyzersList = () => {
 
           // Calculate statistics based on unified status
           const activeCount = list.filter((a) => a.status === "ACTIVE").length;
+          const setupCount = list.filter(
+            (a) => a.status === "SETUP" || a.status === "VALIDATION",
+          ).length;
           const inactiveCount = list.filter(
             (a) => a.status === "INACTIVE",
           ).length;
@@ -218,6 +222,7 @@ const AnalyzersList = () => {
           setStats({
             total: list.length,
             active: activeCount,
+            setup: setupCount,
             inactive: inactiveCount,
             pluginWarnings: pluginWarningCount,
           });
@@ -355,24 +360,20 @@ const AnalyzersList = () => {
       header: intl.formatMessage({ id: "analyzer.table.header.name" }),
     },
     {
-      key: "type",
-      header: intl.formatMessage({ id: "analyzer.table.header.type" }),
-    },
-    {
       key: "connection",
       header: intl.formatMessage({ id: "analyzer.table.header.connection" }),
     },
     {
-      key: "testUnits",
+      key: "labUnits",
       header: intl.formatMessage({ id: "analyzer.table.header.testUnits" }),
+    },
+    {
+      key: "type",
+      header: intl.formatMessage({ id: "analyzer.table.header.type" }),
     },
     {
       key: "status",
       header: intl.formatMessage({ id: "analyzer.table.header.status" }),
-    },
-    {
-      key: "lastModified",
-      header: intl.formatMessage({ id: "analyzer.table.header.lastModified" }),
     },
     {
       key: "actions",
@@ -398,6 +399,13 @@ const AnalyzersList = () => {
     return {
       id: analyzer.id || "",
       name: analyzer.name || "-",
+      connection: connection,
+      labUnits:
+        analyzer.testUnitIds && analyzer.testUnitIds.length > 0
+          ? analyzer.testUnitIds
+              .map((id) => labUnitNames[String(id)] || String(id))
+              .join(", ")
+          : "-",
       type:
         profileName ||
         (analyzer.profileId
@@ -408,17 +416,7 @@ const AnalyzersList = () => {
                   : "analyzer.table.type.unavailable",
             })
           : analyzer.analyzerType || analyzer.type || "-"),
-      connection: connection,
-      testUnits:
-        analyzer.testUnitIds && analyzer.testUnitIds.length > 0
-          ? analyzer.testUnitIds
-              .map((id) => labUnitNames[String(id)] || String(id))
-              .join(", ")
-          : "-",
       status: unifiedStatus,
-      lastModified: analyzer.lastModified
-        ? new Date(analyzer.lastModified).toLocaleDateString()
-        : "-",
       actions: "",
       _analyzer: analyzer, // Store full analyzer object for actions (prefixed with _ to avoid conflicts)
     };
@@ -475,6 +473,14 @@ const AnalyzersList = () => {
               {intl.formatMessage({ id: "analyzer.stat.active" })}
             </div>
             <div className="stat-value">{stats.active}</div>
+          </Tile>
+        </Column>
+        <Column lg={4} md={2} sm={2}>
+          <Tile data-testid="stat-setup">
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.stat.setup" })}
+            </div>
+            <div className="stat-value">{stats.setup}</div>
           </Tile>
         </Column>
         <Column lg={4} md={2} sm={2}>
@@ -685,8 +691,8 @@ const AnalyzersList = () => {
                                 testId = `analyzer-type-${row.id}`;
                               } else if (headerKey === "connection") {
                                 testId = `analyzer-connection-${row.id}`;
-                              } else if (headerKey === "testUnits") {
-                                testId = `analyzer-test-units-${row.id}`;
+                              } else if (headerKey === "labUnits") {
+                                testId = `analyzer-lab-units-${row.id}`;
                               } else if (headerKey === "status") {
                                 testId = `analyzer-status-${row.id}`;
                                 const statusColorMap: Record<
@@ -718,8 +724,6 @@ const AnalyzersList = () => {
                                     })}
                                   </Tag>
                                 );
-                              } else if (headerKey === "lastModified") {
-                                testId = `analyzer-last-modified-${row.id}`;
                               } else if (headerKey === "actions") {
                                 testId = `analyzer-actions-${row.id}`;
                                 cellContent = analyzer ? (

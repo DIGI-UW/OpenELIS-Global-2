@@ -545,9 +545,56 @@ describe("AnalyzersList", () => {
 
     renderWithIntl(<AnalyzersList />);
 
-    expect(
-      await screen.findByTestId("analyzer-test-units-1"),
-    ).toHaveTextContent("Molecular Biology, Hematology");
+    expect(await screen.findByTestId("analyzer-lab-units-1")).toHaveTextContent(
+      "Molecular Biology, Hematology",
+    );
+  });
+
+  test("summarizes analyzers still in setup separately from inactive analyzers", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({ id: "1", status: "SETUP" }),
+            createMockAnalyzer({ id: "2", status: "VALIDATION" }),
+            createMockAnalyzer({ id: "3", status: "ACTIVE" }),
+            createMockAnalyzer({ id: "4", status: "INACTIVE" }),
+          ],
+        });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(await screen.findByTestId("stat-total")).toHaveTextContent("4");
+    expect(screen.getByTestId("stat-active")).toHaveTextContent("1");
+    expect(screen.getByTestId("stat-setup")).toHaveTextContent("2");
+    expect(screen.getByTestId("stat-inactive")).toHaveTextContent("1");
+  });
+
+  test("uses the concise lab-facing analyzer columns in their review order", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [createMockAnalyzer()] }));
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await screen.findByTestId("analyzers-table");
+    const visibleHeaders = screen
+      .getAllByRole("columnheader")
+      .map(
+        (header) =>
+          header.querySelector(".cds--table-header-label")?.textContent,
+      );
+
+    expect(visibleHeaders).toEqual([
+      "Name",
+      "Connection",
+      "Lab Units",
+      "Analyzer type",
+      "Status",
+      "Actions",
+    ]);
   });
 
   test("shows a visible loading state until the analyzer list resolves", async () => {
