@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -35,9 +34,6 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerFieldService analyzerFieldService;
-
-    @Autowired
-    private org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService analyzerOrderDispatchService;
 
     @Autowired
     private AnalyzerErrorService analyzerErrorService;
@@ -67,55 +63,6 @@ public class AnalyzerRestController extends BaseRestController {
             Map<String, Object> error = new LinkedHashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
-        }
-    }
-
-    /**
-     * POST /rest/analyzer/analyzers/{id}/send-order Dispatch an outbound LIS-
-     * initiated order to the given analyzer via the bridge.
-     *
-     * <p>
-     * Body: {@code { accessionNumber: string, patientId?: string, testCodes:
-     * string[] }}. Returns HTTP 200 on successful bridge accept, 502 on bridge-side
-     * failure (failed ACK, connection refused), 400 on validation, 422 on
-     * configuration problems (missing IP/port, missing bridge URL).
-     */
-    @PostMapping("/analyzers/{id}/send-order")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> sendOrder(@PathVariable String id,
-            @RequestBody Map<String, Object> body) {
-        // OE2 is analyzer-agnostic: it sends only {accessionNumber}. The backend
-        // resolves the accession's ordered tests → their LOINCs and posts a
-        // LOINC order to the bridge, which owns LOINC→analyzer-code + message
-        // building. No test codes cross this boundary.
-        String accessionNumber = body.get("accessionNumber") instanceof String s ? s : null;
-        try {
-            org.openelisglobal.analyzer.service.AnalyzerOrderDispatchService.DispatchResult result = analyzerOrderDispatchService
-                    .dispatchOrder(id, accessionNumber);
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("status", result.success ? "DISPATCHED" : "FAILED");
-            response.put("protocol", result.protocol);
-            response.put("analyzerId", id);
-            response.put("accessionNumber", accessionNumber);
-            response.put("loincCodes", result.loincCodes);
-            if (!result.success) {
-                response.put("error", result.error);
-            }
-            return result.success ? ResponseEntity.ok(response)
-                    : ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        } catch (java.io.IOException e) {
-            logger.warn("Bridge IO failure dispatching order for analyzer {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
-        } catch (Exception e) {
-            logger.error("Unexpected error dispatching order for analyzer {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 
