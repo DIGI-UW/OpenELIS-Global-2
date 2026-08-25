@@ -90,9 +90,12 @@ public class Analyzer extends BaseObject<String> {
     @JoinColumn(name = "site_binding_revision_id")
     private AnalyzerSiteBindingRevision siteBindingRevision;
 
+    @Column(name = "bridge_connection_id", length = 255)
+    private String bridgeConnectionId;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "active_candidate_id")
-    private AnalyzerActivationCandidate activeCandidate;
+    @JoinColumn(name = "latest_activation_record_id")
+    private AnalyzerActivationRecord latestActivationRecord;
     // --- Configuration fields (merged from analyzer_configuration) ---
 
     @Column(name = "ip_address", length = 15)
@@ -250,13 +253,22 @@ public class Analyzer extends BaseObject<String> {
         this.siteBindingRevision = siteBindingRevision;
     }
 
-    public AnalyzerActivationCandidate getActiveCandidate() {
-        return activeCandidate;
+    public String getBridgeConnectionId() {
+        return bridgeConnectionId;
     }
 
-    public void setActiveCandidate(AnalyzerActivationCandidate activeCandidate) {
-        this.activeCandidate = activeCandidate;
+    public void setBridgeConnectionId(String bridgeConnectionId) {
+        this.bridgeConnectionId = bridgeConnectionId;
     }
+
+    public AnalyzerActivationRecord getLatestActivationRecord() {
+        return latestActivationRecord;
+    }
+
+    public void setLatestActivationRecord(AnalyzerActivationRecord latestActivationRecord) {
+        this.latestActivationRecord = latestActivationRecord;
+    }
+
     public AnalyzerProfileBinding getPinnedProfileBinding() {
         if (siteBindingRevision == null || siteBindingRevision.getSiteBinding() == null) {
             return null;

@@ -38,12 +38,12 @@ public class AnalyzerConnectionProbeRestControllerTest {
         mockMvc.perform(post("/rest/analyzer/analyzers/77/test-connection"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.schemaVersion").value("1.0"))
-                .andExpect(jsonPath("$.analyzerId").value("77"))
-                .andExpect(jsonPath("$.profileRef.profileId").value("genexpert-astm"))
-                .andExpect(jsonPath("$.dataFlow").value("TWO_WAY"))
-                .andExpect(jsonPath("$.outcome").value("TIMEOUT"))
-                .andExpect(jsonPath("$.configureEndpoint.host").value("bridge.lab.example"))
-                .andExpect(jsonPath("$.resultsOnlyAvailable").value(true));
+                .andExpect(jsonPath("$.requestId").value("probe-4"))
+                .andExpect(jsonPath("$.connectionId").value("bridge-7"))
+                .andExpect(jsonPath("$.profileRef.profileId").value("fixture.synthetic-socket"))
+                .andExpect(jsonPath("$.configRevision").value(4))
+                .andExpect(jsonPath("$.nonMutating").value(true))
+                .andExpect(jsonPath("$.status").value("TIMEOUT"));
     }
 
     @Test
@@ -67,11 +67,10 @@ public class AnalyzerConnectionProbeRestControllerTest {
     }
 
     private static AnalyzerConnectionProbeView evidence() {
-        return new AnalyzerConnectionProbeView("1.0", "77",
-                new AnalyzerConnectionProbeView.ProfileRef("genexpert-astm", 1), "sha256:" + "6".repeat(64),
-                new AnalyzerConnectionProbeView.Connection("TCP", "RECEIVER"), "TWO_WAY", "TIMEOUT",
-                new AnalyzerConnectionProbeView.ConfigureEndpoint("NETWORK", "bridge.lab.example", 12001, null, null),
-                true,
-                List.of(new AnalyzerConnectionProbeView.Check("LISTENER", "PASSED", "listener.ready", 3, Map.of())));
+        return new AnalyzerConnectionProbeView("1.0", "probe-4", "bridge-7",
+                new AnalyzerConnectionProbeView.ProfileRef("fixture.synthetic-socket", 2, "sha256:" + "1".repeat(64)),
+                4, "sha256:" + "2".repeat(64), true, "TIMEOUT", "2026-08-24T19:05:03Z", "2026-08-24T19:05:04Z",
+                List.of(new AnalyzerConnectionProbeView.Check("listener-bind", "PASSED", "listener.ready", 3,
+                        Map.of())));
     }
 }

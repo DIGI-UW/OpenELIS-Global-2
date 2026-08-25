@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.form;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
@@ -18,17 +19,7 @@ public class AnalyzerInstanceRequest {
 
     private List<String> testUnitIds;
 
-    private String ipAddress;
-
-    private Integer port;
-
-    private String communicationMode;
-
-    private String transportMode;
-
-    private String connectionRole;
-
-    private String importDirectory;
+    private ObjectNode connectionValues;
 
     public String getName() {
         return name;
@@ -62,51 +53,11 @@ public class AnalyzerInstanceRequest {
         this.testUnitIds = testUnitIds;
     }
 
-    public String getIpAddress() {
-        return ipAddress;
+    public ObjectNode getConnectionValues() {
+        return connectionValues == null ? null : connectionValues.deepCopy();
     }
 
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-    }
-
-    public Integer getPort() {
-        return port;
-    }
-
-    public void setPort(Integer port) {
-        this.port = port;
-    }
-
-    public String getCommunicationMode() {
-        return communicationMode;
-    }
-
-    public void setCommunicationMode(String communicationMode) {
-        this.communicationMode = communicationMode;
-    }
-
-    public String getTransportMode() {
-        return transportMode;
-    }
-
-    public void setTransportMode(String transportMode) {
-        this.transportMode = transportMode;
-    }
-
-    public String getConnectionRole() {
-        return connectionRole;
-    }
-
-    public void setConnectionRole(String connectionRole) {
-        this.connectionRole = connectionRole;
-    }
-
-    public String getImportDirectory() {
-        return importDirectory;
-    }
-
-    public void setImportDirectory(String importDirectory) {
-        this.importDirectory = importDirectory;
+    public void setConnectionValues(ObjectNode connectionValues) {
+        this.connectionValues = connectionValues == null ? null : connectionValues.deepCopy();
     }
 }

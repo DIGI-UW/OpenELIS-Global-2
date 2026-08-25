@@ -18,17 +18,18 @@ import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+/** Immutable audit record for one exact Bridge runtime acknowledgement. */
 @Entity
-@Table(name = "analyzer_activation_candidate", schema = "clinlims")
+@Table(name = "analyzer_activation_record", schema = "clinlims")
 @Immutable
-public class AnalyzerActivationCandidate extends BaseObject<String> {
+public class AnalyzerActivationRecord extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
     @Id
     @Column(name = "id", precision = 10, scale = 0)
-    @GeneratedValue(generator = "analyzer_activation_candidate_seq_gen")
-    @GenericGenerator(name = "analyzer_activation_candidate_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "analyzer_activation_candidate_seq"))
+    @GeneratedValue(generator = "analyzer_activation_record_seq_gen")
+    @GenericGenerator(name = "analyzer_activation_record_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "analyzer_activation_record_seq"))
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
@@ -36,23 +37,26 @@ public class AnalyzerActivationCandidate extends BaseObject<String> {
     @JoinColumn(name = "analyzer_id", nullable = false, updatable = false)
     private Analyzer analyzer;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "site_binding_revision_id", nullable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "site_binding_revision_id", updatable = false)
     private AnalyzerSiteBindingRevision siteBindingRevision;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "verification_confirmation_id", nullable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "verification_confirmation_id", updatable = false)
     private AnalyzerSiteBindingConfirmation verificationConfirmation;
 
-    @Column(name = "candidate_document_json", columnDefinition = "TEXT", nullable = false, updatable = false)
-    private String candidateDocumentJson;
+    @Column(name = "bridge_connection_id", length = 255, nullable = false, updatable = false)
+    private String bridgeConnectionId;
 
-    @Column(name = "bridge_registration_json", columnDefinition = "TEXT", nullable = false, updatable = false)
-    private String bridgeRegistrationJson;
+    @Column(name = "activation_intent", length = 8, nullable = false, updatable = false)
+    private String activationIntent;
+
+    @Column(name = "runtime_acknowledgement_json", columnDefinition = "TEXT", nullable = false, updatable = false)
+    private String runtimeAcknowledgementJson;
 
     @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
-    @Column(name = "desired_state_fingerprint", length = 71, nullable = false, updatable = false)
-    private String desiredStateFingerprint;
+    @Column(name = "runtime_fingerprint", length = 71, nullable = false, updatable = false)
+    private String runtimeFingerprint;
 
     @Column(name = "created_by", length = 36, nullable = false, updatable = false)
     private String createdBy;
@@ -101,28 +105,36 @@ public class AnalyzerActivationCandidate extends BaseObject<String> {
         this.verificationConfirmation = verificationConfirmation;
     }
 
-    public String getCandidateDocumentJson() {
-        return candidateDocumentJson;
+    public String getBridgeConnectionId() {
+        return bridgeConnectionId;
     }
 
-    public void setCandidateDocumentJson(String candidateDocumentJson) {
-        this.candidateDocumentJson = candidateDocumentJson;
+    public void setBridgeConnectionId(String bridgeConnectionId) {
+        this.bridgeConnectionId = bridgeConnectionId;
     }
 
-    public String getBridgeRegistrationJson() {
-        return bridgeRegistrationJson;
+    public String getActivationIntent() {
+        return activationIntent;
     }
 
-    public void setBridgeRegistrationJson(String bridgeRegistrationJson) {
-        this.bridgeRegistrationJson = bridgeRegistrationJson;
+    public void setActivationIntent(String activationIntent) {
+        this.activationIntent = activationIntent;
     }
 
-    public String getDesiredStateFingerprint() {
-        return desiredStateFingerprint;
+    public String getRuntimeAcknowledgementJson() {
+        return runtimeAcknowledgementJson;
     }
 
-    public void setDesiredStateFingerprint(String desiredStateFingerprint) {
-        this.desiredStateFingerprint = desiredStateFingerprint;
+    public void setRuntimeAcknowledgementJson(String runtimeAcknowledgementJson) {
+        this.runtimeAcknowledgementJson = runtimeAcknowledgementJson;
+    }
+
+    public String getRuntimeFingerprint() {
+        return runtimeFingerprint;
+    }
+
+    public void setRuntimeFingerprint(String runtimeFingerprint) {
+        this.runtimeFingerprint = runtimeFingerprint;
     }
 
     public String getCreatedBy() {

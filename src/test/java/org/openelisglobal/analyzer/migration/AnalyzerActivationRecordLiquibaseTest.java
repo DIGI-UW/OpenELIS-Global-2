@@ -15,37 +15,42 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-public class AnalyzerActivationCandidateLiquibaseTest {
+public class AnalyzerActivationRecordLiquibaseTest {
 
     private static final Path VERSION_ROOT = Path.of("src", "main", "resources", "liquibase", "3.5.x.x");
     private static final Path BASE_CHANGELOG = VERSION_ROOT.resolve("base.xml");
-    private static final Path MIGRATION = VERSION_ROOT.resolve("091-analyzer-activation-candidate.xml");
+    private static final Path MIGRATION = VERSION_ROOT.resolve("091-analyzer-activation-record.xml");
 
     @Test
-    public void versionedChangelogIncludesActivationCandidateMigration() throws Exception {
+    public void versionedChangelogIncludesActivationRecordMigration() throws Exception {
         assertTrue(attributes(elements(parse(BASE_CHANGELOG), "include"), "file")
-                .contains("091-analyzer-activation-candidate.xml"));
+                .contains("091-analyzer-activation-record.xml"));
     }
 
     @Test
-    public void migrationRetainsCandidatesAndAddsOneActiveReference() throws Exception {
+    public void migrationStoresOneBridgeReferenceAndRetainsAcknowledgementHistory() throws Exception {
         Document migration = parse(MIGRATION);
         Element table = elements(migration, "createTable").stream()
-                .filter(element -> "analyzer_activation_candidate".equals(element.getAttribute("tableName")))
-                .findFirst().orElseThrow();
+                .filter(element -> "analyzer_activation_record".equals(element.getAttribute("tableName"))).findFirst()
+                .orElseThrow();
 
-        assertEquals(Set.of("id", "analyzer_id", "site_binding_revision_id", "verification_confirmation_id",
-                "candidate_document_json", "bridge_registration_json", "desired_state_fingerprint", "created_by",
-                "created_at", "last_updated"), attributes(childColumns(table), "name"));
-        assertTrue(attributes(elements(migration, "column"), "name").contains("active_candidate_id"));
+        assertEquals(
+                Set.of("id", "analyzer_id", "site_binding_revision_id", "verification_confirmation_id",
+                        "bridge_connection_id", "activation_intent", "runtime_acknowledgement_json",
+                        "runtime_fingerprint", "created_by", "created_at", "last_updated"),
+                attributes(childColumns(table), "name"));
+        Set<String> analyzerColumns = attributes(elements(migration, "column"), "name");
+        assertTrue(analyzerColumns.contains("bridge_connection_id"));
+        assertTrue(analyzerColumns.contains("latest_activation_record_id"));
         Set<String> foreignKeys = attributes(elements(migration, "addForeignKeyConstraint"), "constraintName");
-        assertTrue(foreignKeys.contains("fk_analyzer_activation_candidate_analyzer"));
-        assertTrue(foreignKeys.contains("fk_analyzer_activation_candidate_binding_revision"));
-        assertTrue(foreignKeys.contains("fk_analyzer_activation_candidate_confirmation"));
-        assertTrue(foreignKeys.contains("fk_analyzer_active_candidate"));
-        assertFalse("analyzer candidates must remain a retained history",
-                attributes(elements(migration, "addUniqueConstraint"), "columnNames").contains("analyzer_id"));
-        assertTrue("activation candidate migration requires rollback", !elements(migration, "rollback").isEmpty());
+        assertTrue(foreignKeys.contains("fk_analyzer_activation_record_analyzer"));
+        assertTrue(foreignKeys.contains("fk_analyzer_activation_record_binding_revision"));
+        assertTrue(foreignKeys.contains("fk_analyzer_activation_record_confirmation"));
+        assertTrue(foreignKeys.contains("fk_analyzer_latest_activation_record"));
+        assertFalse(attributes(elements(migration, "addUniqueConstraint"), "columnNames").contains("analyzer_id"));
+        assertTrue(
+                attributes(elements(migration, "addUniqueConstraint"), "columnNames").contains("bridge_connection_id"));
+        assertFalse(elements(migration, "rollback").isEmpty());
     }
 
     private static Document parse(Path path) throws Exception {

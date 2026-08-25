@@ -6,49 +6,48 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerActivationCandidate;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
+import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
-import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
-import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerActivationServiceTest {
 
-    private static final String ANALYZER_ID = "77";
+    private static final String ANALYZER_ID = "oe-analyzer-42";
+    private static final String CONNECTION_ID = "bridge-connection-7f3c";
+    private static final String PROFILE_ID = "fixture.synthetic-socket";
+    private static final int PROFILE_REVISION = 2;
+    private static final String PROFILE_FINGERPRINT = "sha256:" + "1".repeat(64);
+    private static final String RECOGNITION_FINGERPRINT = "sha256:" + "6".repeat(64);
     private static final String ACTOR = "17";
-    private static final String RECOGNITION_FINGERPRINT = "sha256:" + "c".repeat(64);
-    private static final String REGISTRATION_FINGERPRINT = "sha256:" + "d".repeat(64);
-    private static final Instant ACTIVATED_AT = Instant.parse("2026-08-23T20:00:00Z");
+    private static final Instant ACTIVATED_AT = Instant.parse("2026-08-24T19:05:05Z");
     private static final ObjectMapper JSON = new ObjectMapper();
 
     @Mock
@@ -67,36 +66,33 @@ public class AnalyzerActivationServiceTest {
     private TestSectionService testSectionService;
 
     @Mock
-    private BridgeRegistrationService registrationService;
+    private BridgeAnalyzerConnectionClient bridgeClient;
 
     @Mock
-    private AnalyzerActivationCandidateFactory candidateFactory;
-
-    @Mock
-    private AnalyzerActivationCandidateService candidateService;
+    private AnalyzerActivationRecordService activationRecordService;
 
     private AnalyzerActivationService service;
     private Analyzer analyzer;
     private AnalyzerSiteBindingSnapshot snapshot;
     private AnalyzerSiteBindingConfirmation confirmation;
-    private ObjectNode registration;
-    private AnalyzerActivationDocuments documents;
-    private AnalyzerActivationCandidate retained;
+    private ObjectNode connection;
+    private ObjectNode activationAcknowledgement;
+    private AnalyzerActivationRecord retained;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         analyzer = analyzer();
         snapshot = snapshot();
         analyzer.setSiteBindingRevision(snapshot.revision());
         confirmation = confirmation(snapshot.revision());
-        registration = registration();
-        documents = new AnalyzerActivationDocuments(JSON.createObjectNode().put("oeAnalyzerId", ANALYZER_ID),
-                registration);
-        retained = new AnalyzerActivationCandidate();
+        connection = fixture("analyzer-connection.json");
+        connection.put("clientAnalyzerId", ANALYZER_ID);
+        activationAcknowledgement = fixture("connection-activate-ack.json");
+        retained = new AnalyzerActivationRecord();
+        retained.setVerificationConfirmation(confirmation);
 
         when(analyzerService.getWithType(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
-        when(profileCatalogService.getProfile(AnalyzerTestProfileCatalog.PROFILE_ID,
-                AnalyzerTestProfileCatalog.PROFILE_REVISION)).thenReturn(profileRevision());
+        when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION)).thenReturn(profileRevision());
         when(siteBindingService.findByRevisionId(snapshot.revision().getId())).thenReturn(Optional.of(snapshot));
         when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
                 .thenReturn(AnalyzerSiteBindingVerificationAssessment.current(confirmation));
@@ -104,269 +100,147 @@ public class AnalyzerActivationServiceTest {
         activeUnit.setId("4");
         activeUnit.setIsActive("Y");
         when(testSectionService.get("4")).thenReturn(activeUnit);
-        when(registrationService.buildActivationRegistration(analyzer)).thenReturn(registration);
+        when(bridgeClient.getConnection(CONNECTION_ID)).thenReturn(connection);
 
         service = new AnalyzerActivationServiceImpl(analyzerService, profileCatalogService, siteBindingService,
-                confirmationService, testSectionService, registrationService, candidateFactory, candidateService,
-                Clock.fixed(ACTIVATED_AT, ZoneOffset.UTC));
+                confirmationService, testSectionService, bridgeClient, activationRecordService,
+                Clock.fixed(ACTIVATED_AT, ZoneOffset.UTC), () -> "activate-fixture-004",
+                () -> "deactivate-fixture-004");
     }
 
     @Test
-    public void promotesOnlyAfterTheExactCandidateIsAcknowledgedAndRetained() {
-        BridgeRegisteredCandidate acknowledgement = acknowledgeCandidate();
-        when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
-                .thenReturn(retained);
+    public void activatesOnlyTheExactSavedBridgeConnectionRevision() {
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.revision(), confirmation, activationAcknowledgement,
+                "ACTIVE", ACTOR)).thenReturn(retained);
 
         AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
 
         assertTrue(result.activated());
-        assertTrue(result.blockers().isEmpty());
         assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
         assertTrue(analyzer.isActive());
-        assertEquals(retained, analyzer.getActiveCandidate());
+        assertEquals(retained, analyzer.getLatestActivationRecord());
         assertEquals(ACTIVATED_AT, analyzer.getLastActivatedDate().toInstant());
-        assertEquals(ACTOR, analyzer.getSysUserId());
-
-        InOrder order = inOrder(registrationService, candidateFactory, candidateService, analyzerService);
-        order.verify(registrationService).synchronizeCandidate(ANALYZER_ID, registration);
-        order.verify(candidateFactory).create(analyzer, snapshot, confirmation, registration, acknowledgement);
-        order.verify(candidateService).retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR);
+        InOrder order = inOrder(bridgeClient, activationRecordService, analyzerService);
+        order.verify(bridgeClient).getConnection(CONNECTION_ID);
+        order.verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004");
+        order.verify(activationRecordService).retain(analyzer, snapshot.revision(), confirmation,
+                activationAcknowledgement, "ACTIVE", ACTOR);
         order.verify(analyzerService).update(analyzer);
     }
 
     @Test
-    public void leavesTheAnalyzerUnchangedWhenBridgeDoesNotAcknowledgeTheExactCandidate() {
-        when(registrationService.synchronizeCandidate(ANALYZER_ID, registration))
-                .thenReturn(new BridgeRegistrationResult(false, Set.of(), "Bridge unavailable"));
-
-        AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
-
-        assertFalse(result.activated());
-        assertEquals(List.of("analyzer.activation.blocker.bridgeAcknowledgement"),
-                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
-        assertEquals(Analyzer.AnalyzerStatus.VALIDATION, analyzer.getStatus());
-        assertFalse(analyzer.isActive());
-        assertNull(analyzer.getActiveCandidate());
-        assertNull(analyzer.getLastActivatedDate());
-        verify(candidateFactory, never()).create(any(), any(), any(), any(), any());
-        verify(candidateService, never()).retain(any(), any(), any(), any(), any());
-        verify(analyzerService, never()).update(any(Analyzer.class));
-        verify(registrationService, never()).synchronize();
-    }
-
-    @Test
-    public void readinessValidatesTheDraftWithoutSynchronizingOrPersisting() {
+    public void readinessReadsButDoesNotMutateTheSavedConnection() {
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 
         assertTrue(result.ready());
         assertFalse(result.activated());
-        assertTrue(result.blockers().isEmpty());
-        verify(registrationService, never()).synchronizeCandidate(any(), any());
-        verify(registrationService, never()).synchronize();
-        verify(candidateFactory, never()).create(any(), any(), any(), any(), any());
-        verify(candidateService, never()).retain(any(), any(), any(), any(), any());
+        verify(bridgeClient).getConnection(CONNECTION_ID);
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
+        verify(activationRecordService, never()).retain(any(), any(), any(), any(), any(), any());
         verify(analyzerService, never()).update(any(Analyzer.class));
         assertUnchanged();
     }
 
     @Test
-    public void profileMustDeclareTheSelectedTransportBeforeActivation() {
-        BridgeProfileCatalog.ProfileRevision revision = profileRevision();
-        ObjectNode serialOnly = revision.profile().deepCopy();
-        serialOnly.putArray("transport").add("RS-232");
-        when(profileCatalogService.getProfile(AnalyzerTestProfileCatalog.PROFILE_ID,
-                AnalyzerTestProfileCatalog.PROFILE_REVISION))
-                .thenReturn(new BridgeProfileCatalog.ProfileRevision(serialOnly, revision.publication(),
-                        revision.controlRecognitionSummary()));
+    public void reportsEveryBridgeReadinessBlockerWithoutInterpretingProfileFields() {
+        connection.with("readiness").put("ready", false);
+        connection.with("readiness").putArray("blockers").addObject().put("key", "listener-port")
+                .put("messageKey", "analyzer.connection.listenerPort.unavailable").putArray("fieldKeys")
+                .add("listenerPort");
 
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 
-        assertEquals(List.of("analyzer.activation.blocker.transport"),
+        assertEquals(List.of("analyzer.connection.listenerPort.unavailable"),
                 result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
-        verify(registrationService, never()).buildActivationRegistration(analyzer);
-        verify(registrationService, never()).synchronizeCandidate(any(), any());
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
     }
 
     @Test
-    public void twoWayDataFlowRequiresThePinnedProfilesExplicitCapability() {
-        analyzer.setCommunicationMode(CommunicationMode.BOTH);
+    public void rejectsAConnectionOwnedByAnotherOpenElisAnalyzer() {
+        connection.put("clientAnalyzerId", "another-analyzer");
 
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 
-        assertEquals(List.of("analyzer.activation.blocker.dataFlow"),
+        assertEquals(List.of("analyzer.activation.blocker.connection"),
                 result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
-        verify(registrationService, never()).buildActivationRegistration(analyzer);
-        verify(registrationService, never()).synchronizeCandidate(any(), any());
     }
 
     @Test
-    public void analyzerProtocolMustMatchThePinnedProfile() {
-        analyzer.setType("HL7");
-
-        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
-
-        assertEquals(List.of("analyzer.activation.blocker.profile"),
-                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
-        verify(registrationService, never()).buildActivationRegistration(analyzer);
-        verify(registrationService, never()).synchronizeCandidate(any(), any());
-    }
-
-    @Test
-    public void readinessReportsOnlyTheFalseVerificationPredicates() {
+    public void requiresCurrentLocalMappingAndRecognitionVerification() {
         when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
-                .thenReturn(new AnalyzerSiteBindingVerificationAssessment(false, true, confirmation));
-
-        AnalyzerActivationResult staleMappings = service.readiness(ANALYZER_ID);
-
-        assertEquals(List.of("analyzer.activation.blocker.mappings"),
-                staleMappings.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
-
-        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
-                .thenReturn(new AnalyzerSiteBindingVerificationAssessment(true, false, confirmation));
-
-        AnalyzerActivationResult staleRecognition = service.readiness(ANALYZER_ID);
-
-        assertEquals(List.of("analyzer.activation.blocker.recognition"),
-                staleRecognition.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
-        verify(registrationService, never()).buildActivationRegistration(analyzer);
-        verify(registrationService, never()).synchronizeCandidate(any(), any());
-    }
-
-    @Test
-    public void readinessReportsBothPredicatesWhenNothingHasBeenVerified() {
-        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
-                .thenReturn(AnalyzerSiteBindingVerificationAssessment.unconfirmed());
+                .thenReturn(new AnalyzerSiteBindingVerificationAssessment(false, false, confirmation));
 
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 
         assertEquals(List.of("analyzer.activation.blocker.mappings", "analyzer.activation.blocker.recognition"),
                 result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
-        verify(registrationService, never()).buildActivationRegistration(analyzer);
-        verify(registrationService, never()).synchronizeCandidate(any(), any());
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
     }
 
     @Test
-    public void restoresBridgeDesiredStateWhenTheAcknowledgedCandidateCannotBeRetained() {
-        acknowledgeCandidate();
-        when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
-                .thenThrow(new IllegalStateException("database unavailable"));
+    public void rejectedActivationAcknowledgementNeverChangesOpenElisState() {
+        activationAcknowledgement.put("outcome", "REJECTED");
+        activationAcknowledgement.put("actualRuntimeState", "INACTIVE");
+        activationAcknowledgement.putArray("blockers").addObject().put("key", "listener-port").put("messageKey",
+                "analyzer.connection.listenerPort.unavailable");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
 
-        assertThrows(IllegalStateException.class, () -> service.activate(ANALYZER_ID, ACTOR));
+        AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
 
-        verify(registrationService).synchronize();
+        assertFalse(result.activated());
+        assertEquals(List.of("analyzer.connection.listenerPort.unavailable"),
+                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+        verify(activationRecordService, never()).retain(any(), any(), any(), any(), any(), any());
+        verify(analyzerService, never()).update(any(Analyzer.class));
         assertUnchanged();
     }
 
     @Test
-    public void restoresTheAnalyzerAndBridgeWhenFinalPromotionCannotBePersisted() {
-        acknowledgeCandidate();
-        when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
-                .thenReturn(retained);
+    public void compensatesOnlyANewlyAppliedActivationWhenLocalPersistenceFails() throws Exception {
+        ObjectNode deactivationAcknowledgement = fixture("connection-deactivate-ack.json");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.revision(), confirmation, activationAcknowledgement,
+                "ACTIVE", ACTOR)).thenReturn(retained);
         doThrow(new IllegalStateException("database unavailable")).when(analyzerService).update(analyzer);
+        when(bridgeClient.applyRuntimeCommand(eq(CONNECTION_ID), eq(4), eq("DEACTIVATE"), any(String.class)))
+                .thenReturn(deactivationAcknowledgement);
 
         assertThrows(IllegalStateException.class, () -> service.activate(ANALYZER_ID, ACTOR));
 
-        verify(registrationService).synchronize();
+        verify(bridgeClient).applyRuntimeCommand(eq(CONNECTION_ID), eq(4), eq("DEACTIVATE"), any(String.class));
         assertUnchanged();
     }
 
     @Test
-    public void deactivationPreservesThePinnedCandidateAndRequiresExactBridgeSync() {
-        AnalyzerActivationCandidate activeCandidate = makeActive();
-        when(registrationService.synchronize()).thenReturn(new BridgeRegistrationResult(true, Set.of(), null));
+    public void deactivatesTheExactSavedBridgeConnectionRevision() throws Exception {
+        ObjectNode deactivationAcknowledgement = fixture("connection-deactivate-ack.json");
+        analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        analyzer.setActive(true);
+        analyzer.setLatestActivationRecord(retained);
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE", "deactivate-fixture-004"))
+                .thenReturn(deactivationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.revision(), confirmation, deactivationAcknowledgement,
+                "INACTIVE", ACTOR)).thenReturn(retained);
 
         AnalyzerDeactivationResult result = service.deactivate(ANALYZER_ID, ACTOR);
 
         assertTrue(result.deactivated());
-        assertEquals(Analyzer.AnalyzerStatus.INACTIVE, result.status());
         assertEquals(Analyzer.AnalyzerStatus.INACTIVE, analyzer.getStatus());
         assertFalse(analyzer.isActive());
-        assertEquals(activeCandidate, analyzer.getActiveCandidate());
-        assertEquals(ACTOR, analyzer.getSysUserId());
+        verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE", "deactivate-fixture-004");
+        verify(activationRecordService).retain(analyzer, snapshot.revision(), confirmation, deactivationAcknowledgement,
+                "INACTIVE", ACTOR);
         verify(analyzerService).update(analyzer);
-        verify(registrationService).synchronize();
-        verify(candidateService, never()).retain(any(), any(), any(), any(), any());
-    }
-
-    @Test
-    public void failedDeactivationRestoresTheActiveAnalyzerAndBridgeState() {
-        AnalyzerActivationCandidate activeCandidate = makeActive();
-        when(registrationService.synchronize()).thenReturn(
-                new BridgeRegistrationResult(false, Set.of(), "Bridge unavailable"),
-                new BridgeRegistrationResult(true, Set.of(ANALYZER_ID), null));
-
-        AnalyzerDeactivationResult result = service.deactivate(ANALYZER_ID, ACTOR);
-
-        assertFalse(result.deactivated());
-        assertEquals("Bridge unavailable", result.failure());
-        assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
-        assertTrue(analyzer.isActive());
-        assertEquals(activeCandidate, analyzer.getActiveCandidate());
-        verify(analyzerService, times(2)).update(analyzer);
-        verify(registrationService, times(2)).synchronize();
-    }
-
-    @Test
-    public void deactivationExceptionRestoresTheActiveAnalyzerAndBridgeState() {
-        AnalyzerActivationCandidate activeCandidate = makeActive();
-        doThrow(new IllegalStateException("Bridge unavailable"))
-                .doReturn(new BridgeRegistrationResult(true, Set.of(), null)).when(registrationService).synchronize();
-
-        AnalyzerDeactivationResult result = service.deactivate(ANALYZER_ID, ACTOR);
-
-        assertFalse(result.deactivated());
-        assertEquals("Bridge unavailable", result.failure());
-        assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
-        assertTrue(analyzer.isActive());
-        assertEquals(activeCandidate, analyzer.getActiveCandidate());
-        verify(analyzerService, times(2)).update(analyzer);
-        verify(registrationService, times(2)).synchronize();
-    }
-
-    @Test
-    public void reactivationUsesTheSameVerifiedCandidateAndAcknowledgementBoundary() {
-        AnalyzerActivationCandidate previousCandidate = new AnalyzerActivationCandidate();
-        analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
-        analyzer.setActive(false);
-        analyzer.setActiveCandidate(previousCandidate);
-        BridgeRegisteredCandidate acknowledgement = acknowledgeCandidate();
-        when(candidateService.retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR))
-                .thenReturn(retained);
-
-        AnalyzerActivationResult result = service.reactivate(ANALYZER_ID, ACTOR);
-
-        assertTrue(result.activated());
-        assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
-        assertTrue(analyzer.isActive());
-        assertEquals(retained, analyzer.getActiveCandidate());
-        InOrder order = inOrder(registrationService, candidateFactory, candidateService, analyzerService);
-        order.verify(registrationService).synchronizeCandidate(ANALYZER_ID, registration);
-        order.verify(candidateFactory).create(analyzer, snapshot, confirmation, registration, acknowledgement);
-        order.verify(candidateService).retain(analyzer, snapshot.revision(), confirmation, documents, ACTOR);
-        order.verify(analyzerService).update(analyzer);
-    }
-
-    private BridgeRegisteredCandidate acknowledgeCandidate() {
-        BridgeRegisteredCandidate acknowledgement = acknowledgement();
-        when(registrationService.synchronizeCandidate(ANALYZER_ID, registration)).thenReturn(
-                new BridgeRegistrationResult(true, Set.of(ANALYZER_ID), null, Map.of(ANALYZER_ID, acknowledgement)));
-        when(candidateFactory.create(analyzer, snapshot, confirmation, registration, acknowledgement))
-                .thenReturn(documents);
-        return acknowledgement;
-    }
-
-    private AnalyzerActivationCandidate makeActive() {
-        AnalyzerActivationCandidate activeCandidate = new AnalyzerActivationCandidate();
-        analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
-        analyzer.setActive(true);
-        analyzer.setActiveCandidate(activeCandidate);
-        return activeCandidate;
     }
 
     private void assertUnchanged() {
         assertEquals(Analyzer.AnalyzerStatus.VALIDATION, analyzer.getStatus());
         assertFalse(analyzer.isActive());
-        assertNull(analyzer.getActiveCandidate());
+        assertNull(analyzer.getLatestActivationRecord());
         assertNull(analyzer.getLastActivatedDate());
         assertNull(analyzer.getSysUserId());
     }
@@ -375,29 +249,26 @@ public class AnalyzerActivationServiceTest {
         Analyzer analyzer = new Analyzer();
         analyzer.setId(ANALYZER_ID);
         analyzer.setName("Lab analyzer");
+        analyzer.setBridgeConnectionId(CONNECTION_ID);
         analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
         analyzer.setActive(false);
         analyzer.setTestUnitIds(List.of("4"));
-        analyzer.setType("ASTM");
-        analyzer.setTransportMode(AnalyzerTransportMode.TCP);
-        analyzer.setConnectionRole(AnalyzerConnectionRole.RECEIVER);
-        analyzer.setCommunicationMode(CommunicationMode.ANALYZER_INITIATED);
         return analyzer;
     }
 
     private static AnalyzerSiteBindingSnapshot snapshot() {
         AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
         profile.setId("21");
-        profile.setProfileId(AnalyzerTestProfileCatalog.PROFILE_ID);
-        profile.setProfileRevision(AnalyzerTestProfileCatalog.PROFILE_REVISION);
-        profile.setProfileFingerprint(AnalyzerTestProfileCatalog.PROFILE_FINGERPRINT);
+        profile.setProfileId(PROFILE_ID);
+        profile.setProfileRevision(PROFILE_REVISION);
+        profile.setProfileFingerprint(PROFILE_FINGERPRINT);
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setId("31");
         binding.setProfileBinding(profile);
         AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
         revision.setId("41");
         revision.setSiteBinding(binding);
-        revision.setBindingFingerprint("sha256:" + "b".repeat(64));
+        revision.setBindingFingerprint("sha256:" + "5".repeat(64));
         return new AnalyzerSiteBindingSnapshot(binding, revision, List.of(), List.of());
     }
 
@@ -405,23 +276,28 @@ public class AnalyzerActivationServiceTest {
         AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
         confirmation.setId("51");
         confirmation.setSiteBindingRevision(revision);
+        confirmation.setProfileId(PROFILE_ID);
+        confirmation.setProfileRevision(PROFILE_REVISION);
+        confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
+        confirmation.setBindingFingerprint(revision.getBindingFingerprint());
         confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
         return confirmation;
     }
 
     private static BridgeProfileCatalog.ProfileRevision profileRevision() {
-        BridgeProfileCatalog.ProfileRevision profile = AnalyzerTestProfileCatalog.catalog().profiles().get(0);
+        ObjectNode profile = JSON.createObjectNode();
+        profile.putObject("profileMeta").put("id", PROFILE_ID).put("displayName", "Synthetic socket analyzer");
+        profile.putObject("catalog").put("revision", PROFILE_REVISION).put("revisionFingerprint", PROFILE_FINGERPRINT)
+                .put("source", "TEST").put("status", "ACTIVE");
+        profile.putObject("protocol").put("name", "ASTM");
         BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
                 RECOGNITION_FINGERPRINT, "NONE", "No automated control recognition", true, List.of());
-        return new BridgeProfileCatalog.ProfileRevision(profile.profile(), profile.publication(), recognition);
+        return new BridgeProfileCatalog.ProfileRevision(profile, JSON.createObjectNode(), recognition);
     }
 
-    private static ObjectNode registration() {
-        return JSON.createObjectNode().put("desiredStateFingerprint", REGISTRATION_FINGERPRINT);
-    }
-
-    private static BridgeRegisteredCandidate acknowledgement() {
-        return new BridgeRegisteredCandidate(ANALYZER_ID, AnalyzerTestProfileCatalog.PROFILE_ID,
-                AnalyzerTestProfileCatalog.PROFILE_REVISION, REGISTRATION_FINGERPRINT);
+    private static ObjectNode fixture(String name) throws Exception {
+        String json = Files.readString(
+                Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer", "v1", "fixtures", name));
+        return (ObjectNode) JSON.readTree(json);
     }
 }

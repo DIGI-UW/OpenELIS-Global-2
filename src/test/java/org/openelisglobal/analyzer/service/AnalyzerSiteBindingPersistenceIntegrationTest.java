@@ -10,18 +10,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.analyzer.dao.AnalyzerActivationCandidateDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerActivationRecordDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingConfirmationDAO;
@@ -30,11 +24,8 @@ import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingResultDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingRevisionDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingTestDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConnectionRole;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
-import org.openelisglobal.analyzer.valueholder.AnalyzerTransportMode;
-import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -61,7 +52,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     private AnalyzerDAO analyzerDAO;
 
     @Autowired
-    private AnalyzerActivationCandidateDAO activationCandidateDAO;
+    private AnalyzerActivationRecordDAO activationRecordDAO;
 
     @Autowired
     private AnalyzerSiteBindingDAO siteBindingDAO;
@@ -171,35 +162,22 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
             Analyzer analyzer = new Analyzer();
             analyzer.setName("Persistence analyzer");
-            analyzer.setType("ASTM");
             analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
             analyzer.setSiteBindingRevision(saved.revision());
             analyzer.setTestUnitIds(List.of("1"));
-            analyzer.setTransportMode(AnalyzerTransportMode.TCP);
-            analyzer.setConnectionRole(AnalyzerConnectionRole.INITIATOR);
-            analyzer.setCommunicationMode(CommunicationMode.ANALYZER_INITIATED);
-            analyzer.setIpAddress("192.0.2.10");
-            analyzer.setPort(5000);
+            analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
             analyzer.setSysUserId(TEST_SYS_USER_ID);
             analyzerDAO.insert(analyzer);
 
-            ObjectNode registration = registration(analyzer, profileBinding);
-            String desiredFingerprint = registration.path("desiredStateFingerprint").asText();
-            BridgeRegisteredCandidate acknowledgement = new BridgeRegisteredCandidate(analyzer.getId(), profileId, 1,
-                    desiredFingerprint);
-            AnalyzerActivationCandidateService activationCandidateService = new AnalyzerActivationCandidateServiceImpl(
-                    activationCandidateDAO, auditTrailService);
-            AnalyzerActivationDocuments firstDocuments = new AnalyzerActivationCandidateFactory(
-                    Clock.fixed(Instant.parse("2026-08-23T20:00:00Z"), ZoneOffset.UTC))
-                    .create(analyzer, saved, storedVerification, registration, acknowledgement);
-            var firstCandidate = activationCandidateService.retain(analyzer, saved.revision(), storedVerification,
-                    firstDocuments, TEST_SYS_USER_ID);
-            AnalyzerActivationDocuments secondDocuments = new AnalyzerActivationCandidateFactory(
-                    Clock.fixed(Instant.parse("2026-08-23T20:01:00Z"), ZoneOffset.UTC))
-                    .create(analyzer, saved, storedVerification, registration, acknowledgement);
-            var activeCandidate = activationCandidateService.retain(analyzer, saved.revision(), storedVerification,
-                    secondDocuments, TEST_SYS_USER_ID);
-            analyzer.setActiveCandidate(activeCandidate);
+            AnalyzerActivationRecordService activationRecordService = new AnalyzerActivationRecordServiceImpl(
+                    activationRecordDAO, auditTrailService);
+            ObjectNode firstAcknowledgement = runtimeAcknowledgement(analyzer, profileBinding, "activate-1", 1);
+            var firstRecord = activationRecordService.retain(analyzer, saved.revision(), storedVerification,
+                    firstAcknowledgement, "ACTIVE", TEST_SYS_USER_ID);
+            ObjectNode secondAcknowledgement = runtimeAcknowledgement(analyzer, profileBinding, "activate-2", 2);
+            var latestRecord = activationRecordService.retain(analyzer, saved.revision(), storedVerification,
+                    secondAcknowledgement, "ACTIVE", TEST_SYS_USER_ID);
+            analyzer.setLatestActivationRecord(latestRecord);
             analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
             analyzerDAO.update(analyzer);
 
@@ -227,26 +205,12 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             assertEquals(request.confirmedRows(), confirmation.confirmedRows());
             assertTrue(confirmation.excludedRows().isEmpty());
 
-            var retainedCandidates = activationCandidateDAO.findByAnalyzerId(analyzer.getId());
-            assertEquals(2, retainedCandidates.size());
-            assertEquals(firstCandidate.getId(), retainedCandidates.get(0).getId());
-            assertEquals(firstDocuments.candidate(), parseJson(retainedCandidates.get(0).getCandidateDocumentJson()));
-            assertEquals(firstDocuments.registration(),
-                    parseJson(retainedCandidates.get(0).getBridgeRegistrationJson()));
+            var retainedRecords = activationRecordDAO.findByAnalyzerId(analyzer.getId());
+            assertEquals(2, retainedRecords.size());
+            assertEquals(firstRecord.getId(), retainedRecords.get(0).getId());
+            assertEquals(firstAcknowledgement, parseJson(retainedRecords.get(0).getRuntimeAcknowledgementJson()));
             Analyzer reloadedAnalyzer = analyzerDAO.get(analyzer.getId()).orElseThrow();
-            assertEquals(activeCandidate.getId(), reloadedAnalyzer.getActiveCandidate().getId());
-
-            Analyzer detachedAnalyzer = analyzerDAO.findAllWithTypes().stream()
-                    .filter(candidateAnalyzer -> analyzer.getId().equals(candidateAnalyzer.getId())).findFirst()
-                    .orElseThrow();
-            entityManager.clear();
-            AnalyzerService detachedAnalyzerService = mock(AnalyzerService.class);
-            when(detachedAnalyzerService.getAllWithTypes()).thenReturn(List.of(detachedAnalyzer));
-            BridgeRegistrationService bridgeRegistrationService = new BridgeRegistrationService(detachedAnalyzerService,
-                    mock(BridgeHttpClient.class), "https://bridge.example",
-                    Clock.fixed(Instant.parse("2026-08-23T20:02:00Z"), ZoneOffset.UTC));
-            assertEquals(secondDocuments.registration(),
-                    bridgeRegistrationService.buildDesiredState().path("analyzers").path(analyzer.getId()));
+            assertEquals(latestRecord.getId(), reloadedAnalyzer.getLatestActivationRecord().getId());
 
             status.setRollbackOnly();
         });
@@ -283,34 +247,27 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         }
     }
 
-    private static ObjectNode registration(Analyzer analyzer, AnalyzerProfileBinding profile) {
-        try {
-            ObjectNode registration = new ObjectMapper().createObjectNode();
-            registration.put("sourceId", analyzer.getIpAddress());
-            registration.put("name", analyzer.getName());
-            ObjectNode profileRef = registration.putObject("profileRef");
-            profileRef.put("profileId", profile.getProfileId());
-            profileRef.put("revision", profile.getProfileRevision());
-            registration.put("protocol", "ASTM");
-            registration.put("dataFlow", "RESULTS_ONLY");
-            registration.put("desiredStatus", "ACTIVE");
-            ObjectNode connection = registration.putObject("connection");
-            connection.put("mode", "TCP");
-            connection.put("role", "INITIATOR");
-            ObjectNode settings = connection.putObject("settings");
-            settings.put("remoteHost", analyzer.getIpAddress());
-            settings.put("remotePort", analyzer.getPort());
-            registration.put("desiredStateFingerprint", fingerprint(registration));
-            return registration;
-        } catch (Exception exception) {
-            throw new AssertionError("Cannot build Bridge registration fixture", exception);
-        }
-    }
-
-    private static String fingerprint(ObjectNode value) throws Exception {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] bytes = new ObjectMapper().writeValueAsString(value).getBytes(StandardCharsets.UTF_8);
-        return "sha256:" + HexFormat.of().formatHex(digest.digest(bytes));
+    private static ObjectNode runtimeAcknowledgement(Analyzer analyzer, AnalyzerProfileBinding profile,
+            String commandId, int runtimeRevision) {
+        ObjectNode acknowledgement = new ObjectMapper().createObjectNode();
+        acknowledgement.put("schemaVersion", "1.0");
+        acknowledgement.put("commandId", commandId);
+        acknowledgement.put("action", "ACTIVATE");
+        acknowledgement.put("outcome", "APPLIED");
+        acknowledgement.put("connectionId", analyzer.getBridgeConnectionId());
+        ObjectNode profileRef = acknowledgement.putObject("profileRef");
+        profileRef.put("profileId", profile.getProfileId());
+        profileRef.put("revision", profile.getProfileRevision());
+        profileRef.put("fingerprint", profile.getProfileFingerprint());
+        acknowledgement.put("configRevision", 1);
+        acknowledgement.put("configFingerprint", "sha256:" + "c".repeat(64));
+        acknowledgement.put("runtimeRevision", runtimeRevision);
+        acknowledgement.put("runtimeFingerprint", "sha256:" + "d".repeat(64));
+        acknowledgement.put("desiredRuntimeState", "ACTIVE");
+        acknowledgement.put("actualRuntimeState", "ACTIVE");
+        acknowledgement.putArray("blockers");
+        acknowledgement.put("acknowledgedAt", "2026-08-24T19:05:05Z");
+        return acknowledgement;
     }
 
     private static ObjectNode parseJson(String value) {
