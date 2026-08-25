@@ -1,5 +1,6 @@
 import { expect, test } from "../../../helpers/test-base";
 import type { Download } from "@playwright/test";
+import { Sidenav } from "../../../fixtures/sidenav";
 import { seedMicrobiologyWhonetExport } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -40,11 +41,10 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
 
     await test.step("Reach the export through configured navigation", async () => {
       await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
-      await page.getByRole("button", { name: "Open menu" }).click();
-      await page
-        .getByRole("button", { name: "Microbiology", exact: true })
-        .click();
-      const exportLink = page.getByRole("link", {
+      const sidenav = new Sidenav(page);
+      await sidenav.ensureExpanded();
+      await sidenav.expandMenu("Microbiology");
+      const exportLink = sidenav.nav.getByRole("link", {
         name: "WHONET export",
         exact: true,
       });
