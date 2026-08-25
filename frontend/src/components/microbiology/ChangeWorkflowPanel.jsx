@@ -80,7 +80,7 @@ const ChangeWorkflowPanel = ({
         onChanged(detail);
       })
       .catch((workflowError) => {
-        setError(formatMicrobiologyEnum(workflowError.message));
+        setError(formatMicrobiologyEnum(workflowError.message, intl));
       })
       .finally(() => setSaving(false));
   };
@@ -139,7 +139,7 @@ const ChangeWorkflowPanel = ({
             <SelectItem
               key={option}
               value={option}
-              text={formatMicrobiologyEnum(option)}
+              text={formatMicrobiologyEnum(option, intl)}
             />
           ))}
         </Select>

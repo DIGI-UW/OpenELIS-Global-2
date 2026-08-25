@@ -1571,7 +1571,10 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                           </Link>
                           <span>
                             {activity.note ||
-                              formatMicrobiologyEnum(activity.activityType)}
+                              formatMicrobiologyEnum(
+                                activity.activityType,
+                                intl,
+                              )}
                           </span>
                         </div>
                         <div className="microbiology-worklist__activity-meta">

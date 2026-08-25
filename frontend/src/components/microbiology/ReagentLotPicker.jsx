@@ -282,6 +282,7 @@ const ReagentLotPicker = ({
                           id: `microbiology.reagentLots.qc.${lot.qcStatus}`,
                           defaultMessage: `QC ${formatMicrobiologyEnum(
                             lot.qcStatus,
+                            intl,
                           ).toLowerCase()}`,
                         })}
                       </Tag>

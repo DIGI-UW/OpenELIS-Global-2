@@ -93,7 +93,7 @@ const AstAttemptTable = ({
                 </TableCell>
                 <TableCell>
                   {run.technique
-                    ? formatMicrobiologyEnum(run.technique)
+                    ? formatMicrobiologyEnum(run.technique, intl)
                     : run.method || "-"}
                   {(run.measurementType || run.method) && (
                     <div className="microbiology-card__hint">

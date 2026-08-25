@@ -436,6 +436,7 @@ const CaseNonconformancePanel = ({
                   value={run.id}
                   text={`${run.isolateLabel} · ${formatMicrobiologyEnum(
                     run.technique,
+                    intl,
                   )} · ${run.id}`}
                 />
               ))}

@@ -33,7 +33,7 @@ export const CaseInfoCompactSummary = ({
     detail.patientOrigin &&
       `${intl.formatMessage({
         id: "microbiology.orderDetail.patientOrigin",
-      })}: ${formatMicrobiologyEnum(detail.patientOrigin)}`,
+      })}: ${formatMicrobiologyEnum(detail.patientOrigin, intl)}`,
     requestingLocation &&
       `${intl.formatMessage({
         id: "microbiology.case.requestingLocation",
@@ -118,7 +118,7 @@ const CaseInfoSummary = ({
             </strong>
           </StructuredListCell>
           <StructuredListCell>
-            {display(formatMicrobiologyEnum(detail.patientOrigin))}
+            {display(formatMicrobiologyEnum(detail.patientOrigin, intl))}
           </StructuredListCell>
         </StructuredListRow>
         <StructuredListRow>
