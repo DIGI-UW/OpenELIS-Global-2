@@ -177,7 +177,7 @@ const AstEntryPanel = ({
         {currentRun && (
           <div data-testid="microbiology-ast-run-status">
             <Tag type={currentRun.status === "REVIEWED" ? "green" : "cyan"}>
-              {formatMicrobiologyEnum(currentRun.status)}
+              {formatMicrobiologyEnum(currentRun.status, intl)}
             </Tag>
           </div>
         )}
@@ -196,7 +196,7 @@ const AstEntryPanel = ({
                     : "microbiology.readiness.blocked",
                 })}
                 subtitle={(readiness.blockers || [])
-                  .map(formatMicrobiologyEnum)
+                  .map((blocker) => formatMicrobiologyEnum(blocker, intl))
                   .join(", ")}
                 hideCloseButton
               />

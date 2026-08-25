@@ -130,8 +130,8 @@ const IsolatePanel = ({
                       }`
                     : ""}
                   <div className="microbiology-list__meta">
-                    {formatMicrobiologyEnum(isolate.significance)} ·{" "}
-                    {formatMicrobiologyEnum(isolate.identificationStatus)}
+                    {formatMicrobiologyEnum(isolate.significance, intl)} ·{" "}
+                    {formatMicrobiologyEnum(isolate.identificationStatus, intl)}
                   </div>
                 </div>
                 <Button
@@ -219,7 +219,7 @@ const IsolatePanel = ({
                 <SelectItem
                   key={status}
                   value={status}
-                  text={formatMicrobiologyEnum(status)}
+                  text={formatMicrobiologyEnum(status, intl)}
                 />
               ))}
             </Select>
