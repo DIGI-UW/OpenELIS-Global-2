@@ -9,6 +9,7 @@ public class MicroAstRunForm {
     public String id;
     public String isolateId;
     public String panelId;
+    public String breakpointStandardId;
     public String status;
     public Timestamp startedAt;
     public String startedBy;

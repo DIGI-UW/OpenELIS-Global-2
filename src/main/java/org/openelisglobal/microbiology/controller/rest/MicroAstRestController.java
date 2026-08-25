@@ -1,8 +1,8 @@
 package org.openelisglobal.microbiology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
-import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.microbiology.form.MicroAstOverrideRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingForm;
 import org.openelisglobal.microbiology.form.MicroAstReadingRequestForm;
@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/ast")
-public class MicroAstRestController extends BaseRestController {
+public class MicroAstRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroAstService astService;
 
@@ -46,35 +46,36 @@ public class MicroAstRestController extends BaseRestController {
 
     @PostMapping("/runs")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request) {
-        return ResponseEntity
-                .ok(toRunForm(astService.startRun(request.isolateId, request.panelId, request.performedBy)));
+    public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request,
+            HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
+                request.breakpointStandardId, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{runId}/readings")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstReadingForm> recordReading(@PathVariable String runId,
-            @RequestBody MicroAstReadingRequestForm request) {
+            @RequestBody MicroAstReadingRequestForm request, HttpServletRequest httpRequest) {
         MicroAstReading reading = astService.recordReading(runId, request.antibioticId,
-                MicroAstMethod.valueOf(request.method), request.rawValue, request.performedBy);
+                MicroAstMethod.valueOf(request.method), request.rawValue, authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toReadingForm(reading));
     }
 
     @PutMapping("/readings/{readingId}/override")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstReadingForm> overrideReading(@PathVariable String readingId,
-            @RequestBody MicroAstOverrideRequestForm request) {
+            @RequestBody MicroAstOverrideRequestForm request, HttpServletRequest httpRequest) {
         MicroAstReading reading = astService.overrideReading(readingId,
                 MicroAstInterpretation.valueOf(request.overrideInterpretation), request.overrideReason,
-                request.performedBy);
+                authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toReadingForm(reading));
     }
 
     @PostMapping("/runs/{runId}/review")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> reviewRun(@PathVariable String runId,
-            @RequestBody MicroAstRunRequestForm request) {
-        return ResponseEntity.ok(toRunForm(astService.reviewRun(runId, request.performedBy)));
+            @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(toRunForm(astService.reviewRun(runId, authenticatedUserId(httpRequest))));
     }
 
     private MicroAstRunForm toRunFormWithReadings(MicroAstRun run) {
@@ -90,6 +91,7 @@ public class MicroAstRestController extends BaseRestController {
         form.id = run.getId();
         form.isolateId = run.getIsolateId();
         form.panelId = run.getPanelId();
+        form.breakpointStandardId = run.getBreakpointStandardId();
         form.status = run.getStatus();
         form.startedAt = run.getStartedAt();
         form.startedBy = run.getStartedBy();

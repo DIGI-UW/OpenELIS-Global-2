@@ -11,6 +11,13 @@ public interface MicroAstService {
 
     MicroAstRun startRun(String isolateId, String panelId, String performedBy);
 
+    /**
+     * Starts a run with an explicit breakpoint standard snapshotted for that run.
+     * Readings interpret against {@code breakpointStandardId} instead of the
+     * configured default.
+     */
+    MicroAstRun startRun(String isolateId, String panelId, String breakpointStandardId, String performedBy);
+
     MicroAstReading recordReading(String runId, String antibioticId, MicroAstMethod method, BigDecimal rawValue,
             String performedBy);
 

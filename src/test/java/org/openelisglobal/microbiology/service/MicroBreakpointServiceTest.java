@@ -1,8 +1,10 @@
 package org.openelisglobal.microbiology.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -41,5 +43,16 @@ public class MicroBreakpointServiceTest {
         org.junit.Assert.assertTrue(
                 rule == service.findBreakpointRule("std", "org", "Enterobacterales", "abx", "MIC", "7", "MIC"));
         verify(ruleDAO).findBestRule("std", "org", "Enterobacterales", "abx", "MIC", "7", "MIC");
+    }
+
+    @Test
+    public void getActiveStandardsListsSelectableStandardsForAstRunSetup() {
+        MicroBreakpointStandard clsi = new MicroBreakpointStandard();
+        MicroBreakpointStandard eucast = new MicroBreakpointStandard();
+        when(standardDAO.getActiveStandards()).thenReturn(List.of(clsi, eucast));
+
+        MicroBreakpointService service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO);
+
+        assertEquals(List.of(clsi, eucast), service.getActiveStandards());
     }
 }

@@ -2,13 +2,17 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route } from "react-router-dom";
 import MicrobiologyCaseView from "../MicrobiologyCaseView";
 import messages from "../../../languages/en.json";
 
 const caseDetail = {
   id: "case-1",
   sampleItemId: "1001",
+  patientId: "patient-1",
+  patientName: "Microbiology, UAT",
+  accessionNumber: "UATMICRO001",
+  specimenType: "Blood",
   workflowType: "BACTERIOLOGY",
   stage: "RECEIVED",
   activities: [
@@ -17,11 +21,19 @@ const caseDetail = {
   isolates: [],
 };
 
-const renderCase = (service) =>
+const renderCase = (service, initialEntry = "/Microbiology/cases/case-1") =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <IntlProvider locale="en" messages={messages}>
         <MicrobiologyCaseView caseId="case-1" service={service} />
+        <Route
+          render={({ location }) => (
+            <output data-testid="microbiology-current-url">
+              {location.pathname}
+              {location.search}
+            </output>
+          )}
+        />
       </IntlProvider>
     </MemoryRouter>,
   );
@@ -29,7 +41,9 @@ const renderCase = (service) =>
 const astServiceStubs = {
   getAstPanels: vi.fn().mockResolvedValue([]),
   getAntibiotics: vi.fn().mockResolvedValue([]),
+  getBreakpointStandards: vi.fn().mockResolvedValue([]),
   getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
+  saveOrderDetail: vi.fn().mockResolvedValue({}),
   getCaseReadiness: vi.fn().mockResolvedValue({
     finalReleaseReady: true,
     blockers: [],
@@ -38,6 +52,33 @@ const astServiceStubs = {
   recordAstReading: vi.fn(),
   overrideAstReading: vi.fn(),
   reviewAstRun: vi.fn(),
+  getCriticalCommunications: vi.fn().mockResolvedValue([]),
+  logCriticalCommunication: vi.fn(),
+  acknowledgeCriticalCommunication: vi.fn(),
+  closeCriticalCommunication: vi.fn(),
+  getOrganisms: vi.fn().mockResolvedValue([]),
+  getWhonetReadiness: vi.fn().mockResolvedValue({
+    whonetReady: true,
+    blockers: [],
+  }),
+  getReportProjection: vi.fn().mockResolvedValue({
+    reportableContent: true,
+    mappingConfigured: true,
+    content: "Escherichia coli: Ciprofloxacin S",
+    projectedResultIds: ["result-1"],
+  }),
+  releasePreliminaryReport: vi.fn(),
+  releaseFinalReport: vi.fn(),
+};
+
+const getAccordionButton = (name) => {
+  const button = screen
+    .getAllByRole("button", { name })
+    .find((candidate) => candidate.closest(".cds--accordion__item"));
+  if (!button) {
+    throw new Error(`Accordion section not found: ${name}`);
+  }
+  return button;
 };
 
 describe("MicrobiologyCaseView", () => {
@@ -56,25 +97,77 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(service);
+    renderCase(service, "/Microbiology/cases/case-1?section=setup");
 
-    expect(await screen.findByText("Microbiology case")).toBeInTheDocument();
-    expect(screen.getByText("RECEIVED")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Microbiology case" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Microbiology, UAT")).toBeInTheDocument();
+    expect(screen.getByText("UATMICRO001")).toBeInTheDocument();
+    expect(screen.getByText("Blood")).toBeInTheDocument();
+    expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("Media or bottle"), {
+      target: { value: "Blood culture bottle" },
+    });
+    fireEvent.change(screen.getByLabelText("Incubation"), {
+      target: { value: "35 C for 24 hours" },
+    });
+    fireEvent.change(screen.getByLabelText("Atmosphere"), {
+      target: { value: "Ambient" },
+    });
     fireEvent.change(screen.getByLabelText("Activity note"), {
       target: { value: "setup complete" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Record activity" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start inoculation" }));
 
     await waitFor(() =>
       expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
         nextStage: "SETUP_RECORDED",
-        note: "setup complete",
+        note: "Media or bottle: Blood culture bottle; Incubation: 35 C for 24 hours; Atmosphere: Ambient; setup complete",
       }),
     );
     await waitFor(() =>
-      expect(screen.getAllByText("SETUP_RECORDED").length).toBeGreaterThan(0),
+      expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0),
     );
-    expect(screen.getByText(/setup complete/)).toBeInTheDocument();
+    expect(screen.getAllByText("Setup Recorded").length).toBeGreaterThan(0);
+  });
+
+  it("links the report workflow to the patient results page", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=reports");
+
+    expect(
+      await screen.findByRole("link", { name: "View patient results" }),
+    ).toHaveAttribute("href", "/PatientResults/patient-1");
+  });
+
+  it("opens critical communication from its canonical section URL", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?section=critical-communication",
+    );
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=critical-communication",
+    );
+    expect(getAccordionButton("Critical communication")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 
   it("refreshes the case timeline after creating an isolate", async () => {
@@ -106,9 +199,11 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn().mockResolvedValue({ id: "iso-1" }),
     };
 
-    renderCase(service);
+    renderCase(service, "/Microbiology/cases/case-1?section=isolates");
 
-    expect(await screen.findByText("Microbiology case")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Microbiology case" }),
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Preliminary organism"), {
       target: { value: "Escherichia coli" },
     });
@@ -122,13 +217,77 @@ describe("MicrobiologyCaseView", () => {
         significance: "CLINICALLY_SIGNIFICANT",
       }),
     );
-    expect(
-      await screen.findByText(
-        (_, element) =>
-          element?.tagName.toLowerCase() === "li" &&
-          element.textContent === "ISO-1: Escherichia coli",
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-isolates-card"),
+      ).toHaveTextContent("ISO-1: Escherichia coli"),
+    );
+  });
+
+  it("keeps worklist context while selecting a case section and returning", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
+    );
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    fireEvent.click(getAccordionButton("Isolates"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest&section=isolates",
       ),
+    );
+
+    fireEvent.click(
+      screen.getByRole("link", { name: "Microbiology worklist" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/worklist?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
+      ),
+    );
+  });
+
+  it("shows a final case as read-only and disables isolate mutation", async () => {
+    const finalCase = {
+      ...caseDetail,
+      stage: "FINAL_RELEASED",
+      finalReleaseState: "FINAL_RELEASED",
+      isolates: [
+        {
+          id: "iso-1",
+          isolateLabel: "ISO-1",
+          preliminaryOrganismText: "Escherichia coli",
+          significance: "CLINICALLY_SIGNIFICANT",
+          identificationStatus: "CONFIRMED",
+        },
+      ],
+    };
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(finalCase),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=isolates");
+
+    expect(
+      await screen.findByText("Final case is read-only"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/ISOLATE_CREATED/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Update identification" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Create isolate" }),
+    ).toBeDisabled();
   });
 });

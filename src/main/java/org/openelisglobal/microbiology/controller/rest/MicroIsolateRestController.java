@@ -1,6 +1,6 @@
 package org.openelisglobal.microbiology.controller.rest;
 
-import org.openelisglobal.common.rest.BaseRestController;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.microbiology.form.MicroIsolateForm;
 import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/isolates")
-public class MicroIsolateRestController extends BaseRestController {
+public class MicroIsolateRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroIsolateService isolateService;
 
@@ -28,19 +28,20 @@ public class MicroIsolateRestController extends BaseRestController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MicroIsolateForm> createIsolate(@RequestBody MicroIsolateRequestForm request) {
+    public ResponseEntity<MicroIsolateForm> createIsolate(@RequestBody MicroIsolateRequestForm request,
+            HttpServletRequest httpRequest) {
         MicroIsolate isolate = isolateService.createIsolate(request.caseId, request.isolateLabel, request.organismId,
-                request.preliminaryOrganismText, significance(request.significance), request.performedBy);
+                request.preliminaryOrganismText, significance(request.significance), authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toForm(isolate));
     }
 
     @PutMapping("/{isolateId}/identification")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroIsolateForm> updateIdentification(@PathVariable String isolateId,
-            @RequestBody MicroIsolateRequestForm request) {
+            @RequestBody MicroIsolateRequestForm request, HttpServletRequest httpRequest) {
         MicroIsolate isolate = isolateService.updateIdentification(isolateId, request.organismId,
                 request.preliminaryOrganismText, significance(request.significance),
-                identificationStatus(request.identificationStatus), request.performedBy);
+                identificationStatus(request.identificationStatus), authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toForm(isolate));
     }
 
