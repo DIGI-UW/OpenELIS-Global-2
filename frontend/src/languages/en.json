@@ -812,6 +812,8 @@
   "analyzer.table.status": "Status",
   "analyzer.table.testUnits": "Test Units",
   "analyzer.table.type": "Type",
+  "analyzer.table.type.loading": "Loading analyzer type",
+  "analyzer.table.type.unavailable": "Analyzer type unavailable",
   "analyzer.testUnits.count": "{count, plural, one {# unit} other {# units}}",
   "analyzer.testConnection.bridge.healthCheckFailed": "Cannot reach bridge health endpoint at {url}: {detail}",
   "analyzer.testConnection.bridge.httpStatus": "Bridge returned HTTP {status}",

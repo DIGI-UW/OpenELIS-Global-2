@@ -167,6 +167,9 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
     await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(analyzerRow).toContainText(PROFILE_NAME, {
+      timeout: LONG_TIMEOUT,
+    });
     expect(
       await page.evaluate(
         () =>

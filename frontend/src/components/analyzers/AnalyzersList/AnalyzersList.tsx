@@ -96,7 +96,10 @@ const AnalyzersList = () => {
 
   const [analyzers, setAnalyzers] = useState<Analyzer[]>([]);
   const [filteredAnalyzers, setFilteredAnalyzers] = useState<Analyzer[]>([]);
-  const [profileNames, setProfileNames] = useState<Record<string, string>>({});
+  const [profileNames, setProfileNames] = useState<Record<
+    string,
+    string
+  > | null>(null);
   const [labUnitNames, setLabUnitNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -386,7 +389,7 @@ const AnalyzersList = () => {
 
     const unifiedStatus = analyzer.status || "SETUP";
     const profileName =
-      analyzer.profileId && analyzer.profileRevision
+      analyzer.profileId && analyzer.profileRevision && profileNames
         ? profileNames[
             profileRevisionKey(analyzer.profileId, analyzer.profileRevision)
           ]
@@ -397,10 +400,14 @@ const AnalyzersList = () => {
       name: analyzer.name || "-",
       type:
         profileName ||
-        analyzer.profileId ||
-        analyzer.analyzerType ||
-        analyzer.type ||
-        "-",
+        (analyzer.profileId
+          ? intl.formatMessage({
+              id:
+                profileNames === null
+                  ? "analyzer.table.type.loading"
+                  : "analyzer.table.type.unavailable",
+            })
+          : analyzer.analyzerType || analyzer.type || "-"),
       connection: connection,
       testUnits:
         analyzer.testUnitIds && analyzer.testUnitIds.length > 0

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
@@ -110,5 +110,42 @@ describe("AnalyzersList profile-backed presentation", () => {
     expect(breadcrumb.querySelector('[aria-current="page"]')).toHaveTextContent(
       "Analyzers",
     );
+  });
+
+  it("does not expose an internal profile id while the catalog loads", async () => {
+    let resolveCatalog;
+    getAnalyzerTypeCatalog.mockImplementation((callback) => {
+      resolveCatalog = callback;
+    });
+
+    renderList();
+
+    const typeCell = await screen.findByTestId("analyzer-type-1");
+    expect(typeCell).not.toHaveTextContent("genexpert-astm");
+
+    await act(async () => {
+      resolveCatalog({
+        schemaVersion: "1.0",
+        catalogFingerprint: `sha256:${"a".repeat(64)}`,
+        summary: {
+          total: 1,
+          inUse: 1,
+          needsAttention: 0,
+          deactivated: 0,
+        },
+        types: [
+          {
+            profileId: "genexpert-astm",
+            revision: 1,
+            revisionFingerprint: `sha256:${"b".repeat(64)}`,
+            displayName: "Cepheid GeneXpert ASTM",
+            source: "SHIPPED",
+            status: "ACTIVE",
+            protocol: "ASTM",
+          },
+        ],
+      });
+    });
+    expect(typeCell).toHaveTextContent("Cepheid GeneXpert ASTM");
   });
 });
