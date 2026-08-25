@@ -465,6 +465,14 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     public void activationAndDeactivationPersistExactBridgeAcknowledgementsWithoutChangingTheLoadedVersion() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
+            JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+            String qcTestId = jdbc.queryForObject("SELECT nextval('test_seq')", Long.class).toString();
+            jdbc.update(
+                    "INSERT INTO test (id, name, description, guid, is_active, is_reportable, orderable, "
+                            + "lastupdated) VALUES (?, ?, ?, ?, 'Y', 'Y', TRUE, CURRENT_TIMESTAMP)",
+                    Long.valueOf(qcTestId), "Analyzer activation QC independence test",
+                    "Analyzer activation QC independence test", UUID.randomUUID());
+
             String profileId = "site.activation." + UUID.randomUUID();
             AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
             profileBinding.setProfileId(profileId);
@@ -550,7 +558,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             controlLot.setLotNumber("ACTIVATION-INDEPENDENCE-" + UUID.randomUUID());
             controlLot.setProductName("Activation independence control");
             controlLot.setControlLevel("NORMAL");
-            controlLot.setTestId("1");
+            controlLot.setTestId(qcTestId);
             controlLot.setInstrumentId(analyzer.getId());
             controlLot.setCalculationMethod("MANUFACTURER_FIXED");
             controlLot.setManufacturerMean(100.0);
