@@ -130,21 +130,27 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(page).toHaveURL(
       /\/analyzers\/qc\/instruments\/\d+\?returnTo=/,
     );
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
     await expect(
       page.getByRole("heading", { level: 1, name: analyzerName }),
     ).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
     const qcBreadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
-    await expect(
-      qcBreadcrumb.getByRole("link", { name: "Analyzers" }),
-    ).toHaveAttribute(
-      "href",
-      `/analyzers?search=${encodeURIComponent(analyzerName)}`,
-    );
+    const analyzerReturnLink = qcBreadcrumb.getByRole("link", {
+      name: "Analyzers",
+    });
+    const analyzerReturnHref = await analyzerReturnLink.getAttribute("href");
+    expect(analyzerReturnHref).not.toBeNull();
+    const analyzerReturnUrl = new URL(analyzerReturnHref!, page.url());
+    expect(analyzerReturnUrl.pathname).toBe("/analyzers");
+    expect(analyzerReturnUrl.searchParams.get("search")).toBe(analyzerName);
     await capture(page, testInfo, "m3-linked-operational-qc");
 
-    await qcBreadcrumb.getByRole("link", { name: "Analyzers" }).click();
+    await analyzerReturnLink.click();
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get("search") === analyzerName,
+    );
     await list.expectLoaded();
     await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
     await analyzerRow.getByRole("button", { name: "Actions" }).click();

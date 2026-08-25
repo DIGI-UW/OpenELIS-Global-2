@@ -7,7 +7,7 @@
  * Route: /analyzers/qc/instruments/:instrumentId
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect } from "react";
 import {
   Button,
   Tag,
@@ -47,6 +47,10 @@ const InstrumentDetailPage = () => {
   const instrument = loading ? null : instrumentResponse.instrument;
   const activeSubTab =
     new URLSearchParams(location.search).get("view") === "chart" ? 1 : 0;
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [instrumentId]);
 
   const selectSubTab = ({ selectedIndex }) => {
     const params = new URLSearchParams(location.search);

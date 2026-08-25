@@ -28,6 +28,7 @@ const renderPage = () =>
 describe("InstrumentDetailPage analyzer context", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.scrollTo = vi.fn();
     window.history.replaceState(
       {},
       "",
@@ -47,6 +48,21 @@ describe("InstrumentDetailPage analyzer context", () => {
             }
           : [],
       );
+    });
+  });
+
+  it("opens the linked QC detail at the top of the page", async () => {
+    renderPage();
+
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "GeneXpert - Main Lab",
+    });
+
+    expect(window.scrollTo).toHaveBeenCalledWith({
+      top: 0,
+      left: 0,
+      behavior: "auto",
     });
   });
 
