@@ -99,7 +99,8 @@ reconcile_profile_analyzer() {
   local name="$1"
   local profile_id="$2"
   local profile_revision="$3"
-  local connection_values="${4:-{}}"
+  local connection_values="{}"
+  [ "$#" -ge 4 ] && connection_values="$4"
 
   local payload
   payload="$(
