@@ -120,7 +120,6 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             analyzer.setActive(true);
             analyzer.setLastActivatedDate(Date.from(clock.instant()));
             analyzer.setSysUserId(exactActor);
-            analyzer.setLastupdatedFields();
             analyzerService.update(analyzer);
             return AnalyzerActivationResult.activated(analyzer);
         } catch (RuntimeException exception) {
@@ -167,7 +166,6 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
             analyzer.setActive(false);
             analyzer.setSysUserId(exactActor);
-            analyzer.setLastupdatedFields();
             analyzerService.update(analyzer);
             return AnalyzerDeactivationResult.deactivated(analyzer);
         } catch (RuntimeException exception) {

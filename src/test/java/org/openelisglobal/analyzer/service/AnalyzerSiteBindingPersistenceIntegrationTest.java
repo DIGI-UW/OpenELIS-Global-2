@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -26,6 +27,7 @@ import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingTestDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
@@ -33,7 +35,9 @@ import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -403,6 +407,115 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         }
     }
 
+    @Test
+    public void activationAndDeactivationPersistExactBridgeAcknowledgementsWithoutChangingTheLoadedVersion() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.executeWithoutResult(status -> {
+            String profileId = "site.activation." + UUID.randomUUID();
+            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
+            profileBinding.setProfileId(profileId);
+            profileBinding.setProfileRevision(1);
+            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
+            profileBinding.setSysUserId(TEST_SYS_USER_ID);
+            profileBindingDAO.insert(profileBinding);
+
+            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
+            binding.setProfileBinding(profileBinding);
+            binding.setCreatedBy(TEST_SYS_USER_ID);
+            binding.setSysUserId(TEST_SYS_USER_ID);
+            siteBindingDAO.insert(binding);
+
+            AnalyzerSiteBindingRevision revision = bindingRevision(binding, 1, "sha256:" + "c".repeat(64));
+            AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
+            confirmation.setSiteBindingRevision(revision);
+            confirmation.setProfileId(profileId);
+            confirmation.setProfileRevision(1);
+            confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
+            confirmation.setBindingFingerprint(revision.getBindingFingerprint());
+            confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
+            confirmation.setConfirmedRowsJson("[]");
+            confirmation.setExcludedRowsJson("[]");
+            confirmation.setConfirmedBy(TEST_SYS_USER_ID);
+            confirmation.setSysUserId(TEST_SYS_USER_ID);
+            confirmationDAO.insert(confirmation);
+
+            Analyzer analyzer = new Analyzer();
+            analyzer.ensureFhirUuid();
+            analyzer.setName("Activation persistence test");
+            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+            analyzer.setActive(false);
+            analyzer.setSiteBindingRevision(revision);
+            analyzer.setTestUnitIds(List.of("1"));
+            analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
+            analyzer.setSysUserId(TEST_SYS_USER_ID);
+            analyzerDAO.insert(analyzer);
+            entityManager.flush();
+            entityManager.clear();
+
+            AnalyzerSiteBindingSnapshot snapshot = new AnalyzerSiteBindingSnapshot(binding, revision, List.of(),
+                    List.of());
+            BridgeProfileCatalogService profileCatalogService = mock(BridgeProfileCatalogService.class);
+            AnalyzerSiteBindingService siteBindingService = mock(AnalyzerSiteBindingService.class);
+            AnalyzerSiteBindingConfirmationService confirmationService = mock(
+                    AnalyzerSiteBindingConfirmationService.class);
+            TestSectionService testSectionService = mock(TestSectionService.class);
+            BridgeAnalyzerConnectionClient bridgeClient = mock(BridgeAnalyzerConnectionClient.class);
+            when(profileCatalogService.getProfile(profileId, 1)).thenReturn(
+                    new BridgeProfileCatalog.ProfileRevision(profile(profileId), new ObjectMapper().createObjectNode(),
+                            new BridgeProfileCatalog.ControlRecognitionSummary(RECOGNITION_FINGERPRINT, "NONE",
+                                    "No automated control recognition", true, List.of())));
+            when(siteBindingService.findByRevisionId(revision.getId())).thenReturn(java.util.Optional.of(snapshot));
+            when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+                    .thenReturn(AnalyzerSiteBindingVerificationAssessment.current(confirmation));
+            TestSection activeUnit = new TestSection();
+            activeUnit.setId("1");
+            activeUnit.setIsActive("Y");
+            when(testSectionService.get("1")).thenReturn(activeUnit);
+
+            ObjectNode connection = connectionDocument(analyzer, profileBinding);
+            ObjectNode acknowledgement = runtimeAcknowledgement(analyzer, profileBinding, "activate-persistence", 1);
+            when(bridgeClient.getConnection(analyzer.getBridgeConnectionId())).thenReturn(connection);
+            when(bridgeClient.applyRuntimeCommand(analyzer.getBridgeConnectionId(), 1, "ACTIVATE",
+                    "activate-persistence")).thenReturn(acknowledgement);
+
+            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
+            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
+            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
+            AnalyzerActivationRecordService activationRecordService = new AnalyzerActivationRecordServiceImpl(
+                    activationRecordDAO, auditTrailService);
+            AnalyzerActivationService activationService = new AnalyzerActivationServiceImpl(analyzerService,
+                    profileCatalogService, siteBindingService, confirmationService, testSectionService, bridgeClient,
+                    activationRecordService, java.time.Clock.systemUTC(), () -> "activate-persistence",
+                    () -> "deactivate-persistence");
+
+            AnalyzerActivationResult result = activationService.activate(analyzer.getId(), TEST_SYS_USER_ID);
+            entityManager.flush();
+            entityManager.clear();
+
+            Analyzer reloaded = analyzerDAO.get(analyzer.getId()).orElseThrow();
+            assertTrue(result.activated());
+            assertEquals(Analyzer.AnalyzerStatus.ACTIVE, reloaded.getStatus());
+            assertTrue(reloaded.isActive());
+            assertNotNull(reloaded.getLatestActivationRecord());
+
+            ObjectNode deactivationAcknowledgement = runtimeAcknowledgement(reloaded, profileBinding,
+                    "deactivate-persistence", "DEACTIVATE", "INACTIVE", 2);
+            when(bridgeClient.applyRuntimeCommand(reloaded.getBridgeConnectionId(), 1, "DEACTIVATE",
+                    "deactivate-persistence")).thenReturn(deactivationAcknowledgement);
+
+            AnalyzerDeactivationResult deactivation = activationService.deactivate(reloaded.getId(), TEST_SYS_USER_ID);
+            entityManager.flush();
+            entityManager.clear();
+
+            Analyzer deactivated = analyzerDAO.get(analyzer.getId()).orElseThrow();
+            assertTrue(deactivation.deactivated());
+            assertEquals(Analyzer.AnalyzerStatus.INACTIVE, deactivated.getStatus());
+            assertFalse(deactivated.isActive());
+            assertEquals(2, activationRecordDAO.findByAnalyzerId(analyzer.getId()).size());
+            status.setRollbackOnly();
+        });
+    }
+
     private record ConnectionFixture(String analyzerId, String revisionId, String bindingId, String profileBindingId) {
     }
 
@@ -459,10 +572,15 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
     private static ObjectNode runtimeAcknowledgement(Analyzer analyzer, AnalyzerProfileBinding profile,
             String commandId, int runtimeRevision) {
+        return runtimeAcknowledgement(analyzer, profile, commandId, "ACTIVATE", "ACTIVE", runtimeRevision);
+    }
+
+    private static ObjectNode runtimeAcknowledgement(Analyzer analyzer, AnalyzerProfileBinding profile,
+            String commandId, String action, String runtimeState, int runtimeRevision) {
         ObjectNode acknowledgement = new ObjectMapper().createObjectNode();
         acknowledgement.put("schemaVersion", "1.0");
         acknowledgement.put("commandId", commandId);
-        acknowledgement.put("action", "ACTIVATE");
+        acknowledgement.put("action", action);
         acknowledgement.put("outcome", "APPLIED");
         acknowledgement.put("connectionId", analyzer.getBridgeConnectionId());
         ObjectNode profileRef = acknowledgement.putObject("profileRef");
@@ -473,11 +591,24 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
         acknowledgement.put("configFingerprint", "sha256:" + "c".repeat(64));
         acknowledgement.put("runtimeRevision", runtimeRevision);
         acknowledgement.put("runtimeFingerprint", "sha256:" + "d".repeat(64));
-        acknowledgement.put("desiredRuntimeState", "ACTIVE");
-        acknowledgement.put("actualRuntimeState", "ACTIVE");
+        acknowledgement.put("desiredRuntimeState", runtimeState);
+        acknowledgement.put("actualRuntimeState", runtimeState);
         acknowledgement.putArray("blockers");
         acknowledgement.put("acknowledgedAt", "2026-08-24T19:05:05Z");
         return acknowledgement;
+    }
+
+    private static ObjectNode connectionDocument(Analyzer analyzer, AnalyzerProfileBinding profile) {
+        ObjectNode connection = new ObjectMapper().createObjectNode();
+        connection.put("schemaVersion", "1.0");
+        connection.put("connectionId", analyzer.getBridgeConnectionId());
+        connection.put("clientAnalyzerId", analyzer.getId());
+        connection.putObject("profileRef").put("profileId", profile.getProfileId())
+                .put("revision", profile.getProfileRevision()).put("fingerprint", profile.getProfileFingerprint());
+        connection.put("configRevision", 1);
+        connection.put("configFingerprint", "sha256:" + "c".repeat(64));
+        connection.putObject("readiness").put("ready", true).putArray("blockers");
+        return connection;
     }
 
     private static ObjectNode probeDocument(ProbeFixture fixture, boolean evidence) {
