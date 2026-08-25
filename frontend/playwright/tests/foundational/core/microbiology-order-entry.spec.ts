@@ -116,18 +116,11 @@ async function reloadThroughBarcode(page: Page, labNumber: string) {
     { timeout: LONG_TIMEOUT },
   );
   await page.getByTestId("order-step-enter").click();
-  await expect
-    .poll(() => {
-      const url = new URL(page.url());
-      return {
-        pathname: url.pathname,
-        order: url.searchParams.get("order"),
-      };
-    })
-    .toEqual({
-      pathname: "/order/clinical/enter",
-      order: labNumber,
-    });
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === "/order/clinical/enter" &&
+      url.searchParams.get("order") === labNumber,
+  );
 }
 
 async function attachResponsiveEvidence(
