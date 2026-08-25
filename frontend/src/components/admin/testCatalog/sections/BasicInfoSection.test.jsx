@@ -160,10 +160,12 @@ describe("BasicInfoSection domain-switch modal", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    expect(JSON.parse(putToOpenElisServer.mock.calls[0][1])).toMatchObject({
-      cultureWorkflowType: "BACTERIOLOGY",
-    });
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]),
+    ).toMatchObject({ cultureWorkflowType: "BACTERIOLOGY" });
   });
 
   it("persists the Active toggle (boolean → Y/N)", async () => {

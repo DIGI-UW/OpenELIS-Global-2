@@ -1,0 +1,140 @@
+package org.openelisglobal.microbiology.valueholder;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.sql.Timestamp;
+import java.util.UUID;
+import org.openelisglobal.common.valueholder.BaseObject;
+
+@Entity
+@Table(name = "micro_case_order_detail", schema = "clinlims")
+public class MicroCaseOrderDetail extends BaseObject<String> {
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @Column(name = "id", length = 36)
+    private String id = UUID.randomUUID().toString();
+
+    @Column(name = "case_id", nullable = false, length = 36, unique = true)
+    private String caseId;
+
+    @Column(name = "patient_origin", length = 255)
+    private String patientOrigin;
+
+    @Column(name = "number_of_sets")
+    private Integer numberOfSets;
+
+    @Column(name = "clinical_history")
+    private String clinicalHistory;
+
+    @Column(name = "antibiotic_exposure")
+    private String antibioticExposure;
+
+    @Column(name = "critical_notification_preference", length = 255)
+    private String criticalNotificationPreference;
+
+    @Column(name = "created_at", nullable = false)
+    private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
+
+    @Column(name = "created_by", length = 20)
+    private String createdBy;
+
+    @Column(name = "updated_at")
+    private Timestamp updatedAt;
+
+    @Column(name = "updated_by", length = 20)
+    private String updatedBy;
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    @Override
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getCaseId() {
+        return caseId;
+    }
+
+    public void setCaseId(String caseId) {
+        this.caseId = caseId;
+    }
+
+    public String getPatientOrigin() {
+        return patientOrigin;
+    }
+
+    public void setPatientOrigin(String patientOrigin) {
+        this.patientOrigin = patientOrigin;
+    }
+
+    public Integer getNumberOfSets() {
+        return numberOfSets;
+    }
+
+    public void setNumberOfSets(Integer numberOfSets) {
+        this.numberOfSets = numberOfSets;
+    }
+
+    public String getClinicalHistory() {
+        return clinicalHistory;
+    }
+
+    public void setClinicalHistory(String clinicalHistory) {
+        this.clinicalHistory = clinicalHistory;
+    }
+
+    public String getAntibioticExposure() {
+        return antibioticExposure;
+    }
+
+    public void setAntibioticExposure(String antibioticExposure) {
+        this.antibioticExposure = antibioticExposure;
+    }
+
+    public String getCriticalNotificationPreference() {
+        return criticalNotificationPreference;
+    }
+
+    public void setCriticalNotificationPreference(String criticalNotificationPreference) {
+        this.criticalNotificationPreference = criticalNotificationPreference;
+    }
+
+    public Timestamp getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Timestamp createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Timestamp getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Timestamp updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(String updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+}

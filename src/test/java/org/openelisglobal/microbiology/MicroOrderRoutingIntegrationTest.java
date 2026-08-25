@@ -3,7 +3,6 @@ package org.openelisglobal.microbiology;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -15,12 +14,13 @@ import org.openelisglobal.microbiology.service.MicroOrderRoutingService;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
-    private javax.sql.DataSource dataSource;
+    private MicrobiologyTestFixtures fixtures;
 
     @Autowired
     private MicroOrderRoutingService routingService;
@@ -28,7 +28,6 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroCaseService caseService;
 
-    private MicrobiologyTestFixtures fixtures;
     private String sampleItemId;
     private String methodId;
 
@@ -36,32 +35,23 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        fixtures = new MicrobiologyTestFixtures(new JdbcTemplate(dataSource));
         methodId = fixtures.firstMethodId();
-        sampleItemId = fixtures.insertSampleWithSampleItem("OGC782-M3");
-        fixtures.insertReferenceData(methodId);
-        fixtures.insertTbCultureSetup(methodId);
-    }
-
-    @After
-    public void tearDown() {
-        if (fixtures != null && sampleItemId != null) {
-            fixtures.deleteCaseDataForSampleItem(sampleItemId);
-            fixtures.deleteSampleItemAndSample(sampleItemId);
-            fixtures.deleteReferenceData();
-        }
+        sampleItemId = fixtures.createSampleWithSampleItem("OGC782M3").getId();
+        fixtures.createReferenceData(methodId);
+        fixtures.createTbCultureSetup(methodId);
     }
 
     @Test
     public void routesNonMicroBacteriologyAndSiblingWorkflowCases() {
         routingService.routeAnalysesForSampleItem(sampleItem(sampleItemId), List.of(analysis(null, methodId)),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+                fixtures.defaultUserId());
         assertEquals(0, caseService.getSiblingCases(sampleItemId).size());
 
-        routingService.routeAnalysesForSampleItem(sampleItem(sampleItemId),
-                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), methodId),
-                        analysis(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), methodId)),
-                MicrobiologyTestFixtures.DEFAULT_USER_ID);
+        routingService
+                .routeAnalysesForSampleItem(sampleItem(sampleItemId),
+                        List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), methodId),
+                                analysis(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), methodId)),
+                        fixtures.defaultUserId());
 
         assertEquals(2, caseService.getSiblingCases(sampleItemId).size());
     }
