@@ -1,21 +1,16 @@
-export const formatMicrobiologyEnum = (value) => {
+const existingMessageIds = {
+  BACTERIOLOGY: "label.testCatalog.basicInfo.cultureWorkflowType.BACTERIOLOGY",
+  MYCOBACTERIOLOGY_TB:
+    "label.testCatalog.basicInfo.cultureWorkflowType.MYCOBACTERIOLOGY_TB",
+  MYCOLOGY: "label.testCatalog.basicInfo.cultureWorkflowType.MYCOLOGY",
+};
+
+export const formatMicrobiologyEnum = (value, intl) => {
   if (!value) {
     return "";
   }
 
-  const acronymLabels = {
-    ast: "AST",
-    id: "ID",
-    mic: "MIC",
-    whonet: "WHONET",
-  };
-
-  return String(value)
-    .toLowerCase()
-    .split("_")
-    .map(
-      (word) =>
-        acronymLabels[word] || word.charAt(0).toUpperCase() + word.slice(1),
-    )
-    .join(" ");
+  const messageId =
+    existingMessageIds[value] || `microbiology.enum.${String(value)}`;
+  return intl.formatMessage({ id: messageId, defaultMessage: String(value) });
 };

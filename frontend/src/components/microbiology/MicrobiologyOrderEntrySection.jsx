@@ -59,7 +59,7 @@ const MicrobiologyOrderEntrySection = ({
         <div>
           {workflows.map((workflow) => (
             <Tag key={workflow} type="blue">
-              {formatMicrobiologyEnum(workflow)}
+              {formatMicrobiologyEnum(workflow, intl)}
             </Tag>
           ))}
         </div>
