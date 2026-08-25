@@ -192,7 +192,10 @@ test.describe("Microbiology case workbench", () => {
       .getByRole("button", { name: "Inoculation", exact: true })
       .click();
     await expect(page).toHaveURL(/section=setup/);
-    await page.getByRole("button", { name: "Start inoculation" }).click();
+    await page
+      .getByTestId("microbiology-next-step")
+      .getByRole("button", { name: "Start inoculation" })
+      .click();
     await page.getByLabel("Bottle or plate ID").fill("BOTTLE-001");
     await page.getByLabel("Media or bottle").fill("Blood culture bottle");
     await page.getByLabel("Incubation").fill("35 C for 24 hours");
@@ -346,10 +349,10 @@ test.describe("Microbiology case workbench", () => {
       .getByLabel("Workflow", { exact: true })
       .selectOption("MYCOBACTERIOLOGY_TB");
     await expect(
-      page.getByLabel("Culture Method", { exact: true }),
+      page.getByLabel("Culture Protocol", { exact: true }),
     ).toBeEnabled();
     await page
-      .getByLabel("Culture Method", { exact: true })
+      .getByLabel("Culture Protocol", { exact: true })
       .selectOption(seeded.methodId);
     await page
       .getByLabel("Reason for change")
