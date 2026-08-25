@@ -337,12 +337,18 @@ const renderHeader = (options = {}) => {
 };
 
 describe("Header Component - M2b Enhancement Tests", () => {
-  test("preserves stable selectors on Carbon parent menu labels", () => {
+  test("preserves stable selectors on Carbon parent and leaf menu labels", async () => {
     const { container } = renderHeader();
 
-    expect(container.querySelector("span#menu_sample")).toBeInTheDocument();
-    expect(container.querySelector("span#menu_results")).toBeInTheDocument();
-    expect(container.querySelector("span#menu_reports")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(container.querySelector("#menu_sample")).toBeInTheDocument();
+      expect(container.querySelector("#menu_results")).toBeInTheDocument();
+      expect(container.querySelector("#menu_reports")).toBeInTheDocument();
+      expect(container.querySelector("span#menu_home")).toBeInTheDocument();
+      expect(
+        container.querySelector("span#menu_sample_add"),
+      ).toBeInTheDocument();
+    });
   });
 
   beforeEach(() => {

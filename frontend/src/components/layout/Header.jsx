@@ -514,17 +514,19 @@ function OEHeader({
       return (
         <SideNavMenu
           key={itemId}
-          title={
-            <span
-              id={menuItem.menu.elementId}
-              data-cy={menuItem.menu.elementId?.replace(/[^\w\s]/gi, "_")}
-            >
-              {intl.formatMessage({
-                id: menuItem.menu.displayKey,
-                defaultMessage: menuItem.menu.displayKey,
-              })}
-            </span>
-          }
+          ref={(button) => {
+            if (button) {
+              button.id = menuItem.menu.elementId;
+              button.dataset.cy = menuItem.menu.elementId?.replace(
+                /[^\w\s]/gi,
+                "_",
+              );
+            }
+          }}
+          title={intl.formatMessage({
+            id: menuItem.menu.displayKey,
+            defaultMessage: menuItem.menu.displayKey,
+          })}
           defaultExpanded={carbonExpanded}
           isActive={carbonIsActive}
           className={
@@ -573,6 +575,7 @@ function OEHeader({
         style={level === 0 ? undefined : { width: "100%" }}
       >
         <span
+          id={menuItem.menu.elementId}
           style={{
             display: "flex",
             width: "100%",

@@ -215,6 +215,9 @@ test.describe("OGC-782 microbiology MVP", () => {
     await test.step("Override and review the AST run", async () => {
       await demo.step(5, "Override the AST result and mark the run reviewed");
       await page
+        .getByLabel("AST reading", { exact: true })
+        .selectOption({ label: "Ciprofloxacin (UAT): SUSCEPTIBLE" });
+      await page
         .getByLabel("Override reason")
         .fill("mixed growth confirmed on repeat");
       await page.getByRole("button", { name: "Apply override" }).click();
