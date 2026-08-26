@@ -9,32 +9,18 @@
         guid="a4d5e7c8-9f12-4b3e-8d67-1e23a4b5c6d7" is_active="Y"
         is_reportable="Y" orderable="true" lastUpdated="2025-01-01 12:00:00" />
 
-    <!-- Analyzer (instrument under test) -->
+    <analyzer_profile_binding id="1"
+        profile_id="fixture.qc-control-lot" profile_revision="1"
+        profile_fingerprint="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" />
+    <analyzer_site_binding id="1"
+        profile_binding_id="1" created_by="1" />
+    <analyzer_site_binding_revision id="1"
+        site_binding_id="1" revision_number="1"
+        binding_fingerprint="sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        created_by="1" />
     <analyzer id="1" name="TEST BioRad" is_active="true"
-        last_updated="2025-01-01 12:00:00" />
-
-    <!-- Analyzer fields: codes emitted by the analyzer -->
-    <analyzer_field id="field-glu-ir" analyzer_id="1"
-        field_name="GLU" field_type="NUMERIC" is_active="true"
-        last_updated="2025-01-01 12:00:00" />
-
-    <analyzer_field id="field-lot-initial" analyzer_id="1"
-        field_name="LOT-INITIAL-001" field_type="CONTROL_TEST"
-        is_active="true" last_updated="2025-01-01 12:00:00" />
-
-    <!-- Analyzer field mappings: GLU -> Test 1 (TEST), LOT-INITIAL-001 -> lot-initial-runs
-        (QC) -->
-    <analyzer_field_mapping id="map-glu-test-ir"
-        analyzer_field_id="field-glu-ir" analyzer_id="1" openelis_field_id="1"
-        openelis_field_type="TEST" mapping_type="TEST_LEVEL"
-        is_required="false" is_active="true" version="0"
-        last_updated="2025-01-01 12:00:00" />
-
-    <analyzer_field_mapping id="map-lot-initial-qc"
-        analyzer_field_id="field-lot-initial" analyzer_id="1"
-        openelis_field_id="lot-initial-runs" openelis_field_type="QC"
-        mapping_type="TEST_LEVEL" is_required="false" is_active="true"
-        version="0" last_updated="2025-01-01 12:00:00" />
+        status="ACTIVE" bridge_connection_id="bridge-1"
+        site_binding_revision_id="1" last_updated="2025-01-01 12:00:00" />
 
     <!-- Initial Runs control lot: - calculation_method = INITIAL_RUNS - initial_runs_count
         = 5 - status = ESTABLISHMENT (new lot, no results yet) - NO qc_statistics

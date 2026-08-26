@@ -380,5 +380,6 @@
   <include relativeToChangelogFile="true" file="095-allow-repeated-analyzer-site-binding-fingerprints.xml"/>
   <include relativeToChangelogFile="true" file="096-analyzer-result-source-context.xml"/>
   <include relativeToChangelogFile="true" file="097-remove-openelis-analyzer-error-queue.xml"/>
+  <include relativeToChangelogFile="true" file="098-remove-superseded-analyzer-schema.xml"/>
 
 </databaseChangeLog>

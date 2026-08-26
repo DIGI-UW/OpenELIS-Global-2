@@ -26,17 +26,22 @@
         sort_order="2147483646" name="Urinalysis" orderable="true"
         guid="def-456" antimicrobial_resistance="false" />
 
-    <!-- Analyzer data -->
-    <analyzer id="2001" name="Cobas 6800"
-        machine_id="COBAS6800-001" analyzer_type="MOLECULAR"
-        description="Automated molecular analyzer for PCR testing"
-        location="Main Laboratory - Room 101" is_active="true"
-        has_setup_page="true" last_updated="2023-01-01 12:00:00" />
-    <analyzer id="2002" name="ABL800 FLEX" machine_id="ABL800-123"
-        analyzer_type="CHEMISTRY"
-        description="Blood gas and electrolyte analyzer"
-        location="Emergency Department - Station 3" is_active="true"
-        has_setup_page="false" last_updated="2023-01-01 12:30:00" />
+    <analyzer_profile_binding id="2101"
+        profile_id="fixture.normalized-results" profile_revision="1"
+        profile_fingerprint="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" />
+    <analyzer_site_binding id="2101"
+        profile_binding_id="2101" created_by="1" />
+    <analyzer_site_binding_revision
+        id="2101" site_binding_id="2101" revision_number="1"
+        binding_fingerprint="sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        created_by="1" />
+
+    <analyzer id="2001" name="Cobas 6800" is_active="true"
+        status="ACTIVE" bridge_connection_id="bridge-2001"
+        site_binding_revision_id="2101" last_updated="2023-01-01 12:00:00" />
+    <analyzer id="2002" name="ABL800 FLEX" is_active="true"
+        status="ACTIVE" bridge_connection_id="bridge-2002"
+        site_binding_revision_id="2101" last_updated="2023-01-01 12:30:00" />
 
     <analyzer_results id="1001" analyzer_id="2001"
         accession_number="ACC123456" test_name="Glucose" result="5.6"

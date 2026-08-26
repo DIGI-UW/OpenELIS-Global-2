@@ -4,22 +4,96 @@
     <system_user id="1" login_name="testUser" last_name="Doe"
         first_name="John" is_active="Y" is_employee="Y" />
 
-    <!-- Analyzer type -->
-    <analyzer_type id="1" name="Clinical Chemistry"
-        description="Chemistry Analyzer" protocol="ASTM"
-        is_generic_plugin="false" is_active="true"
-        last_updated="2025-01-01 12:00:00" />
+    <!-- Lab units displayed as analyzer locations in the QC workflow -->
+    <localization id="701" description="Core Lab"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="702" description="Hematology"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="703" description="Test Lab"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="704" description="Immunology"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="705" description="Coagulation"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="706" description="Chemistry"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization_value id="701" localization_id="701"
+        locale="en" value="Core Lab - Room 101" />
+    <localization_value id="702" localization_id="702"
+        locale="en" value="Hematology Wing" />
+    <localization_value id="703" localization_id="703"
+        locale="en" value="Test Lab" />
+    <localization_value id="704" localization_id="704"
+        locale="en" value="Immunology Lab" />
+    <localization_value id="705" localization_id="705"
+        locale="en" value="Coag Lab" />
+    <localization_value id="706" localization_id="706"
+        locale="en" value="Chemistry Wing" />
+    <test_section id="701" name="CORE" description="Core Lab"
+        is_external="N" sort_order="1" name_localization_id="701"
+        lastupdated="2025-01-01 12:00:00" />
+    <test_section id="702" name="HEME"
+        description="Hematology" is_external="N" sort_order="2"
+        name_localization_id="702" lastupdated="2025-01-01 12:00:00" />
+    <test_section id="703" name="TEST" description="Test Lab"
+        is_external="N" sort_order="3" name_localization_id="703"
+        lastupdated="2025-01-01 12:00:00" />
+    <test_section id="704" name="IMM" description="Immunology"
+        is_external="N" sort_order="4" name_localization_id="704"
+        lastupdated="2025-01-01 12:00:00" />
+    <test_section id="705" name="COAG"
+        description="Coagulation" is_external="N" sort_order="5"
+        name_localization_id="705" lastupdated="2025-01-01 12:00:00" />
+    <test_section id="706" name="CHEM" description="Chemistry"
+        is_external="N" sort_order="6" name_localization_id="706"
+        lastupdated="2025-01-01 12:00:00" />
 
-    <!-- Analyzer (instrument) with type + location -->
+    <!-- Exact Bridge profile references and OpenELIS-owned site bindings -->
+    <analyzer_profile_binding id="801"
+        profile_id="Clinical Chemistry" profile_revision="1"
+        profile_fingerprint="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" />
+    <analyzer_profile_binding id="802"
+        profile_id="Hematology" profile_revision="1"
+        profile_fingerprint="sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" />
+    <analyzer_profile_binding id="803"
+        profile_id="General Laboratory" profile_revision="1"
+        profile_fingerprint="sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" />
+    <analyzer_profile_binding id="804"
+        profile_id="Immunoassay" profile_revision="1"
+        profile_fingerprint="sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" />
+    <analyzer_site_binding id="811"
+        profile_binding_id="801" created_by="1" />
+    <analyzer_site_binding id="812"
+        profile_binding_id="802" created_by="1" />
+    <analyzer_site_binding id="813"
+        profile_binding_id="803" created_by="1" />
+    <analyzer_site_binding id="814"
+        profile_binding_id="804" created_by="1" />
+    <analyzer_site_binding_revision id="821"
+        site_binding_id="811" revision_number="1"
+        binding_fingerprint="sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        created_by="1" />
+    <analyzer_site_binding_revision id="822"
+        site_binding_id="812" revision_number="1"
+        binding_fingerprint="sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        created_by="1" />
+    <analyzer_site_binding_revision id="823"
+        site_binding_id="813" revision_number="1"
+        binding_fingerprint="sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        created_by="1" />
+    <analyzer_site_binding_revision id="824"
+        site_binding_id="814" revision_number="1"
+        binding_fingerprint="sha256:4444444444444444444444444444444444444444444444444444444444444444"
+        created_by="1" />
+
     <analyzer id="100" name="Chemistry Analyzer A"
-        description="Main chemistry analyzer" machine_id="CHEM-A-001"
-        is_active="true" analyzer_type_id="1" location="Core Lab - Room 101"
+        is_active="true" status="ACTIVE" bridge_connection_id="bridge-100"
+        site_binding_revision_id="821" test_unit_ids="701"
         last_updated="2025-01-01 12:00:00" />
 
-    <!-- Analyzer without type (fallback test) -->
     <analyzer id="200" name="Standalone Hematology"
-        description="Hematology analyzer" machine_id="HEM-B-001"
-        is_active="true" location="Hematology Wing"
+        is_active="true" status="ACTIVE" bridge_connection_id="bridge-200"
+        site_binding_revision_id="822" test_unit_ids="702"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Localization records (required by Test entity's getName() getter) -->
@@ -98,8 +172,8 @@
 
     <!-- Analyzer 300: only has resolved violations (should NOT appear in dashboard) -->
     <analyzer id="300" name="Resolved Only Analyzer"
-        description="Analyzer with only resolved violations"
-        machine_id="RES-C-001" is_active="true" location="Test Lab"
+        is_active="true" status="ACTIVE" bridge_connection_id="bridge-300"
+        site_binding_revision_id="823" test_unit_ids="703"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Resolved violation on instrument 100 (should not be counted) -->
@@ -122,8 +196,8 @@
     <!-- Instrument 400: has QC results but NO violations at all. Should appear
         as GREEN (in control) in the dashboard. -->
     <analyzer id="400" name="Clean Immunoassay Analyzer"
-        description="Analyzer with QC results but no violations"
-        machine_id="IMM-D-001" is_active="true" location="Immunology Lab"
+        is_active="true" status="ACTIVE" bridge_connection_id="bridge-400"
+        site_binding_revision_id="824" test_unit_ids="704"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- QC result for instrument 400, test 1 — no violations triggered -->
@@ -135,8 +209,8 @@
 
     <!-- ========== Instrument 500: 4 QC results, NO violations (GREEN) ========== -->
     <analyzer id="500" name="Coagulation Analyzer"
-        description="Coag analyzer with clean QC" machine_id="COAG-E-001"
-        is_active="true" analyzer_type_id="1" location="Coag Lab"
+        is_active="true" status="ACTIVE" bridge_connection_id="bridge-500"
+        site_binding_revision_id="821" test_unit_ids="705"
         last_updated="2025-01-01 12:00:00" />
 
     <qc_control_lot id="lot-500a"
@@ -182,8 +256,8 @@
 
     <!-- ========== Instrument 600: 4 QC results, WITH violations (RED) ========== -->
     <analyzer id="600" name="Electrolyte Analyzer"
-        description="Analyzer with QC violations" machine_id="ELEC-F-001"
-        is_active="true" analyzer_type_id="1" location="Chemistry Wing"
+        is_active="true" status="ACTIVE" bridge_connection_id="bridge-600"
+        site_binding_revision_id="821" test_unit_ids="706"
         last_updated="2025-01-01 12:00:00" />
 
     <qc_control_lot id="lot-600a"
