@@ -118,6 +118,7 @@ const AnalyzersList = () => {
   const queryParams = new URLSearchParams(location.search);
   const setupStep = queryParams.get("setup");
   const visibleSetupStep = isAnalyzerSetupStep(setupStep) ? setupStep : null;
+  const setupAnalyzerId = queryParams.get("analyzerId");
   const lifecycleActionParam = queryParams.get("lifecycle");
   const lifecycleAction = isAnalyzerLifecycleAction(lifecycleActionParam)
     ? lifecycleActionParam
@@ -455,7 +456,11 @@ const AnalyzersList = () => {
       </div>
 
       {visibleSetupStep && (
-        <AnalyzerSetup currentStep={visibleSetupStep} onClose={closeSetup} />
+        <AnalyzerSetup
+          key={setupAnalyzerId || "new-analyzer"}
+          currentStep={visibleSetupStep}
+          onClose={closeSetup}
+        />
       )}
 
       <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">

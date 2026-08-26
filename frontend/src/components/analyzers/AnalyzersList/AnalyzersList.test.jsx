@@ -50,6 +50,7 @@ import AnalyzersList from "./AnalyzersList";
 // 8. Utilities (import functions, not just for mocking)
 import {
   deactivateAnalyzer,
+  getAnalyzer,
   getAnalyzers,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
@@ -738,6 +739,71 @@ describe("AnalyzersList", () => {
     expect(
       screen.queryByRole("region", { name: "Set up a new analyzer" }),
     ).not.toBeInTheDocument();
+  });
+
+  test("Add Analyzer clears an analyzer that was open for editing", async () => {
+    const existing = createMockAnalyzer({
+      id: "42",
+      name: "GX bench 1",
+      profileId: "shipped.genexpert-astm",
+      profileRevision: 3,
+      testUnitIds: ["7"],
+      lifecycleStage: "SETUP",
+    });
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers?setup=instrument&analyzerId=42&profile=shipped.genexpert-astm&revision=3",
+    );
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({ analyzers: [existing] }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) => callback(existing));
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        schemaVersion: "1.0",
+        catalogFingerprint: `sha256:${"a".repeat(64)}`,
+        summary: {
+          total: 1,
+          inUse: 1,
+          needsAttention: 0,
+          deactivated: 0,
+        },
+        types: [
+          {
+            profileId: "shipped.genexpert-astm",
+            revision: 3,
+            displayName: "GeneXpert MTB/RIF",
+            manufacturer: "Cepheid",
+            protocol: "ASTM",
+            status: "ACTIVE",
+          },
+        ],
+      }),
+    );
+    getAnalyzerLabUnits.mockImplementation((callback) =>
+      callback([{ id: "7", name: "Molecular Biology" }]),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(
+      await screen.findByRole("textbox", { name: "Analyzer name" }),
+    ).toHaveValue("GX bench 1");
+    await userEvent.click(screen.getByTestId("add-analyzer-button"));
+
+    expect(
+      new URLSearchParams(window.location.search).get("analyzerId"),
+    ).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("textbox", { name: "Analyzer name" }),
+      ).toHaveValue(""),
+    );
+    expect(screen.getByRole("combobox", { name: "Analyzer type" })).toHaveValue(
+      "",
+    );
+    expect(screen.getByText("Total items selected: 0.")).toBeInTheDocument();
   });
 
   /**
