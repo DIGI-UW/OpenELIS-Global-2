@@ -265,7 +265,10 @@ class UserManagementPage {
     cy.get(this.selectors.searchBar)
       .should("be.visible")
       .and("be.enabled")
-      .clear()
+      .clear();
+    cy.get(this.selectors.searchBar)
+      .should("be.visible")
+      .and("be.enabled")
       .type(value);
   }
 
