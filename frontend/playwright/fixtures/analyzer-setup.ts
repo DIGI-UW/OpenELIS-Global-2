@@ -30,7 +30,10 @@ export class AnalyzerSetupPage {
   }
 
   async fillName(name: string) {
-    await this.nameInput.fill(name);
+    await this.nameInput.click();
+    await this.nameInput.press("ControlOrMeta+A");
+    await this.nameInput.pressSequentially(name);
+    await expect(this.nameInput).toHaveValue(name);
   }
 
   async selectProfile(profileName: string) {
