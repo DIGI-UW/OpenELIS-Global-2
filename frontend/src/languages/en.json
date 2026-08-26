@@ -8135,6 +8135,7 @@
   "microbiology.isolate.unknown": "Unknown",
   "microbiology.isolate.update": "Save identification",
   "microbiology.enum.AST_REVIEW_REQUIRED": "AST Review Required",
+  "microbiology.enum.AWAITING_RESULTS": "Awaiting Results",
   "microbiology.enum.ANTIBIOTIC_MAPPING_REQUIRED": "Antibiotic Mapping Required",
   "microbiology.enum.AMENDED": "Amended",
   "microbiology.enum.AMENDMENT_ACTION_FAILED": "Amendment Action Failed",
