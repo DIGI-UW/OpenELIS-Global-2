@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-782 M5 — manual AST run and reading data model only. -->
+
+    <changeSet id="OGC-782-micro-ast-run-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_ast_run">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_ast_run"/>
+            </column>
+            <column name="isolate_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="panel_id" type="VARCHAR(36)"/>
+            <column name="status" type="VARCHAR(40)" defaultValue="IN_PROGRESS">
+                <constraints nullable="false"/>
+            </column>
+            <column name="started_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="started_by" type="VARCHAR(20)"/>
+            <column name="reviewed_at" type="TIMESTAMP"/>
+            <column name="reviewed_by" type="VARCHAR(20)"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_run_isolate"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_run" baseColumnNames="isolate_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_isolate" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_run_panel"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_run" baseColumnNames="panel_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_panel" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="micro_ast_run" indexName="idx_micro_ast_run_isolate">
+            <column name="isolate_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_run
+            ADD CONSTRAINT micro_ast_run_status_chk
+            CHECK (status IN ('IN_PROGRESS', 'REVIEWED', 'CANCELLED'))
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_ast_run"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-micro-ast-reading-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_ast_reading">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_ast_reading"/>
+            </column>
+            <column name="ast_run_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="antibiotic_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="method" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="raw_value" type="numeric(12,4)"/>
+            <column name="raw_text" type="TEXT"/>
+            <column name="interpretation" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="breakpoint_rule_id" type="VARCHAR(36)"/>
+            <column name="override_interpretation" type="VARCHAR(40)"/>
+            <column name="override_reason" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(20)"/>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_reading_run"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_reading" baseColumnNames="ast_run_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_run" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_reading_antibiotic"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_reading" baseColumnNames="antibiotic_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_antibiotic" referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_reading_breakpoint_rule"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_reading" baseColumnNames="breakpoint_rule_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_breakpoint_rule" referencedColumnNames="id"/>
+        <addUniqueConstraint
+            constraintName="uq_micro_ast_reading_run_antibiotic"
+            schemaName="clinlims" tableName="micro_ast_reading"
+            columnNames="ast_run_id, antibiotic_id"/>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_reading
+            ADD CONSTRAINT micro_ast_reading_method_chk
+            CHECK (method IN ('MIC', 'ZONE'))
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_reading
+            ADD CONSTRAINT micro_ast_reading_interpretation_chk
+            CHECK (interpretation IN ('SUSCEPTIBLE', 'INTERMEDIATE', 'RESISTANT', 'NO_BREAKPOINT')
+                AND (override_interpretation IS NULL OR override_interpretation IN
+                    ('SUSCEPTIBLE', 'INTERMEDIATE', 'RESISTANT', 'NO_BREAKPOINT')))
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_ast_reading"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -19,9 +19,12 @@ dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
  */
 
 // Demo story proof on the build stack (video-ready).
-const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
+const CORE_DEMO_TESTS = [
+  "**/demo/core/**/*.spec.ts",
+  "playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts",
+];
 
-// Core foundational verification (ci-safe).
+// Core functional verification (ci-safe).
 const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
 
 // Harness demo story proof (video-ready).

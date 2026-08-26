@@ -99,6 +99,9 @@ const AnalyzerTypesPage = lazyWithRetry(
 const AnalyzerFormPage = lazyWithRetry(
   () => import("./components/analyzers/AnalyzerForm/AnalyzerForm"),
 );
+const MicrobiologyPage = lazyWithRetry(
+  () => import("./pages/MicrobiologyPage"),
+);
 const QcRulePage = lazyWithRetry(
   () => import("./components/analyzers/QcRules/QcRuleBuilderModal"),
 );
@@ -564,6 +567,16 @@ export default function App() {
                   component={() => <CytologyCaseView />}
                   role=""
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/MicrobiologyCaseView/:caseId"
+                  exact
+                  component={() => (
+                    <Suspense fallback={null}>
+                      <MicrobiologyPage />
+                    </Suspense>
+                  )}
+                  role=""
                 />
                 <SecureRoute
                   path="/GenericSample/Order"

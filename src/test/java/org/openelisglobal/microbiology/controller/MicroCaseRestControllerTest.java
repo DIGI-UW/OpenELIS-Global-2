@@ -1,6 +1,8 @@
 package org.openelisglobal.microbiology.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,10 +12,22 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
+import org.openelisglobal.microbiology.form.MicroCaseActivityRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
+import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
+import org.openelisglobal.microbiology.form.MicroIsolateForm;
+import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
+import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
+import org.openelisglobal.microbiology.service.MicroCaseStateService;
+import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -24,7 +38,7 @@ public class MicroCaseRestControllerTest {
         MicroCaseService service = org.mockito.Mockito.mock(MicroCaseService.class);
         MicrobiologyCaseAccessService accessService = org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class);
         UserModuleService userModuleService = org.mockito.Mockito.mock(UserModuleService.class);
-        MockHttpServletRequest request = authenticatedRequest(7);
+        MockHttpServletRequest request = requestFor("7");
         MicroCaseDetailForm detail = new MicroCaseDetailForm();
         detail.id = "case-1";
         detail.stage = MicroCaseStage.RECEIVED.name();
@@ -32,8 +46,9 @@ public class MicroCaseRestControllerTest {
         when(accessService.canAccessCase("case-1", "7", false)).thenReturn(true);
         when(service.getCaseDetail("case-1")).thenReturn(detail);
 
-        ResponseEntity<MicroCaseDetailForm> response = new MicroCaseRestController(service, accessService,
-                userModuleService).getCaseDetail("case-1", request);
+        ResponseEntity<MicroCaseDetailForm> response = controller(service, accessService, userModuleService,
+                org.mockito.Mockito.mock(MicroCaseStateService.class),
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCaseDetail("case-1", request);
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals("case-1", response.getBody().id);
@@ -45,12 +60,13 @@ public class MicroCaseRestControllerTest {
         MicroCaseService service = org.mockito.Mockito.mock(MicroCaseService.class);
         MicrobiologyCaseAccessService accessService = org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class);
         UserModuleService userModuleService = org.mockito.Mockito.mock(UserModuleService.class);
-        MockHttpServletRequest request = authenticatedRequest(7);
+        MockHttpServletRequest request = requestFor("7");
         when(userModuleService.isUserAdmin(request)).thenReturn(false);
         when(accessService.canAccessCase("missing", "7", false)).thenReturn(true);
 
-        ResponseEntity<MicroCaseDetailForm> response = new MicroCaseRestController(service, accessService,
-                userModuleService).getCaseDetail("missing", request);
+        ResponseEntity<MicroCaseDetailForm> response = controller(service, accessService, userModuleService,
+                org.mockito.Mockito.mock(MicroCaseStateService.class),
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCaseDetail("missing", request);
 
         assertEquals(404, response.getStatusCode().value());
     }
@@ -60,22 +76,147 @@ public class MicroCaseRestControllerTest {
         MicroCaseService service = org.mockito.Mockito.mock(MicroCaseService.class);
         MicrobiologyCaseAccessService accessService = org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class);
         UserModuleService userModuleService = org.mockito.Mockito.mock(UserModuleService.class);
-        MockHttpServletRequest request = authenticatedRequest(7);
+        MockHttpServletRequest request = requestFor("7");
         when(userModuleService.isUserAdmin(request)).thenReturn(false);
         when(accessService.canAccessCase("case-1", "7", false)).thenReturn(false);
 
-        ResponseEntity<MicroCaseDetailForm> response = new MicroCaseRestController(service, accessService,
-                userModuleService).getCaseDetail("case-1", request);
+        ResponseEntity<MicroCaseDetailForm> response = controller(service, accessService, userModuleService,
+                org.mockito.Mockito.mock(MicroCaseStateService.class),
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCaseDetail("case-1", request);
 
         assertEquals(403, response.getStatusCode().value());
         verify(service, never()).getCaseDetail("case-1");
     }
 
-    private MockHttpServletRequest authenticatedRequest(int systemUserId) {
+    @Test
+    public void recordActivityAdvancesCaseStageAndReturnsUpdatedCaseDetail() {
+        MicroCaseService caseService = org.mockito.Mockito.mock(MicroCaseService.class);
+        MicroCaseStateService stateService = org.mockito.Mockito.mock(MicroCaseStateService.class);
+        MicroCase updated = new MicroCase();
+        updated.setId("case-1");
+        updated.setStage(MicroCaseStage.SETUP_RECORDED.name());
+        MicroCaseDetailForm detail = new MicroCaseDetailForm();
+        detail.id = "case-1";
+        detail.stage = MicroCaseStage.SETUP_RECORDED.name();
+        when(stateService.advanceStage(eq("case-1"), eq(MicroCaseStage.SETUP_RECORDED), eq("42"), eq("setup complete")))
+                .thenReturn(updated);
+        when(caseService.getCaseDetail("case-1")).thenReturn(detail);
+        MicroCaseActivityRequestForm request = new MicroCaseActivityRequestForm();
+        request.nextStage = MicroCaseStage.SETUP_RECORDED.name();
+        request.note = "setup complete";
+
+        ResponseEntity<MicroCaseDetailForm> response = controller(caseService,
+                org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class),
+                org.mockito.Mockito.mock(UserModuleService.class), stateService,
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class))
+                .recordActivity("case-1", request, requestFor("42"));
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(MicroCaseStage.SETUP_RECORDED.name(), response.getBody().stage);
+    }
+
+    @Test
+    public void recordActivityRejectsMissingStageBeforeCallingTheService() {
+        MicroCaseStateService stateService = org.mockito.Mockito.mock(MicroCaseStateService.class);
+        MicroCaseActivityRequestForm request = new MicroCaseActivityRequestForm();
+
+        try {
+            controller(org.mockito.Mockito.mock(MicroCaseService.class),
+                    org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class),
+                    org.mockito.Mockito.mock(UserModuleService.class), stateService,
+                    org.mockito.Mockito.mock(MicroCaseOrderDetailService.class))
+                    .recordActivity("case-1", request, requestFor("42"));
+            fail("Expected a missing stage to be rejected");
+        } catch (IllegalArgumentException exception) {
+            assertEquals("nextStage is required", exception.getMessage());
+        }
+
+        verify(stateService, never()).advanceStage(eq("case-1"), org.mockito.ArgumentMatchers.any(), eq("42"),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    public void saveOrderDetailReturnsUpdatedCaseDetail() {
+        MicroCaseService caseService = org.mockito.Mockito.mock(MicroCaseService.class);
+        MicroCaseStateService stateService = org.mockito.Mockito.mock(MicroCaseStateService.class);
+        MicroCaseOrderDetailService orderDetailService = org.mockito.Mockito.mock(MicroCaseOrderDetailService.class);
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.patientOrigin = "Emergency department";
+        when(orderDetailService.saveOrderDetail(eq("case-1"), eq(request), eq("42")))
+                .thenReturn(new MicroCaseOrderDetail());
+        MicroCaseDetailForm detail = new MicroCaseDetailForm();
+        detail.id = "case-1";
+        when(caseService.getCaseDetail("case-1")).thenReturn(detail);
+
+        ResponseEntity<MicroCaseDetailForm> response = controller(caseService,
+                org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class),
+                org.mockito.Mockito.mock(UserModuleService.class), stateService, orderDetailService)
+                .saveOrderDetail("case-1", request, requestFor("42"));
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("case-1", response.getBody().id);
+    }
+
+    @Test
+    public void createIsolateReturnsIsolateDto() {
+        MicroIsolateService isolateService = org.mockito.Mockito.mock(MicroIsolateService.class);
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        isolate.setIsolateLabel("ISO-1");
+        isolate.setPreliminaryOrganismText("Escherichia coli");
+        isolate.setSignificance(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
+        when(isolateService.createIsolate(eq("case-1"), eq("ISO-1"), eq(null), eq("Escherichia coli"),
+                eq(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT), eq("42"))).thenReturn(isolate);
+        MicroIsolateRequestForm request = new MicroIsolateRequestForm();
+        request.caseId = "case-1";
+        request.isolateLabel = "ISO-1";
+        request.preliminaryOrganismText = "Escherichia coli";
+        request.significance = MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name();
+
+        ResponseEntity<MicroIsolateForm> response = new MicroIsolateRestController(isolateService)
+                .createIsolate(request, requestFor("42"));
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("iso-1", response.getBody().id);
+        assertEquals("ISO-1", response.getBody().isolateLabel);
+    }
+
+    @Test
+    public void requestActorCannotOverrideTheAuthenticatedActor() {
+        MicroCaseService caseService = org.mockito.Mockito.mock(MicroCaseService.class);
+        MicroCaseStateService stateService = org.mockito.Mockito.mock(MicroCaseStateService.class);
+        MicroCase updated = new MicroCase();
+        updated.setId("case-1");
+        updated.setStage(MicroCaseStage.SETUP_RECORDED.name());
+        MicroCaseActivityRequestForm request = new MicroCaseActivityRequestForm();
+        request.nextStage = MicroCaseStage.SETUP_RECORDED.name();
+        request.note = "setup complete";
+        when(stateService.advanceStage(eq("case-1"), eq(MicroCaseStage.SETUP_RECORDED), eq("42"), eq("setup complete")))
+                .thenReturn(updated);
+        when(caseService.getCaseDetail("case-1")).thenReturn(new MicroCaseDetailForm());
+
+        controller(caseService, org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class),
+                org.mockito.Mockito.mock(UserModuleService.class), stateService,
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class))
+                .recordActivity("case-1", request, requestFor("42"));
+
+        verify(stateService).advanceStage(eq("case-1"), eq(MicroCaseStage.SETUP_RECORDED), eq("42"),
+                eq("setup complete"));
+    }
+
+    private MicroCaseRestController controller(MicroCaseService caseService,
+            MicrobiologyCaseAccessService accessService, UserModuleService userModuleService,
+            MicroCaseStateService stateService, MicroCaseOrderDetailService orderDetailService) {
+        return new MicroCaseRestController(caseService, accessService, userModuleService, stateService,
+                orderDetailService);
+    }
+
+    private MockHttpServletRequest requestFor(String userId) {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        UserSessionData userSessionData = new UserSessionData();
-        userSessionData.setSytemUserId(systemUserId);
-        request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, userSessionData);
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(Integer.parseInt(userId));
+        request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
         return request;
     }
 }
