@@ -5,5 +5,5 @@
 - [x] Jira/repo contradictions and implementation leakage are explicit.
 - [x] M4 boundaries exclude scheduling, TB, phenotypes, and unverified standards claims.
 - [x] Acceptance criteria are deterministic and testable.
-- [x] TDD, service-created fixtures, authenticated actors, Carbon, i18n, stable URLs, Playwright, Grist, and code-qa are required.
+- [x] TDD, service-created fixtures, authenticated actors, Carbon, i18n, stable URLs, Playwright, and code-qa are required.
 - [ ] Implementation and evidence satisfy every P1 scenario.
