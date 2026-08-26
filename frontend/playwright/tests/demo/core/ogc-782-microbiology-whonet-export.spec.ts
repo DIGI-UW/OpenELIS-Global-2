@@ -67,20 +67,66 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       await expect(
         page.getByRole("heading", { name: "Preview", exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
-      const mappedRows = page
-        .getByRole("row")
-        .filter({ hasText: seeded.accessionNumber });
-      await expect(mappedRows).toHaveCount(2);
-      await expect(mappedRows.filter({ hasText: "CIPUAT" })).toContainText("S");
-      await expect(mappedRows.filter({ hasText: "GENUAT" })).toContainText("R");
+      await expect(
+        page.getByRole("button", { name: "Generate CSV" }),
+      ).toBeDisabled();
+      await expect(
+        page
+          .getByLabel("Mapping readiness")
+          .getByRole("link", { name: "Fix specimen mapping" }),
+      ).toBeVisible();
       await demo.evidence("ogc-782-m4-02-whonet-preview", {
         fullPage: true,
       });
       await demo.pause(3000);
     });
 
+    await test.step("Repair the exact specimen mapping and return", async () => {
+      await demo.scene("Map the affected sample type to its WHONET code");
+      const previewUrl = page.url();
+      const previewLocation = new URL(previewUrl);
+      const previewReturnTo = `${previewLocation.pathname}${previewLocation.search}`;
+      const repairHref =
+        `/MasterListsPage/SampleTypeEditor/${seeded.sampleTypeId}/basic-info?` +
+        new URLSearchParams({
+          focus: "whonet",
+          returnTo: previewReturnTo,
+        }).toString();
+      const repairLink = page
+        .getByLabel("Mapping readiness")
+        .locator(`a[href="${repairHref}"]`);
+      await expect(repairLink).toHaveAccessibleName("Fix specimen mapping");
+      await repairLink.click();
+
+      const specimenCode = page.getByLabel("WHONET specimen code");
+      await expect(specimenCode).toBeFocused();
+      await specimenCode.fill("BLD");
+      await demo.evidence("ogc-782-m4-03-specimen-mapping-repair", {
+        fullPage: true,
+      });
+      await demo.pause(2500);
+
+      await page.getByRole("button", { name: "Save" }).click();
+      const returnLink = page.getByRole("link", {
+        name: "Return to WHONET preview",
+      });
+      await expect(returnLink).toBeVisible({ timeout: LONG_TIMEOUT });
+      await returnLink.click();
+      await expect(page).toHaveURL(previewUrl);
+      await expect(
+        page.getByRole("heading", { name: "Preview", exact: true }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+
+      const mappedRows = page
+        .getByRole("row")
+        .filter({ hasText: seeded.accessionNumber });
+      await expect(mappedRows).toHaveCount(2);
+      await expect(mappedRows.filter({ hasText: "CIPUAT" })).toContainText("S");
+      await expect(mappedRows.filter({ hasText: "GENUAT" })).toContainText("R");
+    });
+
     await test.step("Follow the exact mapping repair path and return", async () => {
-      await demo.scene("Repair only the affected organism mapping");
+      await demo.scene("Inspect the remaining organism mapping gap");
       const previewUrl = page.url();
       const repairHref =
         `/MasterListsPage/MicrobiologyReference/organisms?edit=` +
@@ -94,7 +140,9 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       await expect(
         dialog.getByRole("heading", { name: "Organism", exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await demo.evidence("ogc-782-m4-03-mapping-repair", { locator: dialog });
+      await demo.evidence("ogc-782-m4-04-organism-mapping-repair", {
+        locator: dialog,
+      });
       await demo.pause(2500);
       await page.goBack({ waitUntil: "domcontentloaded" });
       await expect(page).toHaveURL(previewUrl);
@@ -118,7 +166,7 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
         timeout: LONG_TIMEOUT,
       });
       expect(download.suggestedFilename()).toMatch(/^WHONET_.*\.csv$/);
-      await demo.evidence("ogc-782-m4-04-whonet-generated", {
+      await demo.evidence("ogc-782-m4-05-whonet-generated", {
         fullPage: true,
       });
       await demo.pause(2500);

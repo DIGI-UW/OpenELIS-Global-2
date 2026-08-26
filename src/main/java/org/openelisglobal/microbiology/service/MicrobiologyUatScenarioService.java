@@ -114,6 +114,8 @@ public class MicrobiologyUatScenarioService {
     private static final String UAT_NON_CULTURE_TEST_DESCRIPTION = "UAT routine non-culture test";
     private static final String UAT_ANALYTE_NAME = "UAT microbiology culture result";
     private static final String UAT_SAMPLE_TYPE_DESCRIPTION = "UAT micro specimen";
+    private static final String UAT_SAMPLE_TYPE_WHONET_CODE = "BLD";
+    private static final String UAT_WHONET_SAMPLE_TYPE_PREFIX = "UAT WHONET specimen ";
     private static final String UAT_PATIENT_EXTERNAL_ID_PREFIX = "UATMICRO-";
     private static final String UAT_PATIENT_LAST_NAME = "Microbiology";
     private static final String UAT_PATIENT_BIRTH_DATE = "1990-03-13 00:00:00";
@@ -233,7 +235,11 @@ public class MicrobiologyUatScenarioService {
                 ? getOrCreateUnmappedReferenceOrganism(suffix, performedBy)
                 : null;
 
-        ensureSampleType(sampleItem, performedBy);
+        if (WHONET_EXPORT_SCENARIO.equals(scenario)) {
+            ensureSampleType(sampleItem, getOrCreateWhonetPendingSampleType(suffix, performedBy), performedBy);
+        } else {
+            ensureSampleType(sampleItem, performedBy);
+        }
         Method method = getOrCreateUatMethod(performedBy);
         Method alternateMethod = CLASSIFICATION_SCENARIO.equals(scenario) ? getOrCreateUatAlternateMethod(performedBy)
                 : null;
@@ -546,6 +552,16 @@ public class MicrobiologyUatScenarioService {
             return;
         }
         sampleItem.setTypeOfSample(getOrCreateUatSampleType(performedBy));
+        sampleItem.setSysUserId(performedBy);
+        sampleItemService.update(sampleItem);
+    }
+
+    private void ensureSampleType(SampleItem sampleItem, TypeOfSample requiredSampleType, String performedBy) {
+        if (sampleItem.getTypeOfSample() != null
+                && sampleItem.getTypeOfSample().getId().equals(requiredSampleType.getId())) {
+            return;
+        }
+        sampleItem.setTypeOfSample(requiredSampleType);
         sampleItem.setSysUserId(performedBy);
         sampleItemService.update(sampleItem);
     }
@@ -1021,13 +1037,61 @@ public class MicrobiologyUatScenarioService {
             sampleType.setLocalAbbreviation("UATMS");
             sampleType.setActive(true);
             sampleType.setSortOrder(999);
+            sampleType.setWhonetCode(UAT_SAMPLE_TYPE_WHONET_CODE);
             sampleType.setLocalization(localization);
             sampleType.setSysUserId(performedBy);
             typeOfSampleService.insert(sampleType);
             return sampleType;
         }
+        boolean changed = false;
         if (!sampleType.getIsActive()) {
             sampleType.setActive(true);
+            changed = true;
+        }
+        if (!UAT_SAMPLE_TYPE_WHONET_CODE.equals(sampleType.getWhonetCode())) {
+            sampleType.setWhonetCode(UAT_SAMPLE_TYPE_WHONET_CODE);
+            changed = true;
+        }
+        if (changed) {
+            sampleType.setSysUserId(performedBy);
+            typeOfSampleService.update(sampleType);
+        }
+        return sampleType;
+    }
+
+    private TypeOfSample getOrCreateWhonetPendingSampleType(String suffix, String performedBy) {
+        String description = UAT_WHONET_SAMPLE_TYPE_PREFIX + suffix;
+        TypeOfSample sampleType = typeOfSampleService.getAllTypeOfSamples().stream()
+                .filter(candidate -> description.equals(candidate.getDescription())).findFirst().orElse(null);
+        if (sampleType == null) {
+            Localization localization = new Localization();
+            localization.setDescription("UAT WHONET specimen pending mapping");
+            localization.setEnglish(description);
+            localization.setSysUserId(performedBy);
+            localizationService.insert(localization);
+
+            sampleType = new TypeOfSample();
+            sampleType.setDescription(description);
+            sampleType.setDomain("H");
+            sampleType.setLocalAbbreviation("W" + suffix.substring(0, 9));
+            sampleType.setActive(true);
+            sampleType.setSortOrder(998);
+            sampleType.setWhonetCode("");
+            sampleType.setLocalization(localization);
+            sampleType.setSysUserId(performedBy);
+            typeOfSampleService.insert(sampleType);
+            return sampleType;
+        }
+        boolean changed = false;
+        if (!sampleType.getIsActive()) {
+            sampleType.setActive(true);
+            changed = true;
+        }
+        if (sampleType.getWhonetCode() != null && !sampleType.getWhonetCode().isBlank()) {
+            sampleType.setWhonetCode("");
+            changed = true;
+        }
+        if (changed) {
             sampleType.setSysUserId(performedBy);
             typeOfSampleService.update(sampleType);
         }

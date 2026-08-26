@@ -103,9 +103,9 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       const isolatesFound = await metricValue("Isolates found");
       const isolatesIncluded = await metricValue("Isolates included");
       const afterDeduplication = await metricValue("After de-duplication");
-      const mappableIsolates = await metricValue("Mappable isolates");
-      const eligibleRows = await metricValue("Eligible rows");
-      const rowsExcluded = await metricValue("Rows excluded");
+      const initialMappableIsolates = await metricValue("Mappable isolates");
+      const initialEligibleRows = await metricValue("Eligible rows");
+      const initialRowsExcluded = await metricValue("Rows excluded");
 
       expect(finalizedCases).toBeGreaterThanOrEqual(1);
       expect(isolatesFound).toBeGreaterThanOrEqual(2);
@@ -113,10 +113,85 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       expect(isolatesIncluded).toBeLessThanOrEqual(isolatesFound);
       expect(afterDeduplication).toBeGreaterThanOrEqual(2);
       expect(afterDeduplication).toBeLessThanOrEqual(isolatesIncluded);
-      expect(mappableIsolates).toBeGreaterThanOrEqual(1);
-      expect(mappableIsolates).toBeLessThanOrEqual(afterDeduplication);
-      expect(eligibleRows).toBeGreaterThanOrEqual(2);
-      expect(rowsExcluded).toBeGreaterThanOrEqual(2);
+      expect(initialMappableIsolates).toBeLessThanOrEqual(afterDeduplication);
+      expect(initialRowsExcluded).toBeGreaterThanOrEqual(4);
+
+      const generateCsv = page.getByRole("button", { name: "Generate CSV" });
+      if (initialEligibleRows === 0) {
+        await expect(generateCsv).toBeDisabled();
+      } else {
+        await expect(generateCsv).toBeEnabled();
+      }
+
+      const previewUrl = page.url();
+      const previewLocation = new URL(previewUrl);
+      const previewReturnTo = `${previewLocation.pathname}${previewLocation.search}`;
+      const mappingReadiness = page.getByLabel("Mapping readiness");
+      const specimenRepairHref =
+        `/MasterListsPage/SampleTypeEditor/${seeded.sampleTypeId}/basic-info?` +
+        new URLSearchParams({
+          focus: "whonet",
+          returnTo: previewReturnTo,
+        }).toString();
+      const specimenRepairLink = mappingReadiness.locator(
+        `a[href="${specimenRepairHref}"]`,
+      );
+      await expect(specimenRepairLink.locator("..")).toContainText(
+        "rows excluded",
+      );
+      await expect(specimenRepairLink).toHaveAccessibleName(
+        "Fix specimen mapping",
+      );
+      await expect(specimenRepairLink).toHaveAttribute(
+        "href",
+        specimenRepairHref,
+      );
+
+      await specimenRepairLink.click();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/MasterListsPage/SampleTypeEditor/${seeded.sampleTypeId}/basic-info`,
+        ),
+      );
+      const specimenCode = page.getByLabel("WHONET specimen code");
+      await expect(specimenCode).toBeFocused();
+      await specimenCode.fill("BLD");
+      const saveResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(`/rest/sample-types/${seeded.sampleTypeId}`) &&
+          response.request().method() === "PUT" &&
+          response.status() === 200,
+      );
+      await page.getByRole("button", { name: "Save" }).click();
+      await saveResponse;
+
+      const refreshedPreview = page.waitForResponse(
+        (response) =>
+          response.url().includes("/rest/microbiology/whonet/preview?") &&
+          response.request().method() === "GET" &&
+          response.status() === 200,
+      );
+      await page
+        .getByRole("link", { name: "Return to WHONET preview" })
+        .click();
+      await refreshedPreview;
+      await expect(page).toHaveURL(previewUrl);
+      await expect(
+        mappingReadiness.getByRole("link", { name: "Fix specimen mapping" }),
+      ).toHaveCount(0);
+      const repairedMappableIsolates = await metricValue("Mappable isolates");
+      const repairedEligibleRows = await metricValue("Eligible rows");
+      const repairedRowsExcluded = await metricValue("Rows excluded");
+      expect(repairedMappableIsolates).toBeGreaterThanOrEqual(
+        initialMappableIsolates + 1,
+      );
+      expect(repairedEligibleRows).toBeGreaterThanOrEqual(
+        initialEligibleRows + 2,
+      );
+      expect(repairedRowsExcluded).toBeLessThanOrEqual(initialRowsExcluded - 2);
+      await expect(generateCsv).toBeEnabled();
 
       const mappedRows = page
         .getByRole("row")
@@ -128,14 +203,12 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       const repairHref =
         `/MasterListsPage/MicrobiologyReference/organisms?edit=` +
         seeded.unmappedOrganismId;
-      const mappingReadiness = page.getByLabel("Mapping readiness");
       const repairLink = mappingReadiness.locator(`a[href="${repairHref}"]`);
       const warning = repairLink.locator("..");
       await expect(warning).toContainText("2 rows excluded");
       await expect(repairLink).toHaveAccessibleName("Fix organism mapping");
       await expect(repairLink).toHaveAttribute("href", repairHref);
 
-      const previewUrl = page.url();
       await repairLink.click();
       await expect(page).toHaveURL(
         new RegExp(`edit=${seeded.unmappedOrganismId}`),
@@ -168,10 +241,12 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       const accessionIndex = header.indexOf("LAB_NUMBER");
       const antibioticIndex = header.indexOf("ANTIBIOTIC");
       const organismIndex = header.indexOf("ORGANISM");
+      const specimenIndex = header.indexOf("SPECIMEN_TYPE");
       const interpretationIndex = header.indexOf("RESULT");
       expect(accessionIndex).toBeGreaterThanOrEqual(0);
       expect(antibioticIndex).toBeGreaterThanOrEqual(0);
       expect(organismIndex).toBeGreaterThanOrEqual(0);
+      expect(specimenIndex).toBeGreaterThanOrEqual(0);
       expect(interpretationIndex).toBeGreaterThanOrEqual(0);
 
       const seededRows = lines
@@ -185,13 +260,24 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
             antibiotic: row[antibioticIndex],
             interpretation: row[interpretationIndex],
             organism: row[organismIndex],
+            specimen: row[specimenIndex],
           }))
           .sort((left, right) =>
             left.antibiotic.localeCompare(right.antibiotic),
           ),
       ).toEqual([
-        { antibiotic: "CIPUAT", interpretation: "S", organism: "refuat" },
-        { antibiotic: "GENUAT", interpretation: "R", organism: "refuat" },
+        {
+          antibiotic: "CIPUAT",
+          interpretation: "S",
+          organism: "refuat",
+          specimen: "BLD",
+        },
+        {
+          antibiotic: "GENUAT",
+          interpretation: "R",
+          organism: "refuat",
+          specimen: "BLD",
+        },
       ]);
     });
   });

@@ -63,8 +63,25 @@ export const buildWhonetSearch = (state, now = new Date()) => {
   return params.toString();
 };
 
-export const getWhonetMappingRepairUrl = (resource, resourceId) => {
-  if (!["organisms", "antibiotics"].includes(resource) || !resourceId) {
+export const getWhonetMappingRepairUrl = (
+  resource,
+  resourceId,
+  returnTo = "",
+) => {
+  if (!resourceId) {
+    return "";
+  }
+  if (resource === "specimen-types") {
+    const params = new URLSearchParams({ focus: "whonet" });
+    if (
+      returnTo === MICROBIOLOGY_WHONET_PATH ||
+      returnTo.startsWith(`${MICROBIOLOGY_WHONET_PATH}?`)
+    ) {
+      params.set("returnTo", returnTo);
+    }
+    return `/MasterListsPage/SampleTypeEditor/${encodeURIComponent(resourceId)}/basic-info?${params.toString()}`;
+  }
+  if (!["organisms", "antibiotics"].includes(resource)) {
     return "";
   }
   const params = new URLSearchParams({ edit: resourceId });

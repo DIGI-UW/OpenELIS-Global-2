@@ -109,6 +109,13 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         for (Candidate candidate : candidates) {
             List<MicroAstReading> readings = valuesFor(reportableRunsByIsolate, candidate.isolate.getId()).stream()
                     .flatMap(run -> valuesFor(readingsByRun, run.getId()).stream()).toList();
+            if (!hasText(candidate.context.specimenType)) {
+                int excluded = Math.max(1, readings.size());
+                excludedRows += excluded;
+                addWarning(warnings, "SPECIMEN_MAPPING_REQUIRED", "specimen-types", candidate.context.specimenTypeId,
+                        candidate.context.specimenTypeLabel, excluded);
+                continue;
+            }
             Optional<MicroOrganism> organism = optionalReference(candidate.isolate.getOrganismId(), organismDAO::get);
             if (organism.isEmpty() || !hasText(organism.get().getWhonetCode())) {
                 int excluded = Math.max(1, readings.size());
@@ -244,6 +251,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 : source.enteredDate().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
         context.collectionDate = source.collectionDate() == null ? ""
                 : source.collectionDate().toLocalDateTime().toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        context.specimenTypeId = safe(source.specimenTypeId());
+        context.specimenTypeLabel = safe(source.specimenTypeLabel());
         context.specimenType = safe(source.specimenType());
         context.latitude = source.latitude() == null ? "" : source.latitude().toString();
         context.longitude = source.longitude() == null ? "" : source.longitude().toString();
@@ -343,6 +352,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         private String accessionNumber;
         private String enteredDate;
         private String collectionDate;
+        private String specimenTypeId;
+        private String specimenTypeLabel;
         private String specimenType;
         private String latitude;
         private String longitude;

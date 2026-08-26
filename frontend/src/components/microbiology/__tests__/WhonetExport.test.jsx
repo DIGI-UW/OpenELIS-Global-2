@@ -122,6 +122,33 @@ describe("WhonetExport", () => {
     expect(screen.getByRole("button", { name: "Generate CSV" })).toBeEnabled();
   });
 
+  it("links an unmapped specimen to its owning editor with the exact preview return", async () => {
+    const service = {
+      getWhonetPreview: vi.fn().mockResolvedValue({
+        ...preview,
+        warnings: [
+          {
+            code: "SPECIMEN_MAPPING_REQUIRED",
+            resource: "specimen-types",
+            resourceId: "sample-type-2",
+            itemLabel: "Blood culture",
+            excludedRows: 2,
+          },
+        ],
+      }),
+      generateWhonetExport: vi.fn(),
+    };
+
+    renderExport(service);
+
+    expect(
+      await screen.findByRole("link", { name: "Fix specimen mapping" }),
+    ).toHaveAttribute(
+      "href",
+      `/MasterListsPage/SampleTypeEditor/sample-type-2/basic-info?focus=whonet&returnTo=${encodeURIComponent(previewUrl)}`,
+    );
+  });
+
   it("updates Carbon controls through canonical URL state before previewing", async () => {
     const user = userEvent.setup();
     const service = {

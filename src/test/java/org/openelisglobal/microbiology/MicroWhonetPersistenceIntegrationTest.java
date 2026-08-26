@@ -35,6 +35,8 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun;
 import org.openelisglobal.reports.service.MicroWhonetExportResult;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,6 +67,9 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
     @Autowired
     private MicroWhonetExportRunDAO exportRunDAO;
 
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
     @Before
     @Override
     public void setUp() throws Exception {
@@ -79,6 +84,11 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         request.scenario = "M4";
         request.scenarioKey = "integration-m4-" + UUID.randomUUID();
         MicrobiologyUatScenarioForm scenario = uatScenarioService.provision(request, performedBy);
+
+        TypeOfSample sampleType = typeOfSampleService.get(scenario.sampleTypeId);
+        sampleType.setWhonetCode("BLD");
+        sampleType.setSysUserId(performedBy);
+        typeOfSampleService.update(sampleType);
 
         MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "WHONET-INTEGRATION", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, performedBy);
@@ -124,5 +134,24 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         assertEquals(preview.excludedRows, persisted.getExcludedRowCount());
         assertTrue(new String(result.getContent(), java.nio.charset.StandardCharsets.UTF_8)
                 .contains(scenario.accessionNumber));
+    }
+
+    @Test
+    public void independentWhonetScenariosCreateDistinctSchemaValidSampleTypes() {
+        String performedBy = fixtures.defaultUserId();
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "M4";
+        request.scenarioKey = "integration-m4-first-" + UUID.randomUUID();
+        MicrobiologyUatScenarioForm first = uatScenarioService.provision(request, performedBy);
+
+        request.scenarioKey = "integration-m4-second-" + UUID.randomUUID();
+        MicrobiologyUatScenarioForm second = uatScenarioService.provision(request, performedBy);
+
+        TypeOfSample firstSampleType = typeOfSampleService.get(first.sampleTypeId);
+        TypeOfSample secondSampleType = typeOfSampleService.get(second.sampleTypeId);
+        assertFalse(firstSampleType.getId().equals(secondSampleType.getId()));
+        assertFalse(firstSampleType.getLocalAbbreviation().equals(secondSampleType.getLocalAbbreviation()));
+        assertTrue(firstSampleType.getLocalAbbreviation().length() <= 10);
+        assertTrue(secondSampleType.getLocalAbbreviation().length() <= 10);
     }
 }

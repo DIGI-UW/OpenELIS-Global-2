@@ -84,7 +84,8 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
         Query<Object[]> query = entityManager.unwrap(Session.class).createQuery("select "
                 + "c.id, c.sampleItemId, patient.id, patient.nationalId, person.firstName, person.lastName,"
                 + " patient.gender, patient.birthDate, sample.accessionNumber, sample.enteredDate,"
-                + " item.collectionDate, specimenType.description, sample.gpsLatitude, sample.gpsLongitude"
+                + " item.collectionDate, specimenType.id, specimenType.description, specimenType.whonetCode,"
+                + " sample.gpsLatitude, sample.gpsLongitude"
                 + " from MicroCase c join SampleItem item on item.id = c.sampleItemId"
                 + " join item.sample sample left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id"
                 + " left join Patient patient on patient.id = sampleHuman.patientId"
@@ -97,8 +98,8 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
     private MicroWhonetContext toWhonetContext(Object[] values) {
         return new MicroWhonetContext((String) values[0], (String) values[1], (String) values[2], (String) values[3],
                 (String) values[4], (String) values[5], (String) values[6], toTimestamp(values[7]), (String) values[8],
-                toSqlDate(values[9]), toTimestamp(values[10]), (String) values[11], toDouble(values[12]),
-                toDouble(values[13]));
+                toSqlDate(values[9]), toTimestamp(values[10]), (String) values[11], (String) values[12],
+                (String) values[13], toDouble(values[14]), toDouble(values[15]));
     }
 
     private Timestamp toTimestamp(Object value) {

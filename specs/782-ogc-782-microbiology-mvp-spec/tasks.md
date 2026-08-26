@@ -175,8 +175,28 @@ capability is available; it does not own macro authoring or administration.
 - [x] Complete analyzer-result review and QC with representative instrument
   traffic and reconciliation through the configured Admin -> Stuck analyzer
   events path.
-- [*] Complete WHONET packaging, remaining vocabulary mappings, scheduling, and
-  delivery beyond the current manual export.
+- [x] Complete WHONET specimen-code validation, export projection, and exact
+  repair navigation through the owning sample-type administration workflow.
+- [*] Complete M-09 export population filters for specimen, organism, patient
+  origin, significance, and screening/surveillance status, with server-side
+  selection and canonical URL state.
+- [ ] Complete M-09 reporting-period presets and enable the AST-worklist Export
+  to WHONET deep link so its active scope pre-fills the generator and can be
+  cleared.
+- [ ] Complete M-09 advanced first-isolate behavior behind a progressive
+  disclosure: window length and basis, source scope, contaminant handling,
+  repeat-row handling, and susceptibility-profile sensitivity.
+- [ ] Complete M-09 readiness and repair for patient origins, patient types,
+  departments, breakpoint standards, and phenotype flags, reusing each owning
+  catalog and avoiding parallel mapping stores.
+- [ ] Complete WHONET-compatible output qualification: current import
+  validation, CSV/TXT choices, isolate-wide antibiotic columns, method suffixes,
+  phenotype options, demographics policy, and first-destination lab-profile
+  packaging.
+- [ ] Complete export history and configure-once delivery with saved filters,
+  monthly scheduling, failure/unmapped-item notification, and the approved
+  deployment transport; resolve SFTP-primary/email-fallback behavior before
+  implementation.
 - [ ] Complete any remaining reference-data administration required by those
    workflows.
 
