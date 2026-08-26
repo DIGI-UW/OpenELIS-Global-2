@@ -184,10 +184,10 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 new SimpleGrantedAuthority("PRIV_ORGANIZATION_MANAGE"),
                 new SimpleGrantedAuthority("PRIV_ORGANIZATION_VIEW"), new SimpleGrantedAuthority("PRIV_PANEL_MANAGE"),
                 new SimpleGrantedAuthority("PRIV_PANEL_VIEW"), new SimpleGrantedAuthority("PRIV_PATIENT_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_PATIENT_VIEW"), new SimpleGrantedAuthority("PRIV_PROVIDER_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_PROVIDER_VIEW"), new SimpleGrantedAuthority("PRIV_REFERRAL_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_REFERRAL_VIEW"), new SimpleGrantedAuthority("PRIV_REPORT_RUN"),
-                new SimpleGrantedAuthority("PRIV_RESULT_ENTER"),
+                new SimpleGrantedAuthority("PRIV_PATIENT_EDIT"), new SimpleGrantedAuthority("PRIV_PATIENT_VIEW"),
+                new SimpleGrantedAuthority("PRIV_PROVIDER_MANAGE"), new SimpleGrantedAuthority("PRIV_PROVIDER_VIEW"),
+                new SimpleGrantedAuthority("PRIV_REFERRAL_MANAGE"), new SimpleGrantedAuthority("PRIV_REFERRAL_VIEW"),
+                new SimpleGrantedAuthority("PRIV_REPORT_RUN"), new SimpleGrantedAuthority("PRIV_RESULT_ENTER"),
                 new SimpleGrantedAuthority("PRIV_RESULT_PATHOLOGY_SIGN_OFF"),
                 new SimpleGrantedAuthority("PRIV_RESULT_VALIDATE"), new SimpleGrantedAuthority("PRIV_RESULT_VIEW"),
                 new SimpleGrantedAuthority("PRIV_ROLE_MANAGE"), new SimpleGrantedAuthority("PRIV_ROLE_VIEW"),
@@ -201,7 +201,19 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                 new SimpleGrantedAuthority("PRIV_SYSTEM_USER_MANAGE"),
                 new SimpleGrantedAuthority("PRIV_SYSTEM_USER_VIEW"), new SimpleGrantedAuthority("PRIV_TESTCALC_VIEW"),
                 new SimpleGrantedAuthority("PRIV_TEST_CONFIGURE"), new SimpleGrantedAuthority("PRIV_USER_MANAGE"),
-                new SimpleGrantedAuthority("PRIV_USER_ROLE_MANAGE"), new SimpleGrantedAuthority("PRIV_USER_ROLE_VIEW"));
+                new SimpleGrantedAuthority("PRIV_USER_ROLE_MANAGE"), new SimpleGrantedAuthority("PRIV_USER_ROLE_VIEW"),
+                // Remaining seeded privileges — this set is meant to be the COMPLETE
+                // privilege catalog (a test super-user), so every seeded privilege must
+                // appear or newly-gated service methods AccessDenied under it.
+                new SimpleGrantedAuthority("PRIV_ANALYTE_MANAGE"), new SimpleGrantedAuthority("PRIV_METHOD_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_NCE_ASSIGN"), new SimpleGrantedAuthority("PRIV_ORDER_CANCEL"),
+                new SimpleGrantedAuthority("PRIV_PATIENT_CREATE"), new SimpleGrantedAuthority("PRIV_PROGRAM_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_PROGRAM_VIEW"), new SimpleGrantedAuthority("PRIV_REPORT_CONFIGURE"),
+                new SimpleGrantedAuthority("PRIV_REPORT_EXPORT"), new SimpleGrantedAuthority("PRIV_RESULT_MODIFY"),
+                new SimpleGrantedAuthority("PRIV_SAMPLE_REQUESTER_MANAGE"),
+                new SimpleGrantedAuthority("PRIV_SHIPMENT_CREATE"), new SimpleGrantedAuthority("PRIV_SHIPMENT_DELETE"),
+                new SimpleGrantedAuthority("PRIV_SHIPMENT_EDIT"), new SimpleGrantedAuthority("PRIV_SITEINFO_VIEW"),
+                new SimpleGrantedAuthority("PRIV_TESTCALC_MANAGE"));
     }
 
     @After

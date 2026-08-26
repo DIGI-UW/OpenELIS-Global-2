@@ -1,10 +1,7 @@
 package org.openelisglobal.interceptor;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,15 +24,19 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Spec 012 T017 — integration proof that the legacy auto-allow gap is closed.
+ * Spec 012 T017 — integration proof of the module interceptor's REST-path
+ * contract under privilege-based RBAC.
  *
  * <p>
- * Before the RBAC migration, a REST path with no {@code system_module_url}
- * registration was allowed for ANY authenticated user (the interceptor's
- * auto-allow branch). The migration flips that: an unregistered REST path is
- * DENIED so that service-layer {@code @PreAuthorize} is the sole gate. This
- * test wires the interceptor to the REAL module/user services (no subclass
- * stubs) and exercises {@code preHandle} end to end.
+ * An unregistered REST path (no {@code system_module_url} mapping) is
+ * deliberately allowed PAST this interceptor for any authenticated user. The
+ * module interceptor runs BEFORE method security, so denying here would lock
+ * non-admins out of unmapped infrastructure endpoints (menu, configuration,
+ * home-dashboard, user-test-sections); instead the path is deferred and the
+ * service-layer {@code @PreAuthorize} (PRIV_*) gate is the sole authorization
+ * boundary (live-verified regression fix, commit 76cba99b1). This test wires
+ * the interceptor to the REAL module/user services (no subclass stubs) and
+ * exercises {@code preHandle} end to end.
  */
 public class ModuleAuthenticationInterceptorIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -89,30 +90,34 @@ public class ModuleAuthenticationInterceptorIntegrationTest extends BaseWebConte
     }
 
     @Test
-    public void preHandle_deniesUnregisteredRestPathForNonAdmin() throws Exception {
-        // fixture user 902 is authenticated, non-admin, and holds a role with NO
-        // module mappings — exactly the population the old auto-allow leaked to
+    public void preHandle_defersUnregisteredRestPathForNonAdmin() throws Exception {
+        // An unregistered /rest path (no SystemModuleUrl mapping) is deliberately
+        // allowed PAST this interceptor for any authenticated user — the module
+        // interceptor runs BEFORE method security, so denying here would lock every
+        // non-admin out of unmapped infrastructure endpoints (menu, configuration,
+        // home-dashboard, user-test-sections). Authorization for these paths is the
+        // service layer's @PreAuthorize (PRIV_*) gate, not this interceptor. This is
+        // the live-verified behavior from the non-admin regression fix (76cba99b1);
+        // fixture user 902 is authenticated, non-admin, with no module mappings.
         MockHttpServletRequest request = requestFor(UNREGISTERED_REST_PATH, 902, "rbac_nopriv_user");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean allowed = interceptor.preHandle(request, response, new Object());
 
-        assertFalse("unregistered REST path must be denied, not auto-allowed", allowed);
-        assertEquals("REST denial must be a 401 JSON response, not a redirect", HttpServletResponse.SC_UNAUTHORIZED,
-                response.getStatus());
+        assertTrue("unregistered REST path must defer to @PreAuthorize, not be denied at the interceptor", allowed);
     }
 
     @Test
-    public void preHandle_deniesUnregisteredRestPathEvenWithPrivilegedRole() throws Exception {
-        // fixture user 901 holds RBAC_TEST_VIEWER (patient:view) — privileges do
-        // not bypass the module interceptor; only @PreAuthorize consumes them
+    public void preHandle_defersUnregisteredRestPathEvenWithPrivilegedRole() throws Exception {
+        // fixture user 901 holds RBAC_TEST_VIEWER (patient:view). Privileges are not
+        // consumed by the module interceptor at all — the path is deferred the same
+        // way as for any authenticated user, and @PreAuthorize alone decides access.
         MockHttpServletRequest request = requestFor(UNREGISTERED_REST_PATH, 901, "rbac_priv_user");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean allowed = interceptor.preHandle(request, response, new Object());
 
-        assertFalse(allowed);
-        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, response.getStatus());
+        assertTrue(allowed);
     }
 
     @Test
