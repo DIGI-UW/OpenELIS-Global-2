@@ -150,10 +150,10 @@ capability is available; it does not own macro authoring or administration.
   only if this evidence exposes a real defect; do not deploy test-only changes.
 - [ ] **Accept the current stack** - Complete human UAT in Grist, remediate real
    findings in manageable slices, and merge the stack bottom-up.
-- [ ] **Supported order-save integration proof** - Add the missing direct
+- [x] **Supported order-save integration proof** - Add the missing direct
    integration test around the complete supported save path without SQL,
    fixed primary keys, or DAO bypass.
-- [ ] **Clinical and NFR qualification** - Finish representative-volume worklist
+- [*] **Clinical and NFR qualification** - Finish representative-volume worklist
    and case measurements, keyboard/screen-reader review, and a clear decision
    on shared offline/conflict behavior. Do not build a microbiology-only offline
    queue.

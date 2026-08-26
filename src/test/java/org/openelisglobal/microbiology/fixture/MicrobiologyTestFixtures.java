@@ -28,6 +28,10 @@ import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -64,13 +68,16 @@ public class MicrobiologyTestFixtures {
     private final StatusOfSampleService statusOfSampleService;
     private final SystemUserService systemUserService;
     private final MicrobiologyConfigurationService configurationService;
+    private final PersonService personService;
+    private final PatientService patientService;
 
     public MicrobiologyTestFixtures(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, AnalysisService analysisService, TestService testService,
             TypeOfSampleService typeOfSampleService, LocalizationService localizationService,
             TestMethodService testMethodService, IStatusService statusService,
             StatusOfSampleService statusOfSampleService, SystemUserService systemUserService,
-            MicrobiologyConfigurationService configurationService) {
+            MicrobiologyConfigurationService configurationService, PersonService personService,
+            PatientService patientService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -83,6 +90,8 @@ public class MicrobiologyTestFixtures {
         this.statusOfSampleService = statusOfSampleService;
         this.systemUserService = systemUserService;
         this.configurationService = configurationService;
+        this.personService = personService;
+        this.patientService = patientService;
     }
 
     public String defaultUserId() {
@@ -145,6 +154,30 @@ public class MicrobiologyTestFixtures {
         sampleItem.setSysUserId(defaultUserId());
         sampleItemService.insert(sampleItem);
         return sampleItem;
+    }
+
+    public Patient createPatient(String externalIdPrefix) {
+        String userId = defaultUserId();
+        String suffix = uniqueSuffix();
+        Person person = new Person();
+        person.setFirstName("Microbiology");
+        person.setLastName("Order " + suffix);
+        person.setSysUserId(userId);
+        personService.insert(person);
+
+        Patient patient = new Patient();
+        patient.setPerson(person);
+        patient.setExternalId(uniqueValue(externalIdPrefix, 30));
+        patient.setNationalId("NID" + suffix);
+        patient.setSysUserId(userId);
+        patientService.insert(patient);
+        return patient;
+    }
+
+    public TypeOfSample firstActiveSampleType() {
+        return typeOfSampleService.getAllTypeOfSamples().stream().filter(TypeOfSample::getIsActive)
+                .sorted(Comparator.comparing(TypeOfSample::getId)).findFirst()
+                .orElseThrow(() -> new IllegalStateException("No active specimen type is available for tests"));
     }
 
     public ReferenceData createReferenceData(String methodId) {
