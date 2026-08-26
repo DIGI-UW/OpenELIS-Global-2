@@ -1,8 +1,8 @@
 # Feature Specification: OGC-782 M4 WHONET Manual Export
 
-**Feature Branch**: `feat/782-ogc-782-microbiology-m10-whonet-export`  
-**Jira**: [OGC-794](https://uwdigi.atlassian.net/browse/OGC-794), [OGC-878](https://uwdigi.atlassian.net/browse/OGC-878), [OGC-880](https://uwdigi.atlassian.net/browse/OGC-880)  
-**Parent**: [OGC-782 Microbiology MVP](../782-ogc-782-microbiology-mvp-spec/spec.md)  
+**Feature Branch**: `feat/782-ogc-782-microbiology-m10-whonet-export`
+**Jira**: [OGC-794](https://uwdigi.atlassian.net/browse/OGC-794), [OGC-878](https://uwdigi.atlassian.net/browse/OGC-878), [OGC-880](https://uwdigi.atlassian.net/browse/OGC-880)
+**Parent**: [OGC-782 Microbiology MVP](../782-ogc-782-microbiology-mvp-spec/spec.md)
 **Design intent**: [M-09 WHONET Export](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-09-whonet-export.md), [painless workflow mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-09-whonet-painless-prototype.html)
 
 ## Scope

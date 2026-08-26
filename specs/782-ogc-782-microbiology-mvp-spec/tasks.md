@@ -2,7 +2,7 @@
 
 This is the single execution roadmap and the only delivery-status document for
 OGC-782. It is intentionally concise. Detailed implementation history belongs
-in Git, pull requests, and immutable evidence reports, not in a second roadmap.
+in Git and pull requests, not in a second roadmap.
 
 ## Authority Chain
 
@@ -77,8 +77,8 @@ This roadmap uses four simple iteration markers:
 - `[ ]` means a future iteration that has not started.
 - `[*]` means the single iteration currently being worked.
 - `[x]` means implementation and focused automated validation are complete,
-  required pull-request checks are green, user-visible behavior is deployed to
-  the review host, and the iteration is ready for user validation.
+  required pull-request checks are green, any user-visible runtime behavior is
+  deployed to the review host, and the iteration is ready for user validation.
 - `[✓]` means the iteration has been explicitly validated by the user.
 
 Keep only these durable markers in the roadmap. Detailed PR and CI state stays
@@ -87,9 +87,14 @@ Grist.
 
 ### Finished Iterations
 
-- [x] **Routine bacteriology MVP (#3789)** - Test configuration, order routing,
-  case workbench, isolates, manual AST, shared worklist, critical communication,
-  report propagation, final lock, and WHONET readiness.
+- [x] **MVP foundations and routing (#3789)** - Test configuration, reference
+  foundations, case identity, and automatic order routing.
+- [x] **MVP workbench and AST (#4134)** - Case workflow, isolates, manual AST,
+  and interpretation review.
+- [x] **MVP worklist and critical communication (#4135)** - Shared worklist,
+  canonical navigation state, and synchronized critical communication.
+- [x] **MVP release and reporting (#4136)** - Preliminary/final propagation,
+  final-case lock, patient reporting, and WHONET readiness.
 - [x] **Clinical completeness (#3972)** - Amendment and re-identification
   history, repeat/retest AST, reagent/card-lot traceability, and initial NFR
   qualification.
