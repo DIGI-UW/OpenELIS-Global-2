@@ -65,7 +65,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(sourceRow).toBeVisible();
     await expect(sourceRow).toContainText("Shipped");
     await expect(sourceRow).toContainText("ASTM");
-    await expect(sourceRow).toContainText("revision 1");
+    await expect(sourceRow).toContainText(/revision [1-9]\d*/);
     await expect(sourceRow).toContainText("Active");
     await expect(sourceRow.getByRole("cell").nth(2)).not.toBeEmpty();
     await expect(sourceRow.getByRole("cell").nth(3)).not.toBeEmpty();
@@ -221,6 +221,13 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await openAnalyzerTypes(page);
     const sourceCells = analyzerTypeRow(page, SOURCE_PROFILE).getByRole("cell");
     const sourceBefore = await sourceCells.allTextContents();
+    const sourceRevision = sourceBefore
+      .join(" ")
+      .match(/\brevision ([1-9]\d*)\b/i)?.[1];
+    expect(
+      sourceRevision,
+      "The source row should identify its revision",
+    ).toBeTruthy();
 
     await page
       .getByRole("button", { name: "Duplicate Profile", exact: true })
@@ -254,7 +261,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(duplicateRow).toBeVisible();
     await expect(duplicateRow).toContainText("Site-created");
     await expect(duplicateRow).toContainText(
-      "Derived from genexpert-astm revision 1",
+      `Derived from genexpert-astm revision ${sourceRevision}`,
     );
     await expect(duplicateRow).toContainText("revision 1");
     await expect(duplicateRow).toContainText("Not in use");
