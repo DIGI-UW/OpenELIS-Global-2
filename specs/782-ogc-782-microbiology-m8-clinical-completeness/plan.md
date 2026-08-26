@@ -1,7 +1,7 @@
 # Implementation Plan: M8 Clinical Completeness and Qualification
 
-**Branch**: `feat/782-ogc-782-microbiology-m8-clinical-completeness`  
-**Stack base**: PR #3789 head `6aafb05a9345525e04a0749e01ba09a3e41b5c2d`  
+**Branch**: `feat/782-ogc-782-microbiology-m8-clinical-completeness`
+**Stack base**: OGC-782 release and reporting layer (#4136)
 **Target after MVP merge**: `develop`
 
 ## Technical Context

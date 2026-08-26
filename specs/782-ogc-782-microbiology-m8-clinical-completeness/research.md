@@ -1,6 +1,6 @@
 # Research and Source Reconciliation
 
-**Date**: 2026-08-03  
+**Date**: 2026-08-03
 **Repo base**: `6aafb05a9345525e04a0749e01ba09a3e41b5c2d`
 
 ## Baseline Repository State

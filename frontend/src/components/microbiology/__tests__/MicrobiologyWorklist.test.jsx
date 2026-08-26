@@ -330,7 +330,7 @@ describe("MicrobiologyWorklist", () => {
       screen.getByRole("link", { name: "Export to WHONET" }),
     ).toHaveAttribute(
       "href",
-      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&source=ast-worklist&step=configure&page=1&pageSize=20",
+      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE&source=ast-worklist&step=configure&page=1&pageSize=20",
     );
   });
 

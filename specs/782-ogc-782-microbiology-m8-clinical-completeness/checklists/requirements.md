@@ -11,4 +11,3 @@
 - [x] Source contradictions and stale Jira states are explicitly recorded.
 - [ ] SpecKit analysis reports no unresolved ERROR findings.
 - [ ] Product rulings replace or accept the four defaults listed in `research.md`.
-

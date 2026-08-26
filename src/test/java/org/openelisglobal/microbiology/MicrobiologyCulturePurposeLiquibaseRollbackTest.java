@@ -16,7 +16,7 @@ import org.junit.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
-public class MicrobiologyCulturePurposeLiquibaseTest {
+public class MicrobiologyCulturePurposeLiquibaseRollbackTest {
 
     @Test
     public void culturePurposeColumnRollsBackAndReapplies() throws Exception {
