@@ -18,6 +18,7 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   Dropdown,
+  ActionableNotification,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
@@ -45,8 +46,7 @@ interface AnalyzerStats {
   total: number;
   active: number;
   setup: number;
-  inactive: number;
-  pluginWarnings: number;
+  needsAttention: number;
 }
 
 interface AnalyzerTableRow {
@@ -63,8 +63,8 @@ interface AnalyzerTableRow {
 const profileRevisionKey = (profileId: string, revision: number) =>
   `${profileId}@${revision}`;
 
-const hasPluginWarning = (analyzer: Analyzer) =>
-  analyzer.profileBindingStatus !== "PINNED" && analyzer.pluginLoaded === false;
+const hasHeldResults = (analyzer: Analyzer) =>
+  Number(analyzer.heldResultCount || 0) > 0;
 
 const isAnalyzerSetupStep = (
   value: string | null,
@@ -112,8 +112,7 @@ const AnalyzersList = () => {
     total: 0,
     active: 0,
     setup: 0,
-    inactive: 0,
-    pluginWarnings: 0,
+    needsAttention: 0,
   });
   const queryParams = new URLSearchParams(location.search);
   const setupStep = queryParams.get("setup");
@@ -131,6 +130,7 @@ const AnalyzersList = () => {
   const listStatus = queryParams.get("status") || "";
   const listTestUnit = queryParams.get("testUnit") || "";
   const listAnalyzerType = queryParams.get("analyzerType") || "";
+  const firstAttentionAnalyzer = analyzers.find(hasHeldResults);
 
   const openSetup = () => {
     const params = new URLSearchParams(location.search);
@@ -227,16 +227,12 @@ const AnalyzersList = () => {
           const setupCount = list.filter(
             (a) => a.status === "SETUP" || a.status === "VALIDATION",
           ).length;
-          const inactiveCount = list.filter(
-            (a) => a.status === "INACTIVE",
-          ).length;
-          const pluginWarningCount = list.filter(hasPluginWarning).length;
+          const needsAttentionCount = list.filter(hasHeldResults).length;
           setStats({
             total: list.length,
             active: activeCount,
             setup: setupCount,
-            inactive: inactiveCount,
-            pluginWarnings: pluginWarningCount,
+            needsAttention: needsAttentionCount,
           });
           setLoading(false);
         },
@@ -474,6 +470,35 @@ const AnalyzersList = () => {
         />
       )}
 
+      {firstAttentionAnalyzer && (
+        <ActionableNotification
+          kind="error"
+          inline
+          lowContrast
+          hideCloseButton
+          data-testid="held-results-attention"
+          title={intl.formatMessage(
+            {
+              id:
+                stats.needsAttention === 1
+                  ? "analyzer.attention.title.one"
+                  : "analyzer.attention.title.many",
+            },
+            {
+              name: firstAttentionAnalyzer.name,
+              count: stats.needsAttention,
+            },
+          )}
+          subtitle={intl.formatMessage({
+            id: "analyzer.attention.subtitle",
+          })}
+          actionButtonLabel={intl.formatMessage({
+            id: "analyzer.attention.review",
+          })}
+          onActionButtonClick={() => openResults(firstAttentionAnalyzer)}
+        />
+      )}
+
       <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">
         <Column lg={4} md={2} sm={2}>
           <Tile data-testid="stat-total">
@@ -500,25 +525,15 @@ const AnalyzersList = () => {
           </Tile>
         </Column>
         <Column lg={4} md={2} sm={2}>
-          <Tile data-testid="stat-inactive">
+          <Tile data-testid="stat-needs-attention">
             <div className="stat-label">
-              {intl.formatMessage({ id: "analyzer.stat.inactive" })}
+              {intl.formatMessage({ id: "analyzer.stat.needsAttention" })}
             </div>
-            <div className="stat-value">{stats.inactive}</div>
+            <div className="stat-value stat-value--warning">
+              {stats.needsAttention}
+            </div>
           </Tile>
         </Column>
-        {stats.pluginWarnings > 0 && (
-          <Column lg={4} md={2} sm={2}>
-            <Tile data-testid="stat-plugin-warnings">
-              <div className="stat-label">
-                {intl.formatMessage({ id: "analyzer.stat.pluginWarnings" })}
-              </div>
-              <div className="stat-value stat-value--warning">
-                {stats.pluginWarnings}
-              </div>
-            </Tile>
-          </Column>
-        )}
       </Grid>
 
       <div
@@ -681,17 +696,17 @@ const AnalyzersList = () => {
 
                               if (headerKey === "name") {
                                 testId = `analyzer-name-${row.id}`;
-                                if (analyzer && hasPluginWarning(analyzer)) {
+                                if (analyzer && hasHeldResults(analyzer)) {
                                   cellContent = (
                                     <span>
                                       {cell.value}{" "}
                                       <Tag
                                         type="red"
                                         size="sm"
-                                        data-testid={`plugin-warning-${row.id}`}
+                                        data-testid={`held-results-tag-${row.id}`}
                                       >
                                         {intl.formatMessage({
-                                          id: "analyzer.plugin.missing",
+                                          id: "analyzer.attention.tag",
                                         })}
                                       </Tag>
                                     </span>

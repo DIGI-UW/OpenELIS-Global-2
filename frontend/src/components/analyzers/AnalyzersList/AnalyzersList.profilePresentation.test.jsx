@@ -43,19 +43,17 @@ describe("AnalyzersList profile-backed presentation", () => {
             name: "M1 GeneXpert A",
             type: "ASTM",
             status: "SETUP",
-            pluginLoaded: false,
             profileId: "genexpert-astm",
             profileRevision: 1,
-            profileBindingStatus: "PINNED",
             testUnitIds: ["1"],
           },
           {
             id: "2",
-            name: "Unbound analyzer",
+            name: "Second pinned analyzer",
             type: "ASTM",
             status: "SETUP",
-            pluginLoaded: false,
-            profileBindingStatus: "UNBOUND",
+            profileId: "genexpert-astm",
+            profileRevision: 1,
             testUnitIds: ["1"],
           },
         ],
@@ -86,7 +84,7 @@ describe("AnalyzersList profile-backed presentation", () => {
     );
   });
 
-  it("presents the pinned Bridge profile without an OE plugin warning", async () => {
+  it("presents the pinned Bridge profile by its catalog display name", async () => {
     renderList();
 
     expect(await screen.findByTestId("analyzer-name-1")).toHaveTextContent(
@@ -95,9 +93,9 @@ describe("AnalyzersList profile-backed presentation", () => {
     expect(screen.getByTestId("analyzer-type-1")).toHaveTextContent(
       "Cepheid GeneXpert ASTM",
     );
-    expect(screen.queryByTestId("plugin-warning-1")).not.toBeInTheDocument();
-    expect(screen.getByTestId("plugin-warning-2")).toBeInTheDocument();
-    expect(screen.getByTestId("stat-plugin-warnings")).toHaveTextContent("1");
+    expect(screen.getByTestId("analyzer-type-2")).toHaveTextContent(
+      "Cepheid GeneXpert ASTM",
+    );
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(

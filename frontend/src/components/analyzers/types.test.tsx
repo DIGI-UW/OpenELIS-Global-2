@@ -32,7 +32,6 @@ describe("analyzer TypeScript contracts", () => {
       type: "ASTM",
       testUnitIds: ["1001", 1002],
       active: true,
-      pluginLoaded: false,
       protocol: "FILE",
       profileId: "genexpert-astm",
       profileRevision: 1,

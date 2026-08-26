@@ -2,6 +2,7 @@ package org.openelisglobal.analyzerresults.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -73,6 +74,12 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     @Transactional(readOnly = true)
     public List<AnalyzerResults> findHeldResultValuesByProfile(String profileId, int profileRevision) {
         return getBaseObjectDAO().findHeldResultValuesByProfile(profileId, profileRevision);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds) {
+        return getBaseObjectDAO().countHeldResultsByAnalyzerIds(analyzerIds);
     }
 
     /**

@@ -50,7 +50,7 @@ public class AnalyzerInstanceServiceTest {
         request.setTestUnitIds(List.of("7"));
 
         localState = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"), "fixture.synthetic-connection",
-                3, PROFILE_FINGERPRINT, null, Analyzer.AnalyzerStatus.SETUP);
+                3, PROFILE_FINGERPRINT, null, Analyzer.AnalyzerStatus.SETUP, 0L);
         bridgeConnection = connection("bridge-connection-42");
         when(localStateService.create(request, "17")).thenReturn(localState);
         when(localStateService.get("42")).thenReturn(localState.withBridgeConnectionId("bridge-connection-42"));

@@ -16,7 +16,9 @@
 package org.openelisglobal.analyzerresults.daoimpl;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
@@ -94,6 +96,29 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error finding held analyzer result values", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds) {
+        if (analyzerIds == null || analyzerIds.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            String hql = "SELECT a.analyzerId, COUNT(a.id) FROM AnalyzerResults a "
+                    + "WHERE a.analyzerId IN (:analyzerIds) AND a.importIssueReason IS NOT NULL "
+                    + "GROUP BY a.analyzerId";
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameterList("analyzerIds", analyzerIds);
+            Map<String, Long> counts = new LinkedHashMap<>();
+            for (Object[] row : query.list()) {
+                counts.put((String) row[0], ((Number) row[1]).longValue());
+            }
+            return counts;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error counting held analyzer results", e);
         }
     }
 }

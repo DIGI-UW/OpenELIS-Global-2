@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,6 +22,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerInstanceLocalStateServiceTest {
@@ -36,6 +38,9 @@ public class AnalyzerInstanceLocalStateServiceTest {
     @Mock
     private AnalyzerSiteBindingService siteBindingService;
 
+    @Mock
+    private AnalyzerResultsService analyzerResultsService;
+
     private AnalyzerInstanceLocalStateService service;
     private AnalyzerInstanceRequest request;
 
@@ -46,7 +51,8 @@ public class AnalyzerInstanceLocalStateServiceTest {
         request.setProfileId("fixture.synthetic-connection");
         request.setProfileRevision(3);
         request.setTestUnitIds(List.of("7", " 8 "));
-        service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, profileBindingService, siteBindingService);
+        service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, profileBindingService, siteBindingService,
+                analyzerResultsService);
     }
 
     @Test
@@ -143,6 +149,21 @@ public class AnalyzerInstanceLocalStateServiceTest {
                 () -> service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "2".repeat(64), "17"));
 
         verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
+    @Test
+    public void listsHeldResultAttentionWithEachAnalyzer() {
+        Analyzer first = analyzer("42");
+        Analyzer second = analyzer("43");
+        bind(first);
+        bind(second);
+        when(analyzerService.getAllWithBindings()).thenReturn(List.of(first, second));
+        when(analyzerResultsService.countHeldResultsByAnalyzerIds(List.of("42", "43"))).thenReturn(Map.of("42", 2L));
+
+        List<AnalyzerInstanceState> states = service.list();
+
+        assertEquals(2L, states.get(0).heldResultCount());
+        assertEquals(0L, states.get(1).heldResultCount());
     }
 
     private static AnalyzerProfileBinding bind(Analyzer analyzer) {

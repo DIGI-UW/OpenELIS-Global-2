@@ -130,6 +130,7 @@ public class AnalyzerInstanceRestControllerTest {
         assertEquals(1, analyzers.size());
         assertEquals("42", analyzers.get(0).get("id"));
         assertEquals("fixture.synthetic-connection", analyzers.get(0).get("profileId"));
+        assertEquals(2L, analyzers.get(0).get("heldResultCount"));
         assertEquals(true, analyzers.get(0).get("connected"));
         assertFalse(analyzers.get(0).containsKey("connection"));
         verify(service).list();
@@ -146,7 +147,8 @@ public class AnalyzerInstanceRestControllerTest {
 
     private static AnalyzerInstanceView connectedView() {
         AnalyzerInstanceState state = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"),
-                "fixture.synthetic-connection", 3, FINGERPRINT, "bridge-connection-42", Analyzer.AnalyzerStatus.SETUP);
+                "fixture.synthetic-connection", 3, FINGERPRINT, "bridge-connection-42", Analyzer.AnalyzerStatus.SETUP,
+                2L);
         ObjectNode connection = new ObjectMapper().createObjectNode();
         connection.put("connectionId", "bridge-connection-42");
         connection.putArray("fields").addObject().put("key", "futureTextField");

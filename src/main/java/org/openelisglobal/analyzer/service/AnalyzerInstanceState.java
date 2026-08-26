@@ -5,7 +5,8 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 
 /** OpenELIS-owned analyzer instance state plus its Bridge references. */
 public record AnalyzerInstanceState(String analyzerId, String name, List<String> labUnitIds, String profileId,
-        int profileRevision, String profileFingerprint, String bridgeConnectionId, Analyzer.AnalyzerStatus status) {
+        int profileRevision, String profileFingerprint, String bridgeConnectionId, Analyzer.AnalyzerStatus status,
+        long heldResultCount) {
 
     public AnalyzerInstanceState {
         labUnitIds = labUnitIds == null ? List.of() : List.copyOf(labUnitIds);
@@ -13,6 +14,6 @@ public record AnalyzerInstanceState(String analyzerId, String name, List<String>
 
     public AnalyzerInstanceState withBridgeConnectionId(String connectionId) {
         return new AnalyzerInstanceState(analyzerId, name, labUnitIds, profileId, profileRevision, profileFingerprint,
-                connectionId, status);
+                connectionId, status, heldResultCount);
     }
 }

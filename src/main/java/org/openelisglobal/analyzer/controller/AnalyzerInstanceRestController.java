@@ -104,6 +104,7 @@ public class AnalyzerInstanceRestController extends BaseRestController {
         response.put("profileFingerprint", state.profileFingerprint());
         response.put("bridgeConnectionId", state.bridgeConnectionId());
         response.put("status", state.status().name());
+        response.put("heldResultCount", state.heldResultCount());
         response.put("connected", state.bridgeConnectionId() != null);
         return response;
     }
