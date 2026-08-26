@@ -28,6 +28,9 @@ const ReportReadinessPanel = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const mountedRef = useRef(true);
+  const releaseErrorMessage = (releaseError) =>
+    releaseError?.message ||
+    intl.formatMessage({ id: "microbiology.release.failed" });
 
   const loadState = () =>
     Promise.all([
@@ -72,7 +75,7 @@ const ReportReadinessPanel = ({
       .then(loadState)
       .catch((releaseError) => {
         if (mountedRef.current) {
-          setError(releaseError?.message || "REPORT_RELEASE_FAILED");
+          setError(releaseErrorMessage(releaseError));
         }
       })
       .finally(() => {
@@ -98,7 +101,7 @@ const ReportReadinessPanel = ({
       .then(loadState)
       .catch((releaseError) => {
         if (mountedRef.current) {
-          setError(releaseError?.message || "REPORT_RELEASE_FAILED");
+          setError(releaseErrorMessage(releaseError));
         }
       })
       .finally(() => {

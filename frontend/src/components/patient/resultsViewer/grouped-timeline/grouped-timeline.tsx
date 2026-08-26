@@ -178,7 +178,9 @@ export const GroupedTimeline = () => {
                     return (
                       <TableCell key={cell.id}>
                         {isNarrativeResult(v.value) ? (
-                          <span>{v.value}</span>
+                          <span style={{ whiteSpace: "pre-wrap" }}>
+                            {v.value}
+                          </span>
                         ) : (
                           <Tag
                             type={interpretationToTagType(v.interpretation)}

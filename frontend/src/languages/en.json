@@ -8261,6 +8261,7 @@
   "microbiology.progress.title": "Case progress",
   "microbiology.readiness.blocked": "Final release blocked",
   "microbiology.readiness.ready": "Final release ready",
+  "microbiology.release.failed": "The report could not be released. Review the requirements and try again.",
   "microbiology.release.final": "Release final report",
   "microbiology.release.finalReleased": "Final report released",
   "microbiology.release.hint": "Release reports only when readiness checks pass.",

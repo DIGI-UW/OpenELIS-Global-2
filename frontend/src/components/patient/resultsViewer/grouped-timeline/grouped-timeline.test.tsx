@@ -196,6 +196,19 @@ describe("GroupedTimeline result presentation", () => {
     expect(result.closest(".cds--tag")).toBeNull();
   });
 
+  it("preserves line breaks in multiline clinical narratives", () => {
+    const narrative =
+      "Culture: Escherichia coli\nCiprofloxacin: Resistant\nGentamicin: Susceptible";
+
+    renderTimeline(resultRow(narrative));
+
+    const result = screen.getByText(
+      (_content, element) =>
+        element?.tagName === "SPAN" && element.textContent === narrative,
+    );
+    expect(result).toHaveStyle({ whiteSpace: "pre-wrap" });
+  });
+
   it("keeps concise interpreted results in a Carbon tag", () => {
     renderTimeline(resultRow("7.2 mmol/L"));
 

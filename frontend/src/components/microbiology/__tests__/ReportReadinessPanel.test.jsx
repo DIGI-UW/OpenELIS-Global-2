@@ -186,4 +186,36 @@ describe("ReportReadinessPanel", () => {
       screen.getByRole("link", { name: "View patient results" }),
     ).toHaveAttribute("href", "/PatientResults/patient-1");
   });
+
+  it("shows a localized fallback when final release fails without a message", async () => {
+    const service = {
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: true,
+        blockers: [],
+      }),
+      getWhonetReadiness: vi.fn().mockResolvedValue({
+        whonetReady: true,
+        blockers: [],
+      }),
+      getReportProjection: vi.fn().mockResolvedValue({
+        reportableContent: true,
+        mappingConfigured: true,
+        content: "Escherichia coli: Ciprofloxacin S",
+      }),
+      releaseFinalReport: vi.fn().mockRejectedValue(new Error()),
+    };
+
+    renderPanel(service);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Release final report" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "The report could not be released. Review the requirements and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("REPORT_RELEASE_FAILED")).not.toBeInTheDocument();
+  });
 });

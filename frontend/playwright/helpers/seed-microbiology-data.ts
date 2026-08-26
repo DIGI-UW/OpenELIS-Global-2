@@ -14,14 +14,16 @@ export interface SeededMicrobiologyCase {
 
 type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST";
 
-async function getCsrfToken(page: Page): Promise<string> {
+export async function getCsrfToken(page: Page): Promise<string> {
   const state = await page.context().storageState();
   for (const origin of state.origins) {
     for (const item of origin.localStorage) {
       if (item.name === "CSRF") return item.value;
     }
   }
-  return "";
+  throw new Error(
+    "Authenticated Playwright storage state is missing the CSRF token",
+  );
 }
 
 async function provisionMicrobiologyScenario(
