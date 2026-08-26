@@ -48,6 +48,10 @@ enough to review before each implementation slice.
 - MVP publishes only GeneXpert ASTM, FluoroCycler FILE, and QuantStudio FILE.
   Other profiles return one at a time after the same contract, mock, and
   assembled-flow proof.
+- The existing `Analyser Import` role authorizes analyzer profile, setup,
+  activation, analyzer-result, and linked operational-QC workflows. Global
+  Administrators retain their platform override. Other authenticated users
+  cannot view or invoke those workflows directly.
 - Multi-component mapping and Results/Validation v4 are later milestones.
 
 ## Marker Rule
@@ -194,11 +198,13 @@ Deliver:
 - no runtime profile files or profile-serving/application path in OE;
 - a composed Carbon Analyzer Types list/detail/history/authoring workflow; and
 - URL-backed search, filters, selected profile/revision/tab, breadcrumbs,
-  reload, and browser history.
+  reload, browser history, and matching `Analyser Import`/Global Administrator
+  route and endpoint authorization.
 
 Exit: each priority profile passes schema, semantic, runtime, mock transport,
 and visible-flow proof through generic code; a new revision never repoints a
-connection implicitly.
+connection implicitly; unrelated authenticated roles cannot read or mutate
+Analyzer Types.
 
 ### M2 - Local Mapping And Recognition Verification
 
@@ -239,7 +245,8 @@ Work these slices in order within the active paired PRs:
 6. **Lifecycle:** show every local and Bridge blocker; activate/deactivate the
    exact revision; make probe evidence visible but non-gating.
 7. **QC link:** open the existing analyzer-scoped OE QC workflow and prove QC
-   changes never alter setup verification or activation.
+   changes never alter setup verification or activation; use the same analyzer
+   permission at the visible route and REST boundary.
 8. **Preview:** deploy the PR-backed OE/Bridge/mock stack, sync the applicable
    Grist steps, and inspect the complete M3 visible flow.
 
@@ -251,7 +258,9 @@ Exit:
   runtime path in the final candidate;
 - no OE connection value, protocol/transport branch, full-state writer,
   `AnalyzerQcRule`, duplicate create/edit route, or duplicate connection modal
-  remains; and
+  remains;
+- analyzer setup, probe, lifecycle, and linked QC reject unrelated
+  authenticated roles at the endpoint and visible-route boundaries; and
 - focused backend, RTL, contract, assembled, accessibility, and visual gates
   pass.
 
@@ -262,6 +271,8 @@ Deliver:
 - known patient and recognized-control traffic through real Bridge transports;
 - durable hold and visible attention for unknown tests and values;
 - valid local resolution and deterministic handling of the next message;
+- analyzer result review and resolution use the same established analyzer
+  permission at both page and endpoint boundaries;
 - priority ASTM and FILE mock stories plus a generic HL7 contract fixture;
 - outbound orders addressed only by Bridge connection ID plus clinical order;
   and
@@ -291,14 +302,13 @@ action.
 R1 adds broader profile curation/distribution, profile revision diff, bulk
 adoption and rollback, mature alert triage/concurrency, maintenance/fleet
 health, and full-feature UAT. R2 qualifies upgrades, migration, performance,
-security, observability, backup/restore, operator guides, and representative
-site rollout.
+observability, backup/restore, operator guides, and representative site rollout.
 
 ## MVP Acceptance Criteria
 
 | ID | Observable acceptance | Required proof |
 | --- | --- | --- |
-| MVP-001 | Analyzer Types shows searchable/filterable shipped and site types, completeness, use, lifecycle, and attention state. | OE integration + real-router RTL + UI E2E |
+| MVP-001 | Authorized users see searchable/filterable shipped and site Analyzer Types, completeness, use, lifecycle, and attention state; unrelated authenticated roles cannot read or mutate them. | OE security/integration + real-router RTL + UI E2E |
 | MVP-002 | Create, duplicate, update, publish, deactivate, and reactivate are audited; no delete exists. | Bridge contract/integration + OE RTL |
 | MVP-003 | Published revisions are immutable and retained; update/duplicate never repoints a connection. | Bridge persistence/restart tests |
 | MVP-004 | The three priority profiles retain both profile jobs, use generic runtime code, and contain no operational-QC or site-instance values. | Schema/semantic tests + Bridge/mock transport |
@@ -307,17 +317,17 @@ site rollout.
 | MVP-007 | Recognition is explicit `RULES` or affirmed `NONE`, evaluated only by Bridge, and shown as a plain-language confirmation. | Bridge profile/runtime + OE consumer/RTL |
 | MVP-008 | Verification records exact profile/binding/recognition fingerprints, row states, actor, and time; relevant changes stale it, QC changes do not. | OE persistence/audit integration |
 | MVP-009 | Mapping has one Analyzer Types editor with URL-backed state and return paths; no per-analyzer editor or duplicate queue exists. | Routing integration + real-router RTL + UI E2E |
-| MVP-010 | Add Analyzer is inline on `/analyzers`; Instrument, Verify, and Connect reveal in order and retain list context. | RTL + UI E2E |
+| MVP-010 | Authorized users see Add Analyzer inline on `/analyzers`; Instrument, Verify, and Connect reveal in order and retain list context; unrelated authenticated roles cannot open or invoke setup. | OE security/integration + RTL + UI E2E |
 | MVP-011 | Meaningful routes, query state, breadcrumbs, reload, back, forward, headings, and lab-unit labels are deterministic. | Real-router RTL + accessibility/UI E2E |
 | MVP-012 | Released OE analyzer configurations migrate once to explicit Bridge profile pins/connections with complete outcomes; old schema/code/tool is absent from G0 runtime. | Migration integration + final-schema integration |
 | MVP-013 | Bridge durably creates and edits a profile-pinned connection; OE renders generic fields and stores no analyzer-facing value. | Cross-repo contract + persistence + RTL |
 | MVP-014 | Probe is structured and non-mutating; synthetic profile fields and defaults change without OE production or schema changes. | Bridge tests + OE consumer contract/RTL |
-| MVP-015 | Analyzer-scoped Quality Control opens the canonical OE workflow; QC changes never alter verification or activation. | OE analyzer/QC integration + RTL + UI E2E |
+| MVP-015 | Analyzer-scoped Quality Control opens the canonical OE workflow under the same analyzer permission; QC changes never alter verification or activation. | OE security + analyzer/QC integration + RTL + UI E2E |
 | MVP-016 | Activation/deactivation uses the exact connection/profile/config/runtime acknowledgment, shows each blocker, preserves history, and never depends on QC or probe success. | OE/Bridge contract + lifecycle integration + RTL |
 | MVP-017 | Connection commands are concurrency-safe/idempotent and Bridge restart restores the exact active revision; OE performs no full-state replay. | Bridge restart/contract + OE service integration |
 | MVP-018 | Known patient and recognized-control traffic reaches the correct OE workflow with source identity and raw context. | Bridge/mock transport + OE assembled integration + UI E2E |
 | MVP-019 | Unknown tests/values are durably held, visibly flagged, and never clinically posted or dropped. | OE persistence/integration + UI E2E |
-| MVP-020 | Resolution accepts only valid local catalog targets, is audited, and changes the next matching result deterministically. | OE integration + UI E2E |
+| MVP-020 | Authorized analyzer users can resolve only to valid local catalog targets; resolution is audited and changes the next matching result deterministically, while unrelated roles are denied. | OE security/integration + UI E2E |
 | MVP-021 | ASTM, HL7, and FILE fixtures prove patient/control/nonmatch/unknown behavior; FILE watching exists only in Bridge. | Bridge/mock suites + assembled integration |
 | MVP-022 | New UI uses reusable Carbon components, React Intl, one semantic heading, keyboard/focus behavior, and no overlapping text at desktop/mobile sizes. | RTL/a11y + inspected screenshots |
 | MVP-023 | Analyzer dashboard, Analyzer Types, setup, mapping, and QC links form one consistent visual workflow compared with `openelis-work@main`. | Desktop/mobile visual review + named human UAT |
@@ -346,7 +356,8 @@ format/lint checks, assembled contracts where applicable, and `digi-uw/code-qa`.
 ## Required Grist UAT
 
 1. `AN-MVP-001` Find and inspect a shipped Analyzer Type.
-2. `AN-MVP-002` Duplicate or create, publish, and inspect revision history.
+2. `AN-MVP-002` Duplicate or create, publish, deactivate, reactivate, and
+   inspect revision history.
 3. `AN-MVP-003` Review test mappings and resolve a catalog match.
 4. `AN-MVP-004` Map a qualitative value using only that Test's Result Options.
 5. `AN-MVP-005` Confirm the control-recognition summary.
