@@ -145,13 +145,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = WHONetReportServiceImpl.class),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TestNotificationServiceImpl.class),
                 // Nested test-only @Configuration classes must not be picked up by this
-                // shared component scan. ComplianceReportReissueSecurityTest.TestConfig
-                // registers a mock SampleComplianceStandardDAO @Bean for its isolated
-                // MockMvc slice; if scanned here it collides with the real
-                // sampleComplianceStandardDAOImpl (NoUniqueBeanDefinitionException) and
-                // breaks the shared integration ApplicationContext. Matched by REGEX on
-                // its binary name because the nested config is package-private.
-                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.compliance.controller.rest.ComplianceReportReissueSecurityTest.*") })
+                // shared component scan. They register mocks for isolated MockMvc slices
+                // that otherwise collide with production services.
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.compliance.controller.rest.ComplianceReportReissueSecurityTest.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerPluginConfigRestControllerSecurityTest.*") })
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
 
