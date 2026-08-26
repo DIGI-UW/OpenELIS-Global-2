@@ -561,9 +561,12 @@ const MicrobiologyCaseView = ({
     ) {
       return;
     }
-    const frame = window.requestAnimationFrame(() =>
-      focusedSectionRef.current?.focus(),
-    );
+    const section = focusedSectionRef.current;
+    const frame = window.requestAnimationFrame(() => {
+      if (!section.contains(document.activeElement)) {
+        section.focus();
+      }
+    });
     return () => window.cancelAnimationFrame(frame);
   }, [
     error,

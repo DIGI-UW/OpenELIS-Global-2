@@ -153,19 +153,22 @@ capability is available; it does not own macro authoring or administration.
 - [x] **Supported order-save integration proof** - Add the missing direct
    integration test around the complete supported save path without SQL,
    fixed primary keys, or DAO bypass.
-- [*] **Clinical and NFR qualification** - Finish representative-volume worklist
-   and case measurements, keyboard/screen-reader review, and a clear decision
-   on shared offline/conflict behavior. Do not build a microbiology-only offline
-   queue.
+- [x] **Clinical and NFR qualification evidence** - Establish statistically
+   meaningful representative-volume measurements and complete the automated
+   keyboard/screen-reader review, fixing defects exposed by that evidence.
+- [ ] **Shared offline/conflict behavior** - Adopt an application-wide offline
+  pattern when its ownership is agreed; do not build a microbiology-only queue.
 - [ ] **Analyzer ingress security** - Introduce a least-privilege Bridge service
    identity and prove legitimate delivery plus unrelated-user denial. Coordinate
    this with the analyzer workstream rather than inventing an AMR-only role.
 - [ ] **Reagent policy dependency** - Enforce required, optional, and substitute
    reagent behavior only after Test Catalog provides an authoritative shared
    policy model; do not infer it from legacy role names.
-- [ ] **Close remaining worklist decisions** - Validate explicit resistance
-   classification provenance and the intended disposition of already-reviewed
-   AST work against the feature specification before implementation.
+- [*] **Reviewed AST worklist behavior** - Decide whether a reviewed AST attempt
+  leaves the active queue, remains visible in a completed view, or stays
+  actionable only when a repeat is needed. OpenELIS Work ends at Complete and
+  Review, while the repository specification does not define what happens on
+  the queue after review. Do not change this behavior until Piotr rules.
 
 ### Phase 1B Clinical Depth
 

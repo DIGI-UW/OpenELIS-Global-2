@@ -100,9 +100,9 @@ test.describe("Microbiology keyboard-only workflow", () => {
     });
 
     await test.step("Record culture lineage and a Timeline note with inline focus", async () => {
-      const startInoculation = page.getByRole("button", {
-        name: "Start inoculation",
-      });
+      const startInoculation = page
+        .getByTestId("microbiology-case-section-setup")
+        .getByRole("button", { name: "Start inoculation" });
       await tabTo(page, startInoculation);
       await page.keyboard.press("Enter");
       const containerIdentifier = page.getByLabel("Bottle or plate ID");

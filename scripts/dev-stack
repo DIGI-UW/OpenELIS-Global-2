@@ -85,11 +85,12 @@ def is_local_domain(domain: str) -> bool:
 
 
 def build_environment(context: StackContext) -> dict[str, str]:
+    uat_scenarios_enabled = os.environ.get("OE_UAT_SCENARIOS_ENABLED", "true")
     environment = os.environ.copy()
     for key, value in read_dotenv(context.repo_root / ".env").items():
         environment.setdefault(key, value)
     environment["DEV_STACK_PROJECT"] = context.project
-    environment.setdefault("OE_UAT_SCENARIOS_ENABLED", "true")
+    environment["OE_UAT_SCENARIOS_ENABLED"] = uat_scenarios_enabled
     domain = environment.get("LETSENCRYPT_DOMAIN", "localhost")
     environment["LETSENCRYPT_DOMAIN"] = domain
     environment.setdefault("LETSENCRYPT_BRIDGE_DOMAIN", f"bridge.{domain}")

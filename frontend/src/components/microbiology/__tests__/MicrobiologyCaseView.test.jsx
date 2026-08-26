@@ -133,6 +133,60 @@ describe("MicrobiologyCaseView", () => {
     expect(screen.getByLabelText("Bottle or plate ID")).toHaveFocus();
   });
 
+  it("focuses the setup section after canceling a deep-linked inoculation action", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?section=setup&action=start-inoculation",
+    );
+
+    expect(await screen.findByLabelText("Bottle or plate ID")).toHaveFocus();
+    const setupSection = screen.getByTestId("microbiology-case-section-setup");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?section=setup",
+      ),
+    );
+    await waitFor(() => expect(setupSection).toHaveFocus());
+  });
+
+  it("focuses the selected section when leaving a deep-linked inoculation action", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      getCaseTimeline: vi.fn().mockResolvedValue(caseDetail.activities),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?section=setup&action=start-inoculation",
+    );
+
+    expect(await screen.findByLabelText("Bottle or plate ID")).toHaveFocus();
+    await user.click(getAccordionButton("Timeline"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?section=timeline",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-case-section-timeline"),
+      ).toHaveFocus(),
+    );
+  });
+
   it("mounts only the canonical active accordion body", async () => {
     const service = {
       ...astServiceStubs,
@@ -145,6 +199,9 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByTestId("microbiology-case-section-setup"),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole("region", { name: "Inoculation" })).toHaveLength(
+      1,
+    );
     expect(
       screen.queryByTestId("microbiology-case-section-timeline"),
     ).not.toBeInTheDocument();
@@ -484,11 +541,10 @@ describe("MicrobiologyCaseView", () => {
     expect(screen.getAllByText(/UATMICRO001/).length).toBeGreaterThan(0);
     expect(screen.getByText("Blood")).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
-    await user.click(
-      within(screen.getByTestId("microbiology-next-step")).getByRole("button", {
-        name: "Start inoculation",
-      }),
-    );
+    const startInoculation = within(
+      screen.getByTestId("microbiology-case-section-setup"),
+    ).getByRole("button", { name: "Start inoculation" });
+    await user.click(startInoculation);
     await user.type(screen.getByLabelText("Bottle or plate ID"), "BOTTLE-001");
     await user.type(
       screen.getByLabelText("Media or bottle"),
@@ -519,6 +575,13 @@ describe("MicrobiologyCaseView", () => {
     expect(
       screen.getByText(/Incubating. Mark the case positive/),
     ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("microbiology-current-url"),
+      ).not.toHaveTextContent("action="),
+    );
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    expect(startInoculation).toHaveFocus();
   });
 
   it("links the report workflow to the patient results page", async () => {

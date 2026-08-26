@@ -4,12 +4,13 @@ import { seedMicrobiologyMvpCase } from "../../../helpers/seed-microbiology-data
 import {
   attachBrowserPerformanceEvidence,
   measureBrowserOperation,
+  P95_MEASURED_ITERATIONS,
   type BrowserPerformanceEvidence,
 } from "../../../helpers/performance-evidence";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const WARMUPS = 2;
-const MEASURED = 10;
+const MEASURED = P95_MEASURED_ITERATIONS;
 const PICKER_BUDGET_MS = 500;
 
 const measureReagentOverviewRequest = async (page: Page, endpoint: string) =>
