@@ -98,7 +98,6 @@ test.describe("OGC-782 microbiology MVP", () => {
       await page.getByLabel("Media or bottle").fill("Blood culture bottle");
       await page.getByLabel("Incubation").fill("35 C for 24 hours");
       await page.getByLabel("Atmosphere").fill("Ambient");
-      await page.getByLabel("Activity note").fill("setup complete");
       await captureCard(
         page,
         demo,
