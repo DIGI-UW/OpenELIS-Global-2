@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/analyzer-types")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
 public class AnalyzerTypeRestController extends BaseRestController {
 
     private final AnalyzerTypeCatalogService catalogService;
