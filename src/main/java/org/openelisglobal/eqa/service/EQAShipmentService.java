@@ -53,6 +53,19 @@ public interface EQAShipmentService {
     List<Map<String, Object>> getShipmentRows(Long cycleId);
 
     /**
+     * T-41: a partner lab's receipt reached this provider over FHIR (the box's
+     * own-store SupplyDelivery reads completed), so record the delivery here. When
+     * the box is the participant's current shipment this is exactly the Receipt
+     * Monitor's "Mark delivered" — cycle auto-advance and audit included; an
+     * outdated box (a repeat superseded it) is closed off quietly without touching
+     * the cycle.
+     *
+     * @param shippingBoxId the delivered box
+     * @param sysUserId     the automated user the delivery is attributed to
+     */
+    void applyRemoteDelivery(Integer shippingBoxId, String sysUserId);
+
+    /**
      * Create or update this participant's box and shipment details. Idempotent: the
      * box id is derived from cycle + organization.
      */

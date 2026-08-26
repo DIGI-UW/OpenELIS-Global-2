@@ -86,7 +86,13 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         PROVIDER_EDGES.put(PLANNED, EnumSet.of(PREP_IN_PROGRESS));
         PROVIDER_EDGES.put(PREP_IN_PROGRESS, EnumSet.of(READY_TO_SHIP));
         PROVIDER_EDGES.put(READY_TO_SHIP, EnumSet.of(SHIPPED));
-        PROVIDER_EDGES.put(SHIPPED, EnumSet.of(DELIVERED));
+        // SHIPPED → SUBMISSIONS_OPEN (T-46, decided 2026-08-26): a partial roster is
+        // a legal place to open submissions from — one dormant lab must not park the
+        // cycle in SHIPPED for the labs that hold their panels. Manual-only in
+        // practice: the auto path (openSubmissionsIfAllDelivered) still walks
+        // SHIPPED → DELIVERED → SUBMISSIONS_OPEN only when every participant has its
+        // panel; this edge is what an operator's audited override rides.
+        PROVIDER_EDGES.put(SHIPPED, EnumSet.of(DELIVERED, SUBMISSIONS_OPEN));
         PROVIDER_EDGES.put(DELIVERED, EnumSet.of(SUBMISSIONS_OPEN));
         PROVIDER_EDGES.put(SUBMISSIONS_OPEN, EnumSet.of(SUBMISSIONS_CLOSED));
         PROVIDER_EDGES.put(SUBMISSIONS_CLOSED, EnumSet.of(SCORING));

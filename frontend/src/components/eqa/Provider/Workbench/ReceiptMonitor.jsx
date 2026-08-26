@@ -21,6 +21,7 @@ import {
   fetchReceiptRows,
   fetchScoreRows,
   markDelivered,
+  openSubmissions,
   scoreCycle,
   scoresCsvUrl,
   sendRepeat,
@@ -69,6 +70,8 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
   const [repeating, setRepeating] = useState(null);
   const [overrideNote, setOverrideNote] = useState("");
   const [busy, setBusy] = useState(null);
+  const [openingSubmissions, setOpeningSubmissions] = useState(false);
+  const [openReason, setOpenReason] = useState("");
 
   const load = useCallback(() => {
     fetchReceiptRows(cycleId, setRows);
@@ -122,6 +125,26 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
         "eqa.receipt.repeatSent",
         "Repeat panel dispatched.",
         "eqa.receipt.repeatFailed",
+      );
+    });
+  };
+
+  /**
+   * T-46: open submissions on a partial roster. Auto-advance only fires when
+   * every participant is delivered; one dormant lab must not keep submissions
+   * closed for the labs that hold their panels. Audited MANUAL override —
+   * reason required by the transition endpoint itself.
+   */
+  const handleOpenSubmissions = () => {
+    setBusy("open-submissions");
+    openSubmissions(cycleId, openReason, (response) => {
+      setOpeningSubmissions(false);
+      setOpenReason("");
+      report(
+        response,
+        "eqa.receipt.submissionsOpened",
+        "Submissions are open.",
+        "eqa.receipt.submissionsOpenFailed",
       );
     });
   };
@@ -181,6 +204,24 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
                 {t("eqa.score.scoreCycle", "Score cycle")}
               </Button>
             )}
+            {["SHIPPED", "DELIVERED"].includes(cycleStatus) &&
+              rows.some(
+                (row) =>
+                  row.receiptStatus === "DELIVERED" ||
+                  row.receiptStatus === "EXCEPTION",
+              ) && (
+                <Button
+                  size="sm"
+                  kind="tertiary"
+                  disabled={busy !== null}
+                  onClick={() => {
+                    setOpeningSubmissions(true);
+                    setOpenReason("");
+                  }}
+                >
+                  {t("eqa.receipt.openSubmissions", "Open submissions")}
+                </Button>
+              )}
             <Button
               kind="ghost"
               size="sm"
@@ -320,6 +361,39 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
             </TableBody>
           </Table>
         </>
+      )}
+
+      {openingSubmissions && (
+        <Modal
+          open
+          modalHeading={t(
+            "eqa.receipt.openSubmissionsHeading",
+            "Open submissions with undelivered panels",
+          )}
+          primaryButtonText={t(
+            "eqa.receipt.openSubmissions",
+            "Open submissions",
+          )}
+          secondaryButtonText={t("eqa.queue.cancel", "Cancel")}
+          primaryButtonDisabled={busy !== null || !openReason.trim()}
+          onRequestClose={() => setOpeningSubmissions(false)}
+          onSecondarySubmit={() => setOpeningSubmissions(false)}
+          onRequestSubmit={handleOpenSubmissions}
+        >
+          <p style={{ ...hintStyle, marginBottom: "1rem" }}>
+            {t(
+              "eqa.receipt.openSubmissionsHelp",
+              "Participants that have not received their panel stay on the roster as late. This is a recorded manual override — give the reason.",
+            )}
+          </p>
+          <TextArea
+            id="eqa-open-submissions-reason"
+            labelText={t("eqa.receipt.openSubmissionsReason", "Reason")}
+            value={openReason}
+            onChange={(event) => setOpenReason(event.target.value)}
+            rows={3}
+          />
+        </Modal>
       )}
 
       {repeating && (

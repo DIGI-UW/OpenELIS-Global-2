@@ -24,12 +24,14 @@ import org.openelisglobal.eqa.valueholder.EQACycleParticipant;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelReceipt;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.shipment.service.BoxSampleItemService;
 import org.openelisglobal.shipment.service.ShipmentService;
 import org.openelisglobal.shipment.service.ShippingBoxService;
 import org.openelisglobal.shipment.valueholder.BoxState;
@@ -77,6 +79,9 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
 
     @Autowired
     private ShipmentService shipmentService;
+
+    @Autowired
+    private BoxSampleItemService boxSampleItemService;
 
     @Override
     @Transactional(readOnly = true)
@@ -264,12 +269,11 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         shipment.setSystemUserId(userId(sysUserId));
         shipment = isNew ? shipmentService.createShipment(shipment) : shipmentService.updateShipment(shipment);
 
-        // A packed box waiting for dispatch: the EQA prep gate, not the box's own
-        // sample count, is what says this box may go out — so this walks the state
-        // directly rather than through markReadyToSend(), which refuses a box with
-        // no sample items (panel material is not a lab SampleItem).
+        // A packed box waiting for dispatch. Since T-40 the box genuinely holds its
+        // panel material, so markReadyToSend()'s "no contents" refusal is a real check
+        // here rather than an obstacle to route around.
         if (box.getState() == BoxState.DRAFT) {
-            box = shippingBoxService.changeBoxState(box.getId(), BoxState.READY_TO_SEND, userId(sysUserId));
+            box = shippingBoxService.markReadyToSend(box.getId(), userId(sysUserId));
         }
         return toShipmentRow(organizationId, box, shipment);
     }
@@ -436,6 +440,36 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         }
     }
 
+    @Override
+    public void applyRemoteDelivery(Integer shippingBoxId, String sysUserId) {
+        ShippingBox box = shippingBoxService.getBoxById(shippingBoxId);
+        if (box == null || box.getEqaCycleId() == null || box.getDestinationFacility() == null) {
+            return;
+        }
+        if (box.getState() != BoxState.SENT && box.getState() != BoxState.IN_TRANSIT) {
+            return;
+        }
+        Long organizationId = Long.valueOf(box.getDestinationFacility().getId());
+
+        // The participant's current shipment takes the Receipt Monitor's own path,
+        // so a remote receipt and a manual click write identical rows and the cycle
+        // advances the same way. A superseded box (a repeat replaced it) must not
+        // mark the participant delivered — the monitor follows the repeat — so it is
+        // only closed off.
+        ShippingBox latest = latestBoxes(box.getEqaCycleId()).get(organizationId);
+        if (latest != null && latest.getId().equals(box.getId())) {
+            markDelivered(box.getEqaCycleId(), organizationId, sysUserId);
+            return;
+        }
+        box = shippingBoxService.changeBoxState(box.getId(), BoxState.RECEIVED, userId(sysUserId));
+        Shipment shipment = box.getShipment();
+        if (shipment != null && shipment.getStatus() != ShipmentStatus.DELIVERED) {
+            shipment = shipmentService.updateShipmentStatus(shipment.getId(), ShipmentStatus.DELIVERED);
+            shipment.setSysUserId(sysUserId);
+            shipment.setSystemUserId(userId(sysUserId));
+        }
+    }
+
     // ---- FR-V2.5-15 reprovisioning ----
 
     @Override
@@ -498,7 +532,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
 
         // A repeat is dispatched by the act of sending it: there is no second decision
         // to make, and the courier details come from the shipment it replaces.
-        repeat = shippingBoxService.changeBoxState(repeat.getId(), BoxState.READY_TO_SEND, userId(sysUserId));
+        repeat = shippingBoxService.markReadyToSend(repeat.getId(), userId(sysUserId));
         repeat = shippingBoxService.changeBoxState(repeat.getId(), BoxState.SENT, userId(sysUserId));
         shipment = shipmentService.updateShipmentStatus(shipment.getId(), ShipmentStatus.IN_TRANSIT);
         shipment.setSysUserId(sysUserId);
@@ -684,6 +718,13 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
      * Creating the box publishes it to the FHIR store as a SupplyDelivery, as any
      * other shipping box would be (failures are logged, not fatal). Nothing on it
      * carries a target value.
+     *
+     * <p>
+     * The box is packed in the same breath (T-40): one contents row per panel
+     * sample, the grain dispatch already consumes aliquots at (FR-V2.5-12), so a
+     * provider box is never contentless. Inventory stays owned by
+     * {@code eqa_panel.aliquots_shipped} — these rows say what is in the box, they
+     * do not count it a second time.
      */
     private ShippingBox createBox(EQACycle cycle, Long organizationId, String boxCode, String sysUserId) {
         Organization participant = organizationService.getOrganizationById(String.valueOf(organizationId));
@@ -696,15 +737,24 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         box.setEqaCycleId(cycle.getId());
         box.setSystemUserId(userId(sysUserId));
         box.setNotes("EQA panel material for cycle " + displayName(cycle));
-        // Panel storage temperature is the box's temperature requirement — the
-        // material's constraint, not a separate choice.
+
+        List<EQAPanelSample> material = new ArrayList<>();
         for (EQAPanel panel : panelsOf(cycle.getId())) {
-            if (panel.getStorageTemp() != null) {
+            // Panel storage temperature is the box's temperature requirement — the
+            // material's constraint, not a separate choice.
+            if (box.getTemperatureRequirement() == null && panel.getStorageTemp() != null) {
                 box.setTemperatureRequirement(panel.getStorageTemp().name());
-                break;
             }
+            material.addAll(eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId()));
         }
-        return shippingBoxService.createBox(box);
+        if (material.isEmpty()) {
+            throw new IllegalStateException("Cycle " + displayName(cycle)
+                    + " holds no panel material yet, so there is nothing to pack for this participant");
+        }
+
+        ShippingBox created = shippingBoxService.createBox(box);
+        boxSampleItemService.addPanelSamplesToBox(created.getId(), material, userId(sysUserId));
+        return created;
     }
 
     private Map<String, Object> toShipmentRow(Long organizationId, ShippingBox box, Shipment shipment) {

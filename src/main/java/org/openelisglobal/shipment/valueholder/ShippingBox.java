@@ -64,6 +64,16 @@ public class ShippingBox extends BaseObject<Integer> {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    /**
+     * T-42: what an imported consignment says it holds — a JSON list of {label,
+     * type} captured from the SupplyDelivery at import time. Read-side only: an
+     * imported box has no box_sample_item rows (their FKs name rows only the sender
+     * has), so this is the manifest BoxDetails renders. Null on locally-created
+     * boxes.
+     */
+    @Column(name = "imported_contents", columnDefinition = "TEXT")
+    private String importedContents;
+
     @Column(name = "created_date", nullable = false)
     private Timestamp createdDate;
 
@@ -186,6 +196,14 @@ public class ShippingBox extends BaseObject<Integer> {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getImportedContents() {
+        return importedContents;
+    }
+
+    public void setImportedContents(String importedContents) {
+        this.importedContents = importedContents;
     }
 
     public Timestamp getCreatedDate() {

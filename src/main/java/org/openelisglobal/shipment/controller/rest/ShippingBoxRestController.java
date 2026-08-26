@@ -727,12 +727,17 @@ public class ShippingBoxRestController extends BaseRestController {
         form.setCapacity(box.getCapacity());
         form.setActualSampleCount(box.getActualSampleCount());
         form.setNotes(box.getNotes());
+        form.setImportedContents(box.getImportedContents());
         form.setCreatedDate(box.getCreatedDate());
         form.setSentDate(box.getSentDate());
         form.setReceivedDate(box.getReceivedDate());
         form.setReconciledDate(box.getReconciledDate());
         form.setArchived(box.getArchived());
         form.setArchivedDate(box.getArchivedDate());
+        // T-40: an EQA box is packed by the provider workbench and must not be offered
+        // as a destination for patient samples, which the client can only know from
+        // here.
+        form.setEqaCycleId(box.getEqaCycleId());
 
         if (box.getDestinationFacility() != null && box.getDestinationFacility().getId() != null) {
             try {

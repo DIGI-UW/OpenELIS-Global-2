@@ -111,13 +111,15 @@ public interface ShippingBoxService {
     ShippingBox changeBoxState(Integer id, BoxState newState, Integer systemUserId);
 
     /**
-     * Mark box as ready to send (validates box has at least one sample)
+     * Mark box as ready to send (validates the box holds at least one item of
+     * contents — a patient sample item or EQA panel material)
      *
-     * @param id Box ID
+     * @param id           Box ID
+     * @param systemUserId System user ID for audit trail
      * @return Updated ShippingBox
      * @throws IllegalStateException if box is empty
      */
-    ShippingBox markReadyToSend(Integer id);
+    ShippingBox markReadyToSend(Integer id, Integer systemUserId);
 
     /**
      * Get boxes for dashboard with sample counts and metadata Services MUST compile

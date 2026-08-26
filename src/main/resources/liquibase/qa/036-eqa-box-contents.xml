@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.5 (OGC-613) T-40: EQA panel material as real box contents.
+
+    box_sample_item keys on sample_item — a specimen accessioned into this lab
+    against a patient. Provider panel material is eqa_panel_sample and is going
+    out to other laboratories, so there was nothing legitimate to put in that
+    table and an EQA box shipped with zero contents rows: empty inside Sample
+    Shipment, no manifest source of truth, and a meaningless actual_sample_count.
+
+    One contents table, two kinds of content: sample_item_id becomes nullable,
+    eqa_panel_sample_id joins it, and a CHECK keeps exactly one of the pair set.
+    Keeping one table is what lets position_in_box, reception_status and the
+    box's own counts go on working untouched — a separate EQA-only contents
+    table would have forced every reader to union two shapes first.
+
+    uk_box_sample_item_sample_item stays as it is: PostgreSQL unique constraints
+    ignore NULLs, so any number of EQA rows can sit alongside it while a patient
+    sample item still cannot be packed into two boxes.
+
+    No backfill: boxes created before this changeset stay contentless. They are
+    dispatched history, their material is still derivable from the cycle's panel,
+    and inventing rows for them would date them to the migration rather than to
+    the dispatch.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-068-box-sample-item-eqa-panel-sample">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="box_sample_item"
+                    columnName="eqa_panel_sample_id" />
+            </not>
+        </preConditions>
+        <comment>EQA panel material as box contents (FR-V2.5-13)</comment>
+
+        <addColumn schemaName="clinlims" tableName="box_sample_item">
+            <column name="eqa_panel_sample_id" type="numeric(10,0)" />
+        </addColumn>
+
+        <dropNotNullConstraint schemaName="clinlims" tableName="box_sample_item"
+            columnName="sample_item_id" columnDataType="int" />
+
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="box_sample_item"
+            baseColumnNames="eqa_panel_sample_id"
+            constraintName="fk_box_sample_item_eqa_panel_sample"
+            referencedTableSchemaName="clinlims" referencedTableName="eqa_panel_sample"
+            referencedColumnNames="id" />
+
+        <createIndex schemaName="clinlims" tableName="box_sample_item"
+            indexName="idx_box_sample_item_eqa_panel_sample">
+            <column name="eqa_panel_sample_id" />
+        </createIndex>
+
+        <!-- Exactly one kind of content per row: a patient specimen or panel
+             material, never both and never neither. -->
+        <sql>
+            ALTER TABLE clinlims.box_sample_item
+            ADD CONSTRAINT box_sample_item_content_chk
+            CHECK ((sample_item_id IS NOT NULL) &lt;&gt; (eqa_panel_sample_id IS NOT NULL));
+        </sql>
+
+        <rollback>
+            <sql>ALTER TABLE clinlims.box_sample_item DROP CONSTRAINT box_sample_item_content_chk;</sql>
+            <dropIndex schemaName="clinlims" tableName="box_sample_item"
+                indexName="idx_box_sample_item_eqa_panel_sample" />
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="box_sample_item"
+                constraintName="fk_box_sample_item_eqa_panel_sample" />
+            <delete schemaName="clinlims" tableName="box_sample_item">
+                <where>eqa_panel_sample_id IS NOT NULL</where>
+            </delete>
+            <dropColumn schemaName="clinlims" tableName="box_sample_item"
+                columnName="eqa_panel_sample_id" />
+            <addNotNullConstraint schemaName="clinlims" tableName="box_sample_item"
+                columnName="sample_item_id" columnDataType="int" />
+        </rollback>
+    </changeSet>
+
+    <!-- T-42: an imported box's contents rows cannot exist locally (their FKs
+         name rows only the sender has), so what the consignment says it holds
+         is kept read-side: a JSON list of {label, type} captured from the
+         SupplyDelivery's content-item extensions at import time. Render-only —
+         never a source for per-item reception. -->
+    <changeSet author="openelisglobal" id="qa-069-shipping-box-imported-contents">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="shipping_box"
+                    columnName="imported_contents" />
+            </not>
+        </preConditions>
+        <comment>Imported consignment contents as a read-side manifest (T-42)</comment>
+        <addColumn schemaName="clinlims" tableName="shipping_box">
+            <column name="imported_contents" type="TEXT" />
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="shipping_box" columnName="imported_contents" />
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

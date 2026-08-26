@@ -1,6 +1,7 @@
 package org.openelisglobal.shipment.service;
 
 import java.util.List;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.shipment.dto.SampleItemDTO;
 import org.openelisglobal.shipment.valueholder.BoxSampleItem;
 import org.openelisglobal.shipment.valueholder.ReceptionStatus;
@@ -68,6 +69,23 @@ public interface BoxSampleItemService {
      * @throws IllegalArgumentException if sample item or box not found
      */
     BoxSampleItem addSampleItemToBox(Integer shippingBoxId, String sampleItemId, Integer systemUserId);
+
+    /**
+     * Pack EQA panel material into a box as its contents (T-40, FR-V2.5-13). One
+     * row per panel sample per box — the same grain the aliquot arithmetic
+     * dispatches — so a provider box is never contentless. Inventory stays owned by
+     * {@code eqa_panel.aliquots_shipped}; these rows are what the box holds, not a
+     * second count of it.
+     *
+     * @param shippingBoxId Shipping box ID
+     * @param panelSamples  Panel material to pack, in packing order
+     * @param systemUserId  System user ID for audit trail
+     * @return the created contents rows
+     * @throws IllegalArgumentException if the box does not exist or nothing was
+     *                                  given to pack
+     */
+    List<BoxSampleItem> addPanelSamplesToBox(Integer shippingBoxId, List<EQAPanelSample> panelSamples,
+            Integer systemUserId);
 
     /**
      * Remove sample item from box. Also unassigns all associated referrals from

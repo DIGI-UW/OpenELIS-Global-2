@@ -10,6 +10,7 @@ import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.IntegerType;
+import org.hl7.fhir.r4.model.Location;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.SimpleQuantity;
@@ -49,6 +50,14 @@ public class ShippingBoxFhirTransform {
     private static final String EXT_SPECIMEN = "http://openelis.org/fhir/extension/shipment-specimen";
     private static final String EXT_SPECIMEN_TYPE_SUMMARY = "http://openelis.org/fhir/extension/shipment-specimen-type-summary";
     private static final String EXT_NON_CONFORMITY = "http://openelis.org/fhir/extension/shipment-non-conformity";
+    /**
+     * T-42: one per contents row, nested {label, type} — what a receiving site
+     * renders as the box's manifest, since the row FKs mean nothing to it. Carries
+     * panel material too, which has no Specimen resource and so no EXT_SPECIMEN.
+     */
+    public static final String EXT_CONTENT_ITEM = "http://openelis.org/fhir/extension/shipment-content-item";
+    /** Anchor for the contained Location the destination reference points at. */
+    static final String CONTAINED_DESTINATION_ID = "destination-facility";
 
     @Autowired
     private BoxSampleItemDAO boxSampleItemDAO;
@@ -59,7 +68,14 @@ public class ShippingBoxFhirTransform {
     /**
      * Transform a ShippingBox to a FHIR SupplyDelivery resource, including
      * references to contained Specimen resources (SampleItem FHIR UUIDs).
+     *
+     * <p>
+     * Transactional in its own right: the transform walks lazy associations (panel
+     * sample → panel, sample item → sample), and a future caller outside a
+     * transaction would otherwise die on LazyInitializationException. Inside
+     * {@link #syncToFhir} it simply joins the transaction already open.
      */
+    @Transactional(readOnly = true)
     public SupplyDelivery transformToSupplyDelivery(ShippingBox box) {
         SupplyDelivery supplyDelivery = new SupplyDelivery();
 
@@ -111,19 +127,43 @@ public class ShippingBoxFhirTransform {
             supplyDelivery.setOccurrence(new DateTimeType(new Date(box.getCreatedDate().getTime())));
         }
 
-        // Destination — reference to Organization (must include UUID for cross-site
-        // matching)
+        // Destination — the laboratory this box is going to, carrying its FHIR UUID so
+        // a remote site can recognise its own consignments.
+        //
+        // R4 types destination as Reference(Location) and receiver as
+        // Reference(Practitioner|PractitionerRole) — an Organization in either is
+        // rejected outright by a validating server ("HAPI-0931: Invalid reference
+        // found at path 'SupplyDelivery.destination'"), which is why no box ever
+        // reached the store before. The receiving laboratory therefore travels as a
+        // contained Location whose managingOrganization is that laboratory: legal R4,
+        // and it needs no second resource written to the partner's server.
         if (box.getDestinationFacility() != null) {
-            Reference destination = new Reference();
+            String facilityName = box.getDestinationFacility().getOrganizationName();
+            Location destination = new Location();
+            destination.setId(CONTAINED_DESTINATION_ID);
+            destination.setName(facilityName);
             if (box.getDestinationFacility().getFhirUuid() != null) {
-                destination.setReference("Organization/" + box.getDestinationFacility().getFhirUuid().toString());
+                destination.setManagingOrganization(
+                        new Reference("Organization/" + box.getDestinationFacility().getFhirUuid().toString())
+                                .setDisplay(facilityName));
             } else {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "transformToSupplyDelivery",
-                        "Destination facility '" + box.getDestinationFacility().getOrganizationName()
-                                + "' has no FHIR UUID — remote sites may not be able to match it");
+                LogEvent.logWarn(this.getClass().getSimpleName(), "transformToSupplyDelivery", "Destination facility '"
+                        + facilityName + "' has no FHIR UUID — remote sites may not be able to match it");
             }
-            destination.setDisplay(box.getDestinationFacility().getOrganizationName());
-            supplyDelivery.setDestination(destination);
+            supplyDelivery.addContained(destination);
+            supplyDelivery.setDestination(new Reference("#" + CONTAINED_DESTINATION_ID).setDisplay(facilityName));
+        }
+
+        // Supplier — this laboratory, when it knows which Organization represents it.
+        // Without it a receiving site can tell a consignment is for them but not who
+        // sent it.
+        String siteOrgUuid = getConfigValue("siteOrganizationFhirUuid", "");
+        if (!siteOrgUuid.isBlank()) {
+            supplyDelivery.setSupplier(new Reference("Organization/" + siteOrgUuid));
+        } else {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "transformToSupplyDelivery",
+                    "siteOrganizationFhirUuid not configured — box " + box.getBoxId()
+                            + " exports with no supplier; receiving sites cannot tell who shipped it");
         }
 
         // Extensions — temperature requirement
@@ -159,15 +199,43 @@ public class ShippingBoxFhirTransform {
      */
     private void addSpecimenExtensions(SupplyDelivery supplyDelivery, List<BoxSampleItem> boxSampleItems) {
         Map<String, Integer> specimenTypeCounts = new HashMap<>();
+        Map<String, String> nonConformityOverrides = null;
 
         for (BoxSampleItem bsi : boxSampleItems) {
+            // T-42: every contents row — patient specimen or panel material — travels
+            // as a labelled content item so the receiver can render a manifest.
+            String label = null;
+            String typeDescription = null;
             SampleItem sampleItem = bsi.getSampleItem();
+            if (bsi.getEqaPanelSample() != null) {
+                label = bsi.getEqaPanelSample().getSampleCode();
+                if (bsi.getEqaPanelSample().getPanel() != null) {
+                    typeDescription = bsi.getEqaPanelSample().getPanel().getPanelName();
+                }
+            } else if (sampleItem != null) {
+                typeDescription = getTypeDescription(sampleItem);
+                if (sampleItem.getSample() != null) {
+                    label = sampleItem.getSample().getAccessionNumber();
+                }
+            }
+            if (label != null || typeDescription != null) {
+                Extension contentExt = new Extension(EXT_CONTENT_ITEM);
+                if (label != null) {
+                    contentExt.addExtension(new Extension("label", new StringType(label)));
+                }
+                if (typeDescription != null) {
+                    contentExt.addExtension(new Extension("type", new StringType(typeDescription)));
+                }
+                supplyDelivery.addExtension(contentExt);
+            }
+
             if (sampleItem == null || sampleItem.getFhirUuid() == null) {
+                String typeKey = typeDescription != null ? typeDescription : "Unknown";
+                specimenTypeCounts.put(typeKey, specimenTypeCounts.getOrDefault(typeKey, 0) + 1);
                 continue;
             }
 
             Reference specimenRef = new Reference("Specimen/" + sampleItem.getFhirUuidAsString());
-            String typeDescription = getTypeDescription(sampleItem);
             if (typeDescription != null) {
                 specimenRef.setDisplay(typeDescription);
             }
@@ -177,8 +245,11 @@ public class ShippingBoxFhirTransform {
             // Non-conformity extension with SNOMED CT codes (Rule 6)
             if (bsi.getReceptionStatus() != null && bsi.getReceptionStatus() != ReceptionStatus.PENDING
                     && bsi.getReceptionStatus() != ReceptionStatus.RECEIVED_GOOD) {
+                if (nonConformityOverrides == null) {
+                    nonConformityOverrides = parseNonConformityCodes(getConfigValue("fhirNonConformityCodes", ""));
+                }
                 Extension ncExt = new Extension(EXT_NON_CONFORMITY);
-                CodeableConcept ncCode = mapReceptionStatusToSnomedCt(bsi.getReceptionStatus());
+                CodeableConcept ncCode = mapReceptionStatusToSnomedCt(bsi.getReceptionStatus(), nonConformityOverrides);
                 ncExt.setValue(ncCode);
                 supplyDelivery.addExtension(ncExt);
             }
@@ -207,7 +278,7 @@ public class ShippingBoxFhirTransform {
      * (Rule 6). Codes are configurable via SiteInformation
      * 'fhirNonConformityCodes'.
      */
-    private CodeableConcept mapReceptionStatusToSnomedCt(ReceptionStatus status) {
+    private CodeableConcept mapReceptionStatusToSnomedCt(ReceptionStatus status, Map<String, String> overrides) {
         CodeableConcept concept = new CodeableConcept();
         Coding coding = new Coding().setSystem("http://snomed.info/sct");
 
@@ -215,7 +286,7 @@ public class ShippingBoxFhirTransform {
         java.util.Map<String, String> defaults = java.util.Map.of("RECEIVED_DAMAGED", "281411007", "RECEIVED_LEAKED",
                 "281412000", "MISSING", "281264009", "REJECTED", "123840003");
 
-        String code = getNonConformityCode(status.name(), defaults.getOrDefault(status.name(), "281411007"));
+        String code = overrides.getOrDefault(status.name(), defaults.getOrDefault(status.name(), "281411007"));
         coding.setCode(code).setDisplay(status.name().replace("_", " ").toLowerCase());
 
         concept.addCoding(coding);
@@ -224,28 +295,24 @@ public class ShippingBoxFhirTransform {
     }
 
     /**
-     * Get a non-conformity SNOMED CT code from config, with fallback to default.
+     * Parse the SiteInformation 'fhirNonConformityCodes' JSON config (a flat
+     * {"STATUS":"snomedCode"} object) into a map. Malformed JSON logs one warn and
+     * yields an empty map so default codes apply.
      */
-    private String getNonConformityCode(String statusName, String defaultCode) {
-        try {
-            String json = getConfigValue("fhirNonConformityCodes", "");
-            if (!json.isBlank()) {
-                // Simple JSON parsing without external library
-                // Format: {"RECEIVED_DAMAGED":"281411007","MISSING":"281264009",...}
-                String key = "\"" + statusName + "\":\"";
-                int start = json.indexOf(key);
-                if (start >= 0) {
-                    start += key.length();
-                    int end = json.indexOf("\"", start);
-                    if (end > start) {
-                        return json.substring(start, end);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Fall through to default
+    static Map<String, String> parseNonConformityCodes(String json) {
+        if (json == null || json.isBlank()) {
+            return Map.of();
         }
-        return defaultCode;
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(json,
+                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {
+                    });
+        } catch (Exception e) {
+            LogEvent.logWarn(ShippingBoxFhirTransform.class.getSimpleName(), "parseNonConformityCodes",
+                    "fhirNonConformityCodes is not a valid JSON object of string pairs — using default SNOMED codes: "
+                            + e.getMessage());
+            return Map.of();
+        }
     }
 
     /**
@@ -321,11 +388,13 @@ public class ShippingBoxFhirTransform {
             }
             resourceMap.put(resourceId != null ? resourceId : "", supplyDelivery);
 
-            if (isCreate) {
-                fhirPersistanceService.createFhirResourcesInFhirStore(resourceMap);
-            } else {
-                fhirPersistanceService.updateFhirResourcesInFhirStore(resourceMap);
-            }
+            // Always a PUT to the box's own FHIR UUID, create or not: the create path
+            // mints a random resource id and ignores the one on the resource, so a box
+            // synced on creation and again on every state change ends up as several
+            // resources — and a partner site polling for consignments can then import
+            // the oldest snapshot of a box (empty, not yet packed) as if it were
+            // current. One box is one SupplyDelivery; PUT to a fresh id creates it.
+            fhirPersistanceService.updateFhirResourcesInFhirStore(resourceMap);
         } catch (Exception e) {
             LogEvent.logError("Error persisting SupplyDelivery to FHIR server: " + e.getMessage(), e);
             throw new FhirLocalPersistingException(e);

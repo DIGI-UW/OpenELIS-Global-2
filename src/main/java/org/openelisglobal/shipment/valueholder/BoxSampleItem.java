@@ -15,6 +15,7 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
@@ -42,9 +43,22 @@ public class BoxSampleItem extends BaseObject<Integer> {
     @JoinColumn(name = "shipping_box_id", nullable = false)
     private ShippingBox shippingBox;
 
+    /**
+     * Null for EQA panel material: qa/036's CHECK keeps exactly one of this and
+     * {@link #eqaPanelSample} set.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sample_item_id", nullable = false)
+    @JoinColumn(name = "sample_item_id")
     private SampleItem sampleItem;
+
+    /**
+     * Provider EQA panel material (T-40). It is not a specimen accessioned in this
+     * lab — it is going out to participant laboratories — so it cannot be a
+     * SampleItem, but it is genuinely what the box holds.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "eqa_panel_sample_id")
+    private EQAPanelSample eqaPanelSample;
 
     @Column(name = "added_date", nullable = false)
     private Timestamp addedDate;
@@ -90,6 +104,14 @@ public class BoxSampleItem extends BaseObject<Integer> {
 
     public void setSampleItem(SampleItem sampleItem) {
         this.sampleItem = sampleItem;
+    }
+
+    public EQAPanelSample getEqaPanelSample() {
+        return eqaPanelSample;
+    }
+
+    public void setEqaPanelSample(EQAPanelSample eqaPanelSample) {
+        this.eqaPanelSample = eqaPanelSample;
     }
 
     public Timestamp getAddedDate() {

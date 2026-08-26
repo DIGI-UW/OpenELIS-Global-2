@@ -128,6 +128,11 @@
   <!-- EQA V2.5 — OGC-613: the cycle wizard's distribution method (qa-064/065) -->
   <include file="liquibase/qa/034-eqa-cycle-distribution-method.xml" />
 
+  <!-- EQA V2.5 T-40 — OGC-613: panel material as box contents (qa-068). Must follow
+       the shipment changelog that creates box_sample_item and qa/017's
+       eqa_panel_sample, both of which it references. -->
+  <include file="liquibase/qa/036-eqa-box-contents.xml" />
+
   <!-- EQA V2.3 — OGC-611: per-analyst capture opt-in on a scheme (qa-070) -->
   <include file="liquibase/qa/037-eqa-scheme-per-analyst.xml" />
 </databaseChangeLog>
