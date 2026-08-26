@@ -44,9 +44,11 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       await expect(page.getByLabel("Inclusion")).toHaveValue(
         "CLINICALLY_SIGNIFICANT",
       );
-      await expect(page.getByLabel("De-duplication")).toHaveValue(
-        "FIRST_ISOLATE_7_DAY",
-      );
+      await expect(
+        page.getByRole("checkbox", {
+          name: "Apply first-isolate selection",
+        }),
+      ).toBeChecked();
       await demo.evidence("ogc-782-m4-01-whonet-configure", {
         fullPage: true,
       });
