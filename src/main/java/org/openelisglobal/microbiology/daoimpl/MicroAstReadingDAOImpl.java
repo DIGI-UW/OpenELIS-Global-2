@@ -25,4 +25,17 @@ public class MicroAstReadingDAOImpl extends BaseDAOImpl<MicroAstReading, String>
         query.setParameter("runId", runId);
         return query.list();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroAstReading> getByRunIds(List<String> runIds) {
+        if (runIds == null || runIds.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroAstReading> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroAstReading r where r.astRunId in (:runIds) order by r.astRunId, r.antibioticId",
+                MicroAstReading.class);
+        query.setParameterList("runIds", runIds);
+        return query.list();
+    }
 }

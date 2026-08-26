@@ -407,4 +407,7 @@
   <!-- OGC-782 M9: microbiology reference and breakpoint administration -->
   <include relativeToChangelogFile="true" file="064-microbiology-reference-administration.xml"/>
 
+  <!-- OGC-782 M10: audited manual WHONET export -->
+  <include relativeToChangelogFile="true" file="065-microbiology-whonet-export-run.xml"/>
+
 </databaseChangeLog>

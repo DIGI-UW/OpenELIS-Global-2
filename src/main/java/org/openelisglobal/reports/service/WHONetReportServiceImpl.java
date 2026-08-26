@@ -1,10 +1,14 @@
 package org.openelisglobal.reports.service;
 
 import jakarta.annotation.PostConstruct;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -14,7 +18,15 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.microbiology.dao.MicroWhonetExportRunDAO;
+import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
+import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
+import org.openelisglobal.microbiology.service.MicroWhonetDataset;
+import org.openelisglobal.microbiology.service.MicroWhonetDatasetService;
+import org.openelisglobal.microbiology.service.MicroWhonetExportBlockedException;
+import org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.reports.action.implementation.reportBeans.WHONETCSVRoutineColumnBuilder;
 import org.openelisglobal.reports.action.implementation.reportBeans.WHONETCSVRoutineColumnBuilder.WHONetRow;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -26,9 +38,19 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class WHONetReportServiceImpl implements WHONetReportService {
+
+    private final MicroWhonetDatasetService microWhonetDatasetService;
+    private final MicroWhonetExportRunDAO microWhonetExportRunDAO;
+
+    public WHONetReportServiceImpl(MicroWhonetDatasetService microWhonetDatasetService,
+            MicroWhonetExportRunDAO microWhonetExportRunDAO) {
+        this.microWhonetDatasetService = microWhonetDatasetService;
+        this.microWhonetExportRunDAO = microWhonetExportRunDAO;
+    }
 
     @Autowired
     private AnalysisService analysisService;
@@ -155,6 +177,53 @@ public class WHONetReportServiceImpl implements WHONetReportService {
         }
 
         return rows;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroWhonetPreviewForm previewMicrobiologyExport(MicroWhonetExportQueryForm query) {
+        return microWhonetDatasetService.compile(query).getPreview();
+    }
+
+    @Override
+    @Transactional
+    public MicroWhonetExportResult generateMicrobiologyExport(MicroWhonetExportQueryForm query,
+            String authenticatedUserId) {
+        String normalizedUserId = authenticatedUserId == null ? null : authenticatedUserId.trim();
+        if (normalizedUserId == null || normalizedUserId.isEmpty()) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+        MicroWhonetDataset dataset = microWhonetDatasetService.compile(query);
+        MicroWhonetPreviewForm preview = dataset.getPreview();
+        if (!preview.canGenerate || dataset.getRows().isEmpty()) {
+            throw new MicroWhonetExportBlockedException("No valid WHONET rows remain after validation");
+        }
+
+        byte[] content = WHONETCSVRoutineColumnBuilder.renderRows(dataset.getRows());
+        String fileName = "WHONET_" + preview.from + "_to_" + preview.to + ".csv";
+        MicroWhonetExportRun run = new MicroWhonetExportRun();
+        run.setFromDate(Date.valueOf(preview.from));
+        run.setToDate(Date.valueOf(preview.to));
+        run.setSignificancePolicy(preview.significance);
+        run.setDedupPolicy(preview.dedup);
+        run.setCaseCount(preview.totalCases);
+        run.setIsolateCount(preview.exportableIsolates);
+        run.setRowCount(preview.exportedRows);
+        run.setExcludedRowCount(preview.excludedRows);
+        run.setFileName(fileName);
+        run.setContentSha256(sha256(content));
+        run.setGeneratedAt(new Timestamp(System.currentTimeMillis()));
+        run.setGeneratedBy(normalizedUserId);
+        microWhonetExportRunDAO.insert(run);
+        return new MicroWhonetExportResult(fileName, content);
+    }
+
+    private String sha256(byte[] content) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
     }
 
 }

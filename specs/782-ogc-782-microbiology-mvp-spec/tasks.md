@@ -403,6 +403,12 @@ claims.
 - [x] T203 [MVP] Repair full-suite fixture isolation after legacy tests remove shared statuses and active methods: resolve or provision the minimum reference data through services with generated identifiers, and cover stale-cache and polluter ordering behavior.
 - [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target until evidence exists.
 
+## Phase 13: Follow-On Stack Status
+
+- [x] T205 [M2] Implement clinical completeness and NFR qualification in `specs/782-ogc-782-microbiology-m8-clinical-completeness/`; PR and human acceptance remain separate gates.
+- [x] T206 [M3] Implement reference and mapping administration in `specs/782-ogc-782-microbiology-m9-reference-mapping-admin/`; PR and human acceptance remain separate gates.
+- [ ] T207 [M4] Complete the manual WHONET export checklist in `specs/782-ogc-782-microbiology-m10-whonet-export/tasks.md`, publish its stacked PR, deploy its exact candidate, and retain M1-M4 in the live review overlay.
+
 ## Dependencies & Execution Order
 
 - M1 blocks all later milestones.

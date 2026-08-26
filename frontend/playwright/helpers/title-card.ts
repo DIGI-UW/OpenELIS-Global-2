@@ -28,6 +28,8 @@ export async function showTitleCard(
 
   await page.evaluate(
     ({ title, subtitle, eyebrow, accent, align }) => {
+      document.getElementById("e2e-title-card")?.remove();
+      document.getElementById("e2e-scene-label")?.remove();
       const overlay = document.createElement("div");
       overlay.id = "e2e-title-card";
       Object.assign(overlay.style, {
