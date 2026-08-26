@@ -84,6 +84,7 @@ public interface TestReflexService extends BaseObjectService<TestReflex, String>
      * existed, or one the user-choice path constructs in memory — has no flag to
      * consult and is treated as active, which is how it behaves today.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     boolean isReflexRuleActive(TestReflex reflex);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")

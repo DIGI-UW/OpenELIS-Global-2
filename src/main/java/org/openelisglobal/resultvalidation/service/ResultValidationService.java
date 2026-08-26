@@ -19,7 +19,9 @@ public interface ResultValidationService {
             List<AnalysisItem> resultItemList, ArrayList<Sample> sampleUpdateList, ArrayList<Note> noteUpdateList,
             IResultSaveService resultSaveService, List<IResultUpdate> updaters, String sysUserId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     void persistQcAcknowledgment(ValidationQcAcknowledgment acknowledgment);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ValidationQcAcknowledgment> getQcAcknowledgmentsByAnalysisId(Integer analysisId);
 }

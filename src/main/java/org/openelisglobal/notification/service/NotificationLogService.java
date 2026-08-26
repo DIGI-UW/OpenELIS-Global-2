@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.notification.valueholder.NotificationLog;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface NotificationLogService extends BaseObjectService<NotificationLog, Long> {
 
@@ -16,6 +17,7 @@ public interface NotificationLogService extends BaseObjectService<NotificationLo
      * fail the write with "no transaction is in progress" on the async dispatcher
      * thread.
      */
+    @PreAuthorize("hasAuthority('PRIV_NOTIFICATION_MANAGE')")
     void recordFire(NotificationFiredEvent event);
 
     /**
@@ -23,11 +25,13 @@ public interface NotificationLogService extends BaseObjectService<NotificationLo
      * to match the Carbon Pagination component. Returns the slice matching the
      * filters, ordered by fired_at DESC.
      */
+    @PreAuthorize("hasAuthority('PRIV_NOTIFICATION_VIEW')")
     List<NotificationLog> findPage(Optional<String> eventCode, Optional<String> status, int page, int size);
 
     /**
      * Total matching count, used by Carbon Pagination as {@code totalItems}.
      */
+    @PreAuthorize("hasAuthority('PRIV_NOTIFICATION_VIEW')")
     long countMatching(Optional<String> eventCode, Optional<String> status);
 
     /**
@@ -40,5 +44,6 @@ public interface NotificationLogService extends BaseObjectService<NotificationLo
      * @throws IllegalArgumentException if the source row has no FAILED channels
      *                                  (resend has nothing to retry)
      */
+    @PreAuthorize("hasAuthority('PRIV_NOTIFICATION_MANAGE')")
     NotificationLog resend(Long sourceLogId, String sysUserId);
 }

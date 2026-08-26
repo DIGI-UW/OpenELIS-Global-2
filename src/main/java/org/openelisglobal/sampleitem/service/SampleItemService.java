@@ -44,5 +44,6 @@ public interface SampleItemService extends BaseObjectService<SampleItem, String>
     boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
             List<List<String>> analysisGroups);
 
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     Optional<SampleItemQcProfile> getQcProfile(String sampleItemId);
 }

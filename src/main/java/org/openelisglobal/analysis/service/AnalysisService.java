@@ -346,6 +346,7 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
      * {@link #getCountOfAnalysesForStatusIdsExcludingQc(List)}. Returns 0 for an
      * empty section list.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
             List<String> testSectionIds);
 
@@ -354,6 +355,7 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
      * {@link #getCountOfAnalysisCompletedOnByStatusId(Date, List)}. Returns 0 for
      * an empty section list.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
             List<String> testSectionIds);
 
@@ -362,6 +364,7 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
      * {@link #getCountOfAnalysisStartedOnExcludedByStatusId(Date, Set)}. Returns 0
      * for an empty section list.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
             List<String> testSectionIds);
 
@@ -370,6 +373,7 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
      * {@link #getCountOfAnalysisStartedOnByStatusId(Date, List)}. Returns 0 for an
      * empty section list.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
             List<String> testSectionIds);
 
