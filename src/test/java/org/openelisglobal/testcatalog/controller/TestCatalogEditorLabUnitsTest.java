@@ -21,7 +21,7 @@ public class TestCatalogEditorLabUnitsTest {
     public void setUp() {
         testSectionService = mock(TestSectionService.class);
         controller = new TestCatalogEditorRestController(null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null);
+                null, null, null);
         ReflectionTestUtils.setField(controller, "testSectionService", testSectionService);
     }
 

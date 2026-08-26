@@ -361,12 +361,6 @@ else
   fail "TEST_PASS not set (export TEST_PASS or add TEST_PASS in .env)"
 fi
 
-if compgen -G "$REPO_ROOT/volume/plugins/*.jar" >/dev/null; then
-  pass "plugin jars present in volume/plugins"
-else
-  fail "no plugin jars found in volume/plugins (stage plugin jars before parity run)"
-fi
-
 if [[ "$SEED_ONLY" == false ]]; then
   if [[ -d "$FRONTEND_DIR/node_modules" ]] && [[ -x "$FRONTEND_DIR/node_modules/.bin/playwright" ]]; then
     pass "frontend dependencies installed (node_modules/.bin/playwright present)"

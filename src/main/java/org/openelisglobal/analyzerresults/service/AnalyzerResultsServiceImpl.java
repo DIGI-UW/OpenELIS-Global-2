@@ -71,20 +71,12 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerResults> findWithImportIssues(int limit) {
-        return getBaseObjectDAO().findWithImportIssues(limit);
+    public List<AnalyzerResults> findHeldResultValuesByProfile(String profileId, int profileRevision) {
+        return getBaseObjectDAO().findHeldResultValuesByProfile(profileId, profileRevision);
     }
 
     /**
-     * Upsert / dedupe staging persistence for analyzer results.
-     *
-     * <p>
-     * This is the single entry point for every analyzer import path in the system —
-     * legacy plugins (GenericASTM, GenericHL7, GenericFile, per-device plugins
-     * under {@code plugins/analyzers/**}) route through
-     * {@code AnalyzerLineInserter.persistImport()} and the new FHIR bridge path
-     * ({@code AnalyzerFhirImportController.importFhirBundle}) calls it directly.
-     * </p>
+     * Upsert/dedupe persistence for normalized Bridge results.
      *
      * <p>
      * <b>Dedupe key</b>: {@code (analyzerId, accessionNumber, testName)}. See
@@ -110,8 +102,6 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
      * </ol>
      *
      * <p>
-     * This contract satisfies the plan <em>mellow-honking-cascade</em> Phase 1.6
-     * upsert invariants — the bridge (DIGI-UW/openelis-analyzer-bridge#34) relies
      * on it to make the corrected-result workflow observable in the staging UI. Do
      * not rip out the duplicate-detection block without replacing it with an
      * equivalent semantic — the bridge's content-hash keyed state store produces

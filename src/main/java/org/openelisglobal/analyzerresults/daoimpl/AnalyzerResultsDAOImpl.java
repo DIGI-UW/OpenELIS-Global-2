@@ -81,16 +81,19 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerResults> findWithImportIssues(int limit) {
+    public List<AnalyzerResults> findHeldResultValuesByProfile(String profileId, int profileRevision) {
         try {
-            String hql = "FROM AnalyzerResults a WHERE a.importIssueReason IS NOT NULL "
+            String hql = "FROM AnalyzerResults a WHERE a.importIssueReason = :reason "
+                    + "AND a.sourceProfileId = :profileId AND a.sourceProfileRevision = :profileRevision "
                     + "ORDER BY a.lastupdated DESC NULLS LAST, a.id DESC";
             Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerResults.class);
-            query.setMaxResults(Math.max(1, limit));
+            query.setParameter("reason", AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+            query.setParameter("profileId", profileId);
+            query.setParameter("profileRevision", profileRevision);
             return query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in AnalyzerResults findWithImportIssues()", e);
+            throw new LIMSRuntimeException("Error finding held analyzer result values", e);
         }
     }
 }

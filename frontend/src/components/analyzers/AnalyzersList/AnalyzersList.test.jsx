@@ -302,6 +302,7 @@ describe("AnalyzersList", () => {
     expect(
       screen.getByText(/configuration and history will be retained/i),
     ).toBeVisible();
+    expect(screen.getByText(/Deactivate GeneXpert Lab 1\?/)).toBeVisible();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Deactivate analyzer$/ }),
@@ -529,6 +530,26 @@ describe("AnalyzersList", () => {
     const params = new URLSearchParams(window.location.search);
     expect(window.location.pathname).toBe("/analyzers/qc/instruments/42");
     expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
+  });
+
+  test("opens the canonical analyzer result review from the analyzer dashboard", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer({ id: "42" })] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "View results" }),
+    );
+
+    expect(window.location.pathname).toBe("/AnalyzerResults");
+    expect(new URLSearchParams(window.location.search).get("id")).toBe("42");
   });
 
   test("renders assigned lab-unit labels from the shared catalog", async () => {

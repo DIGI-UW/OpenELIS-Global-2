@@ -22,7 +22,6 @@ import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.Versioning;
@@ -196,12 +195,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public TruststoreService truststoreService() {
         return mock(TruststoreService.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public PluginAnalyzerService pluginAnalyzerService() {
-        return mock(PluginAnalyzerService.class);
     }
 
     @Bean()
@@ -432,7 +425,6 @@ public class AppTestConfig implements WebMvcConfigurer {
             org.openelisglobal.testcatalog.service.RangeCoverageValidationService coverageService,
             org.openelisglobal.testsamplehandling.service.TestSampleHandlingService handlingService,
             org.openelisglobal.analyzer.service.AnalyzerService analyzerService,
-            org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService,
             org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService,
             org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService,
             org.openelisglobal.testterminology.service.TestTerminologyMappingService terminologyService,
@@ -440,8 +432,8 @@ public class AppTestConfig implements WebMvcConfigurer {
             org.openelisglobal.panelitem.service.PanelItemService panelItemService) {
         return new org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController(testService,
                 componentService, interpretationService, testResultService, resultLimitService, coverageService,
-                handlingService, analyzerService, analyzerTestMappingService, typeOfSampleService,
-                typeOfSampleTestService, terminologyService, panelService, panelItemService);
+                handlingService, analyzerService, typeOfSampleService, typeOfSampleTestService, terminologyService,
+                panelService, panelItemService);
     }
 
     @Bean

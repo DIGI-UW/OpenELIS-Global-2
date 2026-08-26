@@ -85,7 +85,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
     public void attachesTheBridgeReferenceWithoutCopyingTheConnectionDocument() {
         Analyzer analyzer = analyzer("42");
         bind(analyzer);
-        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
 
         AnalyzerInstanceState result = service.attachBridgeConnection("42", "bridge-connection-42", "17");
 
@@ -99,7 +99,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         Analyzer analyzer = analyzer("42");
         bind(analyzer);
         analyzer.setBridgeConnectionId("bridge-connection-original");
-        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
 
         assertThrows(IllegalStateException.class,
                 () -> service.attachBridgeConnection("42", "bridge-connection-different", "17"));
@@ -114,7 +114,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         profile.setId("11");
         AnalyzerSiteBindingRevision reviewedRevision = siteBindingRevision(profile, "12", "13", 2,
                 "sha256:" + "2".repeat(64));
-        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
         when(siteBindingService.findCurrentByProfileBindingId("11"))
                 .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(reviewedRevision.getSiteBinding(),
                         reviewedRevision, List.of(), List.of())));
@@ -134,7 +134,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         profile.setId("11");
         AnalyzerSiteBindingRevision currentRevision = siteBindingRevision(profile, "12", "13", 3,
                 "sha256:" + "3".repeat(64));
-        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
         when(siteBindingService.findCurrentByProfileBindingId("11"))
                 .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(currentRevision.getSiteBinding(),
                         currentRevision, List.of(), List.of())));

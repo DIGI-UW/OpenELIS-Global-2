@@ -83,9 +83,6 @@ function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
 }
 
 const AnalyzersPage = lazyWithRetry(() => import("./pages/AnalyzersPage"));
-const ErrorDashboardPage = lazyWithRetry(
-  () => import("./pages/ErrorDashboardPage"),
-);
 const AnalyzerTypesPage = lazyWithRetry(
   () => import("./pages/AnalyzerTypesPage"),
 );

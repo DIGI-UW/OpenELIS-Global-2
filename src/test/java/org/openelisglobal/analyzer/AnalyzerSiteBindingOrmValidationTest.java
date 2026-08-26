@@ -15,7 +15,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
-import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 
 public class AnalyzerSiteBindingOrmValidationTest {
 
@@ -24,7 +23,6 @@ public class AnalyzerSiteBindingOrmValidationTest {
         Configuration configuration = new Configuration();
         configuration.addAnnotatedClass(Analyzer.class);
         configuration.addAnnotatedClass(AnalyzerActivationRecord.class);
-        configuration.addAnnotatedClass(AnalyzerType.class);
         configuration.addAnnotatedClass(AnalyzerProfileBinding.class);
         configuration.addAnnotatedClass(AnalyzerSiteBinding.class);
         configuration.addAnnotatedClass(AnalyzerSiteBindingConfirmation.class);

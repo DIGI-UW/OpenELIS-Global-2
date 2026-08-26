@@ -38,7 +38,6 @@ import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.hibernateConverter.StringListConverter;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 @Entity
 @Table(name = "analyzer")
@@ -54,34 +53,11 @@ public class Analyzer extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
-    @Column(name = "scrip_id", precision = 10, scale = 0)
-    @Convert(converter = StringToIntegerConverter.class)
-    private String script_id;
-
     @Column(name = "name", length = 100)
     private String name;
 
-    @Column(name = "machine_id", length = 20)
-    private String machineId;
-
-    @Column(name = "analyzer_type", length = 30)
-    private String type;
-
-    @Column(name = "description", length = 60)
-    private String description;
-
-    @Column(name = "location", length = 60)
-    private String location;
-
     @Column(name = "is_active", length = 1)
     private boolean active;
-
-    @Column(name = "has_setup_page", length = 1)
-    private boolean hasSetupPage;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "analyzer_type_id")
-    private AnalyzerType analyzerType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_binding_revision_id")
@@ -94,13 +70,6 @@ public class Analyzer extends BaseObject<String> {
     @JoinColumn(name = "latest_activation_record_id")
     private AnalyzerActivationRecord latestActivationRecord;
 
-    /**
-     * Raw source identifier from bridge discovery (IPv4, IPv6, hostname, file path,
-     * etc.).
-     */
-    @Column(name = "discovered_source_id", length = 500)
-    private String discoveredSourceId;
-
     @Column(name = "test_unit_ids", columnDefinition = "TEXT")
     @Convert(converter = StringListConverter.class)
     private List<String> testUnitIds = new ArrayList<>();
@@ -108,9 +77,6 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "status", length = 20)
     @Enumerated(EnumType.STRING)
     private AnalyzerStatus status = AnalyzerStatus.SETUP;
-
-    @Column(name = "identifier_pattern", length = 255)
-    private String identifierPattern;
 
     @Column(name = "last_activated_date")
     @Temporal(TemporalType.TIMESTAMP)
@@ -129,14 +95,6 @@ public class Analyzer extends BaseObject<String> {
         this.id = id;
     }
 
-    public String getScript_id() {
-        return script_id;
-    }
-
-    public void setScript_id(String script_id) {
-        this.script_id = script_id;
-    }
-
     public String getName() {
         return name;
     }
@@ -145,60 +103,12 @@ public class Analyzer extends BaseObject<String> {
         this.name = name;
     }
 
-    public void setMachineId(String machineId) {
-        this.machineId = machineId;
-    }
-
-    public String getMachineId() {
-        return machineId;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getLocation() {
-        return location;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
     public boolean isActive() {
         return active;
     }
 
     public void setActive(boolean active) {
         this.active = active;
-    }
-
-    public boolean getHasSetupPage() {
-        return hasSetupPage;
-    }
-
-    public void setHasSetupPage(boolean hasSetupPage) {
-        this.hasSetupPage = hasSetupPage;
-    }
-
-    public AnalyzerType getAnalyzerType() {
-        return analyzerType;
-    }
-
-    public void setAnalyzerType(AnalyzerType analyzerType) {
-        this.analyzerType = analyzerType;
     }
 
     public AnalyzerSiteBindingRevision getSiteBindingRevision() {
@@ -248,28 +158,12 @@ public class Analyzer extends BaseObject<String> {
         this.status = status;
     }
 
-    public String getIdentifierPattern() {
-        return identifierPattern;
-    }
-
-    public void setIdentifierPattern(String identifierPattern) {
-        this.identifierPattern = identifierPattern;
-    }
-
     public Date getLastActivatedDate() {
         return lastActivatedDate;
     }
 
     public void setLastActivatedDate(Date lastActivatedDate) {
         this.lastActivatedDate = lastActivatedDate;
-    }
-
-    public String getDiscoveredSourceId() {
-        return discoveredSourceId;
-    }
-
-    public void setDiscoveredSourceId(String discoveredSourceId) {
-        this.discoveredSourceId = discoveredSourceId;
     }
 
     public UUID getFhirUuid() {
@@ -301,10 +195,9 @@ public class Analyzer extends BaseObject<String> {
 
     /**
      * Enum for analyzer unified status field. Values must match database
-     * constraint: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE,
-     * PENDING_REGISTRATION
+     * constraint: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE
      */
     public enum AnalyzerStatus {
-        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, PENDING_REGISTRATION
+        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE
     }
 }

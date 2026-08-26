@@ -4,8 +4,7 @@ export type AnalyzerStatus =
   | "VALIDATION"
   | "ACTIVE"
   | "ERROR_PENDING"
-  | "OFFLINE"
-  | "PENDING_REGISTRATION";
+  | "OFFLINE";
 
 export type AnalyzerProtocol = "ASTM" | "HL7" | "FILE" | string;
 

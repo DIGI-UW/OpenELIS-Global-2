@@ -1,0 +1,11 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,localization:en
+Analyzer GeneXpert Results,MTB DETECTED,GX_MTB_DETECTED,Y,1,MTB DETECTED
+Analyzer GeneXpert Results,NOT DETECTED,GX_NOT_DETECTED,Y,2,NOT DETECTED
+Analyzer GeneXpert Results,HIGH,GX_HIGH,Y,3,HIGH
+Analyzer GeneXpert Results,MEDIUM,GX_MEDIUM,Y,4,MEDIUM
+Analyzer GeneXpert Results,LOW,GX_LOW,Y,5,LOW
+Analyzer GeneXpert Results,VERY LOW,GX_VERY_LOW,Y,6,VERY LOW
+Analyzer GeneXpert Results,INDETERMINATE,GX_INDETERMINATE,Y,7,INDETERMINATE
+Analyzer GeneXpert Results,ERROR,GX_ERROR,Y,8,ERROR
+Analyzer GeneXpert Results,NO RESULT,GX_NO_RESULT,Y,9,NO RESULT
+Analyzer GeneXpert Results,DETECTED,GX_DETECTED,Y,10,DETECTED

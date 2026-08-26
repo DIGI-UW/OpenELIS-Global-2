@@ -89,6 +89,8 @@ const AnalyzerTypeMappingEditor = () => {
   );
   const revision = Number(query.get("revision"));
   const returnTo = safeInternalPath(query.get("returnTo"), "/analyzers/types");
+  const focusTest = query.get("focusTest");
+  const focusValue = query.get("focusValue");
   const [mapping, setMapping] = useState(null);
   const [typeSummary, setTypeSummary] = useState(null);
   const [draftTests, setDraftTests] = useState([]);
@@ -101,6 +103,8 @@ const AnalyzerTypeMappingEditor = () => {
   const [confirming, setConfirming] = useState(false);
   const [notification, setNotification] = useState(null);
   const loadedResultOptions = useRef(new Set());
+  const focusedResultRow = useRef(null);
+  const focusHandled = useRef(false);
   const routeIsValid =
     Boolean(profileId) && Number.isInteger(revision) && revision >= 1;
   const routeError = routeIsValid
@@ -131,6 +135,7 @@ const AnalyzerTypeMappingEditor = () => {
         return;
       }
       loadedResultOptions.current = new Set();
+      focusHandled.current = false;
       setResultOptionsByTest({});
       applyMapping(response);
     });
@@ -178,6 +183,24 @@ const AnalyzerTypeMappingEditor = () => {
       });
     });
   }, [draftTests]);
+
+  useEffect(() => {
+    if (
+      focusHandled.current ||
+      !focusTest ||
+      !focusValue ||
+      !focusedResultRow.current
+    ) {
+      return;
+    }
+    const control = focusedResultRow.current.querySelector('[role="combobox"]');
+    if (!control) {
+      return;
+    }
+    focusedResultRow.current.scrollIntoView?.({ block: "center" });
+    control.focus();
+    focusHandled.current = true;
+  }, [draftTests, focusTest, focusValue, resultOptionsByTest]);
 
   const updateTest = (sourceRowKey, transform) => {
     setDraftTests((current) =>
@@ -573,7 +596,10 @@ const AnalyzerTypeMappingEditor = () => {
                 return (
                   <AccordionItem
                     key={test.sourceRowKey}
-                    open={test.mappingState === "UNRESOLVED"}
+                    open={
+                      test.mappingState === "UNRESOLVED" ||
+                      test.rawCode === focusTest
+                    }
                     title={
                       <div className="analyzer-type-mapping__row-title">
                         <strong>{test.rawCode}</strong>
@@ -750,8 +776,21 @@ const AnalyzerTypeMappingEditor = () => {
                                   <div
                                     className="analyzer-type-mapping__result-row"
                                     key={`${test.sourceRowKey}:${result.rawValue}`}
+                                    ref={
+                                      test.rawCode === focusTest &&
+                                      result.rawValue === focusValue
+                                        ? focusedResultRow
+                                        : null
+                                    }
                                   >
-                                    <code>{result.rawValue}</code>
+                                    <div className="analyzer-type-mapping__result-source">
+                                      <code>{result.rawValue}</code>
+                                      {result.observed && (
+                                        <Tag type="warm-gray" size="sm">
+                                          <FormattedMessage id="analyzerType.mappingEditor.observed" />
+                                        </Tag>
+                                      )}
+                                    </div>
                                     <Dropdown
                                       id={`result-${test.sourceRowKey}-${result.rawValue.replace(/[^a-z0-9]/gi, "-")}`}
                                       titleText={intl.formatMessage(

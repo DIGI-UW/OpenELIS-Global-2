@@ -45,6 +45,15 @@
         complete_date="2025-07-01 08:15:00" test_result_type="N"
         test_id="4001" />
 
+    <analyzer_results id="1004" analyzer_id="2001"
+        accession_number="ACC654321" test_name="QUAL_RESULT" result="POSITIVE"
+        iscontrol="false" last_updated="2025-07-01 10:00:00" read_only="true"
+        positive="false" complete_date="2025-07-01 10:15:00"
+        test_result_type="D" import_issue_reason="UNKNOWN_RESULT_VALUE"
+        source_profile_id="genexpert-astm" source_profile_revision="3"
+        source_protocol="ASTM" source_transport="TCP"
+        raw_test_code="QUAL_RESULT" raw_result_value="POSITIVE" />
+
     <analyzer_results id="1002" analyzer_id="2002"
         accession_number="ACC789012" test_name="Hemoglobin" result="13.2"
         units="g/dL" iscontrol="false" last_updated="2025-07-01 08:30:00"

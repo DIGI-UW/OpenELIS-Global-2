@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -14,6 +15,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,17 +29,19 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final AnalyzerProfileBindingService profileBindingService;
     private final AnalyzerSiteBindingConfirmationService confirmationService;
+    private final AnalyzerResultsService analyzerResultsService;
 
     public AnalyzerTypeMappingServiceImpl(BridgeProfileCatalogService bridgeProfileCatalogService,
             AnalyzerProfileBindingDAO profileBindingDAO, AnalyzerSiteBindingService siteBindingService,
             AnalyzerMappingCatalogService mappingCatalogService, AnalyzerProfileBindingService profileBindingService,
-            AnalyzerSiteBindingConfirmationService confirmationService) {
+            AnalyzerSiteBindingConfirmationService confirmationService, AnalyzerResultsService analyzerResultsService) {
         this.bridgeProfileCatalogService = bridgeProfileCatalogService;
         this.profileBindingDAO = profileBindingDAO;
         this.siteBindingService = siteBindingService;
         this.mappingCatalogService = mappingCatalogService;
         this.profileBindingService = profileBindingService;
         this.confirmationService = confirmationService;
+        this.analyzerResultsService = analyzerResultsService;
     }
 
     @Override
@@ -95,10 +99,15 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
                 .collect(Collectors.toMap(
                         row -> new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue()),
                         Function.identity()));
+        Set<ResultSourceKey> observedHeldValues = analyzerResultsService
+                .findHeldResultValuesByProfile(profile.profileId(), profile.revision()).stream()
+                .filter(row -> row.getRawTestCode() != null && row.getRawResultValue() != null)
+                .map(row -> new ResultSourceKey(row.getRawTestCode(), row.getRawResultValue()))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        List<AnalyzerTypeMappingView.TestRow> rows = profile
-                .testDefinitions().stream().map(definition -> composeTestRow(definition,
-                        currentTests.get(definition.analyzerCode()), currentResults, activeTests, activeTestsById))
+        List<AnalyzerTypeMappingView.TestRow> rows = profile.testDefinitions().stream()
+                .map(definition -> composeTestRow(definition, currentTests.get(definition.analyzerCode()),
+                        currentResults, observedHeldValues, activeTests, activeTestsById))
                 .toList();
         AnalyzerSiteBindingConfirmationView confirmation = binding == null
                 ? AnalyzerSiteBindingConfirmationView.unconfirmed()
@@ -149,8 +158,12 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
                 .filter(row -> row != null && row.sourceRowKey() != null && row.rawValue() != null)
                 .map(row -> new ResultSourceKey(row.sourceRowKey(), row.rawValue()))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        if (draft.results().size() != expectedResults.size() || !actualResults.equals(expectedResults)) {
-            throw new IllegalArgumentException("Mapping update result rows must exactly match profile revision");
+        boolean hasDuplicateResults = draft.results().size() != actualResults.size();
+        boolean omitsProfileDefault = !actualResults.containsAll(expectedResults);
+        boolean hasUnknownTest = actualResults.stream().anyMatch(row -> !expectedTests.contains(row.sourceRowKey()));
+        if (hasDuplicateResults || omitsProfileDefault || hasUnknownTest) {
+            throw new IllegalArgumentException(
+                    "Mapping update must retain profile result rows and may add values only to profile tests");
         }
         return draft;
     }
@@ -170,7 +183,7 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
 
     private AnalyzerTypeMappingView.TestRow composeTestRow(BridgeAnalyzerProfile.TestDefinition definition,
             AnalyzerSiteBindingTest current, Map<ResultSourceKey, AnalyzerSiteBindingResult> currentResults,
-            List<AnalyzerMappingCatalogService.TestOption> activeTests,
+            Set<ResultSourceKey> observedHeldValues, List<AnalyzerMappingCatalogService.TestOption> activeTests,
             Map<String, AnalyzerMappingCatalogService.TestOption> activeTestsById) {
         AnalyzerSiteBindingMappingState state = current == null ? AnalyzerSiteBindingMappingState.UNRESOLVED
                 : current.getMappingState();
@@ -182,15 +195,21 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
         Map<String, AnalyzerMappingCatalogService.ResultOption> activeResults = selected == null ? Map.of()
                 : mappingCatalogService.getActiveResultOptions(selected.id()).stream()
                         .collect(Collectors.toMap(AnalyzerMappingCatalogService.ResultOption::id, Function.identity()));
-        List<AnalyzerTypeMappingView.ResultRow> results = definition.resultValues().stream().map(rawValue -> {
-            AnalyzerSiteBindingResult result = currentResults
-                    .get(new ResultSourceKey(definition.analyzerCode(), rawValue));
+        LinkedHashSet<String> rawValues = new LinkedHashSet<>(definition.resultValues());
+        currentResults.keySet().stream().filter(key -> definition.analyzerCode().equals(key.sourceRowKey()))
+                .map(ResultSourceKey::rawValue).forEach(rawValues::add);
+        observedHeldValues.stream().filter(key -> definition.analyzerCode().equals(key.sourceRowKey()))
+                .map(ResultSourceKey::rawValue).forEach(rawValues::add);
+        List<AnalyzerTypeMappingView.ResultRow> results = new ArrayList<>();
+        for (String rawValue : rawValues) {
+            ResultSourceKey key = new ResultSourceKey(definition.analyzerCode(), rawValue);
+            AnalyzerSiteBindingResult result = currentResults.get(key);
             AnalyzerSiteBindingMappingState resultState = result == null ? AnalyzerSiteBindingMappingState.UNRESOLVED
                     : result.getMappingState();
             String optionId = result == null ? null : result.getTestResultId();
-            return new AnalyzerTypeMappingView.ResultRow(rawValue, resultState, optionId,
-                    optionId == null ? null : activeResults.get(optionId));
-        }).toList();
+            results.add(new AnalyzerTypeMappingView.ResultRow(rawValue, resultState, optionId,
+                    optionId == null ? null : activeResults.get(optionId), observedHeldValues.contains(key)));
+        }
         return new AnalyzerTypeMappingView.TestRow(definition.analyzerCode(), definition.analyzerCode(),
                 definition.aliases(), definition.testNameHint(), definition.loinc(), definition.unit(),
                 definition.resultType(), definition.normalizedCoding(), state, testId, selected, suggested, results);

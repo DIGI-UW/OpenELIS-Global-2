@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="097-remove-openelis-analyzer-error-queue" author="codex">
+        <comment>Remove OpenELIS-side analyzer parser errors and source discovery; Bridge owns analyzer-facing runtime failures.</comment>
+        <sql>
+            UPDATE analyzer SET status = 'SETUP' WHERE status = 'PENDING_REGISTRATION';
+        </sql>
+        <delete tableName="menu" schemaName="clinlims">
+            <where>element_id = 'menu_analyzers_errors'</where>
+        </delete>
+        <dropTable tableName="analyzer_error" cascadeConstraints="true"/>
+        <dropColumn tableName="analyzer" columnName="discovered_source_id"/>
+        <rollback>
+            <insert tableName="menu" schemaName="clinlims">
+                <column name="id" valueSequenceNext="menu_seq"/>
+                <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers')"/>
+                <column name="presentation_order" value="2"/>
+                <column name="element_id" value="menu_analyzers_errors"/>
+                <column name="action_url" value="/analyzers/errors"/>
+                <column name="display_key" value="analyzer.navigation.errorDashboard"/>
+                <column name="tool_tip_key" value="analyzer.navigation.errorDashboard"/>
+                <column name="new_window" valueBoolean="false"/>
+                <column name="is_active" valueBoolean="true"/>
+                <column name="hide_in_old_ui" valueBoolean="true"/>
+            </insert>
+            <addColumn tableName="analyzer">
+                <column name="discovered_source_id" type="VARCHAR(500)"/>
+            </addColumn>
+            <createTable tableName="analyzer_error">
+                <column name="id" type="VARCHAR(36)">
+                    <constraints primaryKey="true" nullable="false"/>
+                </column>
+                <column name="analyzer_id" type="NUMERIC(10,0)"/>
+                <column name="error_type" type="VARCHAR(30)">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="severity" type="VARCHAR(20)">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="error_message" type="TEXT">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="raw_message" type="TEXT"/>
+                <column name="status" type="VARCHAR(20)" defaultValue="UNACKNOWLEDGED">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="acknowledged_by" type="VARCHAR(36)"/>
+                <column name="acknowledged_at" type="TIMESTAMP"/>
+                <column name="resolved_at" type="TIMESTAMP"/>
+                <column name="sys_user_id" type="VARCHAR(36)"/>
+                <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                    <constraints nullable="false"/>
+                </column>
+            </createTable>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

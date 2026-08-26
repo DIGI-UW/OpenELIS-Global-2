@@ -18,7 +18,9 @@ import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
+import org.openelisglobal.analyzer.service.AnalyzerTestCapability;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.springframework.stereotype.Component;
@@ -30,11 +32,6 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
 
     public AnalyzerDAOImpl() {
         super(Analyzer.class);
-    }
-
-    @Override
-    public void delete(Analyzer analyzer) {
-        throw new UnsupportedOperationException("Analyzer hard deletion is not supported");
     }
 
     @Override
@@ -56,29 +53,19 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
 
     @Override
     @Transactional(readOnly = true)
-    public List<Analyzer> findGenericAnalyzersWithPatterns() {
-        String hql = "SELECT a FROM Analyzer a " + "JOIN FETCH a.analyzerType at " + "WHERE at.genericPlugin = true "
-                + "AND a.identifierPattern IS NOT NULL";
+    public List<Analyzer> findAllWithBindings() {
+        String hql = "SELECT a FROM Analyzer a " + "LEFT JOIN FETCH a.siteBindingRevision revision "
+                + "LEFT JOIN FETCH revision.siteBinding binding " + "LEFT JOIN FETCH binding.profileBinding";
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         return query.list();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Analyzer> findAllWithTypes() {
-        String hql = "SELECT a FROM Analyzer a " + "LEFT JOIN FETCH a.analyzerType "
-                + "LEFT JOIN FETCH a.siteBindingRevision revision " + "LEFT JOIN FETCH revision.siteBinding binding "
-                + "LEFT JOIN FETCH binding.profileBinding";
-        Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
-        return query.list();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> findByIdWithType(String id) {
-        String hql = "SELECT a FROM Analyzer a " + "LEFT JOIN FETCH a.analyzerType "
-                + "LEFT JOIN FETCH a.siteBindingRevision revision " + "LEFT JOIN FETCH revision.siteBinding binding "
-                + "LEFT JOIN FETCH binding.profileBinding " + "WHERE a.id = :id";
+    public Optional<Analyzer> findByIdWithBinding(String id) {
+        String hql = "SELECT a FROM Analyzer a " + "LEFT JOIN FETCH a.siteBindingRevision revision "
+                + "LEFT JOIN FETCH revision.siteBinding binding " + "LEFT JOIN FETCH binding.profileBinding "
+                + "WHERE a.id = :id";
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         query.setParameter("id", id);
         Analyzer result = query.uniqueResult();
@@ -87,14 +74,29 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId) {
-        if (discoveredSourceId == null || discoveredSourceId.isBlank()) {
+    public Optional<Analyzer> findByBridgeConnectionId(String bridgeConnectionId) {
+        if (bridgeConnectionId == null || bridgeConnectionId.isBlank()) {
             return Optional.empty();
         }
-        String hql = "FROM Analyzer a WHERE a.discoveredSourceId = :sourceId";
+        String hql = "SELECT a FROM Analyzer a " + "JOIN FETCH a.siteBindingRevision revision "
+                + "JOIN FETCH revision.siteBinding binding " + "JOIN FETCH binding.profileBinding "
+                + "WHERE a.bridgeConnectionId = :connectionId";
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
-        query.setParameter("sourceId", discoveredSourceId);
-        Analyzer result = query.uniqueResult();
-        return Optional.ofNullable(result);
+        query.setParameter("connectionId", bridgeConnectionId.trim());
+        return Optional.ofNullable(query.uniqueResult());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerTestCapability> findCapabilitiesByTestId(String testId) {
+        String hql = "SELECT new org.openelisglobal.analyzer.service.AnalyzerTestCapability("
+                + "a.id, a.name, mapping.id.sourceRowKey) " + "FROM Analyzer a, AnalyzerSiteBindingTest mapping "
+                + "WHERE a.siteBindingRevision = mapping.siteBindingRevision " + "AND mapping.testId = :testId "
+                + "AND mapping.mappingState = :mappedState " + "ORDER BY lower(a.name), mapping.id.sourceRowKey";
+        Query<AnalyzerTestCapability> query = entityManager.unwrap(Session.class).createQuery(hql,
+                AnalyzerTestCapability.class);
+        query.setParameter("testId", testId);
+        query.setParameter("mappedState", AnalyzerSiteBindingMappingState.BOUND);
+        return query.getResultList();
     }
 }

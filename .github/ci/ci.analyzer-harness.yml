@@ -32,8 +32,7 @@ services:
       --simulate-api-port 8080
       --verbose
     networks:
-      analyzer-net:
-        ipv4_address: 172.21.1.100
+      - analyzer-net
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',9600)); s.close()\""]
       interval: 15s
@@ -103,6 +102,3 @@ services:
 networks:
   analyzer-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.21.1.0/24

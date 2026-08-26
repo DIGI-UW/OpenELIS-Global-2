@@ -1,7 +1,17 @@
-testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
+testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,dictionaryCategory
 # Priority analyzer qualitative options for the catalog-bound mapping story
-Xpert RIF Resistance,D,RESISTANT,1,N,Y,N,,
-Xpert RIF Resistance,D,Susceptible,2,N,Y,Y,,
+Xpert MTB/RIF,D,MTB DETECTED,1,N,Y,N,,,Analyzer GeneXpert Results
+Xpert MTB/RIF,D,NOT DETECTED,2,N,Y,Y,,,Analyzer GeneXpert Results
+Xpert MTB/RIF,D,HIGH,3,N,Y,N,,,Analyzer GeneXpert Results
+Xpert MTB/RIF,D,MEDIUM,4,N,Y,N,,,Analyzer GeneXpert Results
+Xpert MTB/RIF,D,LOW,5,N,Y,N,,,Analyzer GeneXpert Results
+Xpert MTB/RIF,D,VERY LOW,6,N,Y,N,,,Analyzer GeneXpert Results
+Xpert MTB/RIF,D,INDETERMINATE,7,N,Y,N,,,Analyzer GeneXpert Results
+Xpert MTB/RIF,D,ERROR,8,N,Y,N,,,Analyzer GeneXpert Results
+Xpert MTB/RIF,D,NO RESULT,9,N,Y,N,,,Analyzer GeneXpert Results
+Xpert RIF Resistance,D,DETECTED,1,N,Y,N,,,Analyzer GeneXpert Results
+Xpert RIF Resistance,D,NOT DETECTED,2,N,Y,Y,,,Analyzer GeneXpert Results
+Xpert RIF Resistance,D,INDETERMINATE,3,N,Y,N,,,Analyzer GeneXpert Results
 # Hematology numeric precision aligned to demo mock templates
 White Blood Cells,N,,1,Y,Y,N,1,
 Red Blood Cells,N,,1,Y,Y,N,2,

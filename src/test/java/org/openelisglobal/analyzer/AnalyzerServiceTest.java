@@ -3,7 +3,6 @@ package org.openelisglobal.analyzer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import org.junit.Before;
@@ -42,10 +41,6 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
         Analyzer analyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(analyzer);
         assertEquals("Cobas 6800", analyzer.getName());
-        assertEquals("COBAS6800-001", analyzer.getMachineId());
-        assertEquals("MOLECULAR", analyzer.getType());
-        assertEquals("Main Laboratory - Room 101", analyzer.getLocation());
-        assertTrue(analyzer.isActive());
     }
 
     @Test

@@ -33,6 +33,6 @@ public record AnalyzerTypeMappingView(String profileId, int profileRevision, Str
     }
 
     public record ResultRow(String rawValue, AnalyzerSiteBindingMappingState mappingState, String resultOptionId,
-            AnalyzerMappingCatalogService.ResultOption selectedOption) {
+            AnalyzerMappingCatalogService.ResultOption selectedOption, boolean observed) {
     }
 }

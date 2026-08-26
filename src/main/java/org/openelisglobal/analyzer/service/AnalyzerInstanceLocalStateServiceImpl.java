@@ -58,7 +58,7 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerInstanceState> list() {
-        return analyzerService.getAllWithTypes().stream().map(AnalyzerInstanceLocalStateServiceImpl::state).toList();
+        return analyzerService.getAllWithBindings().stream().map(AnalyzerInstanceLocalStateServiceImpl::state).toList();
     }
 
     @Override
@@ -134,7 +134,7 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
 
     private Analyzer find(String analyzerId) {
         String exactId = requireText(analyzerId, "Analyzer ID");
-        return analyzerService.getWithType(exactId)
+        return analyzerService.getWithBinding(exactId)
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + exactId));
     }
 

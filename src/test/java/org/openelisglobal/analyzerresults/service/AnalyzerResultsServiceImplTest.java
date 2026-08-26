@@ -229,22 +229,4 @@ public class AnalyzerResultsServiceImplTest {
         verify(baseObjectDAO, never()).update(any(AnalyzerResults.class));
     }
 
-    /**
-     * A4 — Import Issues panel backend: the service must pass-through to the DAO so
-     * the REST endpoint reaches the {@code import_issue_reason IS NOT NULL} query
-     * without an extra layer of filtering that could silently drop rows.
-     */
-    @Test
-    public void findWithImportIssues_delegatesToDaoWithSameLimit() {
-        AnalyzerResults orphan = new AnalyzerResults();
-        orphan.setAccessionNumber("ACC-42");
-        orphan.setTestName("CT");
-        orphan.setImportIssueReason("unmapped_code:CT");
-        when(baseObjectDAO.findWithImportIssues(25)).thenReturn(List.of(orphan));
-
-        List<AnalyzerResults> rows = service.findWithImportIssues(25);
-        assertEquals(1, rows.size());
-        assertEquals("unmapped_code:CT", rows.get(0).getImportIssueReason());
-        verify(baseObjectDAO, times(1)).findWithImportIssues(25);
-    }
 }

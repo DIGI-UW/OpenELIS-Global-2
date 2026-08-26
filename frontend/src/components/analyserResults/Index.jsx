@@ -37,10 +37,8 @@ const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const [results, setResults] = useState({ resultList: [] });
-  const [type, setType] = useState("");
   // The analyzer's display name, resolved server-side from the id in the URL.
   const [analyzerName, setAnalyzerName] = useState("");
-  const [queryMode, setQueryMode] = useState("type");
   const [queryValue, setQueryValue] = useState("");
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
@@ -58,19 +56,13 @@ const Index = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
     const analyzerId = params.get("id");
-    const analyserType = params.get("type");
     if (analyzerId) {
-      setQueryMode("id");
       setQueryValue(analyzerId);
-      setType(analyzerId);
       setUrl("/rest/AnalyzerResults?id=" + analyzerId);
-    } else if (analyserType) {
-      setQueryMode("type");
-      setQueryValue(analyserType);
-      setType(analyserType);
-      setUrl("/rest/AnalyzerResults?type=" + analyserType);
+    } else {
+      setQueryValue("");
+      setUrl("");
     }
     // drop the previous analyzer's name so a stale title never shows while the
     // new one is in flight
@@ -238,9 +230,7 @@ const Index = () => {
           </Grid>
         </>
         <AnalyserResults
-          type={type}
-          queryMode={queryMode}
-          queryValue={queryValue}
+          analyzerId={queryValue}
           results={results}
           sampleGroup={sampleGroup}
         />

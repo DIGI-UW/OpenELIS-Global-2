@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.services.PluginMenuService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.valueholder.Menu;
@@ -36,7 +35,6 @@ public class MenuUtil {
 
     private static List<MenuItem> root;
     private static final List<Menu> insertedMenus = new ArrayList<>();
-    private static final PluginMenuService pluginMenuService = PluginMenuService.getInstance();
     private static final MenuService menuService = SpringContext.getBean(MenuService.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final String MENU_CONFIG_PATH = "/var/lib/openelis-global/menu/menu_config.json";
@@ -219,22 +217,10 @@ public class MenuUtil {
 
     @SuppressWarnings("unused")
     private static String getTooltip(Menu menu, String locale) {
-        String key = menu.getToolTipKey();
-        String value = pluginMenuService.getMenuLabel(locale, key);
-        if (key != value) {
-            return value;
-        }
-
         return menu.getLocalizedTooltip();
     }
 
     private static String getLabel(Menu menu, String locale) {
-        String key = menu.getDisplayKey();
-        String value = pluginMenuService.getMenuLabel(locale, key);
-        if (key != value) {
-            return value;
-        }
-
         return menu.getLocalizedTitle();
     }
 

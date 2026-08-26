@@ -96,13 +96,13 @@ ON CONFLICT (id) DO UPDATE SET
   patient_id = EXCLUDED.patient_id,
   lastupdated = EXCLUDED.lastupdated;
 
--- Analyses: GeneXpert ASTM harness path and QuantStudio file-import (LOINC 94500-6).
--- GX demo uses COVID-only ASTM from e2e-fixtures/genexpert_astm.json so one analysis
--- row is sufficient for accept → results in AccessionResults.
+-- Analyses: GeneXpert ASTM harness path and QuantStudio/FluoroCycler file import.
 DO $$
 DECLARE
   not_started_id NUMERIC;
   test_sect_id   NUMERIC;
+  test_mtb_id    NUMERIC;
+  test_rif_id    NUMERIC;
   test_covid_id  NUMERIC;
 BEGIN
   SELECT id
@@ -118,10 +118,15 @@ BEGIN
    ORDER BY id
    LIMIT 1;
 
+  SELECT id INTO test_mtb_id FROM test WHERE loinc = '85362-2' AND is_active = 'Y' ORDER BY id LIMIT 1;
+  SELECT id INTO test_rif_id FROM test WHERE loinc = '46244-0' AND is_active = 'Y' ORDER BY id LIMIT 1;
   SELECT id INTO test_covid_id FROM test WHERE loinc = '94500-6' AND is_active = 'Y' ORDER BY id LIMIT 1;
 
   IF not_started_id IS NULL THEN
     RAISE EXCEPTION 'analyzer-harness-lane-data.sql: missing ANALYSIS status Not Tested';
+  END IF;
+  IF test_mtb_id IS NULL OR test_rif_id IS NULL THEN
+    RAISE EXCEPTION 'analyzer-harness-lane-data.sql: missing GeneXpert tests';
   END IF;
   IF test_covid_id IS NULL THEN
     RAISE EXCEPTION 'analyzer-harness-lane-data.sql: missing COVID/PCR test with LOINC 94500-6';
@@ -130,7 +135,9 @@ BEGIN
   INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, analysis_type,
                         entry_date, started_date, completed_date, is_reportable, lastupdated)
   VALUES
-    (21110, 10600, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',
+    (21110, 10600, test_mtb_id, test_sect_id, not_started_id, '1', 'MANUAL',
+     CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
+    (21123, 10600, test_rif_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
     (21111, 10601, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),

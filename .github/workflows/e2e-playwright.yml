@@ -57,47 +57,14 @@ jobs:
       - name: Prepare .env
         run: cp .env.example .env
 
-      - name: Build OpenELIS artifacts for plugin compilation
+      - name: Build OpenELIS artifacts
         run: |
           cd dataexport/dataexport-core
           mvn clean install -DskipTests -Dmaven.test.skip=true
           cd ..
           mvn clean install -DskipTests -Dmaven.test.skip=true
           cd ..
-          # NOTE: Do NOT add -Dmaven.test.skip=true here — the root build must
-          # compile test classes so maven-jar-plugin produces the test-jar
-          # (openelisglobal:jar:tests) required by GenericASTM/File/HL7 plugins.
-          #
-          # The version is pinned to the one the plugins submodule asks for.
-          # plugins/pom.xml depends on org.openelisglobal:openelisglobal at a
-          # literal 3.2.1.3 — it lives in another repository, so the coupling has
-          # to be satisfied from this side. Only fix.version used to be pinned,
-          # which quietly relied on state.version staying 1; bumping the project
-          # to 3.2.2.0 then installed 3.2.2.3 and the plugin build could not
-          # resolve its dependency. Every component the plugins pin names is
-          # pinned here, so bumping the project version cannot break it again.
-          # Raise these only together with that dependency in the plugins repo.
-          mvn clean install -DskipTests -Dspotless.check.skip=true \
-            -Dmajor.version=3 -Dminor.version=2 -Dstate.version=1 -Dfix.version=3
-
-      - name: Build plugins
-        run: mvn clean install -DskipTests -Dmaven.test.skip=true
-        working-directory: plugins
-
-      - name: Stage plugin jars for runtime loading
-        # Generic plugins only (GenericASTM, GenericFile, GenericHL7).
-        # Legacy plugins (Sysmex, Cobas, etc.) each register a row in
-        # clinlims.analyzer at OE startup via PluginAnalyzerService —
-        # 30+ rows for ~30 plugin jars — which pollutes the dashboard
-        # and confuses bridge-sync. The harness only needs the 3 generic
-        # plugins; analyzer instances are created via REST seed.
-        run: |
-          rm -rf volume/plugins/*
-          find plugins/analyzers -type f -path "*/target/Generic*.jar" \
-            ! -name "*sources.jar" ! -name "*javadoc.jar" \
-            ! -name "*-tests.jar" ! -name "*-test.jar" ! -name "*-original.jar" \
-            -exec cp {} volume/plugins/ \;
-          ls -lah volume/plugins
+          mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true
 
       - name: Prepare build context metadata (early)
         run: |
@@ -305,15 +272,6 @@ jobs:
         with:
           name: e2e-image-handoff
           path: /tmp/e2e-image-handoff/
-          retention-days: 1
-
-      - name: Upload plugin jars artifact
-        if: steps.transfer-mode.outputs.mode == 'ghcr' || steps.transfer-mode.outputs.mode == 'fork-handoff'
-        uses: actions/upload-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: volume/plugins/*.jar
-          if-no-files-found: error
           retention-days: 1
 
       - name: Upload Docker image map artifact

@@ -24,8 +24,10 @@ import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.dto.TriggeredRuleDetail;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +69,9 @@ public class QCDashboardServiceImpl implements QCDashboardService {
     @Autowired
     private TestService testService;
 
+    @Autowired
+    private TestSectionService testSectionService;
+
     private Timestamp[] defaultDateRange() {
         Instant now = Instant.now();
         Timestamp endDate = Timestamp.from(now);
@@ -105,7 +110,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         Map<String, Analyzer> analyzerCache = new HashMap<>();
         for (String id : instrumentIds) {
             try {
-                Optional<Analyzer> analyzer = analyzerService.getWithType(id);
+                Optional<Analyzer> analyzer = analyzerService.getWithBinding(id);
                 analyzer.ifPresent(a -> analyzerCache.put(id, a));
             } catch (Exception e) {
                 LogEvent.logWarn(this.getClass().getName(), "getAllInstrumentComplianceStatus",
@@ -150,7 +155,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
             Timestamp endDate) {
         Analyzer analyzer = null;
         try {
-            Optional<Analyzer> opt = analyzerService.getWithType(String.valueOf(instrumentId));
+            Optional<Analyzer> opt = analyzerService.getWithBinding(String.valueOf(instrumentId));
             analyzer = opt.orElse(null);
         } catch (Exception e) {
             LogEvent.logWarn(this.getClass().getName(), "getInstrumentComplianceStatus",
@@ -240,11 +245,9 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         // Populate instrument metadata from Analyzer
         if (analyzer != null) {
             status.setInstrumentName(analyzer.getName());
-            status.setInstrumentLocation(analyzer.getLocation());
-            if (analyzer.getAnalyzerType() != null) {
-                status.setInstrumentType(analyzer.getAnalyzerType().getName());
-            } else {
-                status.setInstrumentType(analyzer.getType());
+            status.setInstrumentLocation(resolveLabUnitNames(analyzer.getTestUnitIds()));
+            if (analyzer.getPinnedProfileBinding() != null) {
+                status.setInstrumentType(analyzer.getPinnedProfileBinding().getProfileId());
             }
         } else {
             status.setInstrumentName("Instrument " + instrumentId);
@@ -334,6 +337,20 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         status.setComplianceColor(calculateComplianceColor(rejections, warnings, hasOperationalQc));
 
         return status;
+    }
+
+    private String resolveLabUnitNames(List<String> labUnitIds) {
+        if (labUnitIds == null || labUnitIds.isEmpty()) {
+            return null;
+        }
+        List<String> names = new ArrayList<>();
+        for (String labUnitId : labUnitIds) {
+            TestSection labUnit = testSectionService.getTestSectionById(labUnitId);
+            if (labUnit != null) {
+                names.add(testSectionService.getUserLocalizedTesSectionName(labUnit));
+            }
+        }
+        return names.isEmpty() ? null : String.join(", ", names);
     }
 
     /**

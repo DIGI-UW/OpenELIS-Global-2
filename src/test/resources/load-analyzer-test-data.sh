@@ -171,8 +171,7 @@ UNION ALL SELECT 'configurations', COUNT(*) FROM analyzer_configuration WHERE id
 UNION ALL SELECT 'fields', COUNT(*) FROM analyzer_field WHERE id LIKE 'FIELD-%'
 UNION ALL SELECT 'mappings', COUNT(*) FROM analyzer_field_mapping WHERE id LIKE 'MAPPING-%'
 UNION ALL SELECT 'qual_mappings', COUNT(*) FROM qualitative_result_mapping WHERE id LIKE 'QUAL-%'
-UNION ALL SELECT 'unit_mappings', COUNT(*) FROM unit_mapping WHERE id LIKE 'UNIT-%'
-UNION ALL SELECT 'errors', COUNT(*) FROM analyzer_error WHERE id LIKE 'ERR-%';
+UNION ALL SELECT 'unit_mappings', COUNT(*) FROM unit_mapping WHERE id LIKE 'UNIT-%';
 " 2>/dev/null
 
         echo ""

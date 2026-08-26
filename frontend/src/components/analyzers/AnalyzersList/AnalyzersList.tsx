@@ -176,6 +176,17 @@ const AnalyzersList = () => {
     });
   };
 
+  const openResults = (analyzer: Analyzer) => {
+    if (!analyzer.id) {
+      return;
+    }
+
+    history.push({
+      pathname: "/AnalyzerResults",
+      search: new URLSearchParams({ id: analyzer.id }).toString(),
+    });
+  };
+
   const openLifecycle = (
     analyzer: Analyzer,
     action: AnalyzerLifecycleAction,
@@ -582,12 +593,6 @@ const AnalyzersList = () => {
                     id: "analyzer.status.offline",
                   }),
                 },
-                {
-                  id: "PENDING_REGISTRATION",
-                  text: intl.formatMessage({
-                    id: "analyzer.status.pending_registration",
-                  }),
-                },
               ]}
               itemToString={(item) => (item ? item.text : "")}
               selectedItem={
@@ -710,7 +715,6 @@ const AnalyzersList = () => {
                                   ACTIVE: "green",
                                   ERROR_PENDING: "red", // Carbon doesn't support "orange", use "red" for error states
                                   OFFLINE: "red",
-                                  PENDING_REGISTRATION: "purple", // Attention color — analyzer discovered by bridge but not yet configured
                                 };
                                 const statusColor =
                                   statusColorMap[unifiedStatus] || "gray";
@@ -742,6 +746,13 @@ const AnalyzersList = () => {
                                     })}
                                     data-testid={`analyzer-row-overflow-${row.id}`}
                                   >
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.action.viewResults",
+                                      })}
+                                      onClick={() => openResults(analyzer)}
+                                      data-testid={`analyzer-action-view-results-${row.id}`}
+                                    />
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
                                         id: "analyzer.action.editSetup",

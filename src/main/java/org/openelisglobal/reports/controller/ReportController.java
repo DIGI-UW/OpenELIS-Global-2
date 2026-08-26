@@ -48,9 +48,9 @@ public class ReportController extends BaseController {
     private static final String[] ALLOWED_FIELDS = new String[] { "report", "reportType", "type", "accessionDirect",
             "highAccessionDirect", "patientNumberDirect", "patientUpperNumberDirect", "lowerDateRange",
             "upperDateRange", "locationCode", "projectCode", "datePeriod", "lowerMonth", "lowerYear", "upperMonth",
-            "upperYear", "selectList.selection", "experimentId", "reportName", "selPatient", "analysisIds",
-            "referringSiteId", "referringSiteDepartmentId", "onlyResults", "dateType", "labSections", "priority",
-            "receptionTime", "vlStudyType" };
+            "upperYear", "selectList.selection", "reportName", "selPatient", "analysisIds", "referringSiteId",
+            "referringSiteDepartmentId", "onlyResults", "dateType", "labSections", "priority", "receptionTime",
+            "vlStudyType" };
 
     @Autowired
     private ServletContext context;

@@ -350,7 +350,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
     private Analyzer findAnalyzer(String analyzerId) {
         String exactId = requireText(analyzerId, "analyzer ID");
-        return analyzerService.getWithType(exactId)
+        return analyzerService.getWithBinding(exactId)
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + exactId));
     }
 

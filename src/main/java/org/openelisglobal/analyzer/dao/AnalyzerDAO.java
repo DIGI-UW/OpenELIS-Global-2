@@ -15,6 +15,7 @@ package org.openelisglobal.analyzer.dao;
 
 import java.util.List;
 import java.util.Optional;
+import org.openelisglobal.analyzer.service.AnalyzerTestCapability;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.dao.BaseDAO;
 
@@ -22,11 +23,11 @@ public interface AnalyzerDAO extends BaseDAO<Analyzer, String> {
 
     Optional<Analyzer> findByName(String name);
 
-    List<Analyzer> findGenericAnalyzersWithPatterns();
+    List<Analyzer> findAllWithBindings();
 
-    List<Analyzer> findAllWithTypes();
+    Optional<Analyzer> findByIdWithBinding(String id);
 
-    Optional<Analyzer> findByIdWithType(String id);
+    Optional<Analyzer> findByBridgeConnectionId(String bridgeConnectionId);
 
-    Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId);
+    List<AnalyzerTestCapability> findCapabilitiesByTestId(String testId);
 }

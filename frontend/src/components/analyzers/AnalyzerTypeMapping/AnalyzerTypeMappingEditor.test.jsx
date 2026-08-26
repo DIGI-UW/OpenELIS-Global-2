@@ -331,6 +331,40 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(screen.queryByText(/regex/i)).not.toBeInTheDocument();
   });
 
+  it("opens and focuses the held analyzer value named in the bookmark", async () => {
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({
+          ...mapping,
+          tests: mapping.tests.map((test) =>
+            test.sourceRowKey === "RAW-A"
+              ? {
+                  ...test,
+                  results: test.results.map((result) =>
+                    result.rawValue === "NOT DETECTED"
+                      ? { ...result, observed: true }
+                      : result,
+                  ),
+                }
+              : test,
+          ),
+        }),
+    );
+
+    renderEditor(
+      "/analyzers/types/shipped.genexpert/mapping?revision=2&returnTo=%2FAnalyzerResults%3Fid%3D2001&focusTest=RAW-A&focusValue=NOT+DETECTED",
+    );
+
+    expect(await screen.findByText("Observed in held results")).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("combobox", {
+          name: "OpenELIS result for NOT DETECTED",
+        }),
+      ).toHaveFocus(),
+    );
+  });
+
   it("repoints one row by LOINC without blocking independent unresolved rows", async () => {
     renderEditor();
     await screen.findByRole("heading", {
