@@ -210,13 +210,20 @@ describe("AnalyzerSetup Instrument step", () => {
         schemaVersion: "1.0",
         catalogFingerprint: `sha256:${"b".repeat(64)}`,
         summary: {
-          total: 2,
+          total: 3,
           inUse: 0,
           needsAttention: 0,
           deactivated: 1,
         },
         types: [
           activeType,
+          {
+            ...activeType,
+            profileId: "shipped.fluorocycler-xt",
+            displayName: "FluoroCycler XT",
+            manufacturer: "Bruker",
+            protocol: "FILE",
+          },
           {
             ...activeType,
             profileId: "site.inactive",
@@ -251,6 +258,11 @@ describe("AnalyzerSetup Instrument step", () => {
 
     await userEvent.click(typePicker);
     await userEvent.type(typePicker, "GeneXpert");
+    expect(
+      screen.queryByRole("option", {
+        name: "FluoroCycler XT · Bruker · FILE · revision 3",
+      }),
+    ).not.toBeInTheDocument();
     await userEvent.click(
       await screen.findByRole("option", {
         name: "GeneXpert MTB/RIF · Cepheid · ASTM · revision 3",

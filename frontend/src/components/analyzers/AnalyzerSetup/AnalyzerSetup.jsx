@@ -26,6 +26,7 @@ import {
   formatRecognitionCondition,
   formatRecognitionMode,
 } from "../AnalyzerTypeManagement/recognitionText";
+import { includesComboBoxText } from "../comboBoxSearch";
 import AnalyzerConnectionSetup from "./AnalyzerConnectionSetup";
 
 import "./AnalyzerSetup.scss";
@@ -486,6 +487,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     items={activeTypes}
                     selectedItem={selectedType}
                     itemToString={typeLabel}
+                    shouldFilterItem={includesComboBoxText}
                     onChange={({ selectedItem }) => selectType(selectedItem)}
                     invalid={submitAttempted && !selectedType}
                     invalidText={intl.formatMessage({
