@@ -28,9 +28,9 @@ step totals, titles, or checklist revisions into repository specifications.
 An exported review report may retain its exact revision as immutable acceptance
 evidence.
 
-Files under `evidence/`, older gap analyses, slice-status notes, code-qa reports,
-and subordinate milestone task ledgers are historical records. Do not maintain
-them as parallel status documents.
+Dated evidence reports, older gap analyses, slice-status notes, code-qa output,
+and subordinate milestone task ledgers are review artifacts. Do not commit or
+maintain them as parallel status documents.
 
 ## Roadmap Principles
 
