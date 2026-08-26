@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.vector.valueholder.VectorPool;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface VectorPoolService extends BaseObjectService<VectorPool, Integer> {
 
@@ -15,14 +16,18 @@ public interface VectorPoolService extends BaseObjectService<VectorPool, Integer
      * handle missing pools gracefully without poisoning the surrounding
      * transaction.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     Optional<VectorPool> findById(Integer id);
 
     /** Pool's {@code sampleId} must be set before calling. */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     VectorPool createPoolWithMembers(VectorPool pool, List<SampleItem> members, String sysUserId);
 
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     List<VectorPool> getBySampleId(String sampleId);
 
     /** Direct sub-pools only (not transitive). */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     List<VectorPool> getByParentPoolId(Integer parentPoolId);
 
     /**
@@ -31,6 +36,7 @@ public interface VectorPoolService extends BaseObjectService<VectorPool, Integer
      * render a pool-anchored analysis with a representative organism (sample type,
      * sort order, accession).
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     List<SampleItem> getMembersByPoolId(Integer poolId);
 
     /**
@@ -38,6 +44,7 @@ public interface VectorPoolService extends BaseObjectService<VectorPool, Integer
      * that just need the pool size (e.g., result rows showing "Pool of N"). Avoids
      * hydrating SampleItem entities for every pool-anchored row.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     int countMembersByPoolId(Integer poolId);
 
     /**
@@ -47,6 +54,7 @@ public interface VectorPoolService extends BaseObjectService<VectorPool, Integer
      * by a {@code setMaxResults(1)} JPQL so large pools don't hydrate every member
      * just to pick one.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     Optional<SampleItem> getFirstNonVoidedMemberByPoolId(Integer poolId);
 
     /**
@@ -55,5 +63,6 @@ public interface VectorPoolService extends BaseObjectService<VectorPool, Integer
      * result display layer to attach pool metadata to SampleItem-anchored analyses
      * that were copied from a pool by confirmResultForAllMembers.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     VectorPool getIntakePoolBySampleItemId(String sampleItemId);
 }

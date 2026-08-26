@@ -29,5 +29,6 @@ public interface ReferralSetService {
      * for env/vector workflows so referral persistence is atomic with the order
      * save (no silent async failure when the FHIR store is unreachable).
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     void createDraftReferralSetsForOrderEntry(List<ReferralItem> referralItems, SamplePatientUpdateData updateData);
 }

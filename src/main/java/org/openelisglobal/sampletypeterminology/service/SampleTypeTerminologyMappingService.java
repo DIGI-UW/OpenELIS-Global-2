@@ -38,5 +38,6 @@ public interface SampleTypeTerminologyMappingService extends BaseObjectService<S
      * everything alone: an import that omits the column is saying nothing about
      * LOINC, not asking for it to be cleared.
      */
+    @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_MANAGE')")
     void syncConfiguredLoinc(String sampleTypeId, String loinc, String sysUserId);
 }

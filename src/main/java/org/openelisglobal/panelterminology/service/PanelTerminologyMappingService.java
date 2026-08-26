@@ -47,5 +47,6 @@ public interface PanelTerminologyMappingService extends BaseObjectService<PanelT
      * blank code soft-deletes every active LOINC mapping. Mappings from other
      * systems are never touched.
      */
+    @PreAuthorize("hasAuthority('PRIV_PANEL_MANAGE')")
     void syncLegacyLoinc(String panelId, String loinc, String sysUserId);
 }

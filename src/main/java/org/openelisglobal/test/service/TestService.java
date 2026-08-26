@@ -210,6 +210,7 @@ public interface TestService extends BaseObjectService<Test, String> {
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Test> getTriggeringAntimicrobialResistanceTests();
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     Optional<TestQcThreshold> getQcThreshold(String testId);
 
     /**

@@ -23,6 +23,7 @@ public interface ShippingBoxService {
      *
      * @return List of outbound shipping boxes
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getActiveOutboundBoxes();
 
     /**
@@ -30,6 +31,7 @@ public interface ShippingBoxService {
      *
      * @return List of incoming shipping boxes
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<ShippingBox> getIncomingBoxes();
 
     /**

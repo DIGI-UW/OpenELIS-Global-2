@@ -3,6 +3,7 @@ package org.openelisglobal.compliance.service;
 import java.util.List;
 import org.openelisglobal.compliance.controller.rest.TestCatalogEntry;
 import org.openelisglobal.compliance.controller.rest.TestCatalogEntryWithCompliance;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Read-only catalog assembly for the compliance UI. Augments the basic test
@@ -15,17 +16,20 @@ import org.openelisglobal.compliance.controller.rest.TestCatalogEntryWithComplia
 public interface ComplianceTestCatalogService {
 
     /** Catalog rows for every active test. */
+    @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_VIEW')")
     List<TestCatalogEntry> getCatalog();
 
     /**
      * Catalog rows for tests that have at least one compliance threshold linked,
      * each carrying {@code thresholdCount} and {@code standardCount}.
      */
+    @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_VIEW')")
     List<TestCatalogEntryWithCompliance> getCatalogWithCompliance();
 
     /**
      * Distinct, sorted sample-type category names used by the Standard form's
      * Applicable Sample Types dropdown.
      */
+    @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_VIEW')")
     List<String> getSampleTypeCategories();
 }

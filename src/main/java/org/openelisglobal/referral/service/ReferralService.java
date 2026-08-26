@@ -64,10 +64,13 @@ public interface ReferralService extends BaseObjectService<Referral, String> {
     // IllegalArgumentException. No-op (with debug log) when the referral has no
     // subcontract row (historical pre-S-14 data without subcontract metadata).
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void dispatchReferral(String referralId, Timestamp handoffDatetime, String actorUserId, String notes);
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void markReferralReceived(String referralId, String actorUserId, String notes);
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void markReferralCompleted(String referralId, String actorUserId, String notes);
 
     /**
@@ -77,6 +80,7 @@ public interface ReferralService extends BaseObjectService<Referral, String> {
      * just entered the result themselves). No-op when the referral is already
      * terminal or has no subcontract (legacy data).
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void markReferralCompletedFromManualEntry(String referralId, String actorUserId);
 
     /**
@@ -86,6 +90,7 @@ public interface ReferralService extends BaseObjectService<Referral, String> {
      * already assigned to a shipment box — that's the OGC-799 Outstanding case
      * where the box was dispatched but the sample never reached the reference lab.
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void markReferralAsLost(String referralId, String reason, String actorUserId);
 
     /**
@@ -96,6 +101,7 @@ public interface ReferralService extends BaseObjectService<Referral, String> {
      * Returned to History. No-op when the referral is missing, not COMPLETED, or
      * already reconciled.
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void markReferralReconciled(String referralId, String actorUserId);
 
     /**
@@ -104,6 +110,7 @@ public interface ReferralService extends BaseObjectService<Referral, String> {
      * reason, closes the originating Analysis to RejectedByReferenceLab, and fires
      * the recollection notification. Refuses if already reconciled.
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void markReferralRejected(String referralId, String reasonCode, String reasonText, String actorUserId);
 
     /**
@@ -111,7 +118,9 @@ public interface ReferralService extends BaseObjectService<Referral, String> {
      * nudge a slow reference lab about an outstanding referral, and record a
      * REFERRAL_NUDGE_SENT audit note. {@code freeFormMessage} is optional.
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void nudgeReferenceLab(String referralId, String freeFormMessage, String actorUserId);
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_VIEW')")
     List<ReferralStatusHistory> getSubcontractStatusHistory(String referralId);
 }

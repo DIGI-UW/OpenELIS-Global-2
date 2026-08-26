@@ -100,8 +100,10 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForAnalysis(Analysis analysis);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis, String resultValue);
 
     /**

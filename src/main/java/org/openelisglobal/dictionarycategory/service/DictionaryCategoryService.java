@@ -9,5 +9,6 @@ public interface DictionaryCategoryService extends BaseObjectService<DictionaryC
     @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")
     DictionaryCategory getDictionaryCategoryByName(String name);
 
+    @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")
     boolean duplicateDictionaryCategoryExists(DictionaryCategory dictionaryCategory);
 }

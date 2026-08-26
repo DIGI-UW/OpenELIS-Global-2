@@ -31,5 +31,6 @@ public interface ExternalConnectionService extends BaseObjectService<ExternalCon
      * programmed connection type with {@code active = true}. Used as the
      * channel-availability gate by the notification trigger system.
      */
+    @PreAuthorize("hasAuthority('PRIV_EXTCONNECTION_VIEW')")
     boolean isActive(ProgrammedConnection programmedConnection);
 }

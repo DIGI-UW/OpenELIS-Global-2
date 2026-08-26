@@ -34,5 +34,6 @@ public interface ResultSelectListService {
      * @param id the dictionary id of the option
      * @return its localization, or null if the option or its localization is absent
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     Localization getLocalizationForResultSelectOption(String id);
 }

@@ -57,5 +57,6 @@ public interface DictionaryService extends BaseObjectService<Dictionary, String>
     @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")
     List<Dictionary> getPagesOfSearchedDictionaries(int startingRecNo, String searchString);
 
+    @PreAuthorize("hasAuthority('PRIV_DICTIONARY_VIEW')")
     List<Dictionary> getActiveSortedEntriesByCategoryName(String categoryName);
 }
