@@ -100,7 +100,7 @@
   `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo`
   `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo-video`
 
-## Navigation, Stable URLs, And Deployed UAT
+## Navigation And Stable URLs
 
 - Flow: `microbiology-worklist-critical`
 - Routes:
@@ -116,15 +116,3 @@
 - Project: `core-app`
 - Evidence command:
   `cd frontend && BASE_URL=https://localhost:48443 DB_CONTAINER=ogc-782-microbiology-db npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app`
-- Deployed UAT:
-  - Grist checklist instance: `amr`
-  - Jira: `OGC-782`
-  - Live feed:
-    `https://amr.openelis-global.org/__review/uat-amr.json`
-  - Review surface: `https://amr.openelis-global.org` -> `Review`
-  - Grist is the source of truth for reviewer stories and completion state.
-- Deployment validation:
-  - confirm the deployed application identifies the expected candidate,
-  - run the registered application journey against the deployed host,
-  - verify the Review overlay loads the current Grist stories,
-  - keep pass/fail/N/A decisions and reviewer notes in Grist.

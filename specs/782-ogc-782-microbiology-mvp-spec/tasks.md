@@ -345,9 +345,9 @@ breakpoint-standard selection.
 **Purpose**: Prove the full implemented MVP (M1-M7 core + FR-002/M-11/M-05 gap
 remediation) behaves as specified before the MVP stack is merged.
 
-- [x] T143 [MVP] Run the complete focused backend suite `mvn -q -Dtest='Micro*Test,*Micro*IntegrationTest,AlertServiceTest,FreezerAlertServiceTest,AlertFlowIntegrationTest,QCAlertServiceTest,QCAlertServiceIntegrationTest,EQAAlertRestControllerTest' test` from the repository root. Passed: 24 microbiology + alert test classes, 0 failures.
-- [x] T144 [MVP] Run the complete focused frontend suite `cd frontend && npx vitest run Microbiology AlertsDashboard` from the repository root. Passed: 8 test files, 19 tests.
-- [x] T145 [MVP] Validate the real registered microbiology Playwright specs. `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` validates via `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` (run from `frontend/`), matching `core-app`/`core-demo`/`core-demo-video`. The two `foundational/core/` specs (`microbiology-case-workbench.spec.ts`, `microbiology-worklist-critical.spec.ts`) register via the `CORE_FOUNDATIONAL_TESTS` glob (`**/foundational/core/**/*.spec.ts`) in `frontend/playwright.config.ts`, which `validate-playwright-project.py` does not recognize as a named testMatch constant (pre-existing script limitation, not specific to microbiology); confirmed registration by inspecting `playwright.config.ts` directly instead. (Note: manual-AST and release-readiness coverage live inside the `ogc-782-microbiology-mvp.spec.ts` demo per the M7 code-qa spec-alignment note; there are no separate `microbiology-manual-ast.spec.ts` / `microbiology-mvp-release-readiness.spec.ts` / `microbiology-mvp-demo.spec.ts` files.)
+- [x] T143 [MVP] Run the focused backend suite for microbiology and its Alert integration from the repository root.
+- [x] T144 [MVP] Run the focused frontend suite for Microbiology and the Alerts dashboard from the repository root.
+- [x] T145 [MVP] Validate that the foundational and canonical MVP Playwright journeys are registered in their intended projects.
 - [x] T146 [MVP] Run the registered foundational and demo Playwright journeys against a real application stack and correct behavior or selector defects they expose.
 - [x] T147 [MVP] Run all microbiology demo Playwright evidence with `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo`.
 - [x] T148 [MVP] Record final MVP video evidence with `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo-video`.
@@ -360,18 +360,15 @@ remediation) behaves as specified before the MVP stack is merged.
 - [x] T155 [MVP] Apply the `simplicity-review` workflow from `DIGI-UW/code-qa` against the MVP diff and remove or explicitly justify speculative abstractions, duplicate exporters, duplicate alert surfaces, or unused configuration.
 - [x] T156 [MVP] Run the `evidence-bundle` workflow from `DIGI-UW/code-qa` after the final demo journey and attach its output to the relevant pull request.
 
-## Phase 9: Navigation, Stable URLs, And UAT Readiness
+## Phase 9: Navigation And Stable URLs
 
 **Goal**: Make Microbiology discoverable through configured navigation,
-preserve deterministic page state, and publish the matching deployed-review
-checklist through the Grist-backed UAT harness.
+and preserve deterministic page state.
 
 - [x] T178 [MVP] Define primary-navigation discovery and bookmarkable worklist/case state in `spec.md`.
 - [x] T179 [MVP] Register the Microbiology menu through `volume/menu/menu_config.json` and add canonical worklist/case routes with legacy redirects.
 - [x] T180 [P] [MVP] Add focused React tests for route composition, filter persistence, case-section state, and worklist return context.
 - [x] T181 [MVP] Extend `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` to prove configured navigation and canonical URL behavior in the registered `core-app` project.
-- [x] T182 [MVP] Align the OGC-782 `amr` checklist in Grist with the product-focused navigation, stable page state, case work, isolate/AST workflow, report propagation, and shared-specimen behaviors.
-- [x] T183 [MVP] Verify the live AMR checklist feed and rendered Review overlay with Playwright.
 
 ## Phase 10: Worklist UX Remediation And M-07 Scope Check
 
@@ -384,34 +381,27 @@ explicit product decisions or V2 scope.
 - [x] T186 [MVP] Inspect stable desktop/mobile worklist screenshots and rerun the registered worklist/critical Playwright journey.
 - [ ] T187 [V2 clarification] Obtain a product ruling on whether M-07's culture/AST-run switch, richer queue context, resistance strip, and recent activity are future user workflows. Keep timer, transport, schema, and component proposals out of the resulting product wording.
 
-## Phase 11: Deployed UAT Fixture Integrity
+## Phase 11: Service-Created Scenario Fixtures
 
-**Goal**: Deploy the merge candidate and make its live UAT data reproducible
-without bypassing OpenELIS application services.
+**Goal**: Make browser-test and demo data reproducible without bypassing
+OpenELIS application services.
 
-- [x] T188 [MVP] Replace the review-tooling AMR SQL seed with authenticated, property-gated `MicrobiologyUatScenarioService` provisioning; prove repeated runs return the same accession and case identifiers.
-- [x] T189 [MVP] Deploy OpenELIS and review tooling; verify application identity, canonical URLs, responsive layouts, the Grist overlay, and deterministic service-created cases.
+- [x] T188 [MVP] Provide authenticated, property-gated `MicrobiologyUatScenarioService` provisioning and prove repeated runs return the same accession and case identifiers.
 
-## Phase 12: Deterministic MVP Closure And Human Acceptance
+## Phase 12: Deterministic MVP Closure
 
-**Goal**: Close remaining implemented-story gaps, reconcile scope claims,
-deploy the exact candidate, and keep automated prechecks distinct from Piotr's
-human UAT ruling.
+**Goal**: Close remaining implemented-story gaps and reconcile durable scope
+claims.
 
 - [x] T190 [MVP] Correct service-created fixture status handling and replace backend-only report inspection in the canonical Playwright flow with visible navigation and assertions on the patient-results page.
 - [x] T191 [MVP] Show reusable microbiology order-detail fields only when a selected test routes to a culture workflow, preserve workflow metadata through order selection, and submit the details through the existing sample-entry service path.
 - [x] T192 [MVP] Compile patient, accession, and specimen context inside the case service transaction; keep it visible in the workbench; capture media/bottle, incubation, and atmosphere explicitly in the existing activity record.
 - [x] T193 [MVP] Expose existing projected Result identifiers to critical communication and link the report workflow to the visible patient-results page without adding schema.
 - [x] T194 [MVP] Pass focused backend and frontend tests for the story-closure slice; run Spotless, Prettier, focused source ESLint, and `git diff --check`.
-- [x] T195 [MVP] Reconcile the feature spec, implementation plan, task ledger, gap analysis, and scope rulings for amendment, TB, reagent, WHONET, performance, report proof, and human UAT.
-- [x] T196 [MVP] Align the live Grist checklist with the current behavior contract and verify the AMR Review overlay renders the same required stories and steps.
-- [x] T202 [MVP] Repair service-layer UAT data and workflow defects found by the canonical journey: complete patient demographics, add selectable sample/test mapping and localization, normalize blank optional organism identifiers, perform preliminary projection before Result-target communication, return a named conflict for final-case writes, and cover the changes with focused backend/frontend tests.
+- [x] T195 [MVP] Reconcile the feature spec, implementation plan, task ledger, and scope rulings for amendment, TB, reagent, WHONET, performance, and report proof.
+- [x] T202 [MVP] Repair service-created scenario data and workflow defects found by the canonical journey: complete patient demographics, add selectable sample/test mapping and localization, normalize blank optional organism identifiers, perform preliminary projection before Result-target communication, return a named conflict for final-case writes, and cover the changes with focused backend/frontend tests.
 - [x] T203 [MVP] Repair full-suite fixture isolation after legacy tests remove shared statuses and active methods: resolve or provision the minimum reference data through services with generated identifiers, and cover stale-cache and polluter ordering behavior.
-- [ ] T197 [MVP] Deploy the exact top of the MVP stack with compatible review tooling to `amr.openelis-global.org` and pass the deployment identity and health guard.
-- [ ] T198 [MVP] Run registered deployed Playwright pre-UAT journeys for order routing, worklist state, case setup, isolate/AST, critical communication, final lock, and visible patient-report propagation; retain stable screenshots and trace evidence.
 - [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target until evidence exists.
-- [ ] T200 [Human UAT] Piotr completes the required Review-overlay stories and records pass/fail/N/A plus notes in Grist. Automated execution cannot check off this task.
-- [ ] T201 [MVP] Update each MVP stack pull request with its scope, V2 exclusions, verification commands, and review evidence.
 
 ## Dependencies & Execution Order
 
@@ -427,9 +417,7 @@ human UAT ruling.
 - Final MVP acceptance depends on Phase 8.
 - Phases 9 and 10 depend on runnable MVP behavior; the V2 clarification in T187
   does not block MVP acceptance.
-- Phase 12 deployment depends on the story-closure and artifact-reconciliation
-  work. Human UAT depends on the exact deployed candidate and matching live
-  Grist content.
+- Phase 12 depends on the story-closure and artifact-reconciliation work.
 
 ## Parallel Opportunities
 

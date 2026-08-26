@@ -251,10 +251,6 @@ inside product requirements.
   context through case navigation and back-navigation.
 - Cover the navigation and URL behavior in the registered `core-app`
   Playwright project, not only through an interactive browser walkthrough.
-- Use the external OpenELIS UAT Review Harness for deployed human review.
-  Grist is the authoring source of truth for the `amr` checklist, the AMR
-  overlay reads `/__review/uat-amr.json` live, and no static checklist publish
-  step is required.
 
 ### Checkpoint Validations
 

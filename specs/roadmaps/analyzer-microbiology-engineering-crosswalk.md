@@ -1,5 +1,6 @@
 # Analyzer + Microbiology Engineering Crosswalk
 
+**Last updated:** 2026-06-27
 **Audience:** Engineering planning and implementation
 **Purpose:** Preserve technical decisions and repo constraints outside
 Casey-owned product artifacts.
@@ -66,37 +67,37 @@ and documented the architecture decision.
 - Test Catalog already has AMR/WHONET groundwork through `test_amr_config`,
   `whonet_antibiotic_codes`, and the existing AMR flag.
 - `test_method` exists and supports a default Method per test.
-- The MVP stores AST runs/readings in the microbiology workflow and projects
-  reviewed reportable interpretations into the standard Result/patient-report
-  path.
+- Result components exist and include `allow_multiple_readings`, but AST
+  storage must still be proven against result-entry/reporting behavior.
 - Existing WHONET export services exist and should be extended before building
   a parallel exporter.
-- The clinical call/read-back record is authoritative and projects lifecycle
-  state into the existing generic Alert workflow.
+- Generic `Alert` infrastructure exists, but M-11 clinical call/read-back
+  logging may still need its own audited log model.
 
-### As-Built MVP Decisions
+### Engineering Defaults
 
-| Topic | Engineering decision | Product-safe expression |
+| Topic | Engineering default | Product-safe expression |
 | --- | --- | --- |
-| Workflow routing | Test Catalog persists `culture_workflow_type`; case persists `workflow_type`; order-entry details pass through the sample-entry service to routing | The ordered test determines the microbiology workflow and reveals the details needed for culture work |
-| Case anchor | Case is keyed by one physical specimen workflow, implemented as `SampleItem + workflow` | A specimen can hold distinguishable sibling workflow records without duplicate accessioning |
+| Workflow routing | Test Catalog field likely persists as `culture_workflow_type`; case field likely persists as `workflow_type` | The ordered test determines the microbiology workflow |
+| Case anchor | Case likely keyed by one physical specimen workflow, implemented as `SampleItem + workflow` | A specimen can have separate bacteriology and TB workups without duplicate accessioning |
 | Culture protocol | Use test default Method plus micro-specific method metadata | The selected test provides a default culture setup recipe |
-| AST storage and reporting | Use microbiology AST runs/readings, then project reviewed reportable content into standard Result/patient reporting | Users enter AST readings, review interpretations, and see the result on the patient report |
-| Final safety | Reject isolate and AST mutation after final release; amendment/version history is V2 | Final results cannot be silently changed |
-| Critical communications | Keep the clinical critical log authoritative and synchronize its lifecycle with existing Alert records | Critical communications are logged and surfaced in the existing operational alert workflow |
-| WHONET | Reuse existing mapping/reference concepts for readiness; export generation and mapping administration are V2 | Users can see whether a finalized case is ready for future surveillance export |
+| AST storage | Use AST run/header plus existing result rows/components if proven feasible | Users enter AST readings and see interpretations with override history |
+| Critical communications | Use clinical critical log plus existing alerts surface | Critical communications are logged and surfaced in the existing operational alert workflow |
+| WHONET | Extend existing WHONET services and Test Catalog mapping data | Finalized microbiology cases can be exported for surveillance |
 
 ### Microbiology Implementation Readiness Gate
 
-Before a later micro slice begins, engineering should confirm:
+Before a micro slice begins, engineering should confirm:
 
-- Whether the slice extends the current bacteriology workflow or introduces a
-  distinct operational workflow such as TB.
-- Whether it changes the standard patient-report projection or requires
-  versioned amendment behavior.
-- Which WHONET export columns and mapping administration belong in the export
-  slice beyond current readiness.
-- Whether reagent/card lot or expert-rule behavior requires new persistence.
+- Which existing service or hook owns order-save side effects.
+- How a case DTO can compile SampleItem, patient, test, method, timeline, and
+  result data inside service transactions.
+- Whether existing result components/multiple readings can represent AST
+  without breaking validation/reporting.
+- Which critical notification fields are clinical record requirements versus
+  dashboard alert metadata.
+- Which WHONET columns can be populated from existing export services and which
+  require new micro data.
 
 ## Spec Cleanup Workflow
 
