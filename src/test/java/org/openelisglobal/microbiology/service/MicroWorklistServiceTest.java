@@ -71,7 +71,7 @@ public class MicroWorklistServiceTest {
         when(communicationDAO.getByCaseId("case-setup")).thenReturn(List.of());
         when(communicationDAO.getByCaseId("case-tb")).thenReturn(List.of());
 
-        List<MicroWorklistRowForm> rows = service.getWorklistRows();
+        List<MicroWorklistRowForm> rows = service.getWorklistPage(new MicroWorklistQueryForm()).rows;
 
         assertEquals("case-ast", rows.get(0).caseId);
         assertEquals("AST_REVIEW", rows.get(0).dueAction);
@@ -92,7 +92,7 @@ public class MicroWorklistServiceTest {
         when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of(communication));
 
-        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+        MicroWorklistRowForm row = service.getWorklistPage(new MicroWorklistQueryForm()).rows.get(0);
 
         assertEquals("HIGH", row.urgency);
         assertTrue(row.hasOpenCriticalCommunication);

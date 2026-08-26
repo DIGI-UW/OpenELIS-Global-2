@@ -67,7 +67,7 @@ public class MicroCriticalCommunicationRestController extends MicrobiologyRestCo
         if (value == null || value.trim().isEmpty()) {
             return MicroCriticalCommunicationTargetType.CASE;
         }
-        return MicroCriticalCommunicationTargetType.valueOf(value);
+        return requiredEnum(MicroCriticalCommunicationTargetType.class, value, "targetType");
     }
 
     private MicroCriticalCommunicationForm toForm(MicroCriticalCommunication communication) {

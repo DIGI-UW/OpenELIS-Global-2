@@ -41,12 +41,6 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MicroWorklistRowForm> getWorklistRows() {
-        return getWorklistPage(new MicroWorklistQueryForm()).rows;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public MicroWorklistPageForm getWorklistPage(MicroWorklistQueryForm query) {
         MicroWorklistQueryForm normalized = normalize(query);
         List<MicroWorklistRowForm> rows = new ArrayList<>();

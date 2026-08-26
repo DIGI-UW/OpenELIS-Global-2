@@ -51,6 +51,8 @@
           'REQUIRED_BY_DEADLINE', 'REFERRAL_CRITICAL_RESULT', 'REFERRAL_REJECTED', 'CRITICAL_RESULT'
         ));
         ALTER TABLE clinlims.alert DROP CONSTRAINT chk_alert_entity_id_or_ref;
+        DELETE FROM clinlims.alert
+        WHERE alert_entity_id IS NULL AND alert_entity_ref IS NOT NULL;
       </sql>
       <addNotNullConstraint tableName="alert" schemaName="clinlims" columnName="alert_entity_id" columnDataType="bigint"/>
       <dropColumn tableName="alert" schemaName="clinlims" columnName="alert_entity_ref"/>
