@@ -9,7 +9,7 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function openSharedMappingEditor(page: Page) {
+async function openSharedMappingEditor(page: Page): Promise<string> {
   await page.goto(FILTERED_CATALOG, {
     waitUntil: "domcontentloaded",
     timeout: NAV_TIMEOUT,
@@ -22,10 +22,15 @@ async function openSharedMappingEditor(page: Page) {
     name: new RegExp(escapeRegExp(PROFILE_NAME), "i"),
   });
   await expect(profileRow).toBeVisible();
+  const revision = (await profileRow.innerText()).match(
+    /\brevision ([1-9]\d*)\b/i,
+  )?.[1];
+  expect(revision, "The profile row should identify its revision").toBeTruthy();
   await profileRow
     .getByRole("button", { name: `Actions for ${PROFILE_NAME}` })
     .click();
   await page.getByRole("menuitem", { name: "Edit mappings" }).click();
+  return revision!;
 }
 
 async function openMappingEditorFor(page: Page, profileName: string) {
@@ -44,12 +49,12 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     page,
   }, testInfo) => {
     test.setTimeout(120_000 * TIMEOUT_SCALE);
-    await openSharedMappingEditor(page);
+    const revision = await openSharedMappingEditor(page);
 
     await expect(page).toHaveURL((url) => {
       return (
         url.pathname === "/analyzers/types/genexpert-astm/mapping" &&
-        url.searchParams.get("revision") === "1" &&
+        url.searchParams.get("revision") === revision &&
         url.searchParams.get("returnTo") === FILTERED_CATALOG
       );
     });
