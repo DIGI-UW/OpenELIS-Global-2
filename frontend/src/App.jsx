@@ -1156,43 +1156,43 @@ export default function App() {
                   path="/analyzers/qc/instruments/:instrumentId"
                   exact
                   component={() => <InstrumentDetailPage />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/db"
                   exact
                   component={() => <QCDashboard />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/charts/:analyzerId"
                   exact
                   component={() => <ControlChartDetail />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots"
                   exact
                   component={() => <ControlLotList />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots/new"
                   exact
                   component={() => <ControlLotSetup />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots/:id"
                   exact
                   component={() => <ControlLotSetup />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/rule-config"
                   exact
                   component={() => <RuleConfigPanel />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/PatientHistory"
