@@ -13,6 +13,10 @@ public interface MicroAstRunDAO extends BaseDAO<MicroAstRun, String> {
 
     List<MicroAstRun> getByAmendmentId(String amendmentId);
 
+    List<MicroReviewedAstWorklistRow> getReviewedWorklistPage(MicroReviewedAstWorklistQuery query);
+
+    long countReviewedWorklist(MicroReviewedAstWorklistQuery query);
+
     Optional<MicroAstRun> getByAnalyzerAndCard(String analyzerId, String cardId);
 
     long countUnresolvedByBreakpointStandardId(String breakpointStandardId);

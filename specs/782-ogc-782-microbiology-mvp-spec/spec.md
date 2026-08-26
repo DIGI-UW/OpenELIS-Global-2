@@ -292,6 +292,11 @@ case action.
     action, **Then** the action reflects the elapsed culture day when timing
     inputs are available and falls back to an accurate stage label when they
     are not.
+13. **Given** an AST attempt has been reviewed, **When** the user opens the AST
+    worklist, **Then** it no longer appears as work needing action but remains
+    available in a bookmarkable Reviewed view with a read-only View action;
+    repeat or retest setup starts from the case and requires its clinical
+    reason.
 
 ---
 
@@ -440,6 +445,10 @@ or missing mapping for export.
   unavailable in the current phase. Resistance classifications MUST retain
   their analyzer-reported or user-confirmed provenance and MUST NOT be inferred
   from free-text notes.
+- **FR-014D**: Reviewed AST attempts MUST leave the default action queue and
+  remain available through a bookmarkable Reviewed view with read-only case
+  navigation. Repeat or retest setup MUST remain a case-scoped action that
+  requires a reason.
 - **FR-015**: Users MUST be able to release preliminary reports when reportable
   culture observations or isolate work-up are available, including Gram stain
   and colony morphology before organism identification, and final reports only

@@ -31,6 +31,16 @@ export interface SeededReviewedMicrobiologyCase extends SeededMicrobiologyCase {
   astRunId: string;
 }
 
+const isReviewedMicrobiologyCase = (
+  seeded: SeededMicrobiologyCase,
+): seeded is SeededReviewedMicrobiologyCase =>
+  "isolateId" in seeded &&
+  typeof seeded.isolateId === "string" &&
+  seeded.isolateId.length > 0 &&
+  "astRunId" in seeded &&
+  typeof seeded.astRunId === "string" &&
+  seeded.astRunId.length > 0;
+
 export type SeededMicrobiologyAstWorklistCase = SeededReviewedMicrobiologyCase;
 
 export interface SeededDenseMicrobiologyCase extends SeededMicrobiologyCase {
@@ -55,7 +65,14 @@ export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyRefere
 
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
-type MicrobiologyScenario = "CASE" | "MVP" | "WORKLIST" | "M3" | "M4" | "R1";
+type MicrobiologyScenario =
+  | "CASE"
+  | "MVP"
+  | "WORKLIST"
+  | "M3"
+  | "M4"
+  | "R1"
+  | "AST_REVIEWED";
 
 interface MicrobiologyReferenceOption {
   id: string;
@@ -576,40 +593,17 @@ export async function seedMicrobiologyAstWorklistCase(
 }
 
 /**
- * Creates a reviewed, reportable bacteriology case through authenticated HTTP
- * endpoints. Every persisted record is therefore created by application
- * services, with server-generated identifiers and normal validation/auditing.
+ * Creates a reviewed, reportable bacteriology case through the authenticated,
+ * property-gated scenario endpoint. Application services create every record
+ * with server-generated identifiers and normal validation/auditing.
  */
 export async function seedReviewedMicrobiologyCase(
   page: Page,
 ): Promise<SeededReviewedMicrobiologyCase> {
-  const seeded = await prepareMicrobiologyAstCase(page);
-  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
-
-  for (const antibioticId of seeded.orderedAntibioticIds) {
-    await requireJsonResponse(
-      "Record ordered AST reading",
-      await page.request.post(
-        `${API_PREFIX}/rest/microbiology/ast/runs/${seeded.astRunId}/readings`,
-        {
-          headers,
-          data: {
-            antibioticId,
-            method: "MIC",
-            rawValue: 4,
-          },
-        },
-      ),
-    );
+  const seeded = await provisionMicrobiologyScenario(page, "AST_REVIEWED");
+  if (!isReviewedMicrobiologyCase(seeded)) {
+    throw new Error("Microbiology AST_REVIEWED scenario is incomplete");
   }
-  await requireJsonResponse(
-    "Review AST run",
-    await page.request.post(
-      `${API_PREFIX}/rest/microbiology/ast/runs/${seeded.astRunId}/review`,
-      { headers, data: {} },
-    ),
-  );
-
   return seeded;
 }
 

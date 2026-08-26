@@ -1,4 +1,6 @@
 export type MicrobiologyWorklistState = {
+  grain?: "cultures" | "ast";
+  status?: string;
   workflow?: string;
   stage?: string;
   urgency?: string;
@@ -11,9 +13,12 @@ export type MicrobiologyWorklistState = {
 
 export type MicrobiologyCaseState = MicrobiologyWorklistState & {
   section?: string;
-  action?: "log-critical" | "report-nce" | "mark-lost" | "";
+  action?: string;
   targetType?: "CASE" | "ISOLATE" | "";
   targetId?: string;
+  astIsolateId?: string;
+  astRunId?: string;
+  astView?: "reviewed" | "";
 };
 
 export const MICROBIOLOGY_WORKLIST_PATH: string;

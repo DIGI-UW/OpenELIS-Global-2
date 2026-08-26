@@ -26,6 +26,10 @@ public class MicroWorklistContextHqlValidationTest extends BaseWebContextSensiti
                     Object[].class));
             assertNotNull(
                     entityManager.createQuery(MicroWorklistContextDAOImpl.CULTURE_TIMING_CONTEXT_HQL, Object[].class));
+            assertNotNull(entityManager.createQuery(
+                    MicroAstRunDAOImpl.REVIEWED_WORKLIST_SELECT_HQL + " order by run.startedAt, run.id",
+                    Object[].class));
+            assertNotNull(entityManager.createQuery(MicroAstRunDAOImpl.REVIEWED_WORKLIST_COUNT_HQL, Long.class));
         } finally {
             entityManager.close();
         }

@@ -676,43 +676,55 @@ describe("MicrobiologyWorklist", () => {
     },
   );
 
-  it("opens the preserved new-attempt flow for a reviewed AST run", async () => {
+  it("opens reviewed AST work as read-only from its canonical filter", async () => {
     const user = userEvent.setup();
+    const reviewedRow = {
+      rowId: "run-1",
+      grain: "ast",
+      caseId: "case-1",
+      sampleItemId: "1001",
+      workflowType: "BACTERIOLOGY",
+      stage: "REVIEW_READY",
+      dueAction: "VIEW",
+      urgency: "ROUTINE",
+      isolateId: "isolate-1",
+      astRunId: "run-1",
+      astStatus: "REVIEWED",
+      siblingWorkflows: [],
+    };
     const service = {
       startRepeatAstRun: vi.fn(),
-      getWorklistRows: vi.fn().mockResolvedValue({
-        rows: [
-          {
-            rowId: "run-1",
-            caseId: "case-1",
-            sampleItemId: "1001",
-            workflowType: "BACTERIOLOGY",
-            stage: "REVIEW_READY",
-            dueAction: "CASE_REVIEW",
-            urgency: "ROUTINE",
-            isolateId: "isolate-1",
-            astRunId: "run-1",
-            astStatus: "REVIEWED",
-            siblingWorkflows: [],
-          },
-        ],
-        total: 1,
-        page: 1,
-        pageSize: 20,
-      }),
+      getWorklistRows: vi.fn().mockImplementation(({ status }) =>
+        Promise.resolve({
+          rows: status === "reviewed" ? [reviewedRow] : [],
+          total: status === "reviewed" ? 1 : 0,
+          page: 1,
+          pageSize: 20,
+        }),
+      ),
     };
 
     renderWorklist(service, "/Microbiology/worklist?grain=ast");
 
-    await user.click(
-      await screen.findByRole("button", { name: "Row actions" }),
-    );
-    await user.click(await screen.findByText("Set up new AST run"));
-
-    expect(service.startRepeatAstRun).not.toHaveBeenCalled();
+    const statusFilter = await screen.findByLabelText("AST status");
+    await user.selectOptions(statusFilter, "reviewed");
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?grain=ast&section=ast&astIsolateId=isolate-1&astRunId=run-1&action=new-ast-attempt",
+        "/Microbiology/worklist?grain=ast&status=reviewed",
+      ),
+    );
+    const row = await screen.findByTestId("microbiology-worklist-row-run-1");
+    expect(row).toHaveTextContent("Reviewed");
+    await user.click(screen.getByRole("button", { name: "Row actions" }));
+    const viewReviewedAst = await screen.findByText("View reviewed AST");
+    expect(viewReviewedAst).toBeInTheDocument();
+    expect(screen.queryByText("Edit AST")).not.toBeInTheDocument();
+    expect(screen.queryByText("Set up new AST run")).not.toBeInTheDocument();
+    expect(service.startRepeatAstRun).not.toHaveBeenCalled();
+    await user.click(viewReviewedAst);
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "/Microbiology/cases/case-1?grain=ast&status=reviewed&section=ast&astIsolateId=isolate-1&astRunId=run-1&astView=reviewed",
       ),
     );
   });

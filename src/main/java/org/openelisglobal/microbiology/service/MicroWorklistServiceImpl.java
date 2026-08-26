@@ -14,6 +14,8 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistQuery;
+import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistRow;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
@@ -68,9 +70,12 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     @Transactional(readOnly = true)
     public MicroWorklistPageForm getWorklistPage(MicroWorklistQueryForm query) {
         MicroWorklistQueryForm normalized = normalize(query);
-        List<MicroCase> openCases = caseDAO.getOpenCases();
-        List<String> caseIds = openCases.stream().map(MicroCase::getId).toList();
-        List<String> sampleItemIds = openCases.stream().map(MicroCase::getSampleItemId).distinct().toList();
+        if (AST_GRAIN.equals(normalized.grain) && "reviewed".equals(normalized.status)) {
+            return getReviewedAstWorklistPage(normalized);
+        }
+        List<MicroCase> worklistCases = caseDAO.getOpenCases();
+        List<String> caseIds = worklistCases.stream().map(MicroCase::getId).toList();
+        List<String> sampleItemIds = worklistCases.stream().map(MicroCase::getSampleItemId).distinct().toList();
         Map<String, List<MicroCase>> casesBySampleItem = groupBy(caseDAO.getBySampleItemIds(sampleItemIds),
                 MicroCase::getSampleItemId);
         Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
@@ -87,7 +92,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 contextDAO.getLatestActivityContexts(caseIds), MicroWorklistActivityContext::caseId);
         Map<String, MicroWorklistInoculationContext> inoculationContextByCase = indexBy(
                 contextDAO.getFirstInoculationContexts(caseIds), MicroWorklistInoculationContext::caseId);
-        List<String> methodIds = openCases.stream().map(MicroCase::getCultureMethodId)
+        List<String> methodIds = worklistCases.stream().map(MicroCase::getCultureMethodId)
                 .filter(methodId -> methodId != null && !methodId.isBlank()).distinct().toList();
         Map<String, MicroWorklistCultureTimingContext> timingContextByMethodAndWorkflow = indexBy(
                 contextDAO.getCultureTimingContexts(methodIds),
@@ -98,10 +103,10 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 .filter(panelId -> panelId != null && !panelId.isBlank()).distinct().toList();
         Map<String, MicroAstPanel> panelsById = indexBy(panelDAO.getByIds(panelIds), MicroAstPanel::getId);
         List<MicroWorklistRowForm> rows = AST_GRAIN.equals(normalized.grain)
-                ? toAstRows(openCases, isolatesByCase, runsByIsolate)
-                : toCultureRows(openCases, isolatesByCase, runsByIsolate, communicationsByCase, casesBySampleItem);
+                ? toAstRows(worklistCases, isolatesByCase, runsByIsolate)
+                : toCultureRows(worklistCases, isolatesByCase, runsByIsolate, communicationsByCase, casesBySampleItem);
         enrichRows(rows, specimenContextBySampleItem, activityContextByCase, panelsById);
-        enrichCultureTiming(rows, indexBy(openCases, MicroCase::getId), inoculationContextByCase,
+        enrichCultureTiming(rows, indexBy(worklistCases, MicroCase::getId), inoculationContextByCase,
                 timingContextByMethodAndWorkflow);
         List<MicroWorklistRowForm> summaryRows = new ArrayList<>(rows);
         summaryRows.removeIf(row -> !matches(row, queryWithoutActionFilters(normalized)));
@@ -112,13 +117,42 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         page.summary = summarize(summaryRows);
         addResistanceHits(page.summary, runsByIsolate);
         page.recentActivity
-                .addAll(toRecentActivityForms(recentActivityContexts, openCases, specimenContextBySampleItem));
+                .addAll(toRecentActivityForms(recentActivityContexts, worklistCases, specimenContextBySampleItem));
         page.total = rows.size();
         page.page = normalized.page;
         page.pageSize = normalized.pageSize;
         int firstRow = Math.min((page.page - 1) * page.pageSize, rows.size());
         int lastRow = Math.min(firstRow + page.pageSize, rows.size());
         page.rows.addAll(rows.subList(firstRow, lastRow));
+        return page;
+    }
+
+    private MicroWorklistPageForm getReviewedAstWorklistPage(MicroWorklistQueryForm query) {
+        MicroReviewedAstWorklistQuery reviewedQuery = new MicroReviewedAstWorklistQuery(query.workflow, query.stage,
+                query.urgency, query.due, query.q, query.sort, (query.page - 1) * query.pageSize, query.pageSize);
+        List<MicroReviewedAstWorklistRow> selected = astRunDAO.getReviewedWorklistPage(reviewedQuery);
+        List<MicroCase> cases = selected.stream().map(MicroReviewedAstWorklistRow::microCase).collect(
+                Collectors.toMap(MicroCase::getId, Function.identity(), (first, ignored) -> first, LinkedHashMap::new))
+                .values().stream().toList();
+        List<String> caseIds = cases.stream().map(MicroCase::getId).toList();
+        List<String> sampleItemIds = cases.stream().map(MicroCase::getSampleItemId).distinct().toList();
+        List<MicroWorklistRowForm> rows = selected.stream()
+                .map(item -> toAstRow(item.microCase(), item.isolate(), item.run())).toList();
+        Map<String, MicroWorklistSpecimenContext> specimens = indexBy(contextDAO.getSpecimenContexts(sampleItemIds),
+                MicroWorklistSpecimenContext::sampleItemId);
+        Map<String, MicroWorklistActivityContext> activities = indexBy(contextDAO.getLatestActivityContexts(caseIds),
+                MicroWorklistActivityContext::caseId);
+        List<String> panelIds = selected.stream().map(item -> item.run().getPanelId())
+                .filter(panelId -> panelId != null && !panelId.isBlank()).distinct().toList();
+        enrichRows(rows, specimens, activities, indexBy(panelDAO.getByIds(panelIds), MicroAstPanel::getId));
+
+        MicroWorklistPageForm page = new MicroWorklistPageForm();
+        page.total = (int) Math.min(Integer.MAX_VALUE, astRunDAO.countReviewedWorklist(reviewedQuery));
+        page.page = query.page;
+        page.pageSize = query.pageSize;
+        page.rows.addAll(rows);
+        page.recentActivity.addAll(toRecentActivityForms(
+                contextDAO.getRecentActivityContexts(caseIds, RECENT_ACTIVITY_LIMIT), cases, specimens));
         return page;
     }
 
@@ -188,7 +222,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         for (MicroAstRun run : runsByIsolate.values().stream().flatMap(List::stream).toList()) {
             java.sql.Timestamp flagTime = run.getAnalyzerCompletedAt() == null ? run.getAnalyzerLoadedAt()
                     : run.getAnalyzerCompletedAt();
-            if (!isActiveWorklistRun(run) || flagTime == null
+            if (!isWorklistVisibleRun(run) || flagTime == null
                     || !flagTime.toLocalDateTime().toLocalDate().equals(today)) {
                 continue;
             }
@@ -245,6 +279,10 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     }
 
     private boolean matches(MicroWorklistRowForm row, MicroWorklistQueryForm query) {
+        if (AST_GRAIN.equals(row.grain) && query.status.isEmpty()
+                && MicroAstRunStatus.REVIEWED.name().equals(row.astStatus)) {
+            return false;
+        }
         if (!query.status.isEmpty() && !matchesStatus(row, query.status)) {
             return false;
         }
@@ -274,7 +312,8 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
 
     private String statusForGrain(String grain, String value) {
         String status = text(value).toLowerCase(Locale.ROOT);
-        List<String> allowed = AST_GRAIN.equals(grain) ? List.of("pending-setup", "in-progress", "results-in")
+        List<String> allowed = AST_GRAIN.equals(grain)
+                ? List.of("pending-setup", "in-progress", "results-in", "reviewed")
                 : List.of("incubating", "positive", "growth", "ready");
         return allowed.contains(status) ? status : "";
     }
@@ -288,8 +327,12 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 return MicroAstRunStatus.RESULTS_IN.name().equals(row.astStatus)
                         || MicroAstRunStatus.QC_FAILED.name().equals(row.astStatus);
             }
+            if ("reviewed".equals(status)) {
+                return MicroAstRunStatus.REVIEWED.name().equals(row.astStatus);
+            }
             return !"PENDING_SETUP".equals(row.astStatus) && !MicroAstRunStatus.RESULTS_IN.name().equals(row.astStatus)
-                    && !MicroAstRunStatus.QC_FAILED.name().equals(row.astStatus);
+                    && !MicroAstRunStatus.QC_FAILED.name().equals(row.astStatus)
+                    && !MicroAstRunStatus.REVIEWED.name().equals(row.astStatus);
         }
         if ("incubating".equals(status)) {
             return MicroCaseStage.INCUBATING.name().equals(row.stage);
@@ -374,7 +417,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         for (MicroCase microCase : openCases) {
             for (MicroIsolate isolate : valuesFor(isolatesByCase, microCase.getId())) {
                 List<MicroAstRun> activeRuns = valuesFor(runsByIsolate, isolate.getId()).stream()
-                        .filter(this::isActiveWorklistRun).toList();
+                        .filter(this::isWorklistVisibleRun).toList();
                 if (activeRuns.isEmpty()) {
                     if (MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name().equals(isolate.getSignificance())) {
                         rows.add(toAstRow(microCase, isolate, null));
@@ -389,7 +432,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         return rows;
     }
 
-    private boolean isActiveWorklistRun(MicroAstRun run) {
+    private boolean isWorklistVisibleRun(MicroAstRun run) {
         return !MicroAstRunStatus.INVALIDATED.name().equals(run.getStatus())
                 && !MicroAstRunStatus.RERUN_REQUIRED.name().equals(run.getStatus())
                 && !MicroAstRunStatus.CANCELLED.name().equals(run.getStatus());
@@ -422,7 +465,11 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
             row.analyzerResultsAvailable = MicroAstRunStatus.RESULTS_IN.name().equals(run.getStatus())
                     || MicroAstRunStatus.QC_FAILED.name().equals(run.getStatus());
             row.analyzerExpertFlags = run.getAnalyzerExpertFlags();
-            row.dueAction = row.analyzerResultsAvailable ? "AST_REVIEW" : "AST_IN_PROGRESS";
+            if (MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
+                row.dueAction = "VIEW";
+            } else {
+                row.dueAction = row.analyzerResultsAvailable ? "AST_REVIEW" : "AST_IN_PROGRESS";
+            }
         }
         row.needsAstReview = row.analyzerResultsAvailable;
         row.urgency = urgency(microCase, row.needsAstReview, false);

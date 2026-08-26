@@ -11,10 +11,13 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.AlternativeBreakpointData;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
+import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
+import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
+import org.openelisglobal.microbiology.service.MicroWorklistService;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
@@ -46,6 +49,9 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MicroBreakpointAdminService breakpointAdminService;
+
+    @Autowired
+    private MicroWorklistService worklistService;
 
     private String sampleItemId;
     private String methodId;
@@ -142,6 +148,37 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(true, astService.selectReportableRun(original.getId(), fixtures.defaultUserId()).isReportable());
         assertEquals(true, astService.selectReportableRun(repeat.getId(), fixtures.defaultUserId()).isReportable());
         assertEquals(2, astService.getRunsForIsolate(isolate.getId()).size());
+    }
+
+    @Test
+    public void reviewedWorklistFiltersCountsAndPagesAtTheDatabaseBoundary() {
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
+                fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                fixtures.defaultUserId());
+        identify(isolate);
+        MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(),
+                referenceData.standard().getId(), fixtures.defaultUserId());
+        astService.recordReading(run.getId(), referenceData.antibiotic().getId(), MicroAstMethod.MIC,
+                new BigDecimal("4"), fixtures.defaultUserId());
+        astService.reviewRun(run.getId(), fixtures.defaultUserId());
+
+        MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        query.grain = "ast";
+        query.status = "reviewed";
+        query.workflow = MicroWorkflowType.BACTERIOLOGY.name();
+        query.q = run.getId();
+        query.pageSize = 1;
+
+        MicroWorklistPageForm firstPage = worklistService.getWorklistPage(query);
+        assertEquals(1, firstPage.total);
+        assertEquals(run.getId(), firstPage.rows.get(0).astRunId);
+
+        query.page = 2;
+        MicroWorklistPageForm secondPage = worklistService.getWorklistPage(query);
+        assertEquals(1, secondPage.total);
+        assertEquals(0, secondPage.rows.size());
     }
 
     private void identify(MicroIsolate isolate) {

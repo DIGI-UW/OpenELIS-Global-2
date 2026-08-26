@@ -1223,6 +1223,37 @@ describe("AstEntryPanel", () => {
     expect(await screen.findByText("Included in report")).toBeInTheDocument();
   });
 
+  it("prevents reportable selection in reviewed view without disabling repeat controls", async () => {
+    const noSelectionOriginal = { ...reviewedRun, reportable: false };
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "Gram negative panel" }]),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi
+        .fn()
+        .mockResolvedValue([{ id: "std-clsi", label: "CLSI 2026" }]),
+      getAstRunsForIsolate: vi
+        .fn()
+        .mockResolvedValue([noSelectionOriginal, reviewedRepeatRun]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: false,
+        blockers: ["REPORTABLE_AST_RUN_REQUIRED"],
+      }),
+      selectReportableAstRun: vi.fn(),
+    };
+
+    renderPanel(service, { reviewedView: true });
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Use attempt 2 for reporting",
+      }),
+    ).toBeDisabled();
+    expect(screen.getByLabelText("Reason for repeat or retest")).toBeEnabled();
+    expect(service.selectReportableAstRun).not.toHaveBeenCalled();
+  });
+
   it("surfaces named AST conflicts returned by the service", async () => {
     const user = userEvent.setup();
     const service = {
