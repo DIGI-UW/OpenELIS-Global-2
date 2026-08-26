@@ -22,7 +22,7 @@ const heldResult = {
   result: "POSITIVE",
   rawTestCode: "QUAL_RESULT",
   rawResultValue: "POSITIVE",
-  importIssueReason: "UNKNOWN_RESULT_VALUE",
+  importIssueReason: "unknown_analyzer_result_value",
   sourceProfileId: "genexpert-astm",
   sourceProfileRevision: 3,
   sourceProtocol: "ASTM",

@@ -40,7 +40,7 @@ export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
 
 export const buildHeldResultResolutionUrl = (row, analyzerId) => {
   if (
-    row.importIssueReason !== "UNKNOWN_RESULT_VALUE" ||
+    row.importIssueReason !== "unknown_analyzer_result_value" ||
     !row.sourceProfileId ||
     !row.sourceProfileRevision ||
     !row.rawTestCode ||
