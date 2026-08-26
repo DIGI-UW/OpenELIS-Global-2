@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> implements MicroWorklistContextDAO {
 
-    static final String SPECIMEN_CONTEXT_HQL = "select sampleItem.id, sample.accessionNumber, person.lastName, person.firstName, type.description "
+    static final String SPECIMEN_CONTEXT_HQL = "select sampleItem.id, sample.accessionNumber, person.lastName, person.firstName, type.description, sampleItem.collectionDate, type.id "
             + "from SampleItem sampleItem join sampleItem.sample sample "
             + "left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id "
             + "left join Patient patient on patient.id = sampleHuman.patientId "
@@ -67,8 +67,11 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
         }
         Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(SPECIMEN_CONTEXT_HQL, Object[].class);
         query.setParameterList("sampleItemIds", sampleItemIds);
-        return query.list().stream().map(values -> new MicroWorklistSpecimenContext(text(values[0]), text(values[1]),
-                patientDisplay(values[2], values[3]), text(values[4]))).toList();
+        return query.list().stream()
+                .map(values -> new MicroWorklistSpecimenContext(text(values[0]), text(values[1]),
+                        patientDisplay(values[2], values[3]), text(values[4]), timestampValue(values[5]),
+                        text(values[6])))
+                .toList();
     }
 
     @Override
@@ -82,9 +85,9 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
         query.setParameterList("sampleItemIds", sampleItemIds);
         return query.list().stream()
                 .map(values -> new MicroWhonetPatientContext(text(values[0]), text(values[1]), text(values[2]),
-                        text(values[3]), text(values[4]), text(values[5]), (Timestamp) values[6], text(values[7]),
-                        (Date) values[8], (Timestamp) values[9], text(values[10]), text(values[11]), text(values[12]),
-                        (Double) values[13], (Double) values[14]))
+                        text(values[3]), text(values[4]), text(values[5]), timestampValue(values[6]), text(values[7]),
+                        dateValue(values[8]), timestampValue(values[9]), text(values[10]), text(values[11]),
+                        text(values[12]), (Double) values[13], (Double) values[14]))
                 .toList();
     }
 
@@ -98,7 +101,7 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
                 Object[].class);
         query.setParameterList("caseIds", caseIds);
         return query.list().stream().map(values -> new MicroWorklistActivityContext(text(values[0]),
-                (Timestamp) values[1], text(values[2]), text(values[3]), text(values[4]))).toList();
+                timestampValue(values[1]), text(values[2]), text(values[3]), text(values[4]))).toList();
     }
 
     @Override
@@ -112,7 +115,7 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
         query.setParameterList("caseIds", caseIds);
         query.setMaxResults(limit);
         return query.list().stream()
-                .map(values -> new MicroWorklistRecentActivityContext(text(values[0]), (Timestamp) values[1],
+                .map(values -> new MicroWorklistRecentActivityContext(text(values[0]), timestampValue(values[1]),
                         text(values[2]), text(values[3]), text(values[4]), text(values[5]), text(values[6])))
                 .toList();
     }
@@ -127,7 +130,8 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
                 Object[].class);
         query.setParameterList("caseIds", caseIds);
         return query.list().stream()
-                .map(values -> new MicroWorklistInoculationContext(text(values[0]), (Timestamp) values[1])).toList();
+                .map(values -> new MicroWorklistInoculationContext(text(values[0]), timestampValue(values[1])))
+                .toList();
     }
 
     @Override
@@ -155,5 +159,25 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
 
     private String text(Object value) {
         return value == null ? "" : value.toString().trim();
+    }
+
+    static Timestamp timestampValue(Object value) {
+        if (value == null || value instanceof Timestamp) {
+            return (Timestamp) value;
+        }
+        if (value instanceof java.util.Date date) {
+            return new Timestamp(date.getTime());
+        }
+        throw new IllegalArgumentException("Unsupported timestamp value type: " + value.getClass().getName());
+    }
+
+    static Date dateValue(Object value) {
+        if (value == null || value instanceof Date) {
+            return (Date) value;
+        }
+        if (value instanceof java.util.Date date) {
+            return new Date(date.getTime());
+        }
+        throw new IllegalArgumentException("Unsupported date value type: " + value.getClass().getName());
     }
 }

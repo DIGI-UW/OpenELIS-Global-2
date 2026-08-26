@@ -248,6 +248,36 @@ describe("WhonetExport", () => {
     );
   });
 
+  it("identifies editable worklist scope and clears it back to direct Reports defaults", async () => {
+    const user = userEvent.setup();
+    const service = createService();
+
+    renderExport(
+      service,
+      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=sample-type-blood&origin=INPATIENT&significance=NORMAL_FLORA&source=ast-worklist",
+    );
+
+    expect(
+      await screen.findByText("Scope provided by the AST worklist"),
+    ).toBeVisible();
+    expect(screen.getByLabelText("From")).toHaveValue("2026-08-01");
+    expect(
+      screen.getByRole("combobox", { name: /^Specimen types/ }),
+    ).toBeEnabled();
+    await user.click(
+      screen.getByRole("button", { name: "Clear worklist scope" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("whonet-current-url")).toHaveTextContent(
+        "/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
+      ),
+    );
+    expect(
+      screen.queryByText("Scope provided by the AST worklist"),
+    ).not.toBeInTheDocument();
+  });
+
   it("downloads the generated CSV through an intentional user action", async () => {
     const user = userEvent.setup();
     const service = createService({

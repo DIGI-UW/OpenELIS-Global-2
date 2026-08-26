@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Download,
   FilterRemove,
@@ -38,11 +38,14 @@ import {
 } from "@carbon/react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { hasRole, Roles } from "../utils/Utils";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import {
   getMicrobiologyCaseUrl,
   getMicrobiologyWorklistUrl,
+  MICROBIOLOGY_WORKLIST_PATH,
   MICROBIOLOGY_WORKLIST_PAGE_SIZES,
   parseMicrobiologyWorklistSearch,
 } from "./MicrobiologyRoutes";
@@ -53,6 +56,11 @@ import {
   MICROBIOLOGY_WORKLIST_READY_MARK,
 } from "./MicrobiologyPerformance";
 import MicrobiologyService from "./MicrobiologyService";
+import MicrobiologySurveillanceFilters from "./MicrobiologySurveillanceFilters";
+import {
+  getWhonetDatePreset,
+  getWhonetExportUrlFromWorklist,
+} from "./WhonetRoutes";
 import "./MicrobiologyWorklist.css";
 
 const WORKFLOW_OPTIONS = ["BACTERIOLOGY", "MYCOBACTERIOLOGY_TB", "MYCOLOGY"];
@@ -186,6 +194,12 @@ const normalizePageResponse = (response, filters) => {
     recentActivity: Array.isArray(response?.recentActivity)
       ? response.recentActivity
       : [],
+    filterOptions: response?.filterOptions || {
+      specimenTypes: [],
+      organisms: [],
+      patientOrigins: [],
+      significance: [],
+    },
   };
 };
 
@@ -214,12 +228,26 @@ const DUE_ACTION_DETAIL_IDS = {
     "microbiology.worklist.dueDetail.subculture_gram_stain",
 };
 
-const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
+const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
-  const filters = parseMicrobiologyWorklistSearch(location.search);
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const referenceNow = useMemo(() => now || new Date(), [now]);
+  const filters = parseMicrobiologyWorklistSearch(
+    location.search,
+    referenceNow,
+  );
+  const canonicalWorklistUrl = getMicrobiologyWorklistUrl(
+    filters,
+    referenceNow,
+  );
   const isAstGrain = filters.grain === "ast";
+  const canExportWhonet = [
+    Roles.GLOBAL_ADMIN,
+    Roles.RESULTS,
+    Roles.REPORTS,
+  ].some((role) => hasRole(userSessionDetails, role));
   const [worklistState, setWorklistState] = useState({
     current: {
       rows: [],
@@ -228,6 +256,12 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
       page: filters.page,
       pageSize: filters.pageSize,
       recentActivity: [],
+      filterOptions: {
+        specimenTypes: [],
+        organisms: [],
+        patientOrigins: [],
+        significance: [],
+      },
     },
     previousRows: [],
     sourceSearch: null,
@@ -248,6 +282,21 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     responseMatchesLocation && requestState.status === "error";
 
   useEffect(() => {
+    if (location.pathname !== MICROBIOLOGY_WORKLIST_PATH) {
+      return;
+    }
+    if (`${location.pathname}${location.search}` !== canonicalWorklistUrl) {
+      history.replace(canonicalWorklistUrl);
+    }
+  }, [canonicalWorklistUrl, history, location.pathname, location.search]);
+
+  useEffect(() => {
+    if (location.pathname !== MICROBIOLOGY_WORKLIST_PATH) {
+      return undefined;
+    }
+    if (`${location.pathname}${location.search}` !== canonicalWorklistUrl) {
+      return undefined;
+    }
     let active = true;
     service
       .getWorklistRows(filters)
@@ -290,7 +339,13 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     return () => {
       active = false;
     };
-  }, [location.search, refreshGeneration, service]);
+  }, [
+    canonicalWorklistUrl,
+    location.pathname,
+    location.search,
+    refreshGeneration,
+    service,
+  ]);
 
   useEffect(() => {
     if (newPositiveRowIds.length === 0) {
@@ -334,7 +389,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
       ...changes,
       page: resetPage ? 1 : changes.page || filters.page,
     };
-    history.push(getMicrobiologyWorklistUrl(nextState));
+    history.push(getMicrobiologyWorklistUrl(nextState, referenceNow));
   };
 
   const hasFilters = Boolean(
@@ -346,8 +401,17 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     filters.q ||
     filters.sort !== "priority" ||
     filters.page !== 1 ||
-    filters.pageSize !== 20,
+    filters.pageSize !== 20 ||
+    (isAstGrain &&
+      getWhonetDatePreset(filters, referenceNow) !== "THIS_MONTH") ||
+    filters.specimen.length > 0 ||
+    filters.organism.length > 0 ||
+    filters.origin.length > 0 ||
+    filters.significance.length > 0,
   );
+  const whonetExportUrl = isAstGrain
+    ? getWhonetExportUrlFromWorklist(filters, referenceNow)
+    : "";
 
   const headers = useMemo(() => {
     if (isAstGrain) {
@@ -813,6 +877,34 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
             })}
           />
         )}
+        {isAstGrain && (
+          <section
+            className="microbiology-worklist__surveillance"
+            aria-labelledby="microbiology-worklist-surveillance-heading"
+          >
+            <div className="microbiology-worklist__section-heading">
+              <div>
+                <h2 id="microbiology-worklist-surveillance-heading">
+                  {intl.formatMessage({
+                    id: "microbiology.worklist.surveillance.title",
+                  })}
+                </h2>
+                <p>
+                  {intl.formatMessage({
+                    id: "microbiology.worklist.surveillance.description",
+                  })}
+                </p>
+              </div>
+            </div>
+            <MicrobiologySurveillanceFilters
+              state={filters}
+              filterOptions={worklist.filterOptions}
+              onChange={(changes) => updateFilters(changes)}
+              now={referenceNow}
+              idPrefix="microbiology-worklist-surveillance"
+            />
+          </section>
+        )}
         <section
           className="microbiology-worklist__filters"
           aria-labelledby="microbiology-worklist-filter-heading"
@@ -1061,25 +1153,18 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                               id: "microbiology.worklist.qcDashboard",
                             })}
                           </Button>
-                          <Tooltip
-                            align="top"
-                            label={intl.formatMessage({
-                              id: "microbiology.worklist.whonetUnavailable",
-                            })}
-                          >
-                            <span>
-                              <Button
-                                kind="ghost"
-                                size="sm"
-                                renderIcon={Download}
-                                disabled
-                              >
-                                {intl.formatMessage({
-                                  id: "microbiology.worklist.whonetPhase1b",
-                                })}
-                              </Button>
-                            </span>
-                          </Tooltip>
+                          {canExportWhonet && (
+                            <Button
+                              kind="ghost"
+                              size="sm"
+                              renderIcon={Download}
+                              href={whonetExportUrl}
+                            >
+                              {intl.formatMessage({
+                                id: "microbiology.worklist.whonetExport",
+                              })}
+                            </Button>
+                          )}
                         </>
                       )}
                     </TableToolbarContent>

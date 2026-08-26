@@ -95,7 +95,8 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * {@code nextval()} returns {@code 4}) as it does for every sequence in the
      * schema on a fresh test DB.
      */
-    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables", "requester_type", "label_preset" };
+    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables", "requester_type", "label_preset",
+            "observation_history_type" };
 
     /**
      * Legacy entities whose Hibernate generators use standalone sequences and whose

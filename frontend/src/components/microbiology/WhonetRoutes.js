@@ -9,6 +9,7 @@ const SIGNIFICANCE_VALUES = new Set([
 ]);
 const DEDUP_POLICIES = new Set(["FIRST_ISOLATE_7_DAY", "NONE"]);
 const STEPS = new Set(["configure", "preview"]);
+const SOURCES = new Set(["ast-worklist"]);
 
 const isoDate = (date) => {
   const year = date.getFullYear();
@@ -21,6 +22,29 @@ const previousCompleteMonth = (now) => {
   const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const to = new Date(now.getFullYear(), now.getMonth(), 0);
   return { from: isoDate(from), to: isoDate(to) };
+};
+
+export const getWhonetDateRange = (preset, now = new Date()) => {
+  if (preset === "LAST_MONTH") return previousCompleteMonth(now);
+  if (preset === "THIS_QUARTER") {
+    const firstMonth = Math.floor(now.getMonth() / 3) * 3;
+    return {
+      from: isoDate(new Date(now.getFullYear(), firstMonth, 1)),
+      to: isoDate(new Date(now.getFullYear(), firstMonth + 3, 0)),
+    };
+  }
+  return {
+    from: isoDate(new Date(now.getFullYear(), now.getMonth(), 1)),
+    to: isoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
+};
+
+export const getWhonetDatePreset = (state, now = new Date()) => {
+  for (const preset of ["THIS_MONTH", "LAST_MONTH", "THIS_QUARTER"]) {
+    const range = getWhonetDateRange(preset, now);
+    if (state.from === range.from && state.to === range.to) return preset;
+  }
+  return "CUSTOM";
 };
 
 const validIsoDate = (value) =>
@@ -51,7 +75,11 @@ const enabled = (params, key) => params.get(key) === "true";
 
 export const parseWhonetSearch = (search = "", now = new Date()) => {
   const params = new URLSearchParams(search);
-  const defaults = previousCompleteMonth(now);
+  const requestedSource = params.get("source");
+  const source = SOURCES.has(requestedSource) ? requestedSource : "";
+  const defaults = source
+    ? getWhonetDateRange("THIS_MONTH", now)
+    : previousCompleteMonth(now);
   const requestedSignificance = params.getAll("significance");
   const significance = requestedSignificance.includes("ALL")
     ? [...SIGNIFICANCE_VALUES]
@@ -75,14 +103,17 @@ export const parseWhonetSearch = (search = "", now = new Date()) => {
     pageSize: WHONET_PAGE_SIZES.includes(requestedPageSize)
       ? requestedPageSize
       : 20,
+    source,
   };
 };
 
 export const buildWhonetSearch = (state, now = new Date()) => {
   const draft = new URLSearchParams();
-  ["from", "to", "dedup", "step", "page", "pageSize"].forEach((key) => {
-    if (state[key] != null) draft.set(key, String(state[key]));
-  });
+  ["from", "to", "dedup", "source", "step", "page", "pageSize"].forEach(
+    (key) => {
+      if (state[key] != null) draft.set(key, String(state[key]));
+    },
+  );
   ["specimen", "organism", "origin", "significance"].forEach((key) =>
     values(state[key]).forEach((value) => draft.append(key, value)),
   );
@@ -98,11 +129,43 @@ export const buildWhonetSearch = (state, now = new Date()) => {
   ["includeScreening", "includeUnspecified"].forEach((key) =>
     params.set(key, String(normalized[key])),
   );
-  ["dedup", "step", "page", "pageSize"].forEach((key) =>
+  params.set("dedup", String(normalized.dedup));
+  if (normalized.source) params.set("source", normalized.source);
+  ["step", "page", "pageSize"].forEach((key) =>
     params.set(key, String(normalized[key])),
   );
   return params.toString();
 };
+
+export const getWhonetExportUrlFromWorklist = (
+  worklistState,
+  now = new Date(),
+) => {
+  const currentMonth = getWhonetDateRange("THIS_MONTH", now);
+  const state = {
+    ...parseWhonetSearch("", now),
+    from: validIsoDate(worklistState.from)
+      ? worklistState.from
+      : currentMonth.from,
+    to: validIsoDate(worklistState.to) ? worklistState.to : currentMonth.to,
+    specimen: normalizedValues(worklistState.specimen),
+    organism: normalizedValues(worklistState.organism),
+    origin: normalizedValues(worklistState.origin),
+    significance:
+      normalizedValues(worklistState.significance, SIGNIFICANCE_VALUES).length >
+      0
+        ? normalizedValues(worklistState.significance, SIGNIFICANCE_VALUES)
+        : [...SIGNIFICANCE_VALUES],
+    source: "ast-worklist",
+    step: "configure",
+    page: 1,
+    pageSize: 20,
+  };
+  return `${MICROBIOLOGY_WHONET_PATH}?${buildWhonetSearch(state, now)}`;
+};
+
+export const clearWhonetWorklistScope = (_state, now = new Date()) =>
+  parseWhonetSearch("", now);
 
 export const getWhonetMappingRepairUrl = (
   resource,

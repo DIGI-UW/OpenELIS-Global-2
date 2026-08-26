@@ -19,8 +19,10 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistQuery;
 import org.openelisglobal.microbiology.dao.MicroReviewedAstWorklistRow;
 import org.openelisglobal.microbiology.dao.MicroWorklistContextDAO;
@@ -36,11 +38,13 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -48,6 +52,9 @@ public class MicroWorklistServiceTest {
 
     @Mock
     private MicroCaseDAO caseDAO;
+
+    @Mock
+    private MicroCaseOrderDetailDAO caseOrderDetailDAO;
 
     @Mock
     private MicroIsolateDAO isolateDAO;
@@ -64,6 +71,9 @@ public class MicroWorklistServiceTest {
     @Mock
     private MicroAstPanelDAO panelDAO;
 
+    @Mock
+    private MicroPatientOriginDAO patientOriginDAO;
+
     private MicroWorklistService service;
 
     @Before
@@ -75,7 +85,10 @@ public class MicroWorklistServiceTest {
         when(contextDAO.getFirstInoculationContexts(anyList())).thenReturn(List.of());
         when(contextDAO.getCultureTimingContexts(anyList())).thenReturn(List.of());
         when(panelDAO.getByIds(anyList())).thenReturn(List.of());
-        service = new MicroWorklistServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO, contextDAO, panelDAO);
+        when(caseOrderDetailDAO.getByCaseIds(anyList())).thenReturn(List.of());
+        when(patientOriginDAO.getByCodes(anyList())).thenReturn(List.of());
+        service = new MicroWorklistServiceImpl(caseDAO, caseOrderDetailDAO, isolateDAO, astRunDAO, communicationDAO,
+                contextDAO, panelDAO, patientOriginDAO);
     }
 
     @Test
@@ -103,8 +116,8 @@ public class MicroWorklistServiceTest {
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
         when(communicationDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
-        when(contextDAO.getSpecimenContexts(List.of("sample-1"))).thenReturn(
-                List.of(new MicroWorklistSpecimenContext("sample-1", "LAB-1001", "Mendez, Olivia", "Blood")));
+        when(contextDAO.getSpecimenContexts(List.of("sample-1"))).thenReturn(List.of(
+                new MicroWorklistSpecimenContext("sample-1", "LAB-1001", "Mendez, Olivia", "Blood", null, "blood")));
         when(contextDAO.getLatestActivityContexts(List.of("case-1"))).thenReturn(
                 List.of(new MicroWorklistActivityContext("case-1", lastActivityAt, "7", "Olivia", "Mendez")));
         when(contextDAO.getRecentActivityContexts(List.of("case-1"), 25))
@@ -484,9 +497,73 @@ public class MicroWorklistServiceTest {
                 .argThat(reviewedQuery -> reviewedQuery.offset() == 20 && reviewedQuery.limit() == 10
                         && "BACTERIOLOGY".equals(reviewedQuery.workflow()) && "HIGH".equals(reviewedQuery.urgency())
                         && "LAB-1001".equals(reviewedQuery.search()) && "newest".equals(reviewedQuery.sort())));
+        verify(caseOrderDetailDAO).getByCaseIds(List.of("case-released"));
         verify(caseDAO, never()).getOpenCases();
         verify(isolateDAO, never()).getByCaseIds(anyList());
         verify(astRunDAO, never()).getByIsolateIds(anyList());
+    }
+
+    @Test
+    public void astWorklistAppliesStructuredSurveillanceFiltersAndReturnsReusableOptions() {
+        MicroCase includedCase = microCase("case-included", "sample-1", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.AST_IN_PROGRESS, "ROUTINE");
+        MicroCase excludedCase = microCase("case-excluded", "sample-2", MicroWorkflowType.BACTERIOLOGY,
+                MicroCaseStage.AST_IN_PROGRESS, "ROUTINE");
+        MicroIsolate included = significantIsolate("isolate-1");
+        included.setCaseId("case-included");
+        included.setOrganismId("organism-1");
+        included.setPreliminaryOrganismText("E. coli");
+        MicroIsolate excluded = significantIsolate("isolate-2");
+        excluded.setCaseId("case-excluded");
+        excluded.setOrganismId("organism-2");
+        excluded.setPreliminaryOrganismText("S. aureus");
+        excluded.setSignificance(MicroIsolateSignificance.CONTAMINANT.name());
+        MicroAstRun includedRun = astRun("run-1", "isolate-1", MicroAstRunStatus.RESULTS_IN);
+        MicroAstRun excludedRun = astRun("run-2", "isolate-2", MicroAstRunStatus.RESULTS_IN);
+        MicroCaseOrderDetail includedDetail = orderDetail("case-included", "INPATIENT");
+        MicroCaseOrderDetail excludedDetail = orderDetail("case-excluded", "OUTPATIENT");
+
+        when(caseDAO.getOpenCases()).thenReturn(List.of(includedCase, excludedCase));
+        when(caseDAO.getBySampleItemIds(List.of("sample-1", "sample-2")))
+                .thenReturn(List.of(includedCase, excludedCase));
+        when(isolateDAO.getByCaseIds(List.of("case-included", "case-excluded")))
+                .thenReturn(List.of(included, excluded));
+        when(astRunDAO.getByIsolateIds(List.of("isolate-1", "isolate-2")))
+                .thenReturn(List.of(includedRun, excludedRun));
+        when(communicationDAO.getByCaseIds(List.of("case-included", "case-excluded"))).thenReturn(List.of());
+        when(contextDAO.getSpecimenContexts(List.of("sample-1", "sample-2"))).thenReturn(List.of(
+                new MicroWorklistSpecimenContext("sample-1", "LAB-001", "Ada Lovelace", "Blood",
+                        java.sql.Timestamp.valueOf("2026-07-12 09:00:00"), "blood"),
+                new MicroWorklistSpecimenContext("sample-2", "LAB-002", "Grace Hopper", "Urine",
+                        java.sql.Timestamp.valueOf("2026-06-30 09:00:00"), "urine")));
+        when(caseOrderDetailDAO.getByCaseIds(List.of("case-included", "case-excluded")))
+                .thenReturn(List.of(includedDetail, excludedDetail));
+        when(patientOriginDAO.getByCodes(List.of("INPATIENT", "OUTPATIENT"))).thenReturn(
+                List.of(patientOrigin("INPATIENT", "Inpatient"), patientOrigin("OUTPATIENT", "Outpatient")));
+
+        MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        query.grain = "ast";
+        query.from = "2026-07-01";
+        query.to = "2026-07-31";
+        query.specimen = List.of("blood");
+        query.origin = List.of("INPATIENT");
+        query.organism = List.of("organism-1");
+        query.significance = List.of(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
+
+        MicroWorklistPageForm page = service.getWorklistPage(query);
+
+        assertEquals(1, page.total);
+        assertEquals("run-1", page.rows.get(0).astRunId);
+        assertEquals("blood", page.rows.get(0).specimenTypeId);
+        assertEquals("INPATIENT", page.rows.get(0).patientOrigin);
+        assertEquals("organism-1", page.rows.get(0).organismId);
+        assertEquals(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name(), page.rows.get(0).isolateSignificance);
+        assertEquals(List.of("blood", "urine"),
+                page.filterOptions.specimenTypes.stream().map(option -> option.id).toList());
+        assertEquals(List.of("organism-1", "organism-2"),
+                page.filterOptions.organisms.stream().map(option -> option.id).toList());
+        assertEquals(List.of("Inpatient", "Outpatient"),
+                page.filterOptions.patientOrigins.stream().map(option -> option.label).toList());
     }
 
     private MicroAstRun astRun(String id, String isolateId, MicroAstRunStatus status) {
@@ -513,5 +590,19 @@ public class MicroWorklistServiceTest {
         isolate.setId(id);
         isolate.setSignificance(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
         return isolate;
+    }
+
+    private MicroCaseOrderDetail orderDetail(String caseId, String patientOrigin) {
+        MicroCaseOrderDetail detail = new MicroCaseOrderDetail();
+        detail.setCaseId(caseId);
+        detail.setPatientOrigin(patientOrigin);
+        return detail;
+    }
+
+    private MicroPatientOrigin patientOrigin(String code, String displayName) {
+        MicroPatientOrigin origin = new MicroPatientOrigin();
+        origin.setCode(code);
+        origin.setDisplayName(displayName);
+        return origin;
     }
 }

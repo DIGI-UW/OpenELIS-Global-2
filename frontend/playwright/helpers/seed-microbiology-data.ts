@@ -45,6 +45,7 @@ export interface SeededMicrobiologyCase {
   accessionNumber: string;
   caseId: string;
   sampleItemId: string;
+  collectionDate?: string;
   sampleId: string;
   patientId: string;
   patientExternalId?: string;
@@ -82,6 +83,12 @@ const isReviewedMicrobiologyCase = (
   "astRunId" in seeded &&
   typeof seeded.astRunId === "string" &&
   seeded.astRunId.length > 0;
+
+export interface SeededWhonetWorklistHandoffCase extends SeededReviewedMicrobiologyCase {
+  methodId: string;
+  organismId: string;
+  sampleTypeId: string;
+}
 
 export interface SeededAnalyzerReviewMicrobiologyCase extends SeededReviewedMicrobiologyCase {
   analyzerInstrumentId: string;
@@ -578,7 +585,6 @@ async function seedMicrobiologyWhonetExportScenario(
     unmappedExisting,
     unmappedSignificance,
   );
-  let closedAt = caseDetail.closedAt;
   if (caseDetail.finalReleaseState !== "FINAL_RELEASED") {
     const headers = { "X-CSRF-Token": await getCsrfToken(page) };
     const release = await requireJsonResponse<MicrobiologyReleaseFixture>(
@@ -588,12 +594,16 @@ async function seedMicrobiologyWhonetExportScenario(
         { headers, data: {} },
       ),
     );
-    closedAt = release.closedAt;
+    if (release.closedAt === undefined || release.closedAt === null) {
+      throw new Error("Final M4 fixture is missing its server release time");
+    }
   }
-  if (closedAt === undefined || closedAt === null || closedAt === "") {
-    throw new Error("Final M4 fixture is missing its server release time");
+  if (!reference.collectionDate) {
+    throw new Error("Final M4 fixture is missing its specimen collection time");
   }
-  const exportDate = new Date(closedAt).toISOString().slice(0, 10);
+  const exportDate = new Date(reference.collectionDate)
+    .toISOString()
+    .slice(0, 10);
 
   return {
     ...reference,
@@ -840,6 +850,34 @@ export async function seedReviewedMicrobiologyCase(
     throw new Error("Microbiology AST_REVIEWED scenario is incomplete");
   }
   return seeded;
+}
+
+export async function seedMicrobiologyWhonetWorklistHandoffCase(
+  page: Page,
+): Promise<SeededWhonetWorklistHandoffCase> {
+  const seeded = await seedReviewedMicrobiologyCase(page);
+  if (!seeded.methodId || !seeded.organismId || !seeded.sampleTypeId) {
+    throw new Error("Microbiology AST worklist handoff scenario is incomplete");
+  }
+  await requireJsonResponse(
+    "Set AST worklist surveillance context",
+    await page.request.put(
+      `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/order-detail`,
+      {
+        headers: { "X-CSRF-Token": await getCsrfToken(page) },
+        data: {
+          culturePurpose: "CLINICAL_DIAGNOSTIC",
+          cultureMethodId: seeded.methodId,
+          patientOrigin: "INPATIENT",
+          admissionDate: null,
+          numberOfSets: 1,
+          clinicalHistory: "AST worklist WHONET handoff fixture",
+          antibioticExposure: false,
+        },
+      },
+    ),
+  );
+  return seeded as SeededWhonetWorklistHandoffCase;
 }
 
 export async function seedAnalyzerReviewMicrobiologyCase(

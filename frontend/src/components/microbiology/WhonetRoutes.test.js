@@ -1,6 +1,9 @@
 import {
   buildWhonetSearch,
+  clearWhonetWorklistScope,
   getWhonetMappingRepairUrl,
+  getWhonetDateRange,
+  getWhonetExportUrlFromWorklist,
   parseWhonetSearch,
 } from "./WhonetRoutes";
 
@@ -23,9 +26,89 @@ describe("WhonetRoutes", () => {
       step: "configure",
       page: 1,
       pageSize: 20,
+      source: "",
     });
     expect(buildWhonetSearch(state, now)).toBe(
       "from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&step=configure&page=1&pageSize=20",
+    );
+  });
+
+  it("uses full calendar boundaries for every reporting-period preset", () => {
+    expect(getWhonetDateRange("THIS_MONTH", now)).toEqual({
+      from: "2026-08-01",
+      to: "2026-08-31",
+    });
+    expect(getWhonetDateRange("LAST_MONTH", now)).toEqual({
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+    expect(getWhonetDateRange("THIS_QUARTER", now)).toEqual({
+      from: "2026-07-01",
+      to: "2026-09-30",
+    });
+  });
+
+  it("defaults a worklist-sourced entry without dates to this month", () => {
+    expect(parseWhonetSearch("?source=ast-worklist", now)).toMatchObject({
+      from: "2026-08-01",
+      to: "2026-08-31",
+      source: "ast-worklist",
+    });
+  });
+
+  it("carries only structured surveillance scope from the AST worklist", () => {
+    expect(
+      getWhonetExportUrlFromWorklist(
+        {
+          grain: "ast",
+          from: "2026-08-01",
+          to: "2026-08-31",
+          specimen: ["urine", "blood"],
+          organism: ["organism-2"],
+          origin: ["INPATIENT"],
+          significance: ["NORMAL_FLORA"],
+          status: "results-in",
+          workflow: "BACTERIOLOGY",
+          urgency: "HIGH",
+          q: "LAB-001",
+          sort: "newest",
+          page: 4,
+          pageSize: 50,
+        },
+        now,
+      ),
+    ).toBe(
+      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&specimen=urine&organism=organism-2&origin=INPATIENT&significance=NORMAL_FLORA&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&source=ast-worklist&step=configure&page=1&pageSize=20",
+    );
+  });
+
+  it("preserves an unrestricted worklist significance scope", () => {
+    expect(
+      getWhonetExportUrlFromWorklist(
+        {
+          grain: "ast",
+          from: "2026-08-01",
+          to: "2026-08-31",
+          specimen: [],
+          organism: [],
+          origin: [],
+          significance: [],
+        },
+        now,
+      ),
+    ).toBe(
+      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&significance=CLINICALLY_SIGNIFICANT&significance=CONTAMINANT&significance=NORMAL_FLORA&significance=UNKNOWN&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&source=ast-worklist&step=configure&page=1&pageSize=20",
+    );
+  });
+
+  it("clears worklist provenance and restores direct Reports defaults", () => {
+    const worklistState = parseWhonetSearch(
+      "?from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=NORMAL_FLORA&source=ast-worklist",
+      now,
+    );
+
+    expect(clearWhonetWorklistScope(worklistState, now)).toEqual(
+      parseWhonetSearch("", now),
     );
   });
 
@@ -81,6 +164,7 @@ describe("WhonetRoutes", () => {
       step: "preview",
       page: 3,
       pageSize: 50,
+      source: "",
     });
   });
 

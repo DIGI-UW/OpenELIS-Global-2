@@ -7,6 +7,7 @@ public class MicrobiologyUatScenarioForm {
     public String accessionNumber;
     public String sampleId;
     public String sampleItemId;
+    public String collectionDate;
     public String patientId;
     public String patientExternalId;
     public String caseId;
