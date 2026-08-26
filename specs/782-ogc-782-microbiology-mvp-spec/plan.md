@@ -82,14 +82,12 @@ _GATE: Passed before Phase 0 research. Re-check after Phase 1 design._
 
 ## Clarification Result
 
-The 2026-08-05 source-alignment audit supersedes the earlier claim that all
+The synchronized source-alignment review supersedes the earlier claim that all
 material MVP ambiguity was resolved. Final-case amendment behavior remains
 outside the initial PR but is part of R1; operational TB remains a separate
 feature. The synchronized detailed M-03 source resolves untyped-test fallback and
 mixed bacteriology/TB handling: use a configured default or `UNASSIGNED`, and
-create sibling workflows on one specimen. The complete guided-workflow
-crosswalk is recorded in
-`evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
+create sibling workflows on one specimen.
 
 R1 stores Antibiotic Exposure and Critical Notify as booleans, enforces the
 source bounds of 1-10 sets and 1000 Clinical History characters, and resolves
@@ -136,7 +134,7 @@ sequential stacked PR based on the preceding slice._
 | M5  | `m5-manual-ast`                     | Manual AST setup, immutable ordered-drug snapshot, laboratory technique with derived measurement type, readings, S/I/R interpretation, no-breakpoint handling, repeat/retest, review, and override audit | US3           | Ordered-set persistence/guard tests, technique/measurement derivation and breakpoint interpretation unit tests, AST persistence integration tests, frontend AST interaction tests      | M4                 |
 | M6  | `m6-worklists-critical`             | Shared microbiology worklist, due-action prioritization, sibling visibility, critical communication log, and operational alert surfacing                                                                 | US4, US5      | Worklist filter/sort tests, alert integration tests, critical communication audit tests, accessibility checks                                                                          | M5                 |
 | M7  | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2                                             | US5, US6      | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow                                                                               | M6                 |
-| R1  | `r1-authoritative-alignment`        | Repair implementation and artifact drift across M-03, M-04, M-05, M-07, M-12, and applicable M-NFR outcomes; establish source-to-code-to-UAT traceability                                                | US1, US8-US11 | Focused service/controller/component tests, registered configured-navigation Playwright, desktop/mobile source comparison, source-scale/a11y qualification, and separate Grist stories | M10 follow-on head |
+| R1  | `r1-authoritative-alignment`        | Repair implementation and artifact drift across M-03, M-04, M-05, M-07, M-12, and applicable M-NFR outcomes                                                                                              | US1, US8-US11 | Focused service/controller/component tests, registered configured-navigation Playwright, desktop/mobile source comparison, and source-scale/accessibility qualification                 | M10 follow-on head |
 
 R1 treats breakpoint provenance as a lifecycle invariant: a found generic
 standard rule is recorded as `STANDARD`, while `NONE` is reserved for an absent
@@ -314,13 +312,12 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   the worklist consumes the maximum day and first inoculation timestamp through
   bounded service projections. Missing values deliberately produce the source
   stage-label fallback.
-- Keep Macro Library as a separate cross-cutting feature stack and review
-  deployment. Microbiology carries only a small consumer integration after the
-  macro feature is independently accepted.
+- Keep Macro Library as a separate cross-cutting feature stack. Microbiology
+  carries only a small consumer integration after the macro feature is
+  independently accepted.
 - Validate each source acceptance slice with focused JUnit 4/service or
-  controller evidence, Carbon interaction tests, registered Playwright, visual
-  comparison, and a separate Grist story. Human UAT remains distinct from
-  automation.
+  controller tests, Carbon interaction tests, registered Playwright, visual
+  comparison, and proportional accessibility/performance checks.
 - Treat the M-NFR offline behavior as an application-wide state-management
   dependency. Do not add a microbiology-only cache, replay queue, or conflict
   resolver; T266 remains open until a reusable OpenELIS pattern is selected and

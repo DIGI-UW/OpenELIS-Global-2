@@ -53,8 +53,6 @@ not binding technical requirements.
   `specs/roadmaps/analyzer-microbiology-engineering-crosswalk.md`
 - Local product cleanup list:
   `specs/roadmaps/microbiology-spec-health-cleanup-list.md`
-- Authoritative alignment and complete guided-workflow crosswalk:
-  `evidence/openelis-work-authoritative-alignment-2026-08-05.md`
 
 ## Interpretation Rules for Planning
 

@@ -5,16 +5,15 @@
 **Prerequisites**: `spec.md`, `plan.md`, `research.md`, `data-model.md`,
 `contracts/microbiology-openapi.yaml`, `quickstart.md`
 
-**Tests**: Mandatory. Each implementation phase starts with failing tests or
-test plans before implementation. Runtime Playwright evidence is required for
-UI work and for final MVP acceptance. The implementation must also use the
+**Tests**: Mandatory. Each milestone starts with failing tests or test plans
+before implementation. Runtime Playwright evidence is required for UI milestones
+and final MVP acceptance. Each implementation stack layer must also use the
 `DIGI-UW/code-qa` skill suite for meaningful test coverage, spec-code alignment,
 simplicity review, and evidence bundling.
 
-**Organization**: M1-M7 are sequential validation blocks inside the consolidated
-MVP implementation PR #3789. Clinical completeness, reference administration,
-WHONET export, and each remediation slice form one official linear follow-on
-stack. The phase history below maps back to the user stories in `spec.md`.
+**Organization**: M1-M7 are sequential validation blocks grouped into four
+native stack layers: M1-M3, M4-M5, M6, and M7 plus MVP closure. Later remediation
+is delivered as one coherent behavior slice per stacked PR.
 
 ## Format: `[ID] [P?] [Milestone] Description`
 
@@ -22,8 +21,8 @@ stack. The phase history below maps back to the user stories in `spec.md`.
 - **[M#]**: Milestone from `plan.md`.
 - Every implementation task names the intended file path.
 - Complete and validate one milestone block before beginning its dependent block.
-- M1-M7 remain inside #3789; each post-MVP behavior slice retains its own
-  stacked PR and acceptance gate.
+- Update the stack layer that owns each block; do not create one PR per internal
+  milestone.
 
 ## Milestone Dependency Graph
 
@@ -35,16 +34,12 @@ graph LR
     M4 --> M5["M5: Manual AST"]
     M5 --> M6["M6: Worklists + Critical"]
     M6 --> M7["M7: Release + Surveillance Readiness"]
-    M7 --> M8["M8: Clinical Completeness"]
-    M8 --> M9["M9: Reference Administration"]
-    M9 --> M10["M10: WHONET Export"]
-    M10 --> R1["R1: Authoritative Alignment"]
 ```
 
 ## Phase 1: M1 - Catalog + Reference Foundations
 
-**Branch**:
-`feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations`
+**Delivery PR**: #3789, on
+`feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`
 
 **Goal**: Add the minimum configuration/reference foundation for routine
 bacteriology routing, culture setup defaults, organism/antibiotic lookup, AST
@@ -56,34 +51,34 @@ workflow UI is required.
 
 ### Tests First
 
-- [x] T001 [M1] Create branch `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations` from `spec/782-ogc-782-microbiology-mvp-spec` in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T002 [P] [M1] Add failing JUnit 4 service tests for workflow-type validation and culture recipe lookup in `src/test/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceServiceTest.java`.
-- [x] T003 [P] [M1] Add failing JUnit 4 service tests for breakpoint lookup including no-breakpoint behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroBreakpointServiceTest.java`.
-- [x] T004 [P] [M1] Add failing DAO/integration tests for organism, antibiotic, AST panel, and breakpoint persistence in `src/test/java/org/openelisglobal/microbiology/MicrobiologyReferenceDataIntegrationTest.java`.
-- [x] T005 [P] [M1] Add failing ORM validation test for new microbiology reference valueholders in `src/test/java/org/openelisglobal/microbiology/MicrobiologyOrmValidationTest.java`.
-- [x] T006 [P] [M1] Add failing Test Catalog regression tests for saving and loading culture workflow configuration in `src/test/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorMicrobiologyTest.java`.
+- [X] T001 [M1] Confirm the current worktree is on PR #3789's delivery branch and that its base is `spec/782-ogc-782-microbiology-mvp-spec`.
+- [X] T002 [P] [M1] Add failing JUnit 4 service tests for workflow-type validation and culture recipe lookup in `src/test/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceServiceTest.java`.
+- [X] T003 [P] [M1] Add failing JUnit 4 service tests for breakpoint lookup including no-breakpoint behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroBreakpointServiceTest.java`.
+- [X] T004 [P] [M1] Add failing DAO/integration tests for organism, antibiotic, AST panel, and breakpoint persistence in `src/test/java/org/openelisglobal/microbiology/MicrobiologyReferenceDataIntegrationTest.java`.
+- [X] T005 [P] [M1] Add failing ORM validation test for new microbiology reference valueholders in `src/test/java/org/openelisglobal/microbiology/MicrobiologyOrmValidationTest.java`.
+- [X] T006 [P] [M1] Add failing Test Catalog regression tests for saving and loading culture workflow configuration in `src/test/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorMicrobiologyTest.java`.
 
 ### Implementation
 
-- [x] T007 [M1] Add workflow-type configuration and microbiology reference tables in `src/main/resources/liquibase/3.5.x.x/051-microbiology-reference-foundations.xml`.
-- [x] T008 [P] [M1] Add `MicroWorkflowType` enum in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroWorkflowType.java`.
-- [x] T009 [P] [M1] Add reference valueholders for organisms, antibiotics, AST panels, and breakpoint standards in `src/main/java/org/openelisglobal/microbiology/valueholder/`.
-- [x] T010 [P] [M1] Add DAO interfaces for microbiology reference valueholders in `src/main/java/org/openelisglobal/microbiology/dao/`.
-- [x] T011 [P] [M1] Add DAO implementations for microbiology reference valueholders in `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
-- [x] T012 [M1] Add `MicrobiologyReferenceService` and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceServiceImpl.java`.
-- [x] T013 [M1] Add `MicroBreakpointService` and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointServiceImpl.java`.
-- [x] T014 [M1] Extend Test Catalog DTO/load/save behavior for culture workflow configuration in `src/main/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorRestController.java`.
-- [x] T015 [P] [M1] Add React Intl source keys for M1 admin fields in `frontend/src/languages/en.json`.
-- [x] T016 [P] [M1] Add Test Catalog microbiology field rendering and validation in `frontend/src/components/admin/testCatalog/sections/BasicInfoSection.jsx`.
-- [x] T017 [P] [M1] Add frontend tests for Test Catalog microbiology fields in `frontend/src/components/admin/testCatalog/sections/BasicInfoSection.test.jsx`.
-- [x] T018 [M1] Run focused backend validation `mvn -Dtest=MicrobiologyReferenceServiceTest,MicroBreakpointServiceTest,MicrobiologyReferenceDataIntegrationTest,MicrobiologyOrmValidationTest,TestCatalogEditorMicrobiologyTest test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T019 [M1] Run focused frontend validation `cd frontend && npm test -- BasicInfoSection.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T020 [M1] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T021 [M1] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m1-catalog-reference-foundations` to `spec/782-ogc-782-microbiology-mvp-spec` with validation evidence and link it from PR #3782.
+- [X] T007 [M1] Add workflow-type configuration and microbiology reference tables in `src/main/resources/liquibase/3.5.x.x/<next-available>-microbiology-reference-foundations.xml`, include it explicitly from `src/main/resources/liquibase/3.5.x.x/base.xml`, and provide rollback.
+- [X] T008 [P] [M1] Add `MicroWorkflowType` enum in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroWorkflowType.java`.
+- [X] T009 [P] [M1] Add reference valueholders for organisms, antibiotics, AST panels, and breakpoint standards in `src/main/java/org/openelisglobal/microbiology/valueholder/`.
+- [X] T010 [P] [M1] Add DAO interfaces for microbiology reference valueholders in `src/main/java/org/openelisglobal/microbiology/dao/`.
+- [X] T011 [P] [M1] Add DAO implementations for microbiology reference valueholders in `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
+- [X] T012 [M1] Add `MicrobiologyReferenceService` and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicrobiologyReferenceServiceImpl.java`.
+- [X] T013 [M1] Add `MicroBreakpointService` and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointServiceImpl.java`.
+- [X] T014 [M1] Extend Test Catalog DTO/load/save behavior for culture workflow configuration in `src/main/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorRestController.java`.
+- [X] T015 [P] [M1] Add React Intl source keys for M1 admin fields in `frontend/src/languages/en.json`.
+- [X] T016 [P] [M1] Add Test Catalog microbiology field rendering and validation in `frontend/src/components/admin/testCatalog/sections/BasicInfoSection.jsx`.
+- [X] T017 [P] [M1] Add frontend tests for Test Catalog microbiology fields in `frontend/src/components/admin/testCatalog/sections/BasicInfoSection.test.jsx`.
+- [X] T018 [M1] Run focused backend validation `mvn -q -Dtest='MicrobiologyReferenceServiceTest,MicroBreakpointServiceTest,MicrobiologyReferenceDataIntegrationTest,MicrobiologyOrmValidationTest,TestCatalogEditorMicrobiologyTest' test` from the repository root.
+- [X] T019 [M1] Run focused frontend validation `cd frontend && npm test -- --runInBand BasicInfoSection.test.jsx` from the repository root.
+- [X] T020 [M1] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from the repository root.
+- [X] T021 [M1] Update the foundations/order layer with M1 validation evidence and mark the block complete before starting M2.
 
 ## Phase 2: M2 - Case Core
 
-**Branch**: `feat/782-ogc-782-microbiology-mvp-m2-case-core`
+**Delivery PR**: foundations and order routing (#3789)
 
 **Goal**: Add backend case identity, activity timeline, isolate lifecycle, and
 case DTO compilation anchored to `SampleItem + workflow`.
@@ -94,31 +89,31 @@ on lazy loading in controllers.
 
 ### Tests First
 
-- [x] T022 [M2] Create branch `feat/782-ogc-782-microbiology-mvp-m2-case-core` from the M1 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T023 [P] [M2] Add failing service tests for case creation, uniqueness, and sibling lookup in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseServiceTest.java`.
-- [x] T024 [P] [M2] Add failing service tests for case state transitions and invalid transition rejection in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseStateServiceTest.java`.
-- [x] T025 [P] [M2] Add failing service tests for isolate lifecycle rules in `src/test/java/org/openelisglobal/microbiology/service/MicroIsolateServiceTest.java`.
-- [x] T026 [P] [M2] Add failing DAO/integration tests for case, activity, and isolate persistence in `src/test/java/org/openelisglobal/microbiology/MicroCaseIntegrationTest.java`.
-- [x] T027 [P] [M2] Add failing controller DTO compilation test that verifies case detail JSON without controller relationship traversal in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
-- [x] T028 [P] [M2] Add architecture regression check for no `@Transactional` annotations in microbiology controllers in `src/test/java/org/openelisglobal/microbiology/MicrobiologyArchitectureTest.java`.
+- [X] T022 [M2] Continue on the foundations/order layer after M1 is complete and validated.
+- [X] T023 [P] [M2] Add failing service tests for case creation, uniqueness, and sibling lookup in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseServiceTest.java`.
+- [X] T024 [P] [M2] Add failing service tests for case state transitions and invalid transition rejection in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseStateServiceTest.java`.
+- [X] T025 [P] [M2] Add failing service tests for isolate lifecycle rules in `src/test/java/org/openelisglobal/microbiology/service/MicroIsolateServiceTest.java`.
+- [X] T026 [P] [M2] Add failing DAO/integration tests for case, activity, and isolate persistence in `src/test/java/org/openelisglobal/microbiology/MicroCaseIntegrationTest.java`.
+- [X] T027 [P] [M2] Add failing controller DTO compilation test that verifies case detail JSON without controller relationship traversal in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
+- [X] T028 [P] [M2] Add architecture regression check for no `@Transactional` annotations in microbiology controllers in `src/test/java/org/openelisglobal/microbiology/MicrobiologyArchitectureTest.java`.
 
 ### Implementation
 
-- [x] T029 [M2] Add case core tables and constraints in `src/main/resources/liquibase/3.5.x.x/052-microbiology-case-core.xml`.
-- [x] T030 [P] [M2] Add `MicroCase`, `MicroCaseActivity`, and `MicroIsolate` valueholders in `src/main/java/org/openelisglobal/microbiology/valueholder/`.
-- [x] T031 [P] [M2] Add case, activity, and isolate DAO interfaces in `src/main/java/org/openelisglobal/microbiology/dao/`.
-- [x] T032 [P] [M2] Add case, activity, and isolate DAO implementations in `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
-- [x] T033 [M2] Add case service contracts in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseService.java`, `MicroCaseStateService.java`, and `MicroIsolateService.java`.
-- [x] T034 [M2] Add case service implementations with service-layer transactions in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseServiceImpl.java`, `MicroCaseStateServiceImpl.java`, and `MicroIsolateServiceImpl.java`.
-- [x] T035 [M2] Add case forms/DTOs in `src/main/java/org/openelisglobal/microbiology/form/MicroCaseDetailForm.java`, `MicroCaseActivityForm.java`, and `MicroIsolateForm.java`.
-- [x] T036 [M2] Add read-only case REST controller in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
-- [x] T037 [M2] Run focused backend validation `mvn -q -Dtest='MicroCaseServiceTest,MicroCaseStateServiceTest,MicroIsolateServiceTest,MicroCaseIntegrationTest,MicroCaseRestControllerTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T038 [M2] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T039 [M2] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m2-case-core` to the M1 stacked branch with validation evidence and link it from PR #3782.
+- [X] T029 [M2] Add case core tables and constraints in `src/main/resources/liquibase/3.5.x.x/<next-available>-microbiology-case-core.xml`, include it explicitly from `src/main/resources/liquibase/3.5.x.x/base.xml`, and provide rollback.
+- [X] T030 [P] [M2] Add `MicroCase`, `MicroCaseActivity`, and `MicroIsolate` valueholders in `src/main/java/org/openelisglobal/microbiology/valueholder/`.
+- [X] T031 [P] [M2] Add case, activity, and isolate DAO interfaces in `src/main/java/org/openelisglobal/microbiology/dao/`.
+- [X] T032 [P] [M2] Add case, activity, and isolate DAO implementations in `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
+- [X] T033 [M2] Add case service contracts in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseService.java`, `MicroCaseStateService.java`, and `MicroIsolateService.java`.
+- [X] T034 [M2] Add case service implementations with service-layer transactions in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseServiceImpl.java`, `MicroCaseStateServiceImpl.java`, and `MicroIsolateServiceImpl.java`.
+- [X] T035 [M2] Add case forms/DTOs in `src/main/java/org/openelisglobal/microbiology/form/MicroCaseDetailForm.java`, `MicroCaseActivityForm.java`, and `MicroIsolateForm.java`.
+- [X] T036 [M2] Add read-only case REST controller in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
+- [X] T037 [M2] Run focused backend validation `mvn -q -Dtest='MicroCaseServiceTest,MicroCaseStateServiceTest,MicroIsolateServiceTest,MicroCaseIntegrationTest,MicroCaseRestControllerTest,MicrobiologyArchitectureTest' test` from the repository root.
+- [X] T038 [M2] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from the repository root.
+- [X] T039 [M2] Update the foundations/order layer with M2 validation evidence and mark the block complete before starting M3.
 
 ## Phase 3: M3 - Order Routing
 
-**Branch**: `feat/782-ogc-782-microbiology-mvp-m3-order-routing`
+**Delivery PR**: foundations and order routing (#3789)
 
 **Goal**: Create or find microbiology cases from ordered test workflow
 configuration during order/sample save.
@@ -129,26 +124,26 @@ without duplicate accessioning.
 
 ### Tests First
 
-- [x] T040 [M3] Create branch `feat/782-ogc-782-microbiology-mvp-m3-order-routing` from the M2 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T041 [P] [M3] Add failing routing resolver unit tests in `src/test/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceTest.java`.
-- [x] T042 [P] [M3] Add failing order-save integration tests for non-micro, bacteriology, and sibling workflow cases in `src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIntegrationTest.java`.
-- [x] T043 [P] [M3] Add failing idempotency integration test for repeated order saves in `src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIdempotencyTest.java`.
-- [x] T044 [P] [M3] Add failing controller/contract test for case lookup by accession/sample item in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseLookupRestControllerTest.java`.
+- [X] T040 [M3] Continue on the foundations/order layer after M2 is complete and validated.
+- [X] T041 [P] [M3] Add failing routing resolver unit tests in `src/test/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceTest.java`.
+- [X] T042 [P] [M3] Add failing order-save integration tests for non-micro, bacteriology, and sibling workflow cases in `src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIntegrationTest.java`.
+- [X] T043 [P] [M3] Add failing idempotency integration test for repeated order saves in `src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIdempotencyTest.java`.
+- [X] T044 [P] [M3] Add failing controller/contract test for case lookup by accession/sample item in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseLookupRestControllerTest.java`.
 
 ### Implementation
 
-- [x] T045 [M3] Add routing service contract in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingService.java`.
-- [x] T046 [M3] Implement order routing service in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java`.
-- [x] T047 [M3] Wire routing from the existing order/sample save integration point in `src/main/java/org/openelisglobal/sample/service/SamplePatientEntryServiceImpl.java`.
-- [x] T048 [M3] Add case lookup endpoint and DTO support in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java` and `src/main/java/org/openelisglobal/microbiology/form/MicroCaseLookupForm.java`.
-- [x] T049 [M3] Add configuration error handling for missing culture workflow/method defaults in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java`.
-- [x] T050 [M3] Run focused backend validation `mvn -q -Dtest='MicroOrderRoutingServiceTest,MicroOrderRoutingIntegrationTest,MicroOrderRoutingIdempotencyTest,MicroCaseLookupRestControllerTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T051 [M3] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T052 [M3] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m3-order-routing` to the M2 stacked branch with validation evidence and link it from PR #3782.
+- [X] T045 [M3] Add routing service contract in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingService.java`.
+- [X] T046 [M3] Implement order routing service in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java`.
+- [X] T047 [M3] Wire routing from the existing order/sample save integration point in `src/main/java/org/openelisglobal/sample/service/SampleServiceImpl.java`.
+- [X] T048 [M3] Add case lookup endpoint and DTO support in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java` and `src/main/java/org/openelisglobal/microbiology/form/MicroCaseLookupForm.java`.
+- [X] T049 [M3] Add configuration error handling for missing culture workflow/method defaults in `src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java`.
+- [X] T050 [M3] Run focused backend validation `mvn -q -Dtest='MicroOrderRoutingServiceTest,MicroOrderRoutingIntegrationTest,MicroOrderRoutingIdempotencyTest,MicroCaseLookupRestControllerTest' test` from the repository root.
+- [X] T051 [M3] Run formatting and migration hygiene checks `mvn spotless:apply && git diff --check` from the repository root.
+- [X] T052 [M3] Complete the foundations/order layer and begin the workbench/AST layer only after focused validation passes.
 
 ## Phase 4: M4 - Case Workbench
 
-**Branch**: `feat/782-ogc-782-microbiology-mvp-m4-case-workbench`
+**Delivery PR**: `feat/782-ogc-782-microbiology-mvp-workbench-ast`
 
 **Goal**: Provide REST and React case workbench surfaces for setup,
 incubation/growth/no-growth/rejection events, isolate creation/update, and case
@@ -160,33 +155,33 @@ timeline updates.
 
 ### Tests First
 
-- [x] T053 [M4] Create branch `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` from the M3 stacked branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T054 [P] [M4] Run `/plan-record-playwright --flows microbiology-case-workbench` and record the planned route, setup data, assertions, and project target in `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`.
-- [x] T055 [P] [M4] Add failing MockMvc tests for activity creation and isolate creation in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
-- [x] T056 [P] [M4] Add failing React interaction tests for case detail loading and setup event save in `frontend/src/components/microbiology/__tests__/MicrobiologyCaseView.test.jsx`.
-- [x] T057 [P] [M4] Add failing React interaction tests for isolate creation/update in `frontend/src/components/microbiology/__tests__/IsolatePanel.test.jsx`.
-- [x] T058 [P] [M4] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project core-app` to create a red Playwright test for routed case setup and isolate creation.
+- [X] T053 [M4] Start the workbench/AST layer after M3 is complete and validated.
+- [X] T054 [P] [M4] Run `/plan-record-playwright --flows microbiology-case-workbench` and record the planned route, setup data, assertions, and project target in `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`.
+- [X] T055 [P] [M4] Add failing MockMvc tests for activity creation and isolate creation in `src/test/java/org/openelisglobal/microbiology/controller/MicroCaseRestControllerTest.java`.
+- [X] T056 [P] [M4] Add failing React interaction tests for case detail loading and setup event save in `frontend/src/components/microbiology/__tests__/MicrobiologyCaseView.test.jsx`.
+- [X] T057 [P] [M4] Add failing React interaction tests for isolate creation/update in `frontend/src/components/microbiology/__tests__/IsolatePanel.test.jsx`.
+- [X] T058 [P] [M4] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project core-app` to create a red Playwright test for routed case setup and isolate creation.
 
 ### Implementation
 
-- [x] T059 [M4] Add activity mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
-- [x] T060 [M4] Add isolate mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroIsolateRestController.java`.
-- [x] T061 [P] [M4] Add frontend API client functions in `frontend/src/components/microbiology/MicrobiologyService.js`.
-- [x] T062 [P] [M4] Add case page route in `frontend/src/pages/MicrobiologyPage.jsx` and `frontend/src/App.jsx`.
-- [x] T063 [M4] Add case view shell and context header in `frontend/src/components/microbiology/MicrobiologyCaseView.jsx`.
-- [x] T064 [M4] Add timeline and setup activity panel in `frontend/src/components/microbiology/CaseTimelinePanel.jsx`.
-- [x] T065 [M4] Add isolate panel in `frontend/src/components/microbiology/IsolatePanel.jsx`.
-- [x] T066 [P] [M4] Add React Intl keys for case workbench UI in `frontend/src/languages/en.json`.
-- [x] T067 [M4] Register `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` in `frontend/playwright.config.ts`.
-- [x] T068 [M4] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T069 [M4] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts`.
-- [x] T070 [M4] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
-- [x] T071 [M4] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseRestControllerTest,MicroCaseLookupRestControllerTest,MicrobiologyArchitectureTest' test` and `cd frontend && npm test -- MicrobiologyCaseView.test.jsx IsolatePanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T072 [M4] Open draft PR for `feat/782-ogc-782-microbiology-mvp-m4-case-workbench` to the M3 stacked branch with TDD and Playwright evidence and link it from PR #3782.
+- [X] T059 [M4] Add activity mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCaseRestController.java`.
+- [X] T060 [M4] Add isolate mutation endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroIsolateRestController.java`.
+- [X] T061 [P] [M4] Add frontend API client functions in `frontend/src/components/microbiology/MicrobiologyService.js`.
+- [X] T062 [P] [M4] Add case page route in `frontend/src/pages/MicrobiologyPage.jsx` and `frontend/src/App.jsx`.
+- [X] T063 [M4] Add case view shell and context header in `frontend/src/components/microbiology/MicrobiologyCaseView.jsx`.
+- [X] T064 [M4] Add timeline and setup activity panel in `frontend/src/components/microbiology/CaseTimelinePanel.jsx`.
+- [X] T065 [M4] Add isolate panel in `frontend/src/components/microbiology/IsolatePanel.jsx`.
+- [X] T066 [P] [M4] Add React Intl keys for case workbench UI in `frontend/src/languages/en.json`.
+- [X] T067 [M4] Register `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` in `frontend/playwright.config.ts`.
+- [X] T068 [M4] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` from the repository root.
+- [X] T069 [M4] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-case-workbench.spec.ts`.
+- [X] T070 [M4] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
+- [X] T071 [M4] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseRestControllerTest' test && cd frontend && npm test -- --runInBand MicrobiologyCaseView.test.jsx IsolatePanel.test.jsx` from the repository root.
+- [X] T072 [M4] Update the workbench/AST layer with M4 TDD and Playwright evidence before starting M5.
 
 ## Phase 5: M5 - Manual AST
 
-**Branch**: `feat/782-ogc-782-microbiology-mvp-m5-manual-ast`
+**Delivery PR**: `feat/782-ogc-782-microbiology-mvp-workbench-ast`
 
 **Goal**: Add manual AST setup, readings, S/I/R interpretation, no-breakpoint
 handling, repeat/retest, review, and override audit.
@@ -197,34 +192,34 @@ unreviewed.
 
 ### Tests First
 
-- [x] T073 [M5] Create branch `feat/782-ogc-782-microbiology-mvp-m5-manual-ast` from the M4 stack branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T074 [P] [M5] Add failing AST interpretation unit tests for MIC, zone, no-breakpoint, and override behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroAstInterpretationServiceTest.java`.
-- [x] T075 [P] [M5] Add failing AST persistence integration tests for runs, readings, repeat/retest, and review state in `src/test/java/org/openelisglobal/microbiology/MicroAstIntegrationTest.java`.
-- [x] T076 [P] [M5] Add failing readiness service tests proving unreviewed AST blocks final release in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseReadinessServiceTest.java`.
-- [x] T077 [P] [M5] Add failing React interaction tests for AST entry, interpretation display, and override reason validation in `frontend/src/components/microbiology/__tests__/AstEntryPanel.test.jsx`.
-- [x] T078 [P] [M5] Use `/write-playwright-test frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project core-demo` to create a red Playwright test for manual AST entry and override audit.
+- [X] T073 [M5] Continue on the workbench/AST layer after M4 is complete and validated.
+- [X] T074 [P] [M5] Add failing AST interpretation unit tests for MIC, zone, no-breakpoint, and override behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroAstInterpretationServiceTest.java`.
+- [X] T075 [P] [M5] Add failing AST persistence integration tests for runs, readings, repeat/retest, and review state in `src/test/java/org/openelisglobal/microbiology/MicroAstIntegrationTest.java`.
+- [X] T076 [P] [M5] Add failing readiness service tests proving unreviewed AST blocks final release in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseReadinessServiceTest.java`.
+- [X] T077 [P] [M5] Add failing React interaction tests for AST entry, interpretation display, and override reason validation in `frontend/src/components/microbiology/__tests__/AstEntryPanel.test.jsx`.
+- [X] T078 [P] [M5] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-manual-ast.spec.ts --project core-app` to create a red Playwright test for manual AST entry and override audit.
 
 ### Implementation
 
-- [x] T079 [M5] Add AST tables and rollback in `src/main/resources/liquibase/3.5.x.x/053-microbiology-manual-ast.xml`.
-- [x] T080 [P] [M5] Add AST valueholders in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroAstRun.java` and `src/main/java/org/openelisglobal/microbiology/valueholder/MicroAstReading.java`.
-- [x] T081 [P] [M5] Add AST DAO interfaces and implementations in `src/main/java/org/openelisglobal/microbiology/dao/` and `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
-- [x] T082 [M5] Add AST service contracts in `src/main/java/org/openelisglobal/microbiology/service/MicroAstService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroAstInterpretationService.java`.
-- [x] T083 [M5] Implement AST services in `src/main/java/org/openelisglobal/microbiology/service/MicroAstServiceImpl.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroAstInterpretationServiceImpl.java`.
-- [x] T084 [M5] Add AST REST controller and forms in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroAstRestController.java` and `src/main/java/org/openelisglobal/microbiology/form/`.
-- [x] T085 [M5] Add readiness service contract and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseReadinessService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroCaseReadinessServiceImpl.java`.
-- [x] T086 [M5] Add AST entry panel in `frontend/src/components/microbiology/AstEntryPanel.jsx`.
-- [x] T087 [P] [M5] Add React Intl keys for AST UI in `frontend/src/languages/en.json`.
-- [x] T088 [M5] Register `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` in `frontend/playwright.config.ts`.
-- [x] T089 [M5] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T090 [M5] Run selector-policy audit for `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` and address findings.
-- [x] T091 [M5] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo` and attach screenshot/video results to the PR.
-- [x] T092 [M5] Run focused backend/frontend validation `mvn -q -Dtest='MicroAstInterpretationServiceTest,MicroAstIntegrationTest,MicroCaseReadinessServiceTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test && cd frontend && npm test -- MicrobiologyCaseView.test.jsx IsolatePanel.test.jsx AstEntryPanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T093 [M5] Open draft PR #3787 for `feat/782-ogc-782-microbiology-mvp-m5-manual-ast` to the M4 stack branch with TDD and Playwright evidence.
+- [X] T079 [M5] Add AST tables in `src/main/resources/liquibase/3.5.x.x/<next-available>-microbiology-manual-ast.xml`, include it explicitly from `src/main/resources/liquibase/3.5.x.x/base.xml`, and provide rollback.
+- [X] T080 [P] [M5] Add AST valueholders in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroAstRun.java` and `src/main/java/org/openelisglobal/microbiology/valueholder/MicroAstReading.java`.
+- [X] T081 [P] [M5] Add AST DAO interfaces and implementations in `src/main/java/org/openelisglobal/microbiology/dao/` and `src/main/java/org/openelisglobal/microbiology/daoimpl/`.
+- [X] T082 [M5] Add AST service contracts in `src/main/java/org/openelisglobal/microbiology/service/MicroAstService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroAstInterpretationService.java`.
+- [X] T083 [M5] Implement AST services in `src/main/java/org/openelisglobal/microbiology/service/MicroAstServiceImpl.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroAstInterpretationServiceImpl.java`.
+- [X] T084 [M5] Add AST REST controller and forms in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroAstRestController.java` and `src/main/java/org/openelisglobal/microbiology/form/`.
+- [X] T085 [M5] Add readiness service contract and implementation in `src/main/java/org/openelisglobal/microbiology/service/MicroCaseReadinessService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroCaseReadinessServiceImpl.java`.
+- [X] T086 [M5] Add AST entry panel in `frontend/src/components/microbiology/AstEntryPanel.jsx`.
+- [X] T087 [P] [M5] Add React Intl keys for AST UI in `frontend/src/languages/en.json`.
+- [X] T088 [M5] Register `frontend/playwright/tests/foundational/core/microbiology-manual-ast.spec.ts` in `frontend/playwright.config.ts`.
+- [X] T089 [M5] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/foundational/core/microbiology-manual-ast.spec.ts` from the repository root.
+- [X] T090 [M5] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-manual-ast.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-manual-ast.spec.ts`.
+- [X] T091 [M5] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-manual-ast.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
+- [X] T092 [M5] Run focused backend/frontend validation `mvn -q -Dtest='MicroAstInterpretationServiceTest,MicroAstIntegrationTest,MicroCaseReadinessServiceTest' test && cd frontend && npm test -- --runInBand AstEntryPanel.test.jsx` from the repository root.
+- [X] T093 [M5] Complete the workbench/AST layer and begin the operations layer only after focused validation passes.
 
 ## Phase 6: M6 - Worklists + Critical Communications
 
-**Branch**: `feat/782-ogc-782-microbiology-mvp-m6-worklists-critical`
+**Delivery PR**: `feat/782-ogc-782-microbiology-mvp-worklist-critical`
 
 **Goal**: Add shared worklist filtering/prioritization, sibling visibility,
 critical communication logging, and existing Alert dashboard surfacing.
@@ -235,37 +230,36 @@ directory data.
 
 ### Tests First
 
-- [x] T094 [M6] Create branch `feat/782-ogc-782-microbiology-mvp-m6-worklists-critical` from the M5 stack branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T095 [P] [M6] Add failing worklist service tests for due-action sorting, urgency, sibling visibility, and review flags in `src/test/java/org/openelisglobal/microbiology/service/MicroWorklistServiceTest.java`.
-- [x] T096 [P] [M6] Cover seeded in-flight worklist behavior through `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts`.
-- [x] T097 [P] [M6] Add failing critical communication service tests for recipient free text, ack state, follow-up, and immutable message behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationServiceTest.java`.
-- [x] T098 [P] [M6] Record engineering decision: generic `Alert` currently requires numeric entity ids, so M6 surfaces critical communication through the microbiology worklist rather than forcing UUID cases into the alert table.
-- [x] T099 [P] [M6] Add failing React interaction tests for worklist filters and critical communication logging in `frontend/src/components/microbiology/__tests__/MicrobiologyWorklist.test.jsx` and `frontend/src/components/microbiology/__tests__/CriticalCommunicationPanel.test.jsx`.
-- [x] T100 [P] [M6] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project core-app` to create a red Playwright test for worklist navigation and critical communication logging.
+- [X] T094 [M6] Start the worklist/critical layer after M5 is complete and validated.
+- [X] T095 [P] [M6] Add failing worklist service tests for due-action sorting, urgency, sibling visibility, and review flags in `src/test/java/org/openelisglobal/microbiology/service/MicroWorklistServiceTest.java`.
+- [X] T096 [P] [M6] Add failing worklist integration test with at least 200 seeded in-flight cases in `src/test/java/org/openelisglobal/microbiology/MicroWorklistIntegrationTest.java`.
+- [X] T097 [P] [M6] Add failing critical communication service tests for recipient free text, ack state, follow-up, and immutable correction behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationServiceTest.java`.
+- [X] T098 [P] [M6] Add failing Alert integration tests for microbiology critical alert creation and filtering in `src/test/java/org/openelisglobal/microbiology/MicroCriticalAlertIntegrationTest.java`.
+- [X] T099 [P] [M6] Add failing React interaction tests for worklist filters and critical communication logging in `frontend/src/components/microbiology/__tests__/MicrobiologyWorklist.test.jsx` and `frontend/src/components/microbiology/__tests__/CriticalCommunicationPanel.test.jsx`.
+- [X] T100 [P] [M6] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project core-app` to create a red Playwright test for worklist navigation and critical communication logging.
 
 ### Implementation
 
-- [x] T101 [M6] Add critical communication table migration in `src/main/resources/liquibase/3.5.x.x/054-microbiology-worklists-critical.xml`.
-- [x] T102 [P] [M6] Add critical communication valueholder in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroCriticalCommunication.java`.
-- [x] T103 [P] [M6] Add critical communication DAO interface and implementation in `src/main/java/org/openelisglobal/microbiology/dao/MicroCriticalCommunicationDAO.java` and `src/main/java/org/openelisglobal/microbiology/daoimpl/MicroCriticalCommunicationDAOImpl.java`.
-- [x] T104 [M6] Add worklist service in `src/main/java/org/openelisglobal/microbiology/service/MicroWorklistService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroWorklistServiceImpl.java`.
-- [x] T105 [M6] Add critical communication service in `src/main/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationServiceImpl.java`.
-- [x] T106 [M6] Add worklist and critical communication REST endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroWorklistRestController.java` and `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCriticalCommunicationRestController.java`.
-- [x] T107 [M6] Preserve generic Alert untouched; carry separate engineering follow-up if alert polymorphic ids need UUID/string support.
-- [x] T108 [P] [M6] Add worklist UI in `frontend/src/components/microbiology/MicrobiologyWorklist.jsx`.
-- [x] T109 [P] [M6] Add critical communication UI in `frontend/src/components/microbiology/CriticalCommunicationPanel.jsx`.
-- [x] T110 [P] [M6] Add React Intl keys for worklist and critical communication UI in `frontend/src/languages/en.json`.
-- [x] T111 [M6] Register `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` in `frontend/playwright.config.ts`.
-- [x] T112 [M6] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T113 [M6] Run selector-policy audit for `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` and address findings.
-- [x] T114 [M6] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app` and attach results to the PR.
-- [x] T115 [M6] Run focused backend/frontend validation `mvn -q -Dtest='MicroWorklistServiceTest,MicroCriticalCommunicationServiceTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test && cd frontend && npm test -- MicrobiologyWorklist.test.jsx CriticalCommunicationPanel.test.jsx MicrobiologyCaseView.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T116 [M6] Open draft PR #3788 for `feat/782-ogc-782-microbiology-mvp-m6-worklists-critical` to the M5 stack branch with TDD and Playwright evidence.
+- [X] T101 [M6] Add the critical communication table and alert type migration in `src/main/resources/liquibase/3.5.x.x/<next-available>-microbiology-worklists-critical.xml`, include it explicitly from `src/main/resources/liquibase/3.5.x.x/base.xml`, and provide rollback.
+- [X] T102 [P] [M6] Add critical communication valueholder in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroCriticalCommunication.java`.
+- [X] T103 [P] [M6] Add critical communication DAO interface and implementation in `src/main/java/org/openelisglobal/microbiology/dao/MicroCriticalCommunicationDAO.java` and `src/main/java/org/openelisglobal/microbiology/daoimpl/MicroCriticalCommunicationDAOImpl.java`.
+- [X] T104 [M6] Add worklist service in `src/main/java/org/openelisglobal/microbiology/service/MicroWorklistService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroWorklistServiceImpl.java`.
+- [X] T105 [M6] Add critical communication service in `src/main/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationServiceImpl.java`.
+- [X] T106 [M6] Add worklist and critical communication REST endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroWorklistRestController.java` and `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCriticalCommunicationRestController.java`.
+- [X] T107 [M6] Add microbiology alert enum support in `src/main/java/org/openelisglobal/alert/valueholder/AlertType.java`.
+- [X] T108 [P] [M6] Add worklist UI in `frontend/src/components/microbiology/MicrobiologyWorklist.jsx`.
+- [X] T109 [P] [M6] Add critical communication UI in `frontend/src/components/microbiology/CriticalCommunicationPanel.jsx`.
+- [X] T110 [P] [M6] Add React Intl keys for worklist and critical communication UI in `frontend/src/languages/en.json`.
+- [X] T111 [M6] Register `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` in `frontend/playwright.config.ts`.
+- [X] T112 [M6] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` from the repository root.
+- [X] T113 [M6] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts`.
+- [X] T114 [M6] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
+- [X] T115 [M6] Run focused backend/frontend validation `mvn -q -Dtest='MicroWorklistServiceTest,MicroWorklistIntegrationTest,MicroCriticalCommunicationServiceTest,MicroCriticalAlertIntegrationTest' test && cd frontend && npm test -- --runInBand MicrobiologyWorklist.test.jsx CriticalCommunicationPanel.test.jsx` from the repository root.
+- [X] T116 [M6] Complete the worklist/critical layer and begin release/reporting only after focused validation passes.
 
 ## Phase 7: M7 - Release + Surveillance Readiness
 
-**Branch**:
-`feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`
+**Delivery PR**: `feat/782-ogc-782-microbiology-mvp-release-reporting`
 
 **Goal**: Add preliminary/final release readiness gates, visible patient-report
 handoff, final-case mutation locking, WHONET readiness, and final MVP
@@ -277,14 +271,14 @@ WHONET readiness; incomplete cases show blockers.
 
 ### Tests First
 
-- [x] T117 [M7] Create branch `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` from the M6 stack branch in `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T118 [P] [M7] Add release service tests for preliminary release, final release blockers, and release history in `src/test/java/org/openelisglobal/microbiology/service/MicroReportReleaseServiceTest.java`.
-- [x] T119 [P] [M7] Add WHONET readiness tests for missing organism, AST review, and mapping readiness in `src/test/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessServiceTest.java`.
-- [x] T120 [P] [M7] Add readiness regression coverage proving cases without isolates cannot final-release in `src/test/java/org/openelisglobal/microbiology/service/MicroCaseReadinessServiceTest.java`.
-- [x] T121 [P] [M7] Add React interaction tests for readiness blockers and release actions in `frontend/src/components/microbiology/__tests__/ReportReadinessPanel.test.jsx`.
-- [x] T122 [P] [M7] Update `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md` with the final release-readiness MVP flow and evidence commands.
-- [x] T123 [P] [M7] Extend the existing canonical MVP demo `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` to prove final release gating and release state.
-- [x] T124 [P] [M7] Keep the existing `core-demo` / `core-demo-video` proof path instead of adding duplicate demo specs.
+- [X] T117 [M7] Start the release/reporting layer after M6 is complete and validated.
+- [X] T118 [P] [M7] Add failing release service tests for preliminary release, final release blockers, and release history in `src/test/java/org/openelisglobal/microbiology/service/MicroReportReleaseServiceTest.java`.
+- [X] T119 [P] [M7] Add failing WHONET readiness tests for missing organism, antibiotic, specimen, and breakpoint mappings in `src/test/java/org/openelisglobal/microbiology/service/MicroWhonetReadinessServiceTest.java`.
+- [X] T120 [P] [M7] Add failing integration tests for final release handoff to existing result/reporting infrastructure in `src/test/java/org/openelisglobal/microbiology/MicroReportReleaseIntegrationTest.java`.
+- [X] T121 [P] [M7] Add failing React interaction tests for readiness blockers and release actions in `frontend/src/components/microbiology/__tests__/ReportReadinessPanel.test.jsx`.
+- [X] T122 [P] [M7] Update `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md` with the final release-readiness MVP flow and evidence commands.
+- [X] T123 [P] [M7] Extend the existing canonical MVP demo `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` to prove final release gating and release state.
+- [X] T124 [P] [M7] Keep the existing `core-demo` and `core-demo-video` proof path instead of adding duplicate demo specs.
 
 ### Implementation
 
@@ -297,25 +291,22 @@ WHONET readiness; incomplete cases show blockers.
 - [x] T131 [P] [M7] Include WHONET readiness status in `frontend/src/components/microbiology/ReportReadinessPanel.jsx`.
 - [x] T132 [P] [M7] Add React Intl keys for release and WHONET readiness UI in `frontend/src/languages/en.json`.
 - [x] T133 [M7] Reuse the registered canonical MVP spec `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` for M7.
-- [x] T134 [M7] Run Playwright registration validation with `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
+- [x] T134 [M7] Run Playwright registration validation with `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` from the repository root.
 - [x] T135 [M7] Run selector-policy audit for `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` and address findings.
 - [x] T136 [M7] Run narrow functional Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo` and attach screenshot/trace results to the PR.
 - [x] T137 [M7] Run demo Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo` and attach screenshot/trace results to the PR.
 - [x] T138 [M7] Run video evidence command `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo-video` and verify `frontend/test-results/*/video.webm` exists.
 - [x] T139 [M7] Debug failed Playwright runs with screenshot/trace evidence and fix source/test issues in `frontend/playwright/tests/` and `frontend/src/components/microbiology/`.
-- [x] T140 [M7] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseReadinessServiceTest,MicroReportReleaseServiceTest,MicroWhonetReadinessServiceTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test && cd frontend && npm test -- ReportReadinessPanel.test.jsx MicrobiologyCaseView.test.jsx AstEntryPanel.test.jsx` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T141 [M7] Run final documentation consistency update in `specs/782-ogc-782-microbiology-mvp-spec/tasks.md`, `specs/782-ogc-782-microbiology-mvp-spec/playwright-plan.md`, and `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.md`.
-- [x] T142 [M7] Open draft PR #3789 for `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` to the M6 stack branch with TDD, Playwright trace/screenshot, and demo video evidence linked from PR #3782.
+- [x] T140 [M7] Run focused backend/frontend validation `mvn -q -Dtest='MicroCaseReadinessServiceTest,MicroReportReleaseServiceTest,MicroWhonetReadinessServiceTest,MicrobiologyArchitectureTest,MicrobiologyOrmValidationTest' test && cd frontend && npm test -- ReportReadinessPanel.test.jsx MicrobiologyCaseView.test.jsx AstEntryPanel.test.jsx` from the repository root.
+- [x] T141 [M7] Keep the durable feature plan, Playwright plan, and roadmap consistent with implemented behavior.
+- [x] T142 [M7] Update the release/reporting layer with M7 TDD and generated Playwright review evidence.
 
 ## Phase 8: MVP-Gap Remediation (FR-002, M-11, M-05)
 
-**Branch**: `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`
-(same held branch as M7; not a new milestone branch — held for one combined
-MVP delivery per
-`specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-gap-analysis-2026-07-03.md`).
+**Delivery PR**: `feat/782-ogc-782-microbiology-mvp-release-reporting`.
 
 **Goal**: Close the three confirmed MVP-scope gaps identified by the gap
-analysis before merging #3789: FR-002 order-detail capture, M-11 Alerts
+analysis before reviewing the complete MVP stack: FR-002 order-detail capture, M-11 Alerts
 Dashboard integration (reconciling FR-018), and M-05 per-run
 breakpoint-standard selection.
 
@@ -327,7 +318,7 @@ breakpoint-standard selection.
 - [x] T160 [P] Add failing routing-overload tests for order-detail pass-through in `src/test/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceTest.java`.
 - [x] T161 [P] Add failing frontend tests for `OrderDetailPanel` in `frontend/src/components/microbiology/__tests__/OrderDetailPanel.test.jsx`.
 - [x] T162 Add `micro_case_order_detail` table in `src/main/resources/liquibase/3.5.x.x/055-microbiology-order-detail.xml`; add `MicroCaseOrderDetail` valueholder, DAO, `MicroCaseOrderDetailService`, controller endpoint, `OrderDetailPanel.jsx`, and `MicrobiologyService.saveOrderDetail`; register the entity in `persistence/persistence.xml` and `persistence/test-persistence.xml`.
-- [x] T163 Wire an optional order-detail overload on `MicroOrderRoutingService.routeAnalysesForSampleItem` so order entry can supply it atomically with case creation without changing the existing 3-arg signature. The historical workbench-only scoping decision was superseded by T191 after the order form boundary was validated.
+- [x] T163 Wire an optional order-detail overload on `MicroOrderRoutingService.routeAnalysesForSampleItem` so a future order-entry integration can supply it atomically with case creation, without changing the existing 3-arg signature. Document the deliberate scoping decision (legacy `SamplePatientEntryServiceImpl` order-entry flow is not threaded through this session) in the gap-analysis doc.
 
 ### M-11: Alerts Dashboard integration (reconciles FR-018)
 
@@ -352,35 +343,32 @@ breakpoint-standard selection.
 ## Final MVP Acceptance Gate
 
 **Purpose**: Prove the full implemented MVP (M1-M7 core + FR-002/M-11/M-05 gap
-remediation) behaves as specified before merging the held #3789.
+remediation) behaves as specified before the MVP stack is merged.
 
-- [x] T143 [MVP] Run the complete focused backend suite `mvn -q -Dtest='Micro*Test,*Micro*IntegrationTest,AlertServiceTest,FreezerAlertServiceTest,AlertFlowIntegrationTest,QCAlertServiceTest,QCAlertServiceIntegrationTest,EQAAlertRestControllerTest' test` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`. Passed: 24 microbiology + alert test classes, 0 failures.
-- [x] T144 [MVP] Run the complete focused frontend suite `cd frontend && npx vitest run Microbiology AlertsDashboard` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2/frontend`. Passed: 8 test files, 19 tests.
-- [x] T145 [MVP] Validate the real registered microbiology Playwright specs. `frontend/playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` validates via `python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts` (run from `frontend/`), matching `core-app`/`core-demo`/`core-demo-video`. The two `foundational/core/` specs (`microbiology-case-workbench.spec.ts`, `microbiology-worklist-critical.spec.ts`) register via the `CORE_FOUNDATIONAL_TESTS` glob (`**/foundational/core/**/*.spec.ts`) in `frontend/playwright.config.ts`, which `validate-playwright-project.py` does not recognize as a named testMatch constant (pre-existing script limitation, not specific to microbiology); confirmed registration by inspecting `playwright.config.ts` directly instead. (Note: manual-AST and release-readiness coverage live inside the `ogc-782-microbiology-mvp.spec.ts` demo per the M7 code-qa spec-alignment note; there are no separate `microbiology-manual-ast.spec.ts` / `microbiology-mvp-release-readiness.spec.ts` / `microbiology-mvp-demo.spec.ts` files.)
-- [x] T146 [MVP] Ran all microbiology foundational Playwright evidence with `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-*.spec.ts --project=core-app` against a real dev stack (WAR rebuilt, containers up, all 3 new Liquibase migrations applied). 3 passed. Also ran the demo spec on `core-demo` (2 passed). During this run, fixed two pre-existing stale Playwright selectors (`microbiology-case-workbench.spec.ts`, `microbiology-worklist-critical.spec.ts` expected raw enum text like `SETUP_RECORDED`/`OPEN` where the UI renders formatted labels like `Setup Recorded`/`Open`) and one pre-existing production bug discovered by the demo spec's final-release step (see `evidence/mvp-gap-analysis-2026-07-03.md` "Discovered during acceptance gate" section): `MicroReportReleaseServiceImpl.releaseFinal` required a `MicroCase.stage` state-machine transition that nothing in the isolate/AST flow ever satisfies; fixed to set `stage` directly once readiness passes, matching `releasePreliminary`.
+- [x] T143 [MVP] Run the focused backend suite for microbiology and its Alert integration from the repository root.
+- [x] T144 [MVP] Run the focused frontend suite for Microbiology and the Alerts dashboard from the repository root.
+- [x] T145 [MVP] Validate that the foundational and canonical MVP Playwright journeys are registered in their intended projects.
+- [x] T146 [MVP] Run the registered foundational and demo Playwright journeys against a real application stack and correct behavior or selector defects they expose.
 - [x] T147 [MVP] Run all microbiology demo Playwright evidence with `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo`.
 - [x] T148 [MVP] Record final MVP video evidence with `cd frontend && npm run pw:test -- playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts --project=core-demo-video`.
-- [x] T149 [MVP] Record final Playwright screenshots, video evidence, and code-qa evidence bundle in `specs/782-ogc-782-microbiology-mvp-spec/evidence/mvp-checkpoint-2026-06-27.md`.
-- [x] T150 [MVP] Run `mvn spotless:apply` plus targeted frontend Prettier for touched microbiology files from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T151 [MVP] Run `git diff --check` from `/Users/pmanko/.codex/worktrees/1c9d/OpenELIS-Global-2`.
-- [x] T152 [MVP] Verify `DIGI-UW/code-qa` is installed or available as a skill source from `https://github.com/DIGI-UW/code-qa` before final MVP acceptance.
-- [x] T153 [MVP] Apply the `meaningful-test-coverage` workflow from `DIGI-UW/code-qa` against the implemented microbiology MVP and record which backend, frontend, and E2E tests satisfy the inversion test in the M7 PR.
+- [x] T149 [MVP] Generate Playwright screenshots, traces, and video as external review artifacts; do not commit binary evidence.
+- [x] T150 [MVP] Run `mvn spotless:apply` plus targeted frontend Prettier for touched microbiology files from the repository root.
+- [x] T151 [MVP] Run `git diff --check` from the repository root.
+- [x] T152 [MVP] Initialize the repository-pinned `tools/code-qa` submodule and verify its reviewed revision before final MVP acceptance.
+- [x] T153 [MVP] Apply the `meaningful-test-coverage` workflow from `DIGI-UW/code-qa` against the implemented microbiology MVP and record which backend, frontend, and E2E tests satisfy the inversion test in the relevant stack layers.
 - [x] T154 [MVP] Apply the `spec-code-alignment` workflow from `DIGI-UW/code-qa` against `specs/782-ogc-782-microbiology-mvp-spec/` and the implemented code, then update lagging specs or file defects for real code divergence.
 - [x] T155 [MVP] Apply the `simplicity-review` workflow from `DIGI-UW/code-qa` against the MVP diff and remove or explicitly justify speculative abstractions, duplicate exporters, duplicate alert surfaces, or unused configuration.
-- [x] T156 [MVP] Run the `evidence-bundle` workflow from `DIGI-UW/code-qa` after the final `core-demo-video` Playwright run and record the generated text report plus manually shared media links for the M7 PR and parent PR #3782.
+- [x] T156 [MVP] Run the `evidence-bundle` workflow from `DIGI-UW/code-qa` after the final demo journey and attach its output to the relevant pull request.
 
-## Phase 9: Navigation, Stable URLs, And UAT Readiness
+## Phase 9: Navigation And Stable URLs
 
 **Goal**: Make Microbiology discoverable through configured navigation,
-preserve deterministic page state, and publish the matching deployed-review
-checklist through the Grist-backed UAT harness.
+and preserve deterministic page state.
 
 - [x] T178 [MVP] Define primary-navigation discovery and bookmarkable worklist/case state in `spec.md`.
 - [x] T179 [MVP] Register the Microbiology menu through `volume/menu/menu_config.json` and add canonical worklist/case routes with legacy redirects.
 - [x] T180 [P] [MVP] Add focused React tests for route composition, filter persistence, case-section state, and worklist return context.
 - [x] T181 [MVP] Extend `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` to prove configured navigation and canonical URL behavior in the registered `core-app` project.
-- [x] T182 [MVP] Update the OGC-782 `amr` checklist in Grist with ten product-focused steps covering navigation, stable page state, case work, isolate/AST workflow, report propagation, and the shared-specimen case.
-- [x] T183 [MVP] Verify `https://amr.openelis-global.org/__review/uat-amr.json` and the rendered AMR `Review` overlay with Playwright; record the deployment caveat in `evidence/uat-review-harness-2026-07-24.md`.
 
 ## Phase 10: Worklist UX Remediation And M-07 Scope Check
 
@@ -390,169 +378,47 @@ explicit product decisions or V2 scope.
 
 - [x] T184 [MVP] Add a compact-viewport layout test and make the Microbiology sidenav default closed on compact screens while retaining locked desktop navigation and saved user preferences.
 - [x] T185 [MVP] Add a Playwright mobile regression for contained table scrolling; correct the Carbon table-container sizing so the page does not horizontally overflow.
-- [x] T186 [MVP] Capture and inspect stable desktop/mobile worklist screenshots, rerun the registered worklist/critical Playwright journey, and record the comparison in `evidence/worklist-ux-follow-up-2026-07-28.md`.
-- [x] T187 [Superseded] The pinned OpenELIS Work M-07 source makes the culture/AST-run switch, richer queue context, resistance strip, and recent activity required behavior. Phase 14 now carries deterministic implementation and evidence tasks; no separate product ruling remains.
+- [x] T186 [MVP] Inspect stable desktop/mobile worklist screenshots and rerun the registered worklist/critical Playwright journey.
+- [ ] T187 [V2 clarification] Obtain a product ruling on whether M-07's culture/AST-run switch, richer queue context, resistance strip, and recent activity are future user workflows. Keep timer, transport, schema, and component proposals out of the resulting product wording.
 
-## Phase 11: Deployed UAT Fixture Integrity
+## Phase 11: Service-Created Scenario Fixtures
 
-**Goal**: Deploy the merge candidate and make its live UAT data reproducible
-without bypassing OpenELIS application services.
+**Goal**: Make browser-test and demo data reproducible without bypassing
+OpenELIS application services.
 
-- [x] T188 [MVP] Replace the review-tooling AMR SQL seed with authenticated, property-gated `MicrobiologyUatScenarioService` provisioning; prove repeated runs return the same accession and case identifiers.
-- [x] T189 [MVP] Deploy OpenELIS and review tooling, verify the exact application SHA, canonical worklist and case URLs, desktop and compact layouts, live ten-step Grist overlay, and deterministic service-created case; record results and remaining issues in `evidence/live-deployment-2026-07-28.md`.
+- [x] T188 [MVP] Provide authenticated, property-gated `MicrobiologyUatScenarioService` provisioning and prove repeated runs return the same accession and case identifiers.
 
-## Phase 12: Deterministic MVP Closure And Human Acceptance
+## Phase 12: Deterministic MVP Closure
 
-**Goal**: Correct CI evidence, close the remaining product-story gaps, reconcile
-scope claims, deploy the exact candidate, and keep automated prechecks distinct
-from Piotr's human UAT ruling.
+**Goal**: Close remaining implemented-story gaps and reconcile durable scope
+claims.
 
 - [x] T190 [MVP] Correct service-created fixture status handling and replace backend-only report inspection in the canonical Playwright flow with visible navigation and assertions on the patient-results page.
-- [x] T191 [MVP] Historical partial repair: show microbiology order details when workflow metadata is already present and submit them through the sample-entry service path. This mounted only in legacy `/SamplePatientEntry`, omitted required Method/control/default behavior, and did not preserve workflow metadata in supported Add Order. It is superseded by Phase 14.
+- [x] T191 [MVP] Show reusable microbiology order-detail fields only when a selected test routes to a culture workflow, preserve workflow metadata through order selection, and submit the details through the existing sample-entry service path.
 - [x] T192 [MVP] Compile patient, accession, and specimen context inside the case service transaction; keep it visible in the workbench; capture media/bottle, incubation, and atmosphere explicitly in the existing activity record.
 - [x] T193 [MVP] Expose existing projected Result identifiers to critical communication and link the report workflow to the visible patient-results page without adding schema.
 - [x] T194 [MVP] Pass focused backend and frontend tests for the story-closure slice; run Spotless, Prettier, focused source ESLint, and `git diff --check`.
-- [x] T195 [MVP] Record the historical reconciliation checkpoint. Its M-03 resolution and aggregate parity claims are superseded by the current OpenELIS Work alignment audit and Phase 14.
-- [x] T196 [MVP] Align the live Grist checklist with the current behavior contract and verify the AMR Review overlay renders the corresponding required stories and steps.
-- [x] T202 [MVP] Repair service-layer UAT data and workflow defects found by the canonical journey: complete patient demographics, add selectable sample/test mapping and localization, normalize blank optional organism identifiers, perform preliminary projection before Result-target communication, return a named conflict for final-case writes, and cover the changes with focused backend/frontend tests.
+- [x] T195 [MVP] Reconcile the feature spec, implementation plan, task ledger, and scope rulings for amendment, TB, reagent, WHONET, performance, and report proof.
+- [x] T202 [MVP] Repair service-created scenario data and workflow defects found by the canonical journey: complete patient demographics, add selectable sample/test mapping and localization, normalize blank optional organism identifiers, perform preliminary projection before Result-target communication, return a named conflict for final-case writes, and cover the changes with focused backend/frontend tests.
 - [x] T203 [MVP] Repair full-suite fixture isolation after legacy tests remove shared statuses and active methods: resolve or provision the minimum reference data through services with generated identifiers, and cover stale-cache and polluter ordering behavior.
-- [ ] T197 [MVP] Deploy the exact rewritten #3789 candidate plus compatible review tooling to `amr.openelis-global.org` and pass the deployment identity and health guard.
-- [ ] T198 [MVP] Run registered deployed Playwright pre-UAT journeys for order routing, worklist state, case setup, isolate/AST, critical communication, final lock, and visible patient-report propagation; retain stable screenshots and trace evidence.
-- [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target in #3789 until evidence exists.
-- [ ] T200 [Human UAT] Piotr records Pass/Fail/N/A plus notes for the required Review-overlay stories. Optional reflection steps cannot block acceptance, and automation cannot complete this task.
-- [ ] T201 [MVP] Update PR #3789 with final scope, V2 exclusions, test/evidence links, UAT rulings, deployment identity, and one-shot required-check status.
+- [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target until evidence exists.
 
-## Phase 13: Follow-On Stack Status
+## R1 Authoritative Alignment
 
-- [x] T205 [M2] Implement clinical completeness and NFR qualification in `specs/782-ogc-782-microbiology-m8-clinical-completeness/`; PR and human acceptance remain separate gates.
-- [x] T206 [M3] Implement reference and mapping administration in `specs/782-ogc-782-microbiology-m9-reference-mapping-admin/`; PR and human acceptance remain separate gates.
-- [ ] T207 [M4] Complete the manual WHONET export acceptance gate in `specs/782-ogc-782-microbiology-m10-whonet-export/tasks.md`; implementation and PR exist, while deployed validation and human UAT remain separate open gates.
-
-## Phase 14: R1 Authoritative Alignment Remediation
-
-**Branch**:
-`feat/782-ogc-782-microbiology-r1-authoritative-alignment`
-
-**Base**: `feat/782-ogc-782-microbiology-m10-whonet-export`
-
-**Goal**: Restore the authoritative M-03 Program/order-entry behavior on the
-supported Add Order workflow, correct downstream completion claims, and prove
-the same behavior through implementation, automated evidence, visual review,
-and a separate Grist UAT story.
-
-**Independent Test**: Starting from configured Add Order navigation, a reviewer
-selects a culture-capable test, sees Program become Microbiology, confirms the
-required/defaulted Culture Method and complete details controls, saves, and
-opens exactly one resulting case containing those details.
-
-### Authority And Tests First
-
-- [x] T208 [R1] Create `feat/782-ogc-782-microbiology-r1-authoritative-alignment` from the verified M10 head in an isolated worktree.
-- [x] T209 [R1] Synchronize the OpenELIS Work source and add the source-to-code-to-UAT crosswalk in `evidence/openelis-work-authoritative-alignment-2026-08-05.md`.
-- [x] T210 [P] [R1] Add selector/state tests proving modern order selection retains culture workflow and Method metadata for direct and panel-selected tests.
-- [x] T211 [P] [R1] Add React interaction tests using Carbon-accessible roles for Program derivation, required/defaulted Culture Method, Patient Origin selection, bounded Number of Sets, Clinical History, Antibiotic Exposure checkbox, Critical Notify checkbox, discard confirmation, and manual Program fallback.
-- [ ] T212 [P] [R1] Complete service/controller integration coverage proving the supported order save persists details atomically, creates one case, and returns the details through case compilation without SQL fixtures or fixed primary keys. Service-created fixtures, JSON binding, transaction-level routing/detail/idempotency, Sample-owned draft persistence, order-search projection, rollback/ORM behavior, and routing consumption after reload are covered; a complete `SamplePatientEntryService.persistData` or REST save-path integration test remains open.
-- [x] T213 [P] [R1] Replace the legacy-route order-entry Playwright shortcut with a `core-app` journey through `/order/enter`; cover durable culture details and one-case routing, non-culture exclusion, removal confirmation, and bacteriology/TB sibling cases without arbitrary waits.
-
-### Implementation
-
-- [x] T214 [R1] Preserve complete workflow/Method metadata in the modern `SampleTestSection` selected-test model for direct and panel selections.
-- [x] T215 [R1] Derive the visible Microbiology Program from selected test workflows through shared order state and surface a named configuration error when the Program cannot be resolved by stable identity.
-- [x] T216 [R1] Integrate reusable Carbon microbiology detail controls into the supported Program/order flow with required/defaulted Method and the product-safe control semantics in FR-002.
-- [x] T217 [R1] Confirm before discarding entered microbiology details when the final culture test is removed or a manual Program change would leave the culture workflow. Focused Carbon interaction tests and the registered discard Playwright story cover the behavior.
-- [x] T218 [R1] Submit modern order details through the existing service-layer order-save path and prove idempotent case/detail persistence. Coverage includes typed values, source bounds, default `TestMethod` resolution, service-created routing fixtures, Sample-owned draft persistence across entry and collection, order-search projection, and exactly-one-case routing. The direct `SamplePatientEntryService.persistData` integration test remains tracked by T212.
-- [x] T219 [R1] Make the legacy compatibility flow retain the same complete selected-test metadata and consume the shared detail controls without creating a second implementation.
-- [x] T220 [P] [R1] Add or update English React Intl source keys only and use existing Carbon components/tokens without a package upgrade.
-
-### Artifact, UAT, And Evidence Synchronization
-
-- [x] T221 [R1] Reconcile `spec.md`, `plan.md`, `tasks.md`, the engineering crosswalk, gap analysis, scope rulings, mock comparison, and human UAT contract to the synchronized OpenELIS Work authority and corrected status vocabulary.
-- [x] T222 [R1] Publish a separate M-03 Grist story with concise steps for Program derivation, controls/defaults, save-to-case, non-culture behavior, and discard confirmation; verify that it renders independently in the live overlay. Navigation remains covered by the existing baseline story.
-- [x] T223 [R1] Run focused Vitest coverage for modern order state, Program controls, selected-test metadata, and worklist interaction.
-- [x] T224 [R1] Run focused JUnit 4 fixture, ORM, and PostgreSQL update/rollback/reapply checks for the order path and schema corrections.
-- [x] T225 [R1] Validate and audit the registered Playwright spec, then run the narrow `core-app` journey using locator readiness and web assertions only.
-- [x] T226 [R1] Capture and manually compare stable desktop/mobile M-03 and M-07 screenshots against the synchronized OpenELIS Work sources; document intentional differences in `evidence/mock-comparison-r1-2026-08-06.md` and the complete touched-surface comparison in T270.
-- [x] T228 [R1] Run Spotless, targeted Prettier/ESLint, relevant builds, migration/Hibernate XML validation, and `git diff --check` before commit.
-- [ ] T229 [R1] Deploy the exact remediation candidate with compatible review tooling to `amr.openelis-global.org`; verify health, supported routes, application identity, checklist content, and overlay rendering.
-- [ ] T230 [Human UAT] Piotr records Pass/Fail/N/A and notes for every required M-03 story step against the exact deployed revisions. Automation cannot complete this task.
-- [x] T231 [R1] Push the branch and open official stacked PR #4004 targeting `feat/782-ogc-782-microbiology-m10-whonet-export`; its body records scope, open evidence/UAT gates, and the separate Macro follow-on boundary.
-- [ ] T232 [Follow-up] Correct the M-03 v1/v2 visual, fallback, mixed-workflow, duplicate-text, and implementation-leakage issues in a separate `DIGI-UW/openelis-work` product-source PR.
-- [ ] T233 [Follow-up] Extract Macro Library core/runtime/administration into its own PR and UAT stack; retain only microbiology consumer integration in a small integration PR and review it on a separate macro deployment when available.
-- [x] T284 [R1] Replace the hardcoded M-03 Patient Origin choices with deployment reference data and default from the requesting location when configured; add service/component/Playwright evidence and keep the stored value stable for WHONET mapping. Migration `085` seeds the six ruled values with generated UUIDs and rollback coverage; the authenticated reference API exposes active stable codes plus WHONET codes; order-detail writes reject free text; order entry and the case panel share the same Carbon control. The source does not define how a ward implies an origin, so an explicit optional Organization-to-origin mapping is the deterministic engineering default and unmapped locations remain blank. Focused service/controller tests, five Carbon component interactions, ORM validation, PostgreSQL update/rollback/reapply, and all five registered order-entry Playwright tests passed on 2026-08-06; the latter ran in 24.5 seconds without arbitrary waits.
-- [ ] T285 [Macro dependency] After T274 provides the separate Macro Library base, integrate its `clinical` category into M-03 Clinical History without moving macro administration or runtime ownership into the microbiology PR.
-- [x] T286 [R1] Add the M-01 Phase 1A read-only Patient Origin list under Microbiology Reference Data, reusing the shared section registry, Carbon table, canonical query state, service/DAO paging, and admin permission. The list displays stable code, name, WHONET code, and status without create/edit/deactivate controls; full CRUD remains Phase 1B. Focused service/controller, ORM, and 26 Carbon interactions pass; the complete registered reference-admin Playwright file passes 7/7 in 26.0 seconds without arbitrary waits. M-01's “5th sidenav item” wording is stale implementation guidance because the current shell also contains Breakpoint Standards and Culture Methods; discoverability and behavior are authoritative, not ordinal position.
-- [x] T287 [R1] Correct AST breakpoint provenance discovered by the complete T286 browser run: a found generic standard rule now records `STANDARD`, while only a genuinely absent rule records `NONE` and blocks review. Add focused JUnit 4 regression coverage and retain the service-created Playwright fixtures; do not bypass the clinical review gate with fixture-only overrides.
-
-### M-04 Case Workbench Alignment
-
-- [x] T234 [R1] Add focused service/controller and React tests for visible `UNASSIGNED` classification, early-case workflow change, required reason and compatible Method, result-preservation warning, final-release block, and audit history (`cfbdb9025`).
-- [x] T235 [R1] Implement the inline Change Workflow action and hold profile-dependent work while a case is unassigned; add durable state only where the existing model cannot preserve the required history (`cfbdb9025`).
-- [x] T236 [R1] Add sibling-case links in the case header with live workflow/stage context and state-preserving navigation (`cfbdb9025`).
-- [x] T237 [R1] Replace generic setup activity entry with explicit Start inoculation/Add subculture behavior, parent lineage, barcode-ready identifiers, automatic timeline projection, and shared reagent-lot selection (`131ba1471`).
-- [x] T238 [R1] Restrict Timeline manual entry to notes/observations and project automatic domain/audit events without creating a duplicate history system. Typed events remain AUTO, and Add note stores an INTERNAL SampleItem Note with stable case subject through the existing audited Note service (`131ba1471`, `cf8ac8c21`).
-- [x] T239 [R1] Complete two-pass isolate behavior: Gram/colony preliminary data, identified status with method/confidence/significance, disabled AST until identification, preliminary report projection, and edit versus post-final reidentify actions (`14164589f`).
-- [x] T240 [R1] Add header/isolate critical entry points and reuse the existing NCE/rejection workflow for Report NCE and Mark lost; do not introduce microbiology-only NCE storage. The case now defaults ordinary reports to configured Pre-analytical context and shows the linked NCE count (`28669ef18`, `b2ad1013a`, `f7aa5e20e`, `8e3337870`, `a41ad5617`). Exact-SHA deployed execution and separate human UAT remain in T242.
-- [x] T241 [R1] Focus the case on its deterministic current step, complete collapsed one-line order/origin/location/sets/exposure context with clinical history first when expanded, resolve the last activity actor for display, and add the sticky stage-appropriate action area without duplicating progress state (`f3f1f3a4f`, `a41ad5617`).
-- [x] T242 [R1] Add registered Playwright and separate Grist stories for classification, sibling navigation, setup/subculture, timeline notes, isolate identification, critical entry points, NCE/lost specimen, and final-lock behavior. The service-created classification journey (`a10a2d13e`), primary/subculture/Note journey (`131ba1471`, `cf8ac8c21`), two-pass isolate/AST-gating journey (`14164589f`), current-step journey (`f3f1f3a4f`), and NCE/lost journey (`8e3337870`) remain registered in `core-app`; the live picker now separates classification, culture progression, isolate/exception, and communication/release stories. Exact deployed browser navigation through the SHA-scoped R1 case passed; human UAT remains T273.
-
-### M-05 AST Alignment
-
-- [x] T243 [R1] Add failing service and React tests for ordered-panel provenance, panel/version and standard/version snapshots, technique-derived units, and matched-breakpoint display. Ordered-panel and immutable version snapshots are implemented in `92fb708c8`; `b0dd23456` adds persisted reading source/matched basis/units, Carbon display, and explicit no-breakpoint guidance. `72ef3b152` models disk diffusion, VITEK 2, Phoenix, Etest, and broth microdilution as laboratory techniques, derives MIC/zone measurement type on the server, performs technique-first breakpoint lookup with an explicit legacy fallback, and adds migration `075` with PostgreSQL update/rollback coverage. `dd7e63216` exposes `measurementType` on reading responses while retaining `method` only as a deprecated compatibility alias. Exact-SHA browser evidence and human acceptance remain in T250.
-- [x] T244 [R1] Make AST setup confirm the upstream panel by default; require an audited reason for any panel or drug-set adjustment and retain the exact changed order used for entry and reporting. `92fb708c8` implements confirmation-first setup and immutable panel/standard snapshots; `1a198a765` adds immutable ordered-drug snapshots and server entry guards; `2dfb8221b` adds Carbon panel/individual-drug adjustment with server-validated active membership and one required reason; `df56940f9` blocks review until every ordered drug has a reading and projects only each drug's current reading in snapshot order. The linked culture `Analysis` remains the standard patient-report anchor because the repository has no authoritative Antibiotic-to-Test mapping. Exact-SHA browser and human acceptance remain in T250.
-- [x] T245 [R1] Add inline original-to-override history and supervisor revert with actor, time, reason, and unchanged original reading (`30d8e988a`). The existing Validation/Admin bundles gate override and revert; exact-SHA browser and human acceptance remain in T250.
-- [x] T246 [R1] Add analyzer-result and QC lifecycle behavior: awaiting results, results-in review, mismatch/no-breakpoint/QC blockers, accept results, invalidate-and-repeat, and named reconciliation handoff for unmatched events. `5f1b89922` adds the durable run lifecycle, blockers, invalidation/repeat behavior, and PostgreSQL migration coverage; `0c33223fb` adds the idempotent analyzer event envelope and exposes failed events through the existing Analyzer Import Issues reconciliation surface; `87f09d0bc` adds the Carbon pending/results/QC review states and focused interaction tests. Exact-SHA browser, Grist, deployment, and human acceptance remain in T250.
-- [x] T247 [R1] Capture analyzer provenance and keep analyzer organism identity informational; flag disagreement with the case isolate without silently replacing it. `5f1b89922` retains analyzer/card/software/QC/message/result provenance without changing case isolate identity, and `87f09d0bc` displays that provenance and the organism disagreement warning. Exact-SHA browser and human acceptance remain in T250.
-- [x] T248 [R1] Extend repeat/retest to whole-panel or single-antibiotic scope and converge case, worklist, and existing NCE Retest entry points on a new preserved run. `ee4e4c6e2` makes the existing ordered-work snapshot represent whole-panel or selected-drug scope without a migration; `f0d51a5cd` adds the Carbon scope interaction; `c7d84c535` makes the NCE Retest disposition validate the case/source and call the same preserved-run service; `88afdd369` routes a reviewed worklist run into that same case-scoped flow and replaces the URL with the created run. Exact-SHA acceptance remains T250.
-- [x] T249 [R1] Add AST progress counts that include runs complete, significant isolates awaiting setup, and isolates pending identification. `ca7aa0491` computes the counts with release readiness in one server transaction, excludes invalidated/rerun-required history from active totals, adds the missing unidentified-isolate release blocker, and renders the authoritative combined count in the AST header. Focused readiness and Carbon tests pass; exact-SHA browser and human acceptance remain in T250.
-- [x] T250 [R1] Add registered Playwright and separate Grist stories for manual and analyzer AST review, override/revert, QC failure, accept, repeat scope, and report-readiness gating. The live picker exposes independent Manual AST and Analyzer AST/QC stories; analyzer/QC steps `AMR-73` and `AMR-74` are explicitly optional until legitimate analyzer traffic exists. The deployed live test switches to Manual AST, refreshes, reloads, and retains exactly that three-step story without aggregate rendering or a refresh loop. Human clinical rulings remain T273.
-
-### M-07 Worklist Alignment
-
-- [x] T251 [R1] Add URL/parser/service tests for canonical `grain=cultures|ast`, per-grain status, and state-preserving AST-run case links. `398a69003` adds the server/URL contract; `bd27e76d9` proves the exact isolate and run open in the case without prop-to-state synchronization effects.
-- [x] T252 [R1] Add the server-side AST-run projection and per-grain summaries without introducing worklist writes or per-case ownership. `398a69003` projects active runs plus significant isolates pending setup and excludes invalidated, rerun-required, and cancelled history. `b7b025f98` completes the bounded authoritative row context tracked by T276.
-- [x] T253 [R1] Build one Carbon worklist with a Cultures/AST segmented control, grain-specific DataTable headers/rows, baseline state-derived due actions, summary filters, and empty states. `bd27e76d9` completes the shared Carbon structure, URL-backed cards, columns, exact-run links, and compact source-aligned layout; `1d838d72a` restores the distinct positive-signal summary and subculture/Gram-stain due action. `3792bd13f` closes the audit's day-aware incubation and null-fallback gap through T280-T281. Exact-SHA visual comparison remains T282.
-- [x] T254 [R1] Add row overflow commands that navigate to existing case actions; do not mutate clinical state directly from the worklist. `1d838d72a` adds direct Carbon overflow children with an accessible trigger, all four Culture commands, AST Open/Edit/View audit, case-scoped positive/no-growth confirmations, and focused tests proving the worklist does not perform the clinical write. `88afdd369` completes "Set up new AST run" through canonical source-run state and the preserved repeat flow from T248.
-- [x] T255 [R1] Add the resistance-hit strip, collapsible recent activity, results-in badge, awaiting-analyzer state, and visibly disabled future controls with tooltips. `a99493671` adds a bounded latest-25 activity projection, today-scoped structured analyzer-flag counts, analyzer flags in AST rows, Carbon Accordion/Tooltip controls, Print/QC actions, and a visibly disabled worklist WHONET action. Existing results-in and awaiting-analyzer states remain intact. Focused service and 55-test frontend checkpoints pass; exact-HQL runtime remains Docker/CI evidence. Manual resistance classification is not fabricated from override reason text and remains T277.
-- [x] T256 [R1] Implement refresh that preserves focus, scroll, URL state, and selected row context; enforce the existing case-view permission rather than authentication alone. `7d162d7ce` adds exact 30-second and manual revalidation with an elapsed-time status, keeps the mounted Carbon table stable, restores Positive signal to the stage filter, and maps the source's conceptual analyst/validator/manager permission to existing Results/Validation/Admin roles at the frontend routes and worklist API. A fake-clock component test proves no request before 30 seconds and no URL/focus/scroll loss; a five-case Spring security slice proves 401/403 and allowed roles. No arbitrary waits are used.
-- [x] T257 [R1] Add desktop/mobile Carbon interaction, keyboard, URL-reload, and 200-row performance tests without arbitrary waits. `14164589f` provides service-backed scenario seeding; `8b567ff14` and `e3c31aec4` register keyboard and desktop/mobile WCAG coverage; `a269ed58f` registers disposable-stack 200-case p95 qualification; `e0b18bcc7` proves canonical reload plus focused full-row navigation; and `77410e82b` separates the Culture-case and active AST-run journeys in `core-app`. Static Playwright registration, formatting, and lint pass locally; exact-SHA execution remains T199/T282.
-- [x] T258 [R1] Publish separate Culture Worklist and AST Worklist Grist stories and verify both appear independently in the live schema-v2 AMR picker. `R1 - M-07 - Work the Culture queue` and `R1 - M-07 - Work the AST queue` render as independent three-step stories at revision `57379544553a890c9644183a09bd8f32fa17c11587cd649bbd659265bbdc62b8`. Deployed desktop and 390px browser checks confirm canonical `grain=ast`, preserved workflow/sort state, real queue counts, and no document overflow.
-
-### Cross-Stack Drift Discovered During M-07
-
-- [x] T275 [R1] Restore the authoritative culture progression and actions: incubating to positive signal to growth detected, automatic analyzer positive signal, manual Mark positive, and Mark no growth. `1d838d72a` adds the distinct state and constraint, authenticated idempotent analyzer consumer with reconciliation, case-scoped manual confirmations, worklist projection, and focused JUnit/Carbon coverage. The PostgreSQL rollback harness is committed but could not execute locally because no Docker daemon was available; CI/exact-SHA validation remains required with T282/T258.
-- [x] T276 [R1] Enrich both worklist grains with the authoritative lab/accession number, patient display, specimen display, panel name, and last-activity actor using bounded batch reads suitable for 200 rows. `b7b025f98` adds fixed-count context and panel projections, searchable response fields, source-aligned Carbon columns, focused service/query-count and component tests, and an exact production-HQL validation test. No schema or duplicated patient/specimen data was added. The focused service test and 55-test frontend checkpoint pass locally; the exact-HQL Spring test is committed for CI but could not start locally because Testcontainers found no Docker daemon.
-- [ ] T277 [R1] Resolve the authoritative M-07 phrase "manual overrides in 1A": define the visible user action and structured provenance for manually confirming ESBL/MRSA/CRE/VRE/MDR, then count those confirmations alongside analyzer-reported flags. Do not parse free-text AST override reasons or imply that the deferred M-06 Expert Rules engine exists.
-- [x] T278 [R1] Briefly distinguish a positive-signal row that first arrives during revalidation, with text semantics and reduced-motion-safe styling; prove the lifecycle with fake timers and no sleeps. `05c165de7` compares only same-query revalidation rows, displays a visible New positive tag, applies a five-second table-cell emphasis, and retains a non-animated inset marker under reduced-motion preferences. The T256 fake-clock test now proves both activation and deterministic removal.
-- [x] T279 [R1] Make the full Culture and AST rows keyboard-operable links to the exact case context while preserving native links and overflow controls; prove Enter/click and menu isolation with Carbon interaction tests. `05c165de7` adds focused TableRow navigation for pointer, Enter, and Space; excludes nested links, buttons, and controls; preserves exact AST isolate/run URL state; and keeps the existing overflow-command test green.
-- [x] T280 [R1] Implement the authoritative incubation due-action mapping from first inoculation time and structured Method-bound timing. `3792bd13f` renders `Day n of max` only when both inputs exist and otherwise retains the accurate `Incubating` stage fallback; focused service and Carbon interaction tests prove both paths without parsing free-text instructions.
-- [x] T281 [R1] Complete the Method-bound culture-timing foundation needed by M-01/M-03/M-04/M-07. `3792bd13f` adds validated routine-read, subculture, and maximum-day values to the existing `MicroCultureSetup` admin/service path, migration `080` with rollback coverage, bounded worklist projections, and no second protocol master. Pure service, Carbon, formatting, and parse checks pass locally; ORM/HQL and migration rollback tests are committed for CI but could not start locally because Testcontainers found no Docker daemon.
-- [x] T282 [R1] On the exact remediation SHA, capture stable desktop and mobile Culture/AST worklist screenshots, compare them to authoritative M-07 states, record only intentional deviations, and attach the contact sheet plus registered test results. T270 records the stable source/actual evidence and the registered comparison results; the Playwright capture uses deterministic service-created data and readiness assertions without arbitrary waits.
-- [ ] T283 [Clarification] Rule on reviewed AST runs in the operational queue before changing projection semantics. Authoritative M-07 defines the worklist as what needs doing now, lists only Pending setup, In progress, and Results in/review active states, and says the results-in flag clears when accepted. The repository currently includes `REVIEWED` runs and labels them In progress so the T248 worklist repeat action remains reachable. Piotr must choose one deterministic behavior: hide reviewed runs and move repeat to case/audit history; show reviewed runs with an explicit Reviewed/non-actionable status; or retain them as actionable repeat work with an explicit source deviation. Until ruled, UAT and new Playwright stories use an `IN_PROGRESS` run and must not claim reviewed-run queue parity.
-
-### M-12 And NFR Qualification
-
-- [x] T259 [R1] Add shared-component and service tests for visible eligible/blocked lots, oldest-expiry ordering, QC state, locked QC/expiry/quantity race validation, no partial microbiology usage link, and specific corrective messages. Required/optional/substitute policy is deliberately separated into T288 because the current shared catalog cannot express it.
-- [x] T260 [R1] Align the shared lot picker and service validation in both culture and AST hosts; add exact scanner-style lot/card entry using the existing Carbon Search interaction with no arbitrary waits. The shared host/component suite passes 42 tests, the focused service suite passes 7 tests, and the registered `core-app` culture-to-AST provenance journey passes against PostgreSQL in 7.2 seconds.
-- [x] T261 [R1] Keep Test Catalog linkage administration, reagent reverse view, inventory quantities, and seed definitions as explicit external dependencies; do not duplicate them in microbiology. The source's proposed schema, route, and component signatures are implementation leakage rather than acceptance constraints.
-- [ ] T288 [External dependency] Define required/optional/substitute reagent-selection policy in the shared Test Catalog contract and administration workflow, then enforce it through the shared picker. Do not map `PRIMARY`/`SECONDARY` to those policies and do not add a microbiology-owned policy table.
-- [x] T289 [R1] Repair the runtime-only inoculation persistence failure exposed by the registered M-12 journey: map the existing String-shaped Method ID to the numeric FK with the repository's standard Hibernate type. Add a service-created transaction integration test covering inoculation plus exact lot provenance. No migration is required because the database model was already correct. The 3-test transaction suite and the full browser journey pass.
-- [x] T262 [R1] Prove the picker latency and WCAG behavior at the source ceiling with service-created fixtures. On exact remediation SHA `586056623`, the guarded disposable-stack browser qualification measured 10 post-warmup samples: reagent service fetch/parse p95 `6.8 ms` and Carbon picker render p95 `34.6 ms`, both below the source `<500 ms` ceiling with two requirements and five eligible/blocked lots. The shared picker passed explicit axe scans in both culture and AST hosts at desktop and mobile viewports; the complete keyboard-only workflow passed through accession search, two-pass isolate identification, exact card-lot scanning, two AST readings, review, and amendment release without arbitrary waits. Exact AMR deployment and human acceptance remain T272-T273.
-- [x] T263 [R1] Qualify the case and both worklist grains with service-layer fixtures and record server and browser timings separately. Exact-SHA evidence at `8557df5c2` used 1,535 active Culture rows and 704 active AST rows: Culture server/browser p95 was `67.4/1,112.8 ms`, AST server/browser p95 was `70.9/1,144.2 ms`, and Culture/AST filter p95 was `186.6/235.0 ms`. A service-created stress case with 5 isolates, 80 readings, and 171 immutable automatic timeline events rendered at `1,032.7 ms` p95 after recent-30/Show-all Timeline work; `77a8b3abe` then stopped mounting hidden case sections and retained focused component and browser coverage. The May 27 M-NFR `<1,000 ms` number is not mock-derived and does not define runtime, hardware, network, or a fixture compatible with its audit requirements, so it is retained as a diagnostic engineering baseline rather than a product/merge gate. Do not suppress audit events or tune a special harness to manufacture a pass; investigate further only if representative deployed use is observably degraded.
-- [x] T264 [R1] Audit keyboard, focus, labels, status text, contrast, and compact layouts for every touched action with axe plus direct interactions. `80c36f6b4`, `833a2ac01`, and `a7a95944b` cover canonical Worklist-to-case routing, inline setup/subculture/note focus, Timeline toggles, routed NCE/lost/positive/no-growth actions, status announcements, and exact opener restoration. `cde68ea33` covers M-05 analyzer/QC expansion, override/revert history, whole-panel/single-antibiotic repeat, and report-readiness release through Carbon keyboard interactions. `d39deca1e` keeps Carbon modal shells stable, removes synchronous URL-to-draft effects, and restores the exact generic-reference, AST-panel, or breakpoint command after Escape or successful save. Its focused suite passes 15/15, and the `code-qa` inversion run against the old implementation fails all three new focus guards and reproduces Carbon's unmounted-state warning. The exact-head registered accessibility run passes 16/16 in 1.3 minutes: authenticated setup, seven desktop axe journeys, one complete desktop keyboard journey, and seven mobile axe journeys, without arbitrary waits or forced actions. This closes automated T264 only; exact AMR deployment and human accessibility acceptance remain T272-T273, and axe is not a substitute for either.
-- [x] T265 [R1] Audit user-facing writes for authenticated actor, permission, atomic transition, and preserved history; add missing negative tests. `MicrobiologyRestControllerSupport` now centralizes the existing Results/Validation/Admin bench bundles, every touched case/AST/reference read or write surface uses that boundary, and final/amendment actions require Validation/Admin. The focused security slice proves unrelated-role `403`, final-release separation, and that submitted `performedBy: 999` cannot replace session actor `42`; the architecture guard prevents a method from weakening the class boundary. Existing transactional service tests retain final-case locks, immutable histories, and rollback/no-partial-write behavior. Analyzer ingestion is deliberately separated into T290 because changing Bridge account roles without deployment evidence could stop result delivery.
-- [x] T266 [R1] Record offline/intermittent-connectivity as not implemented unless a shared application pattern is selected and proven; do not build a microbiology-only queue. The product and engineering records now state this exclusion; no microbiology-only queue was added.
-- [ ] T290 [Analyzer architecture] Replace generic authenticated access on microbiology analyzer-event ingestion with a least-privilege Bridge service identity/authority, then prove both authorized delivery and unrelated-user `403`. OpenELIS currently maps Bridge Basic auth to a normal user's roles and defines no analyzer service authority; do not guess an Admin requirement in this remediation.
-
-### Full-Stack Evidence And Delivery
-
-- [x] T267 [R1] Update the M-03, M-04, M-05, M-07, M-12, and NFR crosswalk after every slice; statuses must distinguish code, automated evidence, deployment, and human acceptance. The pinned-source alignment record and `evidence/mock-comparison-r1-2026-08-06.md` contain the final automated-review status without claiming deployment or human acceptance.
-- [x] T268 [R1] Publish separate Grist stories per workflow outcome, verify the live AMR revision and rendered overlay, and keep milestone stories distinct. Grist contains 22 transport stories and 67 stable steps; the host-filtered AMR picker presents exactly 20 stories, excludes the two OGC-788 Macro stories assigned to `phrases.openelis-global.org`, renders one selected story at a time, and remains stable across refresh and full reload.
-- [x] T269 [R1] Run pinned `tools/code-qa` meaningful coverage, spec/code alignment, simplicity, and evidence workflows across the complete remediation diff. The final record in `evidence/code-qa-r1-2026-08-06.md` combines the earlier inversion proof with the completed security and visual checks. Deployment, Grist, Bridge identity, and human UAT are independent delivery/architecture gates; do not repeat generic code-QA cycles for them.
-- [x] T270 [R1] Capture stable desktop/mobile comparisons for the R1-touched authoritative HTML screens and record every intentional behavioral or visual deviation. Playwright now emits portable viewport evidence at the source desktop size and registered mobile size; the comparison and source-health findings are in `evidence/mock-comparison-r1-2026-08-06.md`.
-- [x] T271 [R1] Push and maintain one official remediation PR stacked on M10; update its body with exact source revision, migration scope, tests, evidence, UAT revision, and unresolved exclusions. PR #4004 is pushed, non-draft, and stacked directly on M10; its body records the pinned authority, head SHA, migrations, service-created fixture policy, validation, evidence, remaining UAT/deployment gates, and explicit exclusions.
-- [x] T272 [R1] Deploy the exact top-of-micro-stack SHA plus compatible review tooling to AMR and verify app SHA, health, routes, story separation, overlay stability, and no refresh loop. Immutable target metadata and PR #4004 record the final evidence/test head; deployment `20260807T022035Z-ee1238ce1c1d` established the full runtime baseline, service-created `WORKLIST` and `R1` fixtures, 200 responses for `/` and `/Microbiology/worklist`, exact app/harness provenance, 20 separated AMR stories, selected-story refresh/reload stability, and focused deployed Playwright evidence without arbitrary waits.
-- [ ] T273 [Human UAT] Piotr completes required per-story Pass/Fail/N/A and notes against the exact deployed revisions; automation cannot complete this task.
-- [ ] T274 [Macro split] Create a separate Macro Library feature/spec/PR/UAT stack and review deployment; add microbiology consumer integration only after that base is available.
+- [x] Preserve microbiology Program and Culture Method context through the
+  supported Add Order workflow, including safe discard behavior.
+- [x] Complete case classification, inoculation/subculture lineage, two-pass
+  isolate identification, nonconformance actions, sibling navigation, and
+  final-case safety.
+- [x] Preserve ordered AST provenance, breakpoint basis, override/revert
+  history, analyzer/QC review states, and report-readiness blockers.
+- [x] Provide distinct Culture and AST worklist views with canonical URL state
+  and complete case-return context.
+- [x] Reuse shared Test Catalog and Inventory behavior for culture and AST lot
+  selection without adding parallel administration.
+- [x] Cover the aligned behavior with focused service/controller/component
+  tests, registered Playwright journeys, visual comparison, accessibility
+  checks, representative-volume qualification, and one `tools/code-qa` pass.
 
 ## Dependencies & Execution Order
 
@@ -564,15 +430,11 @@ opens exactly one resulting case containing those details.
 - M6 depends on M5 because worklist urgency and review flags include AST state.
 - M7 depends on M6 because release/readiness includes critical communication and
   worklist-visible blockers.
-- Phase 8 (MVP-gap remediation) depends on M7 because it extends the same held
-  branch/PR with FR-002, M-11, and M-05 gap coverage before merge.
+- Phase 8 depends on M7 because it closes gaps across the MVP layers.
 - Final MVP acceptance depends on Phase 8.
-- Phase 12 deployment depends on the story-closure and artifact-reconciliation
-  work. Human UAT depends on the exact deployed candidate and matching live
-  Grist content.
-- R1 depends on the M10 follow-on head. Its implementation gate depends on the
-  pinned product behavior, and its final acceptance depends on matching
-  Playwright, visual, deployed, and human UAT evidence.
+- Phases 9 and 10 depend on runnable MVP behavior; the V2 clarification in T187
+  does not block MVP acceptance.
+- Phase 12 depends on the story-closure and artifact-reconciliation work.
 
 ## Parallel Opportunities
 
@@ -592,7 +454,7 @@ opens exactly one resulting case containing those details.
 ## TDD Rules
 
 - Write the listed tests first and verify they fail for the expected reason.
-- Do not mark a milestone PR ready until its focused test command passes.
+- Do not mark a milestone block complete until its focused test command passes.
 - Do not stub the backend mutation under test in Playwright evidence.
 - Do not use raw `npx playwright test`; use `npm run pw:test`.
 - Do not add new Cypress tests.
