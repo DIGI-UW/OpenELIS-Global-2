@@ -6,7 +6,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.Test;
+import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
@@ -69,9 +71,21 @@ public class AnalyzerTypeRestControllerSecurityTest extends SecuritySliceMockMvc
         }
 
         @Bean
+        AnalyzerMappingCatalogService analyzerMappingCatalogService() {
+            return mock(AnalyzerMappingCatalogService.class);
+        }
+
+        @Bean
+        AnalyzerTypeMappingService analyzerTypeMappingService() {
+            return mock(AnalyzerTypeMappingService.class);
+        }
+
+        @Bean
         AnalyzerTypeRestController analyzerTypeRestController(AnalyzerTypeCatalogService catalogService,
-                BridgeProfileManagementService managementService) {
-            return new AnalyzerTypeRestController(catalogService, managementService);
+                BridgeProfileManagementService managementService, AnalyzerMappingCatalogService mappingCatalogService,
+                AnalyzerTypeMappingService mappingService) {
+            return new AnalyzerTypeRestController(catalogService, managementService, mappingCatalogService,
+                    mappingService);
         }
 
         @Bean
