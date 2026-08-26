@@ -165,7 +165,8 @@ public class MicroCaseRestControllerTest {
             controller(org.mockito.Mockito.mock(MicroCaseService.class),
                     org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class),
                     org.mockito.Mockito.mock(UserModuleService.class), stateService,
-                    org.mockito.Mockito.mock(MicroCaseOrderDetailService.class))
+                    org.mockito.Mockito.mock(MicroCaseOrderDetailService.class),
+                    org.mockito.Mockito.mock(MicroCaseWorkflowService.class))
                     .recordActivity("case-1", request, requestFor("42"));
             fail("Expected a missing stage to be rejected");
         } catch (IllegalArgumentException exception) {

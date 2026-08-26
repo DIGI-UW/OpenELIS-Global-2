@@ -221,7 +221,7 @@ public class MicroWorklistServiceTest {
         when(contextDAO.getCultureTimingContexts(List.of("method-1")))
                 .thenReturn(List.of(new MicroWorklistCultureTimingContext("method-1", "BACTERIOLOGY", 5)));
 
-        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+        MicroWorklistRowForm row = service.getWorklistPage(new MicroWorklistQueryForm()).rows.get(0);
 
         assertEquals("INCUBATING", row.dueAction);
         assertEquals(Integer.valueOf(2), row.incubationDay);
@@ -238,7 +238,7 @@ public class MicroWorklistServiceTest {
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
         when(communicationDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
 
-        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+        MicroWorklistRowForm row = service.getWorklistPage(new MicroWorklistQueryForm()).rows.get(0);
 
         assertEquals("INCUBATING", row.dueAction);
         assertEquals(null, row.incubationDay);
@@ -254,7 +254,7 @@ public class MicroWorklistServiceTest {
         when(isolateDAO.getByCaseIds(List.of("case-unassigned"))).thenReturn(List.of());
         when(communicationDAO.getByCaseIds(List.of("case-unassigned"))).thenReturn(List.of());
 
-        MicroWorklistRowForm row = service.getWorklistRows().get(0);
+        MicroWorklistRowForm row = service.getWorklistPage(new MicroWorklistQueryForm()).rows.get(0);
 
         assertEquals("NEEDS_WORKFLOW", row.dueAction);
     }
