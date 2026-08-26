@@ -150,7 +150,7 @@ test.describe("OGC-782 microbiology MVP", () => {
         page.getByText(/ISO-1: Escherichia coli confirmed/),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(
-        page.getByText(/Clinically Significant · Confirmed/),
+        page.getByText(/Clinically significant · Confirmed/),
       ).toBeVisible();
     });
 
