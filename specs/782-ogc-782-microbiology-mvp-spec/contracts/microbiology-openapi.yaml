@@ -10,7 +10,16 @@ paths:
     get:
       summary: List microbiology cases and AST work requiring action
       parameters:
-        - name: workflowType
+        - name: grain
+          in: query
+          schema:
+            type: string
+            enum: [cultures, ast]
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: workflow
           in: query
           schema:
             $ref: "#/components/schemas/MicroWorkflowType"
@@ -18,23 +27,43 @@ paths:
           in: query
           schema:
             type: string
-        - name: dueAction
+        - name: due
           in: query
           schema:
             type: string
-        - name: urgentOnly
+        - name: urgency
           in: query
           schema:
-            type: boolean
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
       responses:
         "200":
           description: Worklist rows
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/WorklistRow"
+                $ref: "#/components/schemas/WorklistPage"
+        "401":
+          description: Authentication required
+        "403":
+          description: The authenticated user cannot view microbiology cases
   /microbiology/cases/{caseId}:
     get:
       summary: Get compiled microbiology case detail
@@ -61,7 +90,7 @@ paths:
             schema:
               $ref: "#/components/schemas/CaseActivityRequest"
       responses:
-        "201":
+        "200":
           description: Activity recorded and case state updated
           content:
             application/json:
@@ -69,27 +98,25 @@ paths:
                 $ref: "#/components/schemas/MicroCaseDetail"
         "400":
           description: Invalid activity for case state
-  /microbiology/cases/{caseId}/isolates:
+  /microbiology/isolates:
     post:
-      summary: Create an isolate for a case
-      parameters:
-        - $ref: "#/components/parameters/CaseId"
+      summary: Record preliminary isolate work-up for a case
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IsolateRequest"
+              $ref: "#/components/schemas/CreateIsolateRequest"
       responses:
-        "201":
+        "200":
           description: Isolate created
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/MicroIsolate"
-  /microbiology/isolates/{isolateId}:
+  /microbiology/isolates/{isolateId}/identification:
     put:
-      summary: Update organism identification or significance for an isolate
+      summary: Identify or reidentify an isolate
       parameters:
         - $ref: "#/components/parameters/IsolateId"
       requestBody:
@@ -97,7 +124,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IsolateRequest"
+              $ref: "#/components/schemas/IdentifyIsolateRequest"
       responses:
         "200":
           description: Updated isolate
@@ -107,19 +134,70 @@ paths:
                 $ref: "#/components/schemas/MicroIsolate"
         "400":
           description: Invalid isolate update
-  /microbiology/isolates/{isolateId}/ast-runs:
+  /microbiology/ast/setup:
+    get:
+      summary: Resolve the ordered AST panel for an identified isolate
+      parameters:
+        - name: isolateId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server-resolved AST setup context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstSetup"
+        "400":
+          description: Isolate is not identified or its configured panel is unavailable
+  /microbiology/ast/panels/{panelId}/antibiotics:
+    get:
+      summary: List the configured ordered drugs for an AST panel adjustment
+      parameters:
+        - name: panelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ordered panel membership
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AstRunAntibiotic"
+  /microbiology/ast/runs:
+    get:
+      summary: List AST runs and readings for an isolate
+      parameters:
+        - name: isolateId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: AST runs with readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AstRun"
     post:
       summary: Start AST for an isolate
-      parameters:
-        - $ref: "#/components/parameters/IsolateId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AstRunRequest"
+              $ref: "#/components/schemas/AstStartRequest"
       responses:
-        "201":
+        "200":
           description: AST run created
           content:
             application/json:
@@ -127,9 +205,11 @@ paths:
                 $ref: "#/components/schemas/AstRun"
         "400":
           description: Isolate context is insufficient for AST
-  /microbiology/ast-runs/{astRunId}/readings:
-    put:
-      summary: Save AST readings for a run
+        "409":
+          description: The requested drug set cannot be reconciled with the selected panel
+  /microbiology/ast/runs/{astRunId}/readings:
+    post:
+      summary: Append a manual AST reading to a run
       parameters:
         - $ref: "#/components/parameters/AstRunId"
       requestBody:
@@ -137,24 +217,17 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - readings
-              properties:
-                readings:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/AstReadingRequest"
+              $ref: "#/components/schemas/AstReadingRequest"
       responses:
         "200":
-          description: AST run with interpreted readings
+          description: Interpreted AST reading
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AstRun"
+                $ref: "#/components/schemas/AstReading"
         "400":
           description: Invalid reading payload
-  /microbiology/ast-runs/{astRunId}/review:
+  /microbiology/ast/runs/{astRunId}/review:
     post:
       summary: Mark an AST run reviewed
       parameters:
@@ -168,6 +241,172 @@ paths:
                 $ref: "#/components/schemas/AstRun"
         "400":
           description: AST run is not reviewable
+        "409":
+          description: One or more ordered drugs has no recorded result
+  /microbiology/ast/runs/{astRunId}/analyzer-flags/acknowledge:
+    post:
+      summary: Acknowledge analyzer expert flags before accepting results
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstReasonRequest"
+      responses:
+        "200":
+          description: AST run with acknowledged analyzer flags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+  /microbiology/ast/runs/{astRunId}/qc/override:
+    post:
+      summary: Record a supervisor QC override before accepting results
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstReasonRequest"
+      responses:
+        "200":
+          description: AST run with the QC resolution retained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+  /microbiology/ast/runs/{astRunId}/invalidate-and-repeat:
+    post:
+      summary: Preserve a failed analyzer run and start its replacement
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstInvalidateRepeatRequest"
+      responses:
+        "200":
+          description: New analyzer-backed AST run awaiting results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+  /microbiology/ast/runs/{astRunId}/attempts:
+    post:
+      summary: Start a repeat or retest AST run while preserving the source run
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstAttemptRequest"
+      responses:
+        "200":
+          description: Preserved new AST attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+  /microbiology/ast/runs/{astRunId}/reportable:
+    post:
+      summary: Select a reviewed AST run for reporting
+      parameters:
+        - $ref: "#/components/parameters/AstRunId"
+      responses:
+        "200":
+          description: Selected reportable AST run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstRun"
+  /analyzer/events/ast:
+    post:
+      summary: Receive an idempotent normalized AST result or QC event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstAnalyzerEventRequest"
+      responses:
+        "202":
+          description: Event applied to its AST run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzerEvent"
+        "422":
+          description: Event retained for reconciliation because it could not be applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzerEvent"
+  /analyzer/events/culture:
+    post:
+      summary: Receive an idempotent normalized positive-culture signal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CultureAnalyzerEventRequest"
+      responses:
+        "202":
+          description: Signal applied to one incubating culture case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzerEvent"
+        "422":
+          description: Signal retained for reconciliation because it could not be applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzerEvent"
+  /microbiology/ast/readings/{readingId}/override:
+    put:
+      summary: Override an AST interpretation with a required reason
+      parameters:
+        - $ref: "#/components/parameters/ReadingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstOverrideRequest"
+      responses:
+        "200":
+          description: Updated AST reading with original interpretation retained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstReading"
+  /microbiology/ast/readings/{readingId}/override/revert:
+    post:
+      summary: Revert an active AST override with a required reason
+      parameters:
+        - $ref: "#/components/parameters/ReadingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AstRevertRequest"
+      responses:
+        "200":
+          description: AST reading restored to its original interpretation with history retained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AstReading"
   /microbiology/cases/{caseId}/critical-communications:
     post:
       summary: Log a critical microbiology communication
@@ -180,13 +419,35 @@ paths:
             schema:
               $ref: "#/components/schemas/CriticalCommunicationRequest"
       responses:
-        "201":
+        "200":
           description: Communication logged and alert surfaced when configured
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CriticalCommunication"
-  /microbiology/cases/{caseId}/release-preliminary:
+  /microbiology/cases/{caseId}/nonconformances:
+    post:
+      summary: Report a case nonconformance or lost specimen
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaseNonconformanceRequest"
+      responses:
+        "200":
+          description: Nonconformance recorded and disposition applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseNonconformanceResult"
+        "400":
+          description: Required classification or disposition is invalid
+        "409":
+          description: Affected case state prevents specimen rejection
+  /microbiology/cases/{caseId}/release/preliminary:
     post:
       summary: Release a preliminary microbiology report
       parameters:
@@ -197,10 +458,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MicroCaseDetail"
+                $ref: "#/components/schemas/MicroReportRelease"
         "400":
           description: Preliminary release is not allowed
-  /microbiology/cases/{caseId}/release-final:
+  /microbiology/cases/{caseId}/release/final:
     post:
       summary: Release a final microbiology report
       parameters:
@@ -211,7 +472,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MicroCaseDetail"
+                $ref: "#/components/schemas/MicroReportRelease"
         "409":
           description: Case is not final-release ready
           content:
@@ -264,6 +525,12 @@ components:
       required: true
       schema:
         type: string
+    ReadingId:
+      name: readingId
+      in: path
+      required: true
+      schema:
+        type: string
   schemas:
     MicroWorkflowType:
       type: string
@@ -271,14 +538,94 @@ components:
         - BACTERIOLOGY
         - MYCOBACTERIOLOGY_TB
         - MYCOLOGY
-    WorklistRow:
+        - UNASSIGNED
+    WorklistPage:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorklistRow"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        summary:
+          $ref: "#/components/schemas/WorklistSummary"
+        recentActivity:
+          type: array
+          maxItems: 25
+          items:
+            $ref: "#/components/schemas/WorklistRecentActivity"
+    WorklistSummary:
+      type: object
+      properties:
+        totalPending:
+          type: integer
+        incubating:
+          type: integer
+        positiveSignals:
+          type: integer
+        growthDetected:
+          type: integer
+        identification:
+          type: integer
+        needsAstReview:
+          type: integer
+        readyForCaseReview:
+          type: integer
+        openCriticalFollowUps:
+          type: integer
+        astInQueue:
+          type: integer
+        astPendingSetup:
+          type: integer
+        astInProgress:
+          type: integer
+        astAwaitingResults:
+          type: integer
+        astResultsIn:
+          type: integer
+        resistanceHits:
+          type: object
+          description: Today-scoped counts from structured analyzer flags.
+          additionalProperties:
+            type: integer
+    WorklistRecentActivity:
       type: object
       properties:
         caseId:
           type: string
         accessionNumber:
           type: string
+        activityType:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        performedByDisplay:
+          type: string
+        note:
+          type: string
+    WorklistRow:
+      type: object
+      properties:
+        rowId:
+          type: string
+        grain:
+          type: string
+          enum: [cultures, ast]
+        caseId:
+          type: string
+        sampleItemId:
+          type: string
+        accessionNumber:
+          type: string
         patientDisplay:
+          type: string
+        specimenDisplay:
           type: string
         workflowType:
           $ref: "#/components/schemas/MicroWorkflowType"
@@ -286,14 +633,57 @@ components:
           type: string
         dueAction:
           type: string
+        incubationDay:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Elapsed incubation day when both inoculation time and configured timing are available.
+        maxIncubationDays:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Configured maximum incubation days for the case Method and workflow.
         urgency:
           type: string
-        hasSiblingWorkflow:
+        priority:
+          type: string
+        needsAstReview:
           type: boolean
-        needsReview:
+        hasOpenCriticalCommunication:
           type: boolean
-        hasCriticalOpen:
+        siblingWorkflows:
+          type: array
+          items:
+            type: string
+        isolateId:
+          type: string
+        isolateLabel:
+          type: string
+        organismDisplay:
+          type: string
+        astRunId:
+          type: string
+        panelId:
+          type: string
+        panelName:
+          type: string
+        astStatus:
+          type: string
+        astStartedAt:
+          type: string
+          format: date-time
+        analyzerResultsAvailable:
           type: boolean
+        analyzerExpertFlags:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastActivityAt:
+          type: string
+          format: date-time
+        lastActivityBy:
+          type: string
     MicroCaseDetail:
       type: object
       properties:
@@ -358,36 +748,282 @@ components:
               type: string
             performedBy:
               type: string
-    IsolateRequest:
+    CreateIsolateRequest:
+      type: object
+      required:
+        - caseId
+        - isolateLabel
+        - gramStain
+      properties:
+        caseId:
+          type: string
+        isolateLabel:
+          type: string
+        gramStain:
+          type: string
+        colonyMorphology:
+          type: string
+        significance:
+          type: string
+    IdentifyIsolateRequest:
+      type: object
+      required:
+        - organismId
+        - identificationMethod
+        - identificationConfidence
+        - significance
+        - identificationStatus
+      properties:
+        organismId:
+          type: string
+        preliminaryOrganismText:
+          type: string
+        identificationMethod:
+          type: string
+        identificationConfidence:
+          type: number
+          minimum: 0
+          maximum: 100
+        significance:
+          type: string
+        identificationStatus:
+          type: string
+        identificationReason:
+          type: string
+    MicroIsolate:
       type: object
       properties:
+        id:
+          type: string
+        caseId:
+          type: string
         isolateLabel:
+          type: string
+        gramStain:
+          type: string
+        colonyMorphology:
           type: string
         organismId:
           type: string
         preliminaryOrganismText:
           type: string
+        identificationMethod:
+          type: string
+        identificationConfidence:
+          type: number
         significance:
           type: string
-    MicroIsolate:
-      allOf:
-        - $ref: "#/components/schemas/IsolateRequest"
-        - type: object
-          properties:
-            id:
-              type: string
-            caseId:
-              type: string
-            identificationStatus:
-              type: string
-    AstRunRequest:
+        identificationStatus:
+          type: string
+    AstStartRequest:
       type: object
+      required:
+        - isolateId
+        - panelId
+        - breakpointStandardId
+        - technique
       properties:
+        isolateId:
+          type: string
         panelId:
           type: string
-        method:
+        panelAdjustmentReason:
           type: string
+          description: Required when the panel or ordered drug membership differs from the upstream order.
+        orderedAntibioticIds:
+          type: array
+          description: Exact ordered drug membership to snapshot when explicitly adjusting the upstream order.
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
         breakpointStandardId:
+          type: string
+        technique:
+          $ref: "#/components/schemas/AstTechnique"
+        lotSelections:
+          type: array
+          items:
+            type: object
+        awaitAnalyzerResults:
+          type: boolean
+          default: false
+        analyzerInstrumentId:
+          type: string
+        analyzerCardId:
+          type: string
+    AstAttemptRequest:
+      type: object
+      required:
+        - attemptType
+        - reason
+        - technique
+      properties:
+        attemptType:
+          type: string
+          enum:
+            - REPEAT
+            - RETEST
+        reason:
+          type: string
+        technique:
+          $ref: "#/components/schemas/AstTechnique"
+        orderedAntibioticIds:
+          type: array
+          description: Omit for the whole source panel or provide source-run members for a scoped repeat.
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+    AstReasonRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          minLength: 1
+    AstInvalidateRepeatRequest:
+      type: object
+      required:
+        - reason
+        - analyzerCardId
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        analyzerCardId:
+          type: string
+          minLength: 1
+    AstAnalyzerEventRequest:
+      type: object
+      required:
+        - externalEventId
+        - eventType
+        - payload
+      properties:
+        externalEventId:
+          type: string
+        eventType:
+          type: string
+          enum:
+            - AST_RESULT_AVAILABLE
+            - AST_QC_FAIL
+        analyzerId:
+          type: string
+        sourceId:
+          type: string
+          description: Analyzer card or panel identifier used when targetRunId is absent.
+        targetRunId:
+          type: string
+        payload:
+          $ref: "#/components/schemas/AstAnalyzerResultPayload"
+    AstAnalyzerResultPayload:
+      type: object
+      properties:
+        sourceEventId:
+          type: string
+        analyzerInstrumentId:
+          type: string
+        analyzerCardId:
+          type: string
+        analyzerSoftwareVersion:
+          type: string
+        analyzerOrganismId:
+          type: string
+        analyzerOrganismName:
+          type: string
+        analyzerOrganismConfidence:
+          type: number
+        analyzerExpertFlags:
+          type: array
+          items:
+            type: string
+        instrumentQcReference:
+          type: string
+        qcPassed:
+          type: boolean
+        loadedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        analyzerMessageCodes:
+          type: array
+          items:
+            type: string
+        readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/AstAnalyzerReading"
+    AstAnalyzerReading:
+      type: object
+      required:
+        - antibioticId
+        - rawValue
+      properties:
+        antibioticId:
+          type: string
+        rawValue:
+          type: number
+        units:
+          type: string
+        instrumentInterpretation:
+          type: string
+        analyzerResultReference:
+          type: string
+    CultureAnalyzerEventRequest:
+      type: object
+      required:
+        - externalEventId
+        - eventType
+      properties:
+        externalEventId:
+          type: string
+        eventType:
+          type: string
+          enum:
+            - POSITIVE_SIGNAL
+        analyzerId:
+          type: string
+        sourceId:
+          type: string
+          description: Recorded culture-container identifier used when targetCaseId is absent.
+        targetCaseId:
+          type: string
+        note:
+          type: string
+    AnalyzerEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        externalEventId:
+          type: string
+        eventType:
+          type: string
+        analyzerId:
+          type: string
+        sourceId:
+          type: string
+        targetReference:
+          type: string
+        status:
+          type: string
+          enum:
+            - RECEIVED
+            - APPLIED
+            - FAILED
+        failureReason:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+        reconciliationUrl:
           type: string
     AstRun:
       type: object
@@ -396,65 +1032,248 @@ components:
           type: string
         isolateId:
           type: string
+        panelId:
+          type: string
+        panelVersion:
+          type: integer
+        panelProvenance:
+          type: string
+          enum:
+            - ORGANISM_DEFAULT
+            - ADJUSTED
+        panelAdjustmentReason:
+          type: string
+        breakpointStandardId:
+          type: string
+        breakpointVersion:
+          type: string
+        technique:
+          $ref: "#/components/schemas/AstTechnique"
+        measurementType:
+          $ref: "#/components/schemas/AstMeasurementType"
+        method:
+          allOf:
+            - $ref: "#/components/schemas/AstMeasurementType"
+          deprecated: true
+          description: Compatibility alias for measurementType.
         status:
+          type: string
+          enum:
+            - IN_PROGRESS
+            - AWAITING_RESULTS
+            - RESULTS_IN
+            - QC_FAILED
+            - RERUN_REQUIRED
+            - INVALIDATED
+            - REVIEWED
+        analyzerInstrumentId:
+          type: string
+        analyzerCardId:
+          type: string
+        analyzerSoftwareVersion:
+          type: string
+        analyzerOrganismId:
+          type: string
+        analyzerOrganismName:
+          type: string
+        analyzerOrganismConfidence:
+          type: number
+        analyzerExpertFlags:
+          type: string
+        instrumentQcReference:
+          type: string
+        qcState:
+          type: string
+        qcOverrideReason:
+          type: string
+        analyzerFlagsAcknowledgementReason:
+          type: string
+        analyzerLoadedAt:
+          type: string
+          format: date-time
+        analyzerCompletedAt:
+          type: string
+          format: date-time
+        analyzerMessageCodes:
+          type: string
+        sourceEventId:
           type: string
         readings:
           type: array
           items:
             $ref: "#/components/schemas/AstReading"
+        orderedAntibiotics:
+          type: array
+          items:
+            $ref: "#/components/schemas/AstRunAntibiotic"
+    AstSetup:
+      type: object
+      properties:
+        isolateId:
+          type: string
+        orderedPanelId:
+          type: string
+        orderedPanelLabel:
+          type: string
+        orderedPanelVersion:
+          type: integer
+        panelProvenance:
+          type: string
+          enum:
+            - ORGANISM_DEFAULT
+            - UNASSIGNED
     AstReadingRequest:
       type: object
       required:
         - antibioticId
-        - readingValue
+        - rawValue
       properties:
         antibioticId:
           type: string
-        readingType:
+        rawValue:
+          type: number
+    AstReading:
+      type: object
+      properties:
+        id:
           type: string
-        readingValue:
+        astRunId:
           type: string
-        readingUnit:
+        antibioticId:
+          type: string
+        measurementType:
+          $ref: "#/components/schemas/AstMeasurementType"
+        method:
+          allOf:
+            - $ref: "#/components/schemas/AstMeasurementType"
+          deprecated: true
+          description: Compatibility alias for measurementType.
+        rawValue:
+          type: number
+        interpretation:
+          type: string
+        instrumentInterpretation:
+          type: string
+        analyzerResultReference:
+          type: string
+        breakpointRuleId:
+          type: string
+        source:
+          type: string
+          enum:
+            - MANUAL_ENTRY
+            - ANALYZER_AUTO
+            - OVERRIDE
+        matchedBy:
+          type: string
+          enum:
+            - SPECIMEN
+            - ORGANISM
+            - GROUP
+            - NONE
+        units:
           type: string
         overrideInterpretation:
           type: string
         overrideReason:
           type: string
-    AstReading:
-      allOf:
-        - $ref: "#/components/schemas/AstReadingRequest"
-        - type: object
-          properties:
-            id:
-              type: string
-            interpretedValue:
-              type: string
-            finalInterpretation:
-              type: string
-            requiresManualJudgment:
-              type: boolean
+        overrideHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/AstOverrideEvent"
+    AstTechnique:
+      type: string
+      enum:
+        - DISK_DIFFUSION
+        - VITEK_2
+        - PHOENIX
+        - ETEST
+        - BROTH_MICRODILUTION
+    AstMeasurementType:
+      type: string
+      enum:
+        - MIC
+        - ZONE
+    AstRunAntibiotic:
+      type: object
+      required:
+        - antibioticId
+        - displayOrder
+      properties:
+        antibioticId:
+          type: string
+        displayOrder:
+          type: integer
+        tier:
+          type: integer
+          minimum: 1
+          maximum: 3
+        reportBehavior:
+          type: string
+    AstOverrideEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        readingId:
+          type: string
+        action:
+          type: string
+          enum:
+            - OVERRIDE
+            - REVERT
+        fromInterpretation:
+          type: string
+        toInterpretation:
+          type: string
+        reason:
+          type: string
+        performedAt:
+          type: string
+          format: date-time
+        performedBy:
+          type: string
+        performedByDisplay:
+          type: string
+    AstOverrideRequest:
+      type: object
+      required:
+        - overrideInterpretation
+        - overrideReason
+      properties:
+        overrideInterpretation:
+          type: string
+        overrideReason:
+          type: string
+    AstRevertRequest:
+      type: object
+      required:
+        - overrideReason
+      properties:
+        overrideReason:
+          type: string
     CriticalCommunicationRequest:
       type: object
       required:
         - targetType
         - targetId
-        - recipientName
+        - recipient
         - message
-        - method
+        - communicationMethod
       properties:
         targetType:
           type: string
         targetId:
           type: string
-        recipientName:
+        recipient:
           type: string
         recipientContact:
           type: string
         message:
           type: string
-        method:
+        communicationMethod:
           type: string
-        followUpRequired:
+        followUpNeeded:
           type: boolean
     CriticalCommunication:
       allOf:
@@ -463,23 +1282,110 @@ components:
           properties:
             id:
               type: string
-            communicationStatus:
+            acknowledgementStatus:
               type: string
             communicatedAt:
               type: string
               format: date-time
-            linkedAlertId:
+            alertId:
               type: integer
               format: int64
+    CaseNonconformanceRequest:
+      type: object
+      required:
+        - categoryId
+        - reportingUnitId
+        - severity
+        - description
+        - disposition
+        - eventType
+      properties:
+        categoryId:
+          type: string
+        typeId:
+          type: string
+        reportingUnitId:
+          type: integer
+        severity:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        immediateAction:
+          type: string
+        disposition:
+          type: string
+          enum:
+            - FLAG_ONLY
+            - REJECT_TEST
+            - RETEST
+        eventType:
+          type: string
+          enum:
+            - NONCONFORMANCE
+            - SPECIMEN_LOST
+        sourceAstRunId:
+          type: string
+          description: Required for the RETEST disposition and constrained to this case.
+        astTechnique:
+          $ref: "#/components/schemas/AstTechnique"
+        orderedAntibioticIds:
+          type: array
+          description: Empty for the whole source panel or source-run members for a scoped retest.
+          uniqueItems: true
+          items:
+            type: string
+    CaseNonconformanceResult:
+      type: object
+      properties:
+        nceId:
+          type: string
+        nceNumber:
+          type: string
+        disposition:
+          type: string
+        eventType:
+          type: string
+        affectedCaseIds:
+          type: array
+          items:
+            type: string
+        createdAstRunId:
+          type: string
+    MicroReportRelease:
+      type: object
+      properties:
+        caseId:
+          type: string
+        finalReleaseState:
+          type: string
+        stage:
+          type: string
+        closedAt:
+          type: string
+          format: date-time
+        closedBy:
+          type: string
     ReadinessFailure:
       type: object
       properties:
         caseId:
           type: string
+        finalReleaseReady:
+          type: boolean
         blockers:
           type: array
           items:
             type: string
+        astRunsComplete:
+          type: integer
+        astRunsTotal:
+          type: integer
+        significantIsolatesAwaitingAstSetup:
+          type: integer
+        isolatesPendingIdentification:
+          type: integer
     WhonetReadinessRow:
       type: object
       properties:

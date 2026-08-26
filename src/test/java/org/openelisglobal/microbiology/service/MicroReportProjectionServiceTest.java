@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
@@ -25,6 +26,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
+import org.openelisglobal.microbiology.dao.MicroAstRunAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
@@ -34,6 +36,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
@@ -68,6 +71,9 @@ public class MicroReportProjectionServiceTest {
     private MicroAstReadingDAO readingDAO;
 
     @Mock
+    private MicroAstRunAntibioticDAO runAntibioticDAO;
+
+    @Mock
     private MicroOrganismDAO organismDAO;
 
     @Mock
@@ -93,8 +99,8 @@ public class MicroReportProjectionServiceTest {
     @Before
     public void setUp() {
         service = new MicroReportProjectionServiceImpl(caseDAO, caseAnalysisDAO, isolateDAO, astRunDAO, readingDAO,
-                organismDAO, antibioticDAO, analysisService, testAnalyteService, testResultService, resultService,
-                statusService);
+                runAntibioticDAO, organismDAO, antibioticDAO, analysisService, testAnalyteService, testResultService,
+                resultService, statusService);
     }
 
     @Test
@@ -115,6 +121,8 @@ public class MicroReportProjectionServiceTest {
         when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(link));
         when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
+        when(runAntibioticDAO.getByRunId("run-1"))
+                .thenReturn(List.of(ordered("run-1", "cip", 1), ordered("run-1", "amp", 2)));
         when(readingDAO.getByRunId("run-1")).thenReturn(List.of(resistant, susceptible));
         when(organismDAO.get("org-1")).thenReturn(Optional.of(organism("org-1", "Escherichia coli")));
         when(antibioticDAO.get("amp")).thenReturn(Optional.of(antibiotic("amp", "Ampicillin")));
@@ -132,7 +140,7 @@ public class MicroReportProjectionServiceTest {
 
         MicroReportProjectionResult result = service.releaseFinal("case-1", "9");
 
-        assertEquals("Isolate A: Escherichia coli; Ampicillin R, Ciprofloxacin S", result.getContent());
+        assertEquals("Isolate A: Escherichia coli; Ciprofloxacin S, Ampicillin R", result.getContent());
         assertEquals(List.of("201"), result.getProjectedResultIds());
         ArgumentCaptor<Result> resultCaptor = ArgumentCaptor.forClass(Result.class);
         verify(resultService).insert(resultCaptor.capture());
@@ -168,6 +176,7 @@ public class MicroReportProjectionServiceTest {
         when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(link));
         when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate("iso-1")));
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(reviewedRun("run-1", "iso-1")));
+        when(runAntibioticDAO.getByRunId("run-1")).thenReturn(List.of(ordered("run-1", "amp", 1)));
         when(readingDAO.getByRunId("run-1")).thenReturn(List.of(reading("amp", MicroAstInterpretation.RESISTANT)));
         when(organismDAO.get("org-1")).thenReturn(Optional.of(organism("org-1", "Klebsiella pneumoniae")));
         when(antibioticDAO.get("amp")).thenReturn(Optional.of(antibiotic("amp", "Ampicillin")));
@@ -262,6 +271,26 @@ public class MicroReportProjectionServiceTest {
     }
 
     @Test
+    public void preliminaryReleaseProjectsGramStainBeforeOrganismIdentification() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.IDENTIFICATION);
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setIsolateLabel("Isolate A");
+        isolate.setGramStain("Gram negative rods");
+        isolate.setColonyMorphology("Lactose fermenting colonies");
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.PRELIMINARY.name());
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+
+        MicroReportProjectionResult result = service.releasePreliminary("case-1", "9");
+
+        assertEquals("Isolate A: Gram stain: Gram negative rods; Colony morphology: Lactose fermenting colonies",
+                result.getContent());
+        assertTrue(result.hasReportableContent());
+    }
+
+    @Test
     public void multipleReviewedAttemptsRequireOneSelectionAndProjectOnlyThatRun() {
         MicroCase microCase = microCase("case-1", MicroCaseStage.REVIEW_READY);
         MicroIsolate isolate = isolate("iso-1");
@@ -286,6 +315,7 @@ public class MicroReportProjectionServiceTest {
         }
 
         repeat.setReportable(true);
+        when(runAntibioticDAO.getByRunId("run-2")).thenReturn(List.of(ordered("run-2", "cip", 1)));
         when(readingDAO.getByRunId("run-2")).thenReturn(List.of(reading("cip", MicroAstInterpretation.SUSCEPTIBLE)));
         when(antibioticDAO.get("cip")).thenReturn(Optional.of(antibiotic("cip", "Ciprofloxacin")));
 
@@ -348,6 +378,35 @@ public class MicroReportProjectionServiceTest {
         } catch (IllegalStateException expected) {
             assertEquals("FINAL_REPORT_BASELINE_AMBIGUOUS", expected.getMessage());
         }
+    }
+
+    @Test
+    public void previewUsesTheLatestReadingInTheSnapshottedOrderAndExcludesUnorderedRows() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.REVIEW_READY);
+        MicroIsolate isolate = isolate("iso-1");
+        MicroAstRun run = reviewedRun("run-1", "iso-1");
+        MicroAstReading oldAmp = reading("amp", MicroAstInterpretation.RESISTANT);
+        oldAmp.setId("reading-1");
+        oldAmp.setCreatedAt(Timestamp.valueOf("2026-08-06 08:00:00"));
+        MicroAstReading currentAmp = reading("amp", MicroAstInterpretation.SUSCEPTIBLE);
+        currentAmp.setId("reading-2");
+        currentAmp.setCreatedAt(Timestamp.valueOf("2026-08-06 09:00:00"));
+        MicroAstReading unordered = reading("cip", MicroAstInterpretation.RESISTANT);
+        unordered.setId("reading-3");
+        unordered.setCreatedAt(Timestamp.valueOf("2026-08-06 09:30:00"));
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
+        when(runAntibioticDAO.getByRunId("run-1")).thenReturn(List.of(ordered("run-1", "amp", 1)));
+        when(readingDAO.getByRunId("run-1")).thenReturn(List.of(oldAmp, unordered, currentAmp));
+        when(organismDAO.get("org-1")).thenReturn(Optional.of(organism("org-1", "Escherichia coli")));
+        when(antibioticDAO.get("amp")).thenReturn(Optional.of(antibiotic("amp", "Ampicillin")));
+
+        MicroReportProjectionResult projection = service.preview("case-1");
+
+        assertEquals("Isolate A: Escherichia coli; Ampicillin S", projection.getContent());
+        verify(antibioticDAO, never()).get("cip");
     }
 
     @Test
@@ -423,6 +482,14 @@ public class MicroReportProjectionServiceTest {
         reading.setAntibioticId(antibioticId);
         reading.setInterpretation(interpretation.name());
         return reading;
+    }
+
+    private MicroAstRunAntibiotic ordered(String runId, String antibioticId, int displayOrder) {
+        MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
+        ordered.setAstRunId(runId);
+        ordered.setAntibioticId(antibioticId);
+        ordered.setDisplayOrder(displayOrder);
+        return ordered;
     }
 
     private MicroOrganism organism(String id, String displayName) {

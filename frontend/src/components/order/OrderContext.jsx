@@ -19,6 +19,10 @@ import {
 } from "./api/sampleTypeRequestApi";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { ConfigurationContext } from "../layout/Layout";
+import {
+  buildLoadedOrderData,
+  buildSubmissionSampleOrderItems,
+} from "./orderDataUtils";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -314,45 +318,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             setOrderId(response.id);
             setLabNumber(response.labNumber);
 
-            // Capture reference-data lists already loaded by the mount fetch
-            // ( /rest/SamplePatientEntry ) — /rest/order/search does not return
-            // them, so without this we'd clobber referralOrganizations,
-            // referralReasons, sampleTypes, etc. to null on every load.
-            const prior = orderDataRef.current || {};
-            const preservedRefData = {
-              sampleTypes: prior.sampleTypes,
-              testSectionList: prior.testSectionList,
-              rejectReasonList: prior.rejectReasonList,
-              referralOrganizations: prior.referralOrganizations,
-              referralReasons: prior.referralReasons,
-            };
-
-            // Build order data by merging response fields with defaults
-            // The backend returns patientProperties at top level and inside orderData
-            const loadedOrderData = {
-              ...SampleOrderFormValues,
-              ...preservedRefData,
-              ...(response.orderData || {}),
-              patientProperties: {
-                ...SampleOrderFormValues.patientProperties,
-                ...(response.patientProperties || {}),
-                ...(response.orderData?.patientProperties || {}),
-                // Keep patient status from response or default to NO_ACTION for subsequent saves
-                // Only set UPDATE when patient data has actually been modified
-                patientUpdateStatus:
-                  response.patientProperties?.patientUpdateStatus ||
-                  "NO_ACTION",
-              },
-              sampleOrderItems: {
-                ...SampleOrderFormValues.sampleOrderItems,
-                ...(response.sampleOrderItems || {}),
-                environmentalFields: {
-                  ...(prior?.sampleOrderItems?.environmentalFields || {}),
-                  ...(response.sampleOrderItems?.environmentalFields || {}),
-                },
-                labNo: response.labNumber,
-              },
-            };
+            const loadedOrderData = buildLoadedOrderData(
+              response,
+              orderDataRef.current,
+            );
 
             setOrderDataState(loadedOrderData);
 
@@ -665,36 +634,12 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         // Flag for decoupled workflow: samples not required when orderEntryOnly=true
         orderEntryOnly: orderEntryOnly,
         // Clean up display lists that shouldn't be sent
-        sampleOrderItems: {
-          ...orderData.sampleOrderItems,
-          priorityList: [],
-          programList: [],
-          referringSiteList: [],
-          providersList: [],
-          paymentOptions: [],
-          testLocationCodeList: [],
-        },
+        sampleOrderItems: buildSubmissionSampleOrderItems(
+          orderData.sampleOrderItems,
+        ),
         initialSampleConditionList: [],
         testSectionList: [],
       };
-
-      // Remove extra fields from sampleOrderItems that backend doesn't expect or that fail validation
-      if (submitData.sampleOrderItems.questionnaire) {
-        delete submitData.sampleOrderItems.questionnaire;
-      }
-      if (submitData.sampleOrderItems.vlProgramFields) {
-        delete submitData.sampleOrderItems.vlProgramFields;
-      }
-      if (submitData.sampleOrderItems.paymentStatus) {
-        delete submitData.sampleOrderItems.paymentStatus;
-      }
-      // Remove 'program' field - it contains the name (e.g., "Histopathology") but validation
-      // expects a numeric ID. The backend uses 'programId' instead.
-      if (submitData.sampleOrderItems.program) {
-        delete submitData.sampleOrderItems.program;
-      }
-      // domain is frontend-only (drives step visibility), not a backend field.
-      delete submitData.sampleOrderItems.domain;
 
       return new Promise((resolve, reject) => {
         // Always use SamplePatientEntry endpoint - the backend handles both insert and update
@@ -914,7 +859,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         }
         entrySampleXML = buildSampleXML(stampedSamples, envFields);
       }
-
       // Prepare order data WITHOUT sample items
       const submitData = {
         ...orderData,
@@ -922,38 +866,14 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         referralItems: [],
         useReferral: false,
         orderEntryOnly: true, // Flag for backend to skip sample validation
-        sampleOrderItems: {
+        sampleOrderItems: buildSubmissionSampleOrderItems({
           ...orderData.sampleOrderItems,
-          // Use the merged envFields so vector per-sample observations
-          // (trap-count/nights, lifecycle, trap-type) reach the backend; the
-          // original orderData.environmentalFields is missing that merge.
+          // Include per-sample vector observations merged above.
           environmentalFields: envFields,
-          priorityList: [],
-          programList: [],
-          referringSiteList: [],
-          providersList: [],
-          paymentOptions: [],
-          testLocationCodeList: [],
-        },
+        }),
         initialSampleConditionList: [],
         testSectionList: [],
       };
-
-      // Remove extra fields that fail validation
-      if (submitData.sampleOrderItems.questionnaire) {
-        delete submitData.sampleOrderItems.questionnaire;
-      }
-      if (submitData.sampleOrderItems.vlProgramFields) {
-        delete submitData.sampleOrderItems.vlProgramFields;
-      }
-      if (submitData.sampleOrderItems.paymentStatus) {
-        delete submitData.sampleOrderItems.paymentStatus;
-      }
-      if (submitData.sampleOrderItems.program) {
-        delete submitData.sampleOrderItems.program;
-      }
-      // domain is frontend-only (drives step visibility), not a backend field.
-      delete submitData.sampleOrderItems.domain;
 
       return new Promise((resolve, reject) => {
         const endpoint = "/rest/SamplePatientEntry";
@@ -1169,7 +1089,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         (idx) => idx !== sampleIndex,
       );
       if (assignedToSamples.length === 0) {
-        const { [testId]: removed, ...rest } = prev;
+        const rest = { ...prev };
+        delete rest[testId];
         return rest;
       }
       return {

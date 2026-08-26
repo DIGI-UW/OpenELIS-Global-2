@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
@@ -38,10 +39,11 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
 
     @Override
     @Transactional
-    public MicroIsolate createIsolate(String caseId, String isolateLabel, String organismId,
-            String preliminaryOrganismText, MicroIsolateSignificance significance, String performedBy) {
+    public MicroIsolate createIsolate(String caseId, String isolateLabel, String gramStain, String colonyMorphology,
+            MicroIsolateSignificance significance, String performedBy) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
         MicroCaseServiceImpl.requireText(isolateLabel, "isolateLabel");
+        MicroCaseServiceImpl.requireText(gramStain, "gramStain");
         MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
         MicroCaseMutationGuard.requireMutable(microCase);
 
@@ -49,14 +51,25 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         isolate.setCaseId(caseId);
         isolate.setAmendmentId(activeAmendmentId(microCase));
         isolate.setIsolateLabel(isolateLabel);
-        isolate.setOrganismId(optionalId(organismId));
-        isolate.setPreliminaryOrganismText(preliminaryOrganismText);
+        isolate.setOrganismId(null);
+        isolate.setPreliminaryOrganismText(null);
+        isolate.setGramStain(gramStain.trim());
+        isolate.setColonyMorphology(trimToNull(colonyMorphology));
         isolate.setSignificance((significance == null ? MicroIsolateSignificance.UNKNOWN : significance).name());
         isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.PRELIMINARY.name());
         isolate.setCreatedAt(MicroCaseServiceImpl.now());
         isolateDAO.insert(isolate);
         recordActivity(caseId, MicroCaseActivityType.ISOLATE_CREATED, performedBy,
-                "Isolate " + isolateLabel + " created", "{\"isolateId\":\"" + isolate.getId() + "\"}");
+                "Gram stain for " + isolateLabel + ": " + isolate.getGramStain(),
+                "{\"isolateId\":\"" + isolate.getId() + "\"}");
+        if (MicroCaseStage.RECEIVED.name().equals(microCase.getStage())
+                || MicroCaseStage.SETUP_RECORDED.name().equals(microCase.getStage())
+                || MicroCaseStage.INCUBATING.name().equals(microCase.getStage())
+                || MicroCaseStage.POSITIVE_SIGNAL.name().equals(microCase.getStage())
+                || MicroCaseStage.GROWTH_DETECTED.name().equals(microCase.getStage())) {
+            microCase.setStage(MicroCaseStage.IDENTIFICATION.name());
+            caseDAO.update(microCase);
+        }
         return isolate;
     }
 
@@ -64,17 +77,23 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
     @Transactional
     public MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
             MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
-            String performedBy) {
+            String identificationMethod, BigDecimal identificationConfidence, String performedBy) {
         return updateIdentification(isolateId, organismId, preliminaryOrganismText, significance, identificationStatus,
-                null, performedBy);
+                identificationMethod, identificationConfidence, null, performedBy);
     }
 
     @Override
     @Transactional
     public MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
-            MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus, String reason,
-            String performedBy) {
+            MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
+            String identificationMethod, BigDecimal identificationConfidence, String reason, String performedBy) {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
+        MicroCaseServiceImpl.requireText(organismId, "organismId");
+        MicroCaseServiceImpl.requireText(identificationMethod, "identificationMethod");
+        requireConfidence(identificationConfidence);
+        if (!MicroIsolateIdentificationStatus.CONFIRMED.equals(identificationStatus)) {
+            throw new IllegalArgumentException("identificationStatus must be CONFIRMED");
+        }
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         if (isolate.getCancelledAt() != null) {
@@ -86,10 +105,10 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         MicroIsolate previous = identificationSnapshot(isolate);
         isolate.setOrganismId(optionalId(organismId));
         isolate.setPreliminaryOrganismText(preliminaryOrganismText);
+        isolate.setIdentificationMethod(identificationMethod.trim());
+        isolate.setIdentificationConfidence(identificationConfidence);
         isolate.setSignificance((significance == null ? MicroIsolateSignificance.UNKNOWN : significance).name());
-        isolate.setIdentificationStatus(
-                (identificationStatus == null ? MicroIsolateIdentificationStatus.PRELIMINARY : identificationStatus)
-                        .name());
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.CONFIRMED.name());
         MicroIsolateIdentificationEvent event = identificationHistoryService.recordChange(previous, isolate, reason,
                 performedBy);
         MicroIsolate updated = isolateDAO.update(isolate);
@@ -112,6 +131,10 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         snapshot.setIsolateLabel(isolate.getIsolateLabel());
         snapshot.setOrganismId(isolate.getOrganismId());
         snapshot.setPreliminaryOrganismText(isolate.getPreliminaryOrganismText());
+        snapshot.setGramStain(isolate.getGramStain());
+        snapshot.setColonyMorphology(isolate.getColonyMorphology());
+        snapshot.setIdentificationMethod(isolate.getIdentificationMethod());
+        snapshot.setIdentificationConfidence(isolate.getIdentificationConfidence());
         snapshot.setSignificance(isolate.getSignificance());
         snapshot.setIdentificationStatus(isolate.getIdentificationStatus());
         return snapshot;
@@ -147,6 +170,17 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
             throw new MicroAmendmentConflictException("AMENDMENT_NOT_OPEN");
         }
         return amendment.getId();
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private void requireConfidence(BigDecimal confidence) {
+        if (confidence == null || confidence.compareTo(BigDecimal.ZERO) < 0
+                || confidence.compareTo(new BigDecimal("100")) > 0) {
+            throw new IllegalArgumentException("identificationConfidence must be between 0 and 100");
+        }
     }
 
     private void recordActivity(String caseId, MicroCaseActivityType activityType, String performedBy, String note,

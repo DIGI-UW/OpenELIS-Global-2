@@ -42,6 +42,43 @@
   gap: 0.5rem 1rem;
 }
 
+.microbiology-case-info__heading {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.microbiology-case-info__compact {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.microbiology-workbench__hero-actions,
+.microbiology-isolate-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.microbiology-workbench__hero-actions {
+  justify-content: flex-end;
+}
+
+.microbiology-sibling-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.75rem;
+}
+
+.microbiology-sibling-links span {
+  font-weight: 600;
+}
+
 .microbiology-workbench__layout {
   display: grid;
   gap: 1.5rem;
@@ -133,6 +170,11 @@
   min-width: 0;
 }
 
+.microbiology-workbench__section-focus:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
 .microbiology-workbench__content > [id] {
   scroll-margin-top: 5.5rem;
 }
@@ -183,6 +225,36 @@
   gap: 1rem;
 }
 
+.microbiology-form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.microbiology-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.microbiology-current-step-action {
+  align-items: center;
+  background: #ffffff;
+  border-top: 1px solid #c6c6c6;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  position: sticky;
+  z-index: 2;
+}
+
+@media (max-width: 42rem) {
+  .microbiology-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .microbiology-card__header {
   align-items: flex-start;
   display: flex;
@@ -217,6 +289,13 @@
   grid-column: 1 / -1;
 }
 
+.microbiology-inline-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .microbiology-list {
   display: grid;
   gap: 0.5rem;
@@ -234,6 +313,50 @@
 .microbiology-list__meta {
   color: #6f6f6f;
   font-size: 0.75rem;
+}
+
+.microbiology-isolate-row {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.microbiology-isolate-details {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0.75rem 0 0;
+}
+
+.microbiology-isolate-details > div {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(8rem, 0.35fr) minmax(0, 1fr);
+}
+
+.microbiology-isolate-details dt {
+  color: #525252;
+  font-weight: 600;
+}
+
+.microbiology-isolate-details dd {
+  margin: 0;
+}
+
+.microbiology-ast-start-action {
+  align-self: end;
+}
+
+.microbiology-ast-panel-confirmation,
+.microbiology-ast-panel-adjustment {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.microbiology-ast-panel-confirmation .cds--btn,
+.microbiology-ast-panel-adjustment .cds--btn {
+  justify-self: start;
 }
 
 .microbiology-table {
@@ -283,6 +406,24 @@
   min-width: 10rem;
 }
 
+.microbiology-ast-override-history {
+  background: var(--cds-layer-01);
+  border-left: 0.25rem solid var(--cds-border-interactive);
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.microbiology-ast-override-history h4,
+.microbiology-ast-override-history p {
+  margin: 0;
+}
+
+.microbiology-ast-override-history p {
+  color: var(--cds-text-secondary);
+  line-height: 1.4;
+}
+
 .microbiology-ast-repeat-form {
   border-top: 1px solid var(--cds-border-subtle);
   display: grid;
@@ -307,6 +448,12 @@
   font-size: 1rem;
   font-weight: 600;
   margin: 0;
+}
+
+.microbiology-reagent-lots__title {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
 }
 
 .microbiology-reagent-lots__requirement {
@@ -433,6 +580,36 @@
 
 .microbiology-report-actions {
   align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.microbiology-ast-analyzer-provenance {
+  background: #f4f4f4;
+  border-left: 0.25rem solid #0f62fe;
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.microbiology-ast-progress-count {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.microbiology-ast-qc-recovery,
+.microbiology-ast-flag-review {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.microbiology-action-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;

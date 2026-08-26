@@ -10,10 +10,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
@@ -21,6 +23,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
+import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
@@ -28,6 +31,8 @@ import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOriginDefault;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersionSource;
 import org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun;
@@ -56,16 +61,24 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroBreakpointRule.class));
         assertNotNull(metamodel.entity(MicroBreakpointActivationEvent.class));
         assertNotNull(metamodel.entity(MicroCultureSetup.class));
+        assertNotNull(metamodel.entity(MicroPatientOrigin.class));
+        assertNotNull(metamodel.entity(MicroPatientOriginDefault.class));
         assertNotNull(metamodel.entity(MicroCase.class));
         assertNotNull(metamodel.entity(MicroCaseActivity.class));
         assertNotNull(metamodel.entity(MicroCaseAmendment.class));
         assertNotNull(metamodel.entity(MicroCaseAnalysis.class));
+        assertNotNull(metamodel.entity(MicroCaseInoculation.class));
         assertNotNull(metamodel.entity(MicroIsolate.class));
         assertNotNull(metamodel.entity(MicroIsolateIdentificationEvent.class));
         assertNotNull(metamodel.entity(MicroAstRun.class));
+        assertNotNull(metamodel.entity(MicroAstRun.class).getAttribute("technique"));
+        assertNotNull(metamodel.entity(MicroAstRunAntibiotic.class));
         assertNotNull(metamodel.entity(MicroAstReading.class));
+        assertNotNull(metamodel.entity(MicroAstOverrideEvent.class));
         assertNotNull(metamodel.entity(MicroCriticalCommunication.class));
         assertNotNull(metamodel.entity(MicroCaseOrderDetail.class));
+        assertNotNull(metamodel.entity(MicroCaseOrderDetail.class).getAttribute("sampleId"));
+        assertNotNull(metamodel.entity(MicroCaseOrderDetail.class).getAttribute("cultureMethodId"));
         assertNotNull(metamodel.entity(MicroReportVersion.class));
         assertNotNull(metamodel.entity(MicroReportVersionSource.class));
         assertNotNull(metamodel.entity(MicroInventoryUsageLink.class));
@@ -77,6 +90,39 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         EntityManager entityManager = entityManagerFactory.createEntityManager();
         try {
             assertNotNull(entityManager.createQuery("from MicroCaseAnalysis", MicroCaseAnalysis.class));
+        } finally {
+            entityManager.close();
+        }
+    }
+
+    @Test
+    public void microbiologyOrderDetailDraftHqlCompiles() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        try {
+            assertNotNull(entityManager.createQuery(
+                    "from MicroCaseOrderDetail d where d.sampleId = :sampleId and d.caseId is null",
+                    MicroCaseOrderDetail.class));
+        } finally {
+            entityManager.close();
+        }
+    }
+
+    @Test
+    public void microbiologyPatientOriginHqlCompiles() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        try {
+            assertNotNull(entityManager.createQuery(
+                    "from MicroPatientOrigin o where o.isActive = 'Y' order by o.sortOrder, o.displayName",
+                    MicroPatientOrigin.class));
+            assertNotNull(
+                    entityManager.createQuery("from MicroPatientOrigin o where 1 = 1 order by lower(o.displayName) asc",
+                            MicroPatientOrigin.class));
+            assertNotNull(entityManager.createQuery("select count(o.id) from MicroPatientOrigin o where 1 = 1"
+                    + " and (lower(o.displayName) like :q or lower(o.code) like :q"
+                    + " or lower(o.whonetCode) like :q) and o.isActive = :active", Long.class));
+            assertNotNull(entityManager.createQuery(
+                    "select d.patientOriginId from MicroPatientOriginDefault d where d.organizationId = :organizationId",
+                    String.class));
         } finally {
             entityManager.close();
         }

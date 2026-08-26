@@ -12,6 +12,8 @@ import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +24,19 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     private final MicrobiologyReferenceService referenceService;
     private final MicroCaseOrderDetailService orderDetailService;
     private final MicroCaseAnalysisService caseAnalysisService;
+    private final TestMethodService testMethodService;
+    private final String defaultWorkflow;
 
     public MicroOrderRoutingServiceImpl(MicroCaseService caseService, MicrobiologyReferenceService referenceService,
-            MicroCaseOrderDetailService orderDetailService, MicroCaseAnalysisService caseAnalysisService) {
+            MicroCaseOrderDetailService orderDetailService, MicroCaseAnalysisService caseAnalysisService,
+            TestMethodService testMethodService,
+            @Value("${org.openelisglobal.microbiology.defaultWorkflow:}") String defaultWorkflow) {
         this.caseService = caseService;
         this.referenceService = referenceService;
         this.orderDetailService = orderDetailService;
         this.caseAnalysisService = caseAnalysisService;
+        this.testMethodService = testMethodService;
+        this.defaultWorkflow = defaultWorkflow == null ? "" : defaultWorkflow.trim();
     }
 
     @Override
@@ -42,24 +50,48 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     @Transactional
     public List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses,
             String performedBy, MicroCaseOrderDetailRequestForm orderDetail) {
+        return routeAnalysesForSampleItem(sampleItem, analyses, performedBy, orderDetail, false);
+    }
+
+    @Override
+    @Transactional
+    public List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses,
+            String performedBy, MicroCaseOrderDetailRequestForm orderDetail, boolean microbiologyProgramSelected) {
         if (sampleItem == null || sampleItem.getId() == null || analyses == null || analyses.isEmpty()) {
             return List.of();
         }
 
-        Map<MicroWorkflowType, RoutingConfiguration> configurationsByWorkflow = new LinkedHashMap<>();
+        MicroCaseOrderDetailRequestForm effectiveOrderDetail = orderDetail;
+        if (effectiveOrderDetail == null && sampleItem.getSample() != null && sampleItem.getSample().getId() != null) {
+            effectiveOrderDetail = orderDetailService.getOrderDraft(sampleItem.getSample().getId());
+        }
+
+        Map<MicroWorkflowType, List<Test>> testsByWorkflow = new LinkedHashMap<>();
         for (Analysis analysis : analyses) {
             Test test = analysis == null ? null : analysis.getTest();
             MicroWorkflowType workflowType = workflowTypeFor(test);
-            if (workflowType == null || configurationsByWorkflow.containsKey(workflowType)) {
-                continue;
+            if (workflowType != null) {
+                testsByWorkflow.computeIfAbsent(workflowType, ignored -> new ArrayList<>()).add(test);
             }
-            String methodId = methodIdFor(test);
-            MicroCultureSetup setup = referenceService.getActiveCultureSetupForMethod(methodId, workflowType);
-            if (setup == null) {
+        }
+        if (testsByWorkflow.isEmpty() && microbiologyProgramSelected) {
+            testsByWorkflow.put(fallbackWorkflowType(), analyses.stream().filter(java.util.Objects::nonNull)
+                    .map(Analysis::getTest).filter(java.util.Objects::nonNull).toList());
+        }
+
+        validateOrderDetail(effectiveOrderDetail);
+        validateSelectedMethod(effectiveOrderDetail, testsByWorkflow);
+        Map<MicroWorkflowType, RoutingConfiguration> configurationsByWorkflow = new LinkedHashMap<>();
+        for (Map.Entry<MicroWorkflowType, List<Test>> entry : testsByWorkflow.entrySet()) {
+            MicroWorkflowType workflowType = entry.getKey();
+            String methodId = methodIdFor(entry.getValue(), effectiveOrderDetail);
+            MicroCultureSetup setup = workflowType == MicroWorkflowType.UNASSIGNED ? null
+                    : referenceService.getActiveCultureSetupForMethod(methodId, workflowType);
+            if (setup == null && workflowType != MicroWorkflowType.UNASSIGNED) {
                 throw new IllegalStateException("No active microbiology culture setup for method " + methodId
                         + " and workflow " + workflowType.name());
             }
-            configurationsByWorkflow.put(workflowType, new RoutingConfiguration(methodId, setup));
+            configurationsByWorkflow.put(workflowType, new RoutingConfiguration(methodId, setup, entry.getValue()));
         }
 
         List<MicroCase> routedCases = new ArrayList<>();
@@ -68,12 +100,27 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
             MicroCase routedCase = caseService.createOrGetCase(sampleItem.getId(), entry.getKey(),
                     configuration.methodId(), performedBy);
             routedCases.add(routedCase);
-            linkPersistedAnalyses(routedCase, entry.getKey(), configuration.cultureSetup(), analyses);
-            if (orderDetail != null) {
-                orderDetailService.saveOrderDetail(routedCase.getId(), orderDetail, performedBy);
+            linkPersistedAnalyses(routedCase, configuration.tests(), configuration.cultureSetup(), analyses);
+            if (effectiveOrderDetail != null) {
+                orderDetailService.saveOrderDetail(routedCase.getId(), effectiveOrderDetail, performedBy);
             }
         }
         return routedCases;
+    }
+
+    private MicroWorkflowType fallbackWorkflowType() {
+        if (defaultWorkflow.isEmpty()) {
+            return MicroWorkflowType.UNASSIGNED;
+        }
+        try {
+            MicroWorkflowType configured = MicroWorkflowType.valueOf(defaultWorkflow.toUpperCase());
+            if (configured == MicroWorkflowType.UNASSIGNED || configured == MicroWorkflowType.MYCOLOGY) {
+                throw new IllegalStateException("Unsupported default microbiology workflow: " + defaultWorkflow);
+            }
+            return configured;
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Unsupported default microbiology workflow: " + defaultWorkflow, e);
+        }
     }
 
     private MicroWorkflowType workflowTypeFor(Test test) {
@@ -88,19 +135,58 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         }
     }
 
-    private String methodIdFor(Test test) {
-        Method method = test.getMethod();
-        if (method == null || method.getId() == null || method.getId().trim().isEmpty()) {
-            throw new IllegalStateException("Microbiology workflow tests require a culture method");
+    private void validateSelectedMethod(MicroCaseOrderDetailRequestForm orderDetail,
+            Map<MicroWorkflowType, List<Test>> testsByWorkflow) {
+        if (orderDetail == null || orderDetail.cultureMethodId == null
+                || orderDetail.cultureMethodId.trim().isEmpty()) {
+            return;
         }
-        return method.getId();
+        boolean linked = testsByWorkflow.values().stream().flatMap(List::stream)
+                .anyMatch(test -> testMethodService.testMethodLinkExists(test.getId(), orderDetail.cultureMethodId));
+        if (!linked) {
+            throw new IllegalArgumentException("Selected culture method is not linked to an ordered culture test");
+        }
     }
 
-    private void linkPersistedAnalyses(MicroCase microCase, MicroWorkflowType workflowType,
-            MicroCultureSetup cultureSetup, List<Analysis> analyses) {
+    private void validateOrderDetail(MicroCaseOrderDetailRequestForm orderDetail) {
+        if (orderDetail == null) {
+            return;
+        }
+        if (orderDetail.numberOfSets != null && (orderDetail.numberOfSets < 1 || orderDetail.numberOfSets > 10)) {
+            throw new IllegalArgumentException("Number of culture sets must be between 1 and 10");
+        }
+        if (orderDetail.clinicalHistory != null && orderDetail.clinicalHistory.length() > 1000) {
+            throw new IllegalArgumentException("Clinical history must be 1000 characters or fewer");
+        }
+    }
+
+    private String methodIdFor(List<Test> tests, MicroCaseOrderDetailRequestForm orderDetail) {
+        if (orderDetail != null && orderDetail.cultureMethodId != null
+                && !orderDetail.cultureMethodId.trim().isEmpty()) {
+            boolean linkedToWorkflow = tests.stream().anyMatch(
+                    test -> testMethodService.testMethodLinkExists(test.getId(), orderDetail.cultureMethodId));
+            if (linkedToWorkflow) {
+                return orderDetail.cultureMethodId;
+            }
+        }
+        Test test = tests.get(0);
+        String defaultMethodId = testMethodService.getDefaultMethodId(test.getId());
+        if (defaultMethodId != null && !defaultMethodId.trim().isEmpty()) {
+            return defaultMethodId;
+        }
+        Method legacyMethod = test.getMethod();
+        if (legacyMethod == null || legacyMethod.getId() == null || legacyMethod.getId().trim().isEmpty()) {
+            throw new IllegalStateException("Microbiology workflow tests require a culture method");
+        }
+        return legacyMethod.getId();
+    }
+
+    private void linkPersistedAnalyses(MicroCase microCase, List<Test> routedTests, MicroCultureSetup cultureSetup,
+            List<Analysis> analyses) {
+        List<String> routedTestIds = routedTests.stream().map(Test::getId).toList();
         for (Analysis analysis : analyses) {
             Test test = analysis == null ? null : analysis.getTest();
-            if (workflowType != workflowTypeFor(test) || analysis.getId() == null
+            if (test == null || !routedTestIds.contains(test.getId()) || analysis.getId() == null
                     || analysis.getId().trim().isEmpty()) {
                 continue;
             }
@@ -108,6 +194,6 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         }
     }
 
-    private record RoutingConfiguration(String methodId, MicroCultureSetup cultureSetup) {
+    private record RoutingConfiguration(String methodId, MicroCultureSetup cultureSetup, List<Test> tests) {
     }
 }

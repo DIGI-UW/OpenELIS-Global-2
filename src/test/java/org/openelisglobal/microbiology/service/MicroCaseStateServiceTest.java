@@ -58,6 +58,32 @@ public class MicroCaseStateServiceTest {
         verify(activityDAO).insert(any(MicroCaseActivity.class));
     }
 
+    @Test
+    public void positiveSignalRemainsDistinctFromObservedGrowth() {
+        microCase.setStage(MicroCaseStage.INCUBATING.name());
+        when(caseDAO.update(microCase)).thenReturn(microCase);
+
+        MicroCase positive = service.advanceStage("case-1", MicroCaseStage.POSITIVE_SIGNAL, "1",
+                "Bottle flagged positive");
+        assertEquals(MicroCaseStage.POSITIVE_SIGNAL.name(), positive.getStage());
+
+        MicroCase growth = service.advanceStage("case-1", MicroCaseStage.GROWTH_DETECTED, "1",
+                "Subculture growth observed");
+        assertEquals(MicroCaseStage.GROWTH_DETECTED.name(), growth.getStage());
+        verify(caseDAO, org.mockito.Mockito.times(2)).update(microCase);
+    }
+
+    @Test
+    public void noGrowthCanBeRecordedDirectlyFromIncubation() {
+        microCase.setStage(MicroCaseStage.INCUBATING.name());
+        when(caseDAO.update(microCase)).thenReturn(microCase);
+
+        MicroCase updated = service.advanceStage("case-1", MicroCaseStage.NO_GROWTH_READY, "1",
+                "Incubation complete with no growth");
+
+        assertEquals(MicroCaseStage.NO_GROWTH_READY.name(), updated.getStage());
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void advanceStageRejectsInvalidTransition() {
         try {

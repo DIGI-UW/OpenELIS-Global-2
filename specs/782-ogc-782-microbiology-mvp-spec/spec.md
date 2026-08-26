@@ -2,19 +2,26 @@
 
 **Feature Branch**: `spec/782-ogc-782-microbiology-mvp-spec`
 **Created**: 2026-06-27
-**Status**: Draft
-**Input**: User description: "Create a microbiology-specific feature spec that distills the important features from Jira, Confluence, openelis-work specs/mockups, and repo research; reference the proper files; make the product behavior crystal clear for planning and implementation without letting product specs mandate technical implementation details."
+**Status**: Authoritative-alignment remediation in progress; implementation is
+partial and combined human UAT remains pending
+**Input**: User description: "Create a microbiology-specific feature spec that
+distills the important product behavior from the authoritative OpenELIS Work
+specs and mocks; reference the proper files; make the behavior crystal clear
+for planning and implementation without letting product artifacts mandate
+technical implementation details."
 
 ## Source References
 
-This feature spec is the product-facing distillation for planning. The detailed
-source artifacts remain useful references, but table names, service names,
-routes, schemas, and ownership assumptions inside those artifacts are not
-binding product requirements.
+This feature spec is the product-facing distillation for planning. OpenELIS
+Work at
+[`a1f720d7b3b0`](https://github.com/DIGI-UW/openelis-work/commit/a1f720d7b3b01db63387361495f4aa6589105003)
+is the pinned product authority for this remediation. Table names, service
+names, schemas, and component or route suggestions inside those artifacts are
+not binding technical requirements.
 
 - Confluence narrative: [Microbiology Module - Workflow Walk-through](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256)
 - Public design bundle:
-  [openelis-work/designs/microbiology](https://github.com/DIGI-UW/openelis-work/tree/main/designs/microbiology)
+  [openelis-work/designs/microbiology](https://github.com/DIGI-UW/openelis-work/tree/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology)
 - M-00 parent:
   [m-00-micro-module-parent.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-00-micro-module-parent.md)
 - M-01 reference data:
@@ -24,7 +31,8 @@ binding product requirements.
   [m-02-breakpoint-catalog.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-02-breakpoint-catalog.md),
   [Breakpoint Catalog visual mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-02-breakpoint-catalog.html)
 - M-03 order entry hook:
-  [m-03-order-entry-micro-hook.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-03-order-entry-micro-hook.md)
+  [m-03-order-entry-micro-hook.md](https://github.com/DIGI-UW/openelis-work/blob/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology/m-03-order-entry-micro-hook.md),
+  [Step 1 visual mock](https://github.com/DIGI-UW/openelis-work/blob/a1f720d7b3b01db63387361495f4aa6589105003/designs/microbiology/m-03-order-entry-step1.html)
 - M-04 case workbench:
   [m-04-case-workbench-core.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-04-case-workbench-core.md)
 - M-05 AST entry and interpretation:
@@ -45,28 +53,27 @@ binding product requirements.
   `specs/roadmaps/analyzer-microbiology-engineering-crosswalk.md`
 - Local product cleanup list:
   `specs/roadmaps/microbiology-spec-health-cleanup-list.md`
-- Primary Jira references: OGC-782, OGC-786, OGC-787, OGC-789, OGC-790,
-  OGC-791, OGC-792, OGC-794, OGC-785, OGC-925.
 
 ## Interpretation Rules for Planning
 
 - This spec defines product behavior and acceptance expectations.
-- Detailed M-\* source files provide workflow detail and mockup context, but
-  implementation-heavy language in them must be filtered through the local
-  engineering crosswalk.
+- Detailed M-\* source files and visual mocks are authoritative for actors,
+  workflow order, information shown or captured, control meaning,
+  requiredness, defaults, state transitions, and observable acceptance
+  behavior.
 - Planning and tasks may choose table names, service boundaries, API shapes,
   routes, migrations, and reuse points, but those choices should not be treated
   as Casey-owned product requirements.
-- Mockups are visual workflow references, not implementation contracts.
+- Mockups do not prescribe schema, API, route names, or component structure.
+  They do prescribe visible workflow intent unless a deviation is explicitly
+  ruled and recorded.
 
 ## MVP Scope Ruling
 
-Jira OGC-782 is the doc-only M-00 umbrella for the full microbiology module.
-This feature keeps `782` as its traceability number, but PR #3789 is the single
-implementation milestone for an agreed MVP slice across the related M-03,
-M-04, M-05, M-07, and M-11 outcomes. It does not claim that the OGC-782 Jira
-epic itself is an implementation ticket or that the full 17-epic bundle is
-complete.
+This feature keeps `782` as its traceability number. PR #3789 is the initial
+routine-bacteriology implementation slice across M-03, M-04, M-05, M-07, and
+M-11 outcomes; it is not the complete microbiology module. Follow-on branches
+remain unaccepted until their own evidence and human UAT gates pass.
 
 The merge-blocking MVP is routine bacteriology order routing and order details,
 case work, isolate identification, manual AST, worklist navigation, critical
@@ -93,9 +100,9 @@ appears in the worklist with the correct workflow context.
 **Acceptance Scenarios**:
 
 1. **Given** a test that is configured to start routine bacteriology work,
-   **When** the user places an order for that test, **Then** the system
-   indicates that a microbiology case will be created and captures the
-   microbiology order details needed by the lab.
+   **When** the user selects that test in the supported Add Order workflow,
+   **Then** Program visibly changes to Microbiology and the Microbiology Program
+   Details become available before save.
 2. **Given** a test that is not configured for microbiology culture work,
    **When** the user places an order for that test, **Then** the microbiology
    order fields do not appear and no microbiology case is created.
@@ -103,6 +110,12 @@ appears in the worklist with the correct workflow context.
    workflow reserved for TB work, **When** the worklist is reviewed, **Then**
    the system distinguishes both workflow records without requiring duplicate
    accessioning. Completing the TB laboratory workflow is not part of this MVP.
+4. **Given** the user has entered microbiology details, **When** the final
+   culture test is removed or the order leaves the microbiology workflow,
+   **Then** the system asks for confirmation before discarding those details.
+5. **Given** a qualifying order has been saved, **When** the resulting case is
+   opened, **Then** the selected culture setup and order details are present
+   and repeated saves have not created a duplicate case.
 
 ---
 
@@ -128,12 +141,20 @@ confirming the case shows the next required action.
 2. **Given** a case in culture setup, **When** the technologist records media or
    bottle setup, **Then** the case moves forward and records who performed the
    action and when.
-3. **Given** growth or a positive signal is observed, **When** the technologist
-   records the observation, **Then** the case prompts isolate workup and makes
-   the event visible in the case history.
-4. **Given** an organism has been identified, **When** the technologist marks it
-   as clinically significant, **Then** the case supports AST setup for that
-   isolate.
+3. **Given** a culture is incubating, **When** a technologist records a positive
+   signal or the connected instrument reports one, **Then** the case preserves
+   that signal as distinct from confirmed growth and prompts subculture and Gram
+   stain work.
+4. **Given** a positive signal, **When** growth is confirmed through the bench
+   workflow, **Then** the case records the progression to observed growth and
+   makes both events visible in its history.
+5. **Given** growth is present, **When** the technologist records Gram stain and
+   colony morphology, **Then** the case preserves a preliminary isolate that can
+   contribute to preliminary reporting without presenting AST as available.
+6. **Given** the preliminary isolate is identified, **When** the technologist
+   records the organism, identification method, confidence, and clinical
+   significance, **Then** the case marks the isolate identified and supports AST
+   setup for it.
 
 ---
 
@@ -154,15 +175,21 @@ report readiness.
 
 1. **Given** an identified significant isolate, **When** the technologist starts
    AST entry, **Then** the system offers the expected antibiotic panel and
-   breakpoint context for that organism and specimen.
-2. **Given** MIC or zone values are entered, **When** the values are saved,
-   **Then** the system displays susceptibility interpretations and clearly
-   marks readings that need manual judgment.
+   breakpoint context and allows the technologist to select the laboratory
+   technique used.
+2. **Given** a laboratory technique is selected, **When** the technologist
+   records its readings, **Then** the system presents the appropriate MIC or
+   zone input without asking the user to classify the same measurement again,
+   displays susceptibility interpretations, and clearly marks readings that
+   need manual judgment.
 3. **Given** a user overrides an interpretation, **When** the override is saved,
    **Then** the original reading remains reviewable and the override requires a
    reason.
 4. **Given** AST results have not been reviewed, **When** a supervisor attempts
    final release, **Then** the case is not considered ready for final reporting.
+5. **Given** the ordered panel needs to change, **When** the technologist adjusts
+   the panel or its antibiotic set with a reason, **Then** entry and reporting
+   use that retained set and later reference-data edits do not change it.
 
 ---
 
@@ -190,6 +217,39 @@ case action.
    **When** the user views the worklist, **Then** both are distinguishable
    without merging their lifecycles or implying that TB bench processing is
    available.
+4. **Given** the user needs to work culture cases or AST attempts, **When** the
+   user switches the worklist view, **Then** the same shared page presents one
+   row per culture case or one row per actionable isolate attempt with
+   view-specific status counts and columns.
+5. **Given** culture and AST work are in flight, **When** either worklist view
+   is opened, **Then** each row identifies the laboratory accession and patient;
+   culture rows also identify the specimen and most recent actor, while AST rows
+   identify the isolate, organism, and selected panel.
+6. **Given** an instrument has not returned an AST result or has returned a
+   result needing review, **When** the worklist refreshes, **Then** the user can
+   distinguish awaiting-results from results-in-review without importing or
+   transcribing a result on the worklist.
+7. **Given** a supervisor needs situational awareness, **When** the worklist is
+   opened, **Then** resistance-hit context and recent microbiology activity are
+   available on the same page without implying ownership of a case.
+8. **Given** a resistance classification is reported by an analyzer or
+   explicitly confirmed by a user, **When** it appears in the resistance-hit
+   context, **Then** its provenance is distinguishable and the system does not
+   infer a classification from free-text notes.
+9. **Given** the worklist remains open during a shift, **When** thirty seconds
+   elapse or the user refreshes it directly, **Then** current work appears
+   without changing the bookmarked queue state, keyboard focus, or horizontal
+   scroll position, and the page states how recently it refreshed.
+10. **Given** a user is not permitted to view or work microbiology cases,
+    **When** they navigate to the worklist or request its data, **Then** access
+    is denied even when that user is otherwise authenticated.
+11. **Given** a positive signal first appears during refresh, **When** the
+    refreshed rows render, **Then** the new positive work is briefly
+    distinguishable without relying on color alone or disrupting focus.
+12. **Given** a culture is incubating, **When** the worklist renders its next
+    action, **Then** the action reflects the elapsed culture day when timing
+    inputs are available and falls back to an accurate stage label when they
+    are not.
 
 ---
 
@@ -267,10 +327,16 @@ or missing mapping for export.
 
 - **FR-001**: The system MUST provide a reliable way for ordered tests to start
   the appropriate microbiology workflow without relying on clerk memory.
-- **FR-002**: Users MUST be able to capture microbiology order details needed
-  for culture setup, including culture setup default, patient origin, number of
-  sets, clinical history, antibiotic exposure, and critical notification
-  preference.
+- **FR-002**: In the supported Add Order workflow, users MUST be able to confirm
+  or change the required default Culture Method, select Patient Origin from the
+  deployment's configured choices, enter a bounded/defaulted Number of Sets,
+  record multi-line Clinical History, mark Antibiotic Exposure, and mark
+  Critical Notify. Patient Origin SHOULD default from the requesting location
+  when that mapping is available. Clinical History MUST offer managed clinical
+  macros when the separately owned Macro Library is enabled. Antibiotic
+  Exposure and Critical Notify are binary choices, not free-text fields. The
+  system MUST confirm before discarding entered details when culture routing is
+  removed.
 - **FR-003**: The system MUST distinguish sibling bacteriology and TB workflow
   records for the same physical specimen without duplicate accessioning. This
   MVP does not provide the operational TB laboratory workflow.
@@ -279,11 +345,12 @@ or missing mapping for export.
 - **FR-005**: Users MUST be able to record culture setup, incubation progress,
   positive or growth observations, no-growth finalization, and specimen-loss or
   rejection events.
-- **FR-006**: Users MUST be able to create and update isolates, record organism
-  identification, record clinical significance, and distinguish preliminary
-  from final organism identification.
-- **FR-007**: Users MUST be able to set up AST only when the isolate context is
-  sufficient to support interpretation.
+- **FR-006**: Users MUST be able to record preliminary isolate work-up from Gram
+  stain and colony morphology, then identify the organism with method,
+  confidence, and clinical significance while clearly distinguishing pending
+  from identified state.
+- **FR-007**: AST MUST remain unavailable until the isolate has a confirmed
+  organism identification sufficient to support interpretation.
 - **FR-008**: Users MUST be able to enter manual AST readings and see
   susceptibility interpretation, including clear guidance when no standard
   breakpoint is available.
@@ -300,8 +367,26 @@ or missing mapping for export.
 - **FR-014**: The system MUST make sibling workflow records on the same specimen
   distinguishable in the worklist while keeping their lifecycles and reports
   separate.
-- **FR-015**: Users MUST be able to release preliminary reports when eligible
-  and final reports only when readiness checks pass.
+- **FR-014A**: The worklist MUST remain one shared page with separate Culture
+  and AST views, view-specific status counts and columns, and navigation from
+  an AST row to the exact isolate attempt that needs work.
+- **FR-014B**: Analyzer-driven results MUST appear automatically as awaiting or
+  review-ready work. The worklist MUST NOT require a manual import action, and
+  unmatched instrument messages MUST direct users to the existing
+  reconciliation experience.
+- **FR-014C**: The worklist MUST include resistance-hit context and recent
+  microbiology activity, while visibly identifying future controls that are
+  unavailable in the current phase. Resistance classifications MUST retain
+  their analyzer-reported or user-confirmed provenance and MUST NOT be inferred
+  from free-text notes.
+- **FR-015**: Users MUST be able to release preliminary reports when reportable
+  culture observations or isolate work-up are available, including Gram stain
+  and colony morphology before organism identification, and final reports only
+  when readiness checks pass.
+- **FR-016**: Users MUST be able to report a nonconformance from the case with
+  the specimen context already identified, choose whether to flag or reject
+  affected work, and use a dedicated Mark Lost action that records the event,
+  rejects affected open tests, and makes the terminal lost state visible.
 - **FR-017**: Users MUST be able to log critical communications for case,
   isolate, sample, or result context, including recipient, message, time,
   method, acknowledgment state, and follow-up.
@@ -310,7 +395,10 @@ or missing mapping for export.
   acknowledgment from either workflow MUST remain synchronized.
 - **FR-019**: The system MUST support reference data needed for MVP
   microbiology work: organisms, antibiotics, AST panels, culture setup recipes,
-  breakpoint standards, patient origin, and specimen mapping.
+  breakpoint standards, patient origin, and specimen mapping. Phase 1A users
+  with reference-data access MUST be able to view the six configured Patient
+  Origin choices and their WHONET codes; adding or changing those choices is a
+  later deployment need.
 - **FR-020**: The system MUST prepare finalized microbiology data for WHONET
   surveillance export by tracking export-relevant organism, specimen,
   antibiotic, breakpoint, and interpretation information.
@@ -318,29 +406,60 @@ or missing mapping for export.
   analyzer automation, expert rules, authoritative WHONET interoperability, TB
   workflow, and GLASS reporting may be planned extensions unless included in an
   explicit later slice.
-- **FR-022**: Product specs and Jira tickets for this feature MUST describe
+- **FR-022**: Product specs and product tickets for this feature MUST describe
   workflow behavior and acceptance outcomes, not required table names, service
   names, route names, or storage layout.
 - **FR-023**: Worklist and case destinations MUST preserve bookmarkable,
   refresh-stable filter, sort, and active-section context, including when a
   user opens a case and returns to the worklist.
+- **FR-024**: Completion claims MUST trace each required OpenELIS Work behavior
+  to an implementation task, production path, focused automated evidence, and
+  human UAT. Direct navigation to a legacy route or label-only checks do not
+  prove the supported user workflow.
+- **FR-025**: The shared worklist MUST refresh every thirty seconds and on user
+  request without changing its canonical URL, focus, scroll position, or
+  current row context.
+- **FR-026**: Only users permitted to view or work microbiology cases may open
+  the worklist or read its data.
+- **FR-027**: Every Microbiology worklist, case, order-detail, AST, and reference
+  action MUST be operable without a mouse, expose its name and status to
+  assistive technology, preserve a visible logical focus position, and never
+  use color as the only carrier of meaning.
+- **FR-028**: Worklist and case interactions MUST remain responsive at a
+  small-to-medium clinical laboratory's realistic daily volume so that loading,
+  filtering, and moving between bench actions do not interrupt routine work.
+- **FR-029**: During intermittent connectivity, users MUST be able to read the
+  last successfully loaded worklist with a clear offline state. Bench edits
+  made after connectivity is lost MUST not be silently discarded, and a user
+  MUST be able to resolve a conflict explicitly after reconnection.
+- **FR-030**: Automated accessibility and performance evidence MUST identify
+  the exact application revision and realistic data volume tested. Automated
+  scans do not replace deployed review or human acceptance.
+- **FR-031**: Only users authorized for microbiology bench work may view or
+  change case data. Final release and amendment actions require a
+  supervisor-capable user, and the identity recorded for any action MUST come
+  from the signed-in session rather than submitted form data.
 
-### Deferred Product Outcomes
+### Historical Initial-MVP Deferrals And Current Status
 
 These outcomes remain valid module goals but are not acceptance criteria for
 PR #3789:
 
 - **V2-001**: Preserve versioned report history when a final case is amended or
-  reidentified. The MVP instead locks final cases against isolate and AST
-  mutation.
-- **V2-002**: Link reagent/card lots and richer multi-row AST run metadata.
+  reidentified. The initial MVP locked final cases; the follow-on clinical
+  completeness branch implemented a first amendment path, and R1 must close
+  the remaining authoritative amendment/re-identification drift.
+- **V2-002**: Link reagent/card lots and richer multi-row AST run metadata. The
+  follow-on clinical completeness branch implemented a first traceability
+  slice; R1 must close the remaining M-05/M-12 provenance and safety gaps.
 - **V2-003**: Complete WHONET interoperability beyond the first manual-export
   slice, including authoritative wide-format/profile packaging, remaining
   vocabulary mappings, scheduling, and delivery.
 - **V2-004**: Provide operational TB, expert-rule, antibiogram, and GLASS
   workflows.
 - **V2-005**: Review analyzer-ingested AST results with mandatory human review
-  before final reporting.
+  before final reporting. This is promoted into R1 because the authoritative
+  M-05 acceptance path includes analyzer and QC review states.
 
 Follow-up status: branch
 `feat/782-ogc-782-microbiology-m8-clinical-completeness` implements and
@@ -361,15 +480,22 @@ have not completed human UAT.
 Branch `feat/782-ogc-782-microbiology-m10-whonet-export` implements the first
 manual WHONET export slice: period and policy selection, used-set organism and
 antibiotic readiness, direct mapping repair, preview, audited CSV generation,
-canonical URL state, and desktop/mobile accessibility evidence. It remains
-stacked on M3 and is not accepted or deployed until its own PR, live checklist,
-exact-SHA deployment, and human UAT records are complete.
+canonical URL state, and desktop/mobile accessibility evidence. It is deployed
+inside the current combined review candidate but remains unaccepted until its
+own PR, exact-SHA checklist, and human UAT records are complete.
+
+The R1 remediation boundary includes the authoritative M-03, M-04, M-05, M-07,
+M-12, and applicable M-NFR behavior described in User Stories 8-12 and the
+source-alignment record. That promotion does not retroactively expand PR
+#3789's historical acceptance boundary.
 
 The delivered stack is not the full microbiology module. Authoritative
 wide-format WHONET/profile packaging, the remaining mapping vocabularies,
-scheduled delivery, expert rules, macro workflows, richer worklist/dashboard
-depth, analyzer-ingested AST, operational TB, antibiograms, GLASS reporting,
-catalog subscription, and the remaining OGC-783 NFRs remain follow-up work.
+scheduled delivery, expert rules, Macro Library runtime/administration,
+operational TB, antibiograms, GLASS reporting, catalog subscription, and the
+M-NFR outcomes not completed in R1 remain follow-up work. In particular,
+offline read continuity, queued bench edits, and conflict resolution are not
+implemented and cannot be inferred from online browser evidence.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -415,18 +541,139 @@ shape during planning.
   readings.
 - **Critical Communication**: A clinically required notification and
   acknowledgment record for urgent findings.
+- **Nonconformance**: A reported departure from expected specimen or laboratory
+  handling, including its classification, severity, description, disposition,
+  and visible effect on affected work.
 - **Microbiology Worklist**: The shared operational queue of microbiology cases
   and AST work requiring attention.
 - **Surveillance Export Readiness**: The finalized result and mapping state
   needed to produce surveillance output for WHONET import validation.
 
+## Authoritative Alignment Stories
+
+These stories close behavior omitted when the earlier roadmap treated the
+first vertical slice as module completion.
+
+### User Story 8 - Classify And Work Every Culture Case
+
+As a bench technologist, I can identify cases that still need a workflow,
+choose the correct bacteriology or TB workflow with a reason, and continue from
+the appropriate current step without losing prior work.
+
+**Acceptance Scenarios**:
+
+1. A manually routed case with no safe deployment default is visibly marked as
+   needing workflow classification in both the shared queue and case header.
+2. Changing workflow is inline, requires a reason and compatible culture
+   method, preserves prior history, and is blocked after final release.
+3. Cases sharing one specimen link to each other while retaining independent
+   stages, results, critical communication, and reports, except when a ruled
+   physical-specimen disposition must apply to every affected sibling.
+4. The case presents setup, subculture lineage, notes, isolate work, AST,
+   critical communication, reporting, and amendments in the order implied by
+   the current stage.
+5. A user can report a nonconformance from the case without re-entering specimen
+   identity and can choose flag-only or reject-affected-work disposition.
+6. Marking a physical specimen lost records the nonconformance, rejects affected
+   open work, and leaves a visible terminal event in each affected case history.
+
+### User Story 9 - Review Complete And Traceable AST Work
+
+As a microbiology technologist or supervisor, I can review manual or
+instrument-provided susceptibility work with enough provenance to accept,
+override, revert, repeat, or block it safely.
+
+**Acceptance Scenarios**:
+
+1. AST setup shows the ordered panel and its provenance, selected breakpoint
+   standard/version, laboratory technique, technique-appropriate measurement,
+   and reagent lot.
+2. The run shows the exact ordered antibiotic set; entry cannot silently add a
+   drug outside that set, and a justified adjustment changes the set used for
+   entry and reporting.
+3. Each reading shows the matched interpretation basis and preserves visible
+   original-to-override history with a justified supervisor revert.
+4. Instrument results remain pending review until accepted; mismatches,
+   missing breakpoints, and QC failures are visible blockers with named next
+   actions.
+5. Repeating all or part of a run creates a new attempt and leaves the prior
+   attempt available for review.
+
+### User Story 10 - Work One Shared Culture And AST Queue
+
+As a rotating bench team, we can use one shared worklist to switch between
+culture cases and AST runs, understand what is due, and open the exact work
+item without relying on ownership or paper logs.
+
+**Acceptance Scenarios**:
+
+1. Culture and AST views are distinct views of one worklist and preserve their
+   selected view, filters, search, sort, and page state when bookmarked.
+2. Summary actions, due-action text, linked-workflow markers, and row actions
+   are deterministic for the selected view.
+3. New instrument results are identified as awaiting review; no manual import
+   action appears.
+4. Empty, refresh, keyboard, and compact-screen behavior preserve the user’s
+   position and focus.
+5. The page refreshes every thirty seconds, reports its freshness, briefly
+   distinguishes newly positive work, and keeps the current canonical URL.
+6. Clicking a culture or AST row opens the exact case context; the same actions
+   remain available through the row menu.
+7. Incubating cultures show the correct day-aware next action when timing is
+   known and an accurate stage fallback when it is not.
+
+### User Story 11 - Select Safe Reagent Lots Consistently
+
+As a bench technologist, I use the same lot-selection behavior during culture
+setup and AST setup, see the oldest-expiring eligible lots first, and cannot
+save a selected lot that is expired, QC-blocked, depleted, or otherwise no
+longer eligible.
+
+**Acceptance Scenarios**:
+
+1. Eligible lots show expiration, QC state, quantity, and clear oldest-expiry
+   guidance in both consuming workflows.
+2. When the catalog supplies required, optional, and substitute selection
+   policies, each policy enforces its distinct save rule. Until that catalog
+   contract exists, the system does not infer these policies from unrelated
+   reagent roles and this scenario remains blocked by an explicit dependency.
+3. A lot that becomes invalid after selection produces a specific message
+   naming the reagent, lot, and corrective action.
+
+### User Story 12 - Work Reliably With Keyboard, Assistive Technology, And Intermittent Connectivity
+
+As a bench user, I can complete microbiology work with the input and assistive
+technology available to me, at normal laboratory volume, without losing my
+place or silently losing work when connectivity is interrupted.
+
+**Acceptance Scenarios**:
+
+1. A keyboard-only user can open the worklist, choose a summary view, open a
+   case, expand its current section, add and identify an isolate, enter and
+   review AST, and release a preliminary report without a mouse.
+2. Expanding an inline section moves focus into that section and announces the
+   change; closing an inline section or dialog restores focus to the initiating
+   control.
+3. Status, provenance, and urgency remain understandable without color, all
+   controls and tables expose meaningful names, and focus is always visible.
+4. With 200 active items in either worklist view, initial display completes in
+   under two seconds and filtering completes in under 300 milliseconds. A case
+   with five isolates and up to 100 AST readings displays in under one second,
+   defaults to its newest 30 Timeline events, and retains complete history on
+   demand.
+5. If connectivity is lost after a worklist has loaded, the last loaded work
+   remains readable and is clearly marked offline. A bench edit made while
+   disconnected is not silently lost, and a conflicting change requires an
+   explicit user resolution after reconnection.
+
 ## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
-- **SC-001**: A user can enter a qualifying routine bacteriology order and see
-  the resulting microbiology work on the worklist without manual program
-  routing.
+- **SC-001**: From the supported Add Order workflow, a user can select a
+  qualifying routine-bacteriology test, see Program become Microbiology,
+  confirm the complete culture details, save, and find one resulting case on
+  the worklist without manual routing or duplicate creation.
 - **SC-002**: A technologist can complete the MVP bacteriology path from order
   routing through culture setup, isolate identification, manual AST entry,
   review readiness, and report release using one case workflow.
@@ -449,11 +696,28 @@ shape during planning.
 - **SC-010**: A user can reach the worklist from primary navigation, bookmark a
   filtered view, open a case, refresh either page, and return without losing
   the relevant worklist or case-section context.
+- **SC-011**: A keyboard-only user can complete the order-to-preliminary-report
+  path with visible focus and announced inline-section changes.
+- **SC-012**: Exact-revision measurements record the application runtime,
+  environment, data volume, server time, browser-ready time, and interaction
+  time. Reviewers can distinguish a user-visible regression from harness,
+  development-runtime, hardware, or intentionally above-source stress cost.
+- **SC-013**: A deployed connectivity-loss exercise proves the last-loaded
+  worklist remains readable, offline state is visible, an interrupted bench
+  edit survives reconnection, and a conflicting edit requires an explicit
+  resolution.
+- **SC-014**: An authenticated user without a microbiology bench role receives
+  a forbidden response; a results-entry user cannot release a final report;
+  and a submitted alternate actor identifier cannot change audit attribution.
 
-PR #3789 did not claim the source M-NFR 200-item worklist and sub-second read
-p95 target. The later M8 branch now carries repeatable service-created API and
-browser measurements for that target; those follow-up results do not alter the
-MVP PR's historical evidence.
+OpenELIS Work's M-NFR document includes numeric timing and fixture prescriptions
+that first appeared in the May 27, 2026 authored specification, not in the
+workflow mock. Those numbers are retained as engineering qualification inputs,
+not product acceptance requirements: "render," hardware, runtime mode, network,
+and representative deployment conditions must be defined before a threshold
+can be deterministic. The later M8 branch carries repeatable service-created
+API and browser measurements; those results do not alter PR #3789's historical
+MVP evidence.
 
 ## Planning Notes
 

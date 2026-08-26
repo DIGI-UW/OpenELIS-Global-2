@@ -12,7 +12,6 @@ import {
   Switch,
   Accordion,
   AccordionItem,
-  Link,
 } from "@carbon/react";
 import { Printer } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
@@ -30,6 +29,7 @@ import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
+import { isMicrobiologyOrderReady } from "../orderDataUtils";
 import "../order-workflow.scss";
 
 /**
@@ -219,11 +219,24 @@ const OrderEnter = () => {
           );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
   const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
+  const microbiologyOrderReady = isMicrobiologyOrderReady(orderData, samples);
 
   // canProceed gates the Save / Save & Next buttons in the layout
   const canProceed =
     canSave &&
+    microbiologyOrderReady &&
     Object.values(phoneValidation).every((item) => item.status !== false);
+
+  const notifyIncompleteMicrobiologyOrder = () => {
+    addNotification({
+      kind: NotificationKinds.error,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "microbiology.orderEntry.incomplete",
+      }),
+    });
+    setNotificationVisible(true);
+  };
 
   // Save handler - uses saveOrderEntry which creates sample_type_requests (not sample_items)
   const handleSave = async () => {
@@ -238,6 +251,10 @@ const OrderEnter = () => {
         }),
       });
       setNotificationVisible(true);
+      return;
+    }
+    if (!microbiologyOrderReady) {
+      notifyIncompleteMicrobiologyOrder();
       return;
     }
     try {
@@ -261,6 +278,10 @@ const OrderEnter = () => {
   // Save and navigate to next step
   const handleSaveAndNext = async () => {
     if (!canSave) return; // canProceed gate on the button already covers this, but be safe
+    if (!microbiologyOrderReady) {
+      notifyIncompleteMicrobiologyOrder();
+      return;
+    }
     try {
       await saveOrderEntry(false); // silent=false
       markStepComplete("enter");
@@ -291,6 +312,10 @@ const OrderEnter = () => {
         }),
       });
       setNotificationVisible(true);
+      return;
+    }
+    if (!microbiologyOrderReady) {
+      notifyIncompleteMicrobiologyOrder();
       return;
     }
     try {
@@ -373,8 +398,10 @@ const OrderEnter = () => {
                   })}
                   disabled={isReadOnly && !isEditMode}
                 />
-                <Link
+                <Button
                   className="generate-link"
+                  kind="ghost"
+                  size="sm"
                   onClick={handleGenerateLabNumber}
                   disabled={isGeneratingLabNo || (isReadOnly && !isEditMode)}
                 >
@@ -389,7 +416,7 @@ const OrderEnter = () => {
                       defaultMessage="Generate"
                     />
                   )}
-                </Link>
+                </Button>
               </div>
               <p className="helper-text">
                 <FormattedMessage
@@ -549,6 +576,7 @@ const OrderEnter = () => {
         <ProgramSection
           orderData={orderData}
           setOrderData={setOrderData}
+          samples={samples}
           isReadOnly={isReadOnly && !isEditMode}
         />
 

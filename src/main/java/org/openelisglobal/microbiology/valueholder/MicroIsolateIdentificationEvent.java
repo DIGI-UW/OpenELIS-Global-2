@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -39,6 +40,12 @@ public class MicroIsolateIdentificationEvent extends BaseObject<String> {
     @Column(name = "previous_identification_status", length = 40)
     private String previousIdentificationStatus;
 
+    @Column(name = "previous_identification_method", length = 80)
+    private String previousIdentificationMethod;
+
+    @Column(name = "previous_identification_confidence", precision = 5, scale = 2)
+    private BigDecimal previousIdentificationConfidence;
+
     @Column(name = "new_organism_id", length = 36)
     private String newOrganismId;
 
@@ -50,6 +57,12 @@ public class MicroIsolateIdentificationEvent extends BaseObject<String> {
 
     @Column(name = "new_identification_status", length = 40)
     private String newIdentificationStatus;
+
+    @Column(name = "new_identification_method", length = 80)
+    private String newIdentificationMethod;
+
+    @Column(name = "new_identification_confidence", precision = 5, scale = 2)
+    private BigDecimal newIdentificationConfidence;
 
     @Column(name = "reason", nullable = false)
     private String reason;
@@ -126,6 +139,22 @@ public class MicroIsolateIdentificationEvent extends BaseObject<String> {
         this.previousIdentificationStatus = previousIdentificationStatus;
     }
 
+    public String getPreviousIdentificationMethod() {
+        return previousIdentificationMethod;
+    }
+
+    public void setPreviousIdentificationMethod(String previousIdentificationMethod) {
+        this.previousIdentificationMethod = previousIdentificationMethod;
+    }
+
+    public BigDecimal getPreviousIdentificationConfidence() {
+        return previousIdentificationConfidence;
+    }
+
+    public void setPreviousIdentificationConfidence(BigDecimal previousIdentificationConfidence) {
+        this.previousIdentificationConfidence = previousIdentificationConfidence;
+    }
+
     public String getNewOrganismId() {
         return newOrganismId;
     }
@@ -156,6 +185,22 @@ public class MicroIsolateIdentificationEvent extends BaseObject<String> {
 
     public void setNewIdentificationStatus(String newIdentificationStatus) {
         this.newIdentificationStatus = newIdentificationStatus;
+    }
+
+    public String getNewIdentificationMethod() {
+        return newIdentificationMethod;
+    }
+
+    public void setNewIdentificationMethod(String newIdentificationMethod) {
+        this.newIdentificationMethod = newIdentificationMethod;
+    }
+
+    public BigDecimal getNewIdentificationConfidence() {
+        return newIdentificationConfidence;
+    }
+
+    public void setNewIdentificationConfidence(BigDecimal newIdentificationConfidence) {
+        this.newIdentificationConfidence = newIdentificationConfidence;
     }
 
     public String getReason() {

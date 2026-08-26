@@ -38,7 +38,7 @@ public class MicroReportReleaseRestControllerTest {
         PreAuthorize authorization = MicroReportReleaseRestController.class
                 .getMethod("releaseAmended", String.class, jakarta.servlet.http.HttpServletRequest.class)
                 .getAnnotation(PreAuthorize.class);
-        assertEquals("hasAnyRole('ADMIN', 'RESULTS')", authorization.value());
+        assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", authorization.value());
     }
 
     private MockHttpServletRequest requestFor(String userId) {

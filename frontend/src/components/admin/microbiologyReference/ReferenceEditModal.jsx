@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Checkbox,
   ComposedModal,
@@ -6,6 +6,7 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader,
+  NumberInput,
   Select,
   SelectItem,
   TextArea,
@@ -17,19 +18,17 @@ const emptyValue = (fields) =>
   fields.reduce(
     (value, field) => ({
       ...value,
-      [field.key]: field.type === "checkbox" ? true : field.defaultValue || "",
+      [field.key]:
+        field.type === "checkbox"
+          ? true
+          : field.type === "number"
+            ? (field.defaultValue ?? null)
+            : field.defaultValue || "",
     }),
     {},
   );
 
-const ReferenceEditModal = ({
-  open,
-  titleId,
-  fields,
-  value,
-  onClose,
-  onSave,
-}) => {
+const ReferenceEditForm = ({ titleId, fields, value, onClose, onSave }) => {
   const intl = useIntl();
   const initialValue = useMemo(
     () => ({ ...emptyValue(fields), ...(value || {}) }),
@@ -38,13 +37,14 @@ const ReferenceEditModal = ({
   const [draft, setDraft] = useState(initialValue);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const mounted = useRef(true);
 
-  useEffect(() => {
-    if (open) {
-      setDraft(initialValue);
-      setError("");
-    }
-  }, [initialValue, open]);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
 
   const update = (key, next) =>
     setDraft((current) => ({ ...current, [key]: next }));
@@ -55,17 +55,19 @@ const ReferenceEditModal = ({
     try {
       await onSave(draft);
     } catch (requestError) {
-      setError(
-        requestError.message ||
-          intl.formatMessage({ id: "microbiology.admin.error.save" }),
-      );
+      if (mounted.current) {
+        setError(
+          requestError.message ||
+            intl.formatMessage({ id: "microbiology.admin.error.save" }),
+        );
+      }
     } finally {
-      setSaving(false);
+      if (mounted.current) setSaving(false);
     }
   };
 
   return (
-    <ComposedModal open={open} onClose={onClose} size="sm">
+    <>
       <ModalHeader
         title={intl.formatMessage({ id: titleId })}
         closeModal={onClose}
@@ -142,6 +144,24 @@ const ReferenceEditModal = ({
                 />
               );
             }
+            if (field.type === "number") {
+              return (
+                <NumberInput
+                  key={field.key}
+                  id={`microbiology-${field.key}`}
+                  label={label}
+                  value={draft[field.key] ?? ""}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step || 1}
+                  allowEmpty
+                  onChange={(event, state = {}) => {
+                    const next = state.value ?? event.target.value;
+                    update(field.key, next === "" ? null : Number(next));
+                  }}
+                />
+              );
+            }
             if (field.type === "checkbox") {
               return (
                 <Checkbox
@@ -174,8 +194,16 @@ const ReferenceEditModal = ({
         onRequestClose={onClose}
         primaryButtonDisabled={saving}
       />
-    </ComposedModal>
+    </>
   );
 };
+
+const ReferenceEditModal = ({ open, editorKey, onClose, ...formProps }) => (
+  <ComposedModal open={open} onClose={onClose} size="sm">
+    {open ? (
+      <ReferenceEditForm key={editorKey} onClose={onClose} {...formProps} />
+    ) : null}
+  </ComposedModal>
+);
 
 export default ReferenceEditModal;

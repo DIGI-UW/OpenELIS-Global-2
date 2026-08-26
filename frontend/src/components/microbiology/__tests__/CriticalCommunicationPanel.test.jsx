@@ -1,7 +1,9 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
+import { vi } from "vitest";
 import CriticalCommunicationPanel from "../CriticalCommunicationPanel";
 import messages from "../../../languages/en.json";
 
@@ -19,15 +21,17 @@ const renderPanel = (service, props = {}) =>
 
 describe("CriticalCommunicationPanel", () => {
   it("offers projected patient-report results as communication targets", async () => {
+    const user = userEvent.setup();
     const service = {
       getCriticalCommunications: vi.fn().mockResolvedValue([]),
     };
 
     renderPanel(service, { projectedResultIds: ["result-1", "result-2"] });
 
-    fireEvent.change(await screen.findByLabelText("Critical result target"), {
-      target: { value: "RESULT" },
-    });
+    await user.selectOptions(
+      await screen.findByLabelText("Critical result target"),
+      "RESULT",
+    );
 
     expect(
       screen.getByRole("option", { name: "result-1" }),
@@ -38,6 +42,7 @@ describe("CriticalCommunicationPanel", () => {
   });
 
   it("logs, acknowledges, and closes critical communication", async () => {
+    const user = userEvent.setup();
     const service = {
       getCriticalCommunications: vi
         .fn()
@@ -76,13 +81,15 @@ describe("CriticalCommunicationPanel", () => {
 
     renderPanel(service);
 
-    fireEvent.change(await screen.findByLabelText("Recipient"), {
-      target: { value: "Provider on call" },
-    });
-    fireEvent.change(screen.getByLabelText("Message"), {
-      target: { value: "Positive blood culture called" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Log communication" }));
+    await user.type(
+      await screen.findByLabelText("Recipient"),
+      "Provider on call",
+    );
+    await user.type(
+      screen.getByLabelText("Message"),
+      "Positive blood culture called",
+    );
+    await user.click(screen.getByRole("button", { name: "Log communication" }));
 
     await waitFor(() =>
       expect(service.logCriticalCommunication).toHaveBeenCalledWith("case-1", {
@@ -97,7 +104,7 @@ describe("CriticalCommunicationPanel", () => {
     );
     expect(await screen.findByText("Open")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Acknowledge" }));
+    await user.click(screen.getByRole("button", { name: "Acknowledge" }));
 
     await waitFor(() =>
       expect(service.acknowledgeCriticalCommunication).toHaveBeenCalledWith(
@@ -106,13 +113,14 @@ describe("CriticalCommunicationPanel", () => {
     );
     expect(await screen.findByText("Acknowledged")).toBeInTheDocument();
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole("button", { name: "Close communication" }),
     );
-    fireEvent.change(screen.getByLabelText("Resolution note"), {
-      target: { value: "Read-back documented" },
-    });
-    fireEvent.click(
+    await user.type(
+      screen.getByLabelText("Resolution note"),
+      "Read-back documented",
+    );
+    await user.click(
       screen.getAllByRole("button", { name: "Close communication" })[1],
     );
 
@@ -125,5 +133,39 @@ describe("CriticalCommunicationPanel", () => {
       ),
     );
     expect(await screen.findByText("Closed")).toBeInTheDocument();
+  });
+
+  it("locks a communication opened from an isolate entry point to that isolate", async () => {
+    const service = {
+      getCriticalCommunications: vi.fn().mockResolvedValue([]),
+      logCriticalCommunication: vi.fn().mockResolvedValue({ id: "comm-1" }),
+    };
+    const user = userEvent.setup();
+
+    renderPanel(service, {
+      isolates: [{ id: "isolate-1", isolateLabel: "ISO-1" }],
+      entryTargetType: "ISOLATE",
+      entryTargetId: "isolate-1",
+    });
+
+    expect(
+      await screen.findByLabelText("Critical result target"),
+    ).toBeDisabled();
+    expect(screen.getByLabelText("Target record")).toBeDisabled();
+    await user.type(screen.getByLabelText("Recipient"), "Provider on call");
+    await user.type(screen.getByLabelText("Message"), "Critical isolate");
+    await user.click(screen.getByRole("button", { name: "Log communication" }));
+
+    await waitFor(() =>
+      expect(service.logCriticalCommunication).toHaveBeenCalledWith("case-1", {
+        targetType: "ISOLATE",
+        targetId: "isolate-1",
+        recipient: "Provider on call",
+        recipientContact: "",
+        communicationMethod: "PHONE",
+        message: "Critical isolate",
+        followUpNeeded: true,
+      }),
+    );
   });
 });

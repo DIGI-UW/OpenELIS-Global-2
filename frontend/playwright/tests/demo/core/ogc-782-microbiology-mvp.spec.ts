@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import { selectCarbonRadio } from "../../../helpers/microbiology-ui";
 import { seedMicrobiologyMvpCase } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -93,24 +94,36 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Record setup activity", async () => {
       await demo.step(2, "Start inoculation and write the activity timeline");
-      await accordionButton(page, "Inoculation").click();
+      await page
+        .getByTestId("microbiology-current-step-action")
+        .getByRole("button", { name: "Open Inoculation" })
+        .click();
       await expect(page).toHaveURL(/section=setup/);
-      await page.getByLabel("Media or bottle").fill("Blood culture bottle");
-      await page.getByLabel("Incubation").fill("35 C for 24 hours");
-      await page.getByLabel("Atmosphere").fill("Ambient");
+      const setup = page.getByRole("region", { name: "Inoculation" });
+      await setup.getByRole("button", { name: "Start inoculation" }).click();
+      await setup.getByLabel("Bottle or plate ID").fill("UAT-DEMO-BOTTLE-1");
+      await setup.getByLabel("Media or bottle").fill("Blood culture bottle");
+      await setup.getByLabel("Incubation").fill("35 C for 24 hours");
+      await setup.getByLabel("Atmosphere").fill("Ambient");
+      await selectCarbonRadio(
+        page,
+        setup.getByRole("radio", { name: /UAT-MICRO-MEDIA-FEFO/ }),
+      );
       await captureCard(
         page,
         demo,
         "microbiology-setup-card",
         "ogc-782-02-inoculation-ready",
       );
-      await page.getByRole("button", { name: "Start inoculation" }).click();
+      await setup.getByRole("button", { name: "Save media" }).click();
       await expect(caseStatusTag(page, "Setup Recorded")).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
       await accordionButton(page, "Timeline").click();
       await expect(page).toHaveURL(/section=timeline/);
-      await expect(page.getByText(/setup complete/)).toBeVisible();
+      await expect(
+        page.getByText(/UAT-DEMO-BOTTLE-1 - Blood culture bottle/),
+      ).toBeVisible();
       await expect(
         page.getByText(/Media or bottle: Blood culture bottle/),
       ).toBeVisible();

@@ -22,6 +22,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.service.InventoryLotUnavailableException;
 import org.openelisglobal.inventory.service.InventoryManagementService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -162,6 +163,25 @@ public class MicroReagentLotServiceTest {
         assertEquals(Long.valueOf(31L), linkCaptor.getValue().getInventoryUsageId());
         assertEquals("run-1", linkCaptor.getValue().getAstRunId());
         assertEquals(MicroInventoryUsageContext.AST_SETUP.name(), linkCaptor.getValue().getUsageContext());
+    }
+
+    @Test
+    public void recordSelectionsPreservesLockedInventoryConflictWithoutCreatingMicrobiologyLink() {
+        InventoryLot selectedLot = lot(7L, "MEDIA-FIFO", 10.0, daysFromNow(10));
+        when(inventoryLotService.get(7L)).thenReturn(selectedLot);
+        when(inventoryManagementService.consumeSelectedLot(7L, 1.0, null, 41L, "9"))
+                .thenThrow(new InventoryLotUnavailableException("INVENTORY_LOT_EXPIRED", "MEDIA-FIFO"));
+
+        try {
+            service.recordSelections("case-1", MicroInventoryUsageContext.CULTURE_SETUP, "activity-1",
+                    List.of(new MicroLotSelection("41", "link-1", 7L)), "9");
+            fail("Expected a save-time inventory conflict");
+        } catch (InventoryLotUnavailableException expected) {
+            assertEquals("INVENTORY_LOT_EXPIRED", expected.getCode());
+            assertEquals("MEDIA-FIFO", expected.getLotNumber());
+        }
+
+        verify(usageLinkDAO, never()).insert(any(MicroInventoryUsageLink.class));
     }
 
     @Test

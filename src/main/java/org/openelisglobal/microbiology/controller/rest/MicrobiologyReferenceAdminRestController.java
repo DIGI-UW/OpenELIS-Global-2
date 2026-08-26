@@ -6,6 +6,7 @@ import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
@@ -119,6 +120,12 @@ public class MicrobiologyReferenceAdminRestController extends MicrobiologyRestCo
     public ResponseEntity<MicroReferenceAdminPageForm<MicroCultureSetupAdminForm>> getCultureSetups(
             @ModelAttribute MicroReferenceAdminQueryForm query) {
         return ResponseEntity.ok(service.getCultureSetups(query));
+    }
+
+    @GetMapping("/patient-origins")
+    public ResponseEntity<MicroReferenceAdminPageForm<MicroPatientOriginAdminForm>> getPatientOrigins(
+            @ModelAttribute MicroReferenceAdminQueryForm query) {
+        return ResponseEntity.ok(service.getPatientOrigins(query));
     }
 
     @GetMapping("/culture-setups/{id}")

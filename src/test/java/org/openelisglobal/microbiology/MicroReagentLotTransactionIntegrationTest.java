@@ -31,6 +31,7 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
+import org.openelisglobal.microbiology.service.MicroCaseInoculationService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
@@ -64,6 +65,9 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
 
     @Autowired
     private MicroCaseService caseService;
+
+    @Autowired
+    private MicroCaseInoculationService inoculationService;
 
     @Autowired
     private InventoryLotService inventoryLotService;
@@ -141,6 +145,20 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
         assertEquals(transactionsBefore, inventoryTransactionService.getByLotId(fixture.lotId()).size());
         assertTrue(inventoryUsageService.getByAnalysisId(Long.valueOf(fixture.analysisId())).isEmpty());
         assertTrue(reagentLotService.getUsageHistory(fixture.caseId()).isEmpty());
+    }
+
+    @Test
+    public void inoculationPersistsNumericMethodReferenceAndSelectedLotProvenance() {
+        SelectedLot fixture = createSelectedLot("inoculation");
+
+        var inoculation = inoculationService.record(fixture.caseId(), null,
+                "UAT-INTEGRATION-BOTTLE-" + UUID.randomUUID(), "Blood culture bottle", null, null,
+                List.of(fixture.selection()), fixture.userId());
+
+        assertEquals(fixture.caseId(), inoculation.getCaseId());
+        assertTrue(inoculation.getMethodId().matches("\\d+"));
+        assertEquals(1, reagentLotService.getUsageHistory(fixture.caseId()).size());
+        assertEquals(fixture.lotNumber(), reagentLotService.getUsageHistory(fixture.caseId()).get(0).lotNumber);
     }
 
     private SelectedLot createSelectedLot(String scenarioName) {

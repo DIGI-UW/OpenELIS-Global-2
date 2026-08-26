@@ -299,14 +299,7 @@ const SampleType = (props) => {
         if (isChecked) {
           if (!testIsSelected(test.id)) {
             setSelectedTests((prevState) => {
-              return [
-                ...prevState,
-                {
-                  id: test.id,
-                  name: test.name,
-                  cultureWorkflowType: test.cultureWorkflowType,
-                },
-              ];
+              return [...prevState, { ...test }];
             });
           }
         } else {
@@ -317,16 +310,9 @@ const SampleType = (props) => {
   };
 
   const removedTestFromSelectedTests = (test) => {
-    let index = 0;
-    for (let i in selectedTests) {
-      if (selectedTests[i].id === test.id) {
-        const newTests = selectedTests;
-        newTests.splice(index, 1);
-        setSelectedTests([...newTests]);
-        break;
-      }
-      index++;
-    }
+    setSelectedTests((currentTests) =>
+      currentTests.filter((selectedTest) => selectedTest.id !== test.id),
+    );
   };
 
   function removeReferralRequest(test) {
@@ -467,14 +453,7 @@ const SampleType = (props) => {
 
   function addTestToSelectedTests(test) {
     if (!testIsSelected(test.id)) {
-      setSelectedTests([
-        ...selectedTests,
-        {
-          id: test.id,
-          name: test.name,
-          cultureWorkflowType: test.cultureWorkflowType,
-        },
-      ]);
+      setSelectedTests([...selectedTests, { ...test }]);
     }
   }
 

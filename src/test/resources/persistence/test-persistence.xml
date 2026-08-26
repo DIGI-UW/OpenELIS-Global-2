@@ -48,14 +48,19 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointRule</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCultureSetup</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroPatientOrigin</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroPatientOriginDefault</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCase</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseActivity</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAmendment</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroReportVersion</class>
@@ -148,6 +153,7 @@
         <!-- All analyzer entities use JPA annotations -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerEvent</class>
         <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFileUpload</class>

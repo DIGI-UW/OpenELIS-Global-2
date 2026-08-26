@@ -3,6 +3,8 @@ package org.openelisglobal.analyzer.controller;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.analyzer.service.AnalyzerEventPersistenceService;
+import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.rest.BaseRestController;
@@ -51,6 +53,9 @@ public class ImportIssuesRestController extends BaseRestController {
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
 
+    @Autowired
+    private AnalyzerEventPersistenceService analyzerEventPersistenceService;
+
     @GetMapping("/import-issues")
     public ResponseEntity<Map<String, Object>> getImportIssues(
             @RequestParam(required = false, defaultValue = "100") Integer limit) {
@@ -64,6 +69,8 @@ public class ImportIssuesRestController extends BaseRestController {
             data.put("count", rowJson.size());
             data.put("limit", safeLimit);
             data.put("rows", rowJson);
+            data.put("eventRows",
+                    analyzerEventPersistenceService.getFailed(safeLimit).stream().map(this::eventToMap).toList());
             // Frontend hint — the bridge exposes its own rejection store at this
             // path (same-origin via proxy or configured bridge URL); keep as a
             // relative value so the panel can compose the final URL.
@@ -95,5 +102,19 @@ public class ImportIssuesRestController extends BaseRestController {
         m.put("completeDate", r.getCompleteDate() != null ? r.getCompleteDate().toInstant().toString() : null);
         m.put("lastupdated", r.getLastupdated() != null ? r.getLastupdated().toInstant().toString() : null);
         return m;
+    }
+
+    private Map<String, Object> eventToMap(AnalyzerEvent event) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", event.getId());
+        row.put("externalEventId", event.getExternalEventId());
+        row.put("eventType", event.getEventType());
+        row.put("analyzerId", event.getAnalyzerId());
+        row.put("sourceId", event.getSourceId());
+        row.put("targetReference", event.getTargetReference());
+        row.put("failureReason", event.getFailureReason());
+        row.put("receivedAt", event.getReceivedAt());
+        row.put("reconciliationUrl", "/AnalyzerResults?view=import-issues");
+        return row;
     }
 }

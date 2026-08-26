@@ -45,6 +45,7 @@ import {
 import BreakpointRuleModal from "./BreakpointRuleModal";
 import { buildReferenceQuery, buildReferenceRequestQuery } from "./queryState";
 import { sectionPath } from "./sectionConfig";
+import useModalFocusReturn from "./useModalFocusReturn";
 
 const tagType = (status) => {
   if (status === "ACTIVE") return "green";
@@ -65,8 +66,9 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   const [effectiveDate, setEffectiveDate] = useState("");
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
-  const [ruleDraft, setRuleDraft] = useState(null);
+  const [loadedRule, setLoadedRule] = useState({ key: "", value: null });
   const [savingRule, setSavingRule] = useState(false);
+  const { rememberReturnFocus, restoreReturnFocus } = useModalFocusReturn();
   const [options, setOptions] = useState({
     organisms: [],
     organismGroups: [],
@@ -81,7 +83,6 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
 
   const load = useCallback(
     async (signal) => {
-      setLoading(true);
       setError("");
       try {
         const standardPage = standardId
@@ -105,7 +106,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
 
   useEffect(() => {
     const controller = new AbortController();
-    load(controller.signal);
+    Promise.resolve().then(() => load(controller.signal));
     return () => controller.abort();
   }, [load]);
 
@@ -128,22 +129,16 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   }, [standardId]);
 
   useEffect(() => {
-    if (!ruleEditId) {
-      setRuleDraft(null);
-      return undefined;
-    }
-    if (ruleEditId === "new") {
-      setRuleDraft({});
+    if (!ruleEditId || ruleEditId === "new") {
       return undefined;
     }
     const visibleRule = rules.rows.find((rule) => rule.id === ruleEditId);
     if (visibleRule) {
-      setRuleDraft(visibleRule);
       return undefined;
     }
     const controller = new AbortController();
     getBreakpointRule(standardId, ruleEditId, controller.signal)
-      .then(setRuleDraft)
+      .then((value) => setLoadedRule({ key: ruleEditId, value }))
       .catch((requestError) => {
         if (requestError.name !== "AbortError") setError(requestError.message);
       });
@@ -153,6 +148,12 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   const selectedStandard = standards.rows.find(
     (standard) => standard.id === standardId,
   );
+  const visibleRule = rules.rows.find((rule) => rule.id === ruleEditId);
+  const ruleDraft = ruleEditId
+    ? ruleEditId === "new"
+      ? {}
+      : visibleRule || (loadedRule.key === ruleEditId ? loadedRule.value : null)
+    : null;
 
   const standardHeaders = useMemo(
     () => [
@@ -242,10 +243,22 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
       search: buildReferenceQuery(query),
     });
 
+  const openEditor = (edit, target) => {
+    rememberReturnFocus(target);
+    setLoadedRule({ key: "", value: null });
+    setQuery({ edit });
+  };
+
+  const closeEditor = () => {
+    setLoadedRule({ key: "", value: null });
+    setQuery({ edit: "" }, { replace: true });
+    restoreReturnFocus();
+  };
+
   const activate = async () => {
     try {
       await activateBreakpointStandard(standardId, effectiveDate);
-      setQuery({ edit: "" }, { replace: true });
+      closeEditor();
       setEffectiveDate("");
       await load();
     } catch (requestError) {
@@ -256,7 +269,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   const archive = async () => {
     try {
       await archiveBreakpointStandard(standardId);
-      setQuery({ edit: "" }, { replace: true });
+      closeEditor();
       await load();
     } catch (requestError) {
       setError(requestError.message);
@@ -270,7 +283,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
         ...rule,
         ...(ruleEditId !== "new" ? { id: ruleEditId } : {}),
       });
-      setQuery({ edit: "" }, { replace: true });
+      closeEditor();
       await load();
     } catch (requestError) {
       setError(requestError.message);
@@ -323,13 +336,13 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
 
   const closeImport = () => {
     setImportPreview(null);
-    setQuery({ edit: "" }, { replace: true });
+    closeEditor();
   };
 
-  const openImport = () => {
+  const openImport = (event) => {
     setImportPreview(null);
     setImporting(false);
-    setQuery({ edit: "import" });
+    openEditor("import", event.currentTarget);
   };
 
   if (loading && standards.rows.length === 0) {
@@ -456,7 +469,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                   </Button>
                 </TableToolbarContent>
               </TableToolbar>
-              <Table size="lg" useZebraStyles>
+              <Table size="lg" useZebraStyles tabIndex={0}>
                 <TableHead>
                   <TableRow>
                     {headers.map((header) => (
@@ -533,7 +546,9 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
               })}
             </Button>
             {selectedStandard?.lifecycleStatus === "LOADED" && (
-              <Button onClick={() => setQuery({ edit: "activate" })}>
+              <Button
+                onClick={(event) => openEditor("activate", event.currentTarget)}
+              >
                 {intl.formatMessage({
                   id: "microbiology.admin.breakpoints.activate",
                 })}
@@ -543,7 +558,9 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
               selectedStandard?.lifecycleStatus !== "ARCHIVED" && (
                 <Button
                   kind="danger--tertiary"
-                  onClick={() => setQuery({ edit: "archive" })}
+                  onClick={(event) =>
+                    openEditor("archive", event.currentTarget)
+                  }
                 >
                   {intl.formatMessage({
                     id: "microbiology.admin.breakpoints.archive",
@@ -584,7 +601,9 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                     {selectedStandard?.lifecycleStatus !== "ARCHIVED" && (
                       <Button
                         renderIcon={Add}
-                        onClick={() => setQuery({ edit: "rule:new" })}
+                        onClick={(event) =>
+                          openEditor("rule:new", event.currentTarget)
+                        }
                       >
                         {intl.formatMessage({
                           id: "microbiology.admin.breakpoints.correction.add",
@@ -703,7 +722,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                     ))}
                   </Select>
                 </div>
-                <Table size="lg" useZebraStyles>
+                <Table size="lg" useZebraStyles tabIndex={0}>
                   <TableHead>
                     <TableRow>
                       {headers.map((header) => (
@@ -741,9 +760,14 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                                     itemText={intl.formatMessage({
                                       id: "microbiology.admin.breakpoints.correction.edit",
                                     })}
-                                    onClick={() =>
-                                      setQuery({ edit: `rule:${row.id}` })
-                                    }
+                                    onClick={(event) => {
+                                      const menuButton = event.currentTarget
+                                        .closest("td")
+                                        ?.querySelector(
+                                          ".cds--overflow-menu__trigger",
+                                        );
+                                      openEditor(`rule:${row.id}`, menuButton);
+                                    }}
                                   />
                                 </OverflowMenu>
                               )
@@ -778,20 +802,20 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
         antibiotics={options.antibiotics}
         specimenTypes={options.specimenTypes}
         saving={savingRule}
-        onClose={() => setQuery({ edit: "" }, { replace: true })}
+        onClose={closeEditor}
         onSave={saveRule}
       />
 
       <ComposedModal
         open={query.edit === "activate"}
         size="sm"
-        onClose={() => setQuery({ edit: "" }, { replace: true })}
+        onClose={closeEditor}
       >
         <ModalHeader
           title={intl.formatMessage({
             id: "microbiology.admin.breakpoints.activate",
           })}
-          closeModal={() => setQuery({ edit: "" }, { replace: true })}
+          closeModal={closeEditor}
         />
         <ModalBody>
           <TextInput
@@ -811,7 +835,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
           secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
           primaryButtonDisabled={!effectiveDate}
           onRequestSubmit={activate}
-          onRequestClose={() => setQuery({ edit: "" }, { replace: true })}
+          onRequestClose={closeEditor}
         />
       </ComposedModal>
 
@@ -819,13 +843,13 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
         open={query.edit === "archive"}
         size="sm"
         danger
-        onClose={() => setQuery({ edit: "" }, { replace: true })}
+        onClose={closeEditor}
       >
         <ModalHeader
           title={intl.formatMessage({
             id: "microbiology.admin.breakpoints.archive",
           })}
-          closeModal={() => setQuery({ edit: "" }, { replace: true })}
+          closeModal={closeEditor}
         />
         <ModalBody>
           {intl.formatMessage({
@@ -838,13 +862,14 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
           })}
           secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
           onRequestSubmit={archive}
-          onRequestClose={() => setQuery({ edit: "" }, { replace: true })}
+          onRequestClose={closeEditor}
         />
       </ComposedModal>
 
       <ComposedModal
         open={query.edit === "import"}
         size="lg"
+        selectorPrimaryFocus=".cds--form-item > .cds--btn"
         onClose={closeImport}
       >
         <ModalHeader

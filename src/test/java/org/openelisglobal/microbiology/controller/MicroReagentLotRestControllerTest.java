@@ -34,10 +34,9 @@ public class MicroReagentLotRestControllerTest {
     }
 
     @Test
-    public void overviewRequiresAuthentication() throws Exception {
-        PreAuthorize authorization = MicroReagentLotRestController.class.getMethod("getOverview", String.class)
-                .getAnnotation(PreAuthorize.class);
+    public void overviewRequiresBenchRoleBundle() {
+        PreAuthorize authorization = MicroReagentLotRestController.class.getAnnotation(PreAuthorize.class);
 
-        assertEquals("isAuthenticated()", authorization.value());
+        assertEquals("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')", authorization.value());
     }
 }

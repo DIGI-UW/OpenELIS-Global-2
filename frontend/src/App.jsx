@@ -591,7 +591,7 @@ export default function App() {
                       <MicrobiologyPage />
                     </Suspense>
                   )}
-                  role=""
+                  role={[Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path={MICROBIOLOGY_WORKLIST_PATH}
@@ -601,7 +601,7 @@ export default function App() {
                       <MicrobiologyWorklistPage />
                     </Suspense>
                   )}
-                  role=""
+                  role={[Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path={MICROBIOLOGY_WHONET_PATH}

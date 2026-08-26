@@ -18,11 +18,12 @@ vi.mock("./api", () => ({
 }));
 
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter, Route } from "react-router-dom";
+import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 import {
   applyBreakpointImport,
@@ -37,6 +38,7 @@ import {
   publishAstPanel,
   previewBreakpointImport,
   saveBreakpointRule,
+  saveReference,
   setReferenceActive,
 } from "./api";
 import AstPanelPage from "./AstPanelPage";
@@ -168,6 +170,140 @@ describe("microbiology reference administration", () => {
     expect(setQuery).toHaveBeenLastCalledWith({ edit: "new" });
   });
 
+  it("returns focus to the exact reference command when the editor closes", async () => {
+    const user = userEvent.setup();
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+
+    const Harness = () => {
+      const [currentQuery, setCurrentQuery] = React.useState(query);
+      const setQuery = (updates) =>
+        setCurrentQuery((current) => ({ ...current, ...updates }));
+      return (
+        <ReferenceDataPage
+          definition={REFERENCE_DEFINITIONS.organisms}
+          query={currentQuery}
+          setQuery={setQuery}
+        />
+      );
+    };
+
+    renderPage(<Harness />);
+    const add = await screen.findByRole("button", {
+      name: messages["microbiology.admin.organisms.add"],
+    });
+    add.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull(),
+    );
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(add).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull(),
+    );
+    const activeDialog = document.activeElement.closest('[role="dialog"]');
+    await user.click(
+      within(activeDialog).getByRole("button", {
+        name: messages["button.save"],
+      }),
+    );
+    await waitFor(() => expect(saveReference).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(add).toHaveFocus());
+  });
+
+  it("renders Patient Origins as a read-only Carbon reference list", async () => {
+    const setQuery = vi.fn();
+    getReferencePage.mockResolvedValue({
+      rows: [
+        {
+          id: "origin-1",
+          code: "INPATIENT",
+          displayName: "Inpatient",
+          whonetCode: "INP",
+          active: true,
+        },
+      ],
+      total: 1,
+    });
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS["patient-origins"]}
+        query={query}
+        setQuery={setQuery}
+      />,
+    );
+
+    expect(await screen.findByText("Inpatient")).toBeInTheDocument();
+    expect(screen.getByText("INPATIENT")).toBeInTheDocument();
+    expect(screen.getByText("INP")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Add patient origin/i }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Options" })).toBeNull();
+  });
+
+  it("reconciles Carbon rows when a reference response becomes filtered", async () => {
+    const setQuery = vi.fn();
+    getReferencePage.mockImplementation((_resource, requestQuery) =>
+      Promise.resolve({
+        rows: requestQuery.includes("q=Long-term+Care")
+          ? [
+              {
+                id: "origin-2",
+                code: "LONG_TERM_CARE",
+                displayName: "Long-term Care",
+                whonetCode: "LTC",
+                active: true,
+              },
+            ]
+          : [
+              {
+                id: "origin-1",
+                code: "INPATIENT",
+                displayName: "Inpatient",
+                whonetCode: "INP",
+                active: true,
+              },
+              {
+                id: "origin-2",
+                code: "LONG_TERM_CARE",
+                displayName: "Long-term Care",
+                whonetCode: "LTC",
+                active: true,
+              },
+            ],
+        total: requestQuery.includes("q=Long-term+Care") ? 1 : 2,
+      }),
+    );
+    const view = renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS["patient-origins"]}
+        query={query}
+        setQuery={setQuery}
+      />,
+    );
+    expect(await screen.findByText("Inpatient")).toBeInTheDocument();
+
+    view.rerender(
+      <BrowserRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <ReferenceDataPage
+            definition={REFERENCE_DEFINITIONS["patient-origins"]}
+            query={{ ...query, q: "Long-term Care" }}
+            setQuery={setQuery}
+          />
+        </IntlProvider>
+      </BrowserRouter>,
+    );
+
+    expect(await screen.findByText("Long-term Care")).toBeInTheDocument();
+    expect(screen.queryByText("Inpatient")).toBeNull();
+  });
+
   it("opens the AST panel editor through canonical edit state", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();
@@ -183,6 +319,122 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setQuery).toHaveBeenCalledWith({ edit: "new" });
+  });
+
+  it("returns focus after the AST panel editor closes", async () => {
+    const user = userEvent.setup();
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+
+    const Harness = () => {
+      const [currentQuery, setCurrentQuery] = React.useState(query);
+      const setQuery = (updates) =>
+        setCurrentQuery((current) => ({ ...current, ...updates }));
+      return <AstPanelPage query={currentQuery} setQuery={setQuery} />;
+    };
+
+    renderPage(<Harness />);
+    const add = await screen.findByRole("button", {
+      name: messages["microbiology.admin.astPanels.add"],
+    });
+    add.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull(),
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(add).toHaveFocus());
+  });
+
+  it("returns focus after the breakpoint import closes", async () => {
+    const user = userEvent.setup();
+    getBreakpointStandards.mockResolvedValue({ rows: [], total: 0 });
+
+    const Harness = () => {
+      const [currentQuery, setCurrentQuery] = React.useState(query);
+      const setQuery = (updates) =>
+        setCurrentQuery((current) => ({ ...current, ...updates }));
+      return (
+        <BreakpointPage
+          basePath="/MasterListsPage"
+          query={currentQuery}
+          setQuery={setQuery}
+        />
+      );
+    };
+
+    renderPage(<Harness />);
+    const importCsv = await screen.findByRole("button", {
+      name: messages["microbiology.admin.breakpoints.import"],
+    });
+    importCsv.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull(),
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(importCsv).toHaveFocus());
+  });
+
+  it("saves structured culture timing through Carbon number inputs", async () => {
+    const user = userEvent.setup();
+    const setQuery = vi.fn();
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+    getReferenceOptions.mockResolvedValue([
+      { id: "method-1", label: "Routine blood culture" },
+    ]);
+    saveReference.mockResolvedValue({});
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS["culture-setups"]}
+        query={{ ...query, edit: "new" }}
+        setQuery={setQuery}
+      />,
+    );
+
+    await user.selectOptions(
+      await screen.findByLabelText(messages["microbiology.admin.field.method"]),
+      "method-1",
+    );
+    await user.type(
+      screen.getByLabelText(messages["microbiology.admin.field.name"]),
+      "Routine blood culture",
+    );
+    await user.selectOptions(
+      screen.getByLabelText(messages["microbiology.admin.field.workflow"]),
+      "BACTERIOLOGY",
+    );
+    await user.type(
+      screen.getByLabelText(
+        messages["microbiology.admin.field.incubationHours"],
+      ),
+      "24",
+    );
+    await user.type(
+      screen.getByLabelText(
+        messages["microbiology.admin.field.subcultureAtHours"],
+      ),
+      "48",
+    );
+    const maxIncubationInput = screen.getByLabelText(
+      messages["microbiology.admin.field.maxIncubationDays"],
+    );
+    await user.type(maxIncubationInput, "7");
+    await user.clear(maxIncubationInput);
+    await user.type(maxIncubationInput, "5");
+    await user.click(
+      screen.getByRole("button", { name: messages["button.save"] }),
+    );
+
+    expect(saveReference).toHaveBeenCalledWith(
+      "culture-setups",
+      expect.objectContaining({
+        methodId: "method-1",
+        incubationHours: 24,
+        subcultureAtHours: 48,
+        maxIncubationDays: 5,
+      }),
+    );
   });
 
   it("renders the refreshed AST panel rows after publishing a version", async () => {

@@ -66,7 +66,7 @@ public class MicroCaseAmendmentRestControllerTest {
     }
 
     @Test
-    public void amendmentWritesRequireReportOrAdminRole() throws Exception {
+    public void amendmentWritesRequireSupervisorOrAdminRole() throws Exception {
         PreAuthorize open = MicroCaseAmendmentRestController.class.getMethod("open", String.class,
                 MicroCaseAmendmentRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
                 .getAnnotation(PreAuthorize.class);
@@ -74,8 +74,8 @@ public class MicroCaseAmendmentRestControllerTest {
                 MicroCaseAmendmentRequestForm.class, jakarta.servlet.http.HttpServletRequest.class)
                 .getAnnotation(PreAuthorize.class);
 
-        assertEquals("hasAnyRole('ADMIN', 'RESULTS')", open.value());
-        assertEquals("hasAnyRole('ADMIN', 'RESULTS')", cancel.value());
+        assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", open.value());
+        assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", cancel.value());
     }
 
     @Test

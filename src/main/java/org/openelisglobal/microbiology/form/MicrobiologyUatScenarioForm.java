@@ -8,6 +8,7 @@ public class MicrobiologyUatScenarioForm {
     public String sampleId;
     public String sampleItemId;
     public String patientId;
+    public String patientExternalId;
     public String caseId;
     public String siblingCaseId;
     public String analysisId;
@@ -19,4 +20,8 @@ public class MicrobiologyUatScenarioForm {
     public String activeBreakpointStandardId;
     public String loadedBreakpointStandardId;
     public String methodId;
+    public String sampleTypeId;
+    public String cultureTestId;
+    public String tbCultureTestId;
+    public String nonCultureTestId;
 }

@@ -57,6 +57,10 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.qaevent.service.NceCategoryService;
+import org.openelisglobal.qaevent.service.NceTypeService;
+import org.openelisglobal.qaevent.valueholder.NceCategory;
+import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -69,6 +73,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.testmethod.valueholder.TestMethod;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -127,6 +133,9 @@ public class MicrobiologyUatScenarioServiceTest {
     private TestResultService testResultService;
 
     @Mock
+    private TestMethodService testMethodService;
+
+    @Mock
     private AnalysisService analysisService;
 
     @Mock
@@ -152,6 +161,12 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Mock
     private TestReagentLinkService testReagentLinkService;
+
+    @Mock
+    private NceCategoryService nceCategoryService;
+
+    @Mock
+    private NceTypeService nceTypeService;
 
     @Mock
     private MicrobiologyReferenceAdminService referenceAdminService;
@@ -199,9 +214,10 @@ public class MicrobiologyUatScenarioServiceTest {
         service = new MicrobiologyUatScenarioService(methodService, sampleService, sampleItemService, patientService,
                 personService, sampleHumanService, typeOfSampleService, typeOfSampleTestService, testService,
                 testSectionService, localizationService, analyteService, testAnalyteService, analysisService,
-                testResultService, statusService, configurationService, caseService, orderRoutingService,
-                inventoryItemService, inventoryLotService, inventoryManagementService, testReagentLinkService,
-                referenceAdminService, breakpointAdminService, breakpointImportService);
+                testResultService, testMethodService, statusService, configurationService, caseService,
+                orderRoutingService, inventoryItemService, inventoryLotService, inventoryManagementService,
+                testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
+                nceCategoryService, nceTypeService);
     }
 
     @After
@@ -249,6 +265,11 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals("UAT microbiology culture", test.getLocalizedTestName().getEnglish());
         assertNotNull(test.getLocalizedReportingName());
         assertEquals("UAT microbiology culture", test.getLocalizedReportingName().getEnglish());
+        ArgumentCaptor<TestMethod> methodLinkCaptor = ArgumentCaptor.forClass(TestMethod.class);
+        verify(testMethodService).linkMethod(methodLinkCaptor.capture());
+        assertEquals(test.getId(), methodLinkCaptor.getValue().getTestId());
+        assertEquals(method.getId(), methodLinkCaptor.getValue().getMethodId());
+        assertTrue(methodLinkCaptor.getValue().getIsDefaultMethod());
         ArgumentCaptor<TestResult> testResultCaptor = ArgumentCaptor.forClass(TestResult.class);
         verify(testResultService).insert(testResultCaptor.capture());
         assertEquals(test, testResultCaptor.getValue().getTest());
@@ -288,6 +309,61 @@ public class MicrobiologyUatScenarioServiceTest {
         assertEquals("UAT-MICRO-MEDIA-EXPIRED", lotCaptor.getAllValues().get(0).getLotNumber());
         assertTrue(lotCaptor.getAllValues().get(0).isExpired());
         assertEquals("UAT-MICRO-MEDIA-FEFO", lotCaptor.getAllValues().get(1).getLotNumber());
+    }
+
+    @Test
+    public void provisionsStructuredOrganismChoicesThroughConfigurationService() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "MVP";
+        request.scenarioKey = "playwright-amendment-organisms";
+
+        service.provision(request, "1");
+
+        verify(configurationService).getOrCreateOrganism("Escherichia coli (UAT)", "ECOUAT", "panel-1");
+        verify(configurationService).getOrCreateOrganism("Klebsiella pneumoniae (UAT)", "KPNUAT", "panel-1");
+    }
+
+    @Test
+    public void provisionsSpecimenLostVocabularyThroughServices() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+        doAnswer(invocation -> {
+            NceCategory category = invocation.getArgument(0);
+            Integer generatedId = System.identityHashCode(category);
+            category.setId(generatedId);
+            return generatedId;
+        }).when(nceCategoryService).insert(any(NceCategory.class));
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "MVP";
+        request.scenarioKey = "playwright-nce-vocabulary";
+
+        service.provision(request, "1");
+
+        ArgumentCaptor<NceCategory> categoryCaptor = ArgumentCaptor.forClass(NceCategory.class);
+        verify(nceCategoryService).insert(categoryCaptor.capture());
+        assertEquals("Pre-analytical", categoryCaptor.getValue().getName());
+        assertTrue(categoryCaptor.getValue().getActive());
+        ArgumentCaptor<NceType> typeCaptor = ArgumentCaptor.forClass(NceType.class);
+        verify(nceTypeService).insert(typeCaptor.capture());
+        assertEquals("Specimen lost", typeCaptor.getValue().getName());
+        assertEquals(categoryCaptor.getValue().getId(), typeCaptor.getValue().getCategoryId());
+        assertTrue(typeCaptor.getValue().getActive());
     }
 
     @Test
@@ -418,6 +494,53 @@ public class MicrobiologyUatScenarioServiceTest {
     }
 
     @Test
+    public void provisionsR1ClassificationScenarioThroughServices() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase routedCase = microCase("case-bacteriology");
+        MicroCase unassignedCase = microCase("case-unassigned");
+        unassignedCase.setWorkflowType(MicroWorkflowType.UNASSIGNED.name());
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, routedCase);
+        when(testService.getTestByDescription("UAT microbiology TB culture")).thenReturn(null);
+        when(testService.getTestByDescription("UAT routine non-culture test")).thenReturn(null);
+        doAnswer(invocation -> {
+            org.openelisglobal.test.valueholder.Test inserted = invocation.getArgument(0);
+            if ("UAT microbiology TB culture".equals(inserted.getDescription())) {
+                inserted.setId("test-tb");
+            } else if ("UAT routine non-culture test".equals(inserted.getDescription())) {
+                inserted.setId("test-routine");
+            }
+            return null;
+        }).when(testService).insert(any(org.openelisglobal.test.valueholder.Test.class));
+        when(caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null, "1"))
+                .thenReturn(unassignedCase);
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "R1";
+        request.scenarioKey = "playwright-r1-workflow-classification";
+
+        MicrobiologyUatScenarioForm result = service.provision(request, "1");
+
+        assertEquals("case-unassigned", result.caseId);
+        assertEquals("case-bacteriology", result.siblingCaseId);
+        assertEquals("method-1", result.methodId);
+        assertEquals("sample-type-1", result.sampleTypeId);
+        assertEquals("test-1", result.cultureTestId);
+        assertEquals("test-tb", result.tbCultureTestId);
+        assertEquals("test-routine", result.nonCultureTestId);
+        verify(testMethodService, times(3)).linkMethod(any(TestMethod.class));
+        verify(caseService).createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null, "1");
+        ArgumentCaptor<org.openelisglobal.microbiology.valueholder.MicroCultureSetup> setupCaptor = ArgumentCaptor
+                .forClass(org.openelisglobal.microbiology.valueholder.MicroCultureSetup.class);
+        verify(configurationService, times(2)).getOrCreateCultureSetup(setupCaptor.capture());
+        assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), setupCaptor.getAllValues().get(0).getWorkflowType());
+        assertEquals(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), setupCaptor.getAllValues().get(1).getWorkflowType());
+    }
+
+    @Test
     public void provisionsM4WhonetMappedAndUnmappedReferencesThroughServices() {
         Sample sample = sample("sample-1");
         SampleItem sampleItem = sampleItem("sample-item-1");
@@ -505,6 +628,9 @@ public class MicrobiologyUatScenarioServiceTest {
         when(configurationService.getOrCreateAntibiotic("Gentamicin (UAT)", "GENUAT", "Aminoglycoside"))
                 .thenReturn(gentamicin);
         when(configurationService.getOrCreateAstPanel(anyString(), anyString(), anyString())).thenReturn(panel);
+        MicroOrganism organism = new MicroOrganism();
+        organism.setId("organism-1");
+        when(configurationService.getOrCreateOrganism(anyString(), anyString(), anyString())).thenReturn(organism);
         when(configurationService.getOrCreateBreakpointStandard(anyString(), anyString(), any())).thenReturn(standard);
 
         when(methodService.getMethods(anyString())).thenReturn(List.of(method));

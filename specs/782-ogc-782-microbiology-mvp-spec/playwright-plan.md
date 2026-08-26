@@ -4,17 +4,20 @@
 
 - Flow: `microbiology-case-workbench`
 - Route: `/Microbiology/cases/:caseId`
-- Setup: use the property-gated application scenario service to create one
-  bacteriology case with its specimen and initial activity.
+- Setup: provision one bacteriology case and its reference prerequisites
+  through the property-gated application scenario service.
 - User actions:
   - open the case workbench,
   - record setup activity with next stage `SETUP_RECORDED`,
-  - create isolate `ISO-1` with preliminary organism text.
+  - create isolate `ISO-1` from Gram stain and colony morphology,
+  - confirm AST remains unavailable,
+  - identify the organism with method, confidence, and significance.
 - Expected outcomes:
   - case header renders sample item, workflow, and current stage,
   - visible stage changes to `SETUP_RECORDED`,
   - timeline shows the setup note,
-  - isolate list shows `ISO-1: Escherichia coli`,
+  - isolate list first shows pending identification and then `Escherichia coli`,
+  - AST becomes available only after identification,
   - timeline shows the `ISOLATE_CREATED` activity after case refresh.
 - Project: `core-app`
 - Evidence command:
@@ -24,9 +27,9 @@
 
 - Flow: `ogc-782-microbiology-mvp`
 - Route: `/Microbiology/cases/:caseId`
-- Setup: use the property-gated application scenario service to create one
-  bacteriology case with an AST panel, antibiotic, breakpoint standard, and
-  one MIC breakpoint rule.
+- Setup: provision one bacteriology case, AST panel, antibiotic, breakpoint
+  standard, and one MIC breakpoint rule through the property-gated application
+  scenario service.
 - User actions:
   - open the case workbench,
   - record setup activity,
@@ -51,8 +54,9 @@
 
 - Flow: `microbiology-worklist-critical`
 - Routes: `/Microbiology/cases/:caseId`, `/Microbiology/worklist`
-- Setup: use the property-gated application scenario service to create one
-  bacteriology case and a sibling workflow record on the same specimen.
+- Setup: provision one bacteriology case with a sibling TB workflow on the same
+  sample item and AST reference prerequisites through the property-gated
+  application scenario service.
 - User actions:
   - open the bacteriology case,
   - log a critical communication with a free-text recipient and follow-up flag,
@@ -116,3 +120,26 @@
 - Project: `core-app`
 - Evidence command:
   `cd frontend && BASE_URL=https://localhost:48443 DB_CONTAINER=ogc-782-microbiology-db npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app`
+
+## R1 Case Nonconformance And Lost Specimen
+
+- Flow: `microbiology-case-workbench`
+- Route: `/Microbiology/cases/:caseId`
+- Setup: provision two independent cases through the property-gated
+  application scenario service. One remains available for a flag-only
+  nonconformance; the other is disposable because Mark Lost rejects its
+  physical specimen and open work.
+- User actions:
+  - open Report NCE from the case header and verify canonical action state,
+  - choose configured category, reporting unit, and severity; enter a
+    description; retain Flag only; and submit,
+  - open a separate case, choose Mark Lost, verify configured defaults, and
+    submit.
+- Expected outcomes:
+  - specimen identity and actor are derived rather than entered by the user,
+  - reference choices come from active configuration rather than fixed IDs,
+  - missing lost-specimen configuration is a named blocker,
+  - the browser observes the saved timeline and terminal case state.
+- Project: `core-app`
+- Evidence command:
+  `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-case-workbench.spec.ts --project=core-app`

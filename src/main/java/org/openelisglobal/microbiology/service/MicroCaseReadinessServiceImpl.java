@@ -12,6 +12,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,27 +52,46 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
             readiness.blockers.add("CRITICAL_FOLLOW_UP_REQUIRED");
         }
         for (MicroIsolate isolate : isolates) {
-            List<MicroAstRun> reviewedRuns = reviewedAstRuns(isolate.getId());
+            List<MicroAstRun> activeRuns = activeAstRuns(isolate.getId());
+            List<MicroAstRun> reviewedRuns = activeRuns.stream()
+                    .filter(run -> MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())).toList();
+            readiness.astRunsTotal += activeRuns.size();
+            readiness.astRunsComplete += reviewedRuns.size();
+            boolean identified = MicroIsolateIdentificationStatus.CONFIRMED.name()
+                    .equals(isolate.getIdentificationStatus()) && isolate.getOrganismId() != null
+                    && !isolate.getOrganismId().isBlank();
+            if (!identified) {
+                readiness.isolatesPendingIdentification++;
+                readiness.finalReleaseReady = false;
+                addBlocker(readiness, "ISOLATE_IDENTIFICATION_REQUIRED");
+            }
             if (MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name().equals(isolate.getSignificance())
                     && reviewedRuns.isEmpty()) {
                 readiness.finalReleaseReady = false;
-                if (!readiness.blockers.contains("AST_REVIEW_REQUIRED")) {
-                    readiness.blockers.add("AST_REVIEW_REQUIRED");
+                addBlocker(readiness, "AST_REVIEW_REQUIRED");
+                if (identified && activeRuns.isEmpty()) {
+                    readiness.significantIsolatesAwaitingAstSetup++;
                 }
             }
             if (reviewedRuns.size() > 1 && reviewedRuns.stream().filter(MicroAstRun::isReportable).count() != 1) {
                 readiness.finalReleaseReady = false;
-                if (!readiness.blockers.contains("REPORTABLE_AST_RUN_REQUIRED")) {
-                    readiness.blockers.add("REPORTABLE_AST_RUN_REQUIRED");
-                }
+                addBlocker(readiness, "REPORTABLE_AST_RUN_REQUIRED");
             }
         }
         return readiness;
     }
 
-    private List<MicroAstRun> reviewedAstRuns(String isolateId) {
+    private List<MicroAstRun> activeAstRuns(String isolateId) {
         return astRunDAO.getByIsolateId(isolateId).stream()
-                .filter(run -> MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())).toList();
+                .filter(run -> !MicroAstRunStatus.INVALIDATED.name().equals(run.getStatus())
+                        && !MicroAstRunStatus.RERUN_REQUIRED.name().equals(run.getStatus()))
+                .toList();
+    }
+
+    private void addBlocker(MicroCaseReadinessForm readiness, String blocker) {
+        if (!readiness.blockers.contains(blocker)) {
+            readiness.blockers.add(blocker);
+        }
     }
 
     private boolean hasOpenCriticalFollowUp(String caseId) {

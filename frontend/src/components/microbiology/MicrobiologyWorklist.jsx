@@ -1,17 +1,27 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, FilterRemove } from "@carbon/icons-react";
 import {
+  Download,
+  FilterRemove,
+  Launch,
+  Printer,
+  Renew,
+} from "@carbon/icons-react";
+import {
+  Accordion,
+  AccordionItem,
   Button,
   ClickableTile,
+  ContentSwitcher,
   DataTable,
-  IconButton,
   InlineNotification,
-  Layer,
   Loading,
+  OverflowMenu,
+  OverflowMenuItem,
   Pagination,
   Select,
   SelectItem,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -24,6 +34,7 @@ import {
   TableToolbarSearch,
   Tag,
   Tile,
+  Tooltip,
 } from "@carbon/react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
@@ -37,6 +48,8 @@ import {
 } from "./MicrobiologyRoutes";
 import {
   markMicrobiologyReady,
+  MICROBIOLOGY_NEW_POSITIVE_HIGHLIGHT_MS,
+  MICROBIOLOGY_WORKLIST_REFRESH_INTERVAL_MS,
   MICROBIOLOGY_WORKLIST_READY_MARK,
 } from "./MicrobiologyPerformance";
 import MicrobiologyService from "./MicrobiologyService";
@@ -47,6 +60,7 @@ const STAGE_OPTIONS = [
   "RECEIVED",
   "SETUP_RECORDED",
   "INCUBATING",
+  "POSITIVE_SIGNAL",
   "GROWTH_DETECTED",
   "NO_GROWTH_READY",
   "IDENTIFICATION",
@@ -57,6 +71,7 @@ const STAGE_OPTIONS = [
 ];
 const URGENCY_OPTIONS = ["HIGH", "ROUTINE"];
 const DUE_OPTIONS = [
+  "NEEDS_WORKFLOW",
   "SETUP",
   "ISOLATE_ID",
   "AST_ENTRY",
@@ -66,12 +81,23 @@ const DUE_OPTIONS = [
 const EMPTY_SUMMARY = {
   totalPending: 0,
   incubating: 0,
+  positiveSignals: 0,
   growthDetected: 0,
   identification: 0,
   needsAstReview: 0,
   readyForCaseReview: 0,
   openCriticalFollowUps: 0,
+  astInQueue: 0,
+  astPendingSetup: 0,
+  astInProgress: 0,
+  astAwaitingResults: 0,
+  astResultsIn: 0,
 };
+const RESISTANCE_FLAGS = ["ESBL", "MRSA", "CRE", "VRE", "MDR"];
+const INTERACTIVE_ROW_SELECTOR =
+  "a, button, input, select, textarea, [role='button'], [role='link']";
+
+const getWorklistRowId = (row) => row.rowId || row.astRunId || row.caseId;
 
 const asCount = (value) => {
   const parsed = Number(value);
@@ -83,6 +109,8 @@ const summaryFromRows = (rows) =>
     (summary, row) => ({
       ...summary,
       incubating: summary.incubating + (row.stage === "INCUBATING" ? 1 : 0),
+      positiveSignals:
+        summary.positiveSignals + (row.stage === "POSITIVE_SIGNAL" ? 1 : 0),
       growthDetected:
         summary.growthDetected + (row.stage === "GROWTH_DETECTED" ? 1 : 0),
       identification:
@@ -93,19 +121,42 @@ const summaryFromRows = (rows) =>
       openCriticalFollowUps:
         summary.openCriticalFollowUps +
         (row.hasOpenCriticalCommunication ? 1 : 0),
+      astInQueue: summary.astInQueue + (row.grain === "ast" ? 1 : 0),
+      astPendingSetup:
+        summary.astPendingSetup + (row.astStatus === "PENDING_SETUP" ? 1 : 0),
+      astInProgress:
+        summary.astInProgress +
+        (["IN_PROGRESS", "AWAITING_RESULTS", "REVIEWED"].includes(row.astStatus)
+          ? 1
+          : 0),
+      astAwaitingResults:
+        summary.astAwaitingResults +
+        (row.astStatus === "AWAITING_RESULTS" ? 1 : 0),
+      astResultsIn:
+        summary.astResultsIn +
+        (["RESULTS_IN", "QC_FAILED"].includes(row.astStatus) ? 1 : 0),
     }),
     { ...EMPTY_SUMMARY, totalPending: rows.length },
   );
 
 const normalizeSummary = (summary, rows) => {
   const fallback = summaryFromRows(rows);
-  return Object.keys(EMPTY_SUMMARY).reduce(
+  const counts = Object.keys(EMPTY_SUMMARY).reduce(
     (normalized, key) => ({
       ...normalized,
       [key]: asCount(summary?.[key] ?? fallback[key]),
     }),
     {},
   );
+  return {
+    ...counts,
+    resistanceHits: Object.fromEntries(
+      RESISTANCE_FLAGS.map((flag) => [
+        flag,
+        asCount(summary?.resistanceHits?.[flag]),
+      ]),
+    ),
+  };
 };
 
 const normalizePageResponse = (response, filters) => {
@@ -128,6 +179,9 @@ const normalizePageResponse = (response, filters) => {
     pageSize: Array.isArray(response)
       ? filters.pageSize
       : response?.pageSize || filters.pageSize,
+    recentActivity: Array.isArray(response?.recentActivity)
+      ? response.recentActivity
+      : [],
   };
 };
 
@@ -146,14 +200,22 @@ const tagTypeForStage = (stage) => {
   }
   return "cyan";
 };
-const dueActionDetailId = (dueAction) =>
-  `microbiology.worklist.dueDetail.${String(dueAction || "").toLowerCase()}`;
+const DUE_ACTION_DETAIL_IDS = {
+  AST_ENTRY: "microbiology.worklist.dueDetail.ast_entry",
+  AST_REVIEW: "microbiology.worklist.dueDetail.ast_review",
+  CASE_REVIEW: "microbiology.worklist.dueDetail.case_review",
+  ISOLATE_ID: "microbiology.worklist.dueDetail.isolate_id",
+  SETUP: "microbiology.worklist.dueDetail.setup",
+  SUBCULTURE_GRAM_STAIN:
+    "microbiology.worklist.dueDetail.subculture_gram_stain",
+};
 
 const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const filters = parseMicrobiologyWorklistSearch(location.search);
+  const isAstGrain = filters.grain === "ast";
   const [worklistState, setWorklistState] = useState({
     current: {
       rows: [],
@@ -161,15 +223,21 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
       total: 0,
       page: filters.page,
       pageSize: filters.pageSize,
+      recentActivity: [],
     },
     previousRows: [],
+    sourceSearch: null,
+    newPositiveRowIds: [],
   });
   const [requestState, setRequestState] = useState({
     search: null,
     status: "loading",
   });
   const [hasLoaded, setHasLoaded] = useState(false);
-  const { current: worklist, previousRows } = worklistState;
+  const [refreshGeneration, setRefreshGeneration] = useState(0);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
+  const { current: worklist, previousRows, newPositiveRowIds } = worklistState;
   const responseMatchesLocation = requestState.search === location.search;
   const loading = !responseMatchesLocation || requestState.status === "loading";
   const hasLoadError =
@@ -184,12 +252,30 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
           return;
         }
         const nextWorklist = normalizePageResponse(response, filters);
-        setWorklistState(({ current }) => ({
-          current: nextWorklist,
-          previousRows: current.rows,
-        }));
+        setWorklistState(({ current, sourceSearch }) => {
+          const previousRowIds = new Set(current.rows.map(getWorklistRowId));
+          const refreshedPositiveRowIds =
+            sourceSearch === location.search
+              ? nextWorklist.rows
+                  .filter(
+                    (row) =>
+                      row.stage === "POSITIVE_SIGNAL" &&
+                      !previousRowIds.has(getWorklistRowId(row)),
+                  )
+                  .map(getWorklistRowId)
+              : [];
+          return {
+            current: nextWorklist,
+            previousRows: current.rows,
+            sourceSearch: location.search,
+            newPositiveRowIds: refreshedPositiveRowIds,
+          };
+        });
         setRequestState({ search: location.search, status: "success" });
         setHasLoaded(true);
+        const updatedAt = Date.now();
+        setLastUpdatedAt(updatedAt);
+        setClockNow(updatedAt);
       })
       .catch(() => {
         if (!active) {
@@ -200,7 +286,37 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     return () => {
       active = false;
     };
+  }, [location.search, refreshGeneration, service]);
+
+  useEffect(() => {
+    if (newPositiveRowIds.length === 0) {
+      return undefined;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setWorklistState((state) => ({
+        ...state,
+        newPositiveRowIds: [],
+      }));
+    }, MICROBIOLOGY_NEW_POSITIVE_HIGHLIGHT_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [newPositiveRowIds]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setRefreshGeneration((generation) => generation + 1);
+    }, MICROBIOLOGY_WORKLIST_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(intervalId);
   }, [location.search, service]);
+
+  useEffect(() => {
+    if (lastUpdatedAt === null) {
+      return undefined;
+    }
+    const intervalId = window.setInterval(() => {
+      setClockNow(Date.now());
+    }, 1_000);
+    return () => window.clearInterval(intervalId);
+  }, [lastUpdatedAt]);
 
   useEffect(() => {
     if (!loading && !hasLoadError) {
@@ -218,6 +334,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
   };
 
   const hasFilters = Boolean(
+    filters.status ||
     filters.workflow ||
     filters.stage ||
     filters.urgency ||
@@ -228,18 +345,88 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
     filters.pageSize !== 20,
   );
 
-  const headers = useMemo(
-    () => [
+  const headers = useMemo(() => {
+    if (isAstGrain) {
+      return [
+        {
+          key: "labNumber",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.labNumber",
+          }),
+        },
+        {
+          key: "isolate",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.isolate",
+          }),
+        },
+        {
+          key: "patient",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.patient",
+          }),
+        },
+        {
+          key: "organism",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.organism",
+          }),
+        },
+        {
+          key: "panel",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.panel",
+          }),
+        },
+        {
+          key: "astStatus",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.status",
+          }),
+        },
+        {
+          key: "flags",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.flags",
+          }),
+        },
+        {
+          key: "started",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.started",
+          }),
+        },
+        {
+          key: "priority",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.priority",
+          }),
+        },
+        {
+          key: "action",
+          header: intl.formatMessage({
+            id: "microbiology.worklist.column.action",
+          }),
+        },
+      ];
+    }
+    return [
       {
-        key: "sampleItem",
+        key: "labNumber",
         header: intl.formatMessage({
-          id: "microbiology.worklist.column.sample",
+          id: "microbiology.worklist.column.labNumber",
         }),
       },
       {
-        key: "workflow",
+        key: "patient",
         header: intl.formatMessage({
-          id: "microbiology.worklist.column.workflow",
+          id: "microbiology.worklist.column.patient",
+        }),
+      },
+      {
+        key: "specimen",
+        header: intl.formatMessage({
+          id: "microbiology.worklist.column.specimen",
         }),
       },
       {
@@ -253,15 +440,15 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
         header: intl.formatMessage({ id: "microbiology.worklist.column.due" }),
       },
       {
-        key: "urgency",
+        key: "priority",
         header: intl.formatMessage({
-          id: "microbiology.worklist.column.urgency",
+          id: "microbiology.worklist.column.priority",
         }),
       },
       {
-        key: "context",
+        key: "lastActivity",
         header: intl.formatMessage({
-          id: "microbiology.worklist.column.context",
+          id: "microbiology.worklist.column.lastActivity",
         }),
       },
       {
@@ -270,79 +457,172 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
           id: "microbiology.worklist.column.action",
         }),
       },
-    ],
-    [intl],
-  );
+    ];
+  }, [intl, isAstGrain]);
 
   const rowsById = useMemo(
     () =>
       Object.fromEntries(
-        [...previousRows, ...worklist.rows].map((row) => [row.caseId, row]),
+        [...previousRows, ...worklist.rows].map((row) => [
+          getWorklistRowId(row),
+          row,
+        ]),
       ),
     [previousRows, worklist.rows],
   );
   const tableRows = useMemo(
     () =>
-      worklist.rows.map((row) => ({
-        id: row.caseId,
-        sampleItem: row.sampleItemId,
-        workflow: formatMicrobiologyEnum(row.workflowType, intl),
-        stage: formatMicrobiologyEnum(row.stage, intl),
-        due: formatMicrobiologyEnum(row.dueAction, intl),
-        urgency: formatMicrobiologyEnum(row.urgency, intl),
-        context: row.siblingWorkflows?.join(", ") || "",
-        action: row.caseId,
-      })),
-    [intl, worklist.rows],
+      worklist.rows.map((row) =>
+        isAstGrain
+          ? {
+              id: row.rowId || row.astRunId || `setup:${row.isolateId}`,
+              labNumber: row.accessionNumber || row.sampleItemId,
+              isolate: row.isolateLabel,
+              patient:
+                row.patientDisplay ||
+                intl.formatMessage({ id: "microbiology.worklist.notSet" }),
+              organism:
+                row.organismDisplay ||
+                intl.formatMessage({
+                  id: "microbiology.worklist.ast.pendingIdentification",
+                }),
+              panel:
+                row.panelName ||
+                row.panelId ||
+                intl.formatMessage({ id: "microbiology.worklist.notSet" }),
+              astStatus: formatMicrobiologyEnum(row.astStatus, intl),
+              flags: row.analyzerExpertFlags || "",
+              started: row.astStartedAt
+                ? intl.formatDate(row.astStartedAt, {
+                    month: "short",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : intl.formatMessage({
+                    id: "microbiology.worklist.notStarted",
+                  }),
+              priority: formatMicrobiologyEnum(
+                row.urgency || row.priority,
+                intl,
+              ),
+              action: row.caseId,
+            }
+          : {
+              id: row.rowId || row.caseId,
+              labNumber: row.accessionNumber || row.sampleItemId,
+              patient:
+                row.patientDisplay ||
+                intl.formatMessage({ id: "microbiology.worklist.notSet" }),
+              specimen:
+                row.specimenDisplay ||
+                intl.formatMessage({ id: "microbiology.worklist.notSet" }),
+              stage: formatMicrobiologyEnum(row.stage, intl),
+              due: formatMicrobiologyEnum(row.dueAction, intl),
+              priority: formatMicrobiologyEnum(
+                row.urgency || row.priority,
+                intl,
+              ),
+              lastActivity:
+                row.lastActivityBy ||
+                intl.formatMessage({ id: "microbiology.worklist.notSet" }),
+              action: row.caseId,
+            },
+      ),
+    [intl, isAstGrain, worklist.rows],
   );
-  const summaryTiles = [
+  const cultureSummaryTiles = [
     {
       id: "total",
       value: worklist.summary.totalPending,
       labelId: "microbiology.worklist.summary.totalPending",
-      changes: { stage: "", due: "" },
-      selected: !filters.stage && !filters.due,
+      changes: { status: "", stage: "", due: "" },
+      selected: !filters.status,
     },
     {
       id: "incubating",
       value: worklist.summary.incubating,
       labelId: "microbiology.worklist.summary.incubating",
-      changes: { stage: "INCUBATING", due: "" },
-      selected: filters.stage === "INCUBATING" && !filters.due,
+      changes: { status: "incubating", stage: "", due: "" },
+      selected: filters.status === "incubating",
+    },
+    {
+      id: "positive",
+      value: worklist.summary.positiveSignals,
+      labelId: "microbiology.worklist.summary.positive",
+      changes: { status: "positive", stage: "", due: "" },
+      selected: filters.status === "positive",
     },
     {
       id: "growth",
       value: worklist.summary.growthDetected,
       labelId: "microbiology.worklist.summary.growthDetected",
-      changes: { stage: "GROWTH_DETECTED", due: "" },
-      selected: filters.stage === "GROWTH_DETECTED" && !filters.due,
-    },
-    {
-      id: "identification",
-      value: worklist.summary.identification,
-      labelId: "microbiology.worklist.summary.identification",
-      changes: { stage: "IDENTIFICATION", due: "" },
-      selected: filters.stage === "IDENTIFICATION" && !filters.due,
-    },
-    {
-      id: "ast-review",
-      value: worklist.summary.needsAstReview,
-      labelId: "microbiology.worklist.summary.astReview",
-      changes: { stage: "", due: "AST_REVIEW" },
-      selected: !filters.stage && filters.due === "AST_REVIEW",
+      changes: { status: "growth", stage: "", due: "" },
+      selected: filters.status === "growth",
     },
     {
       id: "case-review",
       value: worklist.summary.readyForCaseReview,
       labelId: "microbiology.worklist.summary.caseReview",
-      changes: { stage: "", due: "CASE_REVIEW" },
-      selected: !filters.stage && filters.due === "CASE_REVIEW",
+      changes: { status: "ready", stage: "", due: "" },
+      selected: filters.status === "ready",
     },
   ];
+  const astSummaryTiles = [
+    {
+      id: "in-queue",
+      value: worklist.summary.astInQueue,
+      labelId: "microbiology.worklist.summary.astInQueue",
+      changes: { status: "" },
+      selected: !filters.status,
+    },
+    {
+      id: "pending-setup",
+      value: worklist.summary.astPendingSetup,
+      labelId: "microbiology.worklist.summary.astPendingSetup",
+      changes: { status: "pending-setup" },
+      selected: filters.status === "pending-setup",
+    },
+    {
+      id: "in-progress",
+      value: worklist.summary.astInProgress,
+      labelId: "microbiology.worklist.summary.astInProgress",
+      changes: { status: "in-progress" },
+      selected: filters.status === "in-progress",
+    },
+    {
+      id: "results-in",
+      value: worklist.summary.astResultsIn,
+      labelId: "microbiology.worklist.summary.astResultsIn",
+      changes: { status: "results-in" },
+      selected: filters.status === "results-in",
+    },
+  ];
+  const summaryTiles = isAstGrain ? astSummaryTiles : cultureSummaryTiles;
+  const secondsSinceUpdate =
+    lastUpdatedAt === null
+      ? 0
+      : Math.max(0, Math.floor((clockNow - lastUpdatedAt) / 1_000));
+  const navigateFromRowClick = (event, url) => {
+    if (event.target.closest(INTERACTIVE_ROW_SELECTOR)) {
+      return;
+    }
+    history.push(url);
+  };
+  const navigateFromRowKey = (event, url) => {
+    if (
+      event.target !== event.currentTarget ||
+      !["Enter", " "].includes(event.key)
+    ) {
+      return;
+    }
+    event.preventDefault();
+    history.push(url);
+  };
 
   return (
     <main className="microbiology-worklist" data-testid="microbiology-worklist">
-      <Stack gap={7}>
+      <Stack gap={5}>
         <PageBreadCrumb
           breadcrumbs={[
             { label: "home.label", link: "/" },
@@ -363,10 +643,63 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
               {intl.formatMessage({ id: "microbiology.worklist.subtitle" })}
             </p>
           </div>
-          <Tag type="blue">
-            {intl.formatMessage({ id: "microbiology.worklist.queueStatus" })}
-          </Tag>
+          <div className="microbiology-worklist__refresh-controls">
+            {lastUpdatedAt !== null && (
+              <span
+                className="microbiology-worklist__refresh-status"
+                role="status"
+              >
+                <span aria-hidden="true" />
+                {intl.formatMessage(
+                  { id: "microbiology.worklist.updated" },
+                  { seconds: secondsSinceUpdate },
+                )}
+              </span>
+            )}
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={Renew}
+              disabled={loading}
+              onClick={() =>
+                setRefreshGeneration((generation) => generation + 1)
+              }
+            >
+              {intl.formatMessage({ id: "microbiology.worklist.refresh" })}
+            </Button>
+            <Tag type="blue">
+              {intl.formatMessage({ id: "microbiology.worklist.queueStatus" })}
+            </Tag>
+          </div>
         </header>
+        <div className="microbiology-worklist__grain-control">
+          <ContentSwitcher
+            selectedIndex={isAstGrain ? 1 : 0}
+            size="sm"
+            onChange={({ name }) =>
+              updateFilters({
+                grain: name,
+                status: "",
+                stage: "",
+                due: "",
+                q: "",
+              })
+            }
+          >
+            <Switch
+              name="cultures"
+              text={intl.formatMessage({
+                id: "microbiology.worklist.grain.cultures",
+              })}
+            />
+            <Switch
+              name="ast"
+              text={intl.formatMessage({
+                id: "microbiology.worklist.grain.ast",
+              })}
+            />
+          </ContentSwitcher>
+        </div>
         {hasLoadError && (
           <InlineNotification
             kind="error"
@@ -405,7 +738,15 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 clicked={tile.selected}
                 data-testid={`microbiology-worklist-summary-${tile.id}`}
                 aria-label={intl.formatMessage({ id: tile.labelId })}
-                onClick={() => updateFilters(tile.changes)}
+                href={getMicrobiologyWorklistUrl({
+                  ...filters,
+                  ...tile.changes,
+                  page: 1,
+                })}
+                onClick={(event) => {
+                  event.preventDefault();
+                  updateFilters(tile.changes);
+                }}
               >
                 <span className="microbiology-worklist__summary-value">
                   {tile.value}
@@ -415,22 +756,60 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 </span>
               </ClickableTile>
             ))}
-            <Tile
-              className="microbiology-worklist__summary-card microbiology-worklist__summary-card--static"
-              data-testid="microbiology-worklist-summary-critical"
-            >
-              <span className="microbiology-worklist__summary-value">
-                {worklist.summary.openCriticalFollowUps}
-              </span>
-              <span className="microbiology-worklist__summary-label">
-                {intl.formatMessage({
-                  id: "microbiology.worklist.summary.critical",
+            {isAstGrain ? (
+              <Tooltip
+                align="top"
+                label={intl.formatMessage({
+                  id: "microbiology.worklist.expertRulesUnavailable",
                 })}
-              </span>
-            </Tile>
+              >
+                <span
+                  className="microbiology-worklist__future-control"
+                  tabIndex={0}
+                >
+                  <Tile className="microbiology-worklist__summary-card microbiology-worklist__summary-card--disabled">
+                    <span className="microbiology-worklist__summary-value">
+                      -
+                    </span>
+                    <span className="microbiology-worklist__summary-label">
+                      {intl.formatMessage({
+                        id: "microbiology.worklist.summary.expertFlags",
+                      })}
+                    </span>
+                  </Tile>
+                </span>
+              </Tooltip>
+            ) : (
+              <Tile
+                className="microbiology-worklist__summary-card microbiology-worklist__summary-card--static"
+                data-testid="microbiology-worklist-summary-critical"
+              >
+                <span className="microbiology-worklist__summary-value">
+                  {worklist.summary.openCriticalFollowUps}
+                </span>
+                <span className="microbiology-worklist__summary-label">
+                  {intl.formatMessage({
+                    id: "microbiology.worklist.summary.critical",
+                  })}
+                </span>
+              </Tile>
+            )}
           </div>
         </section>
-        <Layer
+        {isAstGrain && (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "microbiology.worklist.ast.automaticResults",
+            })}
+            subtitle={intl.formatMessage({
+              id: "microbiology.worklist.ast.automaticResultsDetail",
+            })}
+          />
+        )}
+        <section
           className="microbiology-worklist__filters"
           aria-labelledby="microbiology-worklist-filter-heading"
         >
@@ -443,7 +822,11 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
               size="sm"
               renderIcon={FilterRemove}
               disabled={!hasFilters}
-              onClick={() => history.push(getMicrobiologyWorklistUrl())}
+              onClick={() =>
+                history.push(
+                  getMicrobiologyWorklistUrl({ grain: filters.grain }),
+                )
+              }
             >
               {intl.formatMessage({ id: "microbiology.worklist.clearFilters" })}
             </Button>
@@ -473,54 +856,58 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                 />
               ))}
             </Select>
-            <Select
-              id="microbiology-worklist-stage-filter"
-              labelText={intl.formatMessage({
-                id: "microbiology.worklist.filter.stage",
-              })}
-              value={filters.stage}
-              onChange={(event) =>
-                updateFilters({ stage: event.target.value, due: "" })
-              }
-            >
-              <SelectItem
-                value=""
-                text={intl.formatMessage({
-                  id: "microbiology.worklist.filter.allStages",
+            {!isAstGrain && (
+              <Select
+                id="microbiology-worklist-stage-filter"
+                labelText={intl.formatMessage({
+                  id: "microbiology.worklist.filter.stage",
                 })}
-              />
-              {STAGE_OPTIONS.map((stage) => (
+                value={filters.stage}
+                onChange={(event) =>
+                  updateFilters({ stage: event.target.value, due: "" })
+                }
+              >
                 <SelectItem
-                  key={stage}
-                  value={stage}
-                  text={formatMicrobiologyEnum(stage, intl)}
+                  value=""
+                  text={intl.formatMessage({
+                    id: "microbiology.worklist.filter.allStages",
+                  })}
                 />
-              ))}
-            </Select>
-            <Select
-              id="microbiology-worklist-due-filter"
-              labelText={intl.formatMessage({
-                id: "microbiology.worklist.filter.dueAction",
-              })}
-              value={filters.due}
-              onChange={(event) =>
-                updateFilters({ due: event.target.value, stage: "" })
-              }
-            >
-              <SelectItem
-                value=""
-                text={intl.formatMessage({
-                  id: "microbiology.worklist.filter.allActions",
+                {STAGE_OPTIONS.map((stage) => (
+                  <SelectItem
+                    key={stage}
+                    value={stage}
+                    text={formatMicrobiologyEnum(stage, intl)}
+                  />
+                ))}
+              </Select>
+            )}
+            {!isAstGrain && (
+              <Select
+                id="microbiology-worklist-due-filter"
+                labelText={intl.formatMessage({
+                  id: "microbiology.worklist.filter.dueAction",
                 })}
-              />
-              {DUE_OPTIONS.map((dueAction) => (
+                value={filters.due}
+                onChange={(event) =>
+                  updateFilters({ due: event.target.value, stage: "" })
+                }
+              >
                 <SelectItem
-                  key={dueAction}
-                  value={dueAction}
-                  text={formatMicrobiologyEnum(dueAction, intl)}
+                  value=""
+                  text={intl.formatMessage({
+                    id: "microbiology.worklist.filter.allActions",
+                  })}
                 />
-              ))}
-            </Select>
+                {DUE_OPTIONS.map((dueAction) => (
+                  <SelectItem
+                    key={dueAction}
+                    value={dueAction}
+                    text={formatMicrobiologyEnum(dueAction, intl)}
+                  />
+                ))}
+              </Select>
+            )}
             <Select
               id="microbiology-worklist-urgency-filter"
               labelText={intl.formatMessage({
@@ -573,7 +960,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
               />
             </Select>
           </div>
-        </Layer>
+        </section>
         {loading && !hasLoaded ? (
           <Loading withOverlay={false} />
         ) : (
@@ -586,7 +973,9 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
               <div>
                 <h2 id="microbiology-worklist-table-heading">
                   {intl.formatMessage({
-                    id: "microbiology.worklist.table.title",
+                    id: isAstGrain
+                      ? "microbiology.worklist.table.astTitle"
+                      : "microbiology.worklist.table.title",
                   })}
                 </h2>
                 <p>
@@ -612,19 +1001,67 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                         persistent
                         value={filters.q}
                         placeholder={intl.formatMessage({
-                          id: "microbiology.worklist.search",
+                          id: isAstGrain
+                            ? "microbiology.worklist.search.ast"
+                            : "microbiology.worklist.search.cultures",
                         })}
                         onChange={(event) =>
                           updateFilters({ q: event.target.value })
                         }
                       />
+                      {isAstGrain && (
+                        <>
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            renderIcon={Printer}
+                            onClick={() => window.print()}
+                          >
+                            {intl.formatMessage({
+                              id: "microbiology.worklist.print",
+                            })}
+                          </Button>
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            renderIcon={Launch}
+                            onClick={() => history.push("/analyzers/qc/db")}
+                          >
+                            {intl.formatMessage({
+                              id: "microbiology.worklist.qcDashboard",
+                            })}
+                          </Button>
+                          <Tooltip
+                            align="top"
+                            label={intl.formatMessage({
+                              id: "microbiology.worklist.whonetUnavailable",
+                            })}
+                          >
+                            <span>
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                renderIcon={Download}
+                                disabled
+                              >
+                                {intl.formatMessage({
+                                  id: "microbiology.worklist.whonetPhase1b",
+                                })}
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </>
+                      )}
                     </TableToolbarContent>
                   </TableToolbar>
                   <div
                     className="microbiology-worklist__table-scroll"
+                    data-testid="microbiology-worklist-table-scroll"
                     tabIndex={0}
                     aria-label={intl.formatMessage({
-                      id: "microbiology.worklist.table.title",
+                      id: isAstGrain
+                        ? "microbiology.worklist.table.astTitle"
+                        : "microbiology.worklist.table.title",
                     })}
                   >
                     <div className="microbiology-worklist__table-content">
@@ -646,48 +1083,201 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                             <TableRow>
                               <TableCell colSpan={tableHeaders.length}>
                                 {intl.formatMessage({
-                                  id: "microbiology.worklist.empty",
+                                  id: isAstGrain
+                                    ? "microbiology.worklist.empty.ast"
+                                    : "microbiology.worklist.empty.cultures",
                                 })}
                               </TableCell>
                             </TableRow>
                           ) : (
                             rows.map((tableRow) => {
                               const row = rowsById[tableRow.id];
+                              const isNewPositive = newPositiveRowIds.includes(
+                                tableRow.id,
+                              );
                               const caseUrl = getMicrobiologyCaseUrl(
                                 row.caseId,
-                                filters,
+                                isAstGrain
+                                  ? {
+                                      ...filters,
+                                      section: "ast",
+                                      astIsolateId: row.isolateId,
+                                      astRunId: row.astRunId,
+                                    }
+                                  : filters,
                               );
                               return (
                                 <TableRow
                                   key={tableRow.id}
                                   {...getRowProps({ row: tableRow })}
+                                  className={
+                                    isNewPositive
+                                      ? "microbiology-worklist__row--new-positive"
+                                      : undefined
+                                  }
                                   data-testid={`microbiology-worklist-row-${tableRow.id}`}
+                                  tabIndex={0}
+                                  onClick={(event) =>
+                                    navigateFromRowClick(event, caseUrl)
+                                  }
+                                  onKeyDown={(event) =>
+                                    navigateFromRowKey(event, caseUrl)
+                                  }
                                 >
                                   {tableRow.cells.map((cell) => {
-                                    if (cell.info.header === "sampleItem") {
+                                    if (cell.info.header === "labNumber") {
                                       return (
                                         <TableCell key={cell.id}>
-                                          <Link
-                                            className="microbiology-worklist__case-link"
-                                            to={caseUrl}
-                                          >
-                                            {cell.value}
-                                          </Link>
+                                          <div className="microbiology-worklist__lab-context">
+                                            <Link
+                                              className="microbiology-worklist__case-link"
+                                              to={caseUrl}
+                                            >
+                                              {cell.value}
+                                            </Link>
+                                            <Tag type="outline">
+                                              {formatMicrobiologyEnum(
+                                                row.workflowType,
+                                                intl,
+                                              )}
+                                            </Tag>
+                                            {row.siblingWorkflows?.length >
+                                              0 && (
+                                              <span data-testid="microbiology-worklist-siblings">
+                                                {intl.formatMessage(
+                                                  {
+                                                    id: "microbiology.worklist.linkedWorkflows",
+                                                  },
+                                                  {
+                                                    count:
+                                                      row.siblingWorkflows
+                                                        .length + 1,
+                                                  },
+                                                )}
+                                              </span>
+                                            )}
+                                          </div>
                                         </TableCell>
                                       );
                                     }
                                     if (cell.info.header === "stage") {
                                       return (
                                         <TableCell key={cell.id}>
-                                          <Tag
-                                            type={tagTypeForStage(row.stage)}
-                                          >
-                                            {cell.value}
-                                          </Tag>
+                                          <div className="microbiology-worklist__stage-status">
+                                            <Tag
+                                              type={tagTypeForStage(row.stage)}
+                                            >
+                                              {cell.value}
+                                            </Tag>
+                                            {isNewPositive && (
+                                              <Tag type="green">
+                                                {intl.formatMessage({
+                                                  id: "microbiology.worklist.newPositive",
+                                                })}
+                                              </Tag>
+                                            )}
+                                            {row.needsAstReview && (
+                                              <span>
+                                                {intl.formatMessage({
+                                                  id: "microbiology.worklist.ast.resultsInBadge",
+                                                })}
+                                              </span>
+                                            )}
+                                            {row.hasOpenCriticalCommunication && (
+                                              <span>
+                                                {intl.formatMessage({
+                                                  id: "microbiology.worklist.critical",
+                                                })}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                      );
+                                    }
+                                    if (cell.info.header === "astStatus") {
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          <div className="microbiology-worklist__ast-status">
+                                            <Tag
+                                              type={tagTypeForStage(
+                                                row.astStatus,
+                                              )}
+                                            >
+                                              {cell.value}
+                                            </Tag>
+                                            {row.analyzerResultsAvailable && (
+                                              <span>
+                                                {intl.formatMessage({
+                                                  id: "microbiology.worklist.ast.resultsInBadge",
+                                                })}
+                                              </span>
+                                            )}
+                                            {row.astStatus ===
+                                              "AWAITING_RESULTS" && (
+                                              <span>
+                                                {intl.formatMessage({
+                                                  id: "microbiology.worklist.ast.awaitingResults",
+                                                })}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                      );
+                                    }
+                                    if (cell.info.header === "flags") {
+                                      const flags = (
+                                        row.analyzerExpertFlags || ""
+                                      )
+                                        .split("|")
+                                        .map((flag) => flag.trim())
+                                        .filter(Boolean);
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          {flags.length > 0 ? (
+                                            <div className="microbiology-worklist__flags">
+                                              {flags.map((flag) => (
+                                                <Tag type="purple" key={flag}>
+                                                  {flag}
+                                                </Tag>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <Tooltip
+                                              align="top"
+                                              label={intl.formatMessage({
+                                                id: "microbiology.worklist.expertRulesUnavailable",
+                                              })}
+                                            >
+                                              <span
+                                                className="microbiology-worklist__future-value"
+                                                tabIndex={0}
+                                              >
+                                                {intl.formatMessage({
+                                                  id: "microbiology.worklist.flagsUnavailable",
+                                                })}
+                                              </span>
+                                            </Tooltip>
+                                          )}
                                         </TableCell>
                                       );
                                     }
                                     if (cell.info.header === "due") {
+                                      const detailId =
+                                        DUE_ACTION_DETAIL_IDS[row.dueAction];
+                                      const incubationDetail =
+                                        row.dueAction === "INCUBATING" &&
+                                        row.incubationDay &&
+                                        row.maxIncubationDays
+                                          ? intl.formatMessage(
+                                              {
+                                                id: "microbiology.worklist.dueDetail.incubating",
+                                              },
+                                              {
+                                                day: row.incubationDay,
+                                                max: row.maxIncubationDays,
+                                              },
+                                            )
+                                          : "";
                                       return (
                                         <TableCell key={cell.id}>
                                           <div className="microbiology-worklist__due-action">
@@ -698,18 +1288,21 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                             >
                                               {cell.value}
                                             </Tag>
-                                            <span>
-                                              {intl.formatMessage({
-                                                id: dueActionDetailId(
-                                                  row.dueAction,
-                                                ),
-                                              })}
-                                            </span>
+                                            {detailId && (
+                                              <span>
+                                                {intl.formatMessage({
+                                                  id: detailId,
+                                                })}
+                                              </span>
+                                            )}
+                                            {incubationDetail && (
+                                              <span>{incubationDetail}</span>
+                                            )}
                                           </div>
                                         </TableCell>
                                       );
                                     }
-                                    if (cell.info.header === "urgency") {
+                                    if (cell.info.header === "priority") {
                                       return (
                                         <TableCell key={cell.id}>
                                           <Tag
@@ -722,32 +1315,22 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                         </TableCell>
                                       );
                                     }
-                                    if (cell.info.header === "context") {
+                                    if (cell.info.header === "lastActivity") {
                                       return (
                                         <TableCell key={cell.id}>
-                                          <div className="microbiology-worklist__context">
-                                            {row.hasOpenCriticalCommunication && (
-                                              <Tag type="magenta">
-                                                {intl.formatMessage({
-                                                  id: "microbiology.worklist.critical",
-                                                })}
-                                              </Tag>
-                                            )}
-                                            {row.siblingWorkflows?.length >
-                                              0 && (
-                                              <span data-testid="microbiology-worklist-siblings">
-                                                {intl.formatMessage({
-                                                  id: "microbiology.worklist.siblings",
-                                                })}
-                                                {": "}
-                                                {row.siblingWorkflows
-                                                  .map((workflow) =>
-                                                    formatMicrobiologyEnum(
-                                                      workflow,
-                                                      intl,
-                                                    ),
-                                                  )
-                                                  .join(", ")}
+                                          <div className="microbiology-worklist__last-activity">
+                                            <span>{cell.value}</span>
+                                            {row.lastActivityAt && (
+                                              <span>
+                                                {intl.formatDate(
+                                                  row.lastActivityAt,
+                                                  {
+                                                    month: "short",
+                                                    day: "2-digit",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                  },
+                                                )}
                                               </span>
                                             )}
                                           </div>
@@ -755,20 +1338,142 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                                       );
                                     }
                                     if (cell.info.header === "action") {
+                                      const caseActionUrl = (section, action) =>
+                                        getMicrobiologyCaseUrl(row.caseId, {
+                                          ...filters,
+                                          section,
+                                          action,
+                                          astIsolateId:
+                                            section === "ast"
+                                              ? row.isolateId
+                                              : "",
+                                          astRunId:
+                                            section === "ast"
+                                              ? row.astRunId
+                                              : "",
+                                        });
                                       return (
                                         <TableCell key={cell.id}>
-                                          <IconButton
-                                            label={intl.formatMessage({
-                                              id: "microbiology.worklist.openCase",
+                                          <OverflowMenu
+                                            aria-label={intl.formatMessage({
+                                              id: "microbiology.worklist.rowActions",
                                             })}
-                                            kind="ghost"
+                                            iconDescription={intl.formatMessage(
+                                              {
+                                                id: "microbiology.worklist.rowActions",
+                                              },
+                                            )}
                                             size="sm"
-                                            onClick={() =>
-                                              history.push(caseUrl)
-                                            }
+                                            flipped
                                           >
-                                            <ArrowRight />
-                                          </IconButton>
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "microbiology.worklist.openCase",
+                                              })}
+                                              onClick={() =>
+                                                history.push(caseUrl)
+                                              }
+                                            />
+                                            {isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: row.astRunId
+                                                    ? "microbiology.worklist.editAst"
+                                                    : "microbiology.worklist.setupAst",
+                                                })}
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl("ast", ""),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.viewAudit",
+                                                })}
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "timeline",
+                                                      "",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {isAstGrain && row.astRunId && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.newAstAttempt",
+                                                })}
+                                                disabled={
+                                                  row.astStatus !== "REVIEWED"
+                                                }
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "ast",
+                                                      "new-ast-attempt",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {!isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.markPositive",
+                                                })}
+                                                disabled={
+                                                  row.stage !== "INCUBATING"
+                                                }
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "setup",
+                                                      "mark-positive",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {!isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.markNoGrowth",
+                                                })}
+                                                disabled={
+                                                  row.stage !== "INCUBATING"
+                                                }
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "setup",
+                                                      "mark-no-growth",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {!isAstGrain && (
+                                              <OverflowMenuItem
+                                                itemText={intl.formatMessage({
+                                                  id: "microbiology.worklist.markLost",
+                                                })}
+                                                isDelete
+                                                onClick={() =>
+                                                  history.push(
+                                                    caseActionUrl(
+                                                      "nonconformance",
+                                                      "mark-lost",
+                                                    ),
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                          </OverflowMenu>
                                         </TableCell>
                                       );
                                     }
@@ -801,6 +1506,95 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
               updateFilters({ page, pageSize }, false)
             }
           />
+        )}
+        {hasLoaded && (
+          <section
+            className="microbiology-worklist__resistance"
+            aria-labelledby="microbiology-worklist-resistance-heading"
+          >
+            <div className="microbiology-worklist__section-heading">
+              <div>
+                <h2 id="microbiology-worklist-resistance-heading">
+                  {intl.formatMessage({
+                    id: "microbiology.worklist.resistance.title",
+                  })}
+                </h2>
+                <p>
+                  {intl.formatMessage({
+                    id: "microbiology.worklist.resistance.hint",
+                  })}
+                </p>
+              </div>
+            </div>
+            <dl className="microbiology-worklist__resistance-grid">
+              {RESISTANCE_FLAGS.map((flag) => (
+                <div
+                  key={flag}
+                  data-testid={`microbiology-resistance-hit-${flag}`}
+                >
+                  <dd>{worklist.summary.resistanceHits?.[flag] || 0}</dd>
+                  <dt>{flag}</dt>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
+        {hasLoaded && (
+          <section className="microbiology-worklist__recent-activity">
+            <Accordion>
+              <AccordionItem
+                title={intl.formatMessage(
+                  { id: "microbiology.worklist.recentActivity.title" },
+                  { count: worklist.recentActivity.length },
+                )}
+              >
+                {worklist.recentActivity.length === 0 ? (
+                  <p>
+                    {intl.formatMessage({
+                      id: "microbiology.worklist.recentActivity.empty",
+                    })}
+                  </p>
+                ) : (
+                  <ol className="microbiology-worklist__activity-list">
+                    {worklist.recentActivity.map((activity, index) => (
+                      <li
+                        key={`${activity.caseId}-${activity.occurredAt}-${index}`}
+                      >
+                        <div>
+                          <Link
+                            to={getMicrobiologyCaseUrl(
+                              activity.caseId,
+                              filters,
+                            )}
+                          >
+                            {activity.accessionNumber}
+                          </Link>
+                          <span>
+                            {activity.note ||
+                              formatMicrobiologyEnum(
+                                activity.activityType,
+                                intl,
+                              )}
+                          </span>
+                        </div>
+                        <div className="microbiology-worklist__activity-meta">
+                          <span>{activity.performedByDisplay}</span>
+                          <span>
+                            {intl.formatDate(activity.occurredAt, {
+                              month: "short",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </AccordionItem>
+            </Accordion>
+          </section>
         )}
       </Stack>
     </main>

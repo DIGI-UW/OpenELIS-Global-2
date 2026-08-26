@@ -1,5 +1,5 @@
 package org.openelisglobal.microbiology.valueholder;
 
 public enum MicroWorkflowType {
-    BACTERIOLOGY, MYCOBACTERIOLOGY_TB, MYCOLOGY
+    BACTERIOLOGY, MYCOBACTERIOLOGY_TB, MYCOLOGY, UNASSIGNED
 }

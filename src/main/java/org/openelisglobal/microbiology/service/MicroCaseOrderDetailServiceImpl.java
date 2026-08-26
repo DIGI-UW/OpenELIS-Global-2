@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.service;
 
+import java.util.Locale;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
@@ -7,6 +8,7 @@ import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,12 +25,14 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
     private final MicroCaseOrderDetailDAO orderDetailDAO;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
+    private final MicrobiologyReferenceService referenceService;
 
     public MicroCaseOrderDetailServiceImpl(MicroCaseOrderDetailDAO orderDetailDAO, MicroCaseDAO caseDAO,
-            MicroCaseActivityDAO activityDAO) {
+            MicroCaseActivityDAO activityDAO, MicrobiologyReferenceService referenceService) {
         this.orderDetailDAO = orderDetailDAO;
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
+        this.referenceService = referenceService;
     }
 
     @Override
@@ -49,11 +53,7 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
             detail.setUpdatedAt(MicroCaseServiceImpl.now());
             detail.setUpdatedBy(performedBy);
         }
-        detail.setPatientOrigin(request.patientOrigin);
-        detail.setNumberOfSets(request.numberOfSets);
-        detail.setClinicalHistory(request.clinicalHistory);
-        detail.setAntibioticExposure(request.antibioticExposure);
-        detail.setCriticalNotificationPreference(request.criticalNotificationPreference);
+        apply(detail, request);
 
         if (isNew) {
             orderDetailDAO.insert(detail);
@@ -68,6 +68,68 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
     @Transactional(readOnly = true)
     public MicroCaseOrderDetail getOrderDetail(String caseId) {
         return orderDetailDAO.getByCaseId(caseId);
+    }
+
+    @Override
+    @Transactional
+    public MicroCaseOrderDetail saveOrderDraft(Sample sample, MicroCaseOrderDetailRequestForm request,
+            String performedBy) {
+        if (sample == null || sample.getId() == null || sample.getId().trim().isEmpty()) {
+            throw new IllegalArgumentException("Saved sample is required for microbiology order detail");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("Microbiology order detail is required");
+        }
+        MicroCaseOrderDetail detail = orderDetailDAO.getDraftBySampleId(sample.getId());
+        boolean isNew = detail == null;
+        if (isNew) {
+            detail = new MicroCaseOrderDetail();
+            detail.setSampleId(sample.getId());
+            detail.setCreatedAt(MicroCaseServiceImpl.now());
+            detail.setCreatedBy(performedBy);
+        } else {
+            detail.setUpdatedAt(MicroCaseServiceImpl.now());
+            detail.setUpdatedBy(performedBy);
+        }
+        apply(detail, request);
+        if (isNew) {
+            orderDetailDAO.insert(detail);
+        } else {
+            orderDetailDAO.update(detail);
+        }
+        return detail;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroCaseOrderDetailRequestForm getOrderDraft(String sampleId) {
+        MicroCaseOrderDetail detail = orderDetailDAO.getDraftBySampleId(sampleId);
+        if (detail == null) {
+            return null;
+        }
+        MicroCaseOrderDetailRequestForm form = new MicroCaseOrderDetailRequestForm();
+        form.cultureMethodId = detail.getCultureMethodId();
+        form.patientOrigin = detail.getPatientOrigin();
+        form.numberOfSets = detail.getNumberOfSets();
+        form.clinicalHistory = detail.getClinicalHistory();
+        form.antibioticExposure = detail.getAntibioticExposure();
+        form.criticalNotificationPreference = detail.getCriticalNotificationPreference();
+        return form;
+    }
+
+    private void apply(MicroCaseOrderDetail detail, MicroCaseOrderDetailRequestForm request) {
+        String patientOrigin = request.patientOrigin == null ? null
+                : request.patientOrigin.trim().toUpperCase(Locale.ROOT);
+        if (patientOrigin != null && !patientOrigin.isEmpty()
+                && !referenceService.isActivePatientOriginCode(patientOrigin)) {
+            throw new IllegalArgumentException("Unknown or inactive patient origin code");
+        }
+        detail.setCultureMethodId(request.cultureMethodId);
+        detail.setPatientOrigin(patientOrigin);
+        detail.setNumberOfSets(request.numberOfSets);
+        detail.setClinicalHistory(request.clinicalHistory);
+        detail.setAntibioticExposure(request.antibioticExposure);
+        detail.setCriticalNotificationPreference(request.criticalNotificationPreference);
     }
 
     private void recordActivity(String caseId, String performedBy) {

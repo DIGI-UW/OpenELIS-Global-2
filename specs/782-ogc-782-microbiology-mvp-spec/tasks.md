@@ -403,11 +403,22 @@ claims.
 - [x] T203 [MVP] Repair full-suite fixture isolation after legacy tests remove shared statuses and active methods: resolve or provision the minimum reference data through services with generated identifiers, and cover stale-cache and polluter ordering behavior.
 - [ ] T199 [Follow-up] Create a repeatable service-layer performance fixture and measure the source M-NFR 200-case/sub-second-p95 target. Do not claim this target until evidence exists.
 
-## Phase 13: Follow-On Stack Status
+## R1 Authoritative Alignment
 
-- [x] T205 [M2] Implement clinical completeness and NFR qualification in `specs/782-ogc-782-microbiology-m8-clinical-completeness/`; PR and human acceptance remain separate gates.
-- [x] T206 [M3] Implement reference and mapping administration in `specs/782-ogc-782-microbiology-m9-reference-mapping-admin/`; PR and human acceptance remain separate gates.
-- [ ] T207 [M4] Complete the manual WHONET export checklist in `specs/782-ogc-782-microbiology-m10-whonet-export/tasks.md`, publish its stacked PR, deploy its exact candidate, and retain M1-M4 in the live review overlay.
+- [x] Preserve microbiology Program and Culture Method context through the
+  supported Add Order workflow, including safe discard behavior.
+- [x] Complete case classification, inoculation/subculture lineage, two-pass
+  isolate identification, nonconformance actions, sibling navigation, and
+  final-case safety.
+- [x] Preserve ordered AST provenance, breakpoint basis, override/revert
+  history, analyzer/QC review states, and report-readiness blockers.
+- [x] Provide distinct Culture and AST worklist views with canonical URL state
+  and complete case-return context.
+- [x] Reuse shared Test Catalog and Inventory behavior for culture and AST lot
+  selection without adding parallel administration.
+- [x] Cover the aligned behavior with focused service/controller/component
+  tests, registered Playwright journeys, visual comparison, accessibility
+  checks, representative-volume qualification, and one `tools/code-qa` pass.
 
 ## Dependencies & Execution Order
 

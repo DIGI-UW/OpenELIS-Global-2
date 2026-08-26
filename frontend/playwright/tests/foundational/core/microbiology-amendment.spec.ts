@@ -72,10 +72,11 @@ test.describe("Microbiology final-report amendments", () => {
     await test.step("Record a reasoned isolate re-identification", async () => {
       await accordionButton(page, "Isolates").click();
       await expect(page).toHaveURL(/section=isolates$/);
-      await page.getByRole("button", { name: "Update identification" }).click();
+      await page.getByRole("button", { name: "Reidentify" }).click();
       await page
-        .getByLabel("Preliminary organism")
-        .fill("Klebsiella pneumoniae");
+        .getByLabel("Organism")
+        .selectOption({ label: "Klebsiella pneumoniae (UAT)" });
+      await page.getByLabel("ID method").selectOption("MALDI_TOF");
       const updateButton = page.getByRole("button", {
         name: "Save identification",
       });
@@ -85,15 +86,15 @@ test.describe("Microbiology final-report amendments", () => {
         .fill("MALDI-TOF repeat corrected the organism");
       await expect(updateButton).toBeEnabled();
       await updateButton.click();
-      await expect(page.getByText(/ISO-1: Klebsiella pneumoniae/)).toBeVisible({
-        timeout: LONG_TIMEOUT,
-      });
+      await expect(
+        page.getByText(/ISO-1: Klebsiella pneumoniae \(UAT\)/),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(page.getByText("Identification history")).toBeVisible();
       await expect(
         page
           .getByTestId("microbiology-isolates-card")
           .getByText(
-            "Escherichia coli to Klebsiella pneumoniae: MALDI-TOF repeat corrected the organism",
+            "Escherichia coli to Klebsiella pneumoniae (UAT): MALDI-TOF repeat corrected the organism",
           ),
       ).toBeVisible();
     });
@@ -112,7 +113,7 @@ test.describe("Microbiology final-report amendments", () => {
       await expect(history).toContainText("Version 2");
       await expect(history).toContainText("Corrects version 1");
       await expect(history).toContainText("Escherichia coli");
-      await expect(history).toContainText("Klebsiella pneumoniae");
+      await expect(history).toContainText("Klebsiella pneumoniae (UAT)");
       await attachScreenshot(page, testInfo, "amendment-version-history");
     });
 
@@ -127,7 +128,7 @@ test.describe("Microbiology final-report amendments", () => {
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(
         page.getByRole("row", {
-          name: /UAT microbiology culture.*ISO-1: Klebsiella pneumoniae/,
+          name: /UAT microbiology culture.*ISO-1: Klebsiella pneumoniae \(UAT\)/,
         }),
       ).toContainText("Ciprofloxacin (UAT) S");
       await attachScreenshot(page, testInfo, "original-and-amended-results");
@@ -139,7 +140,7 @@ test.describe("Microbiology final-report amendments", () => {
         timeout: LONG_TIMEOUT,
       });
       await expect(
-        page.getByRole("button", { name: "Update identification" }),
+        page.getByRole("button", { name: "Edit isolate" }),
       ).toBeDisabled();
       await expect(
         page.getByRole("button", { name: "Create isolate" }),

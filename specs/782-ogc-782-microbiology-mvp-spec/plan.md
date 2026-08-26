@@ -9,9 +9,9 @@ Implement the microbiology MVP as a milestone-based OpenELIS module that routes
 culture-capable ordered tests into a microbiology case, supports routine
 bacteriology bench work, records isolates and manual AST, gates preliminary and
 final release, logs critical communications, and prepares finalized data for
-WHONET readiness. The plan uses the Confluence workflow narrative and
-openelis-work M-* bundle as product evidence, but treats implementation-heavy
-phrasing there as engineering input only.
+WHONET readiness. The current synchronized OpenELIS Work source is the product
+authority for visible workflow and acceptance behavior. Its table, service,
+route, schema, and component suggestions remain non-binding engineering input.
 
 The technical approach is to add a new `org.openelisglobal.microbiology`
 backend area for the case workflow while reusing existing OpenELIS anchors:
@@ -37,17 +37,20 @@ served by the existing OpenELIS web app
 frontend
 **Performance Goals**: Worklist users can identify urgent
 positive/growth/AST-review work through deterministic priority and filter
-controls; individual ORM validation tests must run in under 5 seconds. The
-source M-NFR 200-case/sub-second-p95 target requires a separate, repeatable
-performance qualification and is not claimed by this MVP
+controls; individual ORM validation tests must run in under 5 seconds. Numeric
+M-NFR timings are engineering qualification inputs, not product constraints;
+qualification must name its runtime, hardware, data shape, and measurement
+boundary before interpreting a threshold
 **Constraints**: Service-layer transactions only; no controller transactions;
 Carbon-only UI; React Intl for all user-facing text; Liquibase-only schema
 changes with rollback; configuration-driven variation; no product artifact may
-force table, class, route, or storage decisions
+force table, class, route, or storage decisions; no implementation may omit a
+visible OpenELIS Work behavior without an explicit recorded ruling
 **Scale/Scope**: MVP-1A routine bacteriology end-to-end with manual AST.
-Analyzer ingestion, expert rules, TB/mycobacteriology, macro library, full
-WHONET export automation, GLASS/FHIR surveillance, and antibiograms are later
-slices unless explicitly pulled into a milestone.
+Analyzer ingestion, expert rules, TB/mycobacteriology, full WHONET export
+automation, GLASS/FHIR surveillance, and antibiograms are later slices unless
+explicitly pulled into a milestone. Macro Library is a separate cross-cutting
+OpenELIS feature; microbiology owns only its integration behavior.
 
 ## Constitution Check
 
@@ -79,11 +82,32 @@ _GATE: Passed before Phase 0 research. Re-check after Phase 1 design._
 
 ## Clarification Result
 
-The implementation audit resolved material scope ambiguity. Final cases are
-mutation-locked; amendment and re-identification history are V2. The sibling TB
-record proves shared-specimen separation only; operational TB processing is V2.
-Reagent/card lots, full WHONET export/mapping, and the unmeasured 200-case
-performance target are not MVP claims.
+The synchronized source-alignment review supersedes the earlier claim that all
+material MVP ambiguity was resolved. Final-case amendment behavior remains
+outside the initial PR but is part of R1; operational TB remains a separate
+feature. The synchronized detailed M-03 source resolves untyped-test fallback and
+mixed bacteriology/TB handling: use a configured default or `UNASSIGNED`, and
+create sibling workflows on one specimen.
+
+R1 stores Antibiotic Exposure and Critical Notify as booleans, enforces the
+source bounds of 1-10 sets and 1000 Clinical History characters, and resolves
+the default culture protocol through the existing default `TestMethod`. Patient
+Origin uses one active six-value deployment vocabulary with stable application
+and WHONET codes. An optional explicit Organization-to-origin mapping supplies
+the requesting-location default; unmapped locations remain blank because the
+source does not define a derivation rule. The source's table/FK language is
+non-binding implementation input, while its separate Phase 1A read-only admin
+list remains an explicit R1 task. Macro-enabled Clinical History is a consumer dependency
+on the separate Macro Library stack, not a reason to duplicate that runtime in
+microbiology.
+
+For R1 M-05, the repository has no authoritative Antibiotic-to-Test mapping.
+The engineering contract therefore retains one immutable ordered-drug snapshot
+per AST run, requires complete coverage before review, and projects one current
+reading per ordered drug through the case's existing linked culture Analysis.
+This satisfies the source behavior without manufacturing parallel core
+analyses; later cascade-reporting rules may filter presentation but do not
+rewrite the historical tested set.
 
 The historical MVP boundary above remains unchanged. Follow-on stack branches
 now add clinical completeness (M2), reference/mapping administration (M3), and
@@ -95,22 +119,38 @@ delivery, wide-format, remaining-vocabulary, or standards-certification claims.
 ## Milestone Plan
 
 _GATE: This feature exceeds three days and must be delivered in independently
-verifiable behavior slices. The MVP implementation is grouped into four native
-stack layers: foundations and order routing; case workbench and manual AST;
-worklist and critical communication; and release, reporting, and integrated
-proof. Later slices stack sequentially above the completed MVP layers._
+verifiable behavior slices. The original M1-M7 implementation was consolidated
+historically in PR #3789. Every post-MVP remediation slice is delivered as one
+sequential stacked PR based on the preceding slice._
 
 ### Milestone Table
 
-| ID | Branch Suffix | Scope | User Stories | Verification | Depends On |
-| --- | --- | --- | --- | --- | --- |
-| M1 | `m1-catalog-reference-foundations` | Minimal microbiology reference/config foundation: workflow type on culture-capable tests, organism/antibiotic seeds, AST panel model, breakpoint standard/version import, culture method metadata | US1, US3, US6 | Liquibase rollback test, ORM validation, reference lookup unit tests, Test Catalog save/load regression tests | - |
-| M2 | `m2-case-core` | Backend case core: microbiology case, activity timeline, isolate lifecycle, case DTO compilation anchored to `SampleItem + workflow` | US2 | Service unit tests, DAO/integration tests, uniqueness and sibling workflow tests, no controller transaction scan | M1 |
-| M3 | `m3-order-routing` | Order/sample save hook that creates or finds the correct microbiology case from ordered test workflow configuration | US1 | Integration test for non-micro order, bacteriology order, and bacteriology + TB sibling workflows on one SampleItem | M2 |
-| M4 | `m4-case-workbench` | REST and React case workbench for setup, incubation/growth/no-growth/rejection events, isolate creation/update, and case history | US2 | MockMvc controller tests, React interaction tests, Playwright case-workflow smoke plan | M3 |
-| M5 | `m5-manual-ast` | Manual AST setup, readings, S/I/R interpretation, no-breakpoint handling, repeat/retest, review, and override audit | US3 | Breakpoint interpretation unit tests, AST persistence integration tests, frontend AST interaction tests | M4 |
-| M6 | `m6-worklists-critical` | Shared microbiology worklist, due-action prioritization, sibling visibility, critical communication log, and operational alert surfacing | US4, US5 | Worklist filter/sort tests, alert integration tests, critical communication audit tests, accessibility checks | M5 |
-| M7 | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2 | US5, US6 | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow | M6 |
+| ID  | Branch Suffix                       | Scope                                                                                                                                                                                                    | User Stories  | Verification                                                                                                                                                                           | Depends On         |
+| --- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| M1  | `m1-catalog-reference-foundations`  | Minimal microbiology reference/config foundation: workflow type on culture-capable tests, organism/antibiotic seeds, AST panel model, breakpoint standard/version import, culture method metadata        | US1, US3, US6 | Liquibase rollback test, ORM validation, reference lookup unit tests, Test Catalog save/load regression tests                                                                          | -                  |
+| M2  | `m2-case-core`                      | Backend case core: microbiology case, activity timeline, isolate lifecycle, case DTO compilation anchored to `SampleItem + workflow`                                                                     | US2           | Service unit tests, DAO/integration tests, uniqueness and sibling workflow tests, no controller transaction scan                                                                       | M1                 |
+| M3  | `m3-order-routing`                  | Order/sample save hook that creates or finds the correct microbiology case from ordered test workflow configuration                                                                                      | US1           | Integration test for non-micro order, bacteriology order, and bacteriology + TB sibling workflows on one SampleItem                                                                    | M2                 |
+| M4  | `m4-case-workbench`                 | REST and React case workbench for setup, incubation/growth/no-growth/rejection events, isolate creation/update, and case history                                                                         | US2           | MockMvc controller tests, React interaction tests, Playwright case-workflow smoke plan                                                                                                 | M3                 |
+| M5  | `m5-manual-ast`                     | Manual AST setup, immutable ordered-drug snapshot, laboratory technique with derived measurement type, readings, S/I/R interpretation, no-breakpoint handling, repeat/retest, review, and override audit | US3           | Ordered-set persistence/guard tests, technique/measurement derivation and breakpoint interpretation unit tests, AST persistence integration tests, frontend AST interaction tests      | M4                 |
+| M6  | `m6-worklists-critical`             | Shared microbiology worklist, due-action prioritization, sibling visibility, critical communication log, and operational alert surfacing                                                                 | US4, US5      | Worklist filter/sort tests, alert integration tests, critical communication audit tests, accessibility checks                                                                          | M5                 |
+| M7  | `m7-release-surveillance-readiness` | Preliminary/final readiness gates, patient-report handoff, final-case mutation lock, and WHONET readiness over finalized cases; amendment history remains V2                                             | US5, US6      | Release-blocking and mutation-lock tests, WHONET readiness tests, visible patient-report Playwright flow                                                                               | M6                 |
+| R1  | `r1-authoritative-alignment`        | Repair implementation and artifact drift across M-03, M-04, M-05, M-07, M-12, and applicable M-NFR outcomes                                                                                              | US1, US8-US11 | Focused service/controller/component tests, registered configured-navigation Playwright, desktop/mobile source comparison, and source-scale/accessibility qualification                 | M10 follow-on head |
+
+R1 treats breakpoint provenance as a lifecycle invariant: a found generic
+standard rule is recorded as `STANDARD`, while `NONE` is reserved for an absent
+rule that requires local judgment before review. This distinction is verified
+at the service boundary and through the complete reference-administration
+browser flow.
+
+R1 also treats M-12 as shared workflow behavior rather than a microbiology data
+model. Culture setup and AST setup use one Carbon lot picker; Inventory remains
+authoritative for eligibility, locked consumption, QC, quantity, and usage;
+Test Catalog remains authoritative for reagent links. The current catalog roles
+`PRIMARY` and `SECONDARY` do not mean required, optional, or substitute, so R1
+does not infer those policies or add a duplicate schema. Their enforcement is a
+named Test Catalog dependency. The implemented boundary covers visible QC and
+FEFO guidance, exact scanner-style lot entry, locked save-time revalidation,
+specific corrective messages, and retained usage provenance.
 
 ### Milestone Dependency Graph
 
@@ -122,23 +162,28 @@ graph LR
     M4 --> M5["M5: Manual AST"]
     M5 --> M6["M6: Worklists + Critical"]
     M6 --> M7["M7: Release + Surveillance Readiness"]
+    M7 --> M8["Follow-on Clinical Completeness"]
+    M8 --> M9["Follow-on Reference Administration"]
+    M9 --> M10["Follow-on WHONET Export"]
+    M10 --> R1["R1: Authoritative Alignment"]
 ```
 
 ### PR Strategy
 
 - **Spec PR #3782**: `spec/782-ogc-782-microbiology-mvp-spec` -> `develop`.
-- **Foundations and order routing PR #3789**:
+- **Initial MVP PR #3789**:
   `feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness` ->
-  `spec/782-ogc-782-microbiology-mvp-spec`. Covers M1-M3.
-- **Case workbench and manual AST**:
-  `feat/782-ogc-782-microbiology-mvp-workbench-ast`. Covers M4-M5.
-- **Worklist and critical communication**:
-  `feat/782-ogc-782-microbiology-mvp-worklist-critical`. Covers M6.
-- **Release, reporting, and integrated proof**:
-  `feat/782-ogc-782-microbiology-mvp-release-reporting`. Covers M7 and MVP
-  closure.
-- **Post-MVP remediation**: one coherent behavior slice per PR, with each PR
-  based on the preceding branch so GitHub represents the sequence as a stack.
+  `spec/782-ogc-782-microbiology-mvp-spec`. It carries the consolidated
+  routine-bacteriology implementation.
+- **Superseded PRs**: #3783-#3788 were closed and are not part of the delivery
+  chain.
+- **Active follow-on stack**: clinical completeness, reference administration,
+  WHONET export, then one R1 authoritative-alignment PR containing the
+  full-microbiology drift repair. Each PR targets the preceding branch and
+  retains its own acceptance gate.
+- **Macro Library**: extract core/runtime/administration into a separate
+  cross-cutting stack. Keep only microbiology consumption in a small
+  integration PR.
 
 ## Project Structure
 
@@ -157,7 +202,7 @@ specs/782-ogc-782-microbiology-mvp-spec/
     └── microbiology-openapi.yaml
 ```
 
-### Source Code (implementation branch)
+### Source Code
 
 ```text
 src/main/java/org/openelisglobal/microbiology/
@@ -169,7 +214,7 @@ src/main/java/org/openelisglobal/microbiology/
 └── valueholder/
 
 src/main/resources/liquibase/3.5.x.x/
-└── <next-available>-microbiology-mvp-*.xml
+└── <next-available>-microbiology-*.xml
 
 src/test/java/org/openelisglobal/microbiology/
 ├── controller/
@@ -187,7 +232,8 @@ frontend/src/pages/
 └── MicrobiologyPage.jsx
 
 frontend/playwright/tests/foundational/core/
-└── microbiology-mvp.spec.ts
+├── microbiology-mvp.spec.ts
+└── microbiology-order-entry.spec.ts
 ```
 
 **Structure Decision**: Use a dedicated `microbiology` backend package for the
@@ -195,6 +241,87 @@ new case workflow, while integrating with existing `sampleitem`, `test`,
 `testcatalog`, `method`, `result`, `alert`, and `reports` services through
 service-layer dependencies. Use `frontend/src/components/microbiology/` for the
 new workflow UI and add routes in `frontend/src/App.jsx`.
+
+## Authoritative Remediation Design
+
+- Keep the current milestone stack as the baseline and deliver the complete
+  microbiology drift repair in one official remediation PR stacked on M10.
+- Treat the typed test workflow as authoritative. The persisted Microbiology
+  Program is a server-verified fallback only; an explicit deployment default
+  may classify it, otherwise the case remains `UNASSIGNED` until an audited
+  workbench action classifies it.
+- Extend existing case, activity, AST, inventory, result, alert, and amendment
+  services where they already own the behavior. Do not reproduce History/Note,
+  NCE, analyzer reconciliation, or Inventory as microbiology-only systems.
+- Receive normalized AST result and QC events through one durable, idempotent
+  analyzer-event envelope. The microbiology consumer applies the event to an
+  awaiting run; unresolved events remain visible in the existing Analyzer
+  Import Issues surface rather than creating a second reconciliation product.
+- Receive normalized positive-culture signals through the same event envelope.
+  Resolve a unique incubating case from an explicit case reference or recorded
+  culture-container identifier; ambiguous, unmatched, duplicate, or invalid-
+  state events remain idempotent and use the same reconciliation surface.
+- Preserve analyzer organism identity, interpretations, QC references, flags,
+  and card/software provenance as evidence. Case isolate identity remains
+  authoritative until changed through the explicit identification workflow.
+- Add schema migrations only where observable behavior needs new durable state
+  or a current constraint rejects a valid state. UI state, routes, fixtures,
+  and test scenarios do not receive migrations.
+- Keep positive signal distinct from confirmed growth in the case state
+  machine. Manual worklist commands navigate into a case-scoped confirmation;
+  they never perform a clinical write directly from the queue.
+- Implement the worklist as one resource with an explicit grain in canonical
+  URL and server query state. Culture rows and AST-run rows use different DTO
+  projections but share navigation, filtering, paging, refresh, and empty-state
+  infrastructure.
+- Compile laboratory accession, patient, specimen, latest activity, and AST
+  panel display context inside the worklist service transaction with a fixed
+  set of bounded batch projections. Keep the source records authoritative: do
+  not copy patient or specimen fields into microbiology tables and do not issue
+  per-row DAO or service calls.
+- Populate the Phase 1A resistance strip only from structured, dated evidence.
+  The current safe projection counts analyzer-reported flags completed today.
+  Do not parse AST override reasons as phenotype classifications; the source's
+  manual-override count requires a separate product ruling and explicit
+  confirmation workflow before implementation.
+- Treat OpenELIS Work's `micro.case.view` as a product permission name, not a
+  requirement to invent a new authority. For this remediation, map analyst,
+  validator, and manager access to the repository's existing Results,
+  Validation, and Global Administrator/Admin roles at the frontend route,
+  worklist endpoint, and user-facing case/reference APIs. Final release and
+  amendment use Validation/Admin. Bridge-originated analyzer events remain a
+  separate machine-authentication decision because OpenELIS currently gives
+  Basic-auth callers their normal account roles and has no analyzer service
+  authority; do not invent one or silently require Admin without deployment
+  evidence.
+- Revalidate the worklist every 30 seconds from the current canonical query and
+  keep the mounted Carbon table stable while data is in flight. Use a shared
+  interval constant and fake-clock component evidence; do not use sleeps or
+  reload the route.
+- Derive culture timing from authoritative inoculation and Method-bound setup
+  data. When
+  the setup does not provide a structured maximum day, follow the source
+  fallback and show an accurate stage label rather than fabricating a day or
+  treating an incubating culture as ready for isolate identification.
+- The repository already represents microbiology culture setup as a
+  Method-bound extension (`MicroCultureSetup`), so structured timing belongs in
+  that extension and its existing admin/service surface. Do not add a second
+  protocol master or parse the current free-text incubation defaults. Add a
+  Liquibase change only for the new durable numeric timing fields. Migration
+  `080` adds positive-valued routine-read, subculture, and maximum-day fields;
+  the worklist consumes the maximum day and first inoculation timestamp through
+  bounded service projections. Missing values deliberately produce the source
+  stage-label fallback.
+- Keep Macro Library as a separate cross-cutting feature stack. Microbiology
+  carries only a small consumer integration after the macro feature is
+  independently accepted.
+- Validate each source acceptance slice with focused JUnit 4/service or
+  controller tests, Carbon interaction tests, registered Playwright, visual
+  comparison, and proportional accessibility/performance checks.
+- Treat the M-NFR offline behavior as an application-wide state-management
+  dependency. Do not add a microbiology-only cache, replay queue, or conflict
+  resolver; T266 remains open until a reusable OpenELIS pattern is selected and
+  proven through connectivity-loss tests.
 
 ## Complexity Tracking
 
@@ -219,8 +346,8 @@ inside product requirements.
 ### Test Types
 
 - [x] **Unit Tests**: JUnit 4 + Mockito service tests for routing decisions,
-      state transitions, readiness gates, breakpoint interpretation, and
-      override validation.
+      state transitions, readiness gates, breakpoint interpretation/provenance,
+      and override validation.
 - [x] **DAO/Integration Tests**: `BaseWebContextSensitiveTest` tests for
       persistence, uniqueness, sibling workflow lookup, read-after-write, and
       rollback-safe migrations.
@@ -235,13 +362,26 @@ inside product requirements.
       `/plan-record-playwright`; cover order -> worklist -> setup -> isolate ->
       AST -> review -> blocked/final release. Cypress is not expanded unless a
       project blocker prevents Playwright.
+- **Accessibility qualification**: Registered Playwright projects combine axe
+  scans at desktop/mobile sizes with direct keyboard, focus, announcement, and
+  focus-return interactions. Human review remains a separate acceptance gate.
+- **Performance qualification**: Service-created source-scale fixtures record
+  server and browser timings separately on an exact revision. Numeric targets
+  copied from M-NFR are diagnostic engineering baselines. A miss is reported
+  with its environment and data-shape variance and becomes blocking only when
+  a representative deployed workflow is observably degraded or an engineering
+  baseline has been explicitly adopted.
+- **Connectivity qualification**: Once a shared offline pattern exists,
+  browser tests disconnect after loading, prove readable last-loaded data,
+  exercise replay after reconnection, and require explicit conflict handling.
 
 ### Test Data Management
 
 - Backend unit tests use builders/factories and avoid assert-on-mock-return
   patterns.
-- Integration tests seed micro reference data through test fixtures or focused
-  Liquibase-backed setup; mutation tests assert real persisted effects.
+- Integration and E2E fixtures create mutable scenario data through services.
+  Liquibase provides schema/reference migrations only; tests do not seed
+  scenario data through SQL, fixed primary keys, or DAO bypass.
 - Frontend tests mock API utilities at the utility boundary and verify URL,
   CSRF, and payload shape.
 - E2E setup uses API/fixture setup rather than UI setup and does not stub the
@@ -253,9 +393,11 @@ inside product requirements.
   targeting `/Microbiology/worklist`.
 - Use `/Microbiology/cases/:caseId` for case destinations and preserve legacy
   route redirects without creating a second workflow implementation.
-- Compose worklist state with `workflow`, `urgency`, `due`, and `sort` query
-  parameters; compose case progress with `section` while carrying worklist
-  context through case navigation and back-navigation.
+- Compose worklist state with one `grain` (`cultures` or `ast`), one
+  grain-specific `status`, and orthogonal workflow, urgency, search, sort, and
+  paging query parameters. Compose case progress with `section`; an AST-row
+  destination also carries the focused isolate and run while preserving the
+  worklist return context.
 - Cover the navigation and URL behavior in the registered `core-app`
   Playwright project, not only through an interactive browser walkthrough.
 
@@ -265,16 +407,19 @@ inside product requirements.
   tests, Test Catalog regression tests.
 - **After M2**: Case service and DAO/integration tests, uniqueness and sibling
   lookup tests.
-- **After M3**: Order-routing integration tests for micro, non-micro, and
-  sibling workflows.
+- **After M3/R1 correction**: Order-routing integration tests for micro,
+  non-micro, and sibling workflows plus current Add Order unit/component and
+  Playwright evidence for visible Program derivation, complete controls,
+  discard confirmation, persistence, and case creation.
 - **After M4**: Controller and frontend case workbench tests; Playwright smoke
   plan drafted.
 - **After M5**: AST interpretation, override, repeat/retest, and review gate
   tests.
 - **After M6**: Worklist prioritization, alert surfacing, critical
   communication audit, accessibility checks.
-- **After M7**: Release readiness, report handoff, WHONET readiness, and
-  Playwright happy-path/blocking-path flows.
+- **After M7**: Release readiness, visible patient-report handoff, final-case
+  mutation lock, WHONET readiness, and Playwright happy-path/blocking-path
+  flows. Amendment history is explicitly excluded.
 - **Final MVP Code QA**: Run `DIGI-UW/code-qa` workflows for meaningful test
   coverage, spec-code alignment, simplicity review, and evidence bundling before
   marking the MVP implementation complete.
