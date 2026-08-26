@@ -102,61 +102,21 @@ requiredness.
 - Measure server/API and browser-visible budgets separately; emit raw iteration
   samples plus p50/p95/max and environment metadata.
 
-Initial local API qualification at commit `035d85195` passed all seven budgets
-with the service-created 200-case and 5-isolate/80-reading workloads, but it
-exposed per-case relationship lookups in the worklist. Batch relationship
-loading at commit `053f11ff0` reduced worklist-load p95 from 117.622 ms to
-5.349 ms, search from 115.746 ms to 3.763 ms, and filtered-page load from
-119.081 ms to 3.628 ms. Existing foreign-key indexes cover the batch predicates,
-so no speculative index migration was added. Raw samples and environment data
-for both runs are retained under `evidence/`; these are developer baselines, not
-universal capacity claims.
+Qualification uses service-created representative workloads for both API and
+browser behavior. Worklist relationships are batch-loaded, and no speculative
+index is added without a populated query plan demonstrating the need. Raw
+samples, environment metadata, and percentile calculations belong in the CI or
+pull-request run that produced them, not in this living research document.
 
-Browser qualification at commit `18e78c75c8ff88ba4d10851bcf88e701420b2c48`
-used 200 active worklist cases and one dense case with five isolates and 80 AST
-readings. It passed all budgets: worklist initial-render p95 218.2 ms, dense-case
-initial-render p95 220.9 ms, and Carbon page-interaction p95 58.2 ms. The raw
-samples, percentile method, environment, data volume, and pass/fail results are
-retained in `evidence/browser-performance-local-18e78c75c.*`. Formal query-plan
-review at commit `6d6aa2e6e` measured the exact DAO query shapes against 409
-open cases. All five plans completed in 0.023-0.201 ms with zero shared reads
-and zero temporary I/O. PostgreSQL selected in-memory sequential scans because
-the batches covered nearly all rows in the small qualification tables. This is
-consistent with the passing API and browser budgets and does not justify an
-additional index migration. The critical-communication table was empty during
-capture; the catalog confirms its existing `case_id` index, but its zero-row
-plan is not evidence for populated-table selectivity. Details are retained in
-`evidence/query-plan-local-6d6aa2e6e.*`.
+Accessibility validation covers the touched Microbiology surfaces at desktop
+and mobile sizes with Carbon role/label interactions and axe checks. Browser
+journeys must use observable readiness rather than arbitrary waits, forced
+clicks, private Carbon selectors, or implementation-specific timing.
 
-Accessibility qualification at commit
-`0248ae2e6920f8c573ea966ea4919567f07b4454` passed eight Playwright tests. The
-suite retained 14 standalone axe JSON results and 14 matching screenshots for
-seven Microbiology surfaces on desktop and mobile; all 14 scans reported zero
-WCAG 2.1 AA violations. Remediation included valid Carbon sidenav list
-semantics, named focusable horizontal-scroll regions, stable worklist search
-during URL-driven revalidation, and component-level regressions. The external
-artifact path and command are recorded in `evidence/accessibility-local-0248ae2e.md`.
-
-The deterministic browser journeys found two integration defects that panel
-unit tests had not exposed. Commit `50daa1855` added repeat-run creation and
-reportable selection to the shared `MicrobiologyService` contract. Commit
-`4cfa4b7ae` made unresolved multi-attempt report preview non-reportable instead
-of returning HTTP 500, while release remains blocked by
-`REPORTABLE_AST_RUN_REQUIRED`. Commit `6901174fc` verified amendment, repeat
-AST, and keyboard-only workflows with case-scoped Carbon role/label
-interactions. These journeys contain no arbitrary waits, sleeps, forced clicks,
-or private Carbon class selectors.
-
-The local console baseline still includes the pre-existing optional
-`/rest/notification/pnconfig` 404 and self-signed-certificate/service-worker
-warnings. Neither warning changed the tested Microbiology behavior.
-
-The pinned `DIGI-UW/code-qa` review at revision `30528d176bd128b4765242d130f38ca9fb85d7b8`
-found and resolved two test-quality issues and one simplicity issue. Component
-tests now use `userEvent` for Carbon controls, microbiology Playwright uses no
-private Carbon selectors or synchronization sleeps, and the qualification-only
-builder moved from production source to test support. Alignment, coverage,
-simplicity, and evidence reports are retained under `evidence/code-qa-*`.
+One pinned `DIGI-UW/code-qa` pass reviews alignment, meaningful coverage, and
+simplicity at the completed slice boundary. Generated reports are review
+artifacts and are not maintained as parallel status documents in the feature
+specification.
 
 ## Open Product Questions That Do Not Block Slice A
 

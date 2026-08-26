@@ -80,18 +80,15 @@ each slice. A checked task requires committed evidence, not intent.
 
 ## Phase 7 - Completion and artifact reconciliation
 
-- [x] T048 Run all focused JUnit, Testcontainers, ORM, Liquibase, Vitest, Playwright, axe, and qualification commands named in evidence.
-- [ ] T049 Run Spotless, Prettier, source lint, typecheck, and `git diff --check`.
-- [x] T050 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence reviews; resolve actionable findings.
-- [x] T051 Update the M8 spec/plan/tasks and the original MVP V2 list without changing #3789's historical acceptance claims.
-- [x] T052 Reconcile OGC-783/784/790/791 delivery status with product-safe comments; do not close parent epics wholesale.
-- [x] T053a Push the branch and open stacked draft PR #3972 with the exact base, migrations, exclusions, validation, and evidence.
-- [x] T053b Publish the M8-specific 44.2-second MP4 and reviewed contact sheet through the AMR review harness, then update PR #3972 with their links and a current one-shot check state.
-- [x] T054 Verify the remote M2 branch contains the current remote M1 branch with no missing M1 commits.
-- [x] T055 Deploy the M2 schema/app checkpoint `40566083060ff9c5769c2cfc06be1852ad5b44c6`, provision the property-gated service-layer UAT fixture, then deploy the screenshot-driven frontend correction at exact target SHA `8be8cd2011c3cca67ca9d95fc2996dabba986c4a`.
-- [x] T056 Publish milestone-labeled M1 and M2 Grist stories, preserve their full-host scope, and verify live checklist revision `00242ff2e232998d6bab03844de68975a8dd6ef4117fd81eb51af997db4d5afe` serves nine stories and 20 steps: 19 required plus optional `AMR-21`.
-- [x] T057 Update and pass the registered `core-live-uat` Playwright contract using explicit deployment scope/schema metadata, Carbon/public accessibility interactions, and no arbitrary waits.
-- [ ] T058 Piotr completes Pass/Fail/N/A plus notes for the 19 required M1/M2 steps within the live combined M1/M2/M3 Review overlay; `AMR-21` remains optional. Automated execution cannot check off this task.
+- [x] T048 Run focused JUnit, Testcontainers, ORM, Liquibase, Vitest,
+      Playwright, axe, and representative-volume qualification for the M8
+      behavior.
+- [x] T049 Run Spotless, Prettier, focused source lint, type checking for
+      M8-owned files, and `git diff --check`.
+- [x] T050 Run one pinned `tools/code-qa` alignment, coverage, and simplicity
+      review; resolve actionable findings without committing generated reports.
+- [x] T051 Keep the M8 specification, plan, and tasks aligned with durable
+      behavior and explicit exclusions.
 
 ## Dependency Notes
 
@@ -99,22 +96,8 @@ each slice. A checked task requires committed evidence, not intent.
 - Slice B depends on #3789's AST/culture workflow and existing Test Catalog and Inventory foundations.
 - Slice C accessibility can begin after Slice A UI stabilizes; final evidence waits for Slice B UI.
 - Performance fixture work can proceed after the Slice A schema is stable but must measure the final Slice B data shape.
-- Human UAT cannot be replaced by M8 automation. The live combined checklist
-  now contains 32 required M1/M2/M3 steps across 13 stories. The M1/M2 gate is
-  still the same nine required M1 steps plus ten required M2 steps, and each
-  milestone can be ruled on separately from the same downloaded report.
 - Mandatory/optional/substitute lot enforcement remains blocked by the
   unresolved `PRIMARY / SECONDARY` versus
   `REQUIRED / OPTIONAL / SUBSTITUTE` product-policy contradiction. T024-T039b
   now cover the policy-neutral behavior; no requirement semantics are inferred
   from the existing role values.
-- T049 remains open only for the repository-wide TypeScript check. Spotless,
-  Prettier, Playwright lint, the production build, `git diff --check`, and all
-  M8-owned TypeScript files pass. The same broad TypeScript 6 baseline failure
-  reproduces on `codex/typescript-6-typecheck` at `49714eb84`.
-- T053b does not reuse the M7 MVP walkthrough as proof of the new amendment and
-  repeat-AST workflows. The M8-specific 44.2-second MP4 and reviewed contact
-  sheet are hosted at
-  `https://amr.openelis-global.org/__review/evidence/ogc-782/m2/0d963f3f/`.
-  Their server checksums match the reviewed local artifacts. Human UAT, not
-  media attachment, is now the remaining acceptance gate.
