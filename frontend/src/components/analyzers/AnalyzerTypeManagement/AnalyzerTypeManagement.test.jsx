@@ -640,6 +640,43 @@ describe("AnalyzerTypeManagement", () => {
     );
   });
 
+  it("waits for the exact bookmarked revision before enabling duplication", async () => {
+    let finishRevisionLoad;
+    getAnalyzerTypeRevision.mockImplementation(
+      (_profileId, _revision, callback) => {
+        finishRevisionLoad = callback;
+      },
+    );
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=duplicate&profile=shipped.genexpert&revision=1",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    const duplicate = within(dialog).getByRole("button", {
+      name: "Duplicate Profile",
+    });
+    expect(duplicate).toBeDisabled();
+
+    act(() => {
+      finishRevisionLoad({ ...catalog.types[0], revision: 1 });
+    });
+
+    await waitFor(() => expect(duplicate).toBeEnabled());
+    await userEvent.click(duplicate);
+    expect(duplicateAnalyzerType).toHaveBeenCalledWith(
+      "shipped.genexpert",
+      1,
+      "Cepheid GeneXpert MTB/RIF -1",
+      expect.any(Function),
+    );
+  });
+
   it("returns to the mapping page that launched a profile action", async () => {
     const returnTo =
       "/analyzers/types/shipped.genexpert/mapping?revision=1&returnTo=%2Fanalyzers%2Ftypes%3Fprotocol%3DASTM";

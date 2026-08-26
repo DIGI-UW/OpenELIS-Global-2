@@ -269,9 +269,13 @@ const DuplicateProfileModal = ({
   }, [draft?.draftId, draftId, onError]);
 
   const activeDraft = draft?.draftId === draftId ? draft : null;
-  const source =
-    (pinnedSource?.profileId === sourceId && pinnedSource) ||
-    activeTypes.find((type) => type.profileId === sourceId);
+  const exactInitialRevisionRequested =
+    !draftId && initialProfileId === sourceId && Boolean(initialRevision);
+  const source = exactInitialRevisionRequested
+    ? pinnedSource?.profileId === sourceId
+      ? pinnedSource
+      : null
+    : activeTypes.find((type) => type.profileId === sourceId);
   const normalizedName = displayName.trim();
   const duplicateName = types.some(
     (type) => type.displayName.toLowerCase() === normalizedName.toLowerCase(),
