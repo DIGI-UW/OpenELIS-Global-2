@@ -64,6 +64,28 @@ public class MicroAstAnalyzerEventServiceTest {
     }
 
     @Test
+    public void routesAnalyzerQcFailureToTheMatchedRunAndRetainsTheEventEvidence() {
+        AnalyzerEvent event = event("event-qc-1", "RECEIVED");
+        when(persistenceService.createIfAbsent(any())).thenReturn(new AnalyzerEventRegistration(event, true));
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        when(runDAO.getByAnalyzerAndCard("7", "card-42")).thenReturn(Optional.of(run));
+        MicroAstAnalyzerResultRequestForm payload = new MicroAstAnalyzerResultRequestForm();
+        payload.instrumentQcReference = "qc-17";
+        payload.analyzerMessageCodes = List.of("CONTROL_OUT_OF_RANGE");
+        MicroAstAnalyzerEventCommand command = new MicroAstAnalyzerEventCommand("event-qc-1", "AST_QC_FAIL", "7",
+                "card-42", null, payload);
+
+        AnalyzerEvent result = service.receive(command, "42");
+
+        verify(astService).recordAnalyzerQcFailure("run-1", "qc-17", List.of("CONTROL_OUT_OF_RANGE"), "event-qc-1",
+                "42");
+        verify(astService, never()).applyAnalyzerResults(any(), any());
+        verify(persistenceService).markApplied(event, "run-1");
+        assertSame(event, result);
+    }
+
+    @Test
     public void unmatchedEventIsRetainedForExistingAnalyzerReconciliationSurface() {
         AnalyzerEvent event = event("event-2", "RECEIVED");
         when(persistenceService.createIfAbsent(any())).thenReturn(new AnalyzerEventRegistration(event, true));

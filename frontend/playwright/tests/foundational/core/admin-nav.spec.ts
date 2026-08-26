@@ -27,6 +27,8 @@ test.describe("Admin navigation context", () => {
     await expect(page).toHaveURL(/\/Dashboard$/);
     await expect(sideNav).not.toContainText("Back to main menu");
     await expect(sideNav.getByRole("link", { name: "Home" })).toBeVisible();
-    await expect(sideNav.getByRole("link", { name: "Admin" })).toBeVisible();
+    await expect(
+      sideNav.getByRole("button", { name: "Admin", exact: true }),
+    ).toBeVisible();
   });
 });

@@ -390,6 +390,8 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          ANALYZER_INGRESS_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          ANALYZER_INGRESS_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           ANALYZER_HARNESS: ${{ inputs.setup_analyzer_harness && 'true' || '' }}
           FILE_IMPORT_POLL_MS: ${{ inputs.setup_analyzer_harness && '1000' || '' }}
           FILE_IMPORT_DROP_BUFFER_MS: ${{ inputs.setup_analyzer_harness && '15000' || '' }}

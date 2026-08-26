@@ -261,17 +261,70 @@ class DevStackContractTest(unittest.TestCase):
             commands[1][-6:], ["exec", "-T", "proxy", "nginx", "-s", "reload"]
         )
 
-    def test_backend_is_recreated_to_remount_the_current_war(self):
+    def test_backend_running_probe_is_scoped_to_the_worktree(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = self.dev_stack.build_environment(context)
+
+        with patch.object(
+            self.dev_stack,
+            "run",
+            return_value=subprocess.CompletedProcess([], 0, stdout="container-id\n"),
+        ) as run:
+            running = self.dev_stack.service_is_running(
+                context, environment, "oe.openelis.org"
+            )
+
+        self.assertTrue(running)
+        self.assertEqual(
+            run.call_args.args[0][-5:],
+            ["ps", "--status", "running", "-q", "oe.openelis.org"],
+        )
+
+    def test_start_services_recreates_only_a_previously_running_backend(self):
         context = self.dev_stack.make_context(REPO_ROOT)
         environment = self.dev_stack.build_environment(context)
 
         with patch.object(self.dev_stack, "run") as run:
-            self.dev_stack.remount_application_artifact(context, environment)
+            self.dev_stack.start_services(
+                context, environment, refresh_running_backend=True
+            )
 
-        command = run.call_args.args[0]
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(commands[0][-3:], ["up", "-d", "--remove-orphans"])
         self.assertEqual(
-            command[-5:],
+            commands[1][-5:],
             ["up", "-d", "--no-deps", "--force-recreate", "oe.openelis.org"],
+        )
+
+    def test_start_services_does_not_recreate_backend_on_initial_start(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = self.dev_stack.build_environment(context)
+
+        with patch.object(self.dev_stack, "run") as run:
+            self.dev_stack.start_services(
+                context, environment, refresh_running_backend=False
+            )
+
+        self.assertEqual(len(run.call_args_list), 1)
+        self.assertIn(
+            "../../target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war",
+            (
+                REPO_ROOT
+                / "projects"
+                / "analyzer-harness"
+                / "docker-compose.dev.yml"
+            ).read_text(),
+        )
+
+    def test_harness_refreshes_repository_owned_menu_configuration(self):
+        bootstrap = (
+            REPO_ROOT / "projects" / "analyzer-harness" / "bootstrap.sh"
+        ).read_text()
+
+        self.assertIn(
+            'cp "$ROOT_VOLUME/menu/menu_config.json" '
+            '"$HARNESS_VOLUME/menu/menu_config.json"',
+            bootstrap,
         )
 
     def test_full_harness_scenarios_cover_each_transport_without_ids(self):

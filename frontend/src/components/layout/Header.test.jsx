@@ -324,7 +324,9 @@ const renderHeader = (options = {}) => {
               <Route
                 path="*"
                 render={({ location }) => (
-                  <span data-testid="current-path">{location.pathname}</span>
+                  <span data-testid="current-path">
+                    {location.pathname + location.search}
+                  </span>
                 )}
               />
             </NotificationContext.Provider>
@@ -772,6 +774,60 @@ describe("Header Component - M2b Enhancement Tests", () => {
       expect(mockCloseSideNav).not.toHaveBeenCalled();
       expect(container.querySelector(".cds--side-nav")).toHaveClass(
         "cds--side-nav--expanded",
+      );
+    });
+
+    test("configured Admin group preserves the dashboard and exposes stuck analyzer events", async () => {
+      const configuredAdminMenu = [
+        MENU_DATA[0],
+        {
+          ...MENU_DATA[1],
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_administration_dashboard",
+                displayKey: "admin.dashboard.title",
+                actionURL: "/MasterListsPage",
+                isActive: true,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                elementId: "menu_administration_stuck_analyzer_events",
+                displayKey: "analyzer.importIssues.events.title",
+                actionURL: "/AnalyzerResults?view=import-issues",
+                isActive: true,
+              },
+              childMenus: [],
+            },
+          ],
+        },
+      ];
+      renderHeader({ menuData: configuredAdminMenu });
+
+      const adminMenu = await screen.findByRole("button", { name: "Admin" });
+      expect(adminMenu).toHaveAttribute("id", "menu_administration");
+      fireEvent.click(adminMenu);
+      const adminDashboard = screen.getByRole("link", {
+        name: "Admin dashboard",
+      });
+      expect(adminDashboard).toHaveAttribute(
+        "id",
+        "menu_administration_dashboard_nav",
+      );
+      expect(adminDashboard).toHaveAttribute("href", "/MasterListsPage");
+
+      const stuckEvents = screen.getByRole("link", {
+        name: "Stuck analyzer events",
+      });
+      expect(stuckEvents).toHaveAttribute(
+        "href",
+        "/AnalyzerResults?view=import-issues",
+      );
+      fireEvent.click(stuckEvents);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/AnalyzerResults?view=import-issues",
       );
     });
 

@@ -18,11 +18,20 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import ImportIssuesPanel from "./ImportIssuesPanel";
 
-let breadcrumbs = [
+const defaultBreadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "banner.menu.results", link: "" },
   { label: "banner.menu.results.analyzer", link: "/AnalyzerResults" },
+];
+
+const importIssuesBreadcrumbs = [
+  ...defaultBreadcrumbs,
+  {
+    label: "analyzer.importIssues.title",
+    link: "/AnalyzerResults?view=import-issues",
+  },
 ];
 
 /**
@@ -32,6 +41,9 @@ let breadcrumbs = [
  */
 export const analyzerPageTitle = (label, analyzerName) =>
   analyzerName ? `${label}: ${analyzerName}` : label;
+
+export const getAnalyzerResultsView = (search) =>
+  new URLSearchParams(search).get("view") || "";
 
 const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -52,9 +64,9 @@ const Index = () => {
   const [sampleGroup, setSampleGroup] = useState([]);
   const [searchTermToPage, setSearchTermToPage] = useState({});
   const [labNumber, setLabNumber] = useState("");
-  const intl = useIntl();
-
   const location = useLocation();
+  const view = getAnalyzerResultsView(location.search);
+  const intl = useIntl();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -148,9 +160,17 @@ const Index = () => {
       }
     }
   };
+  if (view === "import-issues") {
+    return (
+      <>
+        <PageBreadCrumb breadcrumbs={importIssuesBreadcrumbs} />
+        <ImportIssuesPanel />
+      </>
+    );
+  }
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <PageBreadCrumb breadcrumbs={defaultBreadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <Section>

@@ -221,6 +221,11 @@ import {
   VectorDeconvolutionWorklist,
 } from "./components/vectorIdentification";
 
+export const ANALYZER_RESULTS_ROLES = [
+  Roles.GLOBAL_ADMIN,
+  Roles.ANALYSER_IMPORT,
+];
+
 export default function App() {
   const defaultLocale =
     localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
@@ -1571,7 +1576,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.ANALYSER_IMPORT}
+                  role={ANALYZER_RESULTS_ROLES}
                 />
                 <Route path="*" component={() => <RedirectOldUI />} />
               </Switch>
