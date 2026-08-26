@@ -1,9 +1,13 @@
 import { expect, test } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
-import { NAV_TIMEOUT, TIMEOUT_SCALE } from "../../../helpers/timeouts";
+import {
+  LONG_TIMEOUT,
+  NAV_TIMEOUT,
+  TIMEOUT_SCALE,
+} from "../../../helpers/timeouts";
 
 const PROFILE_NAME = "Cepheid GeneXpert (ASTM Mode)";
-const FILTERED_CATALOG = "/analyzers/types?q=gene&mapping=INCOMPLETE";
+const FILTERED_CATALOG = "/analyzers/types?q=gene&source=SHIPPED";
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -22,6 +26,9 @@ async function openSharedMappingEditor(page: Page): Promise<string> {
     name: new RegExp(escapeRegExp(PROFILE_NAME), "i"),
   });
   await expect(profileRow).toBeVisible();
+  await expect(profileRow).toContainText(/revision [1-9]\d*/, {
+    timeout: LONG_TIMEOUT,
+  });
   const revision = (await profileRow.innerText()).match(
     /\brevision ([1-9]\d*)\b/i,
   )?.[1];
@@ -118,9 +125,9 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     await expect(
       page.getByRole("searchbox", { name: "Search analyzer types" }),
     ).toHaveValue("gene");
-    await expect(
-      page.getByRole("combobox", { name: "Mapping status" }),
-    ).toHaveValue("INCOMPLETE");
+    await expect(page.getByRole("combobox", { name: "Created" })).toHaveValue(
+      "SHIPPED",
+    );
   });
 
   test("keeps the complete shared mapping review reachable on mobile", async ({
