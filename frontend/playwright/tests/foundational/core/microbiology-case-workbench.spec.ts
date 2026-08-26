@@ -160,7 +160,7 @@ test.describe("Microbiology case workbench", () => {
     await expect(page.getByText("Identified", { exact: true })).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
-    await expect(page.getByText(/Maldi Tof.*99.5%/)).toBeVisible();
+    await expect(page.getByText(/MALDI-TOF.*99\.5%/)).toBeVisible();
     await caseView
       .getByRole("button", { name: "Manual AST", exact: true })
       .click();
@@ -245,7 +245,7 @@ test.describe("Microbiology case workbench", () => {
       page.getByText("Workflow classification required"),
     ).toBeHidden();
     await expect(
-      page.locator("header").getByText("Mycobacteriology TB"),
+      page.locator("header").getByText("Mycobacteriology/TB"),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Inoculation", exact: true }),
@@ -362,7 +362,7 @@ test.describe("Microbiology case workbench", () => {
       page.getByTestId("microbiology-case-section-timeline"),
     ).toBeFocused();
     await expect(
-      page.locator("header").getByTitle("Lost Specimen"),
+      page.locator("header").getByText("Lost Specimen", { exact: true }),
     ).toBeVisible({
       timeout: LONG_TIMEOUT,
     });

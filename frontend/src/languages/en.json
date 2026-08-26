@@ -8223,6 +8223,8 @@
   "microbiology.enum.REVIEW_READY": "Review Ready",
   "microbiology.enum.REVIEWED": "Reviewed",
   "microbiology.enum.INTERMEDIATE": "Intermediate",
+  "microbiology.enum.LOST_SPECIMEN": "Lost Specimen",
+  "microbiology.enum.LOST_SPECIMEN_POSITIVE": "Lost Specimen - Positive Culture",
   "microbiology.enum.NO_BREAKPOINT": "No breakpoint",
   "microbiology.enum.RESISTANT": "Resistant",
   "microbiology.enum.ROUTINE": "Routine",

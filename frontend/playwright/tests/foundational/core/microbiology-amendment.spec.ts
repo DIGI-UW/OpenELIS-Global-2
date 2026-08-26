@@ -140,7 +140,7 @@ test.describe("Microbiology final-report amendments", () => {
         timeout: LONG_TIMEOUT,
       });
       await expect(
-        page.getByRole("button", { name: "Reidentify" }),
+        page.getByRole("button", { name: "Edit isolate" }),
       ).toBeDisabled();
       await expect(
         page.getByRole("button", { name: "Create isolate" }),

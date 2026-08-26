@@ -198,7 +198,7 @@ test.describe("microbiology order entry on the supported workflow", () => {
     await selectTest(page, tbCultureTestName);
     const details = page.getByTestId("microbiology-order-entry-section");
     await expect(details).toContainText("Bacteriology");
-    await expect(details).toContainText("Mycobacteriology TB");
+    await expect(details).toContainText("Mycobacteriology/TB");
     await fillMicrobiologyDetails(page);
     await saveEntryAndOpenCollect(page);
     await collectAndRoute(page);
@@ -216,7 +216,7 @@ test.describe("microbiology order entry on the supported workflow", () => {
     ).toHaveCount(1);
     await expect(
       rows.filter({
-        has: page.getByText("Mycobacteriology TB", { exact: true }),
+        has: page.getByText("Mycobacteriology/TB", { exact: true }),
       }),
     ).toHaveCount(1);
   });
