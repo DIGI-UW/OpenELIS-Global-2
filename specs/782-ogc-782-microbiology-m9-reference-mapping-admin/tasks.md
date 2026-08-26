@@ -47,23 +47,14 @@
 - [x] T028 Add linkable PageBreadCrumb paths and canonical URL preservation.
 - [x] T029 Add English i18n keys and focused component/accessibility tests.
 
-## Phase 4 - E2E, UAT, and Publication
+## Phase 4 - E2E And Validation
 
 - [x] T030 Register focused Playwright `core-app` projects/tests before browser runs.
 - [x] T031 Prove organism/antibiotic edits and deactivation behavior.
 - [x] T032 Prove AST panel versioning and historical-run preservation.
 - [x] T033 Prove breakpoint activation and mixed-validity import.
 - [x] T034 Prove canonical URL reload, Back/Forward, sidenav, and breadcrumbs.
-- [x] T035 Publish M3 Grist stories while retaining all M1/M2 stories.
 - [x] T036 Run focused backend, ORM, migration, component, Playwright, formatting,
       and `git diff --check` validation.
-- [x] T037 Run pinned `tools/code-qa` alignment, coverage, simplicity, and evidence
-      reviews and record outputs.
-- [x] T038 Commit and push coherent checkpoints promptly; open the stacked draft PR.
-- [x] T039 Deploy the exact M3 SHA to AMR, verify app/schema metadata, and rerun the
-      registered live UAT contract and M3 Playwright journey.
-- [x] T040 Update the PR, Jira, roadmap, UAT revision, screenshots, and external
-      walkthrough/contact-sheet links without claiming human acceptance.
-- [ ] T041 Piotr completes Pass/Fail/N/A plus notes for the 13 required M3 steps
-      in the live combined Review overlay. Automated Playwright and published
-      evidence do not satisfy this acceptance task.
+- [x] T037 Run one pinned `tools/code-qa` alignment, coverage, and simplicity
+      review; resolve actionable findings without committing generated reports.

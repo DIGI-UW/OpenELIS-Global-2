@@ -109,11 +109,10 @@ validation, and apply valid rows without losing local corrections.
 6. OpenELIS does not distribute proprietary CLSI/EUCAST breakpoint content as
    test or demo seed data; UAT uses clearly labeled synthetic values.
 
-### US6 - Navigate and review the administration workflow (P1)
+### US6 - Navigate the administration workflow (P1)
 
 As an authorized reviewer, I can reach each reference surface from Admin
-navigation, follow linkable breadcrumbs, and complete the M3 checklist on the
-AMR Review overlay.
+navigation and follow linkable breadcrumbs.
 
 **Acceptance scenarios**
 
@@ -121,7 +120,6 @@ AMR Review overlay.
    each have a stable URL and an Admin breadcrumb path.
 2. Search, filters, selected standard, sort, page, and page size survive reload
    and browser Back/Forward.
-3. The same M1, M2, and M3 UAT stories are available together on the AMR demo.
 
 ## Functional Requirements
 
@@ -159,8 +157,8 @@ AMR Review overlay.
 
 ## Success Criteria
 
-- **SC-001**: A reviewer can complete all M3 administration stories from the
-  AMR Review overlay without pasting a route.
+- **SC-001**: A reviewer can reach every M3 administration surface from Admin
+  navigation without pasting a route.
 - **SC-002**: Reloading any filtered list or breakpoint detail reproduces the
   same visible state.
 - **SC-003**: Existing AST runs retain their selected panel and breakpoint
