@@ -400,11 +400,13 @@ test("my demo test", async ({ page }, testInfo) => {
 
 ## Environment Variables
 
-| Variable            | Default             | Description                                                          |
-| ------------------- | ------------------- | -------------------------------------------------------------------- |
-| `BASE_URL`          | `https://localhost` | App URL                                                              |
-| `TEST_USER`         | —                   | Login username (required)                                            |
-| `TEST_PASS`         | —                   | Login password (required)                                            |
-| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `*-demo-video` projects                   |
-| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `*-demo-video` projects)               |
-| `CI`                | —                   | Set by GitHub Actions; enables CI mode settings in Playwright config |
+| Variable                | Default             | Description                                                                  |
+| ----------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| `BASE_URL`              | `https://localhost` | App URL                                                                      |
+| `TEST_USER`             | —                   | Login username (required)                                                    |
+| `TEST_PASS`             | —                   | Login password (required)                                                    |
+| `ANALYZER_INGRESS_USER` | —                   | Dedicated account with the Analyser Import role for analyzer-event scenarios |
+| `ANALYZER_INGRESS_PASS` | —                   | Password for the dedicated analyzer-ingress account                          |
+| `PLAYWRIGHT_SLOWMO`     | `500`               | Milliseconds of slowMo for `*-demo-video` projects                           |
+| `PLAYWRIGHT_VIDEO`      | `off`               | Global video override (prefer `*-demo-video` projects)                       |
+| `CI`                    | —                   | Set by GitHub Actions; enables CI mode settings in Playwright config         |

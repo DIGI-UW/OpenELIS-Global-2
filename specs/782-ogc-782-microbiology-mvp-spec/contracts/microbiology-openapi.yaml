@@ -330,6 +330,8 @@ paths:
   /analyzer/events/ast:
     post:
       summary: Receive an idempotent normalized AST result or QC event
+      security:
+        - analyzerBasic: []
       requestBody:
         required: true
         content:
@@ -343,6 +345,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnalyzerEvent"
+        "401":
+          description: Missing or invalid HTTP Basic credentials
+        "403":
+          description: The authenticated account lacks the Analyser Import role
         "422":
           description: Event retained for reconciliation because it could not be applied
           content:
@@ -352,6 +358,8 @@ paths:
   /analyzer/events/culture:
     post:
       summary: Receive an idempotent normalized positive-culture signal
+      security:
+        - analyzerBasic: []
       requestBody:
         required: true
         content:
@@ -365,6 +373,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnalyzerEvent"
+        "401":
+          description: Missing or invalid HTTP Basic credentials
+        "403":
+          description: The authenticated account lacks the Analyser Import role
         "422":
           description: Signal retained for reconciliation because it could not be applied
           content:
@@ -506,6 +518,11 @@ paths:
                     items:
                       $ref: "#/components/schemas/WhonetReadinessRow"
 components:
+  securitySchemes:
+    analyzerBasic:
+      type: http
+      scheme: basic
+      description: Dedicated Bridge account with the existing Analyser Import role
   parameters:
     CaseId:
       name: caseId

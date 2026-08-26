@@ -267,11 +267,39 @@ def submodule_repair_mode(
     return "checkout"
 
 
+def initialize_submodule(
+    context: StackContext, environment: dict[str, str], relative_path: str
+) -> None:
+    command = ["git", "submodule", "update", "--init", "--recursive", relative_path]
+    try:
+        run(command, cwd=context.repo_root, environment=environment)
+    except subprocess.CalledProcessError as error:
+        path = context.repo_root / relative_path
+        has_content = path.is_dir() and any(entry.name != ".git" for entry in path.iterdir())
+        if has_content:
+            raise RuntimeError(
+                f"Submodule initialization failed for populated checkout {relative_path}; "
+                "refusing to force it"
+            ) from error
+        run(
+            [
+                "git",
+                "submodule",
+                "update",
+                "--init",
+                "--recursive",
+                "--checkout",
+                "--force",
+                relative_path,
+            ],
+            cwd=context.repo_root,
+            environment=environment,
+        )
+
+
 def ensure_submodules(context: StackContext, environment: dict[str, str]) -> None:
-    command = ["git", "submodule", "update", "--init", "--recursive"]
-    command.extend(required_submodules())
-    run(command, cwd=context.repo_root, environment=environment)
     for relative_path in required_submodules():
+        initialize_submodule(context, environment, relative_path)
         path = context.repo_root / relative_path
         expected = output(
             ["git", "rev-parse", f"HEAD:{relative_path}"],

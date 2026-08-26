@@ -323,11 +323,13 @@ new workflow UI and add routes in `frontend/src/App.jsx`.
   validator, and manager access to the repository's existing Results,
   Validation, and Global Administrator/Admin roles at the frontend route,
   worklist endpoint, and user-facing case/reference APIs. Final release and
-  amendment use Validation/Admin. Bridge-originated analyzer events remain a
-  separate machine-authentication decision because OpenELIS currently gives
-  Basic-auth callers their normal account roles and has no analyzer service
-  authority; do not invent one or silently require Admin without deployment
-  evidence.
+  amendment use Validation/Admin. Bridge-originated normalized analyzer events
+  use a stateless HTTP Basic chain and the existing non-editable Analyser Import
+  role. Deployments assign that role to the Bridge's dedicated OpenELIS account;
+  browser sessions do not satisfy the ingress chain, and the authenticated
+  account remains the audit actor. This reuses the repository's established
+  Bridge authentication and analyzer-import authority without adding an
+  AMR-specific role.
 - Revalidate the worklist every 30 seconds from the current canonical query and
   keep the mounted Carbon table stable while data is in flight. Use a shared
   interval constant and fake-clock component evidence; do not use sleeps or

@@ -159,7 +159,7 @@ capability is available; it does not own macro authoring or administration.
    evidence.
 - [ ] **Shared offline/conflict behavior** - Adopt an application-wide offline
   pattern when its ownership is agreed; do not build a microbiology-only queue.
-- [*] **Analyzer ingress security** - Replace general authenticated-user access
+- [x] **Analyzer ingress security** - Replace general authenticated-user access
    to culture and AST analyzer-event writes with the existing machine-to-machine
    authentication pattern if one exists. An approved Bridge identity must be
    able to submit and audit an event; ordinary browser users must be denied;
@@ -184,10 +184,9 @@ capability is available; it does not own macro authoring or administration.
   default action queue, retain them in a bookmarkable Reviewed view with a
   read-only View action, and keep reasoned repeat/retest setup inside the case.
 
-After the active analyzer-ingress security slice, the next unblocked product
-iteration is Culture purpose in Phase 1B. Human acceptance and the shared
-offline and reagent-policy dependencies remain independent work and do not
-reorder that product sequence.
+The active product iteration is Culture purpose in Phase 1B. Human acceptance
+and the shared offline and reagent-policy dependencies remain independent work
+and do not reorder that product sequence.
 
 ### Phase 1B Clinical Depth
 
@@ -203,7 +202,7 @@ reorder that product sequence.
   same selection to server-side preview and generation, preserve canonical URL
   state, place the single export navigation entry under Reports, and compact the
   touched page toward the M-09 operational layout.
-- [ ] Capture Culture purpose on microbiology orders as Clinical
+- [*] Capture Culture purpose on microbiology orders as Clinical
   diagnosis/treatment or Active screening/carriage, show it with the case, audit
   pre-release corrections, and complete the M-09 screening filter. New orders
   default visibly to clinical purpose; historical missing values remain

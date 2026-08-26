@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -93,7 +94,7 @@ public class MicrobiologyArchitectureTest {
         try (Stream<Path> files = Files.walk(microbiologyTests)) {
             for (Path file : files.filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> !path.getFileName().toString().equals(getClass().getSimpleName() + ".java"))
-                    .filter(path -> !path.getFileName().toString().contains("Liquibase"))
+                    .filter(path -> !isMigrationVerificationTest(path))
                     .filter(path -> !path.toString().contains("/qualification/")).toList()) {
                 assertNoForbiddenFixtureAccess(file, List.of("JdbcTemplate", "javax.sql.DataSource",
                         "java.sql.Connection", "createNativeQuery", "INSERT INTO", "DELETE FROM", "nextval("));
@@ -111,6 +112,19 @@ public class MicrobiologyArchitectureTest {
                         "INSERT INTO", "DELETE FROM", "nextval("));
         assertNoForbiddenFixtureAccess(repositoryRoot.resolve("frontend/playwright/helpers/seed-microbiology-data.ts"),
                 List.of("child_process", "execFile", "docker", "psql", "INSERT INTO", "DELETE FROM", "nextval("));
+    }
+
+    @Test
+    public void fixtureGuardOnlyExemptsMigrationVerificationTests() {
+        assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyM10LiquibaseRollbackTest.java")));
+        assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyWhonetExportSelectionLiquibaseTest.java")));
+        assertFalse(isMigrationVerificationTest(Path.of("MicrobiologyLiquibaseFixtureTest.java")));
+    }
+
+    private boolean isMigrationVerificationTest(Path path) {
+        String fileName = path.getFileName().toString();
+        return fileName.endsWith("LiquibaseRollbackTest.java")
+                || fileName.equals("MicrobiologyWhonetExportSelectionLiquibaseTest.java");
     }
 
     private void assertNoForbiddenFixtureAccess(Path file, List<String> forbiddenFragments) throws IOException {

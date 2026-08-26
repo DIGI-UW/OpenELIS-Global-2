@@ -41,7 +41,6 @@ async function postAnalyzerIngress(path: string, data: object) {
     await machineClient.dispose();
   }
 }
-
 export interface SeededMicrobiologyCase {
   accessionNumber: string;
   caseId: string;
