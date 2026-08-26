@@ -38,6 +38,7 @@ import {
   getAnalyzerTypeRevision,
   saveAnalyzerTypeMapping,
 } from "../../../services/analyzerService";
+import { includesComboBoxText } from "../comboBoxSearch";
 import "./AnalyzerTypeMappingEditor.scss";
 
 const hasApiError = (response) =>
@@ -640,6 +641,7 @@ const AnalyzerTypeMappingEditor = () => {
                           })}
                           items={catalogTests}
                           itemToString={testItemText}
+                          shouldFilterItem={includesComboBoxText}
                           selectedItem={
                             test.mappingState === "BOUND" ? selectedTest : null
                           }

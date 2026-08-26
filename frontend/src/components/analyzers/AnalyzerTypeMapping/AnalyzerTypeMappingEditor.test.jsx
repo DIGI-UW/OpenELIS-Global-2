@@ -346,6 +346,11 @@ describe("AnalyzerTypeMappingEditor", () => {
     });
     await userEvent.click(picker);
     await userEvent.type(picker, "94558-4");
+    expect(
+      screen.queryByRole("option", {
+        name: "Rifampin Resistance · RIF · 46244-0",
+      }),
+    ).not.toBeInTheDocument();
     await userEvent.click(
       await screen.findByRole("option", {
         name: "Unconfigured qualitative test · UNCONFIGURED · 94558-4",
