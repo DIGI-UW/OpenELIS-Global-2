@@ -344,11 +344,7 @@ const MicrobiologyCaseView = ({
               reagentOverview.requirements || [],
               selectedLots,
               intl,
-            ) ||
-              formatMicrobiologyEnum(
-                result?.message || result?.error,
-                intl,
-              ),
+            ) || formatMicrobiologyEnum(result?.message || result?.error, intl),
           );
         }
         return Promise.all([
