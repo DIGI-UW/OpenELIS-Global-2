@@ -47,4 +47,14 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
         query.setParameter("amendmentId", amendmentId);
         return query.list();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countUnresolvedByBreakpointStandardId(String breakpointStandardId) {
+        Query<Long> query = entityManager.unwrap(Session.class)
+                .createQuery("select count(r.id) from MicroAstRun r where r.breakpointStandardId = :standardId"
+                        + " and r.status = 'IN_PROGRESS'", Long.class);
+        query.setParameter("standardId", breakpointStandardId);
+        return query.uniqueResult();
+    }
 }

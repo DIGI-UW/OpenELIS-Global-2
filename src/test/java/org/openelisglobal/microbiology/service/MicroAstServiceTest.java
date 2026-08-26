@@ -25,6 +25,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
@@ -37,6 +38,10 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 /**
  * A run started with an explicit standard interprets readings against that
@@ -72,13 +77,17 @@ public class MicroAstServiceTest {
 
     @Mock
     private MicroReagentLotService reagentLotService;
+    @Mock
+    private MicroOrganismDAO organismDAO;
+    @Mock
+    private SampleItemService sampleItemService;
 
     private MicroAstService service;
 
     @Before
     public void setUp() {
         service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
-                interpretationService, amendmentDAO, reagentLotService);
+                interpretationService, amendmentDAO, reagentLotService, organismDAO, sampleItemService);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
     }
 
@@ -156,6 +165,41 @@ public class MicroAstServiceTest {
         service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
 
         verify(breakpointService).findBreakpointRule("clsi-std", "org-1", null, "abx-1", "MIC", null, "MIC");
+    }
+
+    @Test
+    public void recordReadingResolvesOrganismGroupAndSpecimenContext() {
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        run.setBreakpointStandardId("eucast-std");
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        MicroIsolate isolate = isolate();
+        isolate.setOrganismId("org-1");
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        MicroOrganism organism = new MicroOrganism();
+        organism.setId("org-1");
+        organism.setOrganismGroup("Enterobacterales");
+        when(organismDAO.get("org-1")).thenReturn(Optional.of(organism));
+        MicroCase microCase = mutableCase();
+        microCase.setSampleItemId("item-1");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        SampleItem sampleItem = new SampleItem();
+        TypeOfSample specimenType = new TypeOfSample();
+        specimenType.setId("7");
+        sampleItem.setTypeOfSample(specimenType);
+        when(sampleItemService.getData("item-1")).thenReturn(sampleItem);
+        when(sampleItemService.getTypeOfSampleId(sampleItem)).thenReturn("7");
+        MicroBreakpointRule rule = new MicroBreakpointRule();
+        when(breakpointService.findBreakpointRule("eucast-std", "org-1", "Enterobacterales", "abx-1", "MIC", "7",
+                "MIC")).thenReturn(rule);
+        when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
+                .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
+
+        service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
+
+        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", "Enterobacterales", "abx-1", "MIC", "7",
+                "MIC");
     }
 
     @Test(expected = IllegalStateException.class)

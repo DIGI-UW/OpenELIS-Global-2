@@ -84,12 +84,17 @@ import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
 import SampleAcceptanceChecklistSetup from "./sampleAcceptance/SampleAcceptanceChecklistSetup";
 import AdminDashboard from "./AdminDashboard";
+import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
 
 function Admin() {
   const { path } = useRouteMatch();
 
   return (
     <Switch>
+      <Route
+        path={`${path}/MicrobiologyReference/:section/:detailId?`}
+        component={MicrobiologyReferenceAdmin}
+      />
       <Route
         path={`${path}/calendarManagement`}
         component={CalendarManagement}

@@ -37,6 +37,14 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
+import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
+import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
+import org.openelisglobal.microbiology.form.MicroBreakpointImportPreviewForm;
+import org.openelisglobal.microbiology.form.MicroBreakpointStandardAdminForm;
+import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
+import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
+import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioForm;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
@@ -144,6 +152,15 @@ public class MicrobiologyUatScenarioServiceTest {
     private TestReagentLinkService testReagentLinkService;
 
     @Mock
+    private MicrobiologyReferenceAdminService referenceAdminService;
+
+    @Mock
+    private MicroBreakpointAdminService breakpointAdminService;
+
+    @Mock
+    private MicroBreakpointImportService breakpointImportService;
+
+    @Mock
     private AutowireCapableBeanFactory beanFactory;
 
     @Mock
@@ -181,7 +198,8 @@ public class MicrobiologyUatScenarioServiceTest {
                 personService, sampleHumanService, typeOfSampleService, typeOfSampleTestService, testService,
                 testSectionService, localizationService, analyteService, testAnalyteService, analysisService,
                 testResultService, statusService, configurationService, caseService, orderRoutingService,
-                inventoryItemService, inventoryLotService, inventoryManagementService, testReagentLinkService);
+                inventoryItemService, inventoryLotService, inventoryManagementService, testReagentLinkService,
+                referenceAdminService, breakpointAdminService, breakpointImportService);
     }
 
     @After
@@ -252,6 +270,8 @@ public class MicrobiologyUatScenarioServiceTest {
         request.scenarioKey = "playwright-lot-traceability";
 
         service.provision(request, "1");
+
+        verify(breakpointAdminService).activate(anyString(), any(), anyString());
 
         ArgumentCaptor<InventoryItem> itemCaptor = ArgumentCaptor.forClass(InventoryItem.class);
         verify(inventoryItemService, times(2)).insert(itemCaptor.capture());
@@ -341,6 +361,60 @@ public class MicrobiologyUatScenarioServiceTest {
         verify(testSectionService).insert(section);
     }
 
+    @Test
+    public void provisionsM3ReferenceAdministrationDataThroughServices() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+
+        MicroAstPanelAdminForm panel = new MicroAstPanelAdminForm();
+        panel.id = "panel-1";
+        panel.name = "Gram negative AST panel (UAT)";
+        panel.current = true;
+        when(referenceAdminService.getAstPanels(any(MicroReferenceAdminQueryForm.class))).thenReturn(pageOf(panel));
+        when(referenceAdminService.getOrganisms(any(MicroReferenceAdminQueryForm.class)))
+                .thenReturn(new MicroReferenceAdminPageForm<>());
+        when(referenceAdminService.getAntibiotics(any(MicroReferenceAdminQueryForm.class)))
+                .thenReturn(new MicroReferenceAdminPageForm<>());
+        when(referenceAdminService.saveOrganism(any(), any(MicroOrganismAdminForm.class), anyString()))
+                .thenAnswer(invocation -> {
+                    MicroOrganismAdminForm form = invocation.getArgument(1);
+                    form.id = "organism-ref";
+                    return form;
+                });
+        when(referenceAdminService.saveAntibiotic(any(), any(MicroAntibioticAdminForm.class), anyString()))
+                .thenAnswer(invocation -> {
+                    MicroAntibioticAdminForm form = invocation.getArgument(1);
+                    form.id = "antibiotic-ref";
+                    return form;
+                });
+        MicroBreakpointImportPreviewForm preview = new MicroBreakpointImportPreviewForm();
+        preview.previewToken = "preview-1";
+        when(breakpointImportService.preview(anyString())).thenReturn(preview);
+        MicroBreakpointStandardAdminForm loaded = new MicroBreakpointStandardAdminForm();
+        loaded.id = "standard-loaded";
+        loaded.version = "SYNTH-UAT-LOADED";
+        when(breakpointAdminService.getStandards(any(MicroReferenceAdminQueryForm.class))).thenReturn(pageOf(loaded));
+
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "M3";
+        request.scenarioKey = "playwright-reference-admin";
+        MicrobiologyUatScenarioForm result = service.provision(request, "1");
+
+        assertEquals("organism-ref", result.organismId);
+        assertEquals("antibiotic-ref", result.antibioticId);
+        assertEquals("panel-1", result.astPanelId);
+        assertEquals("standard-1", result.activeBreakpointStandardId);
+        assertEquals("standard-loaded", result.loadedBreakpointStandardId);
+        verify(breakpointAdminService).activate(anyString(), any(), anyString());
+        verify(breakpointImportService).apply("preview-1", "1");
+    }
+
     private void configureHappyPath(Sample sample, SampleItem sampleItem, Method method,
             org.openelisglobal.test.valueholder.Test test,
             TestAnalyte testAnalyte, Analysis analysis, MicroCase microCase) {
@@ -362,6 +436,7 @@ public class MicrobiologyUatScenarioServiceTest {
         MicroAntibiotic gentamicin = antibiotic("antibiotic-gen");
         MicroAstPanel panel = new MicroAstPanel();
         panel.setId("panel-1");
+        panel.setName("Gram negative AST panel (UAT)");
         MicroBreakpointStandard standard = new MicroBreakpointStandard();
         standard.setId("standard-1");
         when(configurationService.getOrCreateAntibiotic("Ciprofloxacin (UAT)", "CIPUAT", "Fluoroquinolone"))
@@ -440,5 +515,12 @@ public class MicrobiologyUatScenarioServiceTest {
         microCase.setId(id);
         microCase.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
         return microCase;
+    }
+
+    private <T> MicroReferenceAdminPageForm<T> pageOf(T row) {
+        MicroReferenceAdminPageForm<T> page = new MicroReferenceAdminPageForm<>();
+        page.rows = List.of(row);
+        page.total = 1;
+        return page;
     }
 }

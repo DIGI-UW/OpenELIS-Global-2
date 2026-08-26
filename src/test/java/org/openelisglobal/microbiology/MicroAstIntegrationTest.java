@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -11,6 +12,7 @@ import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.AlternativeBreakpointData;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.service.MicroAstService;
+import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
@@ -41,6 +43,9 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroAstService astService;
 
+    @Autowired
+    private MicroBreakpointAdminService breakpointAdminService;
+
     private String sampleItemId;
     private String methodId;
     private ReferenceData referenceData;
@@ -52,6 +57,8 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         methodId = fixtures.createMethodId();
         sampleItemId = fixtures.createSampleWithSampleItem("OGC782M5").getId();
         referenceData = fixtures.createReferenceData(methodId);
+        breakpointAdminService.activate(referenceData.standard().getId(), new Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
     }
 
     @Test

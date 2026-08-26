@@ -14,6 +14,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -52,6 +53,7 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroAstPanelAntibiotic.class));
         assertNotNull(metamodel.entity(MicroBreakpointStandard.class));
         assertNotNull(metamodel.entity(MicroBreakpointRule.class));
+        assertNotNull(metamodel.entity(MicroBreakpointActivationEvent.class));
         assertNotNull(metamodel.entity(MicroCultureSetup.class));
         assertNotNull(metamodel.entity(MicroCase.class));
         assertNotNull(metamodel.entity(MicroCaseActivity.class));

@@ -53,6 +53,24 @@ public class MicroBreakpointRule extends BaseObject<String> {
     @Column(name = "resistant_value", precision = 12, scale = 4)
     private BigDecimal resistantValue;
 
+    @Column(name = "units", length = 40)
+    private String units;
+
+    @Column(name = "notes")
+    private String notes;
+
+    @Column(name = "seeded", nullable = false)
+    private boolean seeded;
+
+    @Column(name = "locally_customized", nullable = false)
+    private boolean locallyCustomized;
+
+    @Column(name = "source_row_hash", length = 64)
+    private String sourceRowHash;
+
+    @Column(name = "last_updated_by", length = 20)
+    private String lastUpdatedBy;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
@@ -152,6 +170,54 @@ public class MicroBreakpointRule extends BaseObject<String> {
 
     public void setResistantValue(BigDecimal resistantValue) {
         this.resistantValue = resistantValue;
+    }
+
+    public String getUnits() {
+        return units;
+    }
+
+    public void setUnits(String units) {
+        this.units = units;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public boolean isSeeded() {
+        return seeded;
+    }
+
+    public void setSeeded(boolean seeded) {
+        this.seeded = seeded;
+    }
+
+    public boolean isLocallyCustomized() {
+        return locallyCustomized;
+    }
+
+    public void setLocallyCustomized(boolean locallyCustomized) {
+        this.locallyCustomized = locallyCustomized;
+    }
+
+    public String getSourceRowHash() {
+        return sourceRowHash;
+    }
+
+    public void setSourceRowHash(String sourceRowHash) {
+        this.sourceRowHash = sourceRowHash;
+    }
+
+    public String getLastUpdatedBy() {
+        return lastUpdatedBy;
+    }
+
+    public void setLastUpdatedBy(String lastUpdatedBy) {
+        this.lastUpdatedBy = lastUpdatedBy;
     }
 
     public String getIsActive() {
