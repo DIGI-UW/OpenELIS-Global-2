@@ -72,7 +72,6 @@ function UserManagement() {
   const [toRecordCount, setToRecordCount] = useState("");
   const [userManagementList, setUserManagementList] = useState();
   const [userManagementListShow, setUserManagementListShow] = useState([]);
-  const [testSectionsSelect, setTestSectionsSelect] = useState("");
   const [testSectionsShow, setTestSectionsShow] = useState({});
 
   function deleteDeactivateUserManagement(event) {
@@ -306,7 +305,6 @@ function UserManagement() {
   }, [isSearching, panelSearchTerm]);
 
   function handleTestSectionsSelectChange(e) {
-    setTestSectionsSelect(e.target.value);
     setRoleFilter(e.target.value);
   }
 
@@ -400,11 +398,7 @@ function UserManagement() {
               <Select
                 id="filters"
                 labelText={<FormattedMessage id="menu.label.filter.role" />}
-                defaultValue={
-                  testSectionsShow && testSectionsShow.length > 0
-                    ? testSectionsShow[0].id
-                    : ""
-                }
+                value={roleFilter}
                 onChange={handleTestSectionsSelectChange}
               >
                 <SelectItem key="" value="" text="" />

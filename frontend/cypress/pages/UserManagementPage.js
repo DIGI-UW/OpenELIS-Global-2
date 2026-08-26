@@ -308,12 +308,23 @@ class UserManagementPage {
   }
 
   searchByFilters(value) {
-    this.watchUserListRequest(
-      "filteredUsersByRole",
-      (searchParams) => searchParams.get("roleFilter") === value,
-    );
-    cy.get(this.selectors.filters).select(value);
-    this.waitForUserListRequest("filteredUsersByRole");
+    cy.get(this.selectors.filters)
+      .should("be.visible")
+      .and("be.enabled")
+      .find("option")
+      .filter((_, option) => option.text.trim() === value)
+      .should("have.length", 1)
+      .then(($option) => {
+        const roleFilter = $option.val();
+        this.watchUserListRequest(
+          "filteredUsersByRole",
+          (searchParams) =>
+            searchParams.get("search") === "N" &&
+            searchParams.get("roleFilter") === roleFilter,
+        );
+        cy.get(this.selectors.filters).select(roleFilter);
+        this.waitForUserListRequest("filteredUsersByRole");
+      });
   }
 
   validateColumnContent(columnNum, value) {
