@@ -8111,6 +8111,7 @@
   "microbiology.enum.CONFIRMED": "Confirmed",
   "microbiology.enum.CONTAMINANT": "Contaminant",
   "microbiology.enum.IN_PROGRESS": "In Progress",
+  "microbiology.enum.MALDI_TOF": "MALDI-TOF",
   "microbiology.enum.NORMAL_FLORA": "Normal flora",
   "microbiology.enum.PENDING": "Pending",
   "microbiology.enum.PRELIMINARY": "Preliminary",
