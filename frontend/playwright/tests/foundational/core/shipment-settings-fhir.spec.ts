@@ -70,10 +70,9 @@ test.describe("Shipment Settings site organization warning (T-45)", () => {
       const realOptions = listbox
         .getByRole("option")
         .filter({ hasNotText: "None (no filter)" });
-      expect(
-        await realOptions.count(),
-        "the stack needs at least one referral organization to pick",
-      ).toBeGreaterThan(0);
+      // Retrying visibility check doubles as "the stack has at least one
+      // referral organization to pick" — count() would be a one-shot snapshot.
+      await expect(realOptions.first()).toBeVisible();
       await realOptions.first().click();
       // Scoped to the tile so new Save buttons elsewhere cannot shift the index.
       await page
