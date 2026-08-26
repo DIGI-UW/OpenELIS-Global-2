@@ -19,6 +19,7 @@ import org.openelisglobal.analyzer.service.AnalyzerMigrationManifest.ProfileRefe
 import org.openelisglobal.analyzer.service.AnalyzerMigrationManifest.ProfileSelection;
 import org.openelisglobal.analyzer.service.AnalyzerMigrationManifest.Status;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,11 +85,9 @@ public class AnalyzerMigrationServiceImpl implements AnalyzerMigrationService {
     @Transactional(readOnly = true)
     public AnalyzerMigrationManifest verify(AnalyzerMigrationManifest apply) {
         requireMode(apply, Mode.APPLY);
-        AnalyzerMigrationSourceSnapshot snapshot = requireSameSnapshot(apply);
-        Map<String, AnalyzerMigrationSourceSnapshot.AnalyzerSource> sources = sourcesById(snapshot);
         Instant startedAt = clock.instant();
-        List<Outcome> outcomes = apply.outcomes().stream().map(outcome -> verify(outcome, sources)).toList();
-        return manifest(apply.runId(), Mode.VERIFY, snapshot.fingerprint(), startedAt, outcomes);
+        List<Outcome> outcomes = apply.outcomes().stream().map(this::verify).toList();
+        return manifest(apply.runId(), Mode.VERIFY, apply.sourceSnapshotFingerprint(), startedAt, outcomes);
     }
 
     private Outcome plan(AnalyzerMigrationSourceSnapshot.AnalyzerSource source, Decision decision, String actor,
@@ -125,6 +124,18 @@ public class AnalyzerMigrationServiceImpl implements AnalyzerMigrationService {
 
     private Outcome apply(Outcome outcome, Map<String, AnalyzerMigrationSourceSnapshot.AnalyzerSource> sources,
             String actor) {
+        if (outcome.outcome() == Status.INTENTIONALLY_EXCLUDED) {
+            AnalyzerMigrationSourceSnapshot.AnalyzerSource source = matchingSource(outcome, sources);
+            Analyzer analyzer = analyzerService.getWithType(source.analyzerId())
+                    .orElseThrow(() -> new IllegalArgumentException("Analyzer no longer exists"));
+            analyzer.setActive(false);
+            analyzer.setStatus(AnalyzerStatus.INACTIVE);
+            analyzer.setBridgeConnectionId(null);
+            analyzer.setSiteBindingRevision(null);
+            analyzer.setSysUserId(actor);
+            analyzerService.update(analyzer);
+            return outcome;
+        }
         if (outcome.outcome() != Status.READY) {
             return outcome;
         }
@@ -150,14 +161,19 @@ public class AnalyzerMigrationServiceImpl implements AnalyzerMigrationService {
                 connection.path("configRevision").asInt(), null);
     }
 
-    private Outcome verify(Outcome outcome, Map<String, AnalyzerMigrationSourceSnapshot.AnalyzerSource> sources) {
+    private Outcome verify(Outcome outcome) {
+        if (outcome.outcome() == Status.INTENTIONALLY_EXCLUDED) {
+            return analyzerService.getWithType(outcome.sourceAnalyzerId())
+                    .filter(analyzer -> !analyzer.isActive() && analyzer.getStatus() == AnalyzerStatus.INACTIVE
+                            && analyzer.getBridgeConnectionId() == null && analyzer.getSiteBindingRevision() == null)
+                    .map(analyzer -> outcome).orElseGet(() -> correction(outcome, "EXCLUSION_VERIFICATION_FAILED"));
+        }
         if (outcome.outcome() != Status.MIGRATED) {
             return outcome;
         }
-        AnalyzerMigrationSourceSnapshot.AnalyzerSource source = matchingSource(outcome, sources);
         try {
             ProfileReference profileRef = requireSelection(outcome).profileRef();
-            Analyzer analyzer = analyzerService.getWithType(source.analyzerId())
+            Analyzer analyzer = analyzerService.getWithType(outcome.sourceAnalyzerId())
                     .orElseThrow(() -> new IllegalArgumentException("Analyzer no longer exists"));
             if (!Objects.equals(outcome.bridgeConnectionId(), analyzer.getBridgeConnectionId())
                     || analyzer.getPinnedProfileBinding() == null
@@ -167,7 +183,7 @@ public class AnalyzerMigrationServiceImpl implements AnalyzerMigrationService {
                             analyzer.getPinnedProfileBinding().getProfileFingerprint())) {
                 return correction(outcome, "OPENELIS_REFERENCE_VERIFICATION_FAILED");
             }
-            ObjectNode connection = requireExactConnection(source.analyzerId(), outcome.bridgeConnectionId(),
+            ObjectNode connection = requireExactConnection(outcome.sourceAnalyzerId(), outcome.bridgeConnectionId(),
                     profileRef);
             if (!Objects.equals(outcome.bridgeConfigRevision(), connection.path("configRevision").asInt())) {
                 return correction(outcome, "BRIDGE_CONNECTION_CHANGED_AFTER_APPLY");

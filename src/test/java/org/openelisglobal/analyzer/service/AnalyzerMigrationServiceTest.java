@@ -48,7 +48,10 @@ public class AnalyzerMigrationServiceTest {
                 List.of(new AnalyzerMigrationSourceSnapshot.AnalyzerSource("42", SOURCE_FINGERPRINT)));
         ObjectNode connection = connection();
 
-        when(snapshotService.snapshot()).thenReturn(snapshot);
+        AnalyzerMigrationSourceSnapshot changedAfterApply = new AnalyzerMigrationSourceSnapshot(
+                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                List.of(new AnalyzerMigrationSourceSnapshot.AnalyzerSource("42", SOURCE_FINGERPRINT)));
+        when(snapshotService.snapshot()).thenReturn(snapshot, snapshot, changedAfterApply);
         when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
         when(bridgeClient.getConnection("bridge-42")).thenReturn(connection);
         when(profileBindingService.assignProfile(eq(analyzer), eq("site.fixture"), eq(2), eq("user-7")))
@@ -68,6 +71,44 @@ public class AnalyzerMigrationServiceTest {
         assertEquals("bridge-42", analyzer.getBridgeConnectionId());
         assertSame(binding, analyzer.getPinnedProfileBinding());
         verify(profileBindingService).assignProfile(analyzer, "site.fixture", 2, "user-7");
+        verify(analyzerService).update(analyzer);
+    }
+
+    @Test
+    public void applyAndVerifyExplicitExclusionRemovesAnalyzerFromOperationalUse() {
+        AnalyzerMigrationSourceSnapshotService snapshotService = mock(AnalyzerMigrationSourceSnapshotService.class);
+        AnalyzerService analyzerService = mock(AnalyzerService.class);
+        AnalyzerProfileBindingService profileBindingService = mock(AnalyzerProfileBindingService.class);
+        BridgeAnalyzerConnectionClient bridgeClient = mock(BridgeAnalyzerConnectionClient.class);
+        AnalyzerMigrationServiceImpl service = new AnalyzerMigrationServiceImpl(snapshotService, analyzerService,
+                profileBindingService, bridgeClient,
+                Clock.fixed(Instant.parse("2026-08-25T12:00:00Z"), ZoneOffset.UTC));
+
+        Analyzer analyzer = new Analyzer();
+        analyzer.setId("42");
+        analyzer.setActive(true);
+        analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        AnalyzerMigrationSourceSnapshot snapshot = new AnalyzerMigrationSourceSnapshot(SNAPSHOT_FINGERPRINT,
+                List.of(new AnalyzerMigrationSourceSnapshot.AnalyzerSource("42", SOURCE_FINGERPRINT)));
+        when(snapshotService.snapshot()).thenReturn(snapshot);
+        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.update(analyzer)).thenReturn(analyzer);
+
+        Decision decision = new Decision();
+        decision.setSourceAnalyzerId("42");
+        decision.setAction(Action.EXCLUDE);
+        decision.setReasonCode("NOT_RETAINED");
+        AnalyzerMigrationPlanRequest request = new AnalyzerMigrationPlanRequest();
+        request.setRunId("migration-run-2");
+        request.setDecisions(List.of(decision));
+
+        AnalyzerMigrationManifest plan = service.plan(request, "user-7");
+        AnalyzerMigrationManifest apply = service.apply(plan, "user-7");
+        AnalyzerMigrationManifest verifyResult = service.verify(apply);
+
+        assertEquals(AnalyzerMigrationManifest.Status.INTENTIONALLY_EXCLUDED, verifyResult.outcomes().get(0).outcome());
+        assertEquals(false, analyzer.isActive());
+        assertEquals(Analyzer.AnalyzerStatus.INACTIVE, analyzer.getStatus());
         verify(analyzerService).update(analyzer);
     }
 
