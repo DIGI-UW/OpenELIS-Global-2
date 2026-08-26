@@ -34,12 +34,12 @@ public class MicrobiologyRestExceptionHandlerTest {
     }
 
     @Test
-    public void controllerLocalLockHandlerWinsOverGlobalRuntimeHandler() throws Exception {
+    public void moduleSpecificLockHandlerWinsOverGlobalRuntimeHandler() throws Exception {
         MicroIsolateService isolateService = org.mockito.Mockito.mock(MicroIsolateService.class);
         when(isolateService.createIsolate(any(), any(), any(), any(), any(), any()))
                 .thenThrow(new MicroCaseLockedException("Final-released microbiology cases cannot be changed"));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new MicroIsolateRestController(isolateService))
-                .setControllerAdvice(new ControllerSetup(), new MicrobiologyRestExceptionHandler()).build();
+                .setControllerAdvice(new MicrobiologyRestExceptionHandler(), new ControllerSetup()).build();
         UserSessionData sessionData = new UserSessionData();
         sessionData.setSytemUserId(42);
 
