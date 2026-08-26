@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.daoimpl;
 
+import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -34,5 +35,17 @@ public class MicroCaseOrderDetailDAOImpl extends BaseDAOImpl<MicroCaseOrderDetai
                 MicroCaseOrderDetail.class);
         query.setParameter("sampleId", sampleId);
         return query.uniqueResultOptional().orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCaseOrderDetail> getByCaseIds(List<String> caseIds) {
+        if (caseIds == null || caseIds.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroCaseOrderDetail> query = entityManager.unwrap(Session.class)
+                .createQuery("from MicroCaseOrderDetail d where d.caseId in (:caseIds)", MicroCaseOrderDetail.class);
+        query.setParameterList("caseIds", caseIds);
+        return query.list();
     }
 }

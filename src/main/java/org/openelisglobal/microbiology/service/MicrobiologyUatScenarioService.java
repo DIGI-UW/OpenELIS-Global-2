@@ -5,8 +5,10 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -68,6 +70,8 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.statusofsample.service.StatusOfSampleService;
+import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -102,6 +106,7 @@ public class MicrobiologyUatScenarioService {
     private static final String WHONET_EXPORT_SCENARIO = "M4";
     private static final String CLASSIFICATION_SCENARIO = "R1";
     private static final String REVIEWED_AST_SCENARIO = "AST_REVIEWED";
+    private static final String WHONET_FILTER_SCENARIO = "WHONET_FILTERS";
     private static final String ANALYZER_REVIEW_SCENARIO = "AST_ANALYZER_REVIEW";
     private static final String UAT_AST_ANALYZER_NAME = "UAT microbiology AST analyzer";
     private static final String UAT_METHOD_NAME = "UAT micro culture";
@@ -141,6 +146,7 @@ public class MicrobiologyUatScenarioService {
     private final TestResultService testResultService;
     private final TestMethodService testMethodService;
     private final IStatusService statusService;
+    private final StatusOfSampleService statusOfSampleService;
     private final MicrobiologyConfigurationService configurationService;
     private final MicroCaseService caseService;
     private final MicroOrderRoutingService orderRoutingService;
@@ -164,13 +170,14 @@ public class MicrobiologyUatScenarioService {
             TestSectionService testSectionService, LocalizationService localizationService,
             AnalyteService analyteService, TestAnalyteService testAnalyteService, AnalysisService analysisService,
             TestResultService testResultService, TestMethodService testMethodService, IStatusService statusService,
-            MicrobiologyConfigurationService configurationService, MicroCaseService caseService,
-            MicroOrderRoutingService orderRoutingService, InventoryItemService inventoryItemService,
-            InventoryLotService inventoryLotService, InventoryManagementService inventoryManagementService,
-            TestReagentLinkService testReagentLinkService, MicrobiologyReferenceAdminService referenceAdminService,
-            MicroBreakpointAdminService breakpointAdminService, MicroBreakpointImportService breakpointImportService,
-            NceCategoryService nceCategoryService, NceTypeService nceTypeService, MicroIsolateService isolateService,
-            MicroAstService astService, AnalyzerService analyzerService) {
+            StatusOfSampleService statusOfSampleService, MicrobiologyConfigurationService configurationService,
+            MicroCaseService caseService, MicroOrderRoutingService orderRoutingService,
+            InventoryItemService inventoryItemService, InventoryLotService inventoryLotService,
+            InventoryManagementService inventoryManagementService, TestReagentLinkService testReagentLinkService,
+            MicrobiologyReferenceAdminService referenceAdminService, MicroBreakpointAdminService breakpointAdminService,
+            MicroBreakpointImportService breakpointImportService, NceCategoryService nceCategoryService,
+            NceTypeService nceTypeService, MicroIsolateService isolateService, MicroAstService astService,
+            AnalyzerService analyzerService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -188,6 +195,7 @@ public class MicrobiologyUatScenarioService {
         this.testResultService = testResultService;
         this.testMethodService = testMethodService;
         this.statusService = statusService;
+        this.statusOfSampleService = statusOfSampleService;
         this.configurationService = configurationService;
         this.caseService = caseService;
         this.orderRoutingService = orderRoutingService;
@@ -231,7 +239,9 @@ public class MicrobiologyUatScenarioService {
         ReferenceAdminData referenceAdminData = isReferenceScenario(scenario)
                 ? createReferenceAdminData(astReferenceData, performedBy)
                 : null;
-        MicroOrganism unmappedOrganism = WHONET_EXPORT_SCENARIO.equals(scenario)
+        boolean requiresUnmappedOrganism = WHONET_EXPORT_SCENARIO.equals(scenario)
+                || WHONET_FILTER_SCENARIO.equals(scenario);
+        MicroOrganism unmappedOrganism = requiresUnmappedOrganism
                 ? getOrCreateUnmappedReferenceOrganism(suffix, performedBy)
                 : null;
 
@@ -277,7 +287,7 @@ public class MicrobiologyUatScenarioService {
                     method.getId(), performedBy);
         }
         AstScenarioData astScenarioData = null;
-        if (REVIEWED_AST_SCENARIO.equals(scenario)) {
+        if (REVIEWED_AST_SCENARIO.equals(scenario) || WHONET_FILTER_SCENARIO.equals(scenario)) {
             astScenarioData = ensureReviewedAstScenario(microCase, astReferenceData, performedBy);
         } else if (ANALYZER_REVIEW_SCENARIO.equals(scenario)) {
             astScenarioData = ensureAnalyzerReviewScenario(microCase, astReferenceData, suffix, performedBy);
@@ -530,7 +540,7 @@ public class MicrobiologyUatScenarioService {
         sample.setAccessionNumber(accessionNumber);
         sample.setEnteredDate(today);
         sample.setReceivedTimestamp(Timestamp.from(Instant.now()));
-        sample.setStatusId(requireSampleEnteredStatus());
+        sample.setStatusId(ensureSampleEnteredStatus(performedBy));
         sample.setSysUserId(performedBy);
         sampleService.insert(sample);
         return sample;
@@ -541,7 +551,7 @@ public class MicrobiologyUatScenarioService {
         sampleItem.setSample(sample);
         sampleItem.setTypeOfSample(getOrCreateUatSampleType(performedBy));
         sampleItem.setSortOrder("1");
-        sampleItem.setStatusId(requireSampleEnteredStatus());
+        sampleItem.setStatusId(ensureSampleEnteredStatus(performedBy));
         sampleItem.setSysUserId(performedBy);
         sampleItemService.insert(sampleItem);
         return sampleItem;
@@ -566,13 +576,60 @@ public class MicrobiologyUatScenarioService {
         sampleItemService.update(sampleItem);
     }
 
-    private String requireSampleEnteredStatus() {
+    String ensureSampleEnteredStatus(String performedBy) {
         statusService.refreshCache();
         String statusId = statusService.getStatusID(SampleStatus.Entered);
-        if ("-1".equals(statusId)) {
-            throw new IllegalStateException("SampleStatus.Entered is required for microbiology UAT scenarios");
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
         }
-        return statusId;
+
+        List<StatusOfSample> statuses = statusOfSampleService.getAllStatusOfSamples();
+        StatusOfSample existing = statuses == null ? null
+                : statuses.stream().filter(status -> "SAMPLE".equals(status.getStatusType()))
+                        .filter(status -> "SampleEntered".equals(status.getStatusOfSampleName())).findFirst()
+                        .orElse(null);
+        if (existing != null) {
+            statusService.refreshCache();
+            statusId = statusService.getStatusID(SampleStatus.Entered);
+            return "-1".equals(statusId) ? existing.getId() : statusId;
+        }
+
+        StatusOfSample entered = new StatusOfSample();
+        entered.setStatusOfSampleName("SampleEntered");
+        entered.setDescription("The sample has been entered into the system");
+        entered.setCode(nextAvailableSampleStatusCode(statuses));
+        entered.setStatusType("SAMPLE");
+        entered.setNameKey("status.sample.entered");
+        entered.setIsActive(IActionConstants.YES);
+        entered.setSysUserId(performedBy);
+        String generatedId = statusOfSampleService.insert(entered);
+        statusService.refreshCache();
+        statusId = statusService.getStatusID(SampleStatus.Entered);
+        if (!"-1".equals(statusId)) {
+            return statusId;
+        }
+        if (generatedId != null && !generatedId.isBlank()) {
+            return generatedId;
+        }
+        throw new IllegalStateException("Unable to provision SampleStatus.Entered for microbiology UAT scenarios");
+    }
+
+    private String nextAvailableSampleStatusCode(List<StatusOfSample> statuses) {
+        Set<String> usedCodes = new HashSet<>();
+        if (statuses != null) {
+            for (StatusOfSample status : statuses) {
+                if ("SAMPLE".equalsIgnoreCase(status.getStatusType()) && status.getCode() != null) {
+                    usedCodes.add(status.getCode());
+                }
+            }
+        }
+        for (int code = 900; code <= 999; code++) {
+            String candidate = Integer.toString(code);
+            if (!usedCodes.contains(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("No UAT sample status code is available");
     }
 
     private Patient getOrCreateUatPatient(String suffix, String performedBy) {
@@ -1103,9 +1160,9 @@ public class MicrobiologyUatScenarioService {
         if (!"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
                 && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)
                 && !CLASSIFICATION_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
-                && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
+                && !WHONET_FILTER_SCENARIO.equals(normalized) && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
             throw new IllegalArgumentException(
-                    "scenario must be CASE, MVP, WORKLIST, M3, M4, R1, AST_REVIEWED, or AST_ANALYZER_REVIEW");
+                    "scenario must be CASE, MVP, WORKLIST, M3, M4, R1, AST_REVIEWED, WHONET_FILTERS, or AST_ANALYZER_REVIEW");
         }
         return normalized;
     }

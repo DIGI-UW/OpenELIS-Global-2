@@ -2,6 +2,7 @@ package org.openelisglobal.reports.service;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,6 +25,7 @@ import org.openelisglobal.microbiology.service.MicroWhonetDataset;
 import org.openelisglobal.microbiology.service.MicroWhonetDatasetService;
 import org.openelisglobal.microbiology.service.MicroWhonetExportBlockedException;
 import org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun;
+import org.openelisglobal.microbiology.valueholder.MicroWhonetExportSelection;
 import org.openelisglobal.reports.action.implementation.reportBeans.WHONETCSVRoutineColumnBuilder.WHONetRow;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -47,7 +49,7 @@ public class WHONetReportServiceMicrobiologyTest {
         MicroWhonetPreviewForm preview = preview(true);
         WHONetRow row = new WHONetRow("NAT-1", "Ada, \"A\"\n", "Lovelace", "F", "1990-01-01", "2026-07-10", "LAB-001",
                 "2026-07-09", "Blood", "CIP", "eco", "S", "MIC", "", "");
-        when(datasetService.compile(query)).thenReturn(new MicroWhonetDataset(preview, List.of(row)));
+        when(datasetService.compile(query)).thenReturn(new MicroWhonetDataset(preview, List.of(row), selection()));
 
         MicroWhonetExportResult result = service.generateMicrobiologyExport(query, " authenticated-user ");
 
@@ -65,9 +67,34 @@ public class WHONetReportServiceMicrobiologyTest {
     }
 
     @Test
+    public void generationAuditRetainsTheExactPopulationSelection() {
+        MicroWhonetExportQueryForm query = query();
+        query.specimen = List.of("sample-type-1");
+        query.organism = List.of("organism-1");
+        query.origin = List.of("INPATIENT");
+        query.significance = List.of("CLINICALLY_SIGNIFICANT", "CONTAMINANT");
+        WHONetRow row = new WHONetRow("NAT-1", "Ada", "Lovelace", "F", "1990-01-01", "2026-07-10", "LAB-001",
+                "2026-07-09", "Blood", "CIP", "eco", "S", "MIC", "", "");
+        MicroWhonetExportSelection selection = new MicroWhonetExportSelection(query.specimen, query.organism,
+                query.origin, query.significance);
+        when(datasetService.compile(query)).thenReturn(new MicroWhonetDataset(preview(true), List.of(row), selection));
+
+        service.generateMicrobiologyExport(query, "authenticated-user");
+
+        ArgumentCaptor<MicroWhonetExportRun> audit = ArgumentCaptor.forClass(MicroWhonetExportRun.class);
+        verify(exportRunDAO).insert(audit.capture());
+        assertNotNull(audit.getValue().getPopulationSelection());
+        assertEquals(List.of("sample-type-1"), audit.getValue().getPopulationSelection().getSpecimen());
+        assertEquals(List.of("organism-1"), audit.getValue().getPopulationSelection().getOrganism());
+        assertEquals(List.of("INPATIENT"), audit.getValue().getPopulationSelection().getOrigin());
+        assertEquals(List.of("CLINICALLY_SIGNIFICANT", "CONTAMINANT"),
+                audit.getValue().getPopulationSelection().getSignificance());
+    }
+
+    @Test
     public void generationRejectsPreviewWithNoExportableRows() {
         MicroWhonetExportQueryForm query = query();
-        when(datasetService.compile(query)).thenReturn(new MicroWhonetDataset(preview(false), List.of()));
+        when(datasetService.compile(query)).thenReturn(new MicroWhonetDataset(preview(false), List.of(), selection()));
 
         try {
             service.generateMicrobiologyExport(query, "authenticated-user");
@@ -96,7 +123,7 @@ public class WHONetReportServiceMicrobiologyTest {
         MicroWhonetExportQueryForm query = new MicroWhonetExportQueryForm();
         query.from = "2026-07-01";
         query.to = "2026-07-31";
-        query.significance = "CLINICALLY_SIGNIFICANT";
+        query.significance = List.of("CLINICALLY_SIGNIFICANT");
         query.dedup = "FIRST_ISOLATE_7_DAY";
         return query;
     }
@@ -112,5 +139,9 @@ public class WHONetReportServiceMicrobiologyTest {
         preview.exportedRows = canGenerate ? 1 : 0;
         preview.canGenerate = canGenerate;
         return preview;
+    }
+
+    private MicroWhonetExportSelection selection() {
+        return new MicroWhonetExportSelection(List.of(), List.of(), List.of(), List.of("CLINICALLY_SIGNIFICANT"));
     }
 }

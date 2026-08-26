@@ -475,6 +475,21 @@ def print_endpoints(context: StackContext, environment: dict[str, str], shell_ex
             print(f"{name}={value}")
 
 
+def playwright_base_url(context: StackContext, environment: dict[str, str]) -> str:
+    return environment.get("BASE_URL") or endpoint_environment(context, environment)["BASE_URL"]
+
+
+def playwright_command(arguments: Sequence[str]) -> list[str]:
+    forwarded = list(arguments)
+    has_project = any(
+        argument == "--project" or argument.startswith("--project=")
+        for argument in forwarded
+    )
+    if not has_project:
+        forwarded.insert(0, "--project=core-app")
+    return ["npm", "run", "pw:test", "--", *forwarded]
+
+
 def wait_for_login(context: StackContext, environment: dict[str, str]) -> None:
     base_url = endpoint_environment(context, environment)["BASE_URL"]
     wait_environment = environment.copy()
@@ -671,10 +686,19 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     subparsers.add_parser("env")
     subparsers.add_parser("config")
     subparsers.add_parser("doctor")
+    playwright = subparsers.add_parser(
+        "playwright",
+        help="Run Playwright with this worktree's URL and shared authentication setup.",
+    )
     logs = subparsers.add_parser("logs")
     logs.add_argument("services", nargs="*")
     logs.add_argument("--follow", "-f", action="store_true")
-    return parser.parse_args(list(argv))
+    args, remaining = parser.parse_known_args(list(argv))
+    if args.command == "playwright":
+        args.playwright_args = remaining
+    elif remaining:
+        parser.error(f"unrecognized arguments: {' '.join(remaining)}")
+    return args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -731,6 +755,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(endpoint_environment(context, environment)["BASE_URL"])
     elif args.command == "env":
         print_endpoints(context, environment, shell_exports=True)
+    elif args.command == "playwright":
+        playwright_environment = environment.copy()
+        playwright_environment["BASE_URL"] = playwright_base_url(context, environment)
+        print(f"Running Playwright against {playwright_environment['BASE_URL']}")
+        run(
+            playwright_command(args.playwright_args),
+            cwd=context.repo_root / "frontend",
+            environment=playwright_environment,
+        )
     elif args.command == "logs":
         log_args = ["logs"]
         if args.follow:

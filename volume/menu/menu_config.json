@@ -166,10 +166,6 @@
         {
           "elementId": "menu_microbiology_worklist",
           "childMenus": []
-        },
-        {
-          "elementId": "menu_microbiology_whonet",
-          "childMenus": []
         }
       ]
     },
@@ -289,6 +285,10 @@
     {
       "elementId": "menu_reports",
       "childMenus": [
+        {
+          "elementId": "menu_microbiology_whonet",
+          "childMenus": []
+        },
         {
           "elementId": "menu_reports_routine",
           "childMenus": [
@@ -591,13 +591,18 @@
           "isActive": true,
           "hideInOldUI": true,
           "childMenus": []
-        },
+        }
+      ]
+    },
+    {
+      "elementId": "menu_reports",
+      "childMenus": [
         {
           "elementId": "menu_microbiology_whonet",
           "actionURL": "/Microbiology/whonet",
           "displayKey": "sidenav.label.microbiology.whonet",
           "toolTipKey": "sidenav.label.microbiology.whonet",
-          "presentationOrder": 2,
+          "presentationOrder": 1,
           "isActive": true,
           "hideInOldUI": true,
           "childMenus": []

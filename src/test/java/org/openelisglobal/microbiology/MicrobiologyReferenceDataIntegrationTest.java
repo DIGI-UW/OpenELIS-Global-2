@@ -174,6 +174,13 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     }
 
     @Test
+    public void referenceFixtureReusesCultureSetupForTheSameMethodAndWorkflow() {
+        ReferenceData repeated = fixtures.createReferenceData(methodId);
+
+        assertEquals(referenceData.cultureSetup().getId(), repeated.cultureSetup().getId());
+    }
+
+    @Test
     public void breakpointLookupReturnsBestRuleAndNullWhenMissing() {
         MicroBreakpointRule rule = breakpointService.findBreakpointRule(referenceData.standard().getId(),
                 referenceData.organism().getId(), "Enterobacterales", referenceData.antibiotic().getId(), "MIC", null,

@@ -20,6 +20,7 @@ import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.microbiology.dao.MicroWhonetExportRunDAO;
 import org.openelisglobal.microbiology.form.MicroWhonetExportQueryForm;
+import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.microbiology.service.MicroWhonetDataset;
 import org.openelisglobal.microbiology.service.MicroWhonetDatasetService;
@@ -186,6 +187,12 @@ public class WHONetReportServiceImpl implements WHONetReportService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public MicroWhonetFilterOptionsForm getMicrobiologyExportFilterOptions(MicroWhonetExportQueryForm query) {
+        return microWhonetDatasetService.getFilterOptions(query);
+    }
+
+    @Override
     @Transactional
     public MicroWhonetExportResult generateMicrobiologyExport(MicroWhonetExportQueryForm query,
             String authenticatedUserId) {
@@ -206,6 +213,7 @@ public class WHONetReportServiceImpl implements WHONetReportService {
         run.setToDate(Date.valueOf(preview.to));
         run.setSignificancePolicy(preview.significance);
         run.setDedupPolicy(preview.dedup);
+        run.setPopulationSelection(dataset.getPopulationSelection());
         run.setCaseCount(preview.totalCases);
         run.setIsolateCount(preview.exportableIsolates);
         run.setRowCount(preview.exportedRows);

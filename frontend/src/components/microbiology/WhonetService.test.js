@@ -1,9 +1,16 @@
-import { generateWhonetExport, getWhonetPreview } from "./WhonetService";
+import {
+  generateWhonetExport,
+  getWhonetFilterOptions,
+  getWhonetPreview,
+} from "./WhonetService";
 
 const query = {
   from: "2026-07-01",
   to: "2026-07-31",
-  significance: "CLINICALLY_SIGNIFICANT",
+  specimen: ["sample-type-2", "sample-type-1"],
+  organism: ["organism-1"],
+  origin: ["OUTPATIENT"],
+  significance: ["NORMAL_FLORA", "CLINICALLY_SIGNIFICANT"],
   dedup: "FIRST_ISOLATE_7_DAY",
   page: 2,
   pageSize: 50,
@@ -25,7 +32,25 @@ describe("WhonetService", () => {
 
     await expect(getWhonetPreview(query)).resolves.toEqual({ exportedRows: 2 });
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/OpenELIS-Global/rest/microbiology/whonet/preview?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&dedup=FIRST_ISOLATE_7_DAY&page=2&pageSize=50",
+      "/api/OpenELIS-Global/rest/microbiology/whonet/preview?from=2026-07-01&to=2026-07-31&specimen=sample-type-1&specimen=sample-type-2&organism=organism-1&origin=OUTPATIENT&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&dedup=FIRST_ISOLATE_7_DAY&page=2&pageSize=50",
+      expect.objectContaining({ credentials: "include" }),
+    );
+  });
+
+  it("loads period-scoped filter choices from the same date contract", async () => {
+    const options = {
+      specimenTypes: [{ id: "sample-type-1", label: "Blood" }],
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(options), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(getWhonetFilterOptions(query)).resolves.toEqual(options);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/OpenELIS-Global/rest/microbiology/whonet/filter-options?from=2026-07-01&to=2026-07-31",
       expect.objectContaining({ credentials: "include" }),
     );
   });

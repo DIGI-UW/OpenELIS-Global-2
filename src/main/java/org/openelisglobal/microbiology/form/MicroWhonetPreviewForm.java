@@ -11,6 +11,9 @@ public class MicroWhonetPreviewForm {
     public String dedup;
     public int totalCases;
     public int totalIsolates;
+    public int afterSpecimen;
+    public int afterOrganism;
+    public int afterPatientOrigin;
     public int afterSignificance;
     public int afterDeduplication;
     public int exportableIsolates;

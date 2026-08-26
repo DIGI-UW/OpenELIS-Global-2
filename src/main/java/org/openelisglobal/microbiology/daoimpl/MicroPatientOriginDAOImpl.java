@@ -29,6 +29,18 @@ public class MicroPatientOriginDAOImpl extends BaseDAOImpl<MicroPatientOrigin, S
 
     @Override
     @Transactional(readOnly = true)
+    public List<MicroPatientOrigin> getByCodes(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroPatientOrigin> query = entityManager.unwrap(Session.class)
+                .createQuery("from MicroPatientOrigin o where o.code in (:codes)", MicroPatientOrigin.class);
+        query.setParameterList("codes", codes);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean existsActiveCode(String code) {
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(
                 "select count(o.id) from MicroPatientOrigin o where o.isActive = 'Y' and o.code = :code", Long.class);

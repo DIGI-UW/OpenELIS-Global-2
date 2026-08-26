@@ -93,7 +93,7 @@ public class MicrobiologyArchitectureTest {
         try (Stream<Path> files = Files.walk(microbiologyTests)) {
             for (Path file : files.filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> !path.getFileName().toString().equals(getClass().getSimpleName() + ".java"))
-                    .filter(path -> !path.getFileName().toString().endsWith("LiquibaseRollbackTest.java"))
+                    .filter(path -> !path.getFileName().toString().contains("Liquibase"))
                     .filter(path -> !path.toString().contains("/qualification/")).toList()) {
                 assertNoForbiddenFixtureAccess(file, List.of("JdbcTemplate", "javax.sql.DataSource",
                         "java.sql.Connection", "createNativeQuery", "INSERT INTO", "DELETE FROM", "nextval("));

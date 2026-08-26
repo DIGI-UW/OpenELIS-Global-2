@@ -41,9 +41,9 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       await expect(
         page.getByRole("heading", { name: "WHONET export", exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(page.getByLabel("Inclusion")).toHaveValue(
-        "CLINICALLY_SIGNIFICANT",
-      );
+      await expect(
+        page.getByRole("combobox", { name: /^Inclusion/ }),
+      ).toHaveAccessibleName(/Inclusion Total items selected: 1/);
       await expect(
         page.getByRole("checkbox", {
           name: "Apply first-isolate selection",
@@ -116,6 +116,11 @@ test.describe("OGC-782 M4 WHONET export demo", () => {
       await expect(
         page.getByRole("heading", { name: "Preview", exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(
+        page
+          .getByLabel("Mapping readiness")
+          .getByRole("link", { name: "Fix specimen mapping" }),
+      ).toHaveCount(0);
 
       const mappedRows = page
         .getByRole("row")

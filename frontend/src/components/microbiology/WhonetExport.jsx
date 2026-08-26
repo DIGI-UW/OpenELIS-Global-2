@@ -5,11 +5,13 @@ import {
   DataTable,
   DatePicker,
   DatePickerInput,
+  FilterableMultiSelect,
   Grid,
   InlineNotification,
   Layer,
   Link as CarbonLink,
   Loading,
+  MultiSelect,
   Pagination,
   ProgressIndicator,
   ProgressStep,
@@ -58,6 +60,28 @@ const mappingRepairMessage = {
   "specimen-types": "microbiology.whonet.mapping.fixSpecimen",
 };
 
+const emptyFilterOptions = {
+  specimenTypes: [],
+  organisms: [],
+  patientOrigins: [],
+  significance: [],
+};
+
+const selectedOptions = (items, selectedIds) => {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  return selectedIds.map((id) => byId.get(id) || { id, label: id });
+};
+
+const optionsWithSelections = (items, selectedIds) => {
+  const known = new Set(items.map((item) => item.id));
+  return [
+    ...items,
+    ...selectedIds
+      .filter((id) => !known.has(id))
+      .map((id) => ({ id, label: id })),
+  ];
+};
+
 const WhonetExport = ({ service = defaultService, now }) => {
   const intl = useIntl();
   const history = useHistory();
@@ -67,6 +91,9 @@ const WhonetExport = ({ service = defaultService, now }) => {
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [error, setError] = useState("");
+  const [filterOptionsError, setFilterOptionsError] = useState("");
+  const [filterOptions, setFilterOptions] = useState(emptyFilterOptions);
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
   const referenceNow = useMemo(() => now || new Date(), [now]);
 
   const state = useMemo(
@@ -98,6 +125,34 @@ const WhonetExport = ({ service = defaultService, now }) => {
   );
 
   const request = useMemo(() => toWhonetRequest(state), [state]);
+  const invalidPeriod = state.to < state.from;
+
+  useEffect(() => {
+    if (invalidPeriod) {
+      setFilterOptionsError("");
+      return undefined;
+    }
+    let active = true;
+    setFilterOptionsLoading(true);
+    service
+      .getWhonetFilterOptions(request)
+      .then((response) => {
+        if (active) {
+          setFilterOptions(response);
+          setFilterOptionsError("");
+        }
+      })
+      .catch((requestError) => {
+        if (active)
+          setFilterOptionsError(formatRequestError(intl, requestError));
+      })
+      .finally(() => {
+        if (active) setFilterOptionsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [intl, invalidPeriod, request.from, request.to, service]);
 
   useEffect(() => {
     if (state.step !== "preview") {
@@ -129,7 +184,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
     setQuery({ ...updates, step: "configure", page: 1 });
   };
 
-  const invalidPeriod = state.to < state.from;
+  const activeError = error || filterOptionsError;
 
   const generate = async () => {
     setGenerating(true);
@@ -187,6 +242,13 @@ const WhonetExport = ({ service = defaultService, now }) => {
     ...row,
     id: `${row.caseId}-${row.isolateId}-${row.antibioticCode}-${index}`,
   }));
+  const significanceItems = (filterOptions.significance || []).map((item) => ({
+    ...item,
+    label: intl.formatMessage({
+      id: `microbiology.whonet.significance.${item.id}`,
+      defaultMessage: item.label,
+    }),
+  }));
   const metrics = preview
     ? [
         ["cases", preview.totalCases, "microbiology.whonet.count.cases"],
@@ -194,6 +256,21 @@ const WhonetExport = ({ service = defaultService, now }) => {
           "isolates",
           preview.totalIsolates,
           "microbiology.whonet.count.isolates",
+        ],
+        [
+          "after-specimen",
+          preview.afterSpecimen,
+          "microbiology.whonet.count.specimen",
+        ],
+        [
+          "after-organism",
+          preview.afterOrganism,
+          "microbiology.whonet.count.organism",
+        ],
+        [
+          "after-origin",
+          preview.afterPatientOrigin,
+          "microbiology.whonet.count.origin",
         ],
         [
           "after-inclusion",
@@ -339,29 +416,6 @@ const WhonetExport = ({ service = defaultService, now }) => {
                 />
               </DatePicker>
               <Select
-                id="whonet-significance"
-                labelText={intl.formatMessage({
-                  id: "microbiology.whonet.significance",
-                })}
-                value={state.significance}
-                onChange={(event) =>
-                  updateConfiguration({ significance: event.target.value })
-                }
-              >
-                <SelectItem
-                  value="CLINICALLY_SIGNIFICANT"
-                  text={intl.formatMessage({
-                    id: "microbiology.whonet.significance.clinical",
-                  })}
-                />
-                <SelectItem
-                  value="ALL"
-                  text={intl.formatMessage({
-                    id: "microbiology.whonet.significance.all",
-                  })}
-                />
-              </Select>
-              <Select
                 id="whonet-dedup"
                 labelText={intl.formatMessage({
                   id: "microbiology.whonet.dedup",
@@ -385,6 +439,83 @@ const WhonetExport = ({ service = defaultService, now }) => {
                 />
               </Select>
             </div>
+            <div className="whonet-export__filter-grid">
+              {[
+                {
+                  key: "specimen",
+                  title: "microbiology.whonet.filter.specimen",
+                  items: filterOptions.specimenTypes || [],
+                },
+                {
+                  key: "organism",
+                  title: "microbiology.whonet.filter.organism",
+                  items: filterOptions.organisms || [],
+                },
+                {
+                  key: "origin",
+                  title: "microbiology.whonet.filter.origin",
+                  items: filterOptions.patientOrigins || [],
+                },
+              ].map(({ key, title, items }) => {
+                const available = optionsWithSelections(items, state[key]);
+                return (
+                  <FilterableMultiSelect
+                    key={key}
+                    id={`whonet-${key}`}
+                    titleText={intl.formatMessage({ id: title })}
+                    label={intl.formatMessage({
+                      id: "microbiology.whonet.filter.any",
+                    })}
+                    items={available}
+                    selectedItems={selectedOptions(available, state[key])}
+                    itemToString={(item) => item?.label || ""}
+                    disabled={filterOptionsLoading}
+                    selectionFeedback="top-after-reopen"
+                    onChange={({ selectedItems: selection }) =>
+                      updateConfiguration({
+                        [key]: selection.map((item) => item.id),
+                      })
+                    }
+                  />
+                );
+              })}
+              {(() => {
+                const available = optionsWithSelections(
+                  significanceItems,
+                  state.significance,
+                ).map((item) => ({
+                  ...item,
+                  label: intl.formatMessage({
+                    id: `microbiology.whonet.significance.${item.id}`,
+                    defaultMessage: item.label,
+                  }),
+                }));
+                return (
+                  <MultiSelect
+                    id="whonet-significance"
+                    titleText={intl.formatMessage({
+                      id: "microbiology.whonet.significance",
+                    })}
+                    label={intl.formatMessage({
+                      id: "microbiology.whonet.filter.choose",
+                    })}
+                    items={available}
+                    selectedItems={selectedOptions(
+                      available,
+                      state.significance,
+                    )}
+                    itemToString={(item) => item?.label || ""}
+                    disabled={filterOptionsLoading}
+                    selectionFeedback="top-after-reopen"
+                    onChange={({ selectedItems: selection }) =>
+                      updateConfiguration({
+                        significance: selection.map((item) => item.id),
+                      })
+                    }
+                  />
+                );
+              })()}
+            </div>
             <div className="whonet-export__configure-actions">
               <Button
                 renderIcon={View}
@@ -398,14 +529,14 @@ const WhonetExport = ({ service = defaultService, now }) => {
             </div>
           </Layer>
 
-          {error && (
+          {activeError && (
             <InlineNotification
               kind="error"
               hideCloseButton
               title={intl.formatMessage({
                 id: "microbiology.whonet.error.title",
               })}
-              subtitle={error}
+              subtitle={activeError}
             />
           )}
           {generated && (

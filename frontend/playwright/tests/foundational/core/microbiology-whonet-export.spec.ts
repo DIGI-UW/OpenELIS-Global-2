@@ -1,69 +1,133 @@
 import { expect, test } from "../../../helpers/test-base";
-import type { Download } from "@playwright/test";
-import { Sidenav } from "../../../fixtures/sidenav";
-import { seedMicrobiologyWhonetExport } from "../../../helpers/seed-microbiology-data";
+import {
+  seedMicrobiologyWhonetExport,
+  seedMicrobiologyWhonetExportFilters,
+} from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+import {
+  buildWhonetExportQuery,
+  expectWhonetExportReady,
+  parseWhonetCsvLine,
+  readWhonetDownload,
+  selectWhonetFilterOption,
+  whonetFixtureLabels,
+} from "../../../helpers/whonet-export";
+import { Sidenav } from "../../../fixtures/sidenav";
 
-const currentPeriodQuery = (exportDate: string) => {
-  return new URLSearchParams({
-    from: exportDate,
-    to: exportDate,
-    significance: "CLINICALLY_SIGNIFICANT",
-    dedup: "FIRST_ISOLATE_7_DAY",
-    step: "configure",
-    page: "1",
-    pageSize: "100",
-  }).toString();
-};
+test.describe("OGC-782 WHONET manual export", () => {
+  test.describe.configure({ timeout: 120_000 });
 
-const readDownload = async (download: Download) => {
-  const stream = await download.createReadStream();
-  let content = "";
-  for await (const chunk of stream) content += chunk.toString();
-  return content;
-};
+  test("preserves every R9 export population filter", async ({ page }) => {
+    const seeded = await seedMicrobiologyWhonetExportFilters(page);
+    const query = buildWhonetExportQuery(seeded.exportDate);
+    const organismIds = [seeded.organismId, seeded.unmappedOrganismId];
 
-const parseCsvLine = (line: string) => {
-  const fields: string[] = [];
-  const pattern = /"((?:[^"]|"")*)"(?:,|$)/g;
-  for (const match of line.matchAll(pattern)) {
-    fields.push(match[1].replace(/""/g, '"'));
-  }
-  return fields;
-};
+    await page.goto(`/Microbiology/whonet?${query}`, {
+      waitUntil: "commit",
+    });
+    await expectWhonetExportReady(page);
 
-test.describe("OGC-782 M4 WHONET manual export", () => {
+    await selectWhonetFilterOption(
+      page,
+      /^Specimen types/,
+      whonetFixtureLabels.specimen(seeded.accessionNumber),
+    );
+    await selectWhonetFilterOption(
+      page,
+      /^Organisms/,
+      whonetFixtureLabels.mappedOrganism,
+    );
+    await selectWhonetFilterOption(
+      page,
+      /^Organisms/,
+      whonetFixtureLabels.unmappedOrganism(seeded.accessionNumber),
+    );
+    await selectWhonetFilterOption(
+      page,
+      /^Patient origins/,
+      whonetFixtureLabels.inpatient,
+    );
+    await selectWhonetFilterOption(page, /^Inclusion/, "Contaminant");
+
+    const filteredQuery = buildWhonetExportQuery(seeded.exportDate, {
+      specimen: [seeded.sampleTypeId],
+      organism: organismIds,
+      origin: ["INPATIENT"],
+      significance: ["CLINICALLY_SIGNIFICANT", "CONTAMINANT"],
+    });
+    await expect(page).toHaveURL(`/Microbiology/whonet?${filteredQuery}`);
+    await page.reload({ waitUntil: "commit" });
+    await expectWhonetExportReady(page);
+    await expect(page).toHaveURL(`/Microbiology/whonet?${filteredQuery}`);
+    await expect(
+      page.getByRole("combobox", { name: /^Specimen types/ }),
+    ).toHaveAccessibleName(/Total items selected: 1/);
+    await expect(
+      page.getByRole("combobox", { name: /^Organisms/ }),
+    ).toHaveAccessibleName(/Total items selected: 2/);
+    await expect(
+      page.getByRole("combobox", { name: /^Patient origins/ }),
+    ).toHaveAccessibleName(/Total items selected: 1/);
+    await expect(
+      page.getByRole("combobox", { name: /^Inclusion/ }),
+    ).toHaveAccessibleName(/Total items selected: 2/);
+
+    await page.getByRole("button", { name: "Preview export" }).click();
+    await expect(page).toHaveURL(/step=preview/);
+    await expect(
+      page.getByRole("heading", { name: "Preview", exact: true }),
+    ).toBeVisible();
+    const metric = (label: string) =>
+      page.locator(".whonet-export__metric").filter({ hasText: label });
+    await expect(metric("After specimen filter").locator("strong")).toHaveText(
+      "2",
+    );
+    await expect(metric("After organism filter").locator("strong")).toHaveText(
+      "2",
+    );
+    await expect(metric("After origin filter").locator("strong")).toHaveText(
+      "2",
+    );
+    await expect(metric("Isolates included").locator("strong")).toHaveText("2");
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Generate CSV" }).click();
+    const download = await downloadPromise;
+    expect(await readWhonetDownload(download)).toContain(
+      seeded.accessionNumber,
+    );
+  });
+
   test("previews mapped AST, links mapping repair, and downloads CSV", async ({
     page,
   }) => {
-    test.setTimeout(120_000);
     const seeded = await seedMicrobiologyWhonetExport(page);
+    const organismIds = [seeded.organismId, seeded.unmappedOrganismId];
 
     await test.step("Reach the export through configured navigation", async () => {
-      await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
+      await page.goto("/Dashboard", { waitUntil: "commit" });
       const sidenav = new Sidenav(page);
       await sidenav.ensureExpanded();
-      await sidenav.expandMenu("Microbiology");
+      await sidenav.expandMenu("Reports");
       const exportLink = sidenav.nav.getByRole("link", {
         name: "WHONET export",
         exact: true,
       });
       await expect(exportLink).toHaveAttribute("href", "/Microbiology/whonet");
       await exportLink.click();
-      await expect(
-        page.getByRole("heading", { name: "WHONET export", exact: true }),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expectWhonetExportReady(page);
     });
 
-    const query = currentPeriodQuery(seeded.exportDate);
+    const query = buildWhonetExportQuery(seeded.exportDate);
     await test.step("Reload the complete canonical configuration", async () => {
       await page.goto(`/Microbiology/whonet?${query}`, {
-        waitUntil: "domcontentloaded",
+        waitUntil: "commit",
       });
+      await expectWhonetExportReady(page);
       await expect(page).toHaveURL(`/Microbiology/whonet?${query}`);
-      await expect(page.getByLabel("Inclusion")).toHaveValue(
-        "CLINICALLY_SIGNIFICANT",
-      );
+      await expect(
+        page.getByRole("combobox", { name: /^Inclusion/ }),
+      ).toHaveAccessibleName(/Inclusion Total items selected: 1/);
       await expect(page.getByLabel("De-duplication")).toHaveValue(
         "FIRST_ISOLATE_7_DAY",
       );
@@ -74,19 +138,46 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       await expect(
         breadcrumb.getByRole("link", { name: "Reports" }),
       ).toHaveAttribute("href", "/Report");
-      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.reload({ waitUntil: "commit" });
+      await expectWhonetExportReady(page);
       await expect(page).toHaveURL(`/Microbiology/whonet?${query}`);
     });
 
-    await test.step("Preview eligible rows and mapping repair", async () => {
-      const previewResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes("/rest/microbiology/whonet/preview?") &&
-          response.request().method() === "GET" &&
-          response.status() === 200,
+    await test.step("Select and preserve the export population", async () => {
+      await selectWhonetFilterOption(
+        page,
+        /^Specimen types/,
+        whonetFixtureLabels.specimen(seeded.accessionNumber),
       );
+      await selectWhonetFilterOption(
+        page,
+        /^Organisms/,
+        whonetFixtureLabels.mappedOrganism,
+      );
+      await selectWhonetFilterOption(
+        page,
+        /^Organisms/,
+        whonetFixtureLabels.unmappedOrganism(seeded.accessionNumber),
+      );
+
+      const filteredQuery = buildWhonetExportQuery(seeded.exportDate, {
+        specimen: [seeded.sampleTypeId],
+        organism: organismIds,
+      });
+      await expect(page).toHaveURL(`/Microbiology/whonet?${filteredQuery}`);
+      await page.reload({ waitUntil: "commit" });
+      await expectWhonetExportReady(page);
+      await expect(page).toHaveURL(`/Microbiology/whonet?${filteredQuery}`);
+      await expect(
+        page.getByRole("combobox", { name: /^Specimen types/ }),
+      ).toHaveAccessibleName(/Total items selected: 1/);
+      await expect(
+        page.getByRole("combobox", { name: /^Organisms/ }),
+      ).toHaveAccessibleName(/Total items selected: 2/);
+    });
+
+    await test.step("Preview eligible rows and mapping repair", async () => {
       await page.getByRole("button", { name: "Preview export" }).click();
-      await previewResponse;
       await expect(page).toHaveURL(/step=preview/);
       await expect(
         page.getByRole("heading", { name: "Preview", exact: true }),
@@ -101,6 +192,9 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       };
       const finalizedCases = await metricValue("Finalized cases");
       const isolatesFound = await metricValue("Isolates found");
+      const afterSpecimenFilter = await metricValue("After specimen filter");
+      const afterOrganismFilter = await metricValue("After organism filter");
+      const afterOriginFilter = await metricValue("After origin filter");
       const isolatesIncluded = await metricValue("Isolates included");
       const afterDeduplication = await metricValue("After de-duplication");
       const initialMappableIsolates = await metricValue("Mappable isolates");
@@ -109,8 +203,14 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
 
       expect(finalizedCases).toBeGreaterThanOrEqual(1);
       expect(isolatesFound).toBeGreaterThanOrEqual(2);
+      expect(afterSpecimenFilter).toBeGreaterThanOrEqual(2);
+      expect(afterSpecimenFilter).toBeLessThanOrEqual(isolatesFound);
+      expect(afterOrganismFilter).toBeGreaterThanOrEqual(2);
+      expect(afterOrganismFilter).toBeLessThanOrEqual(afterSpecimenFilter);
+      expect(afterOriginFilter).toBeGreaterThanOrEqual(2);
+      expect(afterOriginFilter).toBeLessThanOrEqual(afterOrganismFilter);
       expect(isolatesIncluded).toBeGreaterThanOrEqual(2);
-      expect(isolatesIncluded).toBeLessThanOrEqual(isolatesFound);
+      expect(isolatesIncluded).toBeLessThanOrEqual(afterOriginFilter);
       expect(afterDeduplication).toBeGreaterThanOrEqual(2);
       expect(afterDeduplication).toBeLessThanOrEqual(isolatesIncluded);
       expect(initialMappableIsolates).toBeLessThanOrEqual(afterDeduplication);
@@ -156,28 +256,16 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       const specimenCode = page.getByLabel("WHONET specimen code");
       await expect(specimenCode).toBeFocused();
       await specimenCode.fill("BLD");
-      const saveResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/rest/sample-types/${seeded.sampleTypeId}`) &&
-          response.request().method() === "PUT" &&
-          response.status() === 200,
-      );
       await page.getByRole("button", { name: "Save" }).click();
-      await saveResponse;
-
-      const refreshedPreview = page.waitForResponse(
-        (response) =>
-          response.url().includes("/rest/microbiology/whonet/preview?") &&
-          response.request().method() === "GET" &&
-          response.status() === 200,
-      );
-      await page
-        .getByRole("link", { name: "Return to WHONET preview" })
-        .click();
-      await refreshedPreview;
+      const returnToPreview = page.getByRole("link", {
+        name: "Return to WHONET preview",
+      });
+      await expect(returnToPreview).toBeVisible();
+      await returnToPreview.click();
       await expect(page).toHaveURL(previewUrl);
+      await expect(
+        page.getByRole("heading", { name: "Preview", exact: true }),
+      ).toBeVisible();
       await expect(
         mappingReadiness.getByRole("link", { name: "Fix specimen mapping" }),
       ).toHaveCount(0);
@@ -219,7 +307,7 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
           exact: true,
         }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await page.goBack({ waitUntil: "domcontentloaded" });
+      await page.goBack({ waitUntil: "commit" });
       await expect(page).toHaveURL(previewUrl);
       await expect(
         page.getByRole("heading", { name: "Preview", exact: true }),
@@ -235,9 +323,9 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
       });
       expect(download.suggestedFilename()).toMatch(/^WHONET_.*\.csv$/);
 
-      const csv = await readDownload(download);
+      const csv = await readWhonetDownload(download);
       const lines = csv.split(/\r?\n/).filter(Boolean);
-      const header = parseCsvLine(lines[0]);
+      const header = parseWhonetCsvLine(lines[0]);
       const accessionIndex = header.indexOf("LAB_NUMBER");
       const antibioticIndex = header.indexOf("ANTIBIOTIC");
       const organismIndex = header.indexOf("ORGANISM");
@@ -251,7 +339,7 @@ test.describe("OGC-782 M4 WHONET manual export", () => {
 
       const seededRows = lines
         .slice(1)
-        .map(parseCsvLine)
+        .map(parseWhonetCsvLine)
         .filter((row) => row[accessionIndex] === seeded.accessionNumber);
       expect(seededRows).toHaveLength(2);
       expect(

@@ -72,15 +72,16 @@ an explicit product or engineering ruling:
 
 ## Iteration Status
 
-This roadmap uses three visible iteration markers:
+This roadmap uses four simple iteration markers:
 
-- `[x]` means the repository iteration is finished.
-- `[*]` means the single iteration currently being worked.
 - `[ ]` means a future iteration that has not started.
+- `[*]` means the single iteration currently being worked.
+- `[x]` means implementation is complete and ready for user validation.
+- `[✓]` means the iteration has been validated by the user.
 
-Change a marker only when an iteration starts or finishes. There is no parallel
-status table. Merge, deployment, and human-UAT state stay in GitHub, the review
-host, and Grist respectively.
+Keep only these durable markers in the roadmap. Detailed PR and CI state stays
+in GitHub, deployment state stays on the review host, and UAT results stay in
+Grist.
 
 ### Finished Iterations
 
@@ -102,20 +103,19 @@ host, and Grist respectively.
 ### Completed Baseline
 
 - [x] **R2 baseline reconciliation (#4051)** - Establish one authoritative
-  roadmap, align the durable specifications and PR snapshot, and add the
-  approved no-growth review/release behavior to functional artifacts and live
-  UAT without changing application behavior.
+  roadmap, align the durable specifications, and add the approved no-growth
+  review/release behavior to functional artifacts and live UAT without
+  changing application behavior.
 
 This iteration is complete because:
 
 - The authority chain, repository spec, engineering plan, OpenELIS Work
-  functional intent, roadmap, and PR snapshot agree.
+  functional intent, and roadmap agree.
 - Repository tracing confirms that recording no growth is audited and
   review-ready without publishing, while supervisor release projects the final
   negative and locks the case.
 - One dedicated, reviewer-executable Grist story uses its own service-created
-  fixture and is verified in the live AMR Review overlay.
-- The reconciliation is committed and pushed with a clean worktree.
+  fixture and is available in the live AMR Review overlay.
 
 This baseline does not change application behavior, deploy, or watch CI.
 
@@ -153,20 +153,41 @@ capability is available; it does not own macro authoring or administration.
 - [x] **Supported order-save integration proof** - Add the missing direct
    integration test around the complete supported save path without SQL,
    fixed primary keys, or DAO bypass.
-- [x] **Clinical and NFR qualification evidence** - Establish statistically
-   meaningful representative-volume measurements and complete the automated
-   keyboard/screen-reader review, fixing defects exposed by that evidence.
+- [x] **Initial clinical and NFR qualification evidence** - Establish
+   statistically meaningful representative-volume measurements and complete
+   the automated keyboard/screen-reader review, fixing defects exposed by that
+   evidence.
 - [ ] **Shared offline/conflict behavior** - Adopt an application-wide offline
   pattern when its ownership is agreed; do not build a microbiology-only queue.
-- [ ] **Analyzer ingress security** - Introduce a least-privilege Bridge service
-   identity and prove legitimate delivery plus unrelated-user denial. Coordinate
-   this with the analyzer workstream rather than inventing an AMR-only role.
+- [*] **Analyzer ingress security** - Replace general authenticated-user access
+   to culture and AST analyzer-event writes with the existing machine-to-machine
+   authentication pattern if one exists. An approved Bridge identity must be
+   able to submit and audit an event; ordinary browser users must be denied;
+   missing or invalid machine credentials must fail closed; and the existing
+   stuck-event reconciliation path must continue to work. If the repository has
+   no reusable machine-identity boundary, stop with the smallest viable options
+   instead of inventing an AMR-only role.
+- [ ] **Configurable worklist refresh** - Preserve the current thirty-second
+   default while allowing each deployment to configure a value from ten to one
+   hundred twenty seconds. Refresh must preserve canonical URL state, focus,
+   scroll position, and current row context, and polling must pause while the
+   application knows it is offline.
+- [ ] **Shared-specimen loss behavior** - Obtain the product ruling for a lost
+   physical specimen when sibling workflows share it, including whether a
+   released or amended sibling blocks the action. Then align service behavior,
+   case guidance, focused tests, and UAT; do not silently change the current
+   behavior before that ruling.
 - [ ] **Reagent policy dependency** - Enforce required, optional, and substitute
    reagent behavior only after Test Catalog provides an authoritative shared
    policy model; do not infer it from legacy role names.
 - [x] **Reviewed AST worklist behavior** - Remove reviewed attempts from the
   default action queue, retain them in a bookmarkable Reviewed view with a
   read-only View action, and keep reasoned repeat/retest setup inside the case.
+
+After the active analyzer-ingress security slice, the next unblocked product
+iteration is Culture purpose in Phase 1B. Human acceptance and the shared
+offline and reagent-policy dependencies remain independent work and do not
+reorder that product sequence.
 
 ### Phase 1B Clinical Depth
 
@@ -177,9 +198,16 @@ capability is available; it does not own macro authoring or administration.
   events path.
 - [x] Complete WHONET specimen-code validation, export projection, and exact
   repair navigation through the owning sample-type administration workflow.
-- [*] Complete M-09 export population filters for specimen, organism, patient
-  origin, significance, and screening/surveillance status, with server-side
-  selection and canonical URL state.
+- [x] Complete M-09 export population filters already supported by authoritative
+  case data: specimen, organism, patient origin, and significance. Apply the
+  same selection to server-side preview and generation, preserve canonical URL
+  state, place the single export navigation entry under Reports, and compact the
+  touched page toward the M-09 operational layout.
+- [ ] Capture Culture purpose on microbiology orders as Clinical
+  diagnosis/treatment or Active screening/carriage, show it with the case, audit
+  pre-release corrections, and complete the M-09 screening filter. New orders
+  default visibly to clinical purpose; historical missing values remain
+  Unspecified; screening and unspecified records require explicit inclusion.
 - [ ] Complete M-09 reporting-period presets and enable the AST-worklist Export
   to WHONET deep link so its active scope pre-fills the generator and can be
   cleared.
@@ -204,8 +232,14 @@ capability is available; it does not own macro authoring or administration.
 
 - [ ] Operational mycobacteriology/TB workflow (M-14).
 - [ ] Antibiogram reporting (M-13).
-- [ ] GLASS reporting through consolidated FHIR after routine bacteriology,
-   WHONET, and TB outputs are stable.
+- [ ] Publish finalized AMR and TB laboratory results through the shared FHIR
+   pathway after routine bacteriology, WHONET, and TB outputs are stable.
+- [ ] Produce validated, reproducible GLASS submission files and run history for
+   an authorized person to review and upload; do not imply that OpenELIS submits
+   directly to WHO.
+- [ ] Supply the AMR indicator and data-quality inputs required by the shared
+   analytics platform; do not create a separate OpenELIS dashboard unless a
+   later product ruling requires one.
 - [ ] Catalog subscription or cross-site distribution capabilities as separate
    platform work, consumed by microbiology rather than owned by it.
 
