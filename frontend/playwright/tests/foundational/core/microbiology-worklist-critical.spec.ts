@@ -1,11 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
-import type { Page } from "@playwright/test";
 import { Sidenav } from "../../../fixtures/sidenav";
 import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
-
-const accordionButton = (page: Page, name: string) =>
-  page.locator(".cds--accordion__heading").filter({ hasText: name });
 
 test.describe("microbiology worklist and critical communication", () => {
   test("worklist contains its wide table on a mobile viewport", async ({
@@ -102,17 +98,19 @@ test.describe("microbiology worklist and critical communication", () => {
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
 
-    await accordionButton(page, "Critical communication").click();
-    await expect(page).toHaveURL(
-      `/Microbiology/cases/${seeded.caseId}?section=critical-communication`,
-    );
-    await page
+    const criticalCommunication = page.getByRole("region", {
+      name: "Critical communication",
+    });
+    await expect(criticalCommunication).toBeVisible();
+    await criticalCommunication
       .getByLabel("Recipient", { exact: true })
       .fill("Provider on call");
-    await page
+    await criticalCommunication
       .getByLabel("Message")
       .fill("Positive blood culture called to provider");
-    await page.getByRole("button", { name: "Log communication" }).click();
+    await criticalCommunication
+      .getByRole("button", { name: "Log communication" })
+      .click();
     await expect(
       page.getByTestId("microbiology-critical-status"),
     ).toContainText("Open", { timeout: LONG_TIMEOUT });
@@ -132,16 +130,11 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(
       page.getByRole("heading", { name: "Microbiology case" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await accordionButton(page, "Critical communication").click();
-    await expect(page).toHaveURL(
-      `${scopedCaseUrl}&section=critical-communication`,
-    );
     await page.getByRole("button", { name: "Acknowledge" }).click();
     await expect(
       page.getByTestId("microbiology-critical-status"),
     ).toContainText("Acknowledged", { timeout: LONG_TIMEOUT });
-    await accordionButton(page, "Isolates").click();
-    await expect(page).toHaveURL(`${scopedCaseUrl}&section=isolates`);
+    await expect(page.getByRole("region", { name: "Isolates" })).toBeVisible();
     await page
       .getByRole("navigation", { name: "Breadcrumb" })
       .getByRole("link", { name: "Microbiology worklist" })
