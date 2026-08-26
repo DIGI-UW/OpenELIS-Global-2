@@ -8233,6 +8233,7 @@
   "microbiology.enum.SPECIMEN_LOST": "Specimen Lost",
   "microbiology.enum.STAGE_CHANGED": "Stage Changed",
   "microbiology.enum.SUBCULTURE_RECORDED": "Subculture Recorded",
+  "microbiology.enum.UNASSIGNED": "Unassigned",
   "microbiology.enum.UNKNOWN_ERROR": "Unknown Error",
   "microbiology.enum.VITEK_2": "VITEK 2",
   "microbiology.enum.WORKFLOW_CHANGED": "Workflow Changed",
