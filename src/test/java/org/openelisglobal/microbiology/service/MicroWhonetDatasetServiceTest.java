@@ -79,6 +79,10 @@ public class MicroWhonetDatasetServiceTest {
         });
         service = new MicroWhonetDatasetServiceImpl(caseDAO, caseOrderDetailDAO, isolateDAO, astRunDAO, astReadingDAO,
                 organismDAO, patientOriginDAO, antibioticDAO, worklistContextDAO);
+        when(caseOrderDetailDAO.getByCaseIds(any())).thenAnswer(invocation -> {
+            List<String> caseIds = invocation.getArgument(0);
+            return caseIds.stream().map(caseId -> orderDetail(caseId, null, "CLINICAL_DIAGNOSTIC")).toList();
+        });
     }
 
     @Test
@@ -359,6 +363,83 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
+    public void previewExcludesScreeningAndUnspecifiedPurposesUntilExplicitlyIncluded() {
+        MicroCase clinicalCase = finalizedCase("case-clinical", "item-clinical", "2026-07-12 10:00:00");
+        MicroCase screeningCase = finalizedCase("case-screening", "item-screening", "2026-07-13 10:00:00");
+        MicroCase unspecifiedCase = finalizedCase("case-unspecified", "item-unspecified", "2026-07-14 10:00:00");
+        List<MicroCase> cases = List.of(clinicalCase, screeningCase, unspecifiedCase);
+        List<MicroIsolate> isolates = List.of(isolate("isolate-clinical", "case-clinical", "organism-1"),
+                isolate("isolate-screening", "case-screening", "organism-1"),
+                isolate("isolate-unspecified", "case-unspecified", "organism-1"));
+
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(cases);
+        when(caseOrderDetailDAO.getByCaseIds(List.of("case-clinical", "case-screening", "case-unspecified")))
+                .thenReturn(List.of(orderDetail("case-clinical", "INPATIENT", "CLINICAL_DIAGNOSTIC"),
+                        orderDetail("case-screening", "INPATIENT", "ACTIVE_SCREENING"),
+                        orderDetail("case-unspecified", "INPATIENT", null)));
+        when(isolateDAO.getByCaseIds(List.of("case-clinical", "case-screening", "case-unspecified")))
+                .thenReturn(isolates);
+        when(astRunDAO.getByIsolateIds(List.of("isolate-clinical")))
+                .thenReturn(List.of(reviewedRun("run-clinical", "isolate-clinical")));
+        when(astReadingDAO.getByRunIds(List.of("run-clinical")))
+                .thenReturn(List.of(reading("reading-clinical", "run-clinical", "antibiotic-1", "S")));
+        when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
+        when(antibioticDAO.get("antibiotic-1"))
+                .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
+        stubPatientContext("case-clinical", "item-clinical", "patient-clinical", "LAB-CLINICAL");
+        stubPatientContext("case-screening", "item-screening", "patient-screening", "LAB-SCREENING");
+        stubPatientContext("case-unspecified", "item-unspecified", "patient-unspecified", "LAB-UNSPECIFIED");
+
+        MicroWhonetDataset dataset = service.compile(query("NONE"));
+
+        assertEquals(1, dataset.getPreview().clinicalPurposeCases);
+        assertEquals(1, dataset.getPreview().screeningPurposeCases);
+        assertEquals(1, dataset.getPreview().unspecifiedPurposeCases);
+        assertEquals(1, dataset.getPreview().afterCulturePurpose);
+        assertEquals(1, dataset.getPreview().exportedRows);
+        assertEquals("case-clinical", dataset.getPreview().rows.get(0).caseId);
+        assertFalse(dataset.getPopulationSelection().isIncludeScreening());
+        assertFalse(dataset.getPopulationSelection().isIncludeUnspecified());
+    }
+
+    @Test
+    public void previewIncludesScreeningAndUnspecifiedPurposesOnlyWhenEachFlagIsTrue() {
+        MicroCase screeningCase = finalizedCase("case-screening", "item-screening", "2026-07-13 10:00:00");
+        MicroCase unspecifiedCase = finalizedCase("case-unspecified", "item-unspecified", "2026-07-14 10:00:00");
+        when(caseDAO.getFinalizedBacteriologyByClosedAtRange(any(Timestamp.class), any(Timestamp.class)))
+                .thenReturn(List.of(screeningCase, unspecifiedCase));
+        when(caseOrderDetailDAO.getByCaseIds(List.of("case-screening", "case-unspecified")))
+                .thenReturn(List.of(orderDetail("case-screening", "INPATIENT", "ACTIVE_SCREENING"),
+                        orderDetail("case-unspecified", "INPATIENT", null)));
+        MicroIsolate screening = isolate("isolate-screening", "case-screening", "organism-1");
+        MicroIsolate unspecified = isolate("isolate-unspecified", "case-unspecified", "organism-1");
+        when(isolateDAO.getByCaseIds(List.of("case-screening", "case-unspecified")))
+                .thenReturn(List.of(screening, unspecified));
+        when(astRunDAO.getByIsolateIds(List.of("isolate-screening", "isolate-unspecified")))
+                .thenReturn(List.of(reviewedRun("run-screening", "isolate-screening"),
+                        reviewedRun("run-unspecified", "isolate-unspecified")));
+        when(astReadingDAO.getByRunIds(List.of("run-screening", "run-unspecified")))
+                .thenReturn(List.of(reading("reading-screening", "run-screening", "antibiotic-1", "S"),
+                        reading("reading-unspecified", "run-unspecified", "antibiotic-1", "R")));
+        when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
+        when(antibioticDAO.get("antibiotic-1"))
+                .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
+        stubPatientContext("case-screening", "item-screening", "patient-screening", "LAB-SCREENING");
+        stubPatientContext("case-unspecified", "item-unspecified", "patient-unspecified", "LAB-UNSPECIFIED");
+        MicroWhonetExportQueryForm query = query("NONE");
+        query.includeScreening = true;
+        query.includeUnspecified = true;
+
+        MicroWhonetDataset dataset = service.compile(query);
+
+        assertEquals(2, dataset.getPreview().afterCulturePurpose);
+        assertEquals(2, dataset.getPreview().exportedRows);
+        assertTrue(dataset.getPopulationSelection().isIncludeScreening());
+        assertTrue(dataset.getPopulationSelection().isIncludeUnspecified());
+    }
+
+    @Test
     public void filterOptionsContainOnlyValuesPresentInTheReportingPeriod() {
         MicroCase bloodCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroCase urineCase = finalizedCase("case-2", "item-2", "2026-07-13 10:00:00");
@@ -415,7 +496,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(caseOrderDetailDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(unidentified));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetFilterOptionsForm options = service.getFilterOptions(query("NONE"));
 
@@ -438,7 +519,7 @@ public class MicroWhonetDatasetServiceTest {
         when(organismDAO.getByIds(List.of("organism-1"))).thenReturn(List.of(organism("organism-1", "eco", "E. coli")));
         when(patientOriginDAO.getByCodes(List.of("LEGACY_ORIGIN")))
                 .thenReturn(List.of(patientOrigin("LEGACY_ORIGIN", null)));
-        stubPatientContext("item-1", "sample-1", "patient-1", "LAB-001");
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
 
         MicroWhonetFilterOptionsForm options = service.getFilterOptions(query("NONE"));
 
@@ -636,9 +717,14 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     private MicroCaseOrderDetail orderDetail(String caseId, String patientOrigin) {
+        return orderDetail(caseId, patientOrigin, "CLINICAL_DIAGNOSTIC");
+    }
+
+    private MicroCaseOrderDetail orderDetail(String caseId, String patientOrigin, String culturePurpose) {
         MicroCaseOrderDetail detail = new MicroCaseOrderDetail();
         detail.setCaseId(caseId);
         detail.setPatientOrigin(patientOrigin);
+        detail.setCulturePurpose(culturePurpose);
         return detail;
     }
 

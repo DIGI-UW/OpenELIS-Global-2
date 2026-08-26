@@ -944,6 +944,7 @@ const MicrobiologyCaseView = ({
                     caseId={caseDetail.id}
                     orderDetail={caseDetail.orderDetail}
                     service={service}
+                    isReadOnly={finalReleased}
                     onSaved={() => loadCase({ showLoading: false })}
                   />
                 </CaseSectionFocusTarget>

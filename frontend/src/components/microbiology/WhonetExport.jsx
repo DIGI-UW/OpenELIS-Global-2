@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
+  Checkbox,
   Column,
   DataTable,
   DatePicker,
@@ -273,6 +274,26 @@ const WhonetExport = ({ service = defaultService, now }) => {
           "microbiology.whonet.count.origin",
         ],
         [
+          "clinical-purpose",
+          preview.clinicalPurposeCases,
+          "microbiology.whonet.count.clinicalPurpose",
+        ],
+        [
+          "screening-purpose",
+          preview.screeningPurposeCases,
+          "microbiology.whonet.count.screeningPurpose",
+        ],
+        [
+          "unspecified-purpose",
+          preview.unspecifiedPurposeCases,
+          "microbiology.whonet.count.unspecifiedPurpose",
+        ],
+        [
+          "after-purpose",
+          preview.afterCulturePurpose,
+          "microbiology.whonet.count.purposeIncluded",
+        ],
+        [
           "after-inclusion",
           preview.afterSignificance,
           "microbiology.whonet.count.included",
@@ -516,6 +537,44 @@ const WhonetExport = ({ service = defaultService, now }) => {
                 );
               })()}
             </div>
+            <fieldset className="whonet-export__purpose-filters">
+              <legend className="cds--label">
+                {intl.formatMessage({
+                  id: "microbiology.whonet.culturePurpose.title",
+                })}
+              </legend>
+              <p>
+                {intl.formatMessage({
+                  id: "microbiology.whonet.culturePurpose.description",
+                })}
+              </p>
+              <Checkbox
+                id="whonet-include-screening"
+                aria-label={intl.formatMessage({
+                  id: "microbiology.whonet.culturePurpose.includeScreening",
+                })}
+                labelText={intl.formatMessage({
+                  id: "microbiology.whonet.culturePurpose.includeScreening",
+                })}
+                checked={state.includeScreening}
+                onChange={(_, { checked }) =>
+                  updateConfiguration({ includeScreening: checked })
+                }
+              />
+              <Checkbox
+                id="whonet-include-unspecified"
+                aria-label={intl.formatMessage({
+                  id: "microbiology.whonet.culturePurpose.includeUnspecified",
+                })}
+                labelText={intl.formatMessage({
+                  id: "microbiology.whonet.culturePurpose.includeUnspecified",
+                })}
+                checked={state.includeUnspecified}
+                onChange={(_, { checked }) =>
+                  updateConfiguration({ includeUnspecified: checked })
+                }
+              />
+            </fieldset>
             <div className="whonet-export__configure-actions">
               <Button
                 renderIcon={View}

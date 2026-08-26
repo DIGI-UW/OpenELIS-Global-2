@@ -14,7 +14,6 @@ export const formatMicrobiologyEnum = (value, intl) => {
     existingMessageIds[value] || `microbiology.enum.${String(value)}`;
   return intl.formatMessage({ id: messageId, defaultMessage: String(value) });
 };
-
 export const formatMicrobiologyActivityNote = (activity, intl) => {
   if (
     activity?.activityType === "CULTURE_PROTOCOL_CHANGED" &&
@@ -40,3 +39,13 @@ export const formatMicrobiologyActivityNote = (activity, intl) => {
   }
   return activity?.note || "";
 };
+
+export const formatCulturePurpose = (intl, value) =>
+  intl.formatMessage({
+    id:
+      value === "CLINICAL_DIAGNOSTIC"
+        ? "microbiology.culturePurpose.clinical"
+        : value === "ACTIVE_SCREENING"
+          ? "microbiology.culturePurpose.screening"
+          : "microbiology.culturePurpose.unspecified",
+  });

@@ -6,6 +6,8 @@ type WhonetExportFilters = {
   organism?: string[];
   origin?: string[];
   significance?: string[];
+  includeScreening?: boolean;
+  includeUnspecified?: boolean;
 };
 
 export const buildWhonetExportQuery = (
@@ -32,6 +34,8 @@ export const buildWhonetExportQuery = (
   [...(filters.significance || ["CLINICALLY_SIGNIFICANT"])]
     .sort()
     .forEach((id) => params.append("significance", id));
+  params.set("includeScreening", String(Boolean(filters.includeScreening)));
+  params.set("includeUnspecified", String(Boolean(filters.includeUnspecified)));
 
   const canonical = new URLSearchParams();
   ["from", "to"].forEach((key) => canonical.set(key, params.get(key) || ""));
@@ -45,6 +49,9 @@ export const buildWhonetExportQuery = (
   params
     .getAll("significance")
     .forEach((value) => canonical.append("significance", value));
+  ["includeScreening", "includeUnspecified"].forEach((key) =>
+    canonical.set(key, params.get(key) || "false"),
+  );
   ["dedup", "step", "page", "pageSize"].forEach((key) =>
     canonical.set(key, params.get(key) || ""),
   );

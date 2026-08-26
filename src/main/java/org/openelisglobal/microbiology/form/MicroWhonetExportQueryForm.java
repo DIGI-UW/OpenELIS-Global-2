@@ -16,6 +16,8 @@ public class MicroWhonetExportQueryForm {
     public List<String> origin = new ArrayList<>();
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     public List<String> significance = new ArrayList<>(List.of("CLINICALLY_SIGNIFICANT"));
+    public boolean includeScreening;
+    public boolean includeUnspecified;
     public String dedup = "FIRST_ISOLATE_7_DAY";
     public int page = 1;
     public int pageSize = 20;
@@ -66,6 +68,22 @@ public class MicroWhonetExportQueryForm {
 
     public void setSignificance(List<String> significance) {
         this.significance = significance;
+    }
+
+    public boolean isIncludeScreening() {
+        return includeScreening;
+    }
+
+    public void setIncludeScreening(boolean includeScreening) {
+        this.includeScreening = includeScreening;
+    }
+
+    public boolean isIncludeUnspecified() {
+        return includeUnspecified;
+    }
+
+    public void setIncludeUnspecified(boolean includeUnspecified) {
+        this.includeUnspecified = includeUnspecified;
     }
 
     public String getDedup() {

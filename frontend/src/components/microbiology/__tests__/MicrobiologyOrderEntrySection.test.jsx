@@ -34,6 +34,7 @@ const renderSection = (samples, orderFormValues, setOrderFormValues) =>
 
 const baseForm = {
   microbiologyOrderDetail: {
+    culturePurpose: "CLINICAL_DIAGNOSTIC",
     patientOrigin: "",
     numberOfSets: "",
     clinicalHistory: "",
@@ -140,6 +141,14 @@ describe("MicrobiologyOrderEntrySection", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText("Date of admission")).toBeEnabled();
     expect(
+      screen.getByRole("radio", {
+        name: "Clinical diagnosis or treatment",
+      }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("radio", { name: "Active screening or carriage" }),
+    ).not.toBeChecked();
+    expect(
       screen.getByRole("spinbutton", { name: "Number of sets" }),
     ).toHaveValue(2);
     expect(
@@ -166,12 +175,23 @@ describe("MicrobiologyOrderEntrySection", () => {
         "Patient has recent antibiotic exposure (within 2 weeks)",
       ),
     );
-
-    const update = setOrderFormValues.mock.calls.at(-1)[0];
-    expect(update(baseForm)).toEqual(
+    const exposureUpdate = setOrderFormValues.mock.calls.at(-1)[0];
+    expect(exposureUpdate(baseForm)).toEqual(
       expect.objectContaining({
         microbiologyOrderDetail: expect.objectContaining({
           antibioticExposure: true,
+        }),
+      }),
+    );
+    await user.click(
+      screen.getByRole("radio", { name: "Active screening or carriage" }),
+    );
+
+    const purposeUpdate = setOrderFormValues.mock.calls.at(-1)[0];
+    expect(purposeUpdate(baseForm)).toEqual(
+      expect.objectContaining({
+        microbiologyOrderDetail: expect.objectContaining({
+          culturePurpose: "ACTIVE_SCREENING",
         }),
       }),
     );

@@ -23,15 +23,28 @@ public class MicroWhonetExportSelection implements Serializable {
     @JsonProperty("significance")
     private List<String> significance = new ArrayList<>();
 
+    @JsonProperty("includeScreening")
+    private boolean includeScreening;
+
+    @JsonProperty("includeUnspecified")
+    private boolean includeUnspecified;
+
     public MicroWhonetExportSelection() {
     }
 
     public MicroWhonetExportSelection(List<String> specimen, List<String> organism, List<String> origin,
             List<String> significance) {
+        this(specimen, organism, origin, significance, false, false);
+    }
+
+    public MicroWhonetExportSelection(List<String> specimen, List<String> organism, List<String> origin,
+            List<String> significance, boolean includeScreening, boolean includeUnspecified) {
         setSpecimen(specimen);
         setOrganism(organism);
         setOrigin(origin);
         setSignificance(significance);
+        this.includeScreening = includeScreening;
+        this.includeUnspecified = includeUnspecified;
     }
 
     public List<String> getSpecimen() {
@@ -64,6 +77,22 @@ public class MicroWhonetExportSelection implements Serializable {
 
     public void setSignificance(List<String> significance) {
         this.significance = copy(significance);
+    }
+
+    public boolean isIncludeScreening() {
+        return includeScreening;
+    }
+
+    public void setIncludeScreening(boolean includeScreening) {
+        this.includeScreening = includeScreening;
+    }
+
+    public boolean isIncludeUnspecified() {
+        return includeUnspecified;
+    }
+
+    public void setIncludeUnspecified(boolean includeUnspecified) {
+        this.includeUnspecified = includeUnspecified;
     }
 
     private List<String> copy(List<String> values) {

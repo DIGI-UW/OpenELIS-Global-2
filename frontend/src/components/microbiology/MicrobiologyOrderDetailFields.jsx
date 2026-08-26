@@ -3,6 +3,8 @@ import {
   Checkbox,
   InlineNotification,
   NumberInput,
+  RadioButton,
+  RadioButtonGroup,
   Select,
   SelectItem,
   Tag,
@@ -20,6 +22,7 @@ import {
 import "./MicrobiologyOrderDetailFields.scss";
 
 export const emptyMicrobiologyOrderDetail = {
+  culturePurpose: "",
   cultureMethodId: "",
   patientOrigin: "",
   admissionDate: "",
@@ -114,6 +117,41 @@ const MicrobiologyOrderDetailFields = ({
           )}
         </div>
       )}
+      <div className="microbiology-order-detail-fields__wide">
+        <RadioButtonGroup
+          legendText={intl.formatMessage({
+            id: "microbiology.culturePurpose.label",
+          })}
+          name={`${idPrefix}-culture-purpose`}
+          valueSelected={fields.culturePurpose || ""}
+          onChange={(value) => onChange("culturePurpose", value)}
+          orientation="vertical"
+        >
+          <RadioButton
+            id={`${idPrefix}-culture-purpose-clinical`}
+            labelText={intl.formatMessage({
+              id: "microbiology.culturePurpose.clinical",
+            })}
+            value="CLINICAL_DIAGNOSTIC"
+            disabled={isReadOnly}
+          />
+          <RadioButton
+            id={`${idPrefix}-culture-purpose-screening`}
+            labelText={intl.formatMessage({
+              id: "microbiology.culturePurpose.screening",
+            })}
+            value="ACTIVE_SCREENING"
+            disabled={isReadOnly}
+          />
+        </RadioButtonGroup>
+        {!fields.culturePurpose && (
+          <Tag type="gray" size="sm">
+            {intl.formatMessage({
+              id: "microbiology.culturePurpose.unspecified",
+            })}
+          </Tag>
+        )}
+      </div>
       <Select
         id={`${idPrefix}-patient-origin`}
         labelText={intl.formatMessage({

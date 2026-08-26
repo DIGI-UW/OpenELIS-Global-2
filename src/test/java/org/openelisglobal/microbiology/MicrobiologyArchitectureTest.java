@@ -118,13 +118,15 @@ public class MicrobiologyArchitectureTest {
     public void fixtureGuardOnlyExemptsMigrationVerificationTests() {
         assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyM10LiquibaseRollbackTest.java")));
         assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyWhonetExportSelectionLiquibaseTest.java")));
+        assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyCulturePurposeLiquibaseTest.java")));
         assertFalse(isMigrationVerificationTest(Path.of("MicrobiologyLiquibaseFixtureTest.java")));
     }
 
     private boolean isMigrationVerificationTest(Path path) {
         String fileName = path.getFileName().toString();
         return fileName.endsWith("LiquibaseRollbackTest.java")
-                || fileName.equals("MicrobiologyWhonetExportSelectionLiquibaseTest.java");
+                || fileName.equals("MicrobiologyWhonetExportSelectionLiquibaseTest.java")
+                || fileName.equals("MicrobiologyCulturePurposeLiquibaseTest.java");
     }
 
     private void assertNoForbiddenFixtureAccess(Path file, List<String> forbiddenFragments) throws IOException {

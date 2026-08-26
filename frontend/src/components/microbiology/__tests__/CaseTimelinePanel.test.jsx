@@ -133,4 +133,33 @@ describe("CaseTimelinePanel", () => {
     expect(showRecent).toHaveFocus();
     expect(screen.queryByText(": Timeline event 1")).not.toBeInTheDocument();
   });
+
+  it("renders an audited culture-purpose correction from structured history", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseTimelinePanel
+          timelineSectionId="timeline"
+          activities={[
+            {
+              id: "purpose-1",
+              activityType: "CULTURE_PURPOSE_CHANGED",
+              note: "Culture purpose changed",
+              structuredData: JSON.stringify({
+                fromPurpose: "CLINICAL_DIAGNOSTIC",
+                toPurpose: "ACTIVE_SCREENING",
+              }),
+            },
+          ]}
+          onAddNote={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(screen.getByText("Culture purpose changed")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Clinical diagnosis or treatment to Active screening or carriage",
+      ),
+    ).toBeInTheDocument();
+  });
 });

@@ -1,10 +1,19 @@
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 
 export const buildLoadedOrderData = (response, prior = {}) => {
-  const microbiologyOrderDetail = {
-    ...SampleOrderFormValues.microbiologyOrderDetail,
+  const loadedMicrobiologyOrderDetail = {
     ...(response.orderData?.microbiologyOrderDetail || {}),
     ...(response.microbiologyOrderDetail || {}),
+  };
+  const microbiologyOrderDetail = {
+    ...SampleOrderFormValues.microbiologyOrderDetail,
+    ...loadedMicrobiologyOrderDetail,
+    culturePurpose: Object.prototype.hasOwnProperty.call(
+      loadedMicrobiologyOrderDetail,
+      "culturePurpose",
+    )
+      ? loadedMicrobiologyOrderDetail.culturePurpose || ""
+      : SampleOrderFormValues.microbiologyOrderDetail.culturePurpose,
   };
   delete microbiologyOrderDetail.criticalNotificationPreference;
 

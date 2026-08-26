@@ -34,6 +34,9 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
     @Column(name = "patient_origin", length = 255)
     private String patientOrigin;
 
+    @Column(name = "culture_purpose", length = 32)
+    private String culturePurpose;
+
     @Column(name = "admission_date")
     private LocalDate admissionDate;
 
@@ -101,6 +104,14 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
 
     public void setPatientOrigin(String patientOrigin) {
         this.patientOrigin = patientOrigin;
+    }
+
+    public String getCulturePurpose() {
+        return culturePurpose;
+    }
+
+    public void setCulturePurpose(String culturePurpose) {
+        this.culturePurpose = culturePurpose;
     }
 
     public LocalDate getAdmissionDate() {
