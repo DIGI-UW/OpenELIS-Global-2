@@ -19,12 +19,6 @@ import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 
-let breadcrumbs = [
-  { label: "home.label", link: "/" },
-  { label: "banner.menu.results", link: "" },
-  { label: "banner.menu.results.analyzer", link: "/AnalyzerResults" },
-];
-
 /**
  * The page title for an analyzer worklist. The URL carries the analyzer's id;
  * the name is resolved server-side, so until it arrives (or when the id matches
@@ -144,20 +138,26 @@ const Index = () => {
     return <Redirect to="/analyzers" />;
   }
 
+  const pageTitle = analyzerPageTitle(
+    intl.formatMessage({ id: "banner.menu.results.analyzer" }),
+    analyzerName,
+  );
+  const breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "analyzer.navigation.analyzers", link: "/analyzers" },
+    {
+      label: analyzerName || "banner.menu.results.analyzer",
+      isCurrentPage: true,
+    },
+  ];
+
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
-          <Section>
-            <Section>
-              <Heading>
-                {analyzerPageTitle(
-                  intl.formatMessage({ id: "banner.menu.results.analyzer" }),
-                  analyzerName,
-                )}
-              </Heading>
-            </Section>
+          <Section level={1}>
+            <Heading>{pageTitle}</Heading>
           </Section>
         </Column>
       </Grid>

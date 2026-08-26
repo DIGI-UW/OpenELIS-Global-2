@@ -29,9 +29,9 @@ const runPolicy = (command) =>
   }).trim();
 
 describe("analyzer harness Playwright project policy", () => {
-  test("uses foundational analyzer flows for non-video parity", () => {
+  test("uses visible checkpoint stories for non-video parity", () => {
     expect(runPolicy('resolve_harness_playwright_project "parity" ""')).toBe(
-      "harness-foundational",
+      "harness-demo",
     );
   });
 
@@ -41,18 +41,18 @@ describe("analyzer harness Playwright project policy", () => {
     );
   });
 
-  test("accepts the explicit foundational project", () => {
-    expect(
-      runPolicy('validate_harness_playwright_project "harness-foundational"'),
-    ).toBe("harness-foundational");
+  test("accepts the explicit assembled MVP project", () => {
+    expect(runPolicy('validate_harness_playwright_project "harness-mvp"')).toBe(
+      "harness-mvp",
+    );
   });
 
-  test("foundational parity has analyzer scenarios", () => {
+  test("assembled MVP mode requires the final UI-only story", () => {
     const result = spawnSync(
       "bash",
       [
         "-c",
-        'source "$1"; assert_harness_project_has_specs "$2" "harness-foundational"',
+        'source "$1"; assert_harness_project_has_specs "$2" "harness-mvp"',
         "test",
         policy,
         repoRoot,
@@ -109,7 +109,7 @@ describe("analyzer harness Playwright project policy", () => {
     expect(result.status).toBe(0);
   });
 
-  test("video mode fails closed until the final MVP story exists", () => {
+  test("video mode requires the same final MVP story", () => {
     const result = spawnSync(
       "bash",
       [
@@ -122,8 +122,7 @@ describe("analyzer harness Playwright project policy", () => {
       { cwd: repoRoot, encoding: "utf8" },
     );
 
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("no final analyzer MVP demo spec");
+    expect(result.status).toBe(0);
   });
 
   test("local build includes every branch-owned harness service", () => {

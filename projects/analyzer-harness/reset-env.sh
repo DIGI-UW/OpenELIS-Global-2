@@ -7,6 +7,7 @@
 #   --build        Build WAR + harness Docker images first (start from scratch)
 #   --full-reset   Remove DB (and other) volumes before starting (wipe DB)
 #   --skip-fixtures   Skip loading test fixtures after startup
+#   --mvp-story     Seed the real analyzer traffic used by the OGC-1054 story
 #   --skip-letsencrypt Do not run Let's Encrypt setup even when LETSENCRYPT_* env is set
 #   --ci-parity    Bring up the CI-parity stack (build.docker-compose.yml +
 #                  ci.analyzer-harness.yml) instead of the local dev stack.
@@ -55,6 +56,7 @@ DO_BUILD=false
 USE_LETSENCRYPT=false
 SKIP_LETSENCRYPT=false
 CI_PARITY=false
+MVP_STORY=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -72,6 +74,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-fixtures)
             SKIP_FIXTURES=true
+            shift
+            ;;
+        --mvp-story)
+            MVP_STORY=true
             shift
             ;;
         --skip-letsencrypt)
@@ -124,6 +130,8 @@ cd "$HARNESS_DIR"
 if [ "$FULL_RESET" = true ]; then
     echo -e "  ${YELLOW}→ Full reset: removing volumes${NC}"
     docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" down --remove-orphans -v 2>/dev/null || true
+    mkdir -p "$HARNESS_DIR/volume/analyzer-imports"
+    find "$HARNESS_DIR/volume/analyzer-imports" -mindepth 1 -delete
 else
     docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" down --remove-orphans 2>/dev/null || true
 fi
@@ -206,6 +214,10 @@ else
     set -a && [ -f .env ] && . ./.env && set +a
     BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
     echo -e "  ${GREEN}✓ Analyzers seeded${NC}"
+    if [ "$MVP_STORY" = true ]; then
+        BASE_URL=https://localhost bash projects/analyzer-harness/seed-mvp-traffic.sh
+        echo -e "  ${GREEN}✓ OGC-1054 MVP traffic seeded${NC}"
+    fi
     echo -e "  ${GREEN}✓ Fixtures loaded${NC}"
 fi
 

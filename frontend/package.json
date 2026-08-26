@@ -66,7 +66,7 @@
     "pw:guard": "node scripts/pw-bucket-guard.mjs && node scripts/pw-harness-demo-dependency-guard.mjs",
     "pw:test:harness": "playwright test --project=harness-demo --workers=1",
     "pw:test:core-foundational": "playwright test --project=core-app",
-    "pw:test:harness-foundational": "playwright test --project=harness-foundational --workers=1",
+    "pw:test:harness-mvp": "cd .. && ./projects/analyzer-harness/ci-parity-test.sh --project harness-mvp",
     "pw:test:harness-manual-only": "playwright test --project=harness-manual-only --workers=1",
     "pw:test:core-demo": "playwright test --project=core-demo",
     "pw:test:harness-demo": "playwright test --project=harness-demo --workers=1",

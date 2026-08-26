@@ -14,6 +14,10 @@ INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_
 VALUES
   (1050, 'DEV01261000000000001', '660e8400-e29b-41d4-a716-446655440050', 'H', 1,
    CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE),
+  (1063, 'DEV01261000000000002', '660e8400-e29b-41d4-a716-446655440063', 'H', 1,
+   CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE),
+  (1064, 'DEV01261000000000003', '660e8400-e29b-41d4-a716-446655440064', 'H', 1,
+   CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE),
   (1051, 'DEV01262000000000001', '660e8400-e29b-41d4-a716-446655440051', 'H', 1,
    CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE),
   (1052, 'DEV01262000000000002', '660e8400-e29b-41d4-a716-446655440052', 'H', 1,
@@ -47,6 +51,10 @@ INSERT INTO sample_item (id, samp_id, sort_order, external_id, typeosamp_id, col
 VALUES
   (10600, 1050, 1, 'GX-TUBE-001', 1, CURRENT_TIMESTAMP, 'Harness-GX', 5.0, 1, FALSE, FALSE,
    CURRENT_TIMESTAMP),
+  (10613, 1063, 1, 'GX-TUBE-002', 1, CURRENT_TIMESTAMP, 'Harness-GX', 5.0, 1, FALSE, FALSE,
+   CURRENT_TIMESTAMP),
+  (10614, 1064, 1, 'GX-TUBE-003', 1, CURRENT_TIMESTAMP, 'Harness-GX', 5.0, 1, FALSE, FALSE,
+   CURRENT_TIMESTAMP),
   (10601, 1051, 1, 'QS7-TUBE-001', 1, CURRENT_TIMESTAMP, 'Harness-QS7', 5.0, 1, FALSE, FALSE,
    CURRENT_TIMESTAMP),
   (10602, 1052, 1, 'QS7-TUBE-002', 1, CURRENT_TIMESTAMP, 'Harness-QS7', 5.0, 1, FALSE, FALSE,
@@ -79,6 +87,8 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO sample_human (id, samp_id, patient_id, lastupdated)
 VALUES
   (1050, 1050, 1000, CURRENT_TIMESTAMP),
+  (1063, 1063, 1000, CURRENT_TIMESTAMP),
+  (1064, 1064, 1000, CURRENT_TIMESTAMP),
   (1051, 1051, 1000, CURRENT_TIMESTAMP),
   (1052, 1052, 1000, CURRENT_TIMESTAMP),
   (1053, 1053, 1000, CURRENT_TIMESTAMP),
@@ -103,6 +113,7 @@ DECLARE
   test_sect_id   NUMERIC;
   test_mtb_id    NUMERIC;
   test_rif_id    NUMERIC;
+  test_hiv_id    NUMERIC;
   test_covid_id  NUMERIC;
 BEGIN
   SELECT id
@@ -120,6 +131,7 @@ BEGIN
 
   SELECT id INTO test_mtb_id FROM test WHERE loinc = '85362-2' AND is_active = 'Y' ORDER BY id LIMIT 1;
   SELECT id INTO test_rif_id FROM test WHERE loinc = '46244-0' AND is_active = 'Y' ORDER BY id LIMIT 1;
+  SELECT id INTO test_hiv_id FROM test WHERE loinc = '20447-9' AND is_active = 'Y' ORDER BY id LIMIT 1;
   SELECT id INTO test_covid_id FROM test WHERE loinc = '94500-6' AND is_active = 'Y' ORDER BY id LIMIT 1;
 
   IF not_started_id IS NULL THEN
@@ -131,6 +143,9 @@ BEGIN
   IF test_covid_id IS NULL THEN
     RAISE EXCEPTION 'analyzer-harness-lane-data.sql: missing COVID/PCR test with LOINC 94500-6';
   END IF;
+  IF test_hiv_id IS NULL THEN
+    RAISE EXCEPTION 'analyzer-harness-lane-data.sql: missing HIV viral load test with LOINC 20447-9';
+  END IF;
 
   INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, analysis_type,
                         entry_date, started_date, completed_date, is_reportable, lastupdated)
@@ -138,6 +153,14 @@ BEGIN
     (21110, 10600, test_mtb_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
     (21123, 10600, test_rif_id, test_sect_id, not_started_id, '1', 'MANUAL',
+     CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
+    (21124, 10613, test_mtb_id, test_sect_id, not_started_id, '1', 'MANUAL',
+     CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
+    (21125, 10613, test_rif_id, test_sect_id, not_started_id, '1', 'MANUAL',
+     CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
+    (21126, 10614, test_mtb_id, test_sect_id, not_started_id, '1', 'MANUAL',
+     CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
+    (21127, 10614, test_rif_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
     (21111, 10601, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
@@ -157,11 +180,11 @@ BEGIN
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
     (21119, 10609, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
-    (21120, 10610, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',
+    (21120, 10610, test_hiv_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
-    (21121, 10611, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',
+    (21121, 10611, test_hiv_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP),
-    (21122, 10612, test_covid_id, test_sect_id, not_started_id, '1', 'MANUAL',
+    (21122, 10612, test_hiv_id, test_sect_id, not_started_id, '1', 'MANUAL',
      CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     sampitem_id = EXCLUDED.sampitem_id,

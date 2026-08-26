@@ -317,9 +317,9 @@ src/main/resources/liquibase/
 [OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md) and
 [Playwright best practices](../../.specify/guides/playwright-best-practices.md)
 
-**Note**: This project has deprecated Cypress E2E (per CLAUDE.md). All new E2E
-tests use **Playwright** with the harness-foundational / harness-demo project
-structure. Use `/plan-record-playwright`, `/write-playwright-test`,
+**Note**: This project has deprecated Cypress E2E (per CLAUDE.md). Visible
+operational-QC stories use the Playwright `harness-demo` project; domain and
+persistence behavior stays in owning backend tests. Use `/plan-record-playwright`, `/write-playwright-test`,
 `/audit-playwright`, `/debug-playwright` skills for E2E work.
 
 ### Coverage Goals

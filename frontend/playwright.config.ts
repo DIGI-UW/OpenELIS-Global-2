@@ -24,11 +24,14 @@ const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
 // Core foundational verification (ci-safe).
 const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
 
-// Harness demo story proof (video-ready).
-const HARNESS_DEMO_TESTS = ["**/demo/harness/**/*.spec.ts"];
-
-// Harness foundational verification (ci-safe).
-const HARNESS_FOUNDATIONAL_TESTS = ["**/foundational/harness/**/*.spec.ts"];
+// Checkpoint stories stay small and UI-only. The final assembled MVP story has
+// its own project because it requires real analyzer traffic as a precondition.
+const HARNESS_DEMO_TESTS = [
+  "**/demo/harness/ogc-1054-m1-analyzer-types.spec.ts",
+  "**/demo/harness/ogc-1054-m2-shared-mapping.spec.ts",
+  "**/demo/harness/ogc-1054-m3-guided-setup.spec.ts",
+];
+const HARNESS_MVP_TESTS = ["**/demo/harness/ogc-1054-analyzer-mvp.spec.ts"];
 
 // Manual-only harness coverage (real hardware or operator-managed infra).
 const HARNESS_MANUAL_ONLY_TESTS = [
@@ -141,26 +144,26 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
-      name: "harness-demo-video",
-      testMatch: HARNESS_DEMO_TESTS,
+      name: "harness-mvp",
+      testMatch: HARNESS_MVP_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
+        trace: "on",
+      },
+      dependencies: ["setup"],
+    },
+    {
+      name: "harness-demo-video",
+      testMatch: HARNESS_MVP_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        trace: "on",
         video: "on",
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
-      },
-      dependencies: ["setup"],
-    },
-
-    // Analyzer-stack foundational verification (non-demo, ci-safe).
-    {
-      name: "harness-foundational",
-      testMatch: HARNESS_FOUNDATIONAL_TESTS,
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
     },

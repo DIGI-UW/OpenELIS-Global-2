@@ -29,6 +29,7 @@ source "$SCRIPT_DIR/playwright-project-policy.sh"
 CI_COMPOSE_FILES=($(compose_args_ci))
 FIXTURE_SCRIPT="$REPO_ROOT/src/test/resources/load-test-fixtures.sh"
 SEED_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-analyzers.sh"
+MVP_TRAFFIC_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-mvp-traffic.sh"
 REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-reusable.yml"
 
 PRECHECK_ONLY=false
@@ -266,31 +267,30 @@ collect_failure_artifacts() {
   fi
 }
 
-verify_bridge_registry() {
-  local registry_file="$1"
-  if [[ ! -s "$registry_file" ]]; then
-    echo "ERROR: bridge registry capture failed or empty" | tee -a "$RUN_LOG"
+verify_analyzer_connections() {
+  local connections_file="$1"
+  if [[ ! -s "$connections_file" ]]; then
+    echo "ERROR: analyzer connection capture failed or empty" | tee -a "$RUN_LOG"
     return 1
   fi
 
   local missing
   missing="$(
-    python3 - "$registry_file" <<'PY'
+    python3 - "$connections_file" <<'PY'
 import json, sys
 try:
-    registry = json.load(open(sys.argv[1]))
+    response = json.load(open(sys.argv[1]))
 except Exception:
     print("__PARSE_ERROR__")
     raise SystemExit(0)
 
-if isinstance(registry, dict):
-    entries = [value for value in registry.values() if isinstance(value, dict)]
-elif isinstance(registry, list):
-    entries = [value for value in registry if isinstance(value, dict)]
-else:
-    entries = []
+entries = response.get("analyzers", []) if isinstance(response, dict) else []
 
-names = {item.get("name", "") for item in entries}
+names = {
+    item.get("name", "")
+    for item in entries
+    if item.get("connected") is True and item.get("bridgeConnectionId")
+}
 required = {
     "Cepheid GeneXpert (ASTM Mode)",
     "QuantStudio 5",
@@ -303,17 +303,17 @@ PY
   )"
 
   if [[ "$missing" == "__PARSE_ERROR__" ]]; then
-    echo "ERROR: bridge registry payload is not valid JSON" | tee -a "$RUN_LOG"
+    echo "ERROR: analyzer connection payload is not valid JSON" | tee -a "$RUN_LOG"
     return 1
   fi
 
   if [[ -n "$missing" ]]; then
-    echo "ERROR: bridge registry missing required analyzers:" | tee -a "$RUN_LOG"
+    echo "ERROR: required analyzers are missing durable Bridge connection references:" | tee -a "$RUN_LOG"
     echo "$missing" | tee -a "$RUN_LOG"
     return 1
   fi
 
-  echo "Bridge registry gate passed." | tee -a "$RUN_LOG"
+  echo "Analyzer connection reference gate passed." | tee -a "$RUN_LOG"
   return 0
 }
 
@@ -336,6 +336,7 @@ check_file "$CI_BUILD_COMPOSE"
 check_file "$CI_HARNESS_COMPOSE"
 check_file "$FIXTURE_SCRIPT"
 check_file "$SEED_SCRIPT"
+check_file "$MVP_TRAFFIC_SCRIPT"
 check_file "$REUSABLE_WORKFLOW"
 check_file "$FRONTEND_DIR/package-lock.json"
 
@@ -441,6 +442,16 @@ with_timeout_wait 120 "simulator readiness" "curl -s -f --connect-timeout 2 --ma
   bash projects/analyzer-harness/seed-analyzers.sh
 ) 2>&1 | tee -a "$RUN_LOG"
 
+if [[ "$PLAYWRIGHT_PROJECT" == "harness-mvp" || "$PLAYWRIGHT_PROJECT" == "harness-demo-video" ]]; then
+  (
+    cd "$REPO_ROOT"
+    BASE_URL="https://localhost" \
+    TEST_USER="$TEST_USER_RESOLVED" \
+    TEST_PASS="$TEST_PASS_RESOLVED" \
+    bash projects/analyzer-harness/seed-mvp-traffic.sh
+  ) 2>&1 | tee -a "$RUN_LOG"
+fi
+
 if rg -n "WARN: Mock API failed|fallback|using stable IP|using fallback" "$RUN_LOG" >/dev/null 2>&1; then
   echo "ERROR: seed step emitted fallback warnings; refusing to proceed." | tee -a "$RUN_LOG"
   collect_failure_artifacts
@@ -463,13 +474,14 @@ for dir in \
 done
 chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" || true
 
-bridge_registry="$ARTIFACT_DIR/bridge-registry.json"
-curl -k -s "https://localhost:8442/api/analyzers" > "$bridge_registry" || true
-if ! verify_bridge_registry "$bridge_registry"; then
+analyzer_connections="$ARTIFACT_DIR/analyzer-connections.json"
+curl -k -s -u "$TEST_USER_RESOLVED:$TEST_PASS_RESOLVED" \
+  "https://localhost/api/OpenELIS-Global/rest/analyzer/analyzers" > "$analyzer_connections" || true
+if ! verify_analyzer_connections "$analyzer_connections"; then
   collect_failure_artifacts
   exit 6
 fi
-echo "Bridge registry captured at $bridge_registry" | tee -a "$RUN_LOG"
+echo "Analyzer connection references captured at $analyzer_connections" | tee -a "$RUN_LOG"
 
 PLAYWRIGHT_CMD=(npm run pw:test -- --project="$PLAYWRIGHT_PROJECT" --workers=1)
 if [[ -n "$SHARD" ]]; then
@@ -489,8 +501,6 @@ set +e
   TEST_PASS="$TEST_PASS_RESOLVED" \
   PLAYWRIGHT_VIDEO="$([[ "$PLAYWRIGHT_PROJECT" == "harness-demo-video" ]] && echo "on" || echo "off")" \
   PLAYWRIGHT_SLOWMO="$PLAYWRIGHT_SLOWMO_INPUT" \
-  FILE_IMPORT_POLL_MS=5000 \
-  FILE_IMPORT_DROP_BUFFER_MS=45000 \
   "${PLAYWRIGHT_CMD[@]}"
 ) 2>&1 | tee -a "$RUN_LOG"
 pw_exit=$?

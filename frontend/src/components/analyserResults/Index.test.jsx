@@ -85,6 +85,21 @@ describe("Analyzer results page", () => {
 
     renderPage("/AnalyzerResults?id=5");
 
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Analyzer: FluoroCycler XT",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Analyzers" })).toHaveAttribute(
+      "href",
+      "/analyzers",
+    );
+    expect(screen.getByText("FluoroCycler XT")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
     await waitFor(() =>
       expect(getFromOpenElisServer).toHaveBeenCalledWith(
         "/rest/AnalyzerResults?id=5",
