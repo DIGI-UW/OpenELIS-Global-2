@@ -87,8 +87,13 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
      */
     @Test
     public void reissue_roleResults_passesSecurity() throws Exception {
-        mockMvc.perform(post("/rest/complianceReport/reissue").with(user("analyst").roles("RESULTS"))
-                .contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
+        mockMvc.perform(
+                post("/rest/complianceReport/reissue")
+                        .with(user("analyst").authorities(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_RESULTS"),
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                                        "PRIV_ORDER_VIEW")))
+                        .contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
                 .andExpect(status().is(org.hamcrest.CoreMatchers.not(403)));
     }
 
@@ -110,14 +115,20 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
             return new ComplianceReportRestController();
         }
 
+        // Services carrying a type-level @PreAuthorize together with method-level ones
+        // must use nullStub, not mock: a Mockito mock copies BOTH annotations onto its
+        // generated subclass and Spring's unique-annotation scan then fails ("more than
+        // one annotation") the moment method security evaluates a gate. A JDK-proxy
+        // nullStub carries no copied annotations, so the interface stays the single
+        // annotation source. (mock() is fine for un-annotated collaborators.)
         @Bean
         SampleService sampleService() {
-            return mock(SampleService.class);
+            return nullStub(SampleService.class);
         }
 
         @Bean
         SampleItemService sampleItemService() {
-            return mock(SampleItemService.class);
+            return nullStub(SampleItemService.class);
         }
 
         @Bean
@@ -137,12 +148,12 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
 
         @Bean
         ElectronicSignatureService electronicSignatureService() {
-            return mock(ElectronicSignatureService.class);
+            return nullStub(ElectronicSignatureService.class);
         }
 
         @Bean
         ObservationHistoryService observationHistoryService() {
-            return mock(ObservationHistoryService.class);
+            return nullStub(ObservationHistoryService.class);
         }
 
         @Bean
@@ -152,12 +163,12 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
 
         @Bean
         ResultService resultService() {
-            return mock(ResultService.class);
+            return nullStub(ResultService.class);
         }
 
         @Bean
         AnalysisService analysisService() {
-            return mock(AnalysisService.class);
+            return nullStub(AnalysisService.class);
         }
 
         @Bean
