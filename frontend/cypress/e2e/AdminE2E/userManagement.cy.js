@@ -247,7 +247,7 @@ describe("User Management", function () {
 
   describe("Deactivate User", function () {
     it("Check User and deactivate", function () {
-      userManagement.adminUser();
+      userManagement.uncheckAdminUser();
       userManagement.searchUser(usersData[1].fName);
       userManagement.checkUser("2", usersData[1].fName);
       userManagement.deactivateUser();

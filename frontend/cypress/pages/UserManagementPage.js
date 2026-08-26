@@ -255,29 +255,65 @@ class UserManagementPage {
     cy.contains(this.selectors.span, "User Account Administrator").click();
   }
 
+  watchUserListRequest(alias, matchesRequest) {
+    cy.intercept("GET", "**/rest/SearchUnifiedSystemUserMenu*", (request) => {
+      const searchParams = new URL(request.url).searchParams;
+      if (matchesRequest(searchParams)) {
+        request.alias = alias;
+      }
+    });
+  }
+
+  waitForUserListRequest(alias) {
+    cy.wait(`@${alias}`).its("response.statusCode").should("equal", 200);
+  }
+
   searchUser(value) {
-    // Require the search bar to be stable/actionable before typing so cy.type()
-    // can't race a concurrent re-render (Cypress "Cannot read properties of
-    // undefined (reading 'KeyboardEvent')" flake when a filter refetch re-renders
-    // the page mid-keystroke). The input is also briefly DISABLED while a filter
-    // refetch is in flight ("cy.type() failed because it targeted a disabled
-    // element"), so require enabled too.
-    cy.get(this.selectors.searchBar)
-      .should("be.visible")
-      .and("be.enabled")
-      .clear();
+    this.clearSearchBar();
+    this.watchUserListRequest(
+      "searchedUsers",
+      (searchParams) =>
+        searchParams.get("search") === "Y" &&
+        searchParams.get("searchString") === value,
+    );
     cy.get(this.selectors.searchBar)
       .should("be.visible")
       .and("be.enabled")
       .type(value);
+    this.waitForUserListRequest("searchedUsers");
   }
 
   clearSearchBar() {
-    cy.get(this.selectors.searchBar).clear();
+    cy.get(this.selectors.searchBar)
+      .should("be.visible")
+      .and("be.enabled")
+      .invoke("val")
+      .then((currentValue) => {
+        if (!currentValue) {
+          return;
+        }
+
+        this.watchUserListRequest(
+          "clearedUserSearch",
+          (searchParams) =>
+            searchParams.get("search") === "Y" &&
+            searchParams.get("searchString") === "",
+        );
+        cy.get(this.selectors.searchBar)
+          .should("be.visible")
+          .and("be.enabled")
+          .clear();
+        this.waitForUserListRequest("clearedUserSearch");
+      });
   }
 
   searchByFilters(value) {
+    this.watchUserListRequest(
+      "filteredUsersByRole",
+      (searchParams) => searchParams.get("roleFilter") === value,
+    );
     cy.get(this.selectors.filters).select(value);
+    this.waitForUserListRequest("filteredUsersByRole");
   }
 
   validateColumnContent(columnNum, value) {
@@ -293,15 +329,25 @@ class UserManagementPage {
   }
 
   activeUser() {
+    this.watchUserListRequest("activeUsers", (searchParams) =>
+      (searchParams.get("filter") || "").split(",").includes("isActive"),
+    );
+    cy.get(this.selectors.uncheckActiveUser).should("not.be.checked");
     cy.contains(this.selectors.span, "Only Active").click();
-    // Let the filter's async table re-render settle before any subsequent typing,
-    // so a following searchUser() cy.type() does not race the re-render.
-    cy.get(this.selectors.tableData).should("be.visible");
+    cy.get(this.selectors.uncheckActiveUser).should("be.checked");
+    this.waitForUserListRequest("activeUsers");
   }
 
   uncheckActiveUser() {
-    cy.wait(900);
-    cy.get(this.selectors.uncheckActiveUser).uncheck({ force: true });
+    this.watchUserListRequest(
+      "allUsersAfterActiveFilter",
+      (searchParams) =>
+        !(searchParams.get("filter") || "").split(",").includes("isActive"),
+    );
+    cy.get(this.selectors.uncheckActiveUser).should("be.checked");
+    cy.contains(this.selectors.span, "Only Active").click();
+    cy.get(this.selectors.uncheckActiveUser).should("not.be.checked");
+    this.waitForUserListRequest("allUsersAfterActiveFilter");
   }
 
   checkUser(columnNum, value) {
@@ -309,12 +355,25 @@ class UserManagementPage {
   }
 
   adminUser() {
+    this.watchUserListRequest("administratorUsers", (searchParams) =>
+      (searchParams.get("filter") || "").split(",").includes("isAdmin"),
+    );
+    cy.get(this.selectors.uncheckAdminUser).should("not.be.checked");
     cy.contains(this.selectors.span, "Only Administrator").click();
+    cy.get(this.selectors.uncheckAdminUser).should("be.checked");
+    this.waitForUserListRequest("administratorUsers");
   }
 
   uncheckAdminUser() {
-    cy.wait(900);
-    cy.get(this.selectors.uncheckAdminUser).uncheck({ force: true });
+    this.watchUserListRequest(
+      "allUsersAfterAdministratorFilter",
+      (searchParams) =>
+        !(searchParams.get("filter") || "").split(",").includes("isAdmin"),
+    );
+    cy.get(this.selectors.uncheckAdminUser).should("be.checked");
+    cy.contains(this.selectors.span, "Only Administrator").click();
+    cy.get(this.selectors.uncheckAdminUser).should("not.be.checked");
+    this.waitForUserListRequest("allUsersAfterAdministratorFilter");
   }
 }
 
