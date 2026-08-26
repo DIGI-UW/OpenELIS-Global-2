@@ -8,15 +8,17 @@ test.describe("Analyzer HL7 Simulator", () => {
   test("simulates HL7 message and previews mapping for Mindray BC-5380", async ({
     page,
   }) => {
+    const simulatorUrl =
+      process.env.MOCK_SIMULATOR_URL || "http://localhost:8085";
     const simulatorRes = await page.request.post(
-      "http://localhost:8085/simulate/hl7/mindray_bc5380",
+      `${simulatorUrl}/simulate/hl7/mindray_bc5380`,
     );
-    expect(simulatorRes.ok()).toBeTruthy();
+    expect(simulatorRes.status()).toBe(200);
 
     const baseUrl = process.env.BASE_URL || "https://localhost";
     const apiBase = `${baseUrl}/api/OpenELIS-Global/rest/analyzer`;
     const analyzersRes = await page.request.get(`${apiBase}/analyzers`);
-    expect(analyzersRes.ok()).toBeTruthy();
+    expect(analyzersRes.status()).toBe(200);
 
     const analyzersBody = await analyzersRes.json();
     const analyzers = (analyzersBody?.analyzers || []) as {
