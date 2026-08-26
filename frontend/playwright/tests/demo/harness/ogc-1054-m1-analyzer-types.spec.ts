@@ -2,7 +2,11 @@ import { expect, test } from "../../../helpers/test-base";
 import type { Locator, Page } from "@playwright/test";
 import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
-import { NAV_TIMEOUT, TIMEOUT_SCALE } from "../../../helpers/timeouts";
+import {
+  LONG_TIMEOUT,
+  NAV_TIMEOUT,
+  TIMEOUT_SCALE,
+} from "../../../helpers/timeouts";
 
 const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
 
@@ -219,11 +223,15 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     test.setTimeout(180_000 * TIMEOUT_SCALE);
     const duplicateName = `M1 GeneXpert Type ${Date.now()}`;
     await openAnalyzerTypes(page);
-    const sourceCells = analyzerTypeRow(page, SOURCE_PROFILE).getByRole("cell");
+    const sourceRow = analyzerTypeRow(page, SOURCE_PROFILE);
+    await expect(sourceRow).toContainText(/revision [1-9]\d*/, {
+      timeout: LONG_TIMEOUT,
+    });
+    const sourceCells = sourceRow.getByRole("cell");
     const sourceBefore = await sourceCells.allTextContents();
-    const sourceRevision = sourceBefore
-      .join(" ")
-      .match(/\brevision ([1-9]\d*)\b/i)?.[1];
+    const sourceRevision = (await sourceRow.innerText()).match(
+      /\brevision ([1-9]\d*)\b/i,
+    )?.[1];
     expect(
       sourceRevision,
       "The source row should identify its revision",
