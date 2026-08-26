@@ -98,6 +98,16 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     private static final String[] PROTECTED_SEED_TABLES = { "reference_tables", "requester_type", "label_preset" };
 
     /**
+     * Legacy entities whose Hibernate generators use standalone sequences and whose
+     * fixtures are followed by service-created records in this test suite. Keep
+     * this list explicit: resetting every inferred table sequence can rewind
+     * unrelated PostgreSQL sequences while other pooled connections still hold
+     * cached values.
+     */
+    private static final String[][] FIXTURE_SEQUENCE_MAPPINGS = { { "person", "person_seq" },
+            { "sample", "sample_seq" }, { "sample_item", "sample_item_seq" }, { "result", "result_seq" } };
+
+    /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the
      * {@code system_user.id=1} ("admin") row that {@code testdata/system-user.xml}
      * and {@code postgre-db-init/OpenELIS-Global.sql} both seed. Tests that invoke
@@ -253,6 +263,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
                 truncateTablesInConnection(jdbcConn, dataset.getTableNames());
                 DatabaseOperation.REFRESH.execute(dbUnitConn, dataset);
+                synchronizeFixtureSequences(jdbcConn, dataset.getTableNames());
                 jdbcConn.commit();
 
                 // truncateTablesInConnection TRUNCATEs every table the dataset names
@@ -343,6 +354,28 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             for (String tableName : tableNames) {
                 stmt.execute("TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE");
                 logger.debug("Truncating table: {}", tableName);
+            }
+        }
+    }
+
+    /**
+     * Advances standalone Hibernate sequences after DbUnit imports explicit IDs.
+     * Without this, generated inserts depend on test order and can reuse a fixture
+     * primary key.
+     */
+    private void synchronizeFixtureSequences(Connection conn, String[] tableNames) throws SQLException {
+        Set<String> loadedTables = Arrays.stream(tableNames).map(name -> name.toLowerCase(java.util.Locale.ROOT))
+                .collect(java.util.stream.Collectors.toSet());
+        try (Statement stmt = conn.createStatement()) {
+            for (String[] mapping : FIXTURE_SEQUENCE_MAPPINGS) {
+                String tableName = mapping[0];
+                if (!loadedTables.contains(tableName)) {
+                    continue;
+                }
+                String sequenceName = mapping[1];
+                stmt.execute("SELECT setval('clinlims." + sequenceName + "',"
+                        + " CAST(COALESCE((SELECT MAX(id) FROM clinlims." + tableName + "), 0) + 1 AS BIGINT), false)");
+                logger.debug("Synchronized fixture sequence {} for table {}", sequenceName, tableName);
             }
         }
     }

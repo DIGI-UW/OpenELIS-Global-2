@@ -24,8 +24,11 @@ const CORE_DEMO_TESTS = [
   "playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts",
 ];
 
-// Core functional verification (ci-safe).
+// Core foundational verification on the build stack.
 const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
+
+// Explicit operator-run verification against a deployed review target.
+const CORE_LIVE_UAT_TESTS = ["**/manual-only/core/**/*.spec.ts"];
 
 // Harness demo story proof (video-ready).
 const HARNESS_DEMO_TESTS = ["**/demo/harness/**/*.spec.ts"];
@@ -129,6 +132,16 @@ export default defineConfig({
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
+      },
+      dependencies: ["setup"],
+    },
+
+    {
+      name: "core-live-uat",
+      testMatch: CORE_LIVE_UAT_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
     },

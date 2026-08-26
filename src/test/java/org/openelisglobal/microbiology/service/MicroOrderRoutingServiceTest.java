@@ -35,10 +35,13 @@ public class MicroOrderRoutingServiceTest {
     @Mock
     private MicroCaseOrderDetailService orderDetailService;
 
+    @Mock
+    private MicroCaseAnalysisService caseAnalysisService;
+
     @Test
     public void routeAnalysesIgnoresNonMicrobiologyTests() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService);
+                orderDetailService, caseAnalysisService);
 
         List<MicroCase> routed = service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(analysis(null, "1")),
                 "1");
@@ -51,7 +54,7 @@ public class MicroOrderRoutingServiceTest {
     @Test
     public void routeAnalysesCreatesOneCasePerWorkflowWithConfiguredCultureSetup() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService);
+                orderDetailService, caseAnalysisService);
         when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
                 .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
 
@@ -68,7 +71,7 @@ public class MicroOrderRoutingServiceTest {
     @Test(expected = IllegalStateException.class)
     public void routeAnalysesRejectsWorkflowWithoutConfiguredCultureSetup() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService);
+                orderDetailService, caseAnalysisService);
 
         service.routeAnalysesForSampleItem(sampleItem("1001"),
                 List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1");
@@ -77,7 +80,7 @@ public class MicroOrderRoutingServiceTest {
     @Test
     public void routeAnalysesWithOrderDetailPersistsDetailOnEveryRoutedCase() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService);
+                orderDetailService, caseAnalysisService);
         when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
                 .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
         MicroCase routedCase = new MicroCase();
@@ -95,7 +98,7 @@ public class MicroOrderRoutingServiceTest {
     @Test
     public void routeAnalysesSkipsOrderDetailPersistenceWhenNoDetailProvided() {
         MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                orderDetailService);
+                orderDetailService, caseAnalysisService);
         when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
                 .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
         MicroCase routedCase = new MicroCase();
@@ -107,6 +110,24 @@ public class MicroOrderRoutingServiceTest {
 
         verify(orderDetailService, never()).saveOrderDetail(any(String.class),
                 any(MicroCaseOrderDetailRequestForm.class), any(String.class));
+    }
+
+    @Test
+    public void routeAnalysesLinksPersistedAnalysesToTheCaseAndReportMapping() {
+        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
+                orderDetailService, caseAnalysisService);
+        MicroCultureSetup setup = cultureSetup("1", MicroWorkflowType.BACTERIOLOGY);
+        setup.setReportableTestAnalyteId("17");
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        Analysis analysis = analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1");
+        analysis.setId("42");
+        when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY)).thenReturn(setup);
+        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1")).thenReturn(microCase);
+
+        service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(analysis), "1");
+
+        verify(caseAnalysisService).linkAnalysis(microCase, analysis, setup);
     }
 
     private SampleItem sampleItem(String id) {

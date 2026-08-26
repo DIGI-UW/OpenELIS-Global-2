@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology;
 
 import static org.junit.Assert.assertNotNull;
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.metamodel.Metamodel;
 import org.hibernate.SessionFactory;
@@ -17,6 +18,8 @@ import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
+import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
@@ -47,9 +50,21 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroCultureSetup.class));
         assertNotNull(metamodel.entity(MicroCase.class));
         assertNotNull(metamodel.entity(MicroCaseActivity.class));
+        assertNotNull(metamodel.entity(MicroCaseAnalysis.class));
         assertNotNull(metamodel.entity(MicroIsolate.class));
         assertNotNull(metamodel.entity(MicroAstRun.class));
         assertNotNull(metamodel.entity(MicroAstReading.class));
         assertNotNull(metamodel.entity(MicroCriticalCommunication.class));
+        assertNotNull(metamodel.entity(MicroCaseOrderDetail.class));
+    }
+
+    @Test
+    public void microbiologyCaseAnalysisHqlCompiles() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        try {
+            assertNotNull(entityManager.createQuery("from MicroCaseAnalysis", MicroCaseAnalysis.class));
+        } finally {
+            entityManager.close();
+        }
     }
 }

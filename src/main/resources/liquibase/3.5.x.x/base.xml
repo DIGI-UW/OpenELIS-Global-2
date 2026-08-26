@@ -378,14 +378,19 @@
   <include relativeToChangelogFile="true" file="053-microbiology-manual-ast.xml"/>
   <include relativeToChangelogFile="true" file="054-microbiology-worklists-critical.xml"/>
 
-  <!-- OGC-782 M3: microbiology order details -->
+  <!-- OGC-782 M7 MVP-gap: microbiology order-detail capture (FR-002) -->
   <include relativeToChangelogFile="true" file="055-microbiology-order-detail.xml"/>
 
-  <!-- OGC-782 M5: AST breakpoint standard selection -->
+  <!-- OGC-782 M7 MVP-gap: per-run breakpoint-standard selection (M-05) -->
   <include relativeToChangelogFile="true" file="056-microbiology-ast-breakpoint-standard.xml"/>
 
-  <!-- OGC-782 M6: critical-result alert linkage and lifecycle -->
+  <!-- OGC-782 M7 MVP-gap: alert_entity_ref for string-keyed alerts (M-11) -->
   <include relativeToChangelogFile="true" file="057-alert-entity-ref.xml"/>
+
+  <!-- OGC-782 remediation: explicit critical communication targets and lifecycle -->
   <include relativeToChangelogFile="true" file="058-microbiology-critical-lifecycle.xml"/>
+
+  <!-- OGC-782 remediation: standard Result projection for microbiology reports -->
+  <include relativeToChangelogFile="true" file="059-microbiology-report-projection.xml"/>
 
 </databaseChangeLog>

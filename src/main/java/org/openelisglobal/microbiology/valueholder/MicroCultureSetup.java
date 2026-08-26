@@ -37,6 +37,10 @@ public class MicroCultureSetup extends BaseObject<String> {
     @Column(name = "atmosphere_defaults")
     private String atmosphereDefaults;
 
+    @Column(name = "reportable_test_analyte_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String reportableTestAnalyteId;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
@@ -96,6 +100,14 @@ public class MicroCultureSetup extends BaseObject<String> {
 
     public void setAtmosphereDefaults(String atmosphereDefaults) {
         this.atmosphereDefaults = atmosphereDefaults;
+    }
+
+    public String getReportableTestAnalyteId() {
+        return reportableTestAnalyteId;
+    }
+
+    public void setReportableTestAnalyteId(String reportableTestAnalyteId) {
+        this.reportableTestAnalyteId = reportableTestAnalyteId;
     }
 
     public String getIsActive() {
