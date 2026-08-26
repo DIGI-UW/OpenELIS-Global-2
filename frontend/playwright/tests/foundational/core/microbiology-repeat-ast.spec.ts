@@ -82,7 +82,7 @@ test.describe("Microbiology repeat AST attempts", () => {
       await page.getByRole("button", { name: "Record AST reading" }).click();
       await expect(
         page.getByTestId("microbiology-ast-interpretation"),
-      ).toContainText("RESISTANT", { timeout: LONG_TIMEOUT });
+      ).toContainText("Resistant", { timeout: LONG_TIMEOUT });
       await page.getByRole("button", { name: "Review AST run" }).click();
 
       await expect(
