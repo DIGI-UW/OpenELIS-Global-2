@@ -1,6 +1,7 @@
 package org.openelisglobal.result.service;
 
 import org.openelisglobal.result.valueholder.Result;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Evaluates QC acceptance criteria for results whose sample items have a QC
@@ -23,5 +24,6 @@ public interface QcEvaluationService {
      *
      * @param result the result to evaluate (must have analysis loaded)
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_ENTER')")
     void evaluateQc(Result result);
 }
