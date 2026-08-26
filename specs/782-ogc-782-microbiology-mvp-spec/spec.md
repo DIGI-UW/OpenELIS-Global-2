@@ -18,9 +18,11 @@ binding product requirements.
 - M-00 parent:
   [m-00-micro-module-parent.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-00-micro-module-parent.md)
 - M-01 reference data:
-  [m-01-amr-reference-data.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-01-amr-reference-data.md)
+  [m-01-amr-reference-data.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-01-amr-reference-data.md),
+  [Organism Master visual mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-01-organism-master.html)
 - M-02 breakpoint catalog:
-  [m-02-breakpoint-catalog.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-02-breakpoint-catalog.md)
+  [m-02-breakpoint-catalog.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-02-breakpoint-catalog.md),
+  [Breakpoint Catalog visual mock](https://digi-uw.github.io/openelis-work/designs/microbiology/m-02-breakpoint-catalog.html)
 - M-03 order entry hook:
   [m-03-order-entry-micro-hook.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-03-order-entry-micro-hook.md)
 - M-04 case workbench:
@@ -49,7 +51,7 @@ binding product requirements.
 ## Interpretation Rules for Planning
 
 - This spec defines product behavior and acceptance expectations.
-- Detailed M-* source files provide workflow detail and mockup context, but
+- Detailed M-\* source files provide workflow detail and mockup context, but
   implementation-heavy language in them must be filtered through the local
   engineering crosswalk.
 - Planning and tasks may choose table names, service boundaries, API shapes,
@@ -338,6 +340,15 @@ PR #3789:
 - **V2-005**: Review analyzer-ingested AST results with mandatory human review
   before final reporting.
 
+Follow-up status: branch
+`feat/782-ogc-782-microbiology-m8-clinical-completeness` implements and
+qualifies V2-001 plus repeat/retest AST and policy-neutral reagent/card-lot
+traceability from V2-002. The required/optional/substitute policy remains open
+because existing Test Catalog roles cannot safely supply it. This status note
+does not change PR #3789's historical MVP acceptance boundary; none of the
+follow-up behavior is claimed as part of that milestone until its own branch is
+merged.
+
 ### Constitution Compliance Requirements (OpenELIS Global)
 
 - **CR-001**: UI components MUST use Carbon Design System v1.15+ exclusively.
@@ -417,9 +428,10 @@ shape during planning.
   filtered view, open a case, refresh either page, and return without losing
   the relevant worklist or case-section context.
 
-The source M-NFR target for a 200-item worklist and sub-second read p95 remains
-unverified performance-qualification work. PR #3789 must not claim that target
-until a repeatable service-created data set and measurements exist.
+PR #3789 did not claim the source M-NFR 200-item worklist and sub-second read
+p95 target. The later M8 branch now carries repeatable service-created API and
+browser measurements for that target; those follow-up results do not alter the
+MVP PR's historical evidence.
 
 ## Planning Notes
 

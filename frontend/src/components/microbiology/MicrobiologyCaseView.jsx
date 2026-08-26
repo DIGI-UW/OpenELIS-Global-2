@@ -12,6 +12,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation, useParams } from "react-router-dom";
+import AmendmentHistoryPanel from "./AmendmentHistoryPanel";
 import AstEntryPanel from "./AstEntryPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
@@ -22,6 +23,10 @@ import {
   getMicrobiologyWorklistUrl,
   parseMicrobiologyCaseSearch,
 } from "./MicrobiologyRoutes";
+import {
+  markMicrobiologyReady,
+  MICROBIOLOGY_CASE_READY_MARK,
+} from "./MicrobiologyPerformance";
 import MicrobiologyService from "./MicrobiologyService";
 import OrderDetailPanel from "./OrderDetailPanel";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -61,6 +66,11 @@ const progressItems = [
     section: "reports",
     labelId: "microbiology.progress.reports",
   },
+  {
+    id: "amendment",
+    section: "amendment",
+    labelId: "microbiology.amendment.title",
+  },
 ];
 
 const hasActivity = (caseDetail, activityType) =>
@@ -88,11 +98,18 @@ const getProgressStatus = (caseDetail, itemId) => {
     review:
       astReviewed || noGrowthReady ? "done" : hasIsolate ? "todo" : "todo",
     reports: finalReleased ? "done" : astReviewed ? "current" : "todo",
+    amendment:
+      caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS"
+        ? "current"
+        : "todo",
   };
   return statusByItem[itemId] || "todo";
 };
 
 const getNextStepMessageId = (caseDetail) => {
+  if (caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS") {
+    return "microbiology.next.completeAmendment";
+  }
   if (caseDetail.stage === "FINAL_RELEASED") {
     return "microbiology.next.finalReleased";
   }
@@ -127,12 +144,31 @@ const MicrobiologyCaseView = ({
   const [error, setError] = useState("");
   const [readinessRefreshToken, setReadinessRefreshToken] = useState(0);
   const [projectedResultIds, setProjectedResultIds] = useState([]);
+  const [reagentOverview, setReagentOverview] = useState({
+    requirements: [],
+    usages: [],
+  });
+  const [actionError, setActionError] = useState("");
+
+  const loadReagentOverview = () => {
+    if (!service.getReagentLotOverview) {
+      return Promise.resolve();
+    }
+    return service.getReagentLotOverview(caseId).then((overview) => {
+      if (overview && !overview.status && !overview.error) {
+        setReagentOverview({
+          requirements: overview.requirements || [],
+          usages: overview.usages || [],
+        });
+      }
+    });
+  };
 
   const loadCase = ({ showLoading = true } = {}) => {
     if (showLoading) {
       setLoading(true);
     }
-    service.getCaseDetail(caseId).then((detail) => {
+    return service.getCaseDetail(caseId).then((detail) => {
       if (!detail || detail.status) {
         setError(intl.formatMessage({ id: "microbiology.case.loadError" }));
         setCaseDetail(null);
@@ -152,7 +188,10 @@ const MicrobiologyCaseView = ({
     Promise.all([
       service.getCaseDetail(caseId),
       service.getReportProjection(caseId),
-    ]).then(([detail, projection]) => {
+      service.getReagentLotOverview
+        ? service.getReagentLotOverview(caseId)
+        : Promise.resolve({ requirements: [], usages: [] }),
+    ]).then(([detail, projection, overview]) => {
       if (!active) {
         return;
       }
@@ -164,6 +203,10 @@ const MicrobiologyCaseView = ({
         setCaseDetail(detail);
       }
       setProjectedResultIds(projection?.projectedResultIds || []);
+      setReagentOverview({
+        requirements: overview?.requirements || [],
+        usages: overview?.usages || [],
+      });
       setLoading(false);
     });
 
@@ -172,12 +215,30 @@ const MicrobiologyCaseView = ({
     };
   }, [caseId, intl, service]);
 
+  useEffect(() => {
+    if (!loading && !error && caseDetail) {
+      markMicrobiologyReady(MICROBIOLOGY_CASE_READY_MARK);
+    }
+  }, [caseDetail, error, loading]);
+
   const recordActivity = (payload) => {
     setSaving(true);
-    service.recordCaseActivity(caseId, payload).then((detail) => {
-      setCaseDetail(detail);
-      setSaving(false);
-    });
+    setActionError("");
+    return service
+      .recordCaseActivity(caseId, payload)
+      .then((detail) => {
+        if (!detail || detail.error || detail.statusCode >= 400) {
+          throw new Error(
+            formatMicrobiologyEnum(detail?.message || detail?.error, intl),
+          );
+        }
+        setCaseDetail(detail);
+        return loadReagentOverview();
+      })
+      .catch((activityError) => {
+        setActionError(activityError?.message || String(activityError));
+      })
+      .finally(() => setSaving(false));
   };
 
   const createIsolate = (payload) => {
@@ -223,7 +284,11 @@ const MicrobiologyCaseView = ({
     );
   }
 
-  const finalReleased = caseDetail.stage === "FINAL_RELEASED";
+  const finalReleased =
+    caseDetail.finalReleaseState === "FINAL_RELEASED" ||
+    caseDetail.stage === "FINAL_RELEASED";
+  const amendmentOpen =
+    caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS";
 
   return (
     <main
@@ -302,6 +367,32 @@ const MicrobiologyCaseView = ({
             subtitle={intl.formatMessage({
               id: "microbiology.case.finalLocked.message",
             })}
+          />
+        )}
+
+        {amendmentOpen && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "microbiology.amendment.inProgress.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "microbiology.amendment.inProgress.message",
+            })}
+          />
+        )}
+
+        {actionError && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "microbiology.case.actionError",
+            })}
+            subtitle={actionError}
           />
         )}
 
@@ -390,6 +481,8 @@ const MicrobiologyCaseView = ({
                   saving={saving}
                   setupSectionId="microbiology-setup"
                   showTimeline={false}
+                  reagentRequirements={reagentOverview.requirements}
+                  reagentUsages={reagentOverview.usages}
                 />
               </AccordionItem>
               <AccordionItem
@@ -421,6 +514,7 @@ const MicrobiologyCaseView = ({
                   onUpdateIdentification={updateIdentification}
                   saving={saving}
                   readOnly={finalReleased}
+                  amendmentOpen={amendmentOpen}
                   service={service}
                 />
               </AccordionItem>
@@ -435,9 +529,15 @@ const MicrobiologyCaseView = ({
                   isolates={caseDetail.isolates}
                   service={service}
                   saving={saving}
-                  onAstUpdated={() =>
-                    setReadinessRefreshToken((currentValue) => currentValue + 1)
-                  }
+                  onAstUpdated={() => {
+                    setReadinessRefreshToken(
+                      (currentValue) => currentValue + 1,
+                    );
+                    loadReagentOverview();
+                  }}
+                  readOnly={finalReleased}
+                  reagentRequirements={reagentOverview.requirements}
+                  reagentUsages={reagentOverview.usages}
                 />
               </AccordionItem>
               <AccordionItem
@@ -466,11 +566,31 @@ const MicrobiologyCaseView = ({
                 <ReportReadinessPanel
                   caseId={caseDetail.id}
                   service={service}
-                  finalReleaseState={caseDetail.stage}
+                  finalReleaseState={
+                    caseDetail.finalReleaseState || caseDetail.stage
+                  }
+                  amendmentOpen={amendmentOpen}
                   patientId={caseDetail.patientId}
                   onReleased={() => loadCase({ showLoading: false })}
                   onProjectionLoaded={setProjectedResultIds}
                   refreshToken={readinessRefreshToken}
+                />
+              </AccordionItem>
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "microbiology.amendment.title",
+                })}
+                open={focusedSection === "amendment"}
+                onHeadingClick={() => selectSection("amendment")}
+              >
+                <AmendmentHistoryPanel
+                  caseId={caseDetail.id}
+                  finalReleaseState={
+                    caseDetail.finalReleaseState || caseDetail.stage
+                  }
+                  service={service}
+                  active={focusedSection === "amendment"}
+                  onCaseUpdated={() => loadCase({ showLoading: false })}
                 />
               </AccordionItem>
             </Accordion>

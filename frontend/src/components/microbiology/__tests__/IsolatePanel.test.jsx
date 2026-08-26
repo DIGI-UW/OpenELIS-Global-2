@@ -1,6 +1,7 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import IsolatePanel from "../IsolatePanel";
 import messages from "../../../languages/en.json";
@@ -10,6 +11,7 @@ const renderPanel = ({
   onCreateIsolate = vi.fn(),
   onUpdateIdentification = vi.fn(),
   readOnly = false,
+  amendmentOpen = false,
   service = { getOrganisms: vi.fn().mockResolvedValue([]) },
 } = {}) =>
   render(
@@ -20,6 +22,7 @@ const renderPanel = ({
         onCreateIsolate={onCreateIsolate}
         onUpdateIdentification={onUpdateIdentification}
         readOnly={readOnly}
+        amendmentOpen={amendmentOpen}
         service={service}
         saving={false}
       />
@@ -28,13 +31,15 @@ const renderPanel = ({
 
 describe("IsolatePanel", () => {
   it("submits isolate creation details", async () => {
+    const user = userEvent.setup();
     const onCreateIsolate = vi.fn();
     renderPanel({ onCreateIsolate });
 
-    fireEvent.change(screen.getByLabelText("Preliminary organism"), {
-      target: { value: "Escherichia coli" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Create isolate" }));
+    await user.type(
+      screen.getByLabelText("Preliminary organism"),
+      "Escherichia coli",
+    );
+    await user.click(screen.getByRole("button", { name: "Create isolate" }));
 
     await waitFor(() =>
       expect(onCreateIsolate).toHaveBeenCalledWith({
@@ -47,6 +52,7 @@ describe("IsolatePanel", () => {
   });
 
   it("updates isolate identification from reusable organism data", async () => {
+    const user = userEvent.setup();
     const onUpdateIdentification = vi.fn();
     renderPanel({
       isolates: [
@@ -66,16 +72,15 @@ describe("IsolatePanel", () => {
       },
     });
 
-    fireEvent.click(
+    await user.click(
       await screen.findByRole("button", { name: "Update identification" }),
     );
-    fireEvent.change(screen.getByLabelText("Organism"), {
-      target: { value: "organism-1" },
-    });
-    fireEvent.change(screen.getByLabelText("Identification status"), {
-      target: { value: "CONFIRMED" },
-    });
-    fireEvent.click(
+    await user.selectOptions(screen.getByLabelText("Organism"), "organism-1");
+    await user.selectOptions(
+      screen.getByLabelText("Identification status"),
+      "CONFIRMED",
+    );
+    await user.click(
       screen.getByRole("button", { name: "Save identification" }),
     );
 
@@ -85,6 +90,80 @@ describe("IsolatePanel", () => {
       significance: "UNKNOWN",
       identificationStatus: "CONFIRMED",
     });
+  });
+
+  it("requires a reason when re-identifying during an amendment", async () => {
+    const user = userEvent.setup();
+    const onUpdateIdentification = vi.fn();
+    renderPanel({
+      isolates: [
+        {
+          id: "isolate-1",
+          isolateLabel: "ISO-1",
+          preliminaryOrganismText: "Gram negative rod",
+          significance: "UNKNOWN",
+          identificationStatus: "PRELIMINARY",
+        },
+      ],
+      amendmentOpen: true,
+      onUpdateIdentification,
+    });
+
+    await user.click(
+      await screen.findByRole("button", { name: "Update identification" }),
+    );
+
+    const saveButton = screen.getByRole("button", {
+      name: "Save identification",
+    });
+    expect(saveButton).toBeDisabled();
+
+    await user.type(
+      screen.getByLabelText("Re-identification reason"),
+      "Corrected after confirmatory testing",
+    );
+    await user.click(saveButton);
+
+    expect(onUpdateIdentification).toHaveBeenCalledWith("isolate-1", {
+      organismId: "",
+      preliminaryOrganismText: "Gram negative rod",
+      significance: "UNKNOWN",
+      identificationStatus: "PRELIMINARY",
+      identificationReason: "Corrected after confirmatory testing",
+    });
+  });
+
+  it("renders the immutable before-and-after identification history", async () => {
+    renderPanel({
+      isolates: [
+        {
+          id: "isolate-1",
+          isolateLabel: "ISO-1",
+          preliminaryOrganismText: "Klebsiella pneumoniae",
+          significance: "CLINICALLY_SIGNIFICANT",
+          identificationStatus: "CONFIRMED",
+        },
+      ],
+      service: {
+        getOrganisms: vi.fn().mockResolvedValue([]),
+        getIdentificationHistory: vi.fn().mockResolvedValue([
+          {
+            id: "event-1",
+            previousOrganismText: "Escherichia coli",
+            newOrganismText: "Klebsiella pneumoniae",
+            reason: "Confirmatory identification",
+            changedBy: "reviewer",
+          },
+        ]),
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        "Escherichia coli to Klebsiella pneumoniae: Confirmatory identification",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("reviewer")).toBeInTheDocument();
   });
 
   it("disables isolate mutation controls for a final case", async () => {

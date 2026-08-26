@@ -13,6 +13,7 @@ import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.Referenc
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
+import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
@@ -48,7 +49,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        methodId = fixtures.firstMethodId();
+        methodId = fixtures.createMethodId();
         sampleItemId = fixtures.createSampleWithSampleItem("OGC782M5").getId();
         referenceData = fixtures.createReferenceData(methodId);
     }
@@ -96,5 +97,38 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(MicroAstInterpretation.SUSCEPTIBLE.name(), reading.getInterpretation());
         assertEquals(MicroAstInterpretation.RESISTANT.name(), overridden.getOverrideInterpretation());
         assertEquals(MicroAstRunStatus.REVIEWED.name(), reviewed.getStatus());
+    }
+
+    @Test
+    public void repeatAttemptPersistsProvenanceAndExplicitReportableSelection() {
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
+                fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1",
+                referenceData.organism().getId(), referenceData.organism().getDisplayName(),
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, fixtures.defaultUserId());
+        MicroAstRun original = astService.startRun(isolate.getId(), referenceData.panel().getId(),
+                fixtures.defaultUserId());
+        astService.recordReading(original.getId(), referenceData.antibiotic().getId(), MicroAstMethod.MIC,
+                new BigDecimal("4"), fixtures.defaultUserId());
+        original = astService.reviewRun(original.getId(), fixtures.defaultUserId());
+
+        MicroAstRun repeat = astService.startRepeatRun(original.getId(), MicroAstAttemptType.REPEAT,
+                "Discordant result on repeat culture", MicroAstMethod.MIC, fixtures.defaultUserId());
+        astService.recordReading(repeat.getId(), referenceData.antibiotic().getId(), MicroAstMethod.MIC,
+                new BigDecimal("40"), fixtures.defaultUserId());
+        repeat = astService.reviewRun(repeat.getId(), fixtures.defaultUserId());
+
+        assertEquals(original.getId(), repeat.getSourceRunId());
+        assertEquals(MicroAstAttemptType.REPEAT.name(), repeat.getAttemptType());
+        assertEquals("Discordant result on repeat culture", repeat.getAttemptReason());
+        assertEquals(MicroAstMethod.MIC.name(), repeat.getMethod());
+        assertEquals(false, original.isReportable());
+        assertEquals(false, repeat.isReportable());
+
+        MicroAstRun selected = astService.selectReportableRun(repeat.getId(), fixtures.defaultUserId());
+        assertEquals(true, selected.isReportable());
+        assertEquals(true, astService.selectReportableRun(original.getId(), fixtures.defaultUserId()).isReportable());
+        assertEquals(true, astService.selectReportableRun(repeat.getId(), fixtures.defaultUserId()).isReportable());
+        assertEquals(2, astService.getRunsForIsolate(isolate.getId()).size());
     }
 }

@@ -9,6 +9,7 @@ import org.openelisglobal.microbiology.form.MicroAstReadingRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstRunForm;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
+import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReading;
@@ -48,8 +49,27 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroAstRunForm> startRun(@RequestBody MicroAstRunRequestForm request,
             HttpServletRequest httpRequest) {
+        if (request.lotSelections == null || request.lotSelections.isEmpty()) {
+            return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
+                    request.breakpointStandardId, authenticatedUserId(httpRequest))));
+        }
         return ResponseEntity.ok(toRunForm(astService.startRun(request.isolateId, request.panelId,
-                request.breakpointStandardId, authenticatedUserId(httpRequest))));
+                request.breakpointStandardId, lotSelections(request.lotSelections), authenticatedUserId(httpRequest))));
+    }
+
+    @PostMapping("/runs/{sourceRunId}/attempts")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MicroAstRunForm> startRepeatRun(@PathVariable String sourceRunId,
+            @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
+        if (request.lotSelections == null || request.lotSelections.isEmpty()) {
+            return ResponseEntity.ok(
+                    toRunForm(astService.startRepeatRun(sourceRunId, MicroAstAttemptType.valueOf(request.attemptType),
+                            request.reason, MicroAstMethod.valueOf(request.method), authenticatedUserId(httpRequest))));
+        }
+        return ResponseEntity
+                .ok(toRunForm(astService.startRepeatRun(sourceRunId, MicroAstAttemptType.valueOf(request.attemptType),
+                        request.reason, MicroAstMethod.valueOf(request.method), lotSelections(request.lotSelections),
+                        authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{runId}/readings")
@@ -79,6 +99,13 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         return ResponseEntity.ok(toRunForm(astService.reviewRun(runId, authenticatedUserId(httpRequest))));
     }
 
+    @PostMapping("/runs/{runId}/reportable")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MicroAstRunForm> selectReportableRun(@PathVariable String runId,
+            HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(toRunForm(astService.selectReportableRun(runId, authenticatedUserId(httpRequest))));
+    }
+
     private MicroAstRunForm toRunFormWithReadings(MicroAstRun run) {
         MicroAstRunForm form = toRunForm(run);
         for (MicroAstReading reading : astService.getReadingsForRun(run.getId())) {
@@ -93,6 +120,11 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
         form.isolateId = run.getIsolateId();
         form.panelId = run.getPanelId();
         form.breakpointStandardId = run.getBreakpointStandardId();
+        form.attemptType = run.getAttemptType();
+        form.sourceRunId = run.getSourceRunId();
+        form.attemptReason = run.getAttemptReason();
+        form.method = run.getMethod();
+        form.reportable = run.isReportable();
         form.status = run.getStatus();
         form.startedAt = run.getStartedAt();
         form.startedBy = run.getStartedBy();

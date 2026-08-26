@@ -70,13 +70,27 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
         InventoryItem item = inventoryItemDAO.get(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Inventory item not found: " + itemId));
 
+        if (!item.getId().equals(lot.getInventoryItem().getId())) {
+            throw new IllegalArgumentException("Lot does not belong to inventory item: " + itemId);
+        }
+        return recordUsage(lot, quantityUsed, testResultId, analysisId, sysUserId);
+    }
+
+    @Override
+    @Transactional
+    public InventoryUsage recordUsage(InventoryLot lot, Double quantityUsed, Long testResultId, Long analysisId,
+            String sysUserId) {
+        if (lot == null || lot.getInventoryItem() == null) {
+            throw new IllegalArgumentException("Managed inventory lot is required");
+        }
+
         if (quantityUsed == null || quantityUsed <= 0) {
             throw new IllegalArgumentException("Quantity used must be greater than 0");
         }
 
         InventoryUsage usage = new InventoryUsage();
         usage.setLot(lot);
-        usage.setInventoryItem(item);
+        usage.setInventoryItem(lot.getInventoryItem());
         usage.setQuantityUsed(quantityUsed);
         usage.setTestResultId(testResultId);
         usage.setAnalysisId(analysisId);

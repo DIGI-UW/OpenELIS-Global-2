@@ -18,6 +18,14 @@ export const recordCaseActivity = (caseId, payload) =>
     );
   });
 
+export const getReagentLotOverview = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/reagent-lots`,
+      resolve,
+    );
+  });
+
 export const createIsolate = (payload) =>
   new Promise((resolve) => {
     postToOpenElisServerJsonResponse(
@@ -87,6 +95,15 @@ export const startAstRun = (payload) =>
     );
   });
 
+export const startRepeatAstRun = (sourceRunId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/runs/${encodeURIComponent(sourceRunId)}/attempts`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
 export const recordAstReading = (runId, payload) =>
   new Promise((resolve) => {
     postToOpenElisServerJsonResponse(
@@ -115,6 +132,15 @@ export const reviewAstRun = (runId) =>
   new Promise((resolve) => {
     postToOpenElisServerJsonResponse(
       `/rest/microbiology/ast/runs/${runId}/review`,
+      JSON.stringify({}),
+      resolve,
+    );
+  });
+
+export const selectReportableAstRun = (runId) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/ast/runs/${encodeURIComponent(runId)}/reportable`,
       JSON.stringify({}),
       resolve,
     );
@@ -225,6 +251,59 @@ export const releaseFinalReport = (caseId) =>
     );
   });
 
+export const getCaseAmendments = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${caseId}/amendments`,
+      resolve,
+    );
+  });
+
+export const getCaseReportVersions = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${caseId}/amendments/report-versions`,
+      resolve,
+    );
+  });
+
+export const openCaseAmendment = (caseId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${caseId}/amendments`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
+export const cancelCaseAmendment = (caseId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${caseId}/amendments/current/cancel`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
+export const releaseAmendedReport = (caseId) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${caseId}/release/amended`,
+      JSON.stringify({}),
+      resolve,
+    );
+  });
+
+export const getIdentificationHistory = (isolateId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/isolates/${encodeURIComponent(
+        isolateId,
+      )}/identification-history`,
+      resolve,
+    );
+  });
+
 export const saveOrderDetail = (caseId, payload) =>
   new Promise((resolve) => {
     putToOpenElisServerFullResponse(
@@ -251,6 +330,7 @@ export const getWhonetReadiness = (caseId) =>
 const MicrobiologyService = {
   getCaseDetail,
   recordCaseActivity,
+  getReagentLotOverview,
   createIsolate,
   updateIsolateIdentification,
   getAstPanels,
@@ -259,9 +339,11 @@ const MicrobiologyService = {
   getBreakpointStandards,
   getAstRunsForIsolate,
   startAstRun,
+  startRepeatAstRun,
   recordAstReading,
   overrideAstReading,
   reviewAstRun,
+  selectReportableAstRun,
   getCaseReadiness,
   getWorklistRows,
   getCriticalCommunications,
@@ -271,6 +353,12 @@ const MicrobiologyService = {
   getReportProjection,
   releasePreliminaryReport,
   releaseFinalReport,
+  getCaseAmendments,
+  getCaseReportVersions,
+  openCaseAmendment,
+  cancelCaseAmendment,
+  releaseAmendedReport,
+  getIdentificationHistory,
   saveOrderDetail,
   getWhonetReadiness,
 };

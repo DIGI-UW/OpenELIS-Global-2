@@ -105,7 +105,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * cached values.
      */
     private static final String[][] FIXTURE_SEQUENCE_MAPPINGS = { { "person", "person_seq" },
-            { "sample", "sample_seq" }, { "sample_item", "sample_item_seq" }, { "result", "result_seq" } };
+            { "patient", "patient_seq" }, { "sample", "sample_seq" }, { "sample_item", "sample_item_seq" },
+            { "sample_human", "sample_human_seq" }, { "analysis", "analysis_seq" }, { "result", "result_seq" },
+            { "inventory_item", "inventory_item_seq" } };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the

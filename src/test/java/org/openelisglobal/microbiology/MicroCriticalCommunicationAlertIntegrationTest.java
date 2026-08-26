@@ -50,7 +50,7 @@ public class MicroCriticalCommunicationAlertIntegrationTest extends BaseWebConte
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        methodId = fixtures.firstMethodId();
+        methodId = fixtures.createMethodId();
         sampleItemId = fixtures.createSampleWithSampleItem("M11").getId();
         fixtures.createReferenceData(methodId);
     }

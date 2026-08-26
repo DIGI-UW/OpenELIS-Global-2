@@ -51,25 +51,27 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
             readiness.blockers.add("CRITICAL_FOLLOW_UP_REQUIRED");
         }
         for (MicroIsolate isolate : isolates) {
+            List<MicroAstRun> reviewedRuns = reviewedAstRuns(isolate.getId());
             if (MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name().equals(isolate.getSignificance())
-                    && !hasReviewedAst(isolate.getId())) {
+                    && reviewedRuns.isEmpty()) {
                 readiness.finalReleaseReady = false;
                 if (!readiness.blockers.contains("AST_REVIEW_REQUIRED")) {
                     readiness.blockers.add("AST_REVIEW_REQUIRED");
+                }
+            }
+            if (reviewedRuns.size() > 1 && reviewedRuns.stream().filter(MicroAstRun::isReportable).count() != 1) {
+                readiness.finalReleaseReady = false;
+                if (!readiness.blockers.contains("REPORTABLE_AST_RUN_REQUIRED")) {
+                    readiness.blockers.add("REPORTABLE_AST_RUN_REQUIRED");
                 }
             }
         }
         return readiness;
     }
 
-    private boolean hasReviewedAst(String isolateId) {
-        List<MicroAstRun> runs = astRunDAO.getByIsolateId(isolateId);
-        for (MicroAstRun run : runs) {
-            if (MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
-                return true;
-            }
-        }
-        return false;
+    private List<MicroAstRun> reviewedAstRuns(String isolateId) {
+        return astRunDAO.getByIsolateId(isolateId).stream()
+                .filter(run -> MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())).toList();
     }
 
     private boolean hasOpenCriticalFollowUp(String caseId) {

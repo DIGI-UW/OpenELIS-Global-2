@@ -27,6 +27,24 @@ public class MicroAstRun extends BaseObject<String> {
     @Column(name = "breakpoint_standard_id", length = 36)
     private String breakpointStandardId;
 
+    @Column(name = "amendment_id", length = 36)
+    private String amendmentId;
+
+    @Column(name = "attempt_type", nullable = false, length = 20)
+    private String attemptType = MicroAstAttemptType.ORIGINAL.name();
+
+    @Column(name = "source_run_id", length = 36)
+    private String sourceRunId;
+
+    @Column(name = "attempt_reason")
+    private String attemptReason;
+
+    @Column(name = "method", length = 20)
+    private String method;
+
+    @Column(name = "reportable", nullable = false)
+    private boolean reportable;
+
     @Column(name = "status", nullable = false, length = 40)
     private String status = MicroAstRunStatus.IN_PROGRESS.name();
 
@@ -74,6 +92,54 @@ public class MicroAstRun extends BaseObject<String> {
 
     public void setBreakpointStandardId(String breakpointStandardId) {
         this.breakpointStandardId = breakpointStandardId;
+    }
+
+    public String getAmendmentId() {
+        return amendmentId;
+    }
+
+    public void setAmendmentId(String amendmentId) {
+        this.amendmentId = amendmentId;
+    }
+
+    public String getAttemptType() {
+        return attemptType;
+    }
+
+    public void setAttemptType(String attemptType) {
+        this.attemptType = attemptType;
+    }
+
+    public String getSourceRunId() {
+        return sourceRunId;
+    }
+
+    public void setSourceRunId(String sourceRunId) {
+        this.sourceRunId = sourceRunId;
+    }
+
+    public String getAttemptReason() {
+        return attemptReason;
+    }
+
+    public void setAttemptReason(String attemptReason) {
+        this.attemptReason = attemptReason;
+    }
+
+    public String getMethod() {
+        return method;
+    }
+
+    public void setMethod(String method) {
+        this.method = method;
+    }
+
+    public boolean isReportable() {
+        return reportable;
+    }
+
+    public void setReportable(boolean reportable) {
+        this.reportable = reportable;
     }
 
     public String getStatus() {

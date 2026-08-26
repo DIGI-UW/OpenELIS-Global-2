@@ -11,6 +11,7 @@ export const MICROBIOLOGY_CASE_SECTIONS = [
   "ast",
   "critical-communication",
   "reports",
+  "amendment",
 ];
 
 const DEFAULT_WORKLIST_STATE = {

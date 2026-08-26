@@ -21,8 +21,30 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
     @Transactional(readOnly = true)
     public List<MicroAstRun> getByIsolateId(String isolateId) {
         Query<MicroAstRun> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroAstRun r where r.isolateId = :isolateId order by r.startedAt", MicroAstRun.class);
+                "from MicroAstRun r where r.isolateId = :isolateId order by r.startedAt, r.id", MicroAstRun.class);
         query.setParameter("isolateId", isolateId);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroAstRun> getByIsolateIds(List<String> isolateIds) {
+        if (isolateIds == null || isolateIds.isEmpty()) {
+            return List.of();
+        }
+        Query<MicroAstRun> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroAstRun r where r.isolateId in (:isolateIds) order by r.isolateId, r.startedAt, r.id",
+                MicroAstRun.class);
+        query.setParameterList("isolateIds", isolateIds);
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroAstRun> getByAmendmentId(String amendmentId) {
+        Query<MicroAstRun> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroAstRun r where r.amendmentId = :amendmentId order by r.startedAt", MicroAstRun.class);
+        query.setParameter("amendmentId", amendmentId);
         return query.list();
     }
 }

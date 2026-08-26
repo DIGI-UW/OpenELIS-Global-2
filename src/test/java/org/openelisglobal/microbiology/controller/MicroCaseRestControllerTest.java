@@ -18,10 +18,13 @@ import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.form.MicroIsolateForm;
 import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
+import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
+import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
+import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
@@ -174,7 +177,8 @@ public class MicroCaseRestControllerTest {
         request.preliminaryOrganismText = "Escherichia coli";
         request.significance = MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name();
 
-        ResponseEntity<MicroIsolateForm> response = new MicroIsolateRestController(isolateService)
+        ResponseEntity<MicroIsolateForm> response = new MicroIsolateRestController(isolateService,
+                org.mockito.Mockito.mock(MicroIdentificationHistoryService.class))
                 .createIsolate(request, requestFor("42"));
 
         assertEquals(200, response.getStatusCode().value());
@@ -203,6 +207,29 @@ public class MicroCaseRestControllerTest {
 
         verify(stateService).advanceStage(eq("case-1"), eq(MicroCaseStage.SETUP_RECORDED), eq("42"),
                 eq("setup complete"));
+    }
+
+    @Test
+    public void setupLotSelectionsUseAuthenticatedActorAndTypedSelection() {
+        MicroCaseService caseService = org.mockito.Mockito.mock(MicroCaseService.class);
+        MicroCaseStateService stateService = org.mockito.Mockito.mock(MicroCaseStateService.class);
+        MicroCaseActivityRequestForm request = new MicroCaseActivityRequestForm();
+        request.nextStage = MicroCaseStage.SETUP_RECORDED.name();
+        request.note = "setup with media";
+        MicroLotSelectionRequestForm selection = new MicroLotSelectionRequestForm();
+        selection.analysisId = "41";
+        selection.testReagentLinkId = "link-1";
+        selection.lotId = 7L;
+        request.lotSelections.add(selection);
+        when(caseService.getCaseDetail("case-1")).thenReturn(new MicroCaseDetailForm());
+
+        controller(caseService, org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class),
+                org.mockito.Mockito.mock(UserModuleService.class), stateService,
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class))
+                .recordActivity("case-1", request, requestFor("42"));
+
+        verify(stateService).advanceStage("case-1", MicroCaseStage.SETUP_RECORDED, "42", "setup with media",
+                java.util.List.of(new MicroLotSelection("41", "link-1", 7L)));
     }
 
     private MicroCaseRestController controller(MicroCaseService caseService,

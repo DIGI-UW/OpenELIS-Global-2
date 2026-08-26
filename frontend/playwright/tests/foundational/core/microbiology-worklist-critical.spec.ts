@@ -1,17 +1,40 @@
 import { test, expect } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
 import { Sidenav } from "../../../fixtures/sidenav";
 import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
-import type { Page } from "@playwright/test";
+
+const accordionButton = (page: Page, name: string) =>
+  page
+    .getByTestId("microbiology-case-view")
+    .getByRole("button", { name, exact: true });
 
 const openCaseSection = async (page: Page, name: string, section: string) => {
-  const sectionButton = page.getByRole("button", { name, exact: true });
+  const sectionButton = accordionButton(page, name);
   await expect(sectionButton).toBeVisible({ timeout: LONG_TIMEOUT });
   await sectionButton.click();
   await expect
     .poll(() => new URL(page.url()).searchParams.get("section"))
     .toBe(section);
 };
+
+const waitForWorklistResponse = (
+  page: Page,
+  expectedParams: Record<string, string>,
+) =>
+  page.waitForResponse(
+    (response) => {
+      const url = new URL(response.url());
+      return (
+        response.ok() &&
+        url.pathname.endsWith("/rest/microbiology/worklist") &&
+        Object.entries(expectedParams).every(
+          ([name, value]) => url.searchParams.get(name) === value,
+        )
+      );
+    },
+    { timeout: LONG_TIMEOUT },
+  );
 
 test.describe("microbiology worklist and critical communication", () => {
   test("worklist contains its wide table on a mobile viewport", async ({
@@ -90,16 +113,25 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(page.getByTestId("content-wrapper")).toHaveClass(
       /content-nav-locked/,
     );
+    const workflowResponse = waitForWorklistResponse(page, {
+      workflow: "BACTERIOLOGY",
+    });
     await page
-      .locator("#microbiology-worklist-workflow-filter")
+      .getByLabel("Workflow", { exact: true })
       .selectOption("BACTERIOLOGY");
     await expect(page).toHaveURL(
       /\/Microbiology\/worklist\?workflow=BACTERIOLOGY$/,
     );
-    await page.locator("#microbiology-worklist-sort").selectOption("newest");
+    await workflowResponse;
+    const sortResponse = waitForWorklistResponse(page, {
+      workflow: "BACTERIOLOGY",
+      sort: "newest",
+    });
+    await page.getByLabel("Sort", { exact: true }).selectOption("newest");
     await expect(page).toHaveURL(
       /\/Microbiology\/worklist\?workflow=BACTERIOLOGY&sort=newest$/,
     );
+    await sortResponse;
 
     await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
       waitUntil: "domcontentloaded",
@@ -156,10 +188,17 @@ test.describe("microbiology worklist and critical communication", () => {
     ).toContainText("Acknowledged", { timeout: LONG_TIMEOUT });
     await openCaseSection(page, "Isolates", "isolates");
     await expect(page.getByRole("region", { name: "Isolates" })).toBeVisible();
+    const restoredWorklistResponse = waitForWorklistResponse(page, {
+      workflow: "BACTERIOLOGY",
+      q: seeded.caseId,
+      sort: "newest",
+    });
     await page
       .getByRole("navigation", { name: "Breadcrumb" })
       .getByRole("link", { name: "Microbiology worklist" })
       .click();
     await expect(page).toHaveURL(scopedWorklistUrl);
+    await restoredWorklistResponse;
+    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 });

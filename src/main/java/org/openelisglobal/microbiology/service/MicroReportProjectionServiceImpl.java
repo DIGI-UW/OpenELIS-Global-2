@@ -96,19 +96,80 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     }
 
     @Override
+    @Transactional
+    public MicroReportProjectionResult releaseAmended(String caseId, String performedBy) {
+        ProjectionInput input = projectionInput(caseId);
+        requireContent(input.content());
+        if (!input.mappingConfigured()) {
+            throw new IllegalStateException("REPORT_MAPPING_REQUIRED");
+        }
+        for (MicroCaseAnalysis link : input.links()) {
+            Analysis original = analysisService.get(link.getAnalysisId());
+            Analysis revised = analysisService.buildAnalysis(original.getTest(), original.getSampleItem());
+            revised.setRevision(nextRevision(original.getRevision()));
+            revised.setMethod(original.getMethod());
+            revised.setPanel(original.getPanel());
+            revised.setAnalysisType(original.getAnalysisType());
+            revised.setIsReportable(original.getIsReportable());
+            revised.setSysUserId(performedBy);
+            String revisedId = analysisService.insert(revised);
+            if (!hasText(revised.getId())) {
+                revised.setId(revisedId);
+            }
+            link.setAnalysisId(revised.getId());
+            link.setProjectedResultId(null);
+        }
+        return persist(input, performedBy, true);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public MicroReportProjectionResult preview(String caseId) {
-        ProjectionInput input = projectionInput(caseId);
+        MicroCase microCase = getCase(caseId);
+        ProjectionInput input;
+        try {
+            input = projectionInput(microCase);
+        } catch (MicroAstConflictException conflict) {
+            if (!"REPORTABLE_AST_RUN_REQUIRED".equals(conflict.getMessage())) {
+                throw conflict;
+            }
+            input = MicroCaseStage.FINAL_RELEASED.name().equals(microCase.getStage())
+                    ? releasedProjectionInput(microCase)
+                    : projectionInput(microCase, "");
+        }
         List<String> projectedResultIds = input.links().stream().map(MicroCaseAnalysis::getProjectedResultId)
                 .filter(this::hasText).toList();
         return new MicroReportProjectionResult(input.content(), input.mappingConfigured(), projectedResultIds);
     }
 
     private ProjectionInput projectionInput(String caseId) {
+        return projectionInput(getCase(caseId));
+    }
+
+    private MicroCase getCase(String caseId) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
-        MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
-        String content = buildContent(microCase);
-        List<MicroCaseAnalysis> links = caseAnalysisDAO.getByCaseId(caseId);
+        return caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+    }
+
+    private ProjectionInput projectionInput(MicroCase microCase) {
+        return projectionInput(microCase, buildContent(microCase));
+    }
+
+    private ProjectionInput projectionInput(MicroCase microCase, String content) {
+        List<MicroCaseAnalysis> links = caseAnalysisDAO.getByCaseId(microCase.getId());
+        boolean mappingConfigured = !links.isEmpty() && links.stream().allMatch(this::hasReportConfiguration);
+        return new ProjectionInput(content, links, mappingConfigured);
+    }
+
+    private ProjectionInput releasedProjectionInput(MicroCase microCase) {
+        List<MicroCaseAnalysis> links = caseAnalysisDAO.getByCaseId(microCase.getId());
+        List<String> releasedValues = links.stream().map(MicroCaseAnalysis::getProjectedResultId).filter(this::hasText)
+                .map(resultService::getResultById).filter(result -> result != null && hasText(result.getValue()))
+                .map(result -> result.getValue().trim()).distinct().toList();
+        if (releasedValues.size() > 1) {
+            throw new IllegalStateException("FINAL_REPORT_BASELINE_AMBIGUOUS");
+        }
+        String content = releasedValues.isEmpty() ? "" : releasedValues.get(0);
         boolean mappingConfigured = !links.isEmpty() && links.stream().allMatch(this::hasReportConfiguration);
         return new ProjectionInput(content, links, mappingConfigured);
     }
@@ -208,6 +269,17 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
         analysisService.update(analysis);
     }
 
+    private String nextRevision(String revision) {
+        if (!hasText(revision)) {
+            return "1";
+        }
+        try {
+            return Integer.toString(Integer.parseInt(revision) + 1);
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("ANALYSIS_REVISION_INVALID", e);
+        }
+    }
+
     private String buildContent(MicroCase microCase) {
         if (MicroCaseStage.NO_GROWTH_READY.name().equals(microCase.getStage())) {
             return "No growth";
@@ -219,10 +291,7 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
                 continue;
             }
             StringJoiner readings = new StringJoiner(", ");
-            for (MicroAstRun run : astRunDAO.getByIsolateId(isolate.getId())) {
-                if (!MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
-                    continue;
-                }
+            for (MicroAstRun run : reportableRuns(isolate.getId())) {
                 for (MicroAstReading reading : readingDAO.getByRunId(run.getId())) {
                     readings.add(antibioticName(reading.getAntibioticId()) + " " + interpretation(reading));
                 }
@@ -234,6 +303,19 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
             isolates.add(value);
         }
         return isolates.toString();
+    }
+
+    private List<MicroAstRun> reportableRuns(String isolateId) {
+        List<MicroAstRun> reviewed = astRunDAO.getByIsolateId(isolateId).stream()
+                .filter(run -> MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())).toList();
+        if (reviewed.size() <= 1) {
+            return reviewed;
+        }
+        List<MicroAstRun> selected = reviewed.stream().filter(MicroAstRun::isReportable).toList();
+        if (selected.size() != 1) {
+            throw new MicroAstConflictException("REPORTABLE_AST_RUN_REQUIRED");
+        }
+        return selected;
     }
 
     private String identificationFor(MicroIsolate isolate) {

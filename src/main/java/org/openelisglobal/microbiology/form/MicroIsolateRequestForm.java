@@ -11,4 +11,5 @@ public class MicroIsolateRequestForm {
     public String preliminaryOrganismText;
     public String significance;
     public String identificationStatus;
+    public String identificationReason;
 }

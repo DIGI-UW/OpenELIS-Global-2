@@ -35,6 +35,10 @@ import {
   MICROBIOLOGY_WORKLIST_PAGE_SIZES,
   parseMicrobiologyWorklistSearch,
 } from "./MicrobiologyRoutes";
+import {
+  markMicrobiologyReady,
+  MICROBIOLOGY_WORKLIST_READY_MARK,
+} from "./MicrobiologyPerformance";
 import MicrobiologyService from "./MicrobiologyService";
 import "./MicrobiologyWorklist.css";
 
@@ -150,40 +154,59 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
   const history = useHistory();
   const location = useLocation();
   const filters = parseMicrobiologyWorklistSearch(location.search);
-  const [worklist, setWorklist] = useState({
-    rows: [],
-    summary: EMPTY_SUMMARY,
-    total: 0,
-    page: filters.page,
-    pageSize: filters.pageSize,
+  const [worklistState, setWorklistState] = useState({
+    current: {
+      rows: [],
+      summary: EMPTY_SUMMARY,
+      total: 0,
+      page: filters.page,
+      pageSize: filters.pageSize,
+    },
+    previousRows: [],
   });
-  const [loading, setLoading] = useState(true);
-  const [hasLoadError, setHasLoadError] = useState(false);
+  const [requestState, setRequestState] = useState({
+    search: null,
+    status: "loading",
+  });
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const { current: worklist, previousRows } = worklistState;
+  const responseMatchesLocation = requestState.search === location.search;
+  const loading = !responseMatchesLocation || requestState.status === "loading";
+  const hasLoadError =
+    responseMatchesLocation && requestState.status === "error";
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setHasLoadError(false);
     service
       .getWorklistRows(filters)
       .then((response) => {
         if (!active) {
           return;
         }
-        setWorklist(normalizePageResponse(response, filters));
-        setLoading(false);
+        const nextWorklist = normalizePageResponse(response, filters);
+        setWorklistState(({ current }) => ({
+          current: nextWorklist,
+          previousRows: current.rows,
+        }));
+        setRequestState({ search: location.search, status: "success" });
+        setHasLoaded(true);
       })
       .catch(() => {
         if (!active) {
           return;
         }
-        setHasLoadError(true);
-        setLoading(false);
+        setRequestState({ search: location.search, status: "error" });
       });
     return () => {
       active = false;
     };
   }, [location.search, service]);
+
+  useEffect(() => {
+    if (!loading && !hasLoadError) {
+      markMicrobiologyReady(MICROBIOLOGY_WORKLIST_READY_MARK);
+    }
+  }, [hasLoadError, loading, location.search, worklist]);
 
   const updateFilters = (changes, resetPage = true) => {
     const nextState = {
@@ -252,8 +275,11 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
   );
 
   const rowsById = useMemo(
-    () => Object.fromEntries(worklist.rows.map((row) => [row.caseId, row])),
-    [worklist.rows],
+    () =>
+      Object.fromEntries(
+        [...previousRows, ...worklist.rows].map((row) => [row.caseId, row]),
+      ),
+    [previousRows, worklist.rows],
   );
   const tableRows = useMemo(
     () =>
@@ -548,12 +574,13 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
             </Select>
           </div>
         </Layer>
-        {loading ? (
+        {loading && !hasLoaded ? (
           <Loading withOverlay={false} />
         ) : (
           <section
             className="microbiology-worklist__table-section"
             aria-labelledby="microbiology-worklist-table-heading"
+            aria-busy={loading}
           >
             <div className="microbiology-worklist__section-heading">
               <div>
@@ -593,7 +620,13 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
                       />
                     </TableToolbarContent>
                   </TableToolbar>
-                  <div className="microbiology-worklist__table-scroll">
+                  <div
+                    className="microbiology-worklist__table-scroll"
+                    tabIndex={0}
+                    aria-label={intl.formatMessage({
+                      id: "microbiology.worklist.table.title",
+                    })}
+                  >
                     <div className="microbiology-worklist__table-content">
                       <Table {...getTableProps()}>
                         <TableHead>
@@ -758,7 +791,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService }) => {
             </DataTable>
           </section>
         )}
-        {!loading && (
+        {hasLoaded && (
           <Pagination
             page={worklist.page}
             pageSize={worklist.pageSize}

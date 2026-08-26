@@ -79,8 +79,13 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroCaseDetailForm> recordActivity(@PathVariable String caseId,
             @RequestBody MicroCaseActivityRequestForm request, HttpServletRequest httpRequest) {
-        stateService.advanceStage(caseId, requiredEnum(MicroCaseStage.class, request.nextStage, "nextStage"),
-                authenticatedUserId(httpRequest), request.note);
+        MicroCaseStage nextStage = requiredEnum(MicroCaseStage.class, request.nextStage, "nextStage");
+        if (request.lotSelections == null || request.lotSelections.isEmpty()) {
+            stateService.advanceStage(caseId, nextStage, authenticatedUserId(httpRequest), request.note);
+        } else {
+            stateService.advanceStage(caseId, nextStage, authenticatedUserId(httpRequest), request.note,
+                    lotSelections(request.lotSelections));
+        }
         return ResponseEntity.ok(caseService.getCaseDetail(caseId));
     }
 

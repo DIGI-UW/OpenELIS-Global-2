@@ -3,7 +3,6 @@ package org.openelisglobal.microbiology.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.microbiology.form.MicroReportProjectionForm;
 import org.openelisglobal.microbiology.form.MicroReportReleaseForm;
-import org.openelisglobal.microbiology.form.MicroReportReleaseRequestForm;
 import org.openelisglobal.microbiology.service.MicroReportProjectionResult;
 import org.openelisglobal.microbiology.service.MicroReportProjectionService;
 import org.openelisglobal.microbiology.service.MicroReportReleaseService;
@@ -13,7 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,15 +37,22 @@ public class MicroReportReleaseRestController extends MicrobiologyRestController
     @PostMapping("/preliminary")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroReportReleaseForm> releasePreliminary(@PathVariable String caseId,
-            @RequestBody MicroReportReleaseRequestForm request, HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(releaseService.releasePreliminary(caseId, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/final")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroReportReleaseForm> releaseFinal(@PathVariable String caseId,
-            @RequestBody MicroReportReleaseRequestForm request, HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(releaseService.releaseFinal(caseId, authenticatedUserId(httpRequest))));
+    }
+
+    @PostMapping("/amended")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS')")
+    public ResponseEntity<MicroReportReleaseForm> releaseAmended(@PathVariable String caseId,
+            HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(toForm(releaseService.releaseAmended(caseId, authenticatedUserId(httpRequest))));
     }
 
     private MicroReportReleaseForm toForm(MicroCase microCase) {

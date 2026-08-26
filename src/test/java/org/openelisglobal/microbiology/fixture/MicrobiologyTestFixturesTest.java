@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.fixture;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,6 +18,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.service.MicrobiologyConfigurationService;
@@ -27,6 +30,8 @@ import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicrobiologyTestFixturesTest {
@@ -40,6 +45,10 @@ public class MicrobiologyTestFixturesTest {
     @Mock
     private TestService testService;
     @Mock
+    private TypeOfSampleService typeOfSampleService;
+    @Mock
+    private LocalizationService localizationService;
+    @Mock
     private IStatusService statusService;
     @Mock
     private StatusOfSampleService statusOfSampleService;
@@ -52,8 +61,10 @@ public class MicrobiologyTestFixturesTest {
 
     @Before
     public void setUp() {
+        when(systemUserService.getAllSystemUsers()).thenReturn(List.of(systemUser("7")));
         fixtures = new MicrobiologyTestFixtures(methodService, sampleService, sampleItemService, testService,
-                statusService, statusOfSampleService, systemUserService, configurationService);
+                typeOfSampleService, localizationService, statusService, statusOfSampleService, systemUserService,
+                configurationService);
     }
 
     @Test
@@ -83,7 +94,17 @@ public class MicrobiologyTestFixturesTest {
         assertEquals("SampleEntered", statusCaptor.getValue().getStatusOfSampleName());
         assertEquals("SAMPLE", statusCaptor.getValue().getStatusType());
         assertEquals("901", statusCaptor.getValue().getCode());
+        assertEquals("7", statusCaptor.getValue().getSysUserId());
         verify(statusService).refreshCache();
+    }
+
+    @Test
+    public void returnsGeneratedStatusIdWhenCacheDoesNotRefresh() {
+        when(statusOfSampleService.getAllStatusOfSamples()).thenReturn(List.of());
+        when(statusOfSampleService.insert(any(StatusOfSample.class))).thenReturn("generated-42");
+        when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("-1");
+
+        assertEquals("generated-42", fixtures.ensureSampleEnteredStatus());
     }
 
     @Test
@@ -96,6 +117,38 @@ public class MicrobiologyTestFixturesTest {
 
         verify(statusOfSampleService).insert(any(StatusOfSample.class));
         verify(statusService).refreshCache();
+    }
+
+    @Test
+    public void reusesExistingSampleEnteredRecordWhenCacheMisses() {
+        StatusOfSample entered = new StatusOfSample();
+        entered.setId("existing-42");
+        entered.setStatusOfSampleName("SampleEntered");
+        entered.setStatusType("SAMPLE");
+        when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("-1");
+        when(statusOfSampleService.getAllStatusOfSamples()).thenReturn(List.of(entered));
+
+        assertEquals("existing-42", fixtures.ensureSampleEnteredStatus());
+
+        verify(statusOfSampleService, never()).insert(any(StatusOfSample.class));
+        verify(statusService).refreshCache();
+    }
+
+    @Test
+    public void ensuresEveryRequiredWorkflowStatus() {
+        when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("20");
+        when(statusService.getStatusID(AnalysisStatus.NotStarted)).thenReturn("21");
+        when(statusService.getStatusID(AnalysisStatus.Finalized)).thenReturn("22");
+        when(statusOfSampleService.getMatch("id", "20")).thenReturn(Optional.of(new StatusOfSample()));
+        when(statusOfSampleService.getMatch("id", "21")).thenReturn(Optional.of(new StatusOfSample()));
+        when(statusOfSampleService.getMatch("id", "22")).thenReturn(Optional.of(new StatusOfSample()));
+
+        fixtures.ensureRequiredWorkflowStatuses();
+
+        verify(statusService).getStatusID(SampleStatus.Entered);
+        verify(statusService).getStatusID(AnalysisStatus.NotStarted);
+        verify(statusService).getStatusID(AnalysisStatus.Finalized);
+        verify(statusOfSampleService, never()).insert(any(StatusOfSample.class));
     }
 
     @Test
@@ -129,18 +182,39 @@ public class MicrobiologyTestFixturesTest {
     }
 
     @Test
-    public void provisionsMethodThroughServiceWhenNoActiveMethodExists() {
-        when(methodService.getAllActiveMethods()).thenReturn(List.of());
+    public void provisionsIsolatedMethodThroughService() {
         when(methodService.insert(any(Method.class))).thenReturn("55");
-        when(systemUserService.getAllSystemUsers()).thenReturn(List.of(systemUser("7")));
 
-        assertEquals("55", fixtures.firstMethodId());
+        assertEquals("55", fixtures.createMethodId());
 
         ArgumentCaptor<Method> methodCaptor = ArgumentCaptor.forClass(Method.class);
         verify(methodService).insert(methodCaptor.capture());
-        assertEquals("Microbiology test", methodCaptor.getValue().getMethodName());
+        assertTrue(methodCaptor.getValue().getMethodName().startsWith("Micro "));
+        assertTrue(methodCaptor.getValue().getCode().startsWith("MCR"));
         assertEquals("Y", methodCaptor.getValue().getIsActive());
         assertEquals("7", methodCaptor.getValue().getSysUserId());
+        verify(methodService, never()).getAllActiveMethods();
+    }
+
+    @Test
+    public void provisionsIsolatedSpecimenTypeThroughService() {
+        when(localizationService.insert(any(Localization.class))).thenReturn("60");
+        when(typeOfSampleService.insert(any(TypeOfSample.class))).thenReturn("61");
+
+        TypeOfSample typeOfSample = fixtures.createTypeOfSample();
+
+        ArgumentCaptor<TypeOfSample> typeCaptor = ArgumentCaptor.forClass(TypeOfSample.class);
+        verify(typeOfSampleService).insert(typeCaptor.capture());
+        ArgumentCaptor<Localization> localizationCaptor = ArgumentCaptor.forClass(Localization.class);
+        verify(localizationService).insert(localizationCaptor.capture());
+        assertEquals("61", typeOfSample.getId());
+        assertEquals(localizationCaptor.getValue(), typeOfSample.getLocalization());
+        assertTrue(localizationCaptor.getValue().getEnglish().startsWith("Micro specimen "));
+        assertEquals("7", localizationCaptor.getValue().getSysUserId());
+        assertTrue(typeCaptor.getValue().getDescription().startsWith("Micro specimen "));
+        assertEquals("H", typeCaptor.getValue().getDomain());
+        assertTrue(typeCaptor.getValue().getIsActive());
+        assertEquals("7", typeCaptor.getValue().getSysUserId());
     }
 
     private SystemUser systemUser(String id) {

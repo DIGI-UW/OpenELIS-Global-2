@@ -35,7 +35,7 @@ public class MicroOrderRoutingIdempotencyTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        methodId = fixtures.firstMethodId();
+        methodId = fixtures.createMethodId();
         sampleItemId = fixtures.createSampleWithSampleItem("OGC782M3I").getId();
         fixtures.createReferenceData(methodId);
     }

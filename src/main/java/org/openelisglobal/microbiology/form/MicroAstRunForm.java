@@ -10,6 +10,11 @@ public class MicroAstRunForm {
     public String isolateId;
     public String panelId;
     public String breakpointStandardId;
+    public String attemptType;
+    public String sourceRunId;
+    public String attemptReason;
+    public String method;
+    public boolean reportable;
     public String status;
     public Timestamp startedAt;
     public String startedBy;

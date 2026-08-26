@@ -393,4 +393,15 @@
   <!-- OGC-782 remediation: standard Result projection for microbiology reports -->
   <include relativeToChangelogFile="true" file="059-microbiology-report-projection.xml"/>
 
+  <!-- OGC-782 M8: amendment, report-version, and re-identification history -->
+  <include relativeToChangelogFile="true" file="060-microbiology-amendment-history.xml"/>
+  <include relativeToChangelogFile="true" file="060a-microbiology-amendment-isolate-lifecycle.xml"/>
+
+  <!-- OGC-782 M8: repeat/retest AST provenance and reportable selection -->
+  <include relativeToChangelogFile="true" file="061-microbiology-ast-attempts.xml"/>
+
+  <!-- OGC-782 M8: link shared Inventory usage to culture and AST bench actions -->
+  <include relativeToChangelogFile="true" file="062-microbiology-inventory-usage-link.xml"/>
+  <include relativeToChangelogFile="true" file="063-microbiology-inventory-usage-version.xml"/>
+
 </databaseChangeLog>

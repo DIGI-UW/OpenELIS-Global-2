@@ -337,9 +337,41 @@ const renderHeader = (options = {}) => {
 };
 
 describe("Header Component - M2b Enhancement Tests", () => {
+  test("preserves stable selectors on Carbon parent and leaf menu labels", async () => {
+    const { container } = renderHeader();
+
+    await waitFor(() => {
+      expect(container.querySelector("#menu_sample")).toBeInTheDocument();
+      expect(container.querySelector("#menu_results")).toBeInTheDocument();
+      expect(container.querySelector("#menu_reports")).toBeInTheDocument();
+      expect(container.querySelector("span#menu_home")).toBeInTheDocument();
+      expect(
+        container.querySelector("span#menu_sample_add"),
+      ).toBeInTheDocument();
+    });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.clear();
+  });
+
+  test("renders Carbon sidenav lists with direct list-item children", async () => {
+    const { container } = renderHeader();
+
+    await waitFor(() => {
+      expect(container.querySelector("#menu_home_nav")).toBeTruthy();
+    });
+
+    const sideNavLists = container.querySelectorAll(
+      ".cds--side-nav__items, .cds--side-nav__menu",
+    );
+    expect(sideNavLists.length).toBeGreaterThan(0);
+    sideNavLists.forEach((list) => {
+      Array.from(list.children).forEach((child) => {
+        expect(child.tagName).toBe("LI");
+      });
+    });
   });
 
   describe("Home item active state", () => {

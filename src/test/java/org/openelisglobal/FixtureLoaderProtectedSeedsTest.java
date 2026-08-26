@@ -7,8 +7,14 @@ import static org.junit.Assert.assertTrue;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.Test;
+import org.openelisglobal.inventory.service.InventoryItemService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
+import org.openelisglobal.inventory.valueholder.InventoryItem;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -47,6 +53,12 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
 
     @Autowired
     private PersonService personService;
+
+    @Autowired
+    private PatientService patientService;
+
+    @Autowired
+    private InventoryItemService inventoryItemService;
 
     /**
      * Seed tables that should survive any fixture load. Mirrors the constant on
@@ -96,6 +108,39 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
 
         assertNotNull(personService.get(insertedId));
         assertTrue("service insert reused a fixture-owned Person id", Integer.parseInt(insertedId) > 3);
+    }
+
+    @Test
+    public void loadingLegacyFixtureWithExplicitIds_advancesSequencesForServiceInserts() throws Exception {
+        executeDataSetWithStateManagement("testdata/logbook-db.xml");
+
+        Person person = new Person();
+        person.setFirstName("Sequence");
+        person.setLastName("Patient canary");
+        person.setSysUserId(TEST_SYS_USER_ID);
+        String personId = personService.insert(person);
+
+        Patient patient = new Patient();
+        patient.setPerson(person);
+        patient.setNationalId("SEQUENCE-CANARY-" + UUID.randomUUID());
+        patient.setSysUserId(TEST_SYS_USER_ID);
+        String patientId = patientService.insert(patient);
+
+        InventoryItem item = new InventoryItem();
+        item.setFhirUuid(UUID.randomUUID());
+        item.setName("Sequence canary inventory item");
+        item.setDescription("Verifies service inserts follow legacy fixture IDs");
+        item.setItemType(ItemType.REAGENT);
+        item.setUnits("unit");
+        item.setSysUserId(TEST_SYS_USER_ID);
+        Long insertedId = inventoryItemService.insert(item);
+
+        assertNotNull(personService.get(personId));
+        assertTrue("service insert reused a fixture-owned Person id", Integer.parseInt(personId) > 2);
+        assertNotNull(patientService.get(patientId));
+        assertTrue("service insert reused a fixture-owned Patient id", Integer.parseInt(patientId) > 2);
+        assertNotNull(inventoryItemService.get(insertedId));
+        assertTrue("service insert reused a fixture-owned InventoryItem id", insertedId > 2L);
     }
 
     @Test

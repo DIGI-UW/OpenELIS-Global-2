@@ -2,8 +2,12 @@ package org.openelisglobal.microbiology.service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
@@ -43,9 +47,25 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     @Transactional(readOnly = true)
     public MicroWorklistPageForm getWorklistPage(MicroWorklistQueryForm query) {
         MicroWorklistQueryForm normalized = normalize(query);
+        List<MicroCase> openCases = caseDAO.getOpenCases();
+        List<String> caseIds = openCases.stream().map(MicroCase::getId).toList();
+        List<String> sampleItemIds = openCases.stream().map(MicroCase::getSampleItemId).distinct().toList();
+        Map<String, List<MicroCase>> casesBySampleItem = groupBy(caseDAO.getBySampleItemIds(sampleItemIds),
+                MicroCase::getSampleItemId);
+        Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
+                MicroIsolate::getCaseId);
+        List<String> isolateIds = isolatesByCase.values().stream().flatMap(List::stream).map(MicroIsolate::getId)
+                .toList();
+        Map<String, List<MicroAstRun>> runsByIsolate = groupBy(
+                isolateIds.isEmpty() ? List.of() : astRunDAO.getByIsolateIds(isolateIds), MicroAstRun::getIsolateId);
+        Map<String, List<MicroCriticalCommunication>> communicationsByCase = groupBy(
+                communicationDAO.getByCaseIds(caseIds), MicroCriticalCommunication::getCaseId);
         List<MicroWorklistRowForm> rows = new ArrayList<>();
-        for (MicroCase microCase : caseDAO.getOpenCases()) {
-            rows.add(toRow(microCase));
+        for (MicroCase microCase : openCases) {
+            List<MicroIsolate> isolates = valuesFor(isolatesByCase, microCase.getId());
+            rows.add(toRow(microCase, isolates, valuesFor(runsByIsolate, isolates),
+                    valuesFor(communicationsByCase, microCase.getId()),
+                    valuesFor(casesBySampleItem, microCase.getSampleItemId())));
         }
         List<MicroWorklistRowForm> summaryRows = new ArrayList<>(rows);
         summaryRows.removeIf(row -> !matches(row, queryWithoutActionFilters(normalized)));
@@ -105,10 +125,10 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         if (query == null) {
             return normalized;
         }
-        normalized.workflow = text(query.workflow);
-        normalized.stage = text(query.stage);
-        normalized.urgency = text(query.urgency);
-        normalized.due = text(query.due);
+        normalized.workflow = filterText(query.workflow);
+        normalized.stage = filterText(query.stage);
+        normalized.urgency = filterText(query.urgency);
+        normalized.due = filterText(query.due);
         normalized.q = text(query.q);
         normalized.sort = query.sort != null && List.of("priority", "newest", "workflow").contains(query.sort)
                 ? query.sort
@@ -157,13 +177,17 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         return value == null ? "" : value.trim();
     }
 
+    private String filterText(String value) {
+        String normalized = text(value);
+        return "ALL".equalsIgnoreCase(normalized) ? "" : normalized;
+    }
+
     private String safe(String value) {
         return value == null ? "" : value;
     }
 
-    private MicroWorklistRowForm toRow(MicroCase microCase) {
-        List<MicroIsolate> isolates = isolateDAO.getByCaseId(microCase.getId());
-        List<MicroCriticalCommunication> communications = communicationDAO.getByCaseId(microCase.getId());
+    private MicroWorklistRowForm toRow(MicroCase microCase, List<MicroIsolate> isolates, List<MicroAstRun> runs,
+            List<MicroCriticalCommunication> communications, List<MicroCase> siblingCases) {
         MicroWorklistRowForm row = new MicroWorklistRowForm();
         row.caseId = microCase.getId();
         row.sampleItemId = microCase.getSampleItemId();
@@ -171,11 +195,11 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         row.stage = microCase.getStage();
         row.priority = microCase.getPriority();
         row.createdAt = microCase.getCreatedAt();
-        row.needsAstReview = needsAstReview(isolates);
+        row.needsAstReview = needsAstReview(runs);
         row.hasOpenCriticalCommunication = hasOpenCriticalCommunication(communications);
         row.dueAction = dueAction(microCase, isolates, row.needsAstReview);
         row.urgency = urgency(microCase, row.needsAstReview, row.hasOpenCriticalCommunication);
-        for (MicroCase sibling : caseDAO.getBySampleItem(microCase.getSampleItemId())) {
+        for (MicroCase sibling : siblingCases) {
             if (!sibling.getId().equals(microCase.getId())) {
                 row.siblingWorkflows.add(sibling.getWorkflowType());
             }
@@ -183,15 +207,25 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         return row;
     }
 
-    private boolean needsAstReview(List<MicroIsolate> isolates) {
-        for (MicroIsolate isolate : isolates) {
-            for (MicroAstRun run : astRunDAO.getByIsolateId(isolate.getId())) {
-                if (!MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
-                    return true;
-                }
+    private boolean needsAstReview(List<MicroAstRun> runs) {
+        for (MicroAstRun run : runs) {
+            if (!MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
+                return true;
             }
         }
         return false;
+    }
+
+    private List<MicroAstRun> valuesFor(Map<String, List<MicroAstRun>> runsByIsolate, List<MicroIsolate> isolates) {
+        return isolates.stream().flatMap(isolate -> valuesFor(runsByIsolate, isolate.getId()).stream()).toList();
+    }
+
+    private <T> List<T> valuesFor(Map<String, List<T>> valuesByKey, String key) {
+        return valuesByKey.getOrDefault(key, List.of());
+    }
+
+    private <T> Map<String, List<T>> groupBy(List<T> values, Function<T, String> keyFunction) {
+        return values.stream().collect(Collectors.groupingBy(keyFunction, LinkedHashMap::new, Collectors.toList()));
     }
 
     private boolean hasOpenCriticalCommunication(List<MicroCriticalCommunication> communications) {

@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
   InlineNotification,
+  RadioButton,
+  RadioButtonGroup,
   Select,
   SelectItem,
   Tag,
@@ -9,7 +11,10 @@ import {
   TextInput,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import AstAttemptTable from "./AstAttemptTable";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+import ReagentLotPicker from "./ReagentLotPicker";
+import ReagentUsageHistory from "./ReagentUsageHistory";
 
 const METHOD_OPTIONS = ["MIC", "ZONE"];
 const OVERRIDE_OPTIONS = ["SUSCEPTIBLE", "INTERMEDIATE", "RESISTANT"];
@@ -21,6 +26,9 @@ const AstEntryPanel = ({
   service,
   saving: caseSaving,
   onAstUpdated,
+  readOnly = false,
+  reagentRequirements = [],
+  reagentUsages = [],
 }) => {
   const intl = useIntl();
   const [selectedIsolateId, setSelectedIsolateId] = useState("");
@@ -36,15 +44,17 @@ const AstEntryPanel = ({
     useState("RESISTANT");
   const [overrideReason, setOverrideReason] = useState("");
   const [runs, setRuns] = useState([]);
+  const [selectedRunId, setSelectedRunId] = useState("");
   const [selectedReadingId, setSelectedReadingId] = useState("");
+  const [attemptType, setAttemptType] = useState("REPEAT");
+  const [attemptReason, setAttemptReason] = useState("");
+  const [attemptMethod, setAttemptMethod] = useState("");
   const [readiness, setReadiness] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [selectedLots, setSelectedLots] = useState({});
 
-  useEffect(() => {
-    if (!selectedIsolateId && isolates.length > 0) {
-      setSelectedIsolateId(isolates[0].id);
-    }
-  }, [isolates, selectedIsolateId]);
+  const activeIsolateId = selectedIsolateId || isolates[0]?.id || "";
 
   useEffect(() => {
     if (!workflowType) {
@@ -70,45 +80,37 @@ const AstEntryPanel = ({
     });
   }, [service, workflowType]);
 
-  const loadAstState = () => {
-    if (!selectedIsolateId) {
-      setRuns([]);
-      return Promise.resolve();
+  const loadAstState = useCallback(() => {
+    if (!activeIsolateId) {
+      return Promise.resolve().then(() => setRuns([]));
     }
     return Promise.all([
-      service.getAstRunsForIsolate(selectedIsolateId).then((items = []) => {
+      service.getAstRunsForIsolate(activeIsolateId).then((items = []) => {
         setRuns(items);
       }),
       service.getCaseReadiness(caseId).then((value) => {
         setReadiness(value);
       }),
     ]);
-  };
+  }, [activeIsolateId, caseId, service]);
 
   useEffect(() => {
     loadAstState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [caseId, selectedIsolateId]);
+  }, [loadAstState]);
 
-  const currentRun = useMemo(
-    () =>
+  const currentRun = useMemo(() => {
+    const selected = runs.find((run) => run.id === selectedRunId);
+    return (
+      selected ||
       runs.find((run) => run.status === "IN_PROGRESS") ||
-      (runs.length > 0 ? runs[runs.length - 1] : null),
-    [runs],
-  );
+      runs.find((run) => run.reportable) ||
+      (runs.length > 0 ? runs[runs.length - 1] : null)
+    );
+  }, [runs, selectedRunId]);
   const currentReadings = currentRun?.readings || [];
   const currentReading =
     currentReadings.find((reading) => reading.id === selectedReadingId) ||
     currentReadings[0];
-
-  useEffect(() => {
-    if (
-      currentReadings.length > 0 &&
-      !currentReadings.some((reading) => reading.id === selectedReadingId)
-    ) {
-      setSelectedReadingId(currentReadings[0].id);
-    }
-  }, [currentReadings, selectedReadingId]);
 
   const antibioticLabelFor = (reading) =>
     reading?.antibioticLabel ||
@@ -117,15 +119,50 @@ const AstEntryPanel = ({
     reading?.antibioticId;
   const busy = saving || caseSaving;
   const isReviewed = currentRun?.status === "REVIEWED";
+  const hasInProgressRun = runs.some((run) => run.status === "IN_PROGRESS");
+  const effectiveAttemptMethod = attemptMethod || currentRun?.method || "MIC";
+  const lotSelections = Object.values(selectedLots);
+
+  const selectLot = (selection) => {
+    const selectionKey = `${selection.analysisId}:${selection.testReagentLinkId}`;
+    setSelectedLots((current) => ({
+      ...current,
+      [selectionKey]: selection,
+    }));
+  };
+
+  const viewRun = (runId) => {
+    setSelectedRunId(runId);
+    setAttemptMethod("");
+    setAttemptReason("");
+  };
 
   const runOperation = (operation) => {
     setSaving(true);
-    return operation()
-      .then(loadAstState)
-      .then(() => {
+    setActionError("");
+    return Promise.resolve()
+      .then(operation)
+      .then((result) => {
+        if (
+          result?.error ||
+          result?.statusCode >= 400 ||
+          result?.status === 0
+        ) {
+          throw new Error(
+            formatMicrobiologyEnum(result.message || result.error, intl),
+          );
+        }
+        return loadAstState().then(() => result);
+      })
+      .then((result) => {
         if (onAstUpdated) {
           onAstUpdated();
         }
+        return result;
+      })
+      .catch((error) => {
+        setActionError(error?.message || String(error));
+        return null;
       })
       .finally(() => setSaving(false));
   };
@@ -133,17 +170,39 @@ const AstEntryPanel = ({
   const startRun = () =>
     runOperation(() =>
       service.startAstRun({
-        isolateId: selectedIsolateId,
+        isolateId: activeIsolateId,
         panelId: selectedPanelId,
         breakpointStandardId: selectedStandardId,
+        ...(lotSelections.length > 0 ? { lotSelections } : {}),
       }),
-    );
+    ).then((run) => {
+      if (run) {
+        setSelectedRunId(run.id);
+        setSelectedLots({});
+      }
+    });
+
+  const startRepeatRun = () =>
+    runOperation(() =>
+      service.startRepeatAstRun(currentRun.id, {
+        attemptType,
+        reason: attemptReason,
+        method: effectiveAttemptMethod,
+        ...(lotSelections.length > 0 ? { lotSelections } : {}),
+      }),
+    ).then((run) => {
+      if (run) {
+        setSelectedRunId(run.id);
+        setAttemptReason("");
+        setSelectedLots({});
+      }
+    });
 
   const recordReading = () =>
     runOperation(() =>
       service.recordAstReading(currentRun.id, {
         antibioticId: selectedAntibioticId,
-        method,
+        method: currentRun.method || method,
         rawValue,
       }),
     );
@@ -158,6 +217,13 @@ const AstEntryPanel = ({
 
   const reviewRun = () =>
     runOperation(() => service.reviewAstRun(currentRun.id));
+
+  const selectReportableRun = (runId) =>
+    runOperation(() => service.selectReportableAstRun(runId)).then((run) => {
+      if (run) {
+        setSelectedRunId(run.id);
+      }
+    });
 
   return (
     <section
@@ -201,13 +267,23 @@ const AstEntryPanel = ({
                 hideCloseButton
               />
             ) : null}
+            {actionError ? (
+              <InlineNotification
+                kind="error"
+                title={intl.formatMessage({
+                  id: "microbiology.ast.actionError",
+                })}
+                subtitle={actionError}
+                hideCloseButton
+              />
+            ) : null}
             <div className="microbiology-form-grid">
               <Select
                 id="microbiology-ast-isolate"
                 labelText={intl.formatMessage({
                   id: "microbiology.ast.isolate",
                 })}
-                value={selectedIsolateId}
+                value={activeIsolateId}
                 onChange={(event) => setSelectedIsolateId(event.target.value)}
               >
                 {isolates.map((isolate) => (
@@ -255,15 +331,34 @@ const AstEntryPanel = ({
                   onClick={startRun}
                   disabled={
                     busy ||
+                    readOnly ||
                     !!currentRun ||
-                    !selectedIsolateId ||
+                    !activeIsolateId ||
                     !selectedPanelId
                   }
                 >
                   {intl.formatMessage({ id: "microbiology.ast.startRun" })}
                 </Button>
               </div>
+              <div className="microbiology-form-grid__wide">
+                <ReagentLotPicker
+                  id="microbiology-ast-lots"
+                  requirements={reagentRequirements}
+                  selectedLots={selectedLots}
+                  onChange={selectLot}
+                  disabled={busy || readOnly}
+                />
+              </div>
             </div>
+            {runs.length > 0 ? (
+              <AstAttemptTable
+                runs={runs}
+                selectedRunId={currentRun?.id || ""}
+                disabled={busy || readOnly}
+                onView={viewRun}
+                onSelectReportable={selectReportableRun}
+              />
+            ) : null}
             {currentRun ? (
               <div className="microbiology-card__body">
                 <div className="microbiology-form-grid">
@@ -290,8 +385,9 @@ const AstEntryPanel = ({
                     labelText={intl.formatMessage({
                       id: "microbiology.ast.method",
                     })}
-                    value={method}
+                    value={currentRun.method || method}
                     onChange={(event) => setMethod(event.target.value)}
+                    disabled={isReviewed || !!currentRun.method}
                   >
                     {METHOD_OPTIONS.map((option) => (
                       <SelectItem key={option} value={option} text={option} />
@@ -309,6 +405,7 @@ const AstEntryPanel = ({
                     onClick={recordReading}
                     disabled={
                       busy ||
+                      readOnly ||
                       isReviewed ||
                       !selectedAntibioticId ||
                       !rawValue.trim()
@@ -440,7 +537,10 @@ const AstEntryPanel = ({
                           kind="secondary"
                           onClick={overrideReading}
                           disabled={
-                            busy || isReviewed || !overrideReason.trim()
+                            busy ||
+                            readOnly ||
+                            isReviewed ||
+                            !overrideReason.trim()
                           }
                         >
                           {intl.formatMessage({
@@ -454,12 +554,101 @@ const AstEntryPanel = ({
                 <Button
                   kind="primary"
                   onClick={reviewRun}
-                  disabled={busy || isReviewed || !currentRun.readings?.length}
+                  disabled={
+                    busy ||
+                    readOnly ||
+                    isReviewed ||
+                    !currentRun.readings?.length
+                  }
                 >
                   {intl.formatMessage({ id: "microbiology.ast.reviewRun" })}
                 </Button>
+                {isReviewed ? (
+                  <div className="microbiology-ast-repeat-form">
+                    <h4>
+                      {intl.formatMessage({
+                        id: "microbiology.ast.newAttempt",
+                      })}
+                    </h4>
+                    <RadioButtonGroup
+                      name={`microbiology-ast-attempt-type-${currentRun.id}`}
+                      legendText={intl.formatMessage({
+                        id: "microbiology.ast.attemptType",
+                      })}
+                      valueSelected={attemptType}
+                      onChange={setAttemptType}
+                      orientation="horizontal"
+                    >
+                      <RadioButton
+                        id={`microbiology-ast-repeat-${currentRun.id}`}
+                        value="REPEAT"
+                        labelText={intl.formatMessage({
+                          id: "microbiology.ast.repeat",
+                        })}
+                      />
+                      <RadioButton
+                        id={`microbiology-ast-retest-${currentRun.id}`}
+                        value="RETEST"
+                        labelText={intl.formatMessage({
+                          id: "microbiology.ast.retest",
+                        })}
+                      />
+                    </RadioButtonGroup>
+                    <div className="microbiology-form-grid">
+                      <TextArea
+                        id={`microbiology-ast-attempt-reason-${currentRun.id}`}
+                        labelText={intl.formatMessage({
+                          id: "microbiology.ast.reasonForAttempt",
+                        })}
+                        value={attemptReason}
+                        onChange={(event) =>
+                          setAttemptReason(event.target.value)
+                        }
+                      />
+                      <Select
+                        id={`microbiology-ast-attempt-method-${currentRun.id}`}
+                        labelText={intl.formatMessage({
+                          id: "microbiology.ast.attemptMethod",
+                        })}
+                        value={effectiveAttemptMethod}
+                        onChange={(event) =>
+                          setAttemptMethod(event.target.value)
+                        }
+                      >
+                        {METHOD_OPTIONS.map((option) => (
+                          <SelectItem
+                            key={option}
+                            value={option}
+                            text={option}
+                          />
+                        ))}
+                      </Select>
+                    </div>
+                    <Button
+                      kind="secondary"
+                      onClick={startRepeatRun}
+                      disabled={
+                        busy ||
+                        readOnly ||
+                        hasInProgressRun ||
+                        !attemptReason.trim()
+                      }
+                    >
+                      {intl.formatMessage(
+                        { id: "microbiology.ast.startAttempt" },
+                        {
+                          type: formatMicrobiologyEnum(
+                            attemptType,
+                            intl,
+                          ).toLowerCase(),
+                        },
+                      )}
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
+            <ReagentUsageHistory usages={reagentUsages} />
           </>
         )}
       </div>

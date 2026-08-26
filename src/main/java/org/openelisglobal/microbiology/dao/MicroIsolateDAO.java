@@ -7,4 +7,8 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 public interface MicroIsolateDAO extends BaseDAO<MicroIsolate, String> {
 
     List<MicroIsolate> getByCaseId(String caseId);
+
+    List<MicroIsolate> getByCaseIds(List<String> caseIds);
+
+    List<MicroIsolate> getByAmendmentId(String amendmentId);
 }
