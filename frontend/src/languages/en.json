@@ -8212,6 +8212,7 @@
   "microbiology.enum.PASSED": "Passed",
   "microbiology.enum.PHOENIX": "Phoenix",
   "microbiology.enum.PHONE": "Phone",
+  "microbiology.enum.POSITIVE_SIGNAL": "Positive Signal",
   "microbiology.enum.PRELIM_RELEASED": "Preliminary Released",
   "microbiology.enum.PRELIMINARY": "Preliminary",
   "microbiology.enum.PRELIMINARY_RELEASED": "Preliminary Released",

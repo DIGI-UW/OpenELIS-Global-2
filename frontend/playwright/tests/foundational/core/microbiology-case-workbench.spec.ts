@@ -139,7 +139,9 @@ test.describe("Microbiology case workbench", () => {
     await expect(page).toHaveURL(/section=setup&action=mark-positive$/);
     await page.getByRole("button", { name: "Confirm positive signal" }).click();
 
-    await expect(caseHeader.getByTitle("Positive Signal")).toBeVisible({
+    await expect(
+      caseHeader.getByText("Positive Signal", { exact: true }),
+    ).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
     await expect(page).toHaveURL(/section=setup$/);
