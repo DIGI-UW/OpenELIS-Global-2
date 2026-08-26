@@ -50,6 +50,11 @@ describe("pw-demo-no-backend-access", () => {
       "backendRequest",
     ],
     [
+      "destructured page request client",
+      "const { request: api } = page; await api.post('/rest/analyzer')",
+      "backendRequest",
+    ],
+    [
       "computed request call",
       "await page['request']['delete']('/rest/analyzer')",
       "backendRequest",
@@ -99,6 +104,11 @@ describe("pw-demo-no-backend-access", () => {
     [
       "response event listener",
       "page.on('response', response => inspect(response))",
+      "networkListener",
+    ],
+    [
+      "one-shot response event listener",
+      "page.once('response', response => inspect(response))",
       "networkListener",
     ],
     [

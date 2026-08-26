@@ -325,6 +325,24 @@ export default {
 
       if (fixtureKey(variable) === "request") return true;
       if (importedPlaywrightName(variable) === "request") return true;
+      const destructuredFromPage = (variable.defs || []).some((definition) => {
+        const declarator = definition.node;
+        if (
+          definition.type !== "Variable" ||
+          declarator?.id?.type !== "ObjectPattern" ||
+          !isPageClient(declarator.init)
+        ) {
+          return false;
+        }
+        return declarator.id.properties.some((property) => {
+          if (property.type !== "Property") return false;
+          const propertyName =
+            getStringLiteralValue(property.key) || property.key?.name;
+          const localName = property.value?.name;
+          return propertyName === "request" && localName === expression.name;
+        });
+      });
+      if (destructuredFromPage) return true;
       return variableInitializers(variable).some((initializer) =>
         isRequestClient(initializer, visited),
       );
@@ -498,7 +516,10 @@ export default {
           return;
         }
 
-        if (methodName === "on" && isNetworkOwner(callee.object)) {
+        if (
+          ["on", "once"].includes(methodName) &&
+          isNetworkOwner(callee.object)
+        ) {
           const event = getStringLiteralValue(node.arguments[0]);
           if (event === "console" || event === "pageerror") {
             context.report({
