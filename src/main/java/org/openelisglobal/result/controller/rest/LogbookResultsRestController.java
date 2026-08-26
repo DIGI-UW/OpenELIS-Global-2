@@ -33,6 +33,8 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService;
+import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
@@ -65,6 +67,7 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
@@ -79,6 +82,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.server.ResponseStatusException;
 
 @Controller
 @RequestMapping(value = "/rest/")
@@ -101,15 +105,24 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut", "testResult*.referredOut",
             "testResult*.referralReasonId", "testResult*.technician", "testResult*.shadowRejected",
             "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note", "paging.currentPage",
-            "testResult*.resultFile", "testResult*.resultFile.fileName", "testResult*.resultFile.fileType",
-            "testResult*.resultFile.base64Content", "testResult*.refer", "testResult*.referralItem.referralReasonId",
-            "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
-            "testResult*.referralItem.referredSendDate" };
+            // FR-V2.3-04: the Analyst column's chosen value. Without this the
+            // column posts and is silently dropped — the binder accepts only what
+            // this list names. eqaPerAnalyst and eqaSchemeId are deliberately NOT
+            // here: they are server-populated for rendering, and the save re-derives
+            // both from the sample rather than trusting the row.
+            "testResult*.eqaAnalystId", "testResult*.resultFile", "testResult*.resultFile.fileName",
+            "testResult*.resultFile.fileType", "testResult*.resultFile.base64Content", "testResult*.refer",
+            "testResult*.referralItem.referralReasonId", "testResult*.referralItem.referredInstituteId",
+            "testResult*.referralItem.referredTestId", "testResult*.referralItem.referredSendDate" };
 
     @Autowired
     private TestSectionService testSectionService;
     @Autowired
     private LogbookResultsPersistService logbookPersistService;
+    @Autowired
+    private EQACycleSubmissionService cycleSubmissionService;
+    @Autowired
+    private SampleEQAService sampleEQAService;
     @Autowired
     private AnalysisService analysisService;
     @Autowired
@@ -473,6 +486,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             saveErrors(errors);
         }
 
+        rejectEqaRowsMissingAnalyst(tests);
+
         ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
@@ -484,6 +499,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                     .map(e -> analysisService.getOrderAccessionNumber(e)).collect(Collectors.toList()));
             reflexMap.put("calculated", reflexAnalysises.stream().filter(e -> e.getResultCalculated())
                     .map(e -> analysisService.getOrderAccessionNumber(e)).collect(Collectors.toList()));
+            recordEqaAnalysts(tests, getSysUserId(request));
             try {
                 fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
             } catch (FhirTransformationException | FhirPersistanceException e) {
@@ -659,5 +675,77 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     private Patient getPatient(String patientID) {
         return patientService.get(patientID);
+    }
+
+    /**
+     * AC-V2.3-08 — a scheme that captures analysts may not have a result saved
+     * without one. Refused before anything persists, so a half-attributed save
+     * cannot happen; the grid marks the same rows invalid, and this is the contract
+     * for any other caller.
+     *
+     * <p>
+     * Whether the scheme captures analysts is asked of the database, not read off
+     * the posted row. {@code TestResultItem.eqaPerAnalyst} is populated for the
+     * grid to render but is deliberately not a bound field: a modified row replaces
+     * its session copy wholesale (see
+     * {@code ResultsPaging.TestItemPageHelper#updateCache}), so anything the binder
+     * does not accept arrives at its default — and a rule that a client can switch
+     * off by omitting a field is not a rule.
+     *
+     * <p>
+     * Only modified rows are checked, so an untouched grid costs nothing.
+     */
+    private void rejectEqaRowsMissingAnalyst(List<TestResultItem> tests) {
+        Map<String, Boolean> perAnalystByAnalysis = new HashMap<>();
+        for (TestResultItem item : tests) {
+            boolean answered = !GenericValidator.isBlankOrNull(item.getResultValue())
+                    || !GenericValidator.isBlankOrNull(item.getMultiSelectResultValues());
+            if (!item.getIsModified() || !answered || !GenericValidator.isBlankOrNull(item.getEqaAnalystId())
+                    || GenericValidator.isBlankOrNull(item.getAnalysisId())) {
+                continue;
+            }
+            if (perAnalystByAnalysis.computeIfAbsent(item.getAnalysisId(), this::capturesAnalyst)) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        MessageUtil.getMessage("eqa.result.analystRequired"));
+            }
+        }
+    }
+
+    /** Whether this analysis belongs to an EQA scheme that records the analyst. */
+    private boolean capturesAnalyst(String analysisId) {
+        try {
+            Analysis analysis = analysisService.get(analysisId);
+            if (analysis == null || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+                return false;
+            }
+            return sampleEQAService.findPerAnalystSchemeId(Long.valueOf(analysis.getSampleItem().getSample().getId()))
+                    .isPresent();
+        } catch (RuntimeException e) {
+            LogEvent.logError("checking EQA per-analyst capture for analysis " + analysisId, e);
+            return false;
+        }
+    }
+
+    /**
+     * FR-V2.3-04 — mirrors the analyst chosen on the grid onto the EQA participant
+     * result. Failure here must not lose the clinical result that was just saved,
+     * so it is logged rather than thrown.
+     */
+    private void recordEqaAnalysts(List<TestResultItem> tests, String sysUserId) {
+        for (TestResultItem item : tests) {
+            // No eqaPerAnalyst check here either: assignAnalyst re-derives the
+            // scheme from the sample and refuses on its own, so the posted row only
+            // has to say who.
+            if (GenericValidator.isBlankOrNull(item.getEqaAnalystId())
+                    || GenericValidator.isBlankOrNull(item.getAnalysisId())) {
+                continue;
+            }
+            try {
+                cycleSubmissionService.assignAnalyst(analysisService.get(item.getAnalysisId()),
+                        Long.valueOf(item.getEqaAnalystId()), sysUserId);
+            } catch (RuntimeException e) {
+                LogEvent.logError("recording the EQA analyst for analysis " + item.getAnalysisId(), e);
+            }
+        }
     }
 }

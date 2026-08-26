@@ -127,4 +127,7 @@
 
   <!-- EQA V2.5 — OGC-613: the cycle wizard's distribution method (qa-064/065) -->
   <include file="liquibase/qa/034-eqa-cycle-distribution-method.xml" />
+
+  <!-- EQA V2.3 — OGC-611: per-analyst capture opt-in on a scheme (qa-070) -->
+  <include file="liquibase/qa/037-eqa-scheme-per-analyst.xml" />
 </databaseChangeLog>

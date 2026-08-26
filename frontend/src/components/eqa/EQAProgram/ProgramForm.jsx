@@ -21,6 +21,7 @@ const ProgramForm = ({ program, onClose }) => {
   const [provider, setProvider] = useState(program?.provider || "");
   const [description, setDescription] = useState(program?.description || "");
   const [isActive, setIsActive] = useState(program?.isActive !== false);
+  const [perAnalyst, setPerAnalyst] = useState(program?.perAnalyst === true);
   const [nameError, setNameError] = useState("");
   const [providerError, setProviderError] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -57,6 +58,7 @@ const ProgramForm = ({ program, onClose }) => {
       name,
       provider,
       description,
+      perAnalyst,
     };
 
     setSaveError("");
@@ -136,6 +138,17 @@ const ProgramForm = ({ program, onClose }) => {
           })}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+        />
+        <Toggle
+          id="program-per-analyst"
+          labelText={intl.formatMessage({
+            id: "eqa.program.perAnalyst",
+            defaultMessage: "Record the analyst on every result",
+          })}
+          labelA={intl.formatMessage({ id: "eqa.program.perAnalyst.off" })}
+          labelB={intl.formatMessage({ id: "eqa.program.perAnalyst.on" })}
+          toggled={perAnalyst}
+          onToggle={(toggled) => setPerAnalyst(toggled)}
         />
         {isEditing && (
           <Toggle

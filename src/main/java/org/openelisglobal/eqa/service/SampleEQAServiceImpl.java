@@ -9,7 +9,10 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.SampleEQADAO;
+import org.openelisglobal.eqa.valueholder.EQACycle;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,9 @@ public class SampleEQAServiceImpl extends BaseObjectServiceImpl<SampleEQA, Long>
 
     @Autowired
     private SampleEQADAO sampleEQADAO;
+
+    @Autowired
+    private EQACycleDAO eqaCycleDAO;
 
     @Autowired
     private AnalysisService analysisService;
@@ -87,5 +93,13 @@ public class SampleEQAServiceImpl extends BaseObjectServiceImpl<SampleEQA, Long>
             return "OVERDUE";
         }
         return started ? "IN_PROGRESS" : "PENDING";
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Long> findPerAnalystSchemeId(Long sampleId) {
+        return findBySampleId(sampleId).filter(sample -> Boolean.TRUE.equals(sample.getIsEqaSample()))
+                .map(SampleEQA::getCycleId).flatMap(cycleId -> eqaCycleDAO.get(cycleId)).map(EQACycle::getScheme)
+                .filter(scheme -> Boolean.TRUE.equals(scheme.getPerAnalyst())).map(EQAProgram::getId);
     }
 }

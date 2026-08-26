@@ -58,6 +58,7 @@ public class EQAProgramRestController extends ControllerUtills {
             program.setName(name);
             program.setDescription(description);
             program.setProvider(provider);
+            program.setPerAnalyst(Boolean.TRUE.equals(body.get("perAnalyst")));
             program.setIsActive(true);
             program.setSysUserId(getSysUserId(request));
 
@@ -120,6 +121,10 @@ public class EQAProgramRestController extends ControllerUtills {
             if (body.containsKey("isActive")) {
                 Boolean isActive = (Boolean) body.get("isActive");
                 program.setIsActive(Boolean.TRUE.equals(isActive));
+            }
+
+            if (body.containsKey("perAnalyst")) {
+                program.setPerAnalyst(Boolean.TRUE.equals(body.get("perAnalyst")));
             }
 
             program = programService.update(program);
@@ -240,6 +245,9 @@ public class EQAProgramRestController extends ControllerUtills {
         // wizard filters on it, so it has to reach the client.
         dto.put("schemeType", program.getSchemeType() == null ? null : program.getSchemeType().name());
         dto.put("isActive", program.getIsActive());
+        // FR-V2.3-04: result entry reads this to decide whether to show the
+        // Analyst column, so the scheme list has to carry it.
+        dto.put("perAnalyst", Boolean.TRUE.equals(program.getPerAnalyst()));
         dto.put("fhirUuid", program.getFhirUuid() != null ? program.getFhirUuid().toString() : null);
         dto.put("participantCount", enrollmentService.countActiveEnrollments(program.getId()));
         return dto;

@@ -961,6 +961,12 @@ public class ResultsLoadUtility {
                 if (sampleEQA.getEqaPriority() != null) {
                     testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
                 }
+                // FR-V2.3-04: only schemes that opted in show the Analyst column,
+                // and the scheme id is what its picker reads its eligible list from.
+                sampleEQAService.findPerAnalystSchemeId(sampleId).ifPresent(schemeId -> {
+                    testItem.setEqaPerAnalyst(true);
+                    testItem.setEqaSchemeId(String.valueOf(schemeId));
+                });
             }
         } catch (RuntimeException e) {
             // Log and ignore to prevent breaking the whole report if EQA lookup fails
