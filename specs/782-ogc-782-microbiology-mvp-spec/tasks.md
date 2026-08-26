@@ -229,32 +229,32 @@ directory data.
 
 ### Tests First
 
-- [ ] T094 [M6] Continue on PR #3789 after the M5 block is complete and validated.
-- [ ] T095 [P] [M6] Add failing worklist service tests for due-action sorting, urgency, sibling visibility, and review flags in `src/test/java/org/openelisglobal/microbiology/service/MicroWorklistServiceTest.java`.
-- [ ] T096 [P] [M6] Add failing worklist integration test with at least 200 seeded in-flight cases in `src/test/java/org/openelisglobal/microbiology/MicroWorklistIntegrationTest.java`.
-- [ ] T097 [P] [M6] Add failing critical communication service tests for recipient free text, ack state, follow-up, and immutable correction behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationServiceTest.java`.
-- [ ] T098 [P] [M6] Add failing Alert integration tests for microbiology critical alert creation and filtering in `src/test/java/org/openelisglobal/microbiology/MicroCriticalAlertIntegrationTest.java`.
-- [ ] T099 [P] [M6] Add failing React interaction tests for worklist filters and critical communication logging in `frontend/src/components/microbiology/__tests__/MicrobiologyWorklist.test.jsx` and `frontend/src/components/microbiology/__tests__/CriticalCommunicationPanel.test.jsx`.
-- [ ] T100 [P] [M6] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project core-app` to create a red Playwright test for worklist navigation and critical communication logging.
+- [X] T094 [M6] Continue on PR #3789 after the M5 block is complete and validated.
+- [X] T095 [P] [M6] Add failing worklist service tests for due-action sorting, urgency, sibling visibility, and review flags in `src/test/java/org/openelisglobal/microbiology/service/MicroWorklistServiceTest.java`.
+- [X] T096 [P] [M6] Add failing worklist integration test with at least 200 seeded in-flight cases in `src/test/java/org/openelisglobal/microbiology/MicroWorklistIntegrationTest.java`.
+- [X] T097 [P] [M6] Add failing critical communication service tests for recipient free text, ack state, follow-up, and immutable correction behavior in `src/test/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationServiceTest.java`.
+- [X] T098 [P] [M6] Add failing Alert integration tests for microbiology critical alert creation and filtering in `src/test/java/org/openelisglobal/microbiology/MicroCriticalAlertIntegrationTest.java`.
+- [X] T099 [P] [M6] Add failing React interaction tests for worklist filters and critical communication logging in `frontend/src/components/microbiology/__tests__/MicrobiologyWorklist.test.jsx` and `frontend/src/components/microbiology/__tests__/CriticalCommunicationPanel.test.jsx`.
+- [X] T100 [P] [M6] Use `/write-playwright-test frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project core-app` to create a red Playwright test for worklist navigation and critical communication logging.
 
 ### Implementation
 
-- [ ] T101 [M6] Add the critical communication table and alert type migration in `src/main/resources/liquibase/3.5.x.x/<next-available>-microbiology-worklists-critical.xml`, include it explicitly from `src/main/resources/liquibase/3.5.x.x/base.xml`, and provide rollback.
-- [ ] T102 [P] [M6] Add critical communication valueholder in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroCriticalCommunication.java`.
-- [ ] T103 [P] [M6] Add critical communication DAO interface and implementation in `src/main/java/org/openelisglobal/microbiology/dao/MicroCriticalCommunicationDAO.java` and `src/main/java/org/openelisglobal/microbiology/daoimpl/MicroCriticalCommunicationDAOImpl.java`.
-- [ ] T104 [M6] Add worklist service in `src/main/java/org/openelisglobal/microbiology/service/MicroWorklistService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroWorklistServiceImpl.java`.
-- [ ] T105 [M6] Add critical communication service in `src/main/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationServiceImpl.java`.
-- [ ] T106 [M6] Add worklist and critical communication REST endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroWorklistRestController.java` and `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCriticalCommunicationRestController.java`.
-- [ ] T107 [M6] Add microbiology alert enum support in `src/main/java/org/openelisglobal/alert/valueholder/AlertType.java`.
-- [ ] T108 [P] [M6] Add worklist UI in `frontend/src/components/microbiology/MicrobiologyWorklist.jsx`.
-- [ ] T109 [P] [M6] Add critical communication UI in `frontend/src/components/microbiology/CriticalCommunicationPanel.jsx`.
-- [ ] T110 [P] [M6] Add React Intl keys for worklist and critical communication UI in `frontend/src/languages/en.json`.
-- [ ] T111 [M6] Register `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` in `frontend/playwright.config.ts`.
-- [ ] T112 [M6] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` from the repository root.
-- [ ] T113 [M6] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts`.
-- [ ] T114 [M6] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
-- [ ] T115 [M6] Run focused backend/frontend validation `mvn -q -Dtest='MicroWorklistServiceTest,MicroWorklistIntegrationTest,MicroCriticalCommunicationServiceTest,MicroCriticalAlertIntegrationTest' test && cd frontend && npm test -- --runInBand MicrobiologyWorklist.test.jsx CriticalCommunicationPanel.test.jsx` from the repository root.
-- [ ] T116 [M6] Update PR #3789 with M6 TDD and Playwright evidence and mark the M6 block complete before starting M7.
+- [X] T101 [M6] Add the critical communication table and alert type migration in `src/main/resources/liquibase/3.5.x.x/<next-available>-microbiology-worklists-critical.xml`, include it explicitly from `src/main/resources/liquibase/3.5.x.x/base.xml`, and provide rollback.
+- [X] T102 [P] [M6] Add critical communication valueholder in `src/main/java/org/openelisglobal/microbiology/valueholder/MicroCriticalCommunication.java`.
+- [X] T103 [P] [M6] Add critical communication DAO interface and implementation in `src/main/java/org/openelisglobal/microbiology/dao/MicroCriticalCommunicationDAO.java` and `src/main/java/org/openelisglobal/microbiology/daoimpl/MicroCriticalCommunicationDAOImpl.java`.
+- [X] T104 [M6] Add worklist service in `src/main/java/org/openelisglobal/microbiology/service/MicroWorklistService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroWorklistServiceImpl.java`.
+- [X] T105 [M6] Add critical communication service in `src/main/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationService.java` and `src/main/java/org/openelisglobal/microbiology/service/MicroCriticalCommunicationServiceImpl.java`.
+- [X] T106 [M6] Add worklist and critical communication REST endpoints in `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroWorklistRestController.java` and `src/main/java/org/openelisglobal/microbiology/controller/rest/MicroCriticalCommunicationRestController.java`.
+- [X] T107 [M6] Add microbiology alert enum support in `src/main/java/org/openelisglobal/alert/valueholder/AlertType.java`.
+- [X] T108 [P] [M6] Add worklist UI in `frontend/src/components/microbiology/MicrobiologyWorklist.jsx`.
+- [X] T109 [P] [M6] Add critical communication UI in `frontend/src/components/microbiology/CriticalCommunicationPanel.jsx`.
+- [X] T110 [P] [M6] Add React Intl keys for worklist and critical communication UI in `frontend/src/languages/en.json`.
+- [X] T111 [M6] Register `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` in `frontend/playwright.config.ts`.
+- [X] T112 [M6] Run Playwright registration validation `python3 .ai/skills/playwright/scripts/validate-playwright-project.py frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` from the repository root.
+- [X] T113 [M6] Run `/audit-playwright frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts` and address findings in `frontend/playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts`.
+- [X] T114 [M6] Run narrow Playwright evidence command `cd frontend && npm run pw:test -- playwright/tests/foundational/core/microbiology-worklist-critical.spec.ts --project=core-app` and attach screenshot/trace results to the PR.
+- [X] T115 [M6] Run focused backend/frontend validation `mvn -q -Dtest='MicroWorklistServiceTest,MicroWorklistIntegrationTest,MicroCriticalCommunicationServiceTest,MicroCriticalAlertIntegrationTest' test && cd frontend && npm test -- --runInBand MicrobiologyWorklist.test.jsx CriticalCommunicationPanel.test.jsx` from the repository root.
+- [X] T116 [M6] Update PR #3789 with M6 TDD and Playwright evidence and mark the M6 block complete before starting M7.
 
 ## Phase 7: M7 - Release + Surveillance Readiness
 

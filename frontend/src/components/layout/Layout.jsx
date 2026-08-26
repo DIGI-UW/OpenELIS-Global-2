@@ -57,7 +57,6 @@ function useIsDesktop() {
 
   return isDesktop;
 }
-
 export default function Layout(props) {
   const { children } = props;
   const location = useLocation();
@@ -77,6 +76,7 @@ export default function Layout(props) {
   const isAnalyzerContext =
     location.pathname.startsWith("/analyzers") ||
     location.pathname.startsWith("/AnalyzerManagement");
+  const isMicrobiologyContext = location.pathname.startsWith("/Microbiology");
   const isAdminContext = isAdminNavRoute(location.pathname);
   const navContext = isAdminContext ? "admin" : "main";
 
@@ -87,7 +87,9 @@ export default function Layout(props) {
       ? "storage"
       : isAnalyzerContext
         ? "analyzer"
-        : "main";
+        : isMicrobiologyContext
+          ? "microbiology"
+          : "main";
 
   // Nav on desktop: pinned (default) renders it persistently and pushes
   // content; unpinned turns it into the same hamburger-opened overlay drawer

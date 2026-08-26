@@ -376,11 +376,16 @@
   <!-- OGC-782 M2: microbiology case core -->
   <include relativeToChangelogFile="true" file="052-microbiology-case-core.xml"/>
   <include relativeToChangelogFile="true" file="053-microbiology-manual-ast.xml"/>
+  <include relativeToChangelogFile="true" file="054-microbiology-worklists-critical.xml"/>
 
   <!-- OGC-782 M3: microbiology order details -->
   <include relativeToChangelogFile="true" file="055-microbiology-order-detail.xml"/>
 
   <!-- OGC-782 M5: AST breakpoint standard selection -->
   <include relativeToChangelogFile="true" file="056-microbiology-ast-breakpoint-standard.xml"/>
+
+  <!-- OGC-782 M6: critical-result alert linkage and lifecycle -->
+  <include relativeToChangelogFile="true" file="057-alert-entity-ref.xml"/>
+  <include relativeToChangelogFile="true" file="058-microbiology-critical-lifecycle.xml"/>
 
 </databaseChangeLog>

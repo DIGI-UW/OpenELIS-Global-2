@@ -20,7 +20,7 @@ test.describe("Microbiology case workbench", () => {
       await expect(caseHeader.getByText("RECEIVED")).toBeVisible();
 
       await page.getByLabel("Activity note").fill("setup complete");
-      await page.getByRole("button", { name: "Record activity" }).click();
+      await page.getByRole("button", { name: "Start inoculation" }).click();
       await expect(caseHeader.getByText("SETUP_RECORDED")).toBeVisible({
         timeout: LONG_TIMEOUT,
       });

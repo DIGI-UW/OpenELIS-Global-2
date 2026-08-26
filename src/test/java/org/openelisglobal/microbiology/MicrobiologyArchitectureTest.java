@@ -7,7 +7,9 @@ import org.junit.Test;
 import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCriticalCommunicationRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroWorklistRestController;
 import org.openelisglobal.microbiology.controller.rest.MicrobiologyReferenceRestController;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +19,8 @@ public class MicrobiologyArchitectureTest {
     public void microbiologyControllersDoNotDeclareTransactions() {
         Class<?>[] controllers = { MicroCaseRestController.class, MicroIsolateRestController.class,
                 MicroAstRestController.class, MicroCaseReadinessRestController.class,
-                MicrobiologyReferenceRestController.class };
+                MicrobiologyReferenceRestController.class, MicroWorklistRestController.class,
+                MicroCriticalCommunicationRestController.class };
         for (Class<?> controller : controllers) {
             assertFalse(controller.isAnnotationPresent(Transactional.class));
             for (Method method : controller.getDeclaredMethods()) {
