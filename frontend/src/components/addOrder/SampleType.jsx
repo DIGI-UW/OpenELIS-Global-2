@@ -299,7 +299,14 @@ const SampleType = (props) => {
         if (isChecked) {
           if (!testIsSelected(test.id)) {
             setSelectedTests((prevState) => {
-              return [...prevState, { id: test.id, name: test.name }];
+              return [
+                ...prevState,
+                {
+                  id: test.id,
+                  name: test.name,
+                  cultureWorkflowType: test.cultureWorkflowType,
+                },
+              ];
             });
           }
         } else {
@@ -460,7 +467,14 @@ const SampleType = (props) => {
 
   function addTestToSelectedTests(test) {
     if (!testIsSelected(test.id)) {
-      setSelectedTests([...selectedTests, { id: test.id, name: test.name }]);
+      setSelectedTests([
+        ...selectedTests,
+        {
+          id: test.id,
+          name: test.name,
+          cultureWorkflowType: test.cultureWorkflowType,
+        },
+      ]);
     }
   }
 
