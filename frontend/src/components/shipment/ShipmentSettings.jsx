@@ -5,6 +5,7 @@ import {
   Column,
   Dropdown,
   Grid,
+  InlineNotification,
   Loading,
   TextInput,
   Tile,
@@ -33,7 +34,8 @@ const ShipmentSettings = () => {
   // Site organization — orgId for dropdown, fhirUuid for display/storage
   const [siteOrgId, setSiteOrgId] = useState("");
   const [originalSiteOrgId, setOriginalSiteOrgId] = useState("");
-  const [siteOrgFhirUuid, setSiteOrgFhirUuid] = useState("");
+  // null = not fetched yet, "" = fetched and unset (drives the warning banner)
+  const [siteOrgFhirUuid, setSiteOrgFhirUuid] = useState(null);
   const [organizations, setOrganizations] = useState([]);
   const [savingSiteOrg, setSavingSiteOrg] = useState(false);
 
@@ -363,6 +365,20 @@ const ShipmentSettings = () => {
               >
                 <FormattedMessage id="shipment.settings.siteOrgDescription" />
               </p>
+              {siteOrgFhirUuid === "" && (
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "shipment.settings.siteOrgUnsetTitle",
+                  })}
+                  subtitle={intl.formatMessage({
+                    id: "shipment.settings.siteOrgUnsetSubtitle",
+                  })}
+                  style={{ marginBottom: "1rem" }}
+                />
+              )}
               <Dropdown
                 id="site-org-uuid"
                 titleText={intl.formatMessage({

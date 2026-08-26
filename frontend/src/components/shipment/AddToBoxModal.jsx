@@ -47,8 +47,11 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
       `/rest/shipping-box/by-facility/${sample.destinationFacilityId}`,
       (response) => {
         if (response) {
-          // Filter to only show DRAFT boxes
-          const draftBoxes = response.filter((box) => box.state === "DRAFT");
+          // Filter to DRAFT boxes, minus EQA boxes: those carry provider panel
+          // material to another lab and the server refuses a patient sample in one.
+          const draftBoxes = response.filter(
+            (box) => box.state === "DRAFT" && !box.eqaCycleId,
+          );
           setAvailableBoxes(draftBoxes);
 
           if (draftBoxes.length === 0) {

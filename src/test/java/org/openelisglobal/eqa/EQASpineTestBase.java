@@ -111,6 +111,8 @@ public abstract class EQASpineTestBase extends BaseWebContextSensitiveTest {
         jdbc.update("DELETE FROM clinlims.eqa_analyst_competency_event");
         jdbc.update("DELETE FROM clinlims.eqa_participant_followup");
         jdbc.update("DELETE FROM clinlims.eqa_panel_receipt");
+        // T-40: box contents reference panel material, so they go first.
+        jdbc.update("DELETE FROM clinlims.box_sample_item WHERE eqa_panel_sample_id IS NOT NULL");
         jdbc.update("DELETE FROM clinlims.eqa_panel_sample");
         jdbc.update("DELETE FROM clinlims.eqa_panel");
         jdbc.update("DELETE FROM clinlims.eqa_scheme_analyst");

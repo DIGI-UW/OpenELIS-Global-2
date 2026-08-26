@@ -9,8 +9,14 @@ import static org.junit.Assert.fail;
 import java.sql.Date;
 import java.util.List;
 import java.util.Map;
+import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.Extension;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.StringType;
+import org.hl7.fhir.r4.model.SupplyDelivery;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
 import org.openelisglobal.eqa.service.EQAShipmentService;
@@ -23,7 +29,17 @@ import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.shipment.fhir.ShipmentFhirImportService;
+import org.openelisglobal.shipment.fhir.ShippingBoxFhirTransform;
+import org.openelisglobal.shipment.service.BoxSampleItemService;
+import org.openelisglobal.shipment.service.ShippingBoxService;
+import org.openelisglobal.shipment.valueholder.BoxState;
+import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * OGC-613 [EQA V2.5 / T-25] — the provider prep and shipment workbenches
@@ -44,6 +60,27 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
 
     @Autowired
     private EQACycleService cycleService;
+
+    @Autowired
+    private ShippingBoxService shippingBoxService;
+
+    @Autowired
+    private BoxSampleItemService boxSampleItemService;
+
+    @Autowired
+    private EQAPanelSampleDAO eqaPanelSampleDAO;
+
+    @Autowired
+    private OrganizationService organizationService;
+
+    @Autowired
+    private ShippingBoxFhirTransform boxFhirTransform;
+
+    @Autowired
+    private ShipmentFhirImportService shipmentFhirImportService;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     private EQAProgram scheme;
     private EQACycle cycle;
@@ -73,6 +110,8 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         // shipping_box.eqa_cycle_id is RESTRICT, so boxes go before their cycle.
         if (jdbc != null) {
             jdbc.update("DELETE FROM clinlims.shipment WHERE shipping_box_id IN"
+                    + " (SELECT id FROM clinlims.shipping_box WHERE box_id LIKE 'EQA-C%')");
+            jdbc.update("DELETE FROM clinlims.box_sample_item WHERE shipping_box_id IN"
                     + " (SELECT id FROM clinlims.shipping_box WHERE box_id LIKE 'EQA-C%')");
             jdbc.update("DELETE FROM clinlims.shipping_box WHERE box_id LIKE 'EQA-C%'");
             jdbc.update("DELETE FROM clinlims.eqa_program_enrollment WHERE organization_id IN (9960, 9961, 9962)");
@@ -197,6 +236,131 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         assertEquals("the box knows its cycle", Long.valueOf(cycle.getId()),
                 jdbc.queryForObject("SELECT eqa_cycle_id FROM clinlims.shipping_box WHERE box_id = ?", Long.class,
                         "EQA-C" + cycle.getId() + "-" + ORG_A));
+    }
+
+    // ---- T-40: the box holds its panel material ----
+
+    @Test
+    public void savingDetailsPacksThePanelMaterialIntoTheBox() {
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-1", null, USER);
+
+        String boxCode = boxCode(ORG_A);
+        assertEquals("one contents row per panel sample, none of them a patient specimen", Integer.valueOf(2),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.box_sample_item bsi"
+                                + " JOIN clinlims.shipping_box b ON b.id = bsi.shipping_box_id"
+                                + " JOIN clinlims.eqa_panel_sample ps ON ps.id = bsi.eqa_panel_sample_id"
+                                + " WHERE b.box_id = ? AND bsi.sample_item_id IS NULL AND ps.panel_id = ?",
+                        Integer.class, boxCode, panel.getId()));
+        assertEquals("the box counts what it holds", Integer.valueOf(2), jdbc.queryForObject(
+                "SELECT actual_sample_count FROM clinlims.shipping_box WHERE box_id = ?", Integer.class, boxCode));
+        assertEquals("packing order is recorded", Integer.valueOf(2),
+                jdbc.queryForObject(
+                        "SELECT max(bsi.position_in_box) FROM clinlims.box_sample_item bsi"
+                                + " JOIN clinlims.shipping_box b ON b.id = bsi.shipping_box_id WHERE b.box_id = ?",
+                        Integer.class, boxCode));
+    }
+
+    @Test
+    public void reSavingDetailsDoesNotPackTheMaterialTwice() {
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-1", null, USER);
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "FedEx", "TRK-2", null, USER);
+
+        assertEquals("courier details are edited, not re-packed", Integer.valueOf(2),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.box_sample_item bsi"
+                                + " JOIN clinlims.shipping_box b ON b.id = bsi.shipping_box_id WHERE b.box_id = ?",
+                        Integer.class, boxCode(ORG_A)));
+    }
+
+    @Test
+    public void packingTheBoxDoesNotConsumeAliquotsByItself() {
+        clearTheGate();
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+
+        assertEquals("contents say what is in the box; dispatch is what spends inventory", Integer.valueOf(0),
+                jdbc.queryForObject("SELECT aliquots_shipped FROM clinlims.eqa_panel WHERE id = ?", Integer.class,
+                        panel.getId()));
+
+        shipmentService.markShipped(cycle.getId(), List.of(ORG_A), USER);
+
+        assertEquals("2 samples for 1 participant, counted once", Integer.valueOf(2), jdbc.queryForObject(
+                "SELECT aliquots_shipped FROM clinlims.eqa_panel WHERE id = ?", Integer.class, panel.getId()));
+    }
+
+    @Test
+    public void aBoxWithNoContentsIsStillRefusedReadyToSend() {
+        ShippingBox empty = new ShippingBox();
+        empty.setBoxId("EQA-C" + cycle.getId() + "-EMPTY");
+        empty.setDestinationFacility(organizationService.getOrganizationById(String.valueOf(ORG_A)));
+        empty.setSystemUserId(Integer.valueOf(USER));
+        empty = shippingBoxService.createBox(empty);
+
+        try {
+            shippingBoxService.markReadyToSend(empty.getId(), Integer.valueOf(USER));
+            fail("an empty box must not be marked ready to send");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("empty box"));
+        }
+        assertEquals("DRAFT", jdbc.queryForObject("SELECT state FROM clinlims.shipping_box WHERE id = ?", String.class,
+                empty.getId()));
+
+        boxSampleItemService.addPanelSamplesToBox(empty.getId(),
+                eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId()), Integer.valueOf(USER));
+
+        assertEquals("the same check passes once the box holds panel material", BoxState.READY_TO_SEND,
+                shippingBoxService.markReadyToSend(empty.getId(), Integer.valueOf(USER)).getState());
+    }
+
+    @Test
+    public void aPatientSampleCannotBePackedIntoAnEqaBox() {
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+        Integer boxId = jdbc.queryForObject("SELECT id FROM clinlims.shipping_box WHERE box_id = ?", Integer.class,
+                boxCode(ORG_A));
+
+        try {
+            // The EQA refusal comes before the sample item is even looked up, so no
+            // specimen has to exist for this to be the answer.
+            boxSampleItemService.addSampleItemToBox(boxId, "999999", Integer.valueOf(USER));
+            fail("a patient specimen must not be shipped to a participant lab in an EQA box");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("EQA panel material"));
+        }
+    }
+
+    @Test
+    public void aContentsRowMustCarryExactlyOneKindOfContent() {
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+        Integer boxId = jdbc.queryForObject("SELECT id FROM clinlims.shipping_box WHERE box_id = ?", Integer.class,
+                boxCode(ORG_A));
+        Long panelSampleId = jdbc.queryForObject("SELECT min(id) FROM clinlims.eqa_panel_sample WHERE panel_id = ?",
+                Long.class, panel.getId());
+        String sampleItemId = jdbc.queryForObject("SELECT min(id) FROM clinlims.sample_item", String.class);
+
+        assertContentsRejected("neither a sample item nor panel material", boxId, null, null);
+        if (sampleItemId != null) {
+            assertContentsRejected("both at once", boxId, Integer.valueOf(sampleItemId), panelSampleId);
+        }
+    }
+
+    @Test
+    public void aCycleWithNoPanelMaterialHasNothingToPack() {
+        EQAProgram bare = insertScheme("Panel-less " + System.nanoTime(), EQASchemeType.REGIONAL_PT, "This lab");
+        EQACycle bareCycle = readBack(insertCycle(bare, 1));
+        jdbc.update(
+                "INSERT INTO clinlims.eqa_program_enrollment (id, eqa_program_id, organization_id,"
+                        + " enrollment_date, status, sys_user_id, lastupdated)"
+                        + " VALUES (nextval('clinlims.eqa_enrollment_seq'), ?, ?, now(), 'Active', ?, now())",
+                bare.getId(), ORG_A, USER);
+
+        try {
+            shipmentService.saveShipmentDetails(bareCycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+            fail("a box that would go out empty must not be created at all");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("no panel material"));
+        }
+        assertEquals("no half-created box may survive the refusal", Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.shipping_box WHERE eqa_cycle_id = ?", Integer.class, bareCycle.getId()));
     }
 
     @Test
@@ -413,7 +577,210 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         assertEquals(1, cycles.get(2).get("cycleNumber"));
     }
 
+    // ---- T-41: delivery-status backflow ----
+
+    @Test
+    public void aRemoteReceiptDeliversTheCurrentShipmentLikeAManualConfirm() {
+        // Single-participant roster, so one delivery is "all delivered" and the
+        // cycle should walk to submissions on its own (AC-V2.5-13).
+        addToRoster(ORG_A);
+        clearTheGate();
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+        shipmentService.markShipped(cycle.getId(), List.of(ORG_A), USER);
+        Integer boxDbId = (Integer) shipmentService.getShipmentRows(cycle.getId()).get(0).get("boxId");
+
+        shipmentService.applyRemoteDelivery(boxDbId, USER);
+
+        Map<String, Object> row = shipmentService.getReceiptRows(cycle.getId()).get(0);
+        assertEquals("DELIVERED", row.get("receiptStatus"));
+        assertNotNull("the received date is stamped, as a manual confirm would", row.get("receivedDate"));
+        assertEquals("one delivered participant of one opens submissions", EQACycleStatus.SUBMISSIONS_OPEN,
+                readBack(cycle.getId()).getStatus());
+        assertEquals("RECEIVED",
+                jdbc.queryForObject("SELECT state FROM clinlims.shipping_box WHERE id = ?", String.class, boxDbId));
+    }
+
+    @Test
+    public void aRemoteReceiptForASupersededBoxDoesNotTouchTheCycle() {
+        addToRoster(ORG_A);
+        // Reserve covers the repeat, so the original can be superseded in-flight.
+        shipmentService.savePrep(panel.getId(), 8, 2, true, "Homogeneity CV 3%", USER);
+        toPrepInProgress();
+        readyToShip();
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+        shipmentService.markShipped(cycle.getId(), List.of(ORG_A), USER);
+        Integer originalBoxId = (Integer) shipmentService.getShipmentRows(cycle.getId()).get(0).get("boxId");
+        shipmentService.sendRepeat(cycle.getId(), ORG_A, null, USER);
+
+        // The stale original arrives after the repeat was dispatched.
+        shipmentService.applyRemoteDelivery(originalBoxId, USER);
+
+        assertEquals("the superseded box is closed off", "RECEIVED", jdbc
+                .queryForObject("SELECT state FROM clinlims.shipping_box WHERE id = ?", String.class, originalBoxId));
+        Map<String, Object> row = shipmentService.getReceiptRows(cycle.getId()).get(0);
+        assertEquals("the monitor still follows the repeat", boxCode(ORG_A) + "-R1", row.get("boxCode"));
+        assertEquals("IN_TRANSIT", row.get("receiptStatus"));
+        assertEquals("a stale arrival must not advance the cycle", EQACycleStatus.SHIPPED,
+                readBack(cycle.getId()).getStatus());
+    }
+
+    // ---- T-42: the consignment's manifest travels and survives import ----
+
+    @Test
+    public void theExportedConsignmentNamesEveryPanelSample() {
+        addToRoster(ORG_A);
+        clearTheGate();
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+        Integer boxDbId = (Integer) shipmentService.getShipmentRows(cycle.getId()).get(0).get("boxId");
+
+        // The transform walks lazy associations (panel sample → panel), so it runs
+        // inside a read-only transaction exactly as syncToFhir would run it.
+        SupplyDelivery delivery = new TransactionTemplate(transactionManager)
+                .execute(tx -> boxFhirTransform.transformToSupplyDelivery(shippingBoxService.getBoxById(boxDbId)));
+
+        List<Extension> contents = delivery.getExtensionsByUrl(ShippingBoxFhirTransform.EXT_CONTENT_ITEM);
+        assertEquals("one content item per panel sample", 2, contents.size());
+        List<String> labels = contents.stream()
+                .map(ext -> ((StringType) ext.getExtensionByUrl("label").getValue()).getValue()).sorted().toList();
+        assertEquals(List.of("PS-1", "PS-2"), labels);
+        for (Extension ext : contents) {
+            assertEquals("the panel name stands in for a specimen type", "Provider panel",
+                    ((StringType) ext.getExtensionByUrl("type").getValue()).getValue());
+        }
+    }
+
+    @Test
+    public void anImportedConsignmentKeepsItsManifestReadSide() {
+        String boxCode = "EQA-C-IMP-" + System.nanoTime();
+        SupplyDelivery delivery = importableDelivery(boxCode, new java.util.Date());
+        Extension item1 = new Extension(ShippingBoxFhirTransform.EXT_CONTENT_ITEM);
+        item1.addExtension(new Extension("label", new StringType("PS-1")));
+        item1.addExtension(new Extension("type", new StringType("Provider panel")));
+        delivery.addExtension(item1);
+        Extension item2 = new Extension(ShippingBoxFhirTransform.EXT_CONTENT_ITEM);
+        item2.addExtension(new Extension("label", new StringType("PS-2")));
+        item2.addExtension(new Extension("type", new StringType("Provider panel")));
+        delivery.addExtension(item2);
+
+        assertTrue("the consignment imports", shipmentFhirImportService.importSupplyDelivery(delivery));
+
+        String manifest = jdbc.queryForObject("SELECT imported_contents FROM clinlims.shipping_box WHERE box_id = ?",
+                String.class, boxCode);
+        assertNotNull("the manifest is kept read-side", manifest);
+        assertTrue(manifest, manifest.contains("\"label\":\"PS-1\"") && manifest.contains("\"label\":\"PS-2\"")
+                && manifest.contains("\"type\":\"Provider panel\""));
+    }
+
+    // ---- T-43: the staleness window ----
+
+    @Test
+    public void aStaleConsignmentIsNotResurrected() {
+        String boxCode = "EQA-C-STALE-" + System.nanoTime();
+        java.util.Date sixtyDaysAgo = java.util.Date
+                .from(java.time.Instant.now().minus(60, java.time.temporal.ChronoUnit.DAYS));
+
+        assertTrue("a 60-day-old consignment is skipped",
+                !shipmentFhirImportService.importSupplyDelivery(importableDelivery(boxCode, sixtyDaysAgo)));
+        assertEquals(Integer.valueOf(0), jdbc
+                .queryForObject("SELECT count(*) FROM clinlims.shipping_box WHERE box_id = ?", Integer.class, boxCode));
+    }
+
+    @Test
+    public void aConsignmentInsideTheWindowImportsNormally() {
+        String boxCode = "EQA-C-FRESH-" + System.nanoTime();
+        java.util.Date twentyNineDaysAgo = java.util.Date
+                .from(java.time.Instant.now().minus(29, java.time.temporal.ChronoUnit.DAYS));
+
+        assertTrue("a 29-day-old consignment imports",
+                shipmentFhirImportService.importSupplyDelivery(importableDelivery(boxCode, twentyNineDaysAgo)));
+        assertEquals("IN_TRANSIT",
+                jdbc.queryForObject("SELECT state FROM clinlims.shipping_box WHERE box_id = ?", String.class, boxCode));
+    }
+
+    // ---- T-46: opening submissions on a partial roster ----
+
+    @Test
+    public void aPartialRosterCanOpenSubmissionsByManualOverride() {
+        addToRoster(ORG_A);
+        addToRoster(ORG_B);
+        clearTheGate();
+        for (long org : new long[] { ORG_A, ORG_B }) {
+            shipmentService.saveShipmentDetails(cycle.getId(), org, "DHL", "TRK-" + org, null, USER);
+        }
+        shipmentService.markShipped(cycle.getId(), List.of(ORG_A, ORG_B), USER);
+        Integer boxA = (Integer) shipmentService.getShipmentRows(cycle.getId()).stream()
+                .filter(r -> Long.valueOf(ORG_A).equals(r.get("organizationId"))).findFirst().orElseThrow()
+                .get("boxId");
+
+        shipmentService.applyRemoteDelivery(boxA, USER);
+        assertEquals("one of two delivered does not auto-advance", EQACycleStatus.SHIPPED,
+                readBack(cycle.getId()).getStatus());
+
+        cycleService.transition(cycle.getId(), EQACycleStatus.SUBMISSIONS_OPEN, EQAStateMachine.PROVIDER,
+                EQATriggerType.MANUAL, EQATriggerEvent.MANUAL_OVERRIDE, ADMIN_USER_ID,
+                "Second lab dormant; opening for the lab that holds its panel", USER);
+
+        assertEquals(EQACycleStatus.SUBMISSIONS_OPEN, readBack(cycle.getId()).getStatus());
+        List<EQACycleStateTransition> audit = cycleService.getTransitions(cycle.getId());
+        EQACycleStateTransition last = audit.get(audit.size() - 1);
+        assertEquals("SUBMISSIONS_OPEN", last.getNewState());
+        assertEquals(EQATriggerType.MANUAL, last.getTriggerType());
+        assertTrue("the written reason is on the audit row", last.getReason().contains("dormant"));
+    }
+
+    @Test
+    public void openingSubmissionsWithoutAReasonIsRefused() {
+        addToRoster(ORG_A);
+        clearTheGate();
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+        shipmentService.markShipped(cycle.getId(), List.of(ORG_A), USER);
+
+        try {
+            cycleService.transition(cycle.getId(), EQACycleStatus.SUBMISSIONS_OPEN, EQAStateMachine.PROVIDER,
+                    EQATriggerType.MANUAL, EQATriggerEvent.MANUAL_OVERRIDE, ADMIN_USER_ID, " ", USER);
+            fail("a manual open-submissions without a reason must be refused");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("reason"));
+        }
+        assertEquals(EQACycleStatus.SHIPPED, readBack(cycle.getId()).getStatus());
+    }
+
+    /**
+     * The smallest SupplyDelivery the importer accepts: a box identifier, an
+     * occurrence date, and a destination display that names a local organization
+     * (the by-UUID filter is off in the test DB — no siteOrganizationFhirUuid row).
+     */
+    private SupplyDelivery importableDelivery(String boxCode, java.util.Date occurrence) {
+        SupplyDelivery delivery = new SupplyDelivery();
+        delivery.setId(java.util.UUID.randomUUID().toString());
+        delivery.addIdentifier().setSystem("http://openelis.org/shipment/box-id").setValue(boxCode);
+        delivery.setOccurrence(new DateTimeType(occurrence));
+        delivery.setDestination(new Reference().setDisplay("Participant lab " + ORG_A));
+        return delivery;
+    }
+
     // ---- fixture helpers ----
+
+    private String boxCode(long organizationId) {
+        return "EQA-C" + cycle.getId() + "-" + organizationId;
+    }
+
+    /**
+     * qa/036's CHECK, exercised where it lives: Hibernate cannot express "exactly
+     * one of these two", so the guarantee is only worth what the database enforces.
+     */
+    private void assertContentsRejected(String why, Integer boxId, Integer sampleItemId, Long panelSampleId) {
+        try {
+            jdbc.update(
+                    "INSERT INTO clinlims.box_sample_item (id, shipping_box_id, sample_item_id,"
+                            + " eqa_panel_sample_id, added_date, sys_user_id, lastupdated)"
+                            + " VALUES (nextval('clinlims.box_sample_item_seq'), ?, ?, ?, now(), ?, now())",
+                    boxId, sampleItemId, panelSampleId, Integer.valueOf(USER));
+            fail("a contents row carrying " + why + " must be rejected");
+        } catch (DataIntegrityViolationException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("box_sample_item_content_chk"));
+        }
+    }
 
     private void seedOrganizations() {
         for (long id : new long[] { ORG_A, ORG_B, ORG_C }) {

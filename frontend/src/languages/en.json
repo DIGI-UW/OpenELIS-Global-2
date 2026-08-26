@@ -8592,5 +8592,15 @@
   "eqa.program.perAnalyst": "Record the analyst on every result",
   "eqa.program.perAnalyst.on": "Analyst recorded",
   "eqa.program.perAnalyst.off": "Not recorded",
-  "eqa.result.analyst.tooltip": "Shown because this run includes an EQA sample whose scheme records who ran each sample. Non-EQA rows take no input."
+  "eqa.result.analyst.tooltip": "Shown because this run includes an EQA sample whose scheme records who ran each sample. Non-EQA rows take no input.",
+  "shipment.settings.siteOrgUnsetTitle": "Site organization not set",
+  "shipment.settings.siteOrgUnsetSubtitle": "Incoming consignments are not filtered to this site and outgoing boxes carry no sender. Select the organization that represents this laboratory.",
+  "eqa.receipt.openSubmissions": "Open submissions",
+  "eqa.receipt.openSubmissionsHeading": "Open submissions with undelivered panels",
+  "eqa.receipt.openSubmissionsHelp": "Participants that have not received their panel stay on the roster as late. This is a recorded manual override — give the reason.",
+  "eqa.receipt.openSubmissionsReason": "Reason",
+  "eqa.receipt.submissionsOpened": "Submissions are open.",
+  "eqa.receipt.submissionsOpenFailed": "Could not open submissions.",
+  "notification.success": "Success",
+  "notification.warning": "Warning"
 }

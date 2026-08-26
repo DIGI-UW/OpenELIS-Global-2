@@ -136,6 +136,22 @@ export const sendRepeat = (cycleId, organizationId, overrideNote, callback) =>
     withBody(callback),
   );
 
+/**
+ * T-46: the operator's audited override — open submissions while part of the
+ * roster is still undelivered. MANUAL with a written reason by construction:
+ * it rides the generic transition endpoint, which refuses a blank reason.
+ */
+export const openSubmissions = (cycleId, reason, callback) =>
+  patchToOpenElisServerFullResponse(
+    `/rest/eqa/cycles/${cycleId}/transition`,
+    JSON.stringify({
+      newState: "SUBMISSIONS_OPEN",
+      stateMachine: "PROVIDER",
+      reason,
+    }),
+    withBody(callback),
+  );
+
 export const scoreCycle = (cycleId, callback) =>
   postToOpenElisServerFullResponse(
     `/rest/eqa/cycles/${cycleId}/score`,

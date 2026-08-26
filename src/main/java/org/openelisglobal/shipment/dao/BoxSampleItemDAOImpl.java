@@ -110,7 +110,10 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     @Override
     public List<String> getAllAssignedSampleItemIds() {
         try {
-            String hql = "SELECT DISTINCT bsi.sampleItem.id FROM BoxSampleItem bsi";
+            // EQA panel material carries no sample item (T-40), and a NULL inside the
+            // NOT IN list this feeds would make the unassigned-sample search return
+            // nothing at all.
+            String hql = "SELECT DISTINCT bsi.sampleItem.id FROM BoxSampleItem bsi WHERE bsi.sampleItem IS NOT NULL";
             Query<String> query = entityManager.unwrap(Session.class).createQuery(hql, String.class);
             return query.list();
         } catch (Exception e) {

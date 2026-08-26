@@ -86,6 +86,8 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
             // shipping_box.eqa_cycle_id is RESTRICT, so boxes go before their cycle.
             jdbc.update("DELETE FROM clinlims.shipment WHERE shipping_box_id IN"
                     + " (SELECT id FROM clinlims.shipping_box WHERE box_id LIKE 'EQA-C%')");
+            jdbc.update("DELETE FROM clinlims.box_sample_item WHERE shipping_box_id IN"
+                    + " (SELECT id FROM clinlims.shipping_box WHERE box_id LIKE 'EQA-C%')");
             jdbc.update("DELETE FROM clinlims.shipping_box WHERE box_id LIKE 'EQA-C%'");
             jdbc.update("DELETE FROM clinlims.eqa_program_enrollment WHERE organization_id BETWEEN 9970 AND 9990");
         }
@@ -195,6 +197,13 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         assertEquals("2 samples for the original 2 participants plus 2 for the repeat", Integer.valueOf(6),
                 aliquots("aliquots_shipped"));
         assertEquals("the monitor now follows the repeat", repeat.get("boxCode"), receiptRow(ORG_A).get("boxCode"));
+        // T-40: a repeat box is packed like any other, so it does not go out empty.
+        assertEquals("the repeat box holds the panel material it replaces", Integer.valueOf(2),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.box_sample_item bsi"
+                                + " JOIN clinlims.shipping_box b ON b.id = bsi.shipping_box_id"
+                                + " WHERE b.box_id = ? AND bsi.eqa_panel_sample_id IS NOT NULL",
+                        Integer.class, repeat.get("boxCode")));
     }
 
     @Test
