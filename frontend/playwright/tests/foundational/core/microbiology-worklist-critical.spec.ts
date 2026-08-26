@@ -120,7 +120,7 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(row).toContainText("High");
     await expect(row).toContainText("Critical communication");
-    await expect(row).toContainText("Mycobacteriology Tb");
+    await expect(row).toContainText("Mycobacteriology/TB");
     await expect(
       page.getByTestId("microbiology-worklist-summary-critical"),
     ).toContainText("1");

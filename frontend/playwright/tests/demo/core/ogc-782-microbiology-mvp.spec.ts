@@ -186,7 +186,7 @@ test.describe("OGC-782 microbiology MVP", () => {
       await page.getByRole("button", { name: "Record AST reading" }).click();
       await expect(
         page.getByTestId("microbiology-ast-interpretation"),
-      ).toContainText("SUSCEPTIBLE", {
+      ).toContainText("Susceptible", {
         timeout: LONG_TIMEOUT,
       });
       await page
