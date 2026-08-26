@@ -225,7 +225,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     });
     await expect(resistant).toBeVisible();
     await resistant.click();
-    await page.getByRole("option", { name: "RESISTANT", exact: true }).click();
+    await page.getByRole("option", { name: "Resistant", exact: true }).click();
 
     const susceptible = rifRow.getByRole("combobox", {
       name: "OpenELIS result for NOT DETECTED",
@@ -253,7 +253,7 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
     await page.getByRole("button", { name: /^RIF.*Mapped$/ }).click();
     await expect(
       page.getByRole("combobox", { name: "OpenELIS result for DETECTED" }),
-    ).toHaveAttribute("title", "RESISTANT");
+    ).toHaveAttribute("title", "Resistant");
     await expect(
       page.getByRole("combobox", {
         name: "OpenELIS result for NOT DETECTED",

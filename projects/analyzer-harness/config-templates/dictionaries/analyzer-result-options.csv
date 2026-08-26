@@ -9,3 +9,6 @@ Analyzer GeneXpert Results,INDETERMINATE,GX_INDETERMINATE,Y,7,INDETERMINATE
 Analyzer GeneXpert Results,ERROR,GX_ERROR,Y,8,ERROR
 Analyzer GeneXpert Results,NO RESULT,GX_NO_RESULT,Y,9,NO RESULT
 Analyzer GeneXpert Results,DETECTED,GX_DETECTED,Y,10,DETECTED
+Analyzer GeneXpert RIF Results,Resistant,GX_RIF_RESISTANT,Y,1,Resistant
+Analyzer GeneXpert RIF Results,Susceptible,GX_RIF_SUSCEPTIBLE,Y,2,Susceptible
+Analyzer GeneXpert RIF Results,Indeterminate,GX_RIF_INDETERMINATE,Y,3,Indeterminate

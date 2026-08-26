@@ -73,6 +73,9 @@ test.describe("OGC-1054 assembled analyzer MVP", () => {
     );
     const geneRow = await analyzerRow(page, GENEXPERT);
     await expect(geneRow).toContainText("Needs attention");
+    await expect(geneRow).not.toContainText("Loading analyzer type", {
+      timeout: LONG_TIMEOUT,
+    });
     await capture(page, testInfo, "m4-dashboard-attention");
 
     await page.getByRole("button", { name: "Review held results" }).click();

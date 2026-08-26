@@ -9,9 +9,9 @@ Xpert MTB/RIF,D,VERY LOW,6,N,Y,N,,,Analyzer GeneXpert Results
 Xpert MTB/RIF,D,INDETERMINATE,7,N,Y,N,,,Analyzer GeneXpert Results
 Xpert MTB/RIF,D,ERROR,8,N,Y,N,,,Analyzer GeneXpert Results
 Xpert MTB/RIF,D,NO RESULT,9,N,Y,N,,,Analyzer GeneXpert Results
-Xpert RIF Resistance,D,DETECTED,1,N,Y,N,,,Analyzer GeneXpert Results
-Xpert RIF Resistance,D,NOT DETECTED,2,N,Y,Y,,,Analyzer GeneXpert Results
-Xpert RIF Resistance,D,INDETERMINATE,3,N,Y,N,,,Analyzer GeneXpert Results
+Xpert RIF Resistance,D,Resistant,1,N,Y,N,,,Analyzer GeneXpert RIF Results
+Xpert RIF Resistance,D,Susceptible,2,N,Y,Y,,,Analyzer GeneXpert RIF Results
+Xpert RIF Resistance,D,Indeterminate,3,N,Y,N,,,Analyzer GeneXpert RIF Results
 # Hematology numeric precision aligned to demo mock templates
 White Blood Cells,N,,1,Y,Y,N,1,
 Red Blood Cells,N,,1,Y,Y,N,2,
