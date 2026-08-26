@@ -55,7 +55,7 @@ export class AnalyzerSetupPage {
     const option = this.page.locator('[role="option"]:visible').first();
     await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
     await option.click();
-    await this.page.keyboard.press("Escape");
+    await this.nameInput.click();
     await expect(option).not.toBeVisible({ timeout: UI_TIMEOUT });
   }
 
@@ -68,7 +68,7 @@ export class AnalyzerSetupPage {
       .first();
     await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
     await option.click();
-    await this.page.keyboard.press("Escape");
+    await this.nameInput.click();
     await expect(option).not.toBeVisible({ timeout: UI_TIMEOUT });
   }
 
