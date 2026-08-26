@@ -49,7 +49,7 @@ test.describe("microbiology worklist and critical communication", () => {
     page,
   }) => {
     test.setTimeout(120_000);
-    const seeded = seedMicrobiologyWorklistCase();
+    const seeded = await seedMicrobiologyWorklistCase(page);
     const scopedWorklistUrl = `/Microbiology/worklist?workflow=BACTERIOLOGY&q=${encodeURIComponent(
       seeded.caseId,
     )}&sort=newest`;
