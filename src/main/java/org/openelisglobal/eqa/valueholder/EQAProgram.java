@@ -73,6 +73,13 @@ public class EQAProgram extends BaseObject<Long> {
     @Column(name = "requires_cycle_review", nullable = false)
     private Boolean requiresCycleReview = false;
 
+    /**
+     * FR-V2.3-04: standard result entry shows the Analyst column for this scheme's
+     * samples, and every EQA result under it names who ran it.
+     */
+    @Column(name = "per_analyst", nullable = false)
+    private Boolean perAnalyst = false;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 

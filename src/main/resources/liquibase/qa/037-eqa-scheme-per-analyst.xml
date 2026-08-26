@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.3 (OGC-611, FR-V2.3-04): whether a scheme records which analyst ran
+    each sample. Off by default — the Analyst column only appears on standard
+    result entry for schemes that opt in, so nothing changes for a lab that does
+    not assess competence per analyst.
+
+    The eligible-analyst list a scheme may constrain the column to already
+    exists: eqa_scheme_analyst (qa/017). An empty list stays permissive.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-070-add-eqa-program-per-analyst">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="eqa_program" columnName="per_analyst" />
+            </not>
+        </preConditions>
+        <comment>FR-V2.3-04: schemes that capture the analyst on every result</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_program">
+            <column name="per_analyst" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="eqa_program" columnName="per_analyst" />
+        </rollback>
+    </changeSet>
+
+    <!--
+        qa-055 hid the four V2 oversight rows with the note "each card re-activates
+        its own"; T-18, T-20 and T-24 have done theirs. This is T-19's, and it also
+        migrates the URL off the FRS path the row was seeded with — a hard
+        navigation to /eqa/oversight/analyst-track reaches the backend and 404s,
+        because only the SPA router knows about that redirect.
+    -->
+    <changeSet author="openelisglobal" id="qa-071-activate-menu-eqa-analyst-competency">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_analyst_competency'
+            </sqlCheck>
+        </preConditions>
+        <comment>Analyst Competency menu row: point at /qa/eqa/analyst-competency and switch it on</comment>
+
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/qa/eqa/analyst-competency" />
+            <column name="is_active" valueBoolean="true" />
+            <where>element_id = 'menu_eqa_analyst_competency'</where>
+        </update>
+
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="action_url" value="/eqa/oversight/analyst-track" />
+                <column name="is_active" valueBoolean="false" />
+                <where>element_id = 'menu_eqa_analyst_competency'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

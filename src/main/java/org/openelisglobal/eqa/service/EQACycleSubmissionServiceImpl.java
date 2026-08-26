@@ -197,6 +197,94 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
      * analyses, not analytes: a not-yet-finalized analysis has no result rows to
      * count, so counting analytes would call a half-finished cycle complete.
      */
+    @Override
+    public boolean assignAnalyst(Analysis analysis, Long analystId, String sysUserId) {
+        if (analysis == null || analystId == null || analysis.getSampleItem() == null
+                || analysis.getSampleItem().getSample() == null) {
+            return false;
+        }
+        Long sampleId = Long.valueOf(analysis.getSampleItem().getSample().getId());
+        SampleEQA sample = sampleEQADAO.getAllMatching("sampleId", sampleId).stream().findFirst().orElse(null);
+        if (sample == null || !Boolean.TRUE.equals(sample.getIsEqaSample()) || sample.getCycleId() == null) {
+            logger.debug("EQA analyst skipped for analysis {}: sample {} eqa={} cycle={}", analysis.getId(), sampleId,
+                    sample == null ? null : sample.getIsEqaSample(), sample == null ? null : sample.getCycleId());
+            return false;
+        }
+        EQACycle cycle = cycleDAO.get(sample.getCycleId()).orElse(null);
+        EQAProgram scheme = cycle == null ? null : cycle.getScheme();
+        if (scheme == null || !Boolean.TRUE.equals(scheme.getPerAnalyst())) {
+            logger.debug("EQA analyst skipped for analysis {}: cycle {} scheme {} perAnalyst={}", analysis.getId(),
+                    sample.getCycleId(), scheme == null ? null : scheme.getId(),
+                    scheme == null ? null : scheme.getPerAnalyst());
+            return false;
+        }
+
+        Long enrollmentId = sample.getEqaEnrollmentId();
+        Long roundId = resolveRound(sample, roundDAO.getAllMatching("cycle.id", cycle.getId()));
+        if (enrollmentId == null || roundId == null) {
+            logger.warn("EQA analyst not recorded for analysis {}: enrollment={} round={}", analysis.getId(),
+                    enrollmentId, roundId);
+            return false;
+        }
+
+        Map<Long, Long> schemeAnalytes = analyteByTest(enrollmentId);
+        boolean recorded = false;
+        for (Result pipelineResult : resultService.getResultsByAnalysis(analysis)) {
+            Long analyteId = analyteIdOf(pipelineResult, analysis, schemeAnalytes);
+            if (analyteId == null) {
+                // Same unmapped-analyte case the bridge logs, and worth saying twice:
+                // here a user has explicitly named an analyst and would otherwise get
+                // no record and no reason.
+                logger.warn(
+                        "EQA analyst not recorded for analysis {} (test {}): it reports no analyte. Map the test to"
+                                + " its scheme analyte on the enrollment first.",
+                        analysis.getId(), analysis.getTest() == null ? "?" : analysis.getTest().getId());
+                continue;
+            }
+            String value = resultService.getResultValue(pipelineResult, ",", true, false);
+            recorded |= recordAnalyst(cycle, roundId, enrollmentId, analysis, analyteId, value, analystId, sysUserId);
+        }
+        return recorded;
+    }
+
+    /**
+     * Finds the draft row this analyte already has, or opens one. A scored row is
+     * left alone: re-attributing a result the provider has already judged would
+     * move an ISO 15189 record after the fact.
+     */
+    private boolean recordAnalyst(EQACycle cycle, Long roundId, Long enrollmentId, Analysis analysis, Long analyteId,
+            String value, Long analystId, String sysUserId) {
+        List<EQAParticipantResult> existing = participantResultDAO
+                .getAllMatching(Map.of("round.id", roundId, "labEnrollmentId", enrollmentId, "analyteId", analyteId));
+        EQAParticipantResult row = existing.isEmpty() ? null : existing.get(0);
+
+        if (row == null) {
+            row = new EQAParticipantResult();
+            row.setCycle(cycle);
+            EQARound roundRef = new EQARound();
+            roundRef.setId(roundId);
+            row.setRound(roundRef);
+            row.setLabEnrollmentId(enrollmentId);
+            row.setAnalyteId(analyteId);
+            row.setAnalysisId(Long.valueOf(analysis.getId()));
+            row.setResultValue(GenericValidator.isBlankOrNull(value) ? null : value.trim());
+        } else if (row.getSubmissionStatus() != EQASubmissionStatus.DRAFT) {
+            // Refusing is the point, but say so: whoever picked the analyst gets no
+            // record and would otherwise have no way to know the result was already
+            // out of their hands.
+            logger.info("EQA analyst not recorded for analysis {}: participant result {} is already {}",
+                    analysis.getId(), row.getId(), row.getSubmissionStatus());
+            return false;
+        } else if (analystId.equals(row.getAssignedAnalystId())) {
+            return false;
+        }
+
+        row.setAssignedAnalystId(analystId);
+        row.setSysUserId(sysUserId);
+        participantResultService.saveDraft(row);
+        return true;
+    }
+
     private Tally bridgeResults(EQACycle cycle, String sysUserId) {
         Tally tally = new Tally();
         String finalizedId = statusService.getStatusID(AnalysisStatus.Finalized);

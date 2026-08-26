@@ -30,8 +30,11 @@ public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveT
             { "menu_eqa_lab_performance", "/qa/eqa/lab-performance/coverage", "banner.menu.eqa.labPerformance",
                     "true" },
             { "menu_eqa_follow_up_queue", "/qa/eqa/follow-up-queue", "banner.menu.eqa.followUpQueue", "true" },
-            { "menu_eqa_analyst_competency", "/eqa/oversight/analyst-track", "banner.menu.eqa.analystCompetency",
-                    "false" },
+            // qa/037: the competency dashboard is the page this row was waiting for, so
+            // it moves onto the served route and comes back on. The FRS path 404s on a
+            // hard navigation — only the SPA router knows the redirect.
+            { "menu_eqa_analyst_competency", "/qa/eqa/analyst-competency", "banner.menu.eqa.analystCompetency",
+                    "true" },
             // qa/032: T-24's scheme list is the page this row was waiting for, so it
             // moves onto the served route and comes back on.
             { "menu_eqa_provider", "/qa/eqa/provider/schemes", "banner.menu.eqa.provider", "true" } };
@@ -81,7 +84,7 @@ public class EQAV2MenuPermissionIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
-    public void v2MenuRows_existUnderTheEqaMenuWithFrsRoutes() {
+    public void v2MenuRows_existUnderTheEqaMenuOnTheirServedRoutes() {
         for (String[] menu : MENUS) {
             Map<String, Object> row = jdbc.queryForMap("SELECT action_url, display_key, is_active,"
                     + " (SELECT element_id FROM clinlims.menu p WHERE p.id = m.parent_id) AS parent"

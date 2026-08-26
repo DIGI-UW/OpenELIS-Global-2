@@ -2,6 +2,7 @@ package org.openelisglobal.eqa.service;
 
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 
 /**
@@ -57,5 +58,22 @@ public interface EQACycleSubmissionService {
      *
      * @return how many results were scored
      */
+    /**
+     * Records who ran this analysis on its EQA participant result (FR-V2.3-04),
+     * creating the draft row if the scheduler has not bridged it yet.
+     *
+     * <p>
+     * The analyst is captured at result entry but the participant result is
+     * normally written later, when the cycle sweep sees a finalized analysis — so
+     * this writes the row early rather than parking the analyst somewhere it would
+     * have to be found again. A later sweep updates the value and leaves the
+     * analyst alone.
+     *
+     * @return true when an analyst was recorded; false when the analysis is not
+     *         EQA, its scheme does not capture analysts, or the sample names no
+     *         cycle
+     */
+    boolean assignAnalyst(Analysis analysis, Long analystId, String sysUserId);
+
     int intakeScores(Long cycleId, Long labEnrollmentId, List<Map<String, Object>> scores, String sysUserId);
 }

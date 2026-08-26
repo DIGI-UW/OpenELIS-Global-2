@@ -38,6 +38,7 @@ import InHousePanelsPage from "./components/eqa/InHouse/InHousePanelsPage";
 import FollowUpQueuePage from "./components/eqa/FollowUp/FollowUpQueuePage";
 import ProviderFollowupRegister from "./components/eqa/FollowUp/ProviderFollowupRegister";
 import LabPerformancePage from "./components/eqa/Performance/LabPerformancePage";
+import AnalystCompetencyPage from "./components/eqa/Competency/AnalystCompetencyPage";
 import BlindingWizard from "./components/eqa/InHouse/BlindingWizard";
 import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
@@ -911,6 +912,22 @@ export default function App() {
                   path="/qa/eqa/lab-performance/coverage"
                   exact
                   component={() => <LabPerformancePage view="coverage" />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Analyst Competency (T-19): the last oversight menu row.
+                    qa/019 seeded it at the FRS path, which redirects here the
+                    way its two siblings do. Read-only — competency events are
+                    service-written, never posted from this page. */}
+                <Redirect
+                  exact
+                  from="/eqa/oversight/analyst-track"
+                  to="/qa/eqa/analyst-competency"
+                />
+                <SecureRoute
+                  path="/qa/eqa/analyst-competency"
+                  exact
+                  component={() => <AnalystCompetencyPage />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />
