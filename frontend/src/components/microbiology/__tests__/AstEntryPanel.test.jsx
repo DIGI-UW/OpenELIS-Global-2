@@ -147,7 +147,7 @@ describe("AstEntryPanel", () => {
       await screen.findByText(
         (_, element) =>
           element?.tagName.toLowerCase() === "strong" &&
-          element.textContent === "SUSCEPTIBLE",
+          element.textContent === "Susceptible",
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByTestId("microbiology-ast-reading-row")).toHaveLength(
@@ -155,14 +155,22 @@ describe("AstEntryPanel", () => {
     );
     expect(
       screen.getAllByTestId("microbiology-ast-reading-row")[1],
-    ).toHaveTextContent("INTERMEDIATE");
+    ).toHaveTextContent("Intermediate");
     fireEvent.change(screen.getByLabelText("Override reason"), {
       target: { value: "mixed growth confirmed on repeat" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Apply override" }));
 
-    expect(await screen.findByText(/RESISTANT/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Review AST run" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId("microbiology-ast-reading-row")[0],
+      ).toHaveTextContent("Resistant"),
+    );
+    const reviewButton = screen.getByRole("button", {
+      name: "Review AST run",
+    });
+    await waitFor(() => expect(reviewButton).not.toBeDisabled());
+    fireEvent.click(reviewButton);
 
     expect(await screen.findByText("Reviewed")).toBeInTheDocument();
     expect(screen.getByText("Final release ready")).toBeInTheDocument();

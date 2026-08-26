@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -112,6 +113,26 @@ public class MicroCaseRestControllerTest {
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(MicroCaseStage.SETUP_RECORDED.name(), response.getBody().stage);
+    }
+
+    @Test
+    public void recordActivityRejectsMissingStageBeforeCallingTheService() {
+        MicroCaseStateService stateService = org.mockito.Mockito.mock(MicroCaseStateService.class);
+        MicroCaseActivityRequestForm request = new MicroCaseActivityRequestForm();
+
+        try {
+            controller(org.mockito.Mockito.mock(MicroCaseService.class),
+                    org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class),
+                    org.mockito.Mockito.mock(UserModuleService.class), stateService,
+                    org.mockito.Mockito.mock(MicroCaseOrderDetailService.class))
+                    .recordActivity("case-1", request, requestFor("42"));
+            fail("Expected a missing stage to be rejected");
+        } catch (IllegalArgumentException exception) {
+            assertEquals("nextStage is required", exception.getMessage());
+        }
+
+        verify(stateService, never()).advanceStage(eq("case-1"), org.mockito.ArgumentMatchers.any(), eq("42"),
+                org.mockito.ArgumentMatchers.any());
     }
 
     @Test

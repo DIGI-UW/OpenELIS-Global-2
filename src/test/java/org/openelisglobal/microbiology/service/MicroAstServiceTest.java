@@ -2,7 +2,9 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -155,6 +157,18 @@ public class MicroAstServiceTest {
         when(caseDAO.get("case-1")).thenReturn(Optional.of(finalCase));
 
         service.startRun("iso-1", "panel-1", "1");
+    }
+
+    @Test
+    public void overrideReadingRejectsMissingInterpretationBeforeLoadingTheReading() {
+        try {
+            service.overrideReading("reading-1", null, "reason", "1");
+            fail("Expected a missing override interpretation to be rejected");
+        } catch (IllegalArgumentException exception) {
+            assertEquals("overrideInterpretation is required", exception.getMessage());
+        }
+
+        verify(readingDAO, never()).get("reading-1");
     }
 
     private MicroCase mutableCase() {

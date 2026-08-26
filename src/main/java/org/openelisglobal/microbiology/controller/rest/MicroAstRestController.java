@@ -57,7 +57,8 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     public ResponseEntity<MicroAstReadingForm> recordReading(@PathVariable String runId,
             @RequestBody MicroAstReadingRequestForm request, HttpServletRequest httpRequest) {
         MicroAstReading reading = astService.recordReading(runId, request.antibioticId,
-                MicroAstMethod.valueOf(request.method), request.rawValue, authenticatedUserId(httpRequest));
+                requiredEnum(MicroAstMethod.class, request.method, "method"), request.rawValue,
+                authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toReadingForm(reading));
     }
 
@@ -66,8 +67,8 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     public ResponseEntity<MicroAstReadingForm> overrideReading(@PathVariable String readingId,
             @RequestBody MicroAstOverrideRequestForm request, HttpServletRequest httpRequest) {
         MicroAstReading reading = astService.overrideReading(readingId,
-                MicroAstInterpretation.valueOf(request.overrideInterpretation), request.overrideReason,
-                authenticatedUserId(httpRequest));
+                requiredEnum(MicroAstInterpretation.class, request.overrideInterpretation, "overrideInterpretation"),
+                request.overrideReason, authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toReadingForm(reading));
     }
 

@@ -361,9 +361,17 @@ const AstEntryPanel = ({
                             <td>{reading.method}</td>
                             <td>{reading.rawValue ?? reading.rawText}</td>
                             <td data-testid="microbiology-ast-interpretation">
-                              <strong>{reading.interpretation}</strong>
+                              <strong>
+                                {formatMicrobiologyEnum(
+                                  reading.interpretation,
+                                  intl,
+                                )}
+                              </strong>
                               {reading.overrideInterpretation
-                                ? ` (${reading.overrideInterpretation})`
+                                ? ` (${formatMicrobiologyEnum(
+                                    reading.overrideInterpretation,
+                                    intl,
+                                  )})`
                                 : ""}
                             </td>
                             <td>
@@ -391,10 +399,11 @@ const AstEntryPanel = ({
                           <SelectItem
                             key={reading.id}
                             value={reading.id}
-                            text={`${antibioticLabelFor(reading)}: ${
+                            text={`${antibioticLabelFor(reading)}: ${formatMicrobiologyEnum(
                               reading.overrideInterpretation ||
-                              reading.interpretation
-                            }`}
+                                reading.interpretation,
+                              intl,
+                            )}`}
                           />
                         ))}
                       </Select>

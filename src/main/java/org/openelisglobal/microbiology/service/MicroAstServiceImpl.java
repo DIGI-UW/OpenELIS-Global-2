@@ -110,6 +110,9 @@ public class MicroAstServiceImpl implements MicroAstService {
     public MicroAstReading overrideReading(String readingId, MicroAstInterpretation overrideInterpretation,
             String overrideReason, String performedBy) {
         MicroCaseServiceImpl.requireText(readingId, "readingId");
+        if (overrideInterpretation == null) {
+            throw new IllegalArgumentException("overrideInterpretation is required");
+        }
         interpretationService.validateOverride(overrideInterpretation, overrideReason);
         MicroAstReading reading = readingDAO.get(readingId)
                 .orElseThrow(() -> new IllegalArgumentException("AST reading not found"));
