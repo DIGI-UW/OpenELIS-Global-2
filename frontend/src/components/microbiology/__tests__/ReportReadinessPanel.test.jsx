@@ -192,6 +192,7 @@ describe("ReportReadinessPanel", () => {
   });
 
   it("shows a localized fallback when final release fails without a message", async () => {
+    const user = userEvent.setup();
     const service = {
       getCaseReadiness: vi.fn().mockResolvedValue({
         finalReleaseReady: true,
@@ -211,7 +212,7 @@ describe("ReportReadinessPanel", () => {
 
     renderPanel(service);
 
-    fireEvent.click(
+    await user.click(
       await screen.findByRole("button", { name: "Release final report" }),
     );
 
