@@ -18,6 +18,9 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
+import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -56,12 +59,14 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     private final TestMethodService testMethodService;
     private final TestQcThresholdDAO testQcThresholdDAO;
     private final TestService testService;
+    private final MicrobiologyReferenceService microbiologyReferenceService;
 
     public SampleEntryTestsForTypeProviderRestController(PanelService panelService,
             TestSectionService testSectionService, TypeOfSamplePanelService samplePanelService,
             PanelItemService panelItemService, TypeOfSampleService typeOfSampleService, UserService userService,
             RoleService roleService, ProgramService programService, TestMethodService testMethodService,
-            TestQcThresholdDAO testQcThresholdDAO, TestService testService) {
+            TestQcThresholdDAO testQcThresholdDAO, TestService testService,
+            MicrobiologyReferenceService microbiologyReferenceService) {
         this.panelService = panelService;
         this.testSectionService = testSectionService;
         this.samplePanelService = samplePanelService;
@@ -73,6 +78,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         this.testMethodService = testMethodService;
         this.testQcThresholdDAO = testQcThresholdDAO;
         this.testService = testService;
+        this.microbiologyReferenceService = microbiologyReferenceService;
     }
 
     @GetMapping(value = "sample-type-tests", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -203,12 +209,27 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             }
             boolean hasQc = testIdNum != null && testsWithQcThreshold.contains(testIdNum);
             String resultType = testService.getResultType(test);
-            List<TestMethodDto> methods = testMethodService.getLinkedMethodDtos(test.getId());
+            List<OrderEntryMethod> methods = testMethodService.getLinkedMethodDtos(test.getId()).stream()
+                    .map(method -> toOrderEntryMethod(method, test.getCultureWorkflowType())).toList();
             testsMapList.add(new TestMap(test.getId(), localizedTestName(test),
                     userTestSectionId.equals(test.getTestSection().getId()), hasQc, resultType, test.getTimeHolding(),
                     test.getCultureWorkflowType(), methods));
         }
         return testsMapList;
+    }
+
+    private OrderEntryMethod toOrderEntryMethod(TestMethodDto method, String workflowType) {
+        MicroWorkflowType workflow = null;
+        if (workflowType != null && !workflowType.isBlank()) {
+            try {
+                workflow = MicroWorkflowType.valueOf(workflowType.trim());
+            } catch (IllegalArgumentException ignored) {
+                // Legacy catalog values must not break the complete Add Order response.
+            }
+        }
+        MicroCultureSetup setup = workflow == null ? null
+                : microbiologyReferenceService.getActiveCultureSetupForMethod(method.methodId, workflow);
+        return new OrderEntryMethod(method, setup);
     }
 
     private ArrayList<PanelTestMap> addPanels(List<PanelTestMap> panelMap) {
@@ -379,7 +400,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         String cultureWorkflowType;
 
-        List<TestMethodDto> methods;
+        List<OrderEntryMethod> methods;
 
         public TestMap(String id, String name, boolean userBenchChoice) {
             this(id, name, userBenchChoice, false, null, null, null, List.of());
@@ -408,12 +429,12 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         }
 
         public TestMap(String id, String name, boolean userBenchChoice, String cultureWorkflowType,
-                List<TestMethodDto> methods) {
+                List<OrderEntryMethod> methods) {
             this(id, name, userBenchChoice, false, null, null, cultureWorkflowType, methods);
         }
 
         public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
-                String timeHolding, String cultureWorkflowType, List<TestMethodDto> methods) {
+                String timeHolding, String cultureWorkflowType, List<OrderEntryMethod> methods) {
             this.id = id;
             this.name = name;
             this.userBenchChoice = userBenchChoice;
@@ -480,8 +501,34 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             this.cultureWorkflowType = cultureWorkflowType;
         }
 
-        public List<TestMethodDto> getMethods() {
+        public List<OrderEntryMethod> getMethods() {
             return methods;
+        }
+    }
+
+    public static class OrderEntryMethod {
+        public String id;
+        public String methodId;
+        public String methodName;
+        public String methodCode;
+        public boolean isDefault;
+        public String effectiveDate;
+        public String mediaDefaults;
+        public String incubationDefaults;
+        public String atmosphereDefaults;
+
+        OrderEntryMethod(TestMethodDto method, MicroCultureSetup setup) {
+            id = method.id;
+            methodId = method.methodId;
+            methodName = method.methodName;
+            methodCode = method.methodCode;
+            isDefault = method.isDefault;
+            effectiveDate = method.effectiveDate;
+            if (setup != null) {
+                mediaDefaults = setup.getMediaDefaults();
+                incubationDefaults = setup.getIncubationDefaults();
+                atmosphereDefaults = setup.getAtmosphereDefaults();
+            }
         }
     }
 

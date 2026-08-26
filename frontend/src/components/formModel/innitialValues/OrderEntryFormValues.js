@@ -10,10 +10,10 @@ export const SampleOrderFormValues = {
   microbiologyOrderDetail: {
     cultureMethodId: "",
     patientOrigin: "",
+    admissionDate: "",
     numberOfSets: "",
     clinicalHistory: "",
     antibioticExposure: false,
-    criticalNotificationPreference: null,
   },
   patientUpdateStatus: "ADD",
   referralItems: [],

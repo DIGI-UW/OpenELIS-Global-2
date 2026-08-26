@@ -5,6 +5,7 @@ import MicrobiologyService from "./MicrobiologyService";
 import MicrobiologyOrderDetailFields, {
   emptyMicrobiologyOrderDetail,
 } from "./MicrobiologyOrderDetailFields";
+import { buildSubmissionMicrobiologyOrderDetail } from "../order/orderDataUtils";
 
 const OrderDetailPanel = ({
   caseId,
@@ -40,11 +41,11 @@ const OrderDetailPanel = ({
 
   const save = () => {
     setSaving(true);
-    const payload = {
+    const payload = buildSubmissionMicrobiologyOrderDetail({
       ...fields,
       numberOfSets:
         fields.numberOfSets === "" ? null : Number(fields.numberOfSets),
-    };
+    });
     service.saveOrderDetail(caseId, payload).then((detail) => {
       setSaving(false);
       if (detail && detail.orderDetail) {

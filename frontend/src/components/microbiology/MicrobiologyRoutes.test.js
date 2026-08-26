@@ -187,6 +187,40 @@ describe("MicrobiologyRoutes", () => {
     });
   });
 
+  it("keeps inoculation form actions in canonical case state", () => {
+    const url = getMicrobiologyCaseUrl("case-1", {
+      q: "UATMICRO001",
+      sort: "newest",
+      section: "setup",
+      action: "start-inoculation",
+    });
+
+    expect(url).toBe(
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup&action=start-inoculation",
+    );
+    expect(parseMicrobiologyCaseSearch(url.split("?")[1])).toMatchObject({
+      q: "UATMICRO001",
+      sort: "newest",
+      section: "setup",
+      action: "start-inoculation",
+    });
+  });
+
+  it("keeps the protocol-only bench action in canonical case state", () => {
+    expect(
+      getMicrobiologyCaseUrl("case-1", {
+        section: "setup",
+        action: "change-protocol",
+      }),
+    ).toBe("/Microbiology/cases/case-1?section=setup&action=change-protocol");
+    expect(
+      parseMicrobiologyCaseSearch("?section=setup&action=set-protocol"),
+    ).toMatchObject({
+      section: "setup",
+      action: "set-protocol",
+    });
+  });
+
   it("keeps a new AST attempt focused on its source run", () => {
     const url = getMicrobiologyCaseUrl("case-1", {
       grain: "ast",

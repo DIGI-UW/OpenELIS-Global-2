@@ -28,9 +28,18 @@ const CaseInoculationPanel = ({
   reagentRequirements = [],
   reagentUsages = [],
   readOnly = false,
+  stage = "",
+  action = "",
+  onInoculationAction = () => undefined,
+  onCultureAction = () => undefined,
 }) => {
   const intl = useIntl();
-  const [mode, setMode] = useState("");
+  const mode =
+    action === "start-inoculation"
+      ? "primary"
+      : action === "add-subculture"
+        ? "subculture"
+        : "";
   const [sourceInoculationId, setSourceInoculationId] = useState("");
   const [containerIdentifier, setContainerIdentifier] = useState("");
   const [media, setMedia] = useState("");
@@ -90,12 +99,14 @@ const CaseInoculationPanel = ({
   const openForm = (nextMode, triggerRef) => {
     clearForm();
     activeTriggerRef.current = triggerRef.current;
-    setMode(nextMode);
+    onInoculationAction(
+      nextMode === "subculture" ? "add-subculture" : "start-inoculation",
+    );
   };
 
   const closeForm = () => {
     clearForm();
-    setMode("");
+    onInoculationAction("");
   };
 
   useEffect(() => {
@@ -230,6 +241,31 @@ const CaseInoculationPanel = ({
               </TableContainer>
             )}
           </DataTable>
+        )}
+
+        {stage === "INCUBATING" && inoculations.length > 0 && (
+          <div className="microbiology-inline-actions">
+            <Button
+              kind="ghost"
+              size="sm"
+              disabled={saving || readOnly}
+              onClick={() => onCultureAction("mark-positive")}
+            >
+              {intl.formatMessage({
+                id: "microbiology.worklist.markPositive",
+              })}
+            </Button>
+            <Button
+              kind="ghost"
+              size="sm"
+              disabled={saving || readOnly}
+              onClick={() => onCultureAction("mark-no-growth")}
+            >
+              {intl.formatMessage({
+                id: "microbiology.worklist.markNoGrowth",
+              })}
+            </Button>
+          </div>
         )}
 
         {mode && (

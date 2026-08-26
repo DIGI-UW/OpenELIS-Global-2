@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.form;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -14,6 +15,9 @@ public class MicroCaseOrderDetailRequestForm {
     @Size(max = 255)
     public String patientOrigin;
 
+    @Pattern(regexp = "^$|^\\d{4}-\\d{2}-\\d{2}$")
+    public String admissionDate;
+
     @Min(1)
     @Max(10)
     public Integer numberOfSets;
@@ -22,6 +26,4 @@ public class MicroCaseOrderDetailRequestForm {
     public String clinicalHistory;
 
     public Boolean antibioticExposure;
-
-    public Boolean criticalNotificationPreference;
 }

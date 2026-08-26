@@ -460,4 +460,7 @@
 
   <include relativeToChangelogFile="true" file="085-microbiology-patient-origin-reference.xml"/>
 
+  <!-- OGC-782 R2: optional admission date for surveillance context -->
+  <include relativeToChangelogFile="true" file="086-microbiology-admission-date.xml"/>
+
 </databaseChangeLog>

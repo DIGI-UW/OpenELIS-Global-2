@@ -25,6 +25,7 @@ import CaseInoculationPanel from "./CaseInoculationPanel";
 import CaseCultureTransitionPanel from "./CaseCultureTransitionPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import CaseNonconformancePanel from "./CaseNonconformancePanel";
+import CaseProtocolPanel from "./CaseProtocolPanel";
 import ChangeWorkflowPanel from "./ChangeWorkflowPanel";
 import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
@@ -182,6 +183,9 @@ const getNextStepMessageId = (caseDetail) => {
   }
   if (caseDetail.stage === "NO_GROWTH_READY") {
     return "microbiology.next.release";
+  }
+  if (caseDetail.stage === "INCUBATING") {
+    return "microbiology.next.incubating";
   }
   if (caseDetail.stage === "POSITIVE_SIGNAL") {
     return "microbiology.next.subculturePositive";
@@ -409,6 +413,31 @@ const MicrobiologyCaseView = ({
     );
   };
 
+  const protocolChanged = (detail) => {
+    setCaseDetail(detail);
+    setReadinessRefreshToken((token) => token + 1);
+  };
+
+  const openProtocolAction = () => {
+    history.push(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "setup",
+        action: caseDetail.cultureMethodId ? "change-protocol" : "set-protocol",
+      }),
+    );
+  };
+
+  const closeProtocolAction = () => {
+    history.replace(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "setup",
+        action: "",
+      }),
+    );
+  };
+
   const selectSection = (section) => {
     history.push(
       getMicrobiologyCaseUrl(caseId, {
@@ -452,6 +481,16 @@ const MicrobiologyCaseView = ({
         ...routeState,
         section: "setup",
         action: "",
+      }),
+    );
+  };
+
+  const openCultureAction = (action) => {
+    history[action ? "push" : "replace"](
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section: "setup",
+        action,
       }),
     );
   };
@@ -507,6 +546,8 @@ const MicrobiologyCaseView = ({
     const actionOwnsFocus = [
       "report-nce",
       "mark-lost",
+      "start-inoculation",
+      "add-subculture",
       "mark-positive",
       "mark-no-growth",
     ].includes(routeState.action);
@@ -801,7 +842,10 @@ const MicrobiologyCaseView = ({
           </aside>
 
           <div className="microbiology-workbench__content">
-            <Layer className="microbiology-next-step">
+            <Layer
+              className="microbiology-next-step"
+              data-testid="microbiology-next-step"
+            >
               <div>
                 <p className="microbiology-workbench__eyebrow">
                   {intl.formatMessage({ id: "microbiology.next.title" })}
@@ -810,6 +854,28 @@ const MicrobiologyCaseView = ({
                   {intl.formatMessage({ id: getNextStepMessageId(caseDetail) })}
                 </p>
               </div>
+              {caseDetail.stage === "RECEIVED" &&
+                routeState.action !== "start-inoculation" && (
+                  <Button
+                    size="sm"
+                    onClick={() => openCultureAction("start-inoculation")}
+                  >
+                    {intl.formatMessage({
+                      id: "microbiology.inoculation.start",
+                    })}
+                  </Button>
+                )}
+              {caseDetail.stage === "INCUBATING" &&
+                routeState.action !== "mark-positive" && (
+                  <Button
+                    size="sm"
+                    onClick={() => openCultureAction("mark-positive")}
+                  >
+                    {intl.formatMessage({
+                      id: "microbiology.worklist.markPositive",
+                    })}
+                  </Button>
+                )}
             </Layer>
 
             <Accordion>
@@ -906,9 +972,25 @@ const MicrobiologyCaseView = ({
                           onCancel={() => selectSection("setup")}
                         />
                       )}
+                      <CaseProtocolPanel
+                        caseId={caseDetail.id}
+                        currentMethodId={caseDetail.cultureMethodId}
+                        open={["set-protocol", "change-protocol"].includes(
+                          routeState.action,
+                        )}
+                        readOnly={finalReleased && !amendmentOpen}
+                        service={service}
+                        onOpen={openProtocolAction}
+                        onClose={closeProtocolAction}
+                        onChanged={protocolChanged}
+                      />
                       <CaseInoculationPanel
                         inoculations={inoculations}
                         onRecord={recordInoculation}
+                        stage={caseDetail.stage}
+                        action={routeState.action}
+                        onInoculationAction={openCultureAction}
+                        onCultureAction={openCultureAction}
                         saving={saving}
                         reagentRequirements={reagentOverview.requirements}
                         reagentUsages={reagentOverview.usages}

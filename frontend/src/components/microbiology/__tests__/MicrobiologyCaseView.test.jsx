@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -46,6 +46,8 @@ const astServiceStubs = {
   getBreakpointStandards: vi.fn().mockResolvedValue([]),
   getCultureMethods: vi.fn().mockResolvedValue([]),
   changeCaseWorkflow: vi.fn(),
+  getCaseProtocolOptions: vi.fn().mockResolvedValue([]),
+  changeCaseProtocol: vi.fn(),
   getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
   saveOrderDetail: vi.fn().mockResolvedValue({}),
   getCaseReadiness: vi.fn().mockResolvedValue({
@@ -107,6 +109,30 @@ const getAccordionButton = (name) => {
 };
 
 describe("MicrobiologyCaseView", () => {
+  it("opens primary inoculation from the received next step with canonical URL state", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup",
+    );
+
+    const nextStep = await screen.findByTestId("microbiology-next-step");
+    await user.click(
+      within(nextStep).getByRole("button", { name: "Start inoculation" }),
+    );
+
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup&action=start-inoculation",
+    );
+    expect(screen.getByLabelText("Bottle or plate ID")).toHaveFocus();
+  });
+
   it("mounts only the canonical active accordion body", async () => {
     const service = {
       ...astServiceStubs,
@@ -130,6 +156,64 @@ describe("MicrobiologyCaseView", () => {
     ).not.toBeInTheDocument();
     expect(service.getIdentificationHistory).not.toHaveBeenCalled();
     expect(service.getAstRunsForIsolate).not.toHaveBeenCalled();
+  });
+
+  it("sets a bench protocol from canonical URL state and retains worklist context", async () => {
+    const user = userEvent.setup();
+    const protocolOption = {
+      id: "method-1",
+      label: "Routine blood culture",
+      active: true,
+      current: false,
+      mediaDefaults: "BAP + CHOC",
+      incubationDefaults: "48 hours at 35 C",
+      atmosphereDefaults: "aerobic + anaerobic",
+    };
+    const updatedCase = { ...caseDetail, cultureMethodId: "method-1" };
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      getCaseProtocolOptions: vi.fn().mockResolvedValue([protocolOption]),
+      changeCaseProtocol: vi.fn().mockResolvedValue(updatedCase),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&section=setup",
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: "Set protocol" }),
+    );
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "workflow=BACTERIOLOGY&section=setup&action=set-protocol",
+    );
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Culture protocol" }),
+      "method-1",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Reason for protocol change" }),
+      "Bench review requires routine media",
+    );
+    await user.click(screen.getByRole("button", { name: "Save protocol" }));
+
+    await waitFor(() =>
+      expect(service.changeCaseProtocol).toHaveBeenCalledWith("case-1", {
+        cultureMethodId: "method-1",
+        reason: "Bench review requires routine media",
+      }),
+    );
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&section=setup",
+    );
+    expect(
+      screen.getByTestId("microbiology-current-url"),
+    ).not.toHaveTextContent("action=");
+    expect(
+      await screen.findByText("Routine blood culture"),
+    ).toBeInTheDocument();
   });
 
   it.each([
@@ -199,6 +283,53 @@ describe("MicrobiologyCaseView", () => {
       await waitFor(() => expect(section).toHaveFocus());
     },
   );
+
+  it("opens the incubating next action from the case page with canonical URL state", async () => {
+    const user = userEvent.setup();
+    const incubatingCase = {
+      ...caseDetail,
+      stage: "INCUBATING",
+      activities: [
+        ...caseDetail.activities,
+        {
+          id: "a2",
+          activityType: "INOCULATION_RECORDED",
+          note: "BOTTLE-001 - Blood culture bottle",
+        },
+      ],
+    };
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(incubatingCase),
+      getCaseTimeline: vi.fn().mockResolvedValue(incubatingCase.activities),
+      getCaseInoculations: vi.fn().mockResolvedValue([
+        {
+          id: "inoculation-1",
+          containerIdentifier: "BOTTLE-001",
+          media: "Blood culture bottle",
+        },
+      ]),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup",
+    );
+
+    const nextStep = await screen.findByTestId("microbiology-next-step");
+    await user.click(
+      within(nextStep).getByRole("button", { name: "Mark positive" }),
+    );
+
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup&action=mark-positive",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Mark culture positive" }),
+    ).toBeInTheDocument();
+  });
 
   it("records primary inoculation with a service-managed timeline and lot", async () => {
     const user = userEvent.setup();
@@ -281,7 +412,11 @@ describe("MicrobiologyCaseView", () => {
     expect(screen.getAllByText(/UATMICRO001/).length).toBeGreaterThan(0);
     expect(screen.getByText("Blood")).toBeInTheDocument();
     expect(screen.getAllByText("Received").length).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: "Start inoculation" }));
+    await user.click(
+      within(screen.getByTestId("microbiology-next-step")).getByRole("button", {
+        name: "Start inoculation",
+      }),
+    );
     await user.type(screen.getByLabelText("Bottle or plate ID"), "BOTTLE-001");
     await user.type(
       screen.getByLabelText("Media or bottle"),
@@ -310,7 +445,7 @@ describe("MicrobiologyCaseView", () => {
     expect(await screen.findByText("BOTTLE-001")).toBeInTheDocument();
     expect(screen.getByText("Primary")).toBeInTheDocument();
     expect(
-      screen.getByText(/Inoculation recorded. Add significant growth/),
+      screen.getByText(/Incubating. Mark the case positive/),
     ).toBeInTheDocument();
   });
 
@@ -477,10 +612,11 @@ describe("MicrobiologyCaseView", () => {
     const reportNce = await screen.findByRole("button", {
       name: "Report NCE",
     });
-    reportNce.focus();
-    await user.keyboard("{Enter}");
-    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "section=nonconformance&action=report-nce",
+    await user.click(reportNce);
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "section=nonconformance&action=report-nce",
+      ),
     );
     expect(
       screen.getByRole("heading", { name: "Report nonconformance" }),
@@ -492,10 +628,11 @@ describe("MicrobiologyCaseView", () => {
     );
 
     const markLost = screen.getByRole("button", { name: /Mark lost/ });
-    markLost.focus();
-    await user.keyboard("{Enter}");
-    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "section=nonconformance&action=mark-lost",
+    await user.click(markLost);
+    await waitFor(() =>
+      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+        "section=nonconformance&action=mark-lost",
+      ),
     );
     await waitFor(() =>
       expect(

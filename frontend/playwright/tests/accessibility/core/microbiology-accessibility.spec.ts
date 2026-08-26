@@ -14,6 +14,7 @@ import {
   openMicrobiologyCaseSection,
 } from "../../../helpers/microbiology-ui";
 import {
+  MICROBIOLOGY_CULTURE_METHOD_NAME,
   MICROBIOLOGY_CULTURE_TEST_NAME,
   seedMicrobiologyOrderCatalog,
   selectMicrobiologyOrderTest,
@@ -190,8 +191,12 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     await expect(details).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(page.getByLabel("Patient Origin")).toBeVisible();
     await expect(
-      page.getByRole("combobox", { name: "Culture Method" }),
-    ).not.toHaveValue("");
+      details.getByText(MICROBIOLOGY_CULTURE_METHOD_NAME, { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Date of admission")).toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: "Culture Protocol" }),
+    ).toHaveCount(0);
     await attachViewportEvidence(
       page,
       testInfo,

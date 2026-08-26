@@ -51,7 +51,6 @@ import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -441,7 +440,8 @@ public class MicroAstServiceImpl implements MicroAstService {
             form.reason = event.getReason();
             form.performedAt = event.getPerformedAt();
             form.performedBy = event.getPerformedBy();
-            form.performedByDisplay = resolveUserDisplay(event.getPerformedBy(), userDisplayById);
+            form.performedByDisplay = MicrobiologyUserDisplayResolver.resolve(systemUserService, event.getPerformedBy(),
+                    userDisplayById);
             return form;
         }).toList();
     }
@@ -952,25 +952,6 @@ public class MicroAstServiceImpl implements MicroAstService {
         event.setPerformedAt(MicroCaseServiceImpl.now());
         event.setPerformedBy(performedBy);
         overrideEventDAO.insert(event);
-    }
-
-    private String resolveUserDisplay(String userId, Map<String, String> userDisplayById) {
-        if (userId == null || userId.isBlank()) {
-            return null;
-        }
-        if (userDisplayById.containsKey(userId)) {
-            return userDisplayById.get(userId);
-        }
-        SystemUser user = systemUserService.getUserById(userId);
-        String display = userId;
-        if (user != null) {
-            String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
-            String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
-            String fullName = (firstName + " " + lastName).trim();
-            display = fullName.isEmpty() ? userId : fullName;
-        }
-        userDisplayById.put(userId, display);
-        return display;
     }
 
     private MicroAstRun requireRun(String runId) {

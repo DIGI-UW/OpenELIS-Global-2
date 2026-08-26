@@ -23,6 +23,7 @@ const SamplesCollectionSection = ({
   unitOfMeasures,
   updateSampleCollectionDetails,
   isReadOnly,
+  admissionDate,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -79,7 +80,7 @@ const SamplesCollectionSection = ({
   };
 
   // Handle print labels for a specific sample
-  const handlePrintLabels = (sampleIndex) => {
+  const handlePrintLabels = (_sampleIndex) => {
     // TODO: Implement label printing
   };
 
@@ -127,6 +128,7 @@ const SamplesCollectionSection = ({
                 onPrintLabels={handlePrintLabels}
                 isReadOnly={isReadOnly}
                 canRemove={samples.length > 1}
+                admissionDate={admissionDate}
               />
 
               {/* Nested QC sample summaries — inherit collection details from parent */}

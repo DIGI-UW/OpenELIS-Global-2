@@ -2,6 +2,8 @@ package org.openelisglobal.common.rest.provider;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +19,9 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
+import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.program.service.ProgramService;
@@ -59,6 +64,8 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
     @Mock
     private TestService testService;
     @Mock
+    private MicrobiologyReferenceService microbiologyReferenceService;
+    @Mock
     private HttpServletRequest request;
 
     private SampleEntryTestsForTypeProviderRestController controller;
@@ -67,7 +74,7 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
     public void setUp() {
         controller = new SampleEntryTestsForTypeProviderRestController(panelService, testSectionService,
                 samplePanelService, panelItemService, typeOfSampleService, userService, roleService, programService,
-                testMethodService, testQcThresholdDAO, testService);
+                testMethodService, testQcThresholdDAO, testService, microbiologyReferenceService);
         HttpSession session = mock(HttpSession.class);
         UserSessionData userSessionData = new UserSessionData();
         userSessionData.setSytemUserId(17);
@@ -123,6 +130,12 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
         method.methodCode = "BCSTD";
         method.isDefault = true;
         when(testMethodService.getLinkedMethodDtos("42")).thenReturn(List.of(method));
+        MicroCultureSetup setup = new MicroCultureSetup();
+        setup.setMediaDefaults("BAP + CHOC");
+        setup.setIncubationDefaults("5 days at 35 C");
+        setup.setAtmosphereDefaults("aerobic + anaerobic");
+        when(microbiologyReferenceService.getActiveCultureSetupForMethod("7", MicroWorkflowType.BACTERIOLOGY))
+                .thenReturn(setup);
 
         SampleEntryTestsForTypeProviderRestController.SampleEntryTests result = controller.processRequest(request,
                 null);
@@ -131,5 +144,36 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
         assertEquals("BACTERIOLOGY", result.getTests().get(0).getCultureWorkflowType());
         assertEquals("7", result.getTests().get(0).getMethods().get(0).methodId);
         assertEquals("Blood Culture Standard", result.getTests().get(0).getMethods().get(0).methodName);
+        assertEquals("BAP + CHOC", result.getTests().get(0).getMethods().get(0).mediaDefaults);
+        assertEquals("5 days at 35 C", result.getTests().get(0).getMethods().get(0).incubationDefaults);
+        assertEquals("aerobic + anaerobic", result.getTests().get(0).getMethods().get(0).atmosphereDefaults);
+    }
+
+    @Test
+    public void orderEntryMethodTrimsSupportedWorkflowMetadata() throws Exception {
+        TestMethodDto method = new TestMethodDto();
+        method.methodId = "7";
+
+        invokeOrderEntryMethod(method, " BACTERIOLOGY ");
+
+        verify(microbiologyReferenceService).getActiveCultureSetupForMethod("7", MicroWorkflowType.BACTERIOLOGY);
+    }
+
+    @Test
+    public void orderEntryMethodIgnoresInvalidWorkflowMetadata() throws Exception {
+        TestMethodDto method = new TestMethodDto();
+        method.methodId = "7";
+
+        invokeOrderEntryMethod(method, "NOT_A_WORKFLOW");
+
+        verify(microbiologyReferenceService, never()).getActiveCultureSetupForMethod(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    private void invokeOrderEntryMethod(TestMethodDto method, String workflowType) throws Exception {
+        java.lang.reflect.Method mapper = SampleEntryTestsForTypeProviderRestController.class
+                .getDeclaredMethod("toOrderEntryMethod", TestMethodDto.class, String.class);
+        mapper.setAccessible(true);
+        mapper.invoke(controller, method, workflowType);
     }
 }

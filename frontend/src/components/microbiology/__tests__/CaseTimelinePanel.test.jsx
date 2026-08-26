@@ -41,6 +41,8 @@ describe("CaseTimelinePanel", () => {
               id: "a1",
               activityType: "INOCULATION_RECORDED",
               note: "BOTTLE-001",
+              occurredAt: "2026-08-13T17:15:00Z",
+              performedByDisplay: "Olivia Mendez",
             },
             {
               id: "n1",
@@ -56,6 +58,10 @@ describe("CaseTimelinePanel", () => {
     expect(screen.queryByLabelText("Culture action")).not.toBeInTheDocument();
     expect(screen.getByText("Auto")).toBeInTheDocument();
     expect(screen.getByText("Manual")).toBeInTheDocument();
+    const actor = screen.getByText(/Olivia Mendez/);
+    const recordedAt = actor.closest("div").querySelector("time");
+    expect(recordedAt).not.toBeNull();
+    expect(recordedAt).toHaveAttribute("datetime", "2026-08-13T17:15:00Z");
     await user.click(screen.getByRole("button", { name: "Add note" }));
     await user.type(
       screen.getByLabelText("Note or observation"),
@@ -65,6 +71,35 @@ describe("CaseTimelinePanel", () => {
 
     expect(onAddNote).toHaveBeenCalledWith("Colonies visible at 18 hours");
     expect(screen.getByRole("button", { name: "Add note" })).toHaveFocus();
+  });
+
+  it("formats protocol audit facts through React Intl", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseTimelinePanel
+          timelineSectionId="timeline"
+          activities={[
+            {
+              id: "protocol-1",
+              activityType: "CULTURE_PROTOCOL_CHANGED",
+              note: null,
+              structuredData: JSON.stringify({
+                fromMethodName: "Old protocol",
+                toMethodName: "Next protocol",
+                reason: "Growth requires alternate media",
+              }),
+            },
+          ]}
+          onAddNote={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(
+      screen.getByText(
+        ": Culture protocol changed from Old protocol to Next protocol: Growth requires alternate media",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows the newest 30 events by default and preserves full history on demand", async () => {

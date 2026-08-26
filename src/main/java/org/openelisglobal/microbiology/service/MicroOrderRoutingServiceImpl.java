@@ -1,5 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -79,15 +81,14 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
                     .map(Analysis::getTest).filter(java.util.Objects::nonNull).toList());
         }
 
-        validateOrderDetail(effectiveOrderDetail);
-        validateSelectedMethod(effectiveOrderDetail, testsByWorkflow);
+        validateOrderDetail(effectiveOrderDetail, sampleItem);
         Map<MicroWorkflowType, RoutingConfiguration> configurationsByWorkflow = new LinkedHashMap<>();
         for (Map.Entry<MicroWorkflowType, List<Test>> entry : testsByWorkflow.entrySet()) {
             MicroWorkflowType workflowType = entry.getKey();
-            String methodId = methodIdFor(entry.getValue(), effectiveOrderDetail);
-            MicroCultureSetup setup = workflowType == MicroWorkflowType.UNASSIGNED ? null
+            String methodId = methodIdFor(entry.getValue());
+            MicroCultureSetup setup = workflowType == MicroWorkflowType.UNASSIGNED || methodId == null ? null
                     : referenceService.getActiveCultureSetupForMethod(methodId, workflowType);
-            if (setup == null && workflowType != MicroWorkflowType.UNASSIGNED) {
+            if (setup == null && workflowType != MicroWorkflowType.UNASSIGNED && methodId != null) {
                 throw new IllegalStateException("No active microbiology culture setup for method " + methodId
                         + " and workflow " + workflowType.name());
             }
@@ -135,20 +136,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         }
     }
 
-    private void validateSelectedMethod(MicroCaseOrderDetailRequestForm orderDetail,
-            Map<MicroWorkflowType, List<Test>> testsByWorkflow) {
-        if (orderDetail == null || orderDetail.cultureMethodId == null
-                || orderDetail.cultureMethodId.trim().isEmpty()) {
-            return;
-        }
-        boolean linked = testsByWorkflow.values().stream().flatMap(List::stream)
-                .anyMatch(test -> testMethodService.testMethodLinkExists(test.getId(), orderDetail.cultureMethodId));
-        if (!linked) {
-            throw new IllegalArgumentException("Selected culture method is not linked to an ordered culture test");
-        }
-    }
-
-    private void validateOrderDetail(MicroCaseOrderDetailRequestForm orderDetail) {
+    private void validateOrderDetail(MicroCaseOrderDetailRequestForm orderDetail, SampleItem sampleItem) {
         if (orderDetail == null) {
             return;
         }
@@ -158,27 +146,31 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         if (orderDetail.clinicalHistory != null && orderDetail.clinicalHistory.length() > 1000) {
             throw new IllegalArgumentException("Clinical history must be 1000 characters or fewer");
         }
-    }
-
-    private String methodIdFor(List<Test> tests, MicroCaseOrderDetailRequestForm orderDetail) {
-        if (orderDetail != null && orderDetail.cultureMethodId != null
-                && !orderDetail.cultureMethodId.trim().isEmpty()) {
-            boolean linkedToWorkflow = tests.stream().anyMatch(
-                    test -> testMethodService.testMethodLinkExists(test.getId(), orderDetail.cultureMethodId));
-            if (linkedToWorkflow) {
-                return orderDetail.cultureMethodId;
+        if (orderDetail.admissionDate != null && !orderDetail.admissionDate.isBlank()
+                && !"OUTPATIENT".equalsIgnoreCase(orderDetail.patientOrigin)
+                && sampleItem.getCollectionDate() != null) {
+            LocalDate admissionDate;
+            try {
+                admissionDate = LocalDate.parse(orderDetail.admissionDate);
+            } catch (DateTimeParseException exception) {
+                throw new IllegalArgumentException("Admission date must be a valid ISO date", exception);
+            }
+            LocalDate collectionDate = sampleItem.getCollectionDate().toLocalDateTime().toLocalDate();
+            if (collectionDate.isBefore(admissionDate)) {
+                throw new IllegalArgumentException("Collection date cannot be before admission date");
             }
         }
+    }
+
+    private String methodIdFor(List<Test> tests) {
         Test test = tests.get(0);
         String defaultMethodId = testMethodService.getDefaultMethodId(test.getId());
         if (defaultMethodId != null && !defaultMethodId.trim().isEmpty()) {
             return defaultMethodId;
         }
         Method legacyMethod = test.getMethod();
-        if (legacyMethod == null || legacyMethod.getId() == null || legacyMethod.getId().trim().isEmpty()) {
-            throw new IllegalStateException("Microbiology workflow tests require a culture method");
-        }
-        return legacyMethod.getId();
+        return legacyMethod == null || legacyMethod.getId() == null || legacyMethod.getId().trim().isEmpty() ? null
+                : legacyMethod.getId();
     }
 
     private void linkPersistedAnalyses(MicroCase microCase, List<Test> routedTests, MicroCultureSetup cultureSetup,

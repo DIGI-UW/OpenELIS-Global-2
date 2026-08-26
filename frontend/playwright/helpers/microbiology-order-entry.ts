@@ -11,9 +11,12 @@ export type MicrobiologyOrderCatalog = SeededMicrobiologyCase & {
   cultureTestId: string;
   tbCultureTestId: string;
   nonCultureTestId: string;
+  alternateMethodId: string;
 };
 
 export const MICROBIOLOGY_CULTURE_TEST_NAME = "UAT microbiology culture";
+export const MICROBIOLOGY_CULTURE_METHOD_NAME = "UAT micro culture";
+export const MICROBIOLOGY_ALTERNATE_CULTURE_METHOD_NAME = "UAT alt culture";
 export const MICROBIOLOGY_TB_CULTURE_TEST_NAME = "UAT microbiology TB culture";
 export const MICROBIOLOGY_NON_CULTURE_TEST_NAME =
   "UAT routine non-culture test";
@@ -27,6 +30,7 @@ export async function seedMicrobiologyOrderCatalog(
     "cultureTestId",
     "tbCultureTestId",
     "nonCultureTestId",
+    "alternateMethodId",
   ] as const;
   for (const field of required) {
     if (!seeded[field]) {

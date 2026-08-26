@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
@@ -32,6 +33,9 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
 
     @Column(name = "patient_origin", length = 255)
     private String patientOrigin;
+
+    @Column(name = "admission_date")
+    private LocalDate admissionDate;
 
     @Column(name = "number_of_sets")
     private Integer numberOfSets;
@@ -97,6 +101,14 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
 
     public void setPatientOrigin(String patientOrigin) {
         this.patientOrigin = patientOrigin;
+    }
+
+    public LocalDate getAdmissionDate() {
+        return admissionDate;
+    }
+
+    public void setAdmissionDate(LocalDate admissionDate) {
+        this.admissionDate = admissionDate;
     }
 
     public Integer getNumberOfSets() {

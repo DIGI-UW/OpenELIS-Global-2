@@ -39,7 +39,7 @@ describe("ChangeWorkflowPanel", () => {
 
     await user.selectOptions(screen.getByLabelText("Workflow"), "BACTERIOLOGY");
     await user.selectOptions(
-      await screen.findByLabelText("Culture Method"),
+      await screen.findByLabelText("Culture Protocol"),
       "method-1",
     );
     await user.type(
@@ -80,7 +80,7 @@ describe("ChangeWorkflowPanel", () => {
       "MYCOBACTERIOLOGY_TB",
     );
     await user.selectOptions(
-      await screen.findByLabelText("Culture Method"),
+      await screen.findByLabelText("Culture Protocol"),
       "method-2",
     );
     await user.type(

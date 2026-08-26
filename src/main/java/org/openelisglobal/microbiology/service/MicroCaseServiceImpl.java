@@ -30,7 +30,6 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.systemuser.service.SystemUserService;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -227,39 +226,21 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         form.activityType = activity.getActivityType();
         form.occurredAt = activity.getOccurredAt();
         form.performedBy = activity.getPerformedBy();
-        form.performedByDisplay = resolveUserDisplay(activity.getPerformedBy(), userDisplayById);
+        form.performedByDisplay = MicrobiologyUserDisplayResolver.resolve(systemUserService, activity.getPerformedBy(),
+                userDisplayById);
         form.note = activity.getNote();
         form.structuredData = activity.getStructuredData();
         return form;
-    }
-
-    private String resolveUserDisplay(String userId, Map<String, String> userDisplayById) {
-        if (userId == null || userId.isBlank()) {
-            return null;
-        }
-        if (userDisplayById.containsKey(userId)) {
-            return userDisplayById.get(userId);
-        }
-        SystemUser user = systemUserService.getUserById(userId);
-        String display = userId;
-        if (user != null) {
-            String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
-            String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
-            String fullName = (firstName + " " + lastName).trim();
-            display = fullName.isEmpty() ? userId : fullName;
-        }
-        userDisplayById.put(userId, display);
-        return display;
     }
 
     private MicroCaseOrderDetailForm toOrderDetailForm(MicroCaseOrderDetail orderDetail) {
         MicroCaseOrderDetailForm form = new MicroCaseOrderDetailForm();
         form.caseId = orderDetail.getCaseId();
         form.patientOrigin = orderDetail.getPatientOrigin();
+        form.admissionDate = orderDetail.getAdmissionDate() == null ? null : orderDetail.getAdmissionDate().toString();
         form.numberOfSets = orderDetail.getNumberOfSets();
         form.clinicalHistory = orderDetail.getClinicalHistory();
         form.antibioticExposure = orderDetail.getAntibioticExposure();
-        form.criticalNotificationPreference = orderDetail.getCriticalNotificationPreference();
         return form;
     }
 

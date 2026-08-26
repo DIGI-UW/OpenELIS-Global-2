@@ -35,6 +35,123 @@ const selectConfiguredOption = async (
 };
 
 test.describe("Microbiology case workbench", () => {
+  test("drives a received culture through positive signal from the worklist", async ({
+    page,
+  }) => {
+    const seeded = await seedMicrobiologyCase(page);
+    const worklistUrl = `/Microbiology/worklist?q=${encodeURIComponent(
+      seeded.accessionNumber,
+    )}&sort=newest`;
+    await page.goto(worklistUrl, { waitUntil: "domcontentloaded" });
+
+    const row = page.getByTestId(`microbiology-worklist-row-${seeded.caseId}`);
+    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(row).toContainText(seeded.accessionNumber);
+    await row.getByRole("link", { name: seeded.accessionNumber }).click();
+
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/Microbiology/cases/${seeded.caseId}\\?q=${seeded.accessionNumber}&sort=newest&section=setup$`,
+      ),
+    );
+    await expect(
+      page.getByTestId("microbiology-current-step-action"),
+    ).toContainText("Inoculation");
+    const caseHeader = page.locator("header");
+    await expect(caseHeader.getByTitle("Received")).toBeVisible();
+
+    const nextStep = page.getByTestId("microbiology-next-step");
+    await nextStep.getByRole("button", { name: "Start inoculation" }).click();
+    await expect(page).toHaveURL(/section=setup&action=start-inoculation$/);
+    await page.getByLabel("Bottle or plate ID").fill("UAT-M04-PRIMARY-01");
+    await page.getByLabel("Media or bottle").fill("Blood culture bottle");
+    await page.getByLabel("Incubation").fill("35 C for 24 hours");
+    await page.getByLabel("Atmosphere").fill("Ambient");
+    const mediaLot = page.getByRole("radio", {
+      name: /UAT-MICRO-MEDIA-FEFO/,
+    });
+    await mediaLot.focus();
+    await page.keyboard.press("Space");
+    await expect(mediaLot).toBeChecked();
+    await page.getByRole("button", { name: "Save media" }).click();
+
+    await expect(caseHeader.getByTitle("Incubating")).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    await expect(page).toHaveURL(/section=setup$/);
+    await expect(
+      page.getByRole("cell", { name: "UAT-M04-PRIMARY-01" }),
+    ).toBeVisible();
+    const lotHistory = page.getByRole("table", {
+      name: "Recorded lot usage",
+    });
+    await expect(lotHistory).toContainText("UAT-MICRO-MEDIA-FEFO");
+
+    await page.getByRole("button", { name: "Add subculture" }).click();
+    await expect(page).toHaveURL(/section=setup&action=add-subculture$/);
+    await page.getByLabel("Parent media").selectOption({
+      label: "UAT-M04-PRIMARY-01 - Blood culture bottle",
+    });
+    await page.getByLabel("Bottle or plate ID").fill("UAT-M04-SUB-01");
+    await page.getByLabel("Media or bottle").fill("MacConkey agar");
+    await page.getByRole("button", { name: "Save media" }).click();
+    await expect(page).toHaveURL(/section=setup$/);
+    await expect(
+      page.getByRole("cell", { name: "UAT-M04-SUB-01" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: /Subculture UAT-M04-PRIMARY-01/ }),
+    ).toBeVisible();
+
+    const caseView = page.getByTestId("microbiology-case-view");
+    await caseView
+      .getByRole("button", { name: "Timeline", exact: true })
+      .click();
+    const timeline = page.getByTestId("microbiology-timeline-card");
+    await expect(
+      timeline.getByText("Inoculation Recorded", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      timeline.getByText("Subculture Recorded", { exact: true }),
+    ).toBeVisible();
+    await expect(timeline.getByText("Auto", { exact: true })).toHaveCount(3);
+    await page.getByRole("button", { name: "Add note" }).click();
+    await page
+      .getByLabel("Note or observation")
+      .fill("Colonies visible at 18 hours");
+    await page.getByRole("button", { name: "Save note" }).click();
+    await expect(timeline.getByText("Manual", { exact: true })).toBeVisible();
+    await expect(
+      timeline.getByText("Performed by Open ELIS", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      timeline.getByText("Performed by 1", { exact: true }),
+    ).toHaveCount(0);
+
+    await caseView
+      .getByRole("button", { name: "Inoculation", exact: true })
+      .click();
+    const markPositive = page
+      .getByTestId("microbiology-case-section-setup")
+      .getByRole("button", { name: "Mark positive" });
+    await expect(markPositive).toBeVisible();
+    await markPositive.click();
+    await expect(page).toHaveURL(/section=setup&action=mark-positive$/);
+    await page.getByRole("button", { name: "Confirm positive signal" }).click();
+
+    await expect(
+      caseHeader.getByText("Positive Signal", { exact: true }),
+    ).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    await expect(page).toHaveURL(/section=setup$/);
+    await expect(
+      page.getByText(
+        "Positive signal recorded. Subculture the bottle and record the Gram stain.",
+      ),
+    ).toBeVisible();
+  });
+
   test("records inoculation lineage and completes two-pass isolate identification", async ({
     page,
   }) => {
@@ -77,7 +194,10 @@ test.describe("Microbiology case workbench", () => {
       .getByRole("button", { name: "Inoculation", exact: true })
       .click();
     await expect(page).toHaveURL(/section=setup/);
-    await page.getByRole("button", { name: "Start inoculation" }).click();
+    await page
+      .getByTestId("microbiology-next-step")
+      .getByRole("button", { name: "Start inoculation" })
+      .click();
     await page.getByLabel("Bottle or plate ID").fill("BOTTLE-001");
     await page.getByLabel("Media or bottle").fill("Blood culture bottle");
     await page.getByLabel("Incubation").fill("35 C for 24 hours");
@@ -231,10 +351,10 @@ test.describe("Microbiology case workbench", () => {
       .getByLabel("Workflow", { exact: true })
       .selectOption("MYCOBACTERIOLOGY_TB");
     await expect(
-      page.getByLabel("Culture Method", { exact: true }),
+      page.getByLabel("Culture Protocol", { exact: true }),
     ).toBeEnabled();
     await page
-      .getByLabel("Culture Method", { exact: true })
+      .getByLabel("Culture Protocol", { exact: true })
       .selectOption(seeded.methodId);
     await page
       .getByLabel("Reason for change")

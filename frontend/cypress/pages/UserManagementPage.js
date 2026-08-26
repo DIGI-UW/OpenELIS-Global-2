@@ -87,8 +87,11 @@ class UserManagementPage {
   }
 
   typeLoginName(value) {
-    cy.wait(1500);
-    cy.get(this.selectors.loginName).clear().type(value);
+    cy.get(this.selectors.loginName)
+      .should("be.visible")
+      .and("not.be.disabled")
+      .clear()
+      .type(value);
   }
 
   typeLoginPassword(value) {
@@ -108,13 +111,13 @@ class UserManagementPage {
   }
 
   passwordExpiryDate(value) {
-    // Find the actual input inside the CustomDatePicker component
     cy.get(this.selectors.passwordExpirationDate)
-      .find("input")
-      .clear({ force: true })
-      .type(value, { force: true });
-    // Close datepicker if open
-    cy.get("body").type("{esc}"); // close datepicker without clicking (0,0) — that pixel is the logo link on desktop
+      .should("be.visible")
+      .and("not.be.disabled")
+      .clear()
+      .type(value)
+      .should("have.value", value)
+      .type("{esc}");
   }
 
   enterUserTimeout(value) {
