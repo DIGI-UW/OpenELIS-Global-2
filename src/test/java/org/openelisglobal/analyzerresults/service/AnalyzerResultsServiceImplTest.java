@@ -26,33 +26,22 @@ import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Unit tests for the upsert / dedupe contract in
+ * Unit tests for normalized Bridge result staging in
  * {@link AnalyzerResultsServiceImpl#insertAnalyzerResults}.
  * <p>
- * This is the single persistence method shared by every analyzer import path —
- * legacy plugins (GenericASTM, GenericHL7, GenericFile, per-device plugins) all
- * route through {@code AnalyzerLineInserter.persistImport()} →
- * {@code insertAnalyzerResults}, and the new FHIR bridge path
- * ({@code AnalyzerFhirImportController.importFhirBundle}) calls it directly.
- * The three-case contract this method implements (keyed on
- * {@code (analyzerId, accessionNumber, testName)}) is the authoritative upsert
- * semantics for the whole system, so it gets exercised here rather than being
- * duplicated per import path.
- * </p>
- * <p>
- * Three cases:
+ * The normalized-result importer is the only production caller. Four cases are
+ * exercised at this persistence boundary:
  * <ol>
  * <li><b>No previous row</b> — fresh insert.</li>
- * <li><b>Exact re-import</b> — same key AND same completeDate OR same result
- * value: skip silently (idempotent).</li>
- * <li><b>Corrected re-export</b> — same key but DIFFERENT completeDate AND
+ * <li><b>Held observation resolved</b> — advance the held row in place so it is
+ * actionable and its audit history remains intact.</li>
+ * <li><b>Exact replay</b> — same key and same completeDate or result value:
+ * skip silently.</li>
+ * <li><b>Changed observation</b> — same key but different completeDate and
  * DIFFERENT result value: insert the new row as a linked correction
  * ({@code readOnly=true}, {@code duplicateAnalyzerResultId} backlink on both
  * rows).</li>
  * </ol>
- * This layout matches the plan mellow-honking-cascade Phase 1.6 upsert
- * invariants ({@code sampleAccession}, {@code testCode}, {@code analyzerId}) as
- * the dedupe key.
  * </p>
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -145,6 +134,46 @@ public class AnalyzerResultsServiceImplTest {
 
         verify(baseObjectDAO, never()).insert(any(AnalyzerResults.class));
         verify(baseObjectDAO, never()).update(any(AnalyzerResults.class));
+    }
+
+    @Test
+    public void resolvedHeldValue_advancesExistingStagingRow() {
+        AnalyzerResults held = existingRow("held-id-42", "REVIEW REQUIRED", new Timestamp(1_700_000_000_000L));
+        held.setReadOnly(true);
+        held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+        held.setTestId("601");
+        held.setResultType("A");
+        held.setSourceConnectionId("bridge-connection-7f3c");
+        held.setSourceProfileId("genexpert-astm");
+        held.setSourceProfileRevision(3);
+        held.setRawTestCode("MTB-RIF");
+        held.setRawResultValue("REVIEW REQUIRED");
+        held.setSourceMessageId("message-before-mapping");
+
+        AnalyzerResults incoming = newIncoming("9001", new Timestamp(1_800_000_000_000L));
+        incoming.setTestId("601");
+        incoming.setResultType("D");
+        incoming.setSourceConnectionId("bridge-connection-7f3c");
+        incoming.setSourceProfileId("genexpert-astm");
+        incoming.setSourceProfileRevision(3);
+        incoming.setRawTestCode("MTB-RIF");
+        incoming.setRawResultValue("REVIEW REQUIRED");
+        incoming.setSourceMessageId("message-after-mapping");
+        when(baseObjectDAO.getDuplicateResultByAccessionAndTest(incoming)).thenReturn(List.of(held));
+
+        service.insertAnalyzerResults(List.of(incoming), USER_ID);
+
+        verify(baseObjectDAO, never()).insert(any(AnalyzerResults.class));
+        ArgumentCaptor<AnalyzerResults> updateCaptor = ArgumentCaptor.forClass(AnalyzerResults.class);
+        verify(baseObjectDAO).update(updateCaptor.capture());
+        AnalyzerResults advanced = updateCaptor.getValue();
+        assertEquals("held-id-42", advanced.getId());
+        assertEquals("9001", advanced.getResult());
+        assertEquals("D", advanced.getResultType());
+        assertEquals("message-after-mapping", advanced.getSourceMessageId());
+        assertFalse(advanced.isReadOnly());
+        assertNull(advanced.getImportIssueReason());
+        assertNull(advanced.getDuplicateAnalyzerResultId());
     }
 
     // ------------------------------------------------------------------

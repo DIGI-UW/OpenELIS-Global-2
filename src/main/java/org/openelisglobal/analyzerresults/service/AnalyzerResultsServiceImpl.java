@@ -3,6 +3,7 @@ package org.openelisglobal.analyzerresults.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -83,46 +84,30 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     }
 
     /**
-     * Upsert/dedupe persistence for normalized Bridge results.
-     *
-     * <p>
-     * <b>Dedupe key</b>: {@code (analyzerId, accessionNumber, testName)}. See
-     * {@code AnalyzerResultsDAOImpl.getDuplicateResultByAccessionAndTest}.
-     * </p>
-     *
-     * <p>
-     * <b>Three-case contract</b> (validated by
-     * {@code AnalyzerResultsServiceImplTest}):
-     * </p>
-     * <ol>
-     * <li><b>No previous row</b> — fresh insert, nothing flagged.</li>
-     * <li><b>Exact re-import</b> — previous row with the same key AND
-     * ({@code completeDate} equal OR {@code result} value equal): skip silently.
-     * This makes re-dropping an identical file completely idempotent (the "same
-     * file output twice" scenario).</li>
-     * <li><b>Corrected re-export</b> — previous row with the same key but BOTH
-     * {@code completeDate} AND {@code result} value differ: insert the incoming row
-     * as a linked correction ({@code readOnly=true},
-     * {@code duplicateAnalyzerResultId} backlink on both rows). The staging UI then
-     * shows both rows linked so a tech can pick which to accept. This preserves an
-     * implicit audit trail without a separate history table.</li>
-     * </ol>
-     *
-     * <p>
-     * on it to make the corrected-result workflow observable in the staging UI. Do
-     * not rip out the duplicate-detection block without replacing it with an
-     * equivalent semantic — the bridge's content-hash keyed state store produces
-     * new FHIR POSTs whenever file content changes, and this method is what stops
-     * those from creating duplicate staging rows.
-     * </p>
+     * Persists normalized Bridge results in the OpenELIS review queue. A matching
+     * held row advances in place once its local binding can resolve the same raw
+     * observation. Exact replays are ignored, while a genuinely changed observation
+     * remains linked for explicit review instead of silently replacing clinical
+     * data.
      */
     @Override
+    @Transactional
     public void insertAnalyzerResults(List<AnalyzerResults> results, String sysUserId) {
         try {
             for (AnalyzerResults result : results) {
                 boolean duplicateByAccessionAndTestOnly = false;
                 List<AnalyzerResults> previousResults = baseObjectDAO.getDuplicateResultByAccessionAndTest(result);
                 AnalyzerResults previousResult = null;
+
+                AnalyzerResults heldResult = findMatchingHeldResult(previousResults, result);
+                if (heldResult != null && isActionable(result)) {
+                    result.setId(heldResult.getId());
+                    result.setLastupdated(heldResult.getLastupdated());
+                    result.setDuplicateAnalyzerResultId(null);
+                    result.setSysUserId(sysUserId);
+                    update(result);
+                    continue;
+                }
 
                 // Duplicate detection: skip insert if an existing staging entry matches.
                 // Match on timestamp (instrument date) OR result value (re-import of same
@@ -170,6 +155,29 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in AnalyzerResult insertAnalyzerResult()", e);
         }
+    }
+
+    private AnalyzerResults findMatchingHeldResult(List<AnalyzerResults> previousResults, AnalyzerResults incoming) {
+        if (previousResults == null) {
+            return null;
+        }
+        return previousResults.stream()
+                .filter(previous -> previous.isReadOnly()
+                        && !GenericValidator.isBlankOrNull(previous.getImportIssueReason())
+                        && sameText(previous.getSourceConnectionId(), incoming.getSourceConnectionId())
+                        && sameText(previous.getSourceProfileId(), incoming.getSourceProfileId())
+                        && Objects.equals(previous.getSourceProfileRevision(), incoming.getSourceProfileRevision())
+                        && sameText(previous.getRawTestCode(), incoming.getRawTestCode())
+                        && sameText(previous.getRawResultValue(), incoming.getRawResultValue()))
+                .findFirst().orElse(null);
+    }
+
+    private boolean isActionable(AnalyzerResults result) {
+        return !result.isReadOnly() && GenericValidator.isBlankOrNull(result.getImportIssueReason());
+    }
+
+    private boolean sameText(String left, String right) {
+        return !GenericValidator.isBlankOrNull(left) && left.equals(right);
     }
 
     @Override
