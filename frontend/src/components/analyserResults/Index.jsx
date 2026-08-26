@@ -13,7 +13,7 @@ import {
   Loading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useLocation } from "react-router-dom";
+import { Redirect, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -48,26 +48,23 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [sampleGroup, setSampleGroup] = useState([]);
-  const [searchTermToPage, setSearchTermToPage] = useState({});
+  const [searchTermToPage, setSearchTermToPage] = useState([]);
   const [labNumber, setLabNumber] = useState("");
   const intl = useIntl();
 
   const location = useLocation();
+  const selectedAnalyzerId = new URLSearchParams(location.search).get("id");
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const analyzerId = params.get("id");
-    if (analyzerId) {
-      setQueryValue(analyzerId);
-      setUrl("/rest/AnalyzerResults?id=" + analyzerId);
-    } else {
-      setQueryValue("");
-      setUrl("");
+    if (!selectedAnalyzerId) {
+      return;
     }
+    setQueryValue(selectedAnalyzerId);
+    setUrl("/rest/AnalyzerResults?id=" + selectedAnalyzerId);
     // drop the previous analyzer's name so a stale title never shows while the
     // new one is in flight
     setAnalyzerName("");
-  }, [location.search]);
+  }, [selectedAnalyzerId]);
 
   useEffect(() => {
     if (url) {
@@ -108,11 +105,13 @@ const Index = () => {
       }
       if (data.paging) {
         var { totalPages, currentPage, searchTermToPage } = data.paging;
+        setSearchTermToPage(
+          Array.isArray(searchTermToPage) ? searchTermToPage : [],
+        );
         if (totalPages > 1) {
           setPagination(true);
           setCurrentApiPage(currentPage);
           setTotalApiPages(totalPages);
-          setSearchTermToPage(searchTermToPage);
           if (parseInt(currentPage) < parseInt(totalPages)) {
             setNextPage(parseInt(currentPage) + 1);
           } else {
@@ -140,6 +139,11 @@ const Index = () => {
       }
     }
   };
+
+  if (!selectedAnalyzerId) {
+    return <Redirect to="/analyzers" />;
+  }
+
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -180,11 +184,17 @@ const Index = () => {
               <Button
                 style={{ marginTop: "20px" }}
                 onClick={() => {
-                  const page = searchTermToPage.find(
+                  const pageMapping = searchTermToPage.find(
                     (item) => item.id === labNumber,
-                  ).value;
+                  );
+                  if (!pageMapping) {
+                    return;
+                  }
                   setIsLoading(true);
-                  getFromOpenElisServer(url + "&page=" + page, handleResults);
+                  getFromOpenElisServer(
+                    url + "&page=" + pageMapping.value,
+                    handleResults,
+                  );
                 }}
               >
                 <FormattedMessage id="referral.search" />{" "}
