@@ -296,16 +296,16 @@ const CycleWizard = () => {
                   <DatePickerInput
                     id="cycle-planned-start"
                     labelText={t(
-                      "eqa.provider.wizard.plannedStart",
-                      "Planned start",
+                      "eqa.provider.wizard.distributionDate",
+                      "Distribution date",
                     )}
                     placeholder="dd/mm/yyyy"
                   />
                   <DatePickerInput
                     id="cycle-planned-end"
                     labelText={t(
-                      "eqa.provider.wizard.plannedEnd",
-                      "Planned end",
+                      "eqa.provider.wizard.submissionDeadline",
+                      "Submission deadline",
                     )}
                     placeholder="dd/mm/yyyy"
                   />

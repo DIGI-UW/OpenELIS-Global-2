@@ -395,6 +395,12 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
             round.setFhirUuid(UUID.randomUUID());
             round.setCycle(cycle);
             round.setRoundNumber(1);
+            // Step 1's date pair IS the FRS's "distribution date, submission deadline"
+            // (FR-V2.5-02); the cycle keeps them as planned_start/planned_end, the
+            // round carries them under their real names for the digest and reports.
+            if (request.plannedStartDate() != null) {
+                round.setDistributionDate(new Timestamp(request.plannedStartDate().getTime()));
+            }
             round.setSubmissionDeadline(new Timestamp(request.plannedEndDate().getTime()));
             round.setSysUserId(sysUserId);
             eqaRoundDAO.insert(round);

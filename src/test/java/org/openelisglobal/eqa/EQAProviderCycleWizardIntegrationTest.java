@@ -319,6 +319,11 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
         assertEquals(Timestamp.valueOf("2026-10-01 00:00:00"),
                 jdbc.queryForObject("SELECT submission_deadline FROM clinlims.eqa_round WHERE cycle_id = ?",
                         Timestamp.class, created.getId()));
+        // FR-V2.5-02 step 1 collects "distribution date, submission deadline" — the
+        // round must carry both, not just the one the digest reads.
+        assertEquals(Timestamp.valueOf("2026-09-01 00:00:00"),
+                jdbc.queryForObject("SELECT distribution_date FROM clinlims.eqa_round WHERE cycle_id = ?",
+                        Timestamp.class, created.getId()));
 
         List<Long> visibleToDigest = eqaRoundDAO
                 .findWithSubmissionDeadlineBetween(Timestamp.valueOf("2026-09-30 00:00:00"),
@@ -339,6 +344,26 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
 
         assertEquals(Integer.valueOf(0), jdbc.queryForObject(
                 "SELECT count(*) FROM clinlims.eqa_round WHERE cycle_id = ?", Integer.class, created.getId()));
+    }
+
+    /**
+     * The deadline alone is enough for a round — a missing distribution date must
+     * not cost the digest its reminder, and must not invent a date either.
+     */
+    @Test
+    public void aDeadlineWithoutADistributionDateStillWritesTheRound() {
+        EQACycle created = cycleService
+                .createProviderCycle(
+                        new ProviderCycleRequest(scheme.getId(), 12, "2026 Round", null, Date.valueOf("2026-10-01"),
+                                "HIV VL panel", EQAPanelSourceType.IN_HOUSE_ALIQUOTED, "LOT-1", null, null, null,
+                                twoSamples(), List.of(ORG_A), EQAStorageTemp.DRY_ICE, null, EQADistributionMethod.FHIR),
+                        USER);
+
+        assertEquals(Timestamp.valueOf("2026-10-01 00:00:00"),
+                jdbc.queryForObject("SELECT submission_deadline FROM clinlims.eqa_round WHERE cycle_id = ?",
+                        Timestamp.class, created.getId()));
+        assertNull(jdbc.queryForObject("SELECT distribution_date FROM clinlims.eqa_round WHERE cycle_id = ?",
+                Timestamp.class, created.getId()));
     }
 
     private ProviderCycleRequest request(List<Long> participants) {
