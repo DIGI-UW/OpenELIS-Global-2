@@ -82,6 +82,23 @@ async function testConnection(
   await expect(connectionModal).toBeHidden({ timeout: UI_TIMEOUT });
 }
 
+// The GeneXpert fixture carries an accented patient name on purpose, so this
+// lane exercises the non-ASCII path over ASTM TCP. A receiver that mis-decodes
+// those bytes computes the frame checksum over the wrong ones and NAKs the
+// frame, which is how MG-97 reached production: the lane was ASCII-only, so it
+// passed against a bridge that failed at a French-language site. Asserting the
+// fixture is still non-ASCII keeps that coverage from silently going away.
+async function assertFixtureCarriesNonAscii(page: Page) {
+  const response = await page.request.get(
+    `${SIMULATOR_URL}/simulate/astm/genexpert_astm`,
+  );
+  const message: string = (await response.json())?.message ?? "";
+  expect(
+    message,
+    "GeneXpert fixture must contain non-ASCII text so this lane covers the Latin-1 path (MG-97)",
+  ).toMatch(/[^\x00-\x7F]/);
+}
+
 async function pushAstmMessage(
   page: Page,
   presentation: DemoPresentation,
@@ -97,7 +114,19 @@ async function pushAstmMessage(
     },
   );
   const body = await response.json();
-  const sampleId = body?.results?.[0]?.sample_id;
+  const result = body?.results?.[0];
+  // The simulator reports a sample_id even when the transport rejected the
+  // message, so the push flag has to be checked separately. Without this a
+  // NAKed frame surfaced as a 90s timeout waiting for results that were never
+  // sent, hiding the actual transport error the simulator had already reported.
+  if (!result?.pushed) {
+    throw new Error(
+      `ASTM push was not accepted over ${BRIDGE_DESTINATION}: ${
+        result?.error ?? "no error reported"
+      }`,
+    );
+  }
+  const sampleId = result.sample_id;
   if (!sampleId) throw new Error("Push returned no sample_id");
   await presentation.pause(1_000);
   return sampleId;
@@ -150,6 +179,7 @@ test.describe("GeneXpert ASTM demo story", () => {
     await testConnection(page, analyzerRow, presentation);
 
     await presentation.step(3, "Send a GeneXpert ASTM message");
+    await assertFixtureCarriesNonAscii(page);
     const sampleId = await pushAstmMessage(page, presentation);
 
     await presentation.step(4, "Review the staged results");
