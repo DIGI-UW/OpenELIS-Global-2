@@ -4,6 +4,34 @@ import {
   putToOpenElisServerFullResponse,
 } from "../utils/Utils";
 
+const responseError = (response) => {
+  const status = response?.statusCode ?? response?.status;
+  if (!response || response.error || (status && status >= 400)) {
+    return new Error(
+      response?.message ||
+        response?.error ||
+        (status ? `Request failed (HTTP ${status})` : "Network error"),
+    );
+  }
+  return null;
+};
+
+export const postJsonResponse = (url, payload) =>
+  new Promise((resolve, reject) => {
+    postToOpenElisServerJsonResponse(
+      url,
+      JSON.stringify(payload),
+      (response) => {
+        const error = responseError(response);
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(response);
+      },
+    );
+  });
+
 export const getPatientOrigins = (organizationId) =>
   new Promise((resolve) => {
     const query = organizationId
@@ -280,6 +308,74 @@ export const reportCaseNonconformance = (caseId, payload) =>
     );
   });
 
+export const getWorklistRows = (query = {}) =>
+  new Promise((resolve) => {
+    const params = new URLSearchParams();
+    [
+      "workflow",
+      "stage",
+      "urgency",
+      "due",
+      "q",
+      "sort",
+      "page",
+      "pageSize",
+    ].forEach((key) => {
+      if (query[key]) {
+        params.set(key, query[key]);
+      }
+    });
+    const search = params.toString();
+    getFromOpenElisServer(
+      `/rest/microbiology/worklist${search ? `?${search}` : ""}`,
+      resolve,
+    );
+  });
+
+export const getCriticalCommunications = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${caseId}/critical-communications`,
+      resolve,
+    );
+  });
+
+export const logCriticalCommunication = (caseId, payload) =>
+  postJsonResponse(
+    `/rest/microbiology/cases/${caseId}/critical-communications`,
+    payload,
+  );
+
+export const acknowledgeCriticalCommunication = (communicationId) =>
+  new Promise((resolve) => {
+    putToOpenElisServerFullResponse(
+      `/rest/microbiology/critical-communications/${communicationId}/acknowledge`,
+      JSON.stringify({}),
+      (response) => {
+        if (!response) {
+          resolve({ status: 0 });
+          return;
+        }
+        response.json().then(resolve);
+      },
+    );
+  });
+
+export const closeCriticalCommunication = (communicationId, payload) =>
+  new Promise((resolve) => {
+    putToOpenElisServerFullResponse(
+      `/rest/microbiology/critical-communications/${communicationId}/close`,
+      JSON.stringify(payload),
+      (response) => {
+        if (!response) {
+          resolve({ status: 0 });
+          return;
+        }
+        response.json().then(resolve);
+      },
+    );
+  });
+
 const MicrobiologyService = {
   getPatientOrigins,
   getCaseDetail,
@@ -311,6 +407,11 @@ const MicrobiologyService = {
   getNceCategories,
   getNceReportingUnits,
   reportCaseNonconformance,
+  getWorklistRows,
+  getCriticalCommunications,
+  logCriticalCommunication,
+  acknowledgeCriticalCommunication,
+  closeCriticalCommunication,
 };
 
 export default MicrobiologyService;

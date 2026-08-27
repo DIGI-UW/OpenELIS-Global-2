@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -48,6 +48,7 @@ const serviceStubs = {
   getOrganisms: vi.fn().mockResolvedValue([]),
   getBreakpointStandards: vi.fn().mockResolvedValue([]),
   getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
+  getAstSetupForIsolate: vi.fn().mockResolvedValue(null),
   getCaseReadiness: vi.fn().mockResolvedValue({
     finalReleaseReady: true,
     blockers: [],
@@ -57,6 +58,10 @@ const serviceStubs = {
   overrideAstReading: vi.fn(),
   reviewAstRun: vi.fn(),
   updateIsolateIdentification: vi.fn(),
+  getCriticalCommunications: vi.fn().mockResolvedValue([]),
+  logCriticalCommunication: vi.fn(),
+  acknowledgeCriticalCommunication: vi.fn(),
+  closeCriticalCommunication: vi.fn(),
 };
 
 describe("MicrobiologyCaseView", () => {
@@ -97,6 +102,9 @@ describe("MicrobiologyCaseView", () => {
       reason: "Route order",
       preserveExistingWorkConfirmed: false,
     });
+    await user.click(
+      screen.getByRole("button", { name: "Inoculation", exact: true }),
+    );
     expect(
       await screen.findByRole("button", { name: "Start inoculation" }),
     ).toBeEnabled();
@@ -122,6 +130,12 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(service);
 
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Inoculation",
+        exact: true,
+      }),
+    );
     await user.click(
       await screen.findByRole("button", { name: "Start inoculation" }),
     );
@@ -167,6 +181,9 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(service);
 
+    await user.click(
+      await screen.findByRole("button", { name: "Isolates", exact: true }),
+    );
     await user.type(
       await screen.findByLabelText("Gram stain"),
       "Gram negative rod",
@@ -189,5 +206,49 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByTestId("microbiology-isolates-card"),
     ).toHaveTextContent("ISO-1");
+  });
+
+  it("offers sample and isolate critical-communication targets", async () => {
+    const user = userEvent.setup();
+    const caseWithIsolate = {
+      ...caseDetail,
+      isolates: [
+        {
+          id: "iso-1",
+          isolateLabel: "ISO-1",
+          preliminaryOrganismText: "Escherichia coli",
+        },
+      ],
+    };
+    const service = {
+      ...serviceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseWithIsolate),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Critical communication",
+        exact: true,
+      }),
+    );
+    const communication = await screen.findByRole("region", {
+      name: "Critical communication",
+    });
+    const targetType = within(communication).getByLabelText(
+      "Critical result target",
+    );
+
+    await user.selectOptions(targetType, "SAMPLE_ITEM");
+    expect(within(communication).getByLabelText("Target record")).toHaveValue(
+      "1001",
+    );
+
+    await user.selectOptions(targetType, "ISOLATE");
+    expect(
+      within(communication).getByRole("option", { name: "ISO-1" }),
+    ).toHaveValue("iso-1");
   });
 });

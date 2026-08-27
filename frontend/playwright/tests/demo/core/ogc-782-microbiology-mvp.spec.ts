@@ -37,7 +37,7 @@ test.describe("OGC-782 microbiology MVP", () => {
       await test.step("Record setup activity", async () => {
         await demo.step(1, "Record setup activity");
         await page.getByLabel("Activity note").fill("setup complete");
-        await page.getByRole("button", { name: "Record activity" }).click();
+        await page.getByRole("button", { name: "Start inoculation" }).click();
         await expect(
           page.locator("header").getByText("SETUP_RECORDED"),
         ).toBeVisible({

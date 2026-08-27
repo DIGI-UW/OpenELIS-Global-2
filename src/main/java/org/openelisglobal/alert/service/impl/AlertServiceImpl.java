@@ -80,6 +80,36 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
 
     @Override
     @Transactional
+    public Alert createAlert(AlertType alertType, String entityType, String entityRef, AlertSeverity severity,
+            String message, String contextDataJson) {
+
+        Alert existingAlert = findDuplicateAlertByRef(alertType, entityType, entityRef);
+        if (existingAlert != null) {
+            existingAlert.setDuplicateCount(existingAlert.getDuplicateCount() + 1);
+            existingAlert.setLastDuplicateTime(OffsetDateTime.now());
+            alertDAO.update(existingAlert);
+            return existingAlert;
+        }
+
+        Alert alert = new Alert();
+        alert.setAlertType(alertType);
+        alert.setAlertEntityType(entityType);
+        alert.setAlertEntityRef(entityRef);
+        alert.setSeverity(severity);
+        alert.setStatus(AlertStatus.OPEN);
+        alert.setStartTime(OffsetDateTime.now());
+        alert.setMessage(message);
+        alert.setContextData(contextDataJson);
+        alert.setDuplicateCount(0);
+
+        Long id = alertDAO.insert(alert);
+        Alert createdAlert = alertDAO.get(id).orElse(alert);
+        eventPublisher.publishEvent(new AlertCreatedEvent(this, createdAlert));
+        return createdAlert;
+    }
+
+    @Override
+    @Transactional
     public Alert acknowledgeAlert(Long alertId, Integer userId) {
         Alert alert = alertDAO.get(alertId)
                 .orElseThrow(() -> new IllegalArgumentException("Alert not found: " + alertId));
@@ -128,6 +158,12 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
+    public List<Alert> getAlertsByEntityRef(String entityType, String entityRef) {
+        return alertDAO.getAlertsByEntityRef(entityType, entityRef);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Long countActiveAlertsForEntity(String entityType, Long entityId) {
         return alertDAO.countActiveAlertsForEntity(entityType, entityId);
     }
@@ -154,6 +190,19 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
      */
     private Alert findDuplicateAlert(AlertType alertType, String entityType, Long entityId) {
         List<Alert> existingAlerts = alertDAO.getAlertsByEntity(entityType, entityId);
+        return findDuplicateAmong(existingAlerts, alertType);
+    }
+
+    /**
+     * Same one-alert-per-lifecycle rule as {@link #findDuplicateAlert}, for
+     * string-keyed entities.
+     */
+    private Alert findDuplicateAlertByRef(AlertType alertType, String entityType, String entityRef) {
+        List<Alert> existingAlerts = alertDAO.getAlertsByEntityRef(entityType, entityRef);
+        return findDuplicateAmong(existingAlerts, alertType);
+    }
+
+    private Alert findDuplicateAmong(List<Alert> existingAlerts, AlertType alertType) {
         for (Alert existingAlert : existingAlerts) {
             if (existingAlert.getAlertType() == alertType && (existingAlert.getStatus() == AlertStatus.OPEN
                     || existingAlert.getStatus() == AlertStatus.ACKNOWLEDGED)) {

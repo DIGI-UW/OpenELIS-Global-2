@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
+  Accordion,
+  AccordionItem,
   Button,
   InlineNotification,
   Layer,
@@ -8,7 +10,7 @@ import {
   Tag,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import AstEntryPanel from "./AstEntryPanel";
 import CaseCultureTransitionPanel from "./CaseCultureTransitionPanel";
 import CaseInfoSummary from "./CaseInfoSummary";
@@ -17,7 +19,14 @@ import CaseNonconformancePanel from "./CaseNonconformancePanel";
 import CaseProtocolPanel from "./CaseProtocolPanel";
 import CaseTimelinePanel from "./CaseTimelinePanel";
 import ChangeWorkflowPanel from "./ChangeWorkflowPanel";
+import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
 import IsolatePanel from "./IsolatePanel";
+import PageBreadCrumb from "../common/PageBreadCrumb";
+import {
+  getMicrobiologyCaseUrl,
+  getMicrobiologyWorklistUrl,
+  parseMicrobiologyCaseSearch,
+} from "./MicrobiologyRoutes";
 import MicrobiologyService from "./MicrobiologyService";
 
 const failed = (response) =>
@@ -32,8 +41,12 @@ const MicrobiologyCaseView = ({
   service = MicrobiologyService,
 }) => {
   const intl = useIntl();
+  const history = useHistory();
+  const location = useLocation();
   const params = useParams();
   const caseId = caseIdProp || params.caseId;
+  const routeState = parseMicrobiologyCaseSearch(location.search);
+  const focusedSection = routeState.section || "case-info";
   const [caseDetail, setCaseDetail] = useState(null);
   const [inoculations, setInoculations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +101,29 @@ const MicrobiologyCaseView = ({
     loadCase();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
+
+  useEffect(() => {
+    if (
+      !routeState.section &&
+      location.pathname.startsWith("/Microbiology/cases/")
+    ) {
+      history.replace(
+        getMicrobiologyCaseUrl(caseId, {
+          ...routeState,
+          section: "case-info",
+        }),
+      );
+    }
+  }, [caseId, history, location.pathname, routeState.section]);
+
+  const selectSection = (section) => {
+    history.push(
+      getMicrobiologyCaseUrl(caseId, {
+        ...routeState,
+        section,
+      }),
+    );
+  };
 
   const runAction = (
     request,
@@ -166,6 +202,20 @@ const MicrobiologyCaseView = ({
   return (
     <main data-testid="microbiology-case-view">
       <Stack gap={7}>
+        <PageBreadCrumb
+          breadcrumbs={[
+            { label: "home.label", link: "/" },
+            {
+              label: "microbiology.navigation.worklist",
+              link: getMicrobiologyWorklistUrl(routeState),
+            },
+            {
+              label: "microbiology.case.title",
+              link: getMicrobiologyCaseUrl(caseId, routeState),
+              isCurrentPage: true,
+            },
+          ]}
+        />
         <header>
           <h2>{intl.formatMessage({ id: "microbiology.case.title" })}</h2>
           <p>
@@ -199,14 +249,6 @@ const MicrobiologyCaseView = ({
           </Stack>
         </header>
 
-        <Layer>
-          <CaseInfoSummary
-            accessionNumber={caseDetail.accessionNumber}
-            requestingLocation={caseDetail.requestingLocation}
-            orderDetail={caseDetail.orderDetail}
-          />
-        </Layer>
-
         {unassigned && (
           <InlineNotification
             kind="warning"
@@ -221,18 +263,6 @@ const MicrobiologyCaseView = ({
           />
         )}
 
-        <ChangeWorkflowPanel
-          caseId={caseDetail.id}
-          workflowType={caseDetail.workflowType}
-          cultureMethodId={caseDetail.cultureMethodId}
-          requiresConfirmation={caseDetail.workflowChangeRequiresConfirmation}
-          service={service}
-          onChanged={(detail) => {
-            setCaseDetail(detail);
-            setActionError("");
-          }}
-        />
-
         {actionError && (
           <InlineNotification
             kind="error"
@@ -241,38 +271,6 @@ const MicrobiologyCaseView = ({
             title={intl.formatMessage({ id: "microbiology.case.error" })}
             subtitle={actionError}
           />
-        )}
-
-        {!unassigned && (
-          <>
-            <CaseProtocolPanel
-              caseId={caseDetail.id}
-              currentMethodId={caseDetail.cultureMethodId}
-              open={protocolOpen}
-              readOnly={finalReleased}
-              service={service}
-              onOpen={() => setProtocolOpen(true)}
-              onClose={() => setProtocolOpen(false)}
-              onChanged={(detail) => setCaseDetail(detail)}
-            />
-            <CaseInoculationPanel
-              inoculations={inoculations}
-              onRecord={recordInoculation}
-              saving={saving}
-              readOnly={finalReleased}
-              stage={caseDetail.stage}
-              action={activeAction}
-              onInoculationAction={setActiveAction}
-              onCultureAction={setActiveAction}
-            />
-            <CaseCultureTransitionPanel
-              action={activeAction}
-              caseId={caseDetail.id}
-              service={service}
-              onComplete={completeCultureAction}
-              onCancel={() => setActiveAction("")}
-            />
-          </>
         )}
 
         {["report-nce", "mark-lost"].includes(activeAction) && (
@@ -285,33 +283,145 @@ const MicrobiologyCaseView = ({
           />
         )}
 
-        <CaseTimelinePanel
-          activities={caseDetail.activities}
-          onAddNote={addTimelineNote}
-          saving={saving}
-        />
-
-        {!unassigned && (
-          <>
-            <IsolatePanel
-              caseId={caseDetail.id}
-              isolates={caseDetail.isolates}
-              onCreateIsolate={createIsolate}
-              onUpdateIdentification={updateIdentification}
-              saving={saving}
-              readOnly={finalReleased}
-              service={service}
-            />
-            <AstEntryPanel
+        <Accordion>
+          <AccordionItem
+            title={intl.formatMessage({
+              id: "microbiology.progress.caseInfo",
+            })}
+            open={focusedSection === "case-info"}
+            onHeadingClick={() => selectSection("case-info")}
+          >
+            <Layer>
+              <CaseInfoSummary
+                accessionNumber={caseDetail.accessionNumber}
+                requestingLocation={caseDetail.requestingLocation}
+                orderDetail={caseDetail.orderDetail}
+              />
+            </Layer>
+            <ChangeWorkflowPanel
               caseId={caseDetail.id}
               workflowType={caseDetail.workflowType}
+              cultureMethodId={caseDetail.cultureMethodId}
+              requiresConfirmation={
+                caseDetail.workflowChangeRequiresConfirmation
+              }
+              service={service}
+              onChanged={(detail) => {
+                setCaseDetail(detail);
+                setActionError("");
+              }}
+            />
+          </AccordionItem>
+
+          <AccordionItem
+            title={intl.formatMessage({
+              id: "microbiology.progress.inoculation",
+            })}
+            open={focusedSection === "setup"}
+            onHeadingClick={() => selectSection("setup")}
+            disabled={unassigned}
+          >
+            {!unassigned && (
+              <Stack gap={5}>
+                <CaseProtocolPanel
+                  caseId={caseDetail.id}
+                  currentMethodId={caseDetail.cultureMethodId}
+                  open={protocolOpen}
+                  readOnly={finalReleased}
+                  service={service}
+                  onOpen={() => setProtocolOpen(true)}
+                  onClose={() => setProtocolOpen(false)}
+                  onChanged={(detail) => setCaseDetail(detail)}
+                />
+                <CaseInoculationPanel
+                  inoculations={inoculations}
+                  onRecord={recordInoculation}
+                  saving={saving}
+                  readOnly={finalReleased}
+                  stage={caseDetail.stage}
+                  action={activeAction}
+                  onInoculationAction={setActiveAction}
+                  onCultureAction={setActiveAction}
+                />
+                <CaseCultureTransitionPanel
+                  action={activeAction}
+                  caseId={caseDetail.id}
+                  service={service}
+                  onComplete={completeCultureAction}
+                  onCancel={() => setActiveAction("")}
+                />
+              </Stack>
+            )}
+          </AccordionItem>
+
+          <AccordionItem
+            title={intl.formatMessage({
+              id: "microbiology.progress.timeline",
+            })}
+            open={focusedSection === "timeline"}
+            onHeadingClick={() => selectSection("timeline")}
+          >
+            <CaseTimelinePanel
+              activities={caseDetail.activities}
+              onAddNote={addTimelineNote}
+              saving={saving}
+            />
+          </AccordionItem>
+
+          <AccordionItem
+            title={intl.formatMessage({
+              id: "microbiology.progress.isolates",
+            })}
+            open={focusedSection === "isolates"}
+            onHeadingClick={() => selectSection("isolates")}
+            disabled={unassigned}
+          >
+            {!unassigned && (
+              <IsolatePanel
+                caseId={caseDetail.id}
+                isolates={caseDetail.isolates}
+                onCreateIsolate={createIsolate}
+                onUpdateIdentification={updateIdentification}
+                saving={saving}
+                readOnly={finalReleased}
+                service={service}
+              />
+            )}
+          </AccordionItem>
+
+          <AccordionItem
+            title={intl.formatMessage({ id: "microbiology.progress.ast" })}
+            open={focusedSection === "ast"}
+            onHeadingClick={() => selectSection("ast")}
+            disabled={unassigned}
+          >
+            {!unassigned && (
+              <AstEntryPanel
+                caseId={caseDetail.id}
+                workflowType={caseDetail.workflowType}
+                isolates={caseDetail.isolates}
+                service={service}
+                saving={saving}
+                readOnly={finalReleased}
+              />
+            )}
+          </AccordionItem>
+
+          <AccordionItem
+            title={intl.formatMessage({
+              id: "microbiology.critical.title",
+            })}
+            open={focusedSection === "critical-communication"}
+            onHeadingClick={() => selectSection("critical-communication")}
+          >
+            <CriticalCommunicationPanel
+              caseId={caseDetail.id}
+              sampleItemId={caseDetail.sampleItemId}
               isolates={caseDetail.isolates}
               service={service}
-              saving={saving}
-              readOnly={finalReleased}
             />
-          </>
-        )}
+          </AccordionItem>
+        </Accordion>
       </Stack>
     </main>
   );

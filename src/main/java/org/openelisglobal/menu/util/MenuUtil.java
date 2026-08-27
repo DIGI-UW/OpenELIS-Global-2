@@ -89,7 +89,9 @@ public class MenuUtil {
     }
 
     private static void createTree() {
-        List<Menu> menuList = menuService.getAll();
+        List<Menu> menuList = new ArrayList<>(menuService.getAll());
+
+        MenuConfigurationLoader.loadConfiguredMenus(new File(MENU_CONFIG_PATH), menuList);
 
         Map<String, Menu> idToMenuMap = new HashMap<>();
 

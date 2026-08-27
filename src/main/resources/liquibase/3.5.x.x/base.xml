@@ -406,4 +406,11 @@
   <include relativeToChangelogFile="true" file="075-microbiology-ast-technique.xml"/>
   <include relativeToChangelogFile="true" file="076-microbiology-ast-ordered-antibiotics.xml"/>
 
+  <!-- OGC-782 M6: microbiology worklist and critical communication -->
+  <include relativeToChangelogFile="true" file="054-microbiology-worklists-critical.xml"/>
+
+  <!-- OGC-782 M6: critical-result alert linkage and lifecycle -->
+  <include relativeToChangelogFile="true" file="057-alert-entity-ref.xml"/>
+  <include relativeToChangelogFile="true" file="058-microbiology-critical-lifecycle.xml"/>
+
 </databaseChangeLog>

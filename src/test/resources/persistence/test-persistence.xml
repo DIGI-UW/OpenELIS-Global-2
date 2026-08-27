@@ -59,6 +59,7 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>

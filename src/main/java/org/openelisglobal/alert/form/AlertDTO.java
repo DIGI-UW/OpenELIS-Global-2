@@ -12,6 +12,7 @@ public class AlertDTO {
     private String alertType;
     private String alertEntityType;
     private Long alertEntityId;
+    private String alertEntityRef;
     private String severity;
     private String status;
     private OffsetDateTime startTime;

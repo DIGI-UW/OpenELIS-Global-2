@@ -36,4 +36,12 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
         query.setParameter("sampleItemId", sampleItemId);
         return query.list();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCase> getOpenCases() {
+        Query<MicroCase> query = entityManager.unwrap(Session.class)
+                .createQuery("from MicroCase c where c.closedAt is null order by c.createdAt", MicroCase.class);
+        return query.list();
+    }
 }
