@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
@@ -51,6 +52,33 @@ function StatefulSection({ workflowType, initialOrderData }) {
       />
     </IntlProvider>
   );
+}
+
+function renderControlledRequester(initialOrderData) {
+  let latestOrderData = initialOrderData;
+
+  function ControlledRequester() {
+    const [orderData, setOrderData] = useState(initialOrderData);
+    latestOrderData = orderData;
+    return (
+      <RequesterSection
+        orderData={orderData}
+        setOrderData={setOrderData}
+        isReadOnly={false}
+        workflowType="clinical"
+      />
+    );
+  }
+
+  render(
+    <ConfigurationContext.Provider value={{ configurationProperties: {} }}>
+      <IntlProvider locale="en" messages={messages}>
+        <ControlledRequester />
+      </IntlProvider>
+    </ConfigurationContext.Provider>,
+  );
+
+  return () => latestOrderData;
 }
 
 describe("RequesterSection", () => {
@@ -1005,6 +1033,71 @@ describe("RequesterSection", () => {
       expect(screen.getByLabelText("Provider Name")).toHaveValue("");
       expect(screen.getByLabelText("Provider Name")).not.toBeDisabled();
       expect(screen.queryByText("Edit details")).not.toBeInTheDocument();
+    });
+
+    it("loads the selected facility departments and stores the selected unit", async () => {
+      getFromOpenElisServerMock.mockImplementation((url, callback) => {
+        if (url === "/rest/organization/10") {
+          callback({
+            id: "10",
+            organizationName: "Central Hospital",
+            shortName: "CENTRAL",
+          });
+        }
+        if (url === "/rest/departments-for-site?refferingSiteId=10") {
+          callback([
+            { id: "27", value: "Intensive Care Unit" },
+            { id: "28", value: "Medical Ward" },
+          ]);
+        }
+      });
+      const getLatestOrderData = renderControlledRequester({
+        sampleOrderItems: {
+          referringSiteId: "10",
+          referringSiteDepartmentId: "27",
+          referringSiteDepartmentName: "Intensive Care Unit",
+        },
+      });
+
+      expect(await screen.findByText("Central Hospital")).toBeInTheDocument();
+      const department = screen.getByLabelText("Department / Ward / Unit");
+      await waitFor(() => expect(department).toBeEnabled());
+      expect(department).toHaveValue("27");
+
+      const user = userEvent.setup();
+      await user.selectOptions(department, "28");
+
+      expect(getLatestOrderData().sampleOrderItems).toEqual(
+        expect.objectContaining({
+          referringSiteDepartmentId: "28",
+          referringSiteDepartmentName: "Medical Ward",
+        }),
+      );
+    });
+
+    it("keeps the department control disabled without a facility or subunit", async () => {
+      const emptyFacility = renderSection({ workflowType: "clinical" });
+
+      expect(screen.getByLabelText("Department / Ward / Unit")).toBeDisabled();
+      expect(screen.getByText("Select facility first...")).toBeInTheDocument();
+      emptyFacility.unmount();
+
+      getFromOpenElisServerMock.mockImplementation((url, callback) => {
+        if (url === "/rest/organization/11") {
+          callback({ id: "11", organizationName: "Clinic" });
+        }
+        if (url === "/rest/departments-for-site?refferingSiteId=11") {
+          callback([]);
+        }
+      });
+      renderSection({
+        workflowType: "clinical",
+        orderData: { sampleOrderItems: { referringSiteId: "11" } },
+      });
+
+      expect(await screen.findByText("Clinic")).toBeInTheDocument();
+      expect(screen.getByText("No subunits available")).toBeInTheDocument();
+      expect(screen.getByLabelText("Department / Ward / Unit")).toBeDisabled();
     });
   });
 });

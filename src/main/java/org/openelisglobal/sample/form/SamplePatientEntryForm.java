@@ -12,6 +12,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
+import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientClinicalInfo;
 import org.openelisglobal.patient.action.bean.PatientEnhancedSearch;
@@ -119,8 +120,19 @@ public class SamplePatientEntryForm extends BaseForm {
      */
     private OrderLabelPersistRequest labelPersistRequest;
 
+    @Valid
+    private MicroCaseOrderDetailRequestForm microbiologyOrderDetail;
+
     public SamplePatientEntryForm() {
         setFormName("samplePatientEntryForm");
+    }
+
+    public MicroCaseOrderDetailRequestForm getMicrobiologyOrderDetail() {
+        return microbiologyOrderDetail;
+    }
+
+    public void setMicrobiologyOrderDetail(MicroCaseOrderDetailRequestForm microbiologyOrderDetail) {
+        this.microbiologyOrderDetail = microbiologyOrderDetail;
     }
 
     public String getCurrentDate() {

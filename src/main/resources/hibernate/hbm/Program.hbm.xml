@@ -17,7 +17,7 @@
             type="timestamp" access="field" />
 
         <property name="code" type="java.lang.String">
-            <column name="CODE" length="10" not-null="true" />
+            <column name="CODE" length="20" not-null="true" />
         </property>
         <property name="programName" type="java.lang.String">
             <column name="NAME" length="50" not-null="true" />

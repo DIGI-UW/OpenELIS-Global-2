@@ -9,6 +9,7 @@ export interface SampleTypeTest {
   id: string;
   name: string;
   userBenchChoice: boolean;
+  cultureWorkflowType: string;
 }
 
 export interface SampleTypeTestsStructure {
@@ -32,6 +33,7 @@ export const sampleTypeTestsStructure: SampleTypeTestsStructure = {
       id: "",
       name: "",
       userBenchChoice: false,
+      cultureWorkflowType: "",
     },
   ],
 };

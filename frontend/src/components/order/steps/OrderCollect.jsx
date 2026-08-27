@@ -21,6 +21,7 @@ import RequestedTestsSection from "./sections/RequestedTestsSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
+import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
 
 /**
  * OrderCollect - Step 2: Collect Sample
@@ -63,57 +64,24 @@ const OrderCollect = () => {
 
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
-  const [isLoadingSampleTypes, setIsLoadingSampleTypes] = useState(true);
-
   // Units of measure for sample collection
   const [unitOfMeasures, setUnitOfMeasures] = useState([]);
 
-  // Pending sample type requests from Step 1
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
-
-  // Informed consent data
-  const [consentData, setConsentData] = useState({
-    consentGiven: false,
-    consentFormReference: "",
-    consentRecordedAt: "",
-    consentRecordedBy: "",
-  });
-
-  // Initialize consent data from orderData (for edit scenarios)
-  useEffect(() => {
-    if (orderData?.sampleOrderItems) {
-      const {
-        consentGiven,
-        consentFormReference,
-        consentRecordedAt,
-        consentRecordedBy,
-      } = orderData.sampleOrderItems;
-      if (consentGiven !== undefined) {
-        setConsentData({
-          consentGiven: consentGiven || false,
-          consentFormReference: consentFormReference || "",
-          consentRecordedAt: consentRecordedAt || "",
-          consentRecordedBy: consentRecordedBy || "",
-        });
-      }
-    }
-  }, [
-    orderData?.sampleOrderItems?.consentGiven,
-    orderData?.sampleOrderItems?.consentFormReference,
-    orderData?.sampleOrderItems?.consentRecordedAt,
-    orderData?.sampleOrderItems?.consentRecordedBy,
-  ]);
+  // Consent is already part of canonical order state; do not mirror it locally.
+  const consentData = {
+    consentGiven: orderData?.sampleOrderItems?.consentGiven || false,
+    consentFormReference:
+      orderData?.sampleOrderItems?.consentFormReference || "",
+    consentRecordedAt: orderData?.sampleOrderItems?.consentRecordedAt || "",
+    consentRecordedBy: orderData?.sampleOrderItems?.consentRecordedBy || "",
+  };
 
   // Fetch sample types and UOMs on mount
   useEffect(() => {
     componentMounted.current = true;
-    setIsLoadingSampleTypes(true);
-
     getFromOpenElisServer("/rest/user-sample-types", (response) => {
       if (componentMounted.current && response) {
         setSampleTypes(response);
-        setIsLoadingSampleTypes(false);
       }
     });
 
@@ -138,11 +106,9 @@ const OrderCollect = () => {
       const hasSampleItemIds = samples.some((s) => s.sampleItemId);
       if (hasSampleItemIds) return;
 
-      setIsLoadingRequests(true);
       try {
         const requests = await getPendingRequests(orderId);
         if (componentMounted.current && requests && requests.length > 0) {
-          setPendingRequests(requests);
           // Convert pending requests to samples array for the UI
           const samplesFromRequests = convertRequestsToSamples(requests);
           // Merge with any existing sample data.
@@ -170,10 +136,6 @@ const OrderCollect = () => {
         }
       } catch {
         // Failed to load pending requests
-      } finally {
-        if (componentMounted.current) {
-          setIsLoadingRequests(false);
-        }
       }
     };
 
@@ -182,7 +144,14 @@ const OrderCollect = () => {
 
   // Validate that at least one sample with a sample type is present.
   // Informed consent is advisory only (FRS FR-5-001/FR-5-002) — does not gate submission.
-  const canProceed = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
+  const admissionDate = orderData?.microbiologyOrderDetail?.admissionDate || "";
+  const hasCollectionDateConflict = samples.some((sample) =>
+    isCollectionDateBeforeAdmissionDate(sample.collectionDate, admissionDate),
+  );
+  const canProceed =
+    samples?.length > 0 &&
+    samples.some((s) => s.sampleTypeId) &&
+    !hasCollectionDateConflict;
 
   // Check if we have any tests ordered
   const hasOrderedTests = samples.some(
@@ -198,7 +167,7 @@ const OrderCollect = () => {
         message: intl.formatMessage({ id: "save.order.success.msg" }),
       });
       setNotificationVisible(true);
-    } catch (error) {
+    } catch {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -213,7 +182,7 @@ const OrderCollect = () => {
       await saveOrder();
       markStepComplete("collect");
       history.push(`${workflowPrefix}/label`);
-    } catch (error) {
+    } catch {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -224,8 +193,6 @@ const OrderCollect = () => {
   };
 
   const handleConsentChange = (updatedConsent) => {
-    setConsentData(updatedConsent);
-
     // Sync consent data with orderData.sampleOrderItems for backend persistence
     setOrderData({
       ...orderData,
@@ -243,6 +210,7 @@ const OrderCollect = () => {
     <OrderWorkflowLayout
       title="order.step.collect"
       canProceed={canProceed}
+      canSave={!hasCollectionDateConflict}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
       extraButtons={
@@ -308,6 +276,7 @@ const OrderCollect = () => {
           unitOfMeasures={unitOfMeasures}
           updateSampleCollectionDetails={updateSampleCollectionDetails}
           isReadOnly={isReadOnly && !isEditMode}
+          admissionDate={admissionDate}
         />
 
         {showNceForm && labNumber && (

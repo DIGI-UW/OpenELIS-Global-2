@@ -1,0 +1,142 @@
+package org.openelisglobal.microbiology.controller.rest;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.microbiology.form.MicroPatientOriginOptionForm;
+import org.openelisglobal.microbiology.form.MicroPatientOriginOptionsForm;
+import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
+import org.openelisglobal.microbiology.service.MicroBreakpointService;
+import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
+import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
+import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
+import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/rest/microbiology/reference")
+public class MicrobiologyReferenceRestController extends BaseRestController {
+
+    private final MicrobiologyReferenceService referenceService;
+    private final MicroBreakpointService breakpointService;
+
+    public MicrobiologyReferenceRestController(MicrobiologyReferenceService referenceService,
+            MicroBreakpointService breakpointService) {
+        this.referenceService = referenceService;
+        this.breakpointService = breakpointService;
+    }
+
+    @GetMapping("/ast-panels")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroReferenceOptionForm>> getAstPanels(@RequestParam String workflowType) {
+        List<MicroReferenceOptionForm> forms = new ArrayList<>();
+        for (MicroAstPanel panel : referenceService.getActiveAstPanels(MicroWorkflowType.valueOf(workflowType))) {
+            forms.add(toPanelForm(panel));
+        }
+        return ResponseEntity.ok(forms);
+    }
+
+    @GetMapping("/antibiotics")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroReferenceOptionForm>> getAntibiotics() {
+        List<MicroReferenceOptionForm> forms = new ArrayList<>();
+        for (MicroAntibiotic antibiotic : referenceService.getActiveAntibiotics()) {
+            forms.add(toAntibioticForm(antibiotic));
+        }
+        return ResponseEntity.ok(forms);
+    }
+
+    @GetMapping("/organisms")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms() {
+        List<MicroReferenceOptionForm> forms = new ArrayList<>();
+        for (MicroOrganism organism : referenceService.getActiveOrganisms()) {
+            forms.add(toOrganismForm(organism));
+        }
+        return ResponseEntity.ok(forms);
+    }
+
+    @GetMapping("/breakpoint-standards")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroReferenceOptionForm>> getBreakpointStandards() {
+        List<MicroReferenceOptionForm> forms = new ArrayList<>();
+        for (MicroBreakpointStandard standard : breakpointService.getActiveStandards()) {
+            forms.add(toStandardForm(standard));
+        }
+        return ResponseEntity.ok(forms);
+    }
+
+    @GetMapping("/culture-methods")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroReferenceOptionForm>> getCultureMethods(@RequestParam String workflowType) {
+        List<MicroReferenceOptionForm> forms = new ArrayList<>();
+        for (MicroCultureSetup setup : referenceService
+                .getActiveCultureSetups(MicroWorkflowType.valueOf(workflowType))) {
+            MicroReferenceOptionForm form = new MicroReferenceOptionForm();
+            form.id = setup.getMethodId();
+            form.label = setup.getName();
+            form.code = setup.getWorkflowType();
+            forms.add(form);
+        }
+        return ResponseEntity.ok(forms);
+    }
+
+    @GetMapping("/patient-origins")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MicroPatientOriginOptionsForm> getPatientOrigins(
+            @RequestParam(required = false) String organizationId) {
+        var origins = referenceService.getPatientOrigins(organizationId);
+        MicroPatientOriginOptionsForm response = new MicroPatientOriginOptionsForm();
+        response.defaultCode = origins.getDefaultCode();
+        for (MicroPatientOrigin origin : origins.getOptions()) {
+            MicroPatientOriginOptionForm option = new MicroPatientOriginOptionForm();
+            option.id = origin.getId();
+            option.code = origin.getCode();
+            option.label = origin.getDisplayName();
+            option.whonetCode = origin.getWhonetCode();
+            response.options.add(option);
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    private MicroReferenceOptionForm toStandardForm(MicroBreakpointStandard standard) {
+        MicroReferenceOptionForm form = new MicroReferenceOptionForm();
+        form.id = standard.getId();
+        form.label = standard.getAuthority() + " " + standard.getVersion();
+        form.code = standard.getAuthority();
+        return form;
+    }
+
+    private MicroReferenceOptionForm toPanelForm(MicroAstPanel panel) {
+        MicroReferenceOptionForm form = new MicroReferenceOptionForm();
+        form.id = panel.getId();
+        form.label = panel.getName();
+        form.code = panel.getOrganismGroup();
+        return form;
+    }
+
+    private MicroReferenceOptionForm toAntibioticForm(MicroAntibiotic antibiotic) {
+        MicroReferenceOptionForm form = new MicroReferenceOptionForm();
+        form.id = antibiotic.getId();
+        form.label = antibiotic.getDisplayName();
+        form.code = antibiotic.getWhonetCode();
+        return form;
+    }
+
+    private MicroReferenceOptionForm toOrganismForm(MicroOrganism organism) {
+        MicroReferenceOptionForm form = new MicroReferenceOptionForm();
+        form.id = organism.getId();
+        form.label = organism.getDisplayName();
+        form.code = organism.getWhonetCode();
+        return form;
+    }
+}

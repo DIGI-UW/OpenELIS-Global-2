@@ -1,8 +1,9 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { vi } from "vitest";
 import CustomDatePicker from "./CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 
@@ -24,6 +25,18 @@ const findInput = () => {
 };
 
 describe("CustomDatePicker — controlled input contract", () => {
+  test("associates the label with one interactive input id", () => {
+    const { container } = renderWithConfig({
+      id: "dob",
+      labelText: "Date of birth",
+      value: "",
+      onChange: vi.fn(),
+    });
+
+    expect(container.querySelectorAll("#dob")).toHaveLength(1);
+    expect(screen.getByLabelText("Date of birth")).toBe(findInput());
+  });
+
   test("typing a full date calls onChange with the typed value", async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
@@ -31,16 +44,29 @@ describe("CustomDatePicker — controlled input contract", () => {
     renderWithConfig({ id: "dob", value: "", onChange });
     const input = findInput();
 
-    // Initial mount fires onChange("") via the useEffect on currentDate. Ignore
-    // that and only count post-mount typing.
-    onChange.mockClear();
+    expect(onChange).not.toHaveBeenCalled();
 
     await user.type(input, "01/15/1990");
 
-    expect(
-      onChange,
-      "fully-typed valid date must propagate to the parent",
-    ).toHaveBeenCalledWith("01/15/1990");
+    expect(onChange).toHaveBeenCalledWith("01/15/1990");
+  });
+
+  test("native input from Carbon's browser field propagates the typed date", () => {
+    const onChange = vi.fn();
+
+    renderWithConfig({ id: "collection-date", value: "", onChange }, "fr-FR");
+    fireEvent.input(findInput(), { target: { value: "01/01/2026" } });
+
+    expect(onChange).toHaveBeenCalledWith("01/01/2026");
+  });
+
+  test("controlled value synchronization does not emit a user change", () => {
+    const onChange = vi.fn();
+
+    renderWithConfig({ id: "dob", value: "01/15/1990", onChange });
+
+    expect(findInput()).toHaveValue("01/15/1990");
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   test("clearing a fully-typed date calls onChange with empty string", async () => {
@@ -55,10 +81,6 @@ describe("CustomDatePicker — controlled input contract", () => {
 
     await user.clear(input);
 
-    expect(
-      onChange,
-      "manual clear of a previously-valid date must reach the parent so " +
-        "Formik does not keep submitting the stale value",
-    ).toHaveBeenCalledWith("");
+    expect(onChange).toHaveBeenCalledWith("");
   });
 });

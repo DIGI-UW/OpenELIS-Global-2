@@ -2,6 +2,8 @@ package org.openelisglobal.sampletyperequest.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
@@ -14,8 +16,10 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
 import org.openelisglobal.sampletyperequest.service.SampleTypeRequestService;
 import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
+import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
@@ -54,6 +58,9 @@ public class SampleTypeRequestRestController {
 
     @Autowired
     private TestService testService;
+
+    @Autowired
+    private TestMethodService testMethodService;
 
     @Autowired
     private PanelService panelService;
@@ -199,23 +206,30 @@ public class SampleTypeRequestRestController {
         if (!GenericValidator.isBlankOrNull(entity.getRequestedTests())) {
             String[] testIds = entity.getRequestedTests().split(",");
             StringBuilder testNames = new StringBuilder();
+            List<TestSelectionDTO> testDetails = new ArrayList<>();
+            boolean allTestsResolved = true;
             for (int i = 0; i < testIds.length; i++) {
                 String testId = testIds[i].trim();
                 if (!testId.isEmpty()) {
                     Test test = testService.getTestById(testId);
+                    if (testNames.length() > 0) {
+                        testNames.append(",");
+                    }
                     if (test != null) {
-                        if (testNames.length() > 0) {
-                            testNames.append(",");
-                        }
                         String name = test.getLocalizedName();
                         if (name == null || name.isEmpty()) {
                             name = test.getDescription();
                         }
                         testNames.append(name != null ? name : testId);
+                        testDetails.add(new TestSelectionDTO(test, testMethodService.getLinkedMethodDtos(testId)));
+                    } else {
+                        testNames.append(testId);
+                        allTestsResolved = false;
                     }
                 }
             }
             dto.setRequestedTestNames(testNames.toString());
+            dto.setRequestedTestDetails(allTestsResolved ? testDetails : Collections.emptyList());
         }
 
         // Resolve panel names
