@@ -3,15 +3,19 @@
  * you may not use this file except in compliance with the License. You may obtain a copy of the
  * License at http://www.mozilla.org/MPL/
  *
- * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
- * ANY KIND, either express or implied. See the License for the specific language governing rights
- * and limitations under the License.
+ * <p>
+ * Software distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for
+ * the specific language governing rights and limitations under the License.
  *
- * <p>The Original Code is OpenELIS code.
+ * <p>
+ * The Original Code is OpenELIS code.
  *
- * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ * <p>
+ * Copyright (C) The Minnesota Department of Health. All Rights Reserved.
  *
- * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
+ * <p>
+ * Contributor(s): CIRG, University of Washington, Seattle WA.
  */
 package org.openelisglobal.common.util;
 
@@ -69,7 +73,6 @@ public class StringUtil {
     }
 
     // private static SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
-
     /**
      * bugzilla 2311 request parameter values coming back as string "null" when
      * checked for isNullorNill in an Action class need to return true
@@ -624,7 +627,7 @@ public class StringUtil {
         }
 
         try {
-            return new Double(significantDigits);
+            return Double.valueOf(significantDigits);
         } catch (NumberFormatException e) {
             LogEvent.logError(e);
             return null;
@@ -690,8 +693,9 @@ public class StringUtil {
     }
 
     public static boolean isNumeric(String str) {
-        if (str == null)
+        if (str == null) {
             return false;
+        }
         try {
             Double.parseDouble(str);
             return true;

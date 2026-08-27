@@ -13,12 +13,12 @@
  *
  * Copyright (C) ITECH, University of Washington, Seattle WA.  All Rights Reserved.
  */
-
 package org.openelisglobal.panel.valueholder;
 
 import java.util.Comparator;
 
 public class PanelSortOrderComparator implements Comparable<Object> {
+
     String sortOrder;
 
     public int compareTo(Object obj) {
@@ -30,7 +30,7 @@ public class PanelSortOrderComparator implements Comparable<Object> {
         public int compare(Object a, Object b) {
             Panel t_a = (Panel) a;
             Panel t_b = (Panel) b;
-            return (new Integer(t_a.getSortOrderInt())).compareTo(new Integer(t_b.getSortOrderInt()));
+            return Integer.valueOf(t_a.getSortOrderInt()).compareTo(Integer.valueOf(t_b.getSortOrderInt()));
         }
     };
 }
