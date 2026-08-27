@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-ast-panel-ordering" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_organism">
+            <column name="default_ast_panel_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_organism_default_panel"
+            baseTableSchemaName="clinlims" baseTableName="micro_organism" baseColumnNames="default_ast_panel_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_panel" referencedColumnNames="id"/>
+        <addColumn schemaName="clinlims" tableName="micro_ast_panel">
+            <column name="version_number" type="INTEGER" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="version_number"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_organism"
+                constraintName="fk_micro_organism_default_panel"/>
+            <dropColumn schemaName="clinlims" tableName="micro_organism" columnName="default_ast_panel_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-microbiology-ast-provenance" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_ast_run">
+            <column name="panel_version" type="INTEGER"/>
+            <column name="panel_provenance" type="VARCHAR(40)"/>
+            <column name="panel_adjustment_reason" type="TEXT"/>
+            <column name="breakpoint_version" type="VARCHAR(50)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="breakpoint_version"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="panel_adjustment_reason"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="panel_provenance"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="panel_version"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

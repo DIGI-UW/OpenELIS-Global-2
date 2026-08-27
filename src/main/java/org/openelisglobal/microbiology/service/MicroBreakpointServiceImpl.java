@@ -33,6 +33,12 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
 
     @Override
     @Transactional(readOnly = true)
+    public MicroBreakpointStandard getStandard(String standardId) {
+        return standardDAO.get(standardId).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public MicroBreakpointRule findBreakpointRule(String standardId, String organismId, String organismGroup,
             String antibioticId, String method, String specimenTypeId, String breakpointType) {
         return ruleDAO.findBestRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,

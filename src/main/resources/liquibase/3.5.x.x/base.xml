@@ -375,6 +375,7 @@
 
   <!-- OGC-782 M2: microbiology case core -->
   <include relativeToChangelogFile="true" file="052-microbiology-case-core.xml"/>
+  <include relativeToChangelogFile="true" file="053-microbiology-manual-ast.xml"/>
 
   <!-- OGC-782 M3: microbiology order details -->
   <include relativeToChangelogFile="true" file="055-microbiology-order-detail.xml"/>
@@ -384,10 +385,25 @@
 
   <!-- OGC-782 order workflow alignment -->
   <include relativeToChangelogFile="true" file="069-microbiology-unassigned-workflow.xml"/>
+  <include relativeToChangelogFile="true" file="070-microbiology-inoculation-lineage.xml"/>
+  <include relativeToChangelogFile="true" file="071-microbiology-isolate-workup.xml"/>
+  <include relativeToChangelogFile="true" file="079-microbiology-positive-culture-stage.xml"/>
+  <include relativeToChangelogFile="true" file="080-microbiology-culture-timing.xml"/>
   <include relativeToChangelogFile="true" file="081-microbiology-order-detail-booleans.xml"/>
   <include relativeToChangelogFile="true" file="082-microbiology-order-detail-draft.xml"/>
   <include relativeToChangelogFile="true" file="083-program-code-length.xml"/>
+  <include relativeToChangelogFile="true" file="084-microbiology-activity-actor-reference.xml"/>
   <include relativeToChangelogFile="true" file="085-microbiology-patient-origin-reference.xml"/>
   <include relativeToChangelogFile="true" file="086-microbiology-admission-date.xml"/>
+
+  <!-- OGC-782 M5: AST breakpoint standard selection -->
+  <include relativeToChangelogFile="true" file="056-microbiology-ast-breakpoint-standard.xml"/>
+
+  <!-- OGC-782 R1: immutable AST panel and breakpoint provenance -->
+  <include relativeToChangelogFile="true" file="072-microbiology-ast-provenance.xml"/>
+  <include relativeToChangelogFile="true" file="073-microbiology-ast-reading-provenance.xml"/>
+  <include relativeToChangelogFile="true" file="074-microbiology-ast-override-history.xml"/>
+  <include relativeToChangelogFile="true" file="075-microbiology-ast-technique.xml"/>
+  <include relativeToChangelogFile="true" file="076-microbiology-ast-ordered-antibiotics.xml"/>
 
 </databaseChangeLog>

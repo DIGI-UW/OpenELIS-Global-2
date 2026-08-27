@@ -21,6 +21,9 @@ public class MicroAstPanel extends BaseObject<String> {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
+    @Column(name = "version_number", nullable = false)
+    private Integer versionNumber = 1;
+
     @Column(name = "workflow_type", nullable = false, length = 40)
     private String workflowType;
 
@@ -50,6 +53,14 @@ public class MicroAstPanel extends BaseObject<String> {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Integer getVersionNumber() {
+        return versionNumber;
+    }
+
+    public void setVersionNumber(Integer versionNumber) {
+        this.versionNumber = versionNumber;
     }
 
     public String getWorkflowType() {

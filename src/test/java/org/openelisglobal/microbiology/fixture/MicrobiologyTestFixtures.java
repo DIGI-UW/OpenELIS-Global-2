@@ -205,6 +205,7 @@ public class MicrobiologyTestFixtures {
         organism.setDisplayName("Escherichia coli " + suffix);
         organism.setWhonetCode("ECO" + suffix);
         organism.setOrganismGroup("Enterobacterales");
+        organism.setDefaultAstPanelId(panel.getId());
         configurationService.createOrganism(organism);
 
         MicroAstPanelAntibiotic panelAntibiotic = new MicroAstPanelAntibiotic();

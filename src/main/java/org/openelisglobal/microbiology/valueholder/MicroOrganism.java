@@ -32,6 +32,9 @@ public class MicroOrganism extends BaseObject<String> {
     @Column(name = "organism_group", length = 100)
     private String organismGroup;
 
+    @Column(name = "default_ast_panel_id", length = 36)
+    private String defaultAstPanelId;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
@@ -83,6 +86,14 @@ public class MicroOrganism extends BaseObject<String> {
 
     public void setOrganismGroup(String organismGroup) {
         this.organismGroup = organismGroup;
+    }
+
+    public String getDefaultAstPanelId() {
+        return defaultAstPanelId;
+    }
+
+    public void setDefaultAstPanelId(String defaultAstPanelId) {
+        this.defaultAstPanelId = defaultAstPanelId;
     }
 
     public String getIsActive() {

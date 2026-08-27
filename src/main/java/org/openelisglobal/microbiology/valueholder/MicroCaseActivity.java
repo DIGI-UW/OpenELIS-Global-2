@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
 import java.util.UUID;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
@@ -27,7 +28,8 @@ public class MicroCaseActivity extends BaseObject<String> {
     @Column(name = "occurred_at", nullable = false)
     private Timestamp occurredAt = new Timestamp(System.currentTimeMillis());
 
-    @Column(name = "performed_by", length = 20)
+    @Column(name = "performed_by", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String performedBy;
 
     @Column(name = "note")

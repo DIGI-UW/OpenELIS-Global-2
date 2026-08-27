@@ -84,9 +84,14 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroPatientOriginDefault</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCase</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseActivity</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic</class>
 
         <!-- External Quality Assurance entities (005-eqa-module) -->
         <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>

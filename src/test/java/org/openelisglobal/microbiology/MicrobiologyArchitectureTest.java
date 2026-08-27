@@ -9,7 +9,15 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.Test;
+import org.openelisglobal.microbiology.controller.rest.MicroAstRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseInoculationRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseNonconformanceRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseProtocolRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseReadinessRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroCaseTimelineRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
+import org.openelisglobal.microbiology.controller.rest.MicrobiologyReferenceRestController;
 import org.openelisglobal.microbiology.controller.rest.MicrobiologyUatScenarioRestController;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +25,11 @@ public class MicrobiologyArchitectureTest {
 
     @Test
     public void microbiologyControllersDoNotDeclareTransactions() {
-        Class<?>[] controllers = { MicroCaseRestController.class, MicrobiologyUatScenarioRestController.class };
+        Class<?>[] controllers = { MicroCaseRestController.class, MicroIsolateRestController.class,
+                MicroAstRestController.class, MicroCaseReadinessRestController.class,
+                MicroCaseInoculationRestController.class, MicroCaseNonconformanceRestController.class,
+                MicroCaseProtocolRestController.class, MicroCaseTimelineRestController.class,
+                MicrobiologyReferenceRestController.class, MicrobiologyUatScenarioRestController.class };
         for (Class<?> controller : controllers) {
             assertFalse(controller.isAnnotationPresent(Transactional.class));
             for (Method method : controller.getDeclaredMethods()) {

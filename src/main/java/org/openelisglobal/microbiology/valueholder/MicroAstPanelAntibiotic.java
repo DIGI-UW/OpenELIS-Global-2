@@ -26,6 +26,12 @@ public class MicroAstPanelAntibiotic extends BaseObject<String> {
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder = 0;
 
+    @Column(name = "tier", nullable = false)
+    private Integer tier = 1;
+
+    @Column(name = "report_behavior", nullable = false, length = 30)
+    private String reportBehavior = "ALWAYS";
+
     @Override
     public String getId() {
         return id;
@@ -58,5 +64,21 @@ public class MicroAstPanelAntibiotic extends BaseObject<String> {
 
     public void setDisplayOrder(Integer displayOrder) {
         this.displayOrder = displayOrder;
+    }
+
+    public Integer getTier() {
+        return tier;
+    }
+
+    public void setTier(Integer tier) {
+        this.tier = tier;
+    }
+
+    public String getReportBehavior() {
+        return reportBehavior;
+    }
+
+    public void setReportBehavior(String reportBehavior) {
+        this.reportBehavior = reportBehavior;
     }
 }

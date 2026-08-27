@@ -9,6 +9,7 @@ public class MicroCaseActivityForm {
     public String activityType;
     public Timestamp occurredAt;
     public String performedBy;
+    public String performedByDisplay;
     public String note;
     public String structuredData;
 }
