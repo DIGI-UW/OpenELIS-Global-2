@@ -24,7 +24,10 @@ const SCHEMES = [
     name: "National HIV VL PT",
     provider: "This lab",
     schemeType: "REGIONAL_PT",
+    discipline: "Serology",
     enrolledParticipantCount: 4,
+    activeCycleCount: 1,
+    lastDistribution: "2026-08-26 14:56:46.853",
     cycles: [
       {
         id: 7,
@@ -38,9 +41,16 @@ const SCHEMES = [
   },
 ];
 
-const renderList = (schemes = SCHEMES) => {
+const KPIS = {
+  activeSchemes: 1,
+  openCycles: 1,
+  enrolledParticipants: 4,
+  followupsOpen: 0,
+};
+
+const renderList = (schemes = SCHEMES, kpis = KPIS) => {
   getFromOpenElisServer.mockImplementation((url, cb) =>
-    url === "/rest/eqa/provider/schemes" ? cb(schemes) : cb([]),
+    url === "/rest/eqa/provider/schemes" ? cb({ kpis, schemes }) : cb([]),
   );
   const history = [];
   const view = render(
@@ -72,7 +82,31 @@ describe("ProviderSchemeList", () => {
 
     expect(screen.getByText("National HIV VL PT")).toBeInTheDocument();
     expect(screen.getByText("Regional PT")).toBeInTheDocument();
-    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByText("Serology")).toBeInTheDocument();
+    expect(screen.getByText("2026-08-26")).toBeInTheDocument();
+    // Enrollment count in the row; "4" also appears in the KPI tiles, so scope
+    // the assertion to the scheme row.
+    expect(
+      screen.getByText("National HIV VL PT").closest("tr"),
+    ).toHaveTextContent("4");
+  });
+
+  test("the KPI tiles render the counts the endpoint answers", () => {
+    renderList();
+
+    expect(screen.getByTestId("kpi-active-schemes")).toHaveTextContent("1");
+    expect(screen.getByTestId("kpi-open-cycles")).toHaveTextContent("1");
+    expect(screen.getByTestId("kpi-enrolled")).toHaveTextContent("4");
+    expect(screen.getByTestId("kpi-followups-open")).toHaveTextContent("0");
+  });
+
+  test("a scheme without a discipline or distribution renders placeholders", () => {
+    renderList([
+      { ...SCHEMES[0], discipline: null, lastDistribution: null, cycles: [] },
+    ]);
+
+    const row = screen.getByText("National HIV VL PT").closest("tr");
+    expect(row).toHaveTextContent("—");
   });
 
   test("expanding a scheme reveals its cycles", () => {
