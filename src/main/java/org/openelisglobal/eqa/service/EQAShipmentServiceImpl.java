@@ -114,6 +114,12 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         for (EQACycleParticipant participant : eqaCycleParticipantDAO.findActiveByCycleIds(cycleIds)) {
             rosterCounts.merge(participant.getCycle().getId(), 1, Integer::sum);
         }
+        // FR-V2.5-01 "Last distribution": the newest shipped date across the scheme's
+        // cycles, one aggregate query for the whole list.
+        Map<Long, Timestamp> lastShippedByCycle = new LinkedHashMap<>();
+        for (Object[] row : shipmentService.getLatestShippedDatesByEqaCycleIds(cycleIds)) {
+            lastShippedByCycle.put(((Number) row[0]).longValue(), (Timestamp) row[1]);
+        }
 
         List<Map<String, Object>> schemes = new ArrayList<>();
         for (Object[] row : schemeRows) {
@@ -121,7 +127,16 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             int enrolled = ((Number) row[4]).intValue();
 
             List<Map<String, Object>> cycleDtos = new ArrayList<>();
+            int activeCycleCount = 0;
+            Timestamp lastDistribution = null;
             for (EQACycle cycle : cyclesByScheme.getOrDefault(schemeId, List.of())) {
+                if (cycle.getStatus() != EQACycleStatus.CLOSED) {
+                    activeCycleCount++;
+                }
+                Timestamp shipped = lastShippedByCycle.get(cycle.getId());
+                if (shipped != null && (lastDistribution == null || shipped.after(lastDistribution))) {
+                    lastDistribution = shipped;
+                }
                 Map<String, Object> dto = new LinkedHashMap<>();
                 dto.put("id", cycle.getId());
                 dto.put("cycleNumber", cycle.getCycleNumber());
@@ -143,6 +158,9 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             scheme.put("provider", row[2]);
             scheme.put("schemeType", row[3] == null ? null : ((EQASchemeType) row[3]).name());
             scheme.put("enrolledParticipantCount", enrolled);
+            // FR-V2.5-01: a dormant scheme must read 0, not its lifetime cycle total.
+            scheme.put("activeCycleCount", activeCycleCount);
+            scheme.put("lastDistribution", lastDistribution == null ? null : lastDistribution.toString());
             scheme.put("cycles", cycleDtos);
             schemes.add(scheme);
         }

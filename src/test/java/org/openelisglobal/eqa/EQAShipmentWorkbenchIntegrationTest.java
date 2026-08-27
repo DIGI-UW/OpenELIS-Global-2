@@ -577,6 +577,41 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         assertEquals(1, cycles.get(2).get("cycleNumber"));
     }
 
+    @Test
+    public void providerSchemeListCountsOnlyOpenCyclesAsActive() {
+        // The fixture cycle is the scheme's only one; closing it must zero the
+        // count while the expansion still lists the cycle (FR-V2.5-01).
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+
+        Map<String, Object> scheme = shipmentService.getProviderSchemes().get(0);
+
+        assertEquals("a scheme whose only cycle is closed is dormant, not busy", 0, scheme.get("activeCycleCount"));
+        List<Map<String, Object>> cycles = cycles(scheme);
+        assertEquals("the closed cycle still shows on expansion", 1, cycles.size());
+        assertEquals("CLOSED", cycles.get(0).get("status"));
+    }
+
+    @Test
+    public void providerSchemeListLastDistributionIsTheNewestShippedDate() {
+        assertNull("a scheme that never shipped has no last distribution",
+                shipmentService.getProviderSchemes().get(0).get("lastDistribution"));
+
+        addToRoster(ORG_A);
+        clearTheGate();
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+        shipmentService.markShipped(cycle.getId(), List.of(ORG_A), USER);
+
+        Map<String, Object> scheme = shipmentService.getProviderSchemes().get(0);
+        java.sql.Timestamp shippedDate = jdbc.queryForObject(
+                "SELECT s.shipped_date FROM clinlims.shipment s"
+                        + " JOIN clinlims.shipping_box b ON s.shipping_box_id = b.id WHERE b.eqa_cycle_id = ?",
+                java.sql.Timestamp.class, cycle.getId());
+        assertNotNull(shippedDate);
+        assertEquals("last distribution is the dispatch's own shipped date", shippedDate.toString(),
+                scheme.get("lastDistribution"));
+        assertEquals("dispatching does not close the cycle", 1, scheme.get("activeCycleCount"));
+    }
+
     // ---- T-41: delivery-status backflow ----
 
     @Test
