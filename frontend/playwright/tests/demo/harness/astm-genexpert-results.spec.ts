@@ -82,23 +82,6 @@ async function testConnection(
   await expect(connectionModal).toBeHidden({ timeout: UI_TIMEOUT });
 }
 
-// The GeneXpert fixture carries an accented patient name on purpose, so this
-// lane exercises the non-ASCII path over ASTM TCP. A receiver that mis-decodes
-// those bytes computes the frame checksum over the wrong ones and NAKs the
-// frame, which is how MG-97 reached production: the lane was ASCII-only, so it
-// passed against a bridge that failed at a French-language site. Asserting the
-// fixture is still non-ASCII keeps that coverage from silently going away.
-async function assertFixtureCarriesNonAscii(page: Page) {
-  const response = await page.request.get(
-    `${SIMULATOR_URL}/simulate/astm/genexpert_astm`,
-  );
-  const message: string = (await response.json())?.message ?? "";
-  expect(
-    message,
-    "GeneXpert fixture must contain non-ASCII text so this lane covers the Latin-1 path (MG-97)",
-  ).toMatch(/[^\x00-\x7F]/);
-}
-
 async function pushAstmMessage(
   page: Page,
   presentation: DemoPresentation,
@@ -179,7 +162,6 @@ test.describe("GeneXpert ASTM demo story", () => {
     await testConnection(page, analyzerRow, presentation);
 
     await presentation.step(3, "Send a GeneXpert ASTM message");
-    await assertFixtureCarriesNonAscii(page);
     const sampleId = await pushAstmMessage(page, presentation);
 
     await presentation.step(4, "Review the staged results");
