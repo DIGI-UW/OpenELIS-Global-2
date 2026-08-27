@@ -70,8 +70,7 @@ test("AccessionValidation — Save with 0 rows shows error, no page reload (#354
     const currentUrl = page.url();
     await expect(saveButton).toBeDisabled();
 
-    await page.waitForTimeout(SHORT_TIMEOUT);
-    expect(page.url()).toBe(currentUrl);
+    await expect(page).toHaveURL(currentUrl);
   });
 });
 
