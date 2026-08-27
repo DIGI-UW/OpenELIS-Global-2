@@ -95,7 +95,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
      * {@code nextval()} returns {@code 4}) as it does for every sequence in the
      * schema on a fresh test DB.
      */
-    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables", "requester_type" };
+    private static final String[] PROTECTED_SEED_TABLES = { "reference_tables", "requester_type", "label_preset" };
 
     /**
      * Default sys_user_id for audit-emitting service calls in tests. Matches the
