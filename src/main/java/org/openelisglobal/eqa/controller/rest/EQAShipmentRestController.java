@@ -49,9 +49,12 @@ public class EQAShipmentRestController extends BaseRestController {
         this.scoringService = scoringService;
     }
 
-    /** The provider scheme list (FR-V2.5-01), each scheme carrying its cycles. */
+    /**
+     * The provider scheme list (FR-V2.5-01), each scheme carrying its cycles, plus
+     * the KPI tile counts computed from the same read.
+     */
     @GetMapping(value = "/provider/schemes", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<Map<String, Object>> providerSchemes() {
+    public Map<String, Object> providerSchemes() {
         return shipmentService.getProviderSchemes();
     }
 

@@ -27,7 +27,7 @@ public interface EQAShipmentService {
      * roster rows per cycle. This is what replaced T-25's walk over every cycle in
      * the database asking each scheme for its count.
      */
-    List<Map<String, Object>> getProviderSchemes();
+    Map<String, Object> getProviderSchemes();
 
     /**
      * Prep state for one cycle: participant count, and per panel the produced /

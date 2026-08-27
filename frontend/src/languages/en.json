@@ -8600,5 +8600,10 @@
   "notification.warning": "Warning",
   "eqa.provider.schemes.lastDistribution": "Last distribution",
   "eqa.provider.wizard.distributionDate": "Distribution date",
-  "eqa.provider.wizard.submissionDeadline": "Submission deadline"
+  "eqa.provider.wizard.submissionDeadline": "Submission deadline",
+  "eqa.provider.kpi.activeSchemes": "Active schemes",
+  "eqa.provider.kpi.openCycles": "Open cycles",
+  "eqa.provider.kpi.enrolled": "Enrolled participants",
+  "eqa.provider.kpi.followupsOpen": "Follow-ups open",
+  "eqa.provider.schemes.discipline": "Discipline"
 }

@@ -542,7 +542,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                 EQASchemeType.INTERNATIONAL_PT, "NHLS");
         insertCycle(participantOnly, 1);
 
-        List<Map<String, Object>> schemes = shipmentService.getProviderSchemes();
+        List<Map<String, Object>> schemes = providerSchemes();
 
         assertEquals("a scheme with no enrolled participant is one this lab only takes part in", 1, schemes.size());
         assertEquals(scheme.getId(), schemes.get(0).get("id"));
@@ -559,7 +559,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     public void providerSchemeListCountsTheCycleRosterWhenThereIsOne() {
         addToRoster(ORG_A);
 
-        List<Map<String, Object>> cycles = cycles(shipmentService.getProviderSchemes().get(0));
+        List<Map<String, Object>> cycles = cycles(providerSchemes().get(0));
 
         assertEquals("the list must not disagree with the prep gate", 1, cycles.get(0).get("participantCount"));
     }
@@ -569,7 +569,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         insertCycle(scheme, 7);
         insertCycle(scheme, 3);
 
-        List<Map<String, Object>> cycles = cycles(shipmentService.getProviderSchemes().get(0));
+        List<Map<String, Object>> cycles = cycles(providerSchemes().get(0));
 
         assertEquals(3, cycles.size());
         assertEquals(7, cycles.get(0).get("cycleNumber"));
@@ -583,7 +583,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         // count while the expansion still lists the cycle (FR-V2.5-01).
         jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
 
-        Map<String, Object> scheme = shipmentService.getProviderSchemes().get(0);
+        Map<String, Object> scheme = providerSchemes().get(0);
 
         assertEquals("a scheme whose only cycle is closed is dormant, not busy", 0, scheme.get("activeCycleCount"));
         List<Map<String, Object>> cycles = cycles(scheme);
@@ -594,14 +594,14 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     @Test
     public void providerSchemeListLastDistributionIsTheNewestShippedDate() {
         assertNull("a scheme that never shipped has no last distribution",
-                shipmentService.getProviderSchemes().get(0).get("lastDistribution"));
+                providerSchemes().get(0).get("lastDistribution"));
 
         addToRoster(ORG_A);
         clearTheGate();
         shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
         shipmentService.markShipped(cycle.getId(), List.of(ORG_A), USER);
 
-        Map<String, Object> scheme = shipmentService.getProviderSchemes().get(0);
+        Map<String, Object> scheme = providerSchemes().get(0);
         java.sql.Timestamp shippedDate = jdbc.queryForObject(
                 "SELECT s.shipped_date FROM clinlims.shipment s"
                         + " JOIN clinlims.shipping_box b ON s.shipping_box_id = b.id WHERE b.eqa_cycle_id = ?",
@@ -610,6 +610,75 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         assertEquals("last distribution is the dispatch's own shipped date", shippedDate.toString(),
                 scheme.get("lastDistribution"));
         assertEquals("dispatching does not close the cycle", 1, scheme.get("activeCycleCount"));
+    }
+
+    @Test
+    public void providerKpisMatchTheDataTheySummarise() {
+        // Fixture: one provider scheme, one open cycle, ORG_A and ORG_B enrolled,
+        // no follow-ups — the zero state for the follow-up tile.
+        Map<String, Object> kpis = providerKpis();
+
+        assertEquals(1, kpis.get("activeSchemes"));
+        assertEquals(1, kpis.get("openCycles"));
+        assertEquals(2L, kpis.get("enrolledParticipants"));
+        assertEquals(0L, kpis.get("followupsOpen"));
+    }
+
+    @Test
+    public void enrolledParticipantsCountsAnOrganizationOnceAcrossSchemes() {
+        // ORG_A enrolled in a second provider scheme must not count twice.
+        EQAProgram second = insertScheme("Second provided " + System.nanoTime(), EQASchemeType.REGIONAL_PT, "CPHL");
+        jdbc.update(
+                "INSERT INTO clinlims.eqa_program_enrollment (id, eqa_program_id, organization_id,"
+                        + " enrollment_date, status, sys_user_id, lastupdated)"
+                        + " VALUES (nextval('clinlims.eqa_enrollment_seq'), ?, ?, now(), 'Active', ?, now())",
+                second.getId(), ORG_A, USER);
+
+        Map<String, Object> kpis = providerKpis();
+
+        assertEquals(2, kpis.get("activeSchemes"));
+        assertEquals("ORG_A holds two enrollments but is one participant", 2L, kpis.get("enrolledParticipants"));
+        Integer psql = jdbc.queryForObject("SELECT count(DISTINCT e.organization_id) FROM"
+                + " clinlims.eqa_program_enrollment e JOIN clinlims.eqa_program p ON e.eqa_program_id = p.id"
+                + " WHERE e.status = 'Active' AND p.is_active = true", Integer.class);
+        assertEquals("the tile answers the same question as psql", psql.longValue(), kpis.get("enrolledParticipants"));
+    }
+
+    @Test
+    public void followupsOpenCountsOnlyAnotherLabsUnresolvedRows() {
+        insertFollowup(ORG_A, "NOTIFIED");
+        insertFollowup(ORG_B, "RESOLVED");
+        insertFollowup(ORG_C, "REMOVED_FROM_PROGRAM");
+
+        assertEquals("terminal states drop out of the open count", 1L, providerKpis().get("followupsOpen"));
+    }
+
+    @Test
+    public void openCyclesExcludesClosedOnes() {
+        insertCycle(scheme, 2);
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+
+        Map<String, Object> kpis = providerKpis();
+
+        assertEquals("one of two cycles is closed", 1, kpis.get("openCycles"));
+        Integer psql = jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.eqa_cycle WHERE scheme_id = ? AND status <> 'CLOSED'", Integer.class,
+                scheme.getId());
+        assertEquals(psql.intValue(), kpis.get("openCycles"));
+    }
+
+    @Test
+    public void schemeRowCarriesItsDiscipline() {
+        assertNull("no test section bound yet", providerSchemes().get(0).get("discipline"));
+
+        Integer sectionId = jdbc.queryForObject(
+                "SELECT id FROM clinlims.test_section WHERE is_active = 'Y' ORDER BY id LIMIT 1", Integer.class);
+        String sectionName = jdbc.queryForObject("SELECT name FROM clinlims.test_section WHERE id = ?", String.class,
+                sectionId);
+        jdbc.update("UPDATE clinlims.eqa_program SET test_section_id = ? WHERE id = ?", sectionId, scheme.getId());
+
+        assertEquals("the Discipline column is the scheme's test section", sectionName,
+                providerSchemes().get(0).get("discipline"));
     }
 
     // ---- T-41: delivery-status backflow ----
@@ -834,6 +903,14 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
                 scheme.getId(), organizationId, USER);
     }
 
+    private void insertFollowup(long organizationId, String status) {
+        jdbc.update(
+                "INSERT INTO clinlims.eqa_participant_followup (id, scheme_id, cycle_id, participant_org_id,"
+                        + " followup_status, sys_user_id)"
+                        + " VALUES (nextval('clinlims.eqa_participant_followup_seq'), ?, ?, ?, ?, ?)",
+                scheme.getId(), cycle.getId(), organizationId, status, USER);
+    }
+
     private void addToRoster(long organizationId) {
         jdbc.update(
                 "INSERT INTO clinlims.eqa_cycle_participant (id, cycle_id, organization_id, sys_user_id)"
@@ -877,5 +954,15 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> cycles(Map<String, Object> scheme) {
         return (List<Map<String, Object>>) scheme.get("cycles");
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> providerSchemes() {
+        return (List<Map<String, Object>>) shipmentService.getProviderSchemes().get("schemes");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> providerKpis() {
+        return (Map<String, Object>) shipmentService.getProviderSchemes().get("kpis");
     }
 }

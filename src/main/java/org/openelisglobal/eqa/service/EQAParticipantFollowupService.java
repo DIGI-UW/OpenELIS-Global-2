@@ -84,6 +84,12 @@ public interface EQAParticipantFollowupService extends BaseObjectService<EQAPart
      */
     Long selfOrganizationId();
 
+    /**
+     * Provider-register rows still being worked: another lab's follow-up in any
+     * state except RESOLVED or REMOVED_FROM_PROGRAM.
+     */
+    long countOpenProviderFollowups();
+
     /** Marks a row escalated once its NCE exists (FR-V2.3-02). */
     EQAParticipantFollowup markEscalated(Long followupId, String sysUserId);
 
