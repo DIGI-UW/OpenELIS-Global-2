@@ -8170,8 +8170,6 @@
   "eqa.provider.workbench.forCycle": "Prep & shipping — {name}",
   "eqa.provider.workbench.tabs": "Workbenches",
   "eqa.provider.workbench.stateHint": "Prep must clear the inventory and QC gate before any panel can be dispatched.",
-  "eqa.provider.cycle": "Cycle",
-  "eqa.provider.scheme": "Scheme",
   "eqa.prep.tab": "Prep",
   "eqa.prep.participants": "Participants",
   "eqa.prep.panels": "Panels",
@@ -8306,7 +8304,6 @@
   "eqa.provider.schemes.none.title": "No schemes to provide yet",
   "eqa.provider.schemes.none.body": "A scheme appears here once another laboratory is actively enrolled in it.",
   "eqa.provider.schemes.provider": "Provider",
-  "eqa.provider.schemes.type": "Type",
   "eqa.provider.schemes.enrolled": "Enrolled labs",
   "eqa.provider.schemes.cycles": "Cycles",
   "eqa.provider.schemes.expand": "Show cycles",
@@ -8602,5 +8599,6 @@
   "eqa.receipt.submissionsOpened": "Submissions are open.",
   "eqa.receipt.submissionsOpenFailed": "Could not open submissions.",
   "notification.success": "Success",
-  "notification.warning": "Warning"
+  "notification.warning": "Warning",
+  "eqa.provider.schemes.lastDistribution": "Last distribution"
 }

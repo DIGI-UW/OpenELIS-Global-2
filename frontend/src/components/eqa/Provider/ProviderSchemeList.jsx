@@ -101,20 +101,22 @@ const ProviderSchemeList = () => {
               <TableHead>
                 <TableRow>
                   <TableExpandHeader />
-                  <TableHeader>
-                    {t("eqa.provider.scheme", "Scheme")}
-                  </TableHeader>
+                  <TableHeader>{t("eqa.col.scheme", "Scheme")}</TableHeader>
                   <TableHeader>
                     {t("eqa.provider.schemes.provider", "Provider")}
                   </TableHeader>
-                  <TableHeader>
-                    {t("eqa.provider.schemes.type", "Type")}
-                  </TableHeader>
+                  <TableHeader>{t("eqa.col.type", "Type")}</TableHeader>
                   <TableHeader>
                     {t("eqa.provider.schemes.enrolled", "Enrolled labs")}
                   </TableHeader>
                   <TableHeader>
-                    {t("eqa.provider.schemes.cycles", "Cycles")}
+                    {t("eqa.kpi.active", "Active cycles")}
+                  </TableHeader>
+                  <TableHeader>
+                    {t(
+                      "eqa.provider.schemes.lastDistribution",
+                      "Last distribution",
+                    )}
                   </TableHeader>
                   <TableHeader />
                 </TableRow>
@@ -168,7 +170,10 @@ const SchemeRows = ({ scheme, t, onNewCycle }) => {
             : "—"}
         </TableCell>
         <TableCell>{scheme.enrolledParticipantCount}</TableCell>
-        <TableCell>{cycles.length}</TableCell>
+        <TableCell>{scheme.activeCycleCount}</TableCell>
+        <TableCell>
+          {scheme.lastDistribution ? scheme.lastDistribution.slice(0, 10) : "—"}
+        </TableCell>
         <TableCell>
           <Button kind="tertiary" size="sm" onClick={onNewCycle}>
             {t("eqa.provider.schemes.newCycle", "New cycle")}
@@ -179,7 +184,7 @@ const SchemeRows = ({ scheme, t, onNewCycle }) => {
           inner container at max-height 0, and the cycle table then paints over
           the scheme row above it — covering its own links. */}
       {expanded && (
-        <TableExpandedRow colSpan={7}>
+        <TableExpandedRow colSpan={8}>
           {cycles.length === 0 ? (
             <span style={hintStyle}>
               {t(
@@ -191,7 +196,7 @@ const SchemeRows = ({ scheme, t, onNewCycle }) => {
             <Table size="sm">
               <TableHead>
                 <TableRow>
-                  <TableHeader>{t("eqa.provider.cycle", "Cycle")}</TableHeader>
+                  <TableHeader>{t("eqa.col.cycle", "Cycle")}</TableHeader>
                   <TableHeader>{t("label.status", "Status")}</TableHeader>
                   <TableHeader>
                     {t("eqa.prep.participants", "Participants")}
