@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route } from "react-router-dom";
 import MicrobiologyCaseView from "../MicrobiologyCaseView";
 import messages from "../../../languages/en.json";
 
@@ -22,17 +22,28 @@ const caseDetail = {
   orderDetail: {},
 };
 
-const renderCase = (service) =>
+const renderCase = (service, initialEntry = "/Microbiology/cases/case-1") =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <IntlProvider locale="en" messages={messages}>
         <MicrobiologyCaseView caseId="case-1" service={service} />
+        <Route
+          render={({ location }) => (
+            <output data-testid="microbiology-current-url">
+              {location.pathname}
+              {location.search}
+            </output>
+          )}
+        />
       </IntlProvider>
     </MemoryRouter>,
   );
 
 const getWorkflowRegion = () =>
   screen.getByRole("region", { name: "Case workflow" });
+
+const getAccordionButton = (name) =>
+  within(getWorkflowRegion()).getByRole("button", { name });
 
 const serviceStubs = {
   getCultureMethods: vi
@@ -72,6 +83,12 @@ const serviceStubs = {
   logCriticalCommunication: vi.fn(),
   acknowledgeCriticalCommunication: vi.fn(),
   closeCriticalCommunication: vi.fn(),
+  getCaseAmendments: vi.fn().mockResolvedValue([]),
+  getCaseReportVersions: vi.fn().mockResolvedValue([]),
+  openCaseAmendment: vi.fn(),
+  cancelCaseAmendment: vi.fn(),
+  releaseAmendedReport: vi.fn(),
+  getIdentificationHistory: vi.fn().mockResolvedValue([]),
 };
 
 describe("MicrobiologyCaseView", () => {
@@ -168,6 +185,35 @@ describe("MicrobiologyCaseView", () => {
       }),
     );
     expect(await screen.findByText("BOTTLE-001")).toBeInTheDocument();
+  });
+
+  it("opens amendment history from its canonical section URL", async () => {
+    const service = {
+      ...serviceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        stage: "FINAL_RELEASED",
+        finalReleaseState: "FINAL_RELEASED",
+      }),
+      getCaseTimeline: vi.fn().mockResolvedValue(caseDetail.activities),
+      getCaseInoculations: vi.fn().mockResolvedValue([]),
+      recordCaseActivity: vi.fn(),
+      createIsolate: vi.fn(),
+    };
+
+    renderCase(service, "/Microbiology/cases/case-1?section=amendment");
+
+    await screen.findByRole("heading", { name: "Microbiology case" });
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "section=amendment",
+    );
+    expect(getAccordionButton("Amendments")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Open amendment" }),
+    ).toBeDisabled();
   });
 
   it("creates a Gram-stain-first isolate and refreshes the case", async () => {

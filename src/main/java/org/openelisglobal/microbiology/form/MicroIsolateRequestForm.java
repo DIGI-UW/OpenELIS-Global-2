@@ -16,4 +16,5 @@ public class MicroIsolateRequestForm {
     public BigDecimal identificationConfidence;
     public String significance;
     public String identificationStatus;
+    public String identificationReason;
 }

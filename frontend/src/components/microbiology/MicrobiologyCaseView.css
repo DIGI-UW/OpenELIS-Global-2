@@ -344,6 +344,56 @@
   padding: 1rem;
 }
 
+.microbiology-amendment-actions,
+.microbiology-amendment-history {
+  display: grid;
+  gap: 1rem;
+}
+
+.microbiology-amendment-actions {
+  margin-bottom: 1.5rem;
+}
+
+.microbiology-amendment-history {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.microbiology-amendment-history h4,
+.microbiology-identification-history > strong {
+  color: #525252;
+  display: block;
+  font-size: 0.875rem;
+  margin: 0 0 0.75rem;
+}
+
+.microbiology-amendment-version-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.microbiology-amendment-version-heading + p {
+  margin: 0.5rem 0;
+}
+
+.microbiology-identification-history {
+  border-top: 1px solid #e0e0e0;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+
+.microbiology-identification-history ol {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.microbiology-identification-history .microbiology-list__meta {
+  display: block;
+}
+
 @media (max-width: 66rem) {
   .microbiology-workbench {
     padding: 1rem;
@@ -363,6 +413,7 @@
 
   .microbiology-form-grid,
   .microbiology-report-grid,
+  .microbiology-amendment-history,
   .microbiology-form-grid--three {
     grid-template-columns: 1fr;
   }

@@ -52,14 +52,18 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroCase</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseActivity</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseAmendment</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail</class>
-        <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroReportVersion</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroReportVersionSource</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerExperiment</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>

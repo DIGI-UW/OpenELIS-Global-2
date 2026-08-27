@@ -19,12 +19,16 @@ import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
 import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
 import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersionSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
@@ -51,13 +55,28 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroCultureSetup.class));
         assertNotNull(metamodel.entity(MicroCase.class));
         assertNotNull(metamodel.entity(MicroCaseActivity.class));
+        assertNotNull(metamodel.entity(MicroCaseAmendment.class));
         assertNotNull(metamodel.entity(MicroCaseAnalysis.class));
         assertNotNull(metamodel.entity(MicroCaseInoculation.class));
         assertNotNull(metamodel.entity(MicroIsolate.class));
+        assertNotNull(metamodel.entity(MicroIsolateIdentificationEvent.class));
         assertNotNull(metamodel.entity(MicroAstRun.class));
         assertNotNull(metamodel.entity(MicroAstReading.class));
         assertNotNull(metamodel.entity(MicroAstOverrideEvent.class));
         assertNotNull(metamodel.entity(MicroAstRunAntibiotic.class));
         assertNotNull(metamodel.entity(MicroCriticalCommunication.class));
+        assertNotNull(metamodel.entity(MicroCaseOrderDetail.class));
+        assertNotNull(metamodel.entity(MicroReportVersion.class));
+        assertNotNull(metamodel.entity(MicroReportVersionSource.class));
+    }
+
+    @Test
+    public void microbiologyCaseAnalysisHqlCompiles() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        try {
+            assertNotNull(entityManager.createQuery("from MicroCaseAnalysis", MicroCaseAnalysis.class));
+        } finally {
+            entityManager.close();
+        }
     }
 }

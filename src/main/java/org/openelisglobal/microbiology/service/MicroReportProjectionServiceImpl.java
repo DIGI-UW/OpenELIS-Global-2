@@ -96,6 +96,33 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     }
 
     @Override
+    @Transactional
+    public MicroReportProjectionResult releaseAmended(String caseId, String performedBy) {
+        ProjectionInput input = projectionInput(caseId);
+        requireContent(input.content());
+        if (!input.mappingConfigured()) {
+            throw new IllegalStateException("REPORT_MAPPING_REQUIRED");
+        }
+        for (MicroCaseAnalysis link : input.links()) {
+            Analysis original = analysisService.get(link.getAnalysisId());
+            Analysis revised = analysisService.buildAnalysis(original.getTest(), original.getSampleItem());
+            revised.setRevision(nextRevision(original.getRevision()));
+            revised.setMethod(original.getMethod());
+            revised.setPanel(original.getPanel());
+            revised.setAnalysisType(original.getAnalysisType());
+            revised.setIsReportable(original.getIsReportable());
+            revised.setSysUserId(performedBy);
+            String revisedId = analysisService.insert(revised);
+            if (!hasText(revised.getId())) {
+                revised.setId(revisedId);
+            }
+            link.setAnalysisId(revised.getId());
+            link.setProjectedResultId(null);
+        }
+        return persist(input, performedBy, true);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public MicroReportProjectionResult preview(String caseId) {
         ProjectionInput input = projectionInput(caseId);
@@ -206,6 +233,17 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
         analysis.setReleasedDate(new Timestamp(System.currentTimeMillis()));
         analysis.setSysUserId(performedBy);
         analysisService.update(analysis);
+    }
+
+    private String nextRevision(String revision) {
+        if (!hasText(revision)) {
+            return "1";
+        }
+        try {
+            return Integer.toString(Integer.parseInt(revision) + 1);
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("ANALYSIS_REVISION_INVALID", e);
+        }
     }
 
     private String buildContent(MicroCase microCase) {

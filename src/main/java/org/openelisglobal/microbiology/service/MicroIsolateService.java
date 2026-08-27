@@ -13,7 +13,7 @@ public interface MicroIsolateService {
 
     MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
             MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
-            String identificationMethod, BigDecimal identificationConfidence, String performedBy);
+            String identificationMethod, BigDecimal identificationConfidence, String reason, String performedBy);
 
     List<MicroIsolate> getIsolatesForCase(String caseId);
 }

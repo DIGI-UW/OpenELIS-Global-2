@@ -19,6 +19,7 @@ const ReportReadinessPanel = ({
   onReleased,
   onProjectionLoaded,
   refreshToken = 0,
+  amendmentOpen = false,
 }) => {
   const intl = useIntl();
   const [readiness, setReadiness] = useState(null);
@@ -236,7 +237,13 @@ const ReportReadinessPanel = ({
             })}
           </CarbonLink>
         )}
-        {finalReleased ? (
+        {amendmentOpen ? (
+          <Tag type="purple">
+            {intl.formatMessage({
+              id: "microbiology.release.useAmendment",
+            })}
+          </Tag>
+        ) : finalReleased ? (
           <Tag type="green">
             {intl.formatMessage({ id: "microbiology.release.finalReleased" })}
           </Tag>

@@ -42,12 +42,18 @@ public class MicroReportReleaseServiceTest {
     @Mock
     private MicroReportProjectionService reportProjectionService;
 
+    @Mock
+    private MicroReportVersionService reportVersionService;
+
+    @Mock
+    private MicroCaseAmendmentService amendmentService;
+
     private MicroReportReleaseService service;
 
     @Before
     public void setUp() {
         service = new MicroReportReleaseServiceImpl(caseDAO, activityDAO, readinessService, communicationDAO,
-                reportProjectionService);
+                reportProjectionService, reportVersionService, amendmentService);
     }
 
     @Test
@@ -107,6 +113,9 @@ public class MicroReportReleaseServiceTest {
         assertNotNull(released.getClosedAt());
         assertEquals("1", released.getClosedBy());
         verify(caseDAO).update(microCase);
+        verify(reportVersionService).recordInitialFinal(org.mockito.ArgumentMatchers.eq("case-1"),
+                org.mockito.ArgumentMatchers.any(MicroReportProjectionResult.class),
+                org.mockito.ArgumentMatchers.eq("1"));
         verify(activityDAO).insert(org.mockito.ArgumentMatchers.any());
     }
 

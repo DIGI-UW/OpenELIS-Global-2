@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import java.util.Map;
+import org.openelisglobal.microbiology.service.MicroAmendmentConflictException;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.microbiology.service.MicroCaseWorkflowConflictException;
 import org.springframework.core.Ordered;
@@ -18,6 +19,12 @@ public class MicrobiologyRestExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleValidation(IllegalArgumentException exception) {
         return ResponseEntity.badRequest().body(Map.of("status", HttpStatus.BAD_REQUEST.value(), "error",
                 "MICROBIOLOGY_VALIDATION_ERROR", "message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(MicroAmendmentConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleAmendmentConflict(MicroAmendmentConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
+                "MICROBIOLOGY_AMENDMENT_CONFLICT", "message", exception.getMessage()));
     }
 
     @ExceptionHandler(MicroCaseLockedException.class)

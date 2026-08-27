@@ -378,6 +378,59 @@ export const releasePreliminaryReport = (caseId) =>
 export const releaseFinalReport = (caseId) =>
   postJsonResponse(`/rest/microbiology/cases/${caseId}/release/final`, {});
 
+export const getCaseAmendments = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${caseId}/amendments`,
+      resolve,
+    );
+  });
+
+export const getCaseReportVersions = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${caseId}/amendments/report-versions`,
+      resolve,
+    );
+  });
+
+export const openCaseAmendment = (caseId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${caseId}/amendments`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
+export const cancelCaseAmendment = (caseId, payload) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${caseId}/amendments/current/cancel`,
+      JSON.stringify(payload),
+      resolve,
+    );
+  });
+
+export const releaseAmendedReport = (caseId) =>
+  new Promise((resolve) => {
+    postToOpenElisServerJsonResponse(
+      `/rest/microbiology/cases/${caseId}/release/amended`,
+      JSON.stringify({}),
+      resolve,
+    );
+  });
+
+export const getIdentificationHistory = (isolateId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/isolates/${encodeURIComponent(
+        isolateId,
+      )}/identification-history`,
+      resolve,
+    );
+  });
+
 export const saveOrderDetail = (caseId, payload) =>
   new Promise((resolve) => {
     putToOpenElisServerFullResponse(
@@ -431,6 +484,12 @@ const MicrobiologyService = {
   getReportProjection,
   releasePreliminaryReport,
   releaseFinalReport,
+  getCaseAmendments,
+  getCaseReportVersions,
+  openCaseAmendment,
+  cancelCaseAmendment,
+  releaseAmendedReport,
+  getIdentificationHistory,
   saveOrderDetail,
 };
 

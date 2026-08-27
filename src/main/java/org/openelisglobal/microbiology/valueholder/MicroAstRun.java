@@ -45,6 +45,9 @@ public class MicroAstRun extends BaseObject<String> {
     @Column(name = "technique", nullable = false, length = 40)
     private String technique = MicroAstTechnique.LEGACY_UNSPECIFIED_MIC.name();
 
+    @Column(name = "amendment_id", length = 36)
+    private String amendmentId;
+
     @Column(name = "status", nullable = false, length = 40)
     private String status = MicroAstRunStatus.IN_PROGRESS.name();
 
@@ -140,6 +143,14 @@ public class MicroAstRun extends BaseObject<String> {
 
     public void setTechnique(String technique) {
         this.technique = technique;
+    }
+
+    public String getAmendmentId() {
+        return amendmentId;
+    }
+
+    public void setAmendmentId(String amendmentId) {
+        this.amendmentId = amendmentId;
     }
 
     public String getStatus() {

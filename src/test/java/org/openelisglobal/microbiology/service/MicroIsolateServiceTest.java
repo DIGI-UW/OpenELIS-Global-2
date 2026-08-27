@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -10,6 +11,7 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
@@ -20,6 +22,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 
@@ -35,12 +38,19 @@ public class MicroIsolateServiceTest {
     @Mock
     private MicroCaseActivityDAO activityDAO;
 
+    @Mock
+    private MicroIdentificationHistoryService identificationHistoryService;
+
     private MicroIsolateService service;
 
     @Before
     public void setUp() {
-        service = new MicroIsolateServiceImpl(caseDAO, isolateDAO, activityDAO);
+        service = new MicroIsolateServiceImpl(caseDAO, isolateDAO, activityDAO, identificationHistoryService);
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
+        MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
+        event.setId("event-1");
+        lenient().when(identificationHistoryService.recordChange(any(MicroIsolate.class), any(MicroIsolate.class),
+                org.mockito.ArgumentMatchers.nullable(String.class), any(String.class))).thenReturn(event);
     }
 
     @Test
@@ -94,6 +104,38 @@ public class MicroIsolateServiceTest {
     public void updateIdentificationRejectsOutOfRangeConfidence() {
         service.updateIdentification("iso-1", "org-1", "E. coli", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 MicroIsolateIdentificationStatus.CONFIRMED, "MALDI-TOF", new BigDecimal("101"), "1");
+    }
+
+    @Test
+    public void reidentificationDuringAmendmentRequiresReasonAndRecordsBeforeAfterHistory() {
+        MicroCase amendmentCase = mutableCase();
+        amendmentCase.setStage(MicroCaseStage.AMENDED.name());
+        amendmentCase.setFinalReleaseState(MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name());
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(amendmentCase));
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        isolate.setIsolateLabel("ISO-1");
+        isolate.setOrganismId("org-old");
+        isolate.setPreliminaryOrganismText("Escherichia coli");
+        isolate.setSignificance(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.CONFIRMED.name());
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        when(isolateDAO.update(isolate)).thenReturn(isolate);
+
+        MicroIsolate updated = service.updateIdentification("iso-1", "org-new", "Klebsiella pneumoniae",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                "Corrected after confirmatory identification", "9");
+
+        assertEquals("org-new", updated.getOrganismId());
+        verify(identificationHistoryService).recordChange(any(MicroIsolate.class), any(MicroIsolate.class),
+                org.mockito.ArgumentMatchers.eq("Corrected after confirmatory identification"),
+                org.mockito.ArgumentMatchers.eq("9"));
+        ArgumentCaptor<MicroCaseActivity> activity = ArgumentCaptor.forClass(MicroCaseActivity.class);
+        verify(activityDAO).insert(activity.capture());
+        assertEquals(
+                "Isolate ISO-1 identification changed from Escherichia coli to Klebsiella pneumoniae: Corrected after confirmatory identification",
+                activity.getValue().getNote());
     }
 
     @Test(expected = IllegalStateException.class)

@@ -1,14 +1,19 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import org.openelisglobal.microbiology.form.MicroIdentificationEventForm;
 import org.openelisglobal.microbiology.form.MicroIsolateForm;
 import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
+import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -21,9 +26,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class MicroIsolateRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroIsolateService isolateService;
+    private final MicroIdentificationHistoryService identificationHistoryService;
 
-    public MicroIsolateRestController(MicroIsolateService isolateService) {
+    public MicroIsolateRestController(MicroIsolateService isolateService,
+            MicroIdentificationHistoryService identificationHistoryService) {
         this.isolateService = isolateService;
+        this.identificationHistoryService = identificationHistoryService;
     }
 
     @PostMapping
@@ -42,8 +50,15 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
         MicroIsolate isolate = isolateService.updateIdentification(isolateId, request.organismId,
                 request.preliminaryOrganismText, significance(request.significance),
                 identificationStatus(request.identificationStatus), request.identificationMethod,
-                request.identificationConfidence, authenticatedUserId(httpRequest));
+                request.identificationConfidence, request.identificationReason, authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toForm(isolate));
+    }
+
+    @GetMapping("/{isolateId}/identification-history")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<MicroIdentificationEventForm>> getIdentificationHistory(@PathVariable String isolateId) {
+        return ResponseEntity
+                .ok(identificationHistoryService.getHistory(isolateId).stream().map(this::toForm).toList());
     }
 
     private MicroIsolateSignificance significance(String significance) {
@@ -74,6 +89,26 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
         form.significance = isolate.getSignificance();
         form.identificationStatus = isolate.getIdentificationStatus();
         form.createdAt = isolate.getCreatedAt();
+        return form;
+    }
+
+    private MicroIdentificationEventForm toForm(MicroIsolateIdentificationEvent event) {
+        MicroIdentificationEventForm form = new MicroIdentificationEventForm();
+        form.id = event.getId();
+        form.isolateId = event.getIsolateId();
+        form.amendmentId = event.getAmendmentId();
+        form.eventType = event.getEventType();
+        form.previousOrganismId = event.getPreviousOrganismId();
+        form.previousOrganismText = event.getPreviousOrganismText();
+        form.previousSignificance = event.getPreviousSignificance();
+        form.previousIdentificationStatus = event.getPreviousIdentificationStatus();
+        form.newOrganismId = event.getNewOrganismId();
+        form.newOrganismText = event.getNewOrganismText();
+        form.newSignificance = event.getNewSignificance();
+        form.newIdentificationStatus = event.getNewIdentificationStatus();
+        form.reason = event.getReason();
+        form.changedAt = event.getChangedAt();
+        form.changedBy = event.getChangedBy();
         return form;
     }
 }

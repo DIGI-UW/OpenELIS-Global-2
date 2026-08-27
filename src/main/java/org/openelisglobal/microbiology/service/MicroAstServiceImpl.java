@@ -15,6 +15,7 @@ import org.openelisglobal.microbiology.dao.MicroAstReadingDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
@@ -37,6 +38,9 @@ import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
+import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
@@ -61,13 +65,15 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
     private final MicroAstRunAntibioticDAO runAntibioticDAO;
     private final MicroAntibioticDAO antibioticDAO;
+    private final MicroCaseAmendmentDAO amendmentDAO;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
             MicroAstInterpretationService interpretationService, MicroAstPanelDAO panelDAO,
             MicroOrganismDAO organismDAO, MicroAstOverrideEventDAO overrideEventDAO,
             SystemUserService systemUserService, MicroAstPanelAntibioticDAO panelAntibioticDAO,
-            MicroAstRunAntibioticDAO runAntibioticDAO, MicroAntibioticDAO antibioticDAO) {
+            MicroAstRunAntibioticDAO runAntibioticDAO, MicroAntibioticDAO antibioticDAO,
+            MicroCaseAmendmentDAO amendmentDAO) {
         this.runDAO = runDAO;
         this.readingDAO = readingDAO;
         this.isolateDAO = isolateDAO;
@@ -82,6 +88,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         this.panelAntibioticDAO = panelAntibioticDAO;
         this.runAntibioticDAO = runAntibioticDAO;
         this.antibioticDAO = antibioticDAO;
+        this.amendmentDAO = amendmentDAO;
     }
 
     @Override
@@ -120,7 +127,7 @@ public class MicroAstServiceImpl implements MicroAstService {
                 || isBlank(isolate.getOrganismId())) {
             throw new IllegalStateException("AST_ISOLATE_IDENTIFICATION_REQUIRED");
         }
-        requireMutableCase(isolate.getCaseId());
+        MicroCase microCase = requireMutableCase(isolate.getCaseId());
         MicroOrganism organism = organismDAO.get(isolate.getOrganismId())
                 .orElseThrow(() -> new IllegalArgumentException("AST_ORGANISM_NOT_FOUND"));
         PanelSelection panelSelection = resolvePanel(organism, panelId);
@@ -142,6 +149,9 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setBreakpointVersion(standard.getVersion());
         run.setTechnique(technique.name());
         run.setMethod(technique.measurementType().name());
+        if (isAmendmentInProgress(microCase)) {
+            run.setAmendmentId(requireOpenAmendment(microCase.getId()).getId());
+        }
         run.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
         run.setStartedAt(MicroCaseServiceImpl.now());
         run.setStartedBy(performedBy);
@@ -218,7 +228,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
-        requireMutableCase(isolate.getCaseId());
+        requireMutableRun(run, isolate.getCaseId());
         MicroBreakpointRule rule = findRule(run, isolate, antibioticId, method);
         MicroAstInterpretation interpretation = interpretationService.interpret(rule, method, rawValue);
 
@@ -257,7 +267,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         requireEditableRun(run);
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
-        requireMutableCase(isolate.getCaseId());
+        requireMutableRun(run, isolate.getCaseId());
         String fromInterpretation = effectiveInterpretation(reading);
         reading.setOverrideInterpretation(overrideInterpretation.name());
         reading.setOverrideReason(overrideReason.trim());
@@ -324,7 +334,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         requireEditableRun(run);
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
-        requireMutableCase(isolate.getCaseId());
+        requireMutableRun(run, isolate.getCaseId());
         requireCompleteOrderedResults(runId);
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         run.setReviewedAt(MicroCaseServiceImpl.now());
@@ -532,9 +542,34 @@ public class MicroAstServiceImpl implements MicroAstService {
                 : reading.getOverrideInterpretation();
     }
 
-    private void requireMutableCase(String caseId) {
+    private MicroCase requireMutableCase(String caseId) {
         MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
         MicroCaseMutationGuard.requireMutable(microCase);
+        return microCase;
+    }
+
+    private void requireMutableRun(MicroAstRun run, String caseId) {
+        MicroCase microCase = requireMutableCase(caseId);
+        if (!isAmendmentInProgress(microCase)) {
+            return;
+        }
+        MicroCaseAmendment amendment = requireOpenAmendment(caseId);
+        if (!amendment.getId().equals(run.getAmendmentId())) {
+            throw new MicroAmendmentConflictException("AMENDMENT_NEW_AST_RUN_REQUIRED");
+        }
+    }
+
+    private MicroCaseAmendment requireOpenAmendment(String caseId) {
+        MicroCaseAmendment amendment = amendmentDAO.getOpenByCaseId(caseId);
+        if (amendment == null) {
+            throw new MicroAmendmentConflictException("AMENDMENT_NOT_OPEN");
+        }
+        return amendment;
+    }
+
+    private boolean isAmendmentInProgress(MicroCase microCase) {
+        return MicroCaseStage.AMENDED.name().equals(microCase.getStage())
+                && MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name().equals(microCase.getFinalReleaseState());
     }
 
     private void requireEditableRun(MicroAstRun run) {

@@ -413,4 +413,7 @@
   <include relativeToChangelogFile="true" file="057-alert-entity-ref.xml"/>
   <include relativeToChangelogFile="true" file="058-microbiology-critical-lifecycle.xml"/>
 
+  <!-- OGC-782 M8: amendment, report-version, and re-identification history -->
+  <include relativeToChangelogFile="true" file="060-microbiology-amendment-history.xml"/>
+
 </databaseChangeLog>

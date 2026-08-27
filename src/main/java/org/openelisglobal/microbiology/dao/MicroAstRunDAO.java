@@ -7,4 +7,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 public interface MicroAstRunDAO extends BaseDAO<MicroAstRun, String> {
 
     List<MicroAstRun> getByIsolateId(String isolateId);
+
+    List<MicroAstRun> getByAmendmentId(String amendmentId);
 }

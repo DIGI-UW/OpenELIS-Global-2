@@ -97,7 +97,7 @@ const reviewedRun = {
   status: "REVIEWED",
 };
 
-const renderPanel = (service) =>
+const renderPanel = (service, props = {}) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <AstEntryPanel
@@ -106,6 +106,7 @@ const renderPanel = (service) =>
         isolates={[isolate]}
         service={service}
         saving={false}
+        {...props}
       />
     </IntlProvider>,
   );
@@ -254,5 +255,26 @@ describe("AstEntryPanel", () => {
         orderedAntibioticIds: ["abx-1", "abx-2"],
       }),
     );
+  });
+
+  it("keeps AST write actions disabled when a final case is locked", async () => {
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([{ id: "panel-1", label: "Gram negative panel" }]),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
+      getCaseReadiness: vi.fn().mockResolvedValue({
+        finalReleaseReady: true,
+        blockers: [],
+      }),
+    };
+
+    renderPanel(service, { readOnly: true });
+
+    expect(
+      await screen.findByRole("button", { name: "Start AST run" }),
+    ).toBeDisabled();
   });
 });
