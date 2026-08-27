@@ -8329,8 +8329,6 @@
   "eqa.provider.wizard.cycleName": "Cycle name",
   "eqa.provider.wizard.cycleNumber": "Cycle number",
   "eqa.provider.wizard.cycleNumber.hint": "Left blank, the next unused number for this scheme is used.",
-  "eqa.provider.wizard.plannedStart": "Planned start",
-  "eqa.provider.wizard.plannedEnd": "Planned end",
   "eqa.provider.wizard.panelName": "Panel name",
   "eqa.provider.wizard.source": "Material source",
   "eqa.provider.wizard.lot": "Lot number",
@@ -8600,5 +8598,7 @@
   "eqa.receipt.submissionsOpenFailed": "Could not open submissions.",
   "notification.success": "Success",
   "notification.warning": "Warning",
-  "eqa.provider.schemes.lastDistribution": "Last distribution"
+  "eqa.provider.schemes.lastDistribution": "Last distribution",
+  "eqa.provider.wizard.distributionDate": "Distribution date",
+  "eqa.provider.wizard.submissionDeadline": "Submission deadline"
 }
