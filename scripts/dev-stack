@@ -85,11 +85,12 @@ def is_local_domain(domain: str) -> bool:
 
 
 def build_environment(context: StackContext) -> dict[str, str]:
+    uat_scenarios_enabled = os.environ.get("OE_UAT_SCENARIOS_ENABLED", "true")
     environment = os.environ.copy()
     for key, value in read_dotenv(context.repo_root / ".env").items():
         environment.setdefault(key, value)
     environment["DEV_STACK_PROJECT"] = context.project
-    environment.setdefault("OE_UAT_SCENARIOS_ENABLED", "true")
+    environment["OE_UAT_SCENARIOS_ENABLED"] = uat_scenarios_enabled
     domain = environment.get("LETSENCRYPT_DOMAIN", "localhost")
     environment["LETSENCRYPT_DOMAIN"] = domain
     environment.setdefault("LETSENCRYPT_BRIDGE_DOMAIN", f"bridge.{domain}")
@@ -124,7 +125,16 @@ def frontend_dependencies_changed(
     override = environment.get("DEV_STACK_BUILD_FRONTEND")
     if override is not None:
         return override.lower() == "true"
-    paths = ("frontend/package.json", "frontend/package-lock.json", "frontend/Dockerfile")
+    paths = (
+        "frontend/.dockerignore",
+        "frontend/.npmrc",
+        "frontend/Dockerfile",
+        "frontend/index.html",
+        "frontend/package-lock.json",
+        "frontend/package.json",
+        "frontend/tsconfig.json",
+        "frontend/vite.config.ts",
+    )
     try:
         result = subprocess.run(
             ["git", "diff", "--quiet", "origin/develop", "--", *paths],
@@ -199,6 +209,44 @@ def output(
     return run(command, cwd=cwd, environment=environment, capture=True).stdout.strip()
 
 
+def service_is_running(
+    context: StackContext, environment: dict[str, str], service: str
+) -> bool:
+    result = run(
+        compose_command(context, "ps", "--status", "running", "-q", service),
+        cwd=context.project_dir,
+        environment=environment,
+        capture=True,
+    )
+    return bool(result.stdout.strip())
+
+
+def start_services(
+    context: StackContext,
+    environment: dict[str, str],
+    *,
+    refresh_running_backend: bool,
+) -> None:
+    run(
+        compose_command(context, "up", "-d", "--remove-orphans"),
+        cwd=context.project_dir,
+        environment=environment,
+    )
+    if refresh_running_backend:
+        run(
+            compose_command(
+                context,
+                "up",
+                "-d",
+                "--no-deps",
+                "--force-recreate",
+                "oe.openelis.org",
+            ),
+            cwd=context.project_dir,
+            environment=environment,
+        )
+
+
 def ensure_local_env(context: StackContext) -> None:
     env_file = context.repo_root / ".env"
     example = context.repo_root / ".env.example"
@@ -219,11 +267,39 @@ def submodule_repair_mode(
     return "checkout"
 
 
+def initialize_submodule(
+    context: StackContext, environment: dict[str, str], relative_path: str
+) -> None:
+    command = ["git", "submodule", "update", "--init", "--recursive", relative_path]
+    try:
+        run(command, cwd=context.repo_root, environment=environment)
+    except subprocess.CalledProcessError as error:
+        path = context.repo_root / relative_path
+        has_content = path.is_dir() and any(entry.name != ".git" for entry in path.iterdir())
+        if has_content:
+            raise RuntimeError(
+                f"Submodule initialization failed for populated checkout {relative_path}; "
+                "refusing to force it"
+            ) from error
+        run(
+            [
+                "git",
+                "submodule",
+                "update",
+                "--init",
+                "--recursive",
+                "--checkout",
+                "--force",
+                relative_path,
+            ],
+            cwd=context.repo_root,
+            environment=environment,
+        )
+
+
 def ensure_submodules(context: StackContext, environment: dict[str, str]) -> None:
-    command = ["git", "submodule", "update", "--init", "--recursive"]
-    command.extend(required_submodules())
-    run(command, cwd=context.repo_root, environment=environment)
     for relative_path in required_submodules():
+        initialize_submodule(context, environment, relative_path)
         path = context.repo_root / relative_path
         expected = output(
             ["git", "rev-parse", f"HEAD:{relative_path}"],
@@ -409,6 +485,15 @@ def configure_tls(context: StackContext, environment: dict[str, str]) -> None:
     )
 
 
+def reload_proxy(context: StackContext, environment: dict[str, str]) -> None:
+    for nginx_arguments in (["nginx", "-t"], ["nginx", "-s", "reload"]):
+        run(
+            compose_command(context, "exec", "-T", "proxy", *nginx_arguments),
+            cwd=context.project_dir,
+            environment=environment,
+        )
+
+
 def print_endpoints(context: StackContext, environment: dict[str, str], shell_exports: bool = False) -> None:
     endpoints = endpoint_environment(context, environment)
     for name, value in endpoints.items():
@@ -416,6 +501,21 @@ def print_endpoints(context: StackContext, environment: dict[str, str], shell_ex
             print(f"export {name}={shlex.quote(value)}")
         else:
             print(f"{name}={value}")
+
+
+def playwright_base_url(context: StackContext, environment: dict[str, str]) -> str:
+    return environment.get("BASE_URL") or endpoint_environment(context, environment)["BASE_URL"]
+
+
+def playwright_command(arguments: Sequence[str]) -> list[str]:
+    forwarded = list(arguments)
+    has_project = any(
+        argument == "--project" or argument.startswith("--project=")
+        for argument in forwarded
+    )
+    if not has_project:
+        forwarded.insert(0, "--project=core-app")
+    return ["npm", "run", "pw:test", "--", *forwarded]
 
 
 def wait_for_login(context: StackContext, environment: dict[str, str]) -> None:
@@ -436,6 +536,7 @@ def request_json(
     payload: dict[str, object] | None = None,
     username: str | None = None,
     password: str | None = None,
+    verify_tls: bool = True,
 ) -> tuple[int, dict[str, object]]:
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     request = Request(url, data=data, method=method)
@@ -445,7 +546,11 @@ def request_json(
     if username is not None and password is not None:
         credentials = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
         request.add_header("Authorization", f"Basic {credentials}")
-    context = ssl._create_unverified_context() if url.startswith("https://") else None
+    context = (
+        ssl._create_unverified_context()
+        if url.startswith("https://") and not verify_tls
+        else None
+    )
     try:
         with urlopen(request, timeout=15, context=context) as response:
             body = response.read().decode("utf-8")
@@ -495,7 +600,13 @@ def initialize_harness_scenarios(
     mock_url = endpoints["MOCK_SIMULATOR_URL"]
     username = environment.get("TEST_USER", "admin")
     password = environment.get("TEST_PASS", "adminADMIN!")
-    status, body = request_json(analyzer_url, username=username, password=password)
+    verify_tls = environment["DEV_STACK_TLS"].lower() != "self-signed"
+    status, body = request_json(
+        analyzer_url,
+        username=username,
+        password=password,
+        verify_tls=verify_tls,
+    )
     if status != 200:
         raise RuntimeError(f"Analyzer list returned HTTP {status}: {body}")
     existing = {str(item.get("name")) for item in body.get("analyzers", [])}
@@ -539,11 +650,17 @@ def initialize_harness_scenarios(
             payload=payload,
             username=username,
             password=password,
+            verify_tls=verify_tls,
         )
         if create_status not in (201, 409):
             raise RuntimeError(f"Analyzer {name} creation returned HTTP {create_status}: {create_body}")
 
-    status, body = request_json(analyzer_url, username=username, password=password)
+    status, body = request_json(
+        analyzer_url,
+        username=username,
+        password=password,
+        verify_tls=verify_tls,
+    )
     names = {str(item.get("name")) for item in body.get("analyzers", [])}
     missing = [scenario[0] for scenario in ANALYZER_SCENARIOS if scenario[0] not in names]
     if status != 200 or missing:
@@ -597,10 +714,19 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     subparsers.add_parser("env")
     subparsers.add_parser("config")
     subparsers.add_parser("doctor")
+    playwright = subparsers.add_parser(
+        "playwright",
+        help="Run Playwright with this worktree's URL and shared authentication setup.",
+    )
     logs = subparsers.add_parser("logs")
     logs.add_argument("services", nargs="*")
     logs.add_argument("--follow", "-f", action="store_true")
-    return parser.parse_args(list(argv))
+    args, remaining = parser.parse_known_args(list(argv))
+    if args.command == "playwright":
+        args.playwright_args = remaining
+    elif remaining:
+        parser.error(f"unrecognized arguments: {' '.join(remaining)}")
+    return args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -618,6 +744,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         ensure_local_env(context)
         ensure_submodules(context, environment)
         bootstrap_analyzer_harness(context, environment)
+        backend_was_running = service_is_running(
+            context, environment, "oe.openelis.org"
+        )
         heal_war_mount(context)
         if not args.skip_build:
             build_application(context, environment)
@@ -625,11 +754,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
             raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")
-        run(
-            compose_command(context, "up", "-d", "--remove-orphans"),
-            cwd=context.project_dir,
-            environment=environment,
+        start_services(
+            context,
+            environment,
+            refresh_running_backend=backend_was_running and not args.skip_build,
         )
+        reload_proxy(context, environment)
         configure_tls(context, environment)
         if not args.no_wait:
             wait_for_login(context, environment)
@@ -653,6 +783,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(endpoint_environment(context, environment)["BASE_URL"])
     elif args.command == "env":
         print_endpoints(context, environment, shell_exports=True)
+    elif args.command == "playwright":
+        playwright_environment = environment.copy()
+        playwright_environment["BASE_URL"] = playwright_base_url(context, environment)
+        print(f"Running Playwright against {playwright_environment['BASE_URL']}")
+        run(
+            playwright_command(args.playwright_args),
+            cwd=context.repo_root / "frontend",
+            environment=playwright_environment,
+        )
     elif args.command == "logs":
         log_args = ["logs"]
         if args.follow:

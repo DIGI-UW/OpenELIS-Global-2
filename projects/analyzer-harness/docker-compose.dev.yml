@@ -55,7 +55,7 @@ services:
     image: hapiproject/hapi:v6.6.0-tomcat
     depends_on:
       db.openelis.org:
-        condition: service_started
+        condition: service_healthy
       certs:
         condition: service_started
     restart: always
@@ -119,4 +119,3 @@ secrets:
     file: ./volume/properties/common.properties
   hapi_application.yaml:
     file: ./volume/properties/hapi_application.yaml
-

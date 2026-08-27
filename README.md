@@ -101,10 +101,21 @@ Useful commands:
 ```bash
 scripts/dev-stack status
 scripts/dev-stack url
-eval "$(scripts/dev-stack env)"  # configure Playwright for this worktree
+scripts/dev-stack playwright playwright/tests/foundational/core/navbar.spec.ts
+scripts/dev-stack playwright --project=setup  # verify authentication only
 scripts/dev-stack logs -f oe.openelis.org
 scripts/dev-stack down
 scripts/dev-stack down --volumes --yes  # explicit data reset
+```
+
+The `playwright` command discovers this worktree's URL, loads credentials from
+the existing environment or `.env`, and runs the shared authentication setup
+automatically. To exercise a deployed environment with the identical path, set
+only its URL:
+
+```bash
+BASE_URL=https://amr.openelis-global.org \
+  scripts/dev-stack playwright playwright/tests/foundational/core/navbar.spec.ts
 ```
 
 Local development needs no configuration: `.env` is created from `.env.example`,
