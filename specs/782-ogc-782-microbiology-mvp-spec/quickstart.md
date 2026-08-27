@@ -8,8 +8,8 @@ source artifact from scratch.
 ## Preconditions
 
 1. Use Java 21.
-2. Use the existing PR #3789 delivery branch; M1-M7 are validation blocks in
-   that PR, not separate implementation branches.
+2. Use the owning branch from the official product stack in `tasks.md`; do not
+   add another remediation layer.
 3. Read these files first:
    - `specs/782-ogc-782-microbiology-mvp-spec/spec.md`
    - `specs/782-ogc-782-microbiology-mvp-spec/plan.md`
@@ -38,24 +38,17 @@ these skills available to the implementing agent:
 The final MVP acceptance gate in `tasks.md` requires these workflows before
 marking the implementation complete.
 
-## Work In The Delivery PR
+## Work In The Owning Product PR
 
-Use PR #3789 on
-`feat/782-ogc-782-microbiology-mvp-m7-release-surveillance-readiness`, based on
-`spec/782-ogc-782-microbiology-mvp-spec`. Complete and validate M1-M7 in order
-inside that PR. Post-MVP remediation uses separate coherent PRs stacked in
-sequence above #3789.
+Use the exact eight-PR order in `tasks.md`. Put a change in the lowest retained
+PR that owns the behavior, then restack the branches above it once. Keep generic
+development-stack and CI-readiness changes in the independent tooling PR. Keep
+review-overlay and Grist-authoring changes in `openelis-review-tooling`.
 
-M1 should implement only the catalog/reference foundation:
-
-- Culture workflow routing configuration for tests.
-- Minimal organism and antibiotic reference data.
-- Minimal breakpoint standard/rule support.
-- Culture setup metadata tied to existing Method/TestMethod behavior.
-- Migration rollback and ORM validation.
-
-Do not implement the case workbench, AST entry UI, worklist, or WHONET readiness
-in M1.
+Before closing a superseded remediation PR, compare its changes with the
+retained owner and link the closure to that PR. Reconstructing history must not
+change stable microbiology URLs, public contracts, or clinical behavior unless
+the product specification changes explicitly.
 
 ## Repo Patterns To Follow
 

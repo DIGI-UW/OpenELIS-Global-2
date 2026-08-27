@@ -46,6 +46,9 @@ Fields:
 - `workflowType`
 - `mediaDefaults`
 - `incubationDefaults`
+- `incubationHours` (optional positive integer)
+- `subcultureAtHours` (optional positive integer)
+- `maxIncubationDays` (optional positive integer)
 - `atmosphereDefaults`
 - `active`
 - `lastUpdated`
@@ -101,6 +104,47 @@ Relationships:
 Validation:
 
 - WHONET-ready antibiotics require a WHONET code.
+
+### MicroPatientOrigin
+
+Deployment reference entry for order-time patient context and surveillance.
+
+Fields:
+
+- `id` (generated UUID)
+- `code` (stable application identity)
+- `displayName`
+- `whonetCode`
+- `active`
+- `sortOrder`
+- `lastUpdated`
+
+Validation:
+
+- Phase 1A seeds Inpatient, Outpatient, ICU, Emergency, Long-term Care, and
+  Unknown with their ruled WHONET codes.
+- Order-detail writes accept only an active stable code or a blank optional
+  value; free text is rejected.
+- The Phase 1A administration surface is read-only. Full vocabulary CRUD is a
+  later deployment need.
+
+### MicroPatientOriginDefault
+
+Optional deployment mapping from an existing requesting Organization to one
+active Patient Origin. It is deliberately explicit: the source does not define
+how organization names or ward types imply patient origin.
+
+Fields:
+
+- `id` (generated UUID)
+- `organizationId` (unique)
+- `patientOriginId`
+- `lastUpdated`
+
+Validation:
+
+- A missing, inactive, or invalid mapping produces no default.
+- The UI never overwrites an origin already selected or restored on the order.
 
 ### MicroBreakpointStandard
 
@@ -200,6 +244,51 @@ Validation:
 - Rejected/lost cases require reason and actor/time.
 - Sibling workflows are found through shared `sampleItemId`.
 
+### MicroCaseOrderDetail
+
+The order-entry context captured before collection and retained for the resulting
+microbiology case. During `/order/enter`, the record is a Sample-owned draft so
+the supported `/order/collect` reload cannot discard entered details before a
+physical SampleItem and case exist. Routing copies the draft into a Case-owned
+record through services; it is not fixture or UI-only state.
+
+Fields:
+
+- `id`
+- `caseId` (nullable while the record is a Sample-owned draft)
+- `sampleId` (nullable after routing; unique while draft-owned)
+- `cultureMethodId`
+- `patientOrigin`
+- `culturePurpose` (`CLINICAL_DIAGNOSTIC` or `ACTIVE_SCREENING`; nullable only
+  for historical records created before purpose capture)
+- `admissionDate` (nullable date-only value; cleared for Outpatient context)
+- `numberOfSets` (1-10)
+- `clinicalHistory` (maximum 1000 characters)
+- `antibioticExposure` (nullable boolean)
+- audit actor/time fields
+
+Relationships and constraints:
+
+- Exactly one owner is present: `caseId` XOR `sampleId`.
+- A Sample has at most one order-entry draft; a MicroCase has at most one final
+  order-detail record.
+- `cultureMethodId` preserves the selected existing `Method` while the case does
+  not yet exist. Routing applies it to `MicroCase.cultureMethodId`; this record
+  does not introduce a second protocol master.
+- `patientOrigin` stores the validated stable `MicroPatientOrigin.code`; both
+  order entry and the case panel obtain labels and WHONET identity from the
+  reference service. This preserves existing order-detail compatibility without
+  making the product contract depend on a particular foreign-key layout.
+- `culturePurpose` records the reason for this culture order. It is required for
+  new microbiology order details, defaults visibly to `CLINICAL_DIAGNOSTIC`, and
+  is never inferred from Program, patient origin, specimen, organism, requesting
+  location, or test-level AMR eligibility. Existing nulls remain Unspecified.
+- `criticalNotificationPreference` remains a nullable legacy column only so
+  historical rows can still be read. New forms and submission contracts omit
+  it; critical behavior is owned by the Test Catalog and M-11 workflow.
+- Macro expansion is not persisted here. Clinical History will consume the
+  separately owned Macro Library when that feature is available.
+
 ### MicroCaseActivity
 
 Timeline event for case actions and observations.
@@ -229,8 +318,12 @@ Fields:
 - `id`
 - `caseId`
 - `isolateLabel`
+- `gramStain`
+- `colonyMorphology`
 - `organismId`
 - `preliminaryOrganismText`
+- `identificationMethod`
+- `identificationConfidence`
 - `significance`
 - `identificationStatus`
 - `createdAt`
@@ -243,23 +336,43 @@ Relationships:
 
 Validation:
 
-- AST setup requires a clinically significant isolate with sufficient organism
-  context.
-- Reidentification preserves prior organism history through activity entries or
-  versioning in a later amendment slice.
+- Creation records Gram stain and colony morphology while organism identity is
+  pending.
+- AST setup requires confirmed organism identification.
+- Identification and reidentification preserve the prior organism, method,
+  confidence, significance, actor, time, and reason in immutable history.
 
 ### MicroAstRun
 
-AST workflow for one isolate and one panel/method.
+AST workflow for one isolate, one ordered panel, and one laboratory technique.
 
 Fields:
 
 - `id`
 - `isolateId`
 - `panelId`
-- `method`
+- `panelVersion`
+- `panelProvenance`
+- `panelAdjustmentReason`
+- `technique`
+- `measurementType` (persisted in the legacy `method` column)
 - `breakpointStandardId`
+- `breakpointVersion`
 - `status`
+- `analyzerInstrumentId`
+- `analyzerCardId`
+- `analyzerSoftwareVersion`
+- `analyzerOrganismId`
+- `analyzerOrganismName`
+- `analyzerOrganismConfidence`
+- `analyzerExpertFlags`
+- `instrumentQcReference`
+- `qcState`
+- `qcOverrideReason`
+- `analyzerLoadedAt`
+- `analyzerCompletedAt`
+- `analyzerMessageCodes`
+- `sourceEventId`
 - `startedAt`
 - `reviewedAt`
 - `reviewedBy`
@@ -269,13 +382,63 @@ Fields:
 Relationships:
 
 - Belongs to one `MicroIsolate`.
+- Has an immutable ordered set of `MicroAstRunAntibiotic` rows.
 - Has many `MicroAstReading`.
 
 Validation:
 
 - Only reviewed AST can satisfy final release readiness.
+- Analyzer-backed work moves through `AWAITING_RESULTS`, `RESULTS_IN`, and
+  either reviewed completion or an explicit QC/repeat resolution. Analyzer
+  expert flags, missing breakpoints, and interpretation mismatches block review
+  until resolved.
+- Analyzer organism identity is retained as evidence only. It never replaces
+  the case isolate identity without a separate identified-user action.
+- QC override and analyzer-flag acknowledgment require an authenticated actor,
+  time, and reason. Invalidation preserves the failed run and creates a linked
+  replacement run.
+- A supported technique deterministically derives MIC or zone measurement type;
+  clients do not classify the same reading independently.
+- Historical rows backfill to an explicit legacy-unspecified technique according
+  to their stored measurement type and require a real technique for new work.
 - Repeat/retest creates a new run or linked repeat record rather than
   overwriting prior readings.
+- Whole-panel repeat copies the source ordered-work snapshot. Single-antibiotic
+  repeat copies only the selected source member and rejects any drug that was
+  not part of the preserved source run.
+- A nonconformance Retest disposition records the NCE and invokes the same
+  preserved-run operation after verifying that the source belongs to the case.
+
+### MicroAstRunAntibiotic
+
+Immutable ordered-work snapshot for one antibiotic expected on an AST run.
+
+Fields:
+
+- `id`
+- `astRunId`
+- `antibioticId`
+- `displayOrder`
+- `tier`
+- `reportBehavior`
+
+Validation:
+
+- Run creation copies the selected panel's exact ordered membership inside the
+  same transaction as the run.
+- Later panel administration does not change an in-flight or historical run.
+- Repeat runs inherit the source run's snapshot rather than reading the current
+  panel definition.
+- A reading must belong to the run snapshot.
+- Any panel switch or individual drug addition/removal requires one retained
+  adjustment reason and produces the exact snapshot used by entry and review.
+- Review is blocked until every snapshotted antibiotic has at least one
+  reading.
+- Standard patient-report projection emits only the latest reading for each
+  snapshotted antibiotic, in snapshot display order; superseded and unordered
+  readings are excluded.
+- The snapshot does not create a parallel core `Analysis` per antibiotic; the
+  case's linked culture analysis remains the standard report projection anchor.
 
 ### MicroAstReading
 
@@ -286,21 +449,110 @@ Fields:
 - `id`
 - `astRunId`
 - `antibioticId`
-- `readingType`
-- `readingValue`
-- `readingUnit`
-- `interpretedValue`
-- `finalInterpretation`
+- `measurementType` (MIC or ZONE; persisted in the legacy `method` column)
+- `rawValue`
+- `rawText`
+- `units`
+- `interpretation`
+- `instrumentInterpretation`
+- `analyzerResultReference`
+- `source`
+- `matchedBy`
 - `overrideReason`
+- `overrideInterpretation`
 - `breakpointRuleId`
-- `requiresManualJudgment`
-- `lastUpdated`
+- `createdAt`
+- `createdBy`
 
 Validation:
 
 - Override requires a reason and preserves the original interpreted value.
-- Missing breakpoint sets `requiresManualJudgment`.
-- Numeric readings validate precision and allowed ranges by method.
+- A found unscoped rule records `matchedBy=STANDARD`; `matchedBy=NONE` is
+  reserved for an absent rule so review does not confuse a generic standard
+  interpretation with a missing breakpoint.
+- Missing breakpoint records `matchedBy=NONE` and requires visible local-policy
+  guidance rather than silently implying an interpretation.
+- Numeric readings validate precision and allowed ranges by the run's derived
+  measurement type.
+- A reading inherits measurement type from its run technique; request payloads
+  cannot override it.
+- Analyzer interpretation and result reference remain distinguishable from the
+  OpenELIS interpretation and any later human override.
+
+### MicroAstOverrideEvent
+
+Append-only override and revert history for an AST reading.
+
+Fields:
+
+- `id`
+- `readingId`
+- `action`
+- `fromInterpretation`
+- `toInterpretation`
+- `reason`
+- `performedAt`
+- `performedBy`
+
+Validation:
+
+- Every override or revert appends an event; prior events are never updated.
+- Revert requires an active override and a non-empty reason.
+- The original reading value, interpretation, source, rule, and measurement are
+  never replaced by override history.
+
+### AnalyzerEvent
+
+Durable, idempotent envelope for normalized events delivered by analyzer
+runtime integrations before a feature-specific consumer applies them.
+
+Fields:
+
+- `id`
+- `externalEventId`
+- `eventType`
+- `analyzerId`
+- `sourceId`
+- `payload`
+- `status`
+- `targetReference`
+- `failureReason`
+- `receivedAt`
+- `processedAt`
+
+Validation:
+
+- `externalEventId` is unique so retries cannot duplicate clinical work.
+- AST consumers accept result-available and QC-failure events and resolve the
+  target by explicit run or analyzer/card identity.
+- The culture consumer accepts a positive signal only for an incubating case,
+  resolved by an explicit case reference or one unique recorded culture-
+  container identifier. A positive signal does not imply confirmed growth.
+- Events that cannot be applied remain durable with a named failure and appear
+  in the existing Analyzer Import Issues reconciliation surface.
+
+The durable case stage constraint includes `POSITIVE_SIGNAL` between incubation
+and confirmed growth. Migration `079-microbiology-positive-culture-stage.xml`
+also reconciles the constraint with the existing lost-specimen terminal states;
+routes, worklist filters, and confirmation panels require no schema changes.
+
+### Shared Reagent Lot Selection (No New Microbiology Model)
+
+Culture setup and AST setup consume existing Test Catalog reagent links and
+Inventory lots through one shared picker. Inventory remains authoritative for
+lot status, QC, expiry, quantity, locked consumption, and usage records;
+Microbiology stores only its existing action-to-usage provenance link.
+
+Validation:
+
+- Eligibility is revalidated by Inventory inside the save transaction.
+- A failed revalidation creates neither consumption nor a microbiology usage
+  link and returns the stable reason plus lot number.
+- `PRIMARY` and `SECONDARY` are catalog reagent roles, not required, optional,
+  or substitute selection policies.
+- Required/optional/substitute behavior cannot be enforced until the shared
+  Test Catalog contract supplies those semantics; Microbiology must not add a
+  parallel policy model.
 
 ### MicroCriticalCommunication
 
@@ -344,22 +596,74 @@ Computed service response, not a dedicated table for MVP.
 
 Fields:
 
+- `rowId`
+- `rowId`
+- `grain`
 - `caseId`
 - `accessionNumber`
 - `sampleItemId`
 - `patientDisplay`
+- `specimenDisplay`
 - `workflowType`
 - `stage`
+- `priority`
 - `dueAction`
 - `urgency`
-- `hasSiblingWorkflow`
-- `needsReview`
-- `hasCriticalOpen`
+- `needsAstReview`
+- `hasOpenCriticalCommunication`
+- `siblingWorkflows`
+- `createdAt`
 - `lastActivityAt`
+- `lastActivityBy`
+- Culture projection: `stage`, `dueAction`, sibling-workflow context, and
+  analyzer-results-in indicator.
+- AST projection: `isolateId`, isolate label, organism display, run identity,
+  panel identity and display name, run status, start time, and analyzer-results-
+  in indicator.
+
+Accession, patient, specimen, panel display, and latest-activity actor are
+read-time projections from their existing authoritative records. They are not
+duplicated into microbiology tables and require no schema migration.
+
+The worklist page also carries:
+
+- the 25 most recent typed case activities across open cases, with accession,
+  actor, time, and note;
+- today's ESBL, MRSA, CRE, VRE, and MDR counts derived from structured analyzer
+  flags;
+- no manually inferred resistance categories from free-text override reasons.
+
+An identified clinically significant isolate without an active AST attempt is
+represented as pending setup. Invalidated, cancelled, and superseded attempts
+do not inflate the live queue. This is a computed projection and requires no
+schema migration.
 
 Validation:
 
 - Filters and sorting must be stable for at least 200 in-flight seeded cases.
+
+### CaseReadiness
+
+Server-computed release gates and AST progress for one case.
+
+Fields:
+
+- `finalReleaseReady`
+- `blockers`
+- `astRunsComplete`
+- `astRunsTotal`
+- `significantIsolatesAwaitingAstSetup`
+- `isolatesPendingIdentification`
+
+Validation:
+
+- Only reviewed/accepted AST runs count as complete.
+- Invalidated and rerun-required historical attempts remain visible but do not
+  inflate the active-run denominator.
+- A confirmed clinically significant isolate with no active run counts as
+  awaiting setup.
+- Any isolate without confirmed organism identity counts as pending
+  identification and blocks final release with a named reason.
 
 ### WhonetReadiness
 
