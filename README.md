@@ -89,9 +89,9 @@ scripts/dev-stack up
 ```
 
 The command initializes the required submodules, uses Java 21, builds the local
-WAR and analyzer components, and starts the complete OpenELIS + analyzer harness.
-Its Compose project, containers, images, networks, ports, and volumes are derived
-from the worktree path, so multiple worktrees can run concurrently.
+WAR and analyzer components, and starts the complete OpenELIS + analyzer
+harness. Its Compose project, containers, images, networks, ports, and volumes
+are derived from the worktree path, so multiple worktrees can run concurrently.
 The harness analyzer scenarios are created idempotently through authenticated
 application services after login readiness; startup never seeds the database
 directly. Use `--no-scenarios` only when testing an intentionally empty system.
@@ -132,10 +132,10 @@ installation commands remain separate operational interfaces.
 
 #### The Instances can be accessed at
 
-| Instance     |                   URL                   | credentials (user : password) |
-| ------------ | :-------------------------------------: | ----------------------------: |
-| Legacy UI    | `<scripts/dev-stack url>/api/OpenELIS-Global/` | admin: adminADMIN! |
-| New React UI | output of `scripts/dev-stack url`              | admin: adminADMIN! |
+| Instance     |                      URL                       | credentials (user : password) |
+| ------------ | :--------------------------------------------: | ----------------------------: |
+| Legacy UI    | `<scripts/dev-stack url>/api/OpenELIS-Global/` |            admin: adminADMIN! |
+| New React UI |       output of `scripts/dev-stack url`        |            admin: adminADMIN! |
 
 **Note:** If your browser indicates that the website is not secure after
 accessing any of these links, simply follow these steps:
