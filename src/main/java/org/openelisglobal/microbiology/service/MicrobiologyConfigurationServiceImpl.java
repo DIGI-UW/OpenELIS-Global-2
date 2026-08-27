@@ -233,6 +233,10 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
             existing.setAtmosphereDefaults(setup.getAtmosphereDefaults());
             changed = true;
         }
+        if (!sameValue(setup.getReportableTestAnalyteId(), existing.getReportableTestAnalyteId())) {
+            existing.setReportableTestAnalyteId(setup.getReportableTestAnalyteId());
+            changed = true;
+        }
         if (changed) {
             cultureSetupDAO.update(existing);
         }

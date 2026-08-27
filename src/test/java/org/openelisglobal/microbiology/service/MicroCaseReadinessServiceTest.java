@@ -12,11 +12,15 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseReadinessForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
+import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 
@@ -32,11 +36,27 @@ public class MicroCaseReadinessServiceTest {
     @Mock
     private MicroAstRunDAO astRunDAO;
 
+    @Mock
+    private MicroCriticalCommunicationDAO communicationDAO;
+
     private MicroCaseReadinessService service;
 
     @Before
     public void setUp() {
-        service = new MicroCaseReadinessServiceImpl(caseDAO, isolateDAO, astRunDAO);
+        service = new MicroCaseReadinessServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO);
+    }
+
+    @Test
+    public void missingIsolateBlocksFinalRelease() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of());
+
+        MicroCaseReadinessForm readiness = service.getReadiness("case-1");
+
+        assertFalse(readiness.finalReleaseReady);
+        assertTrue(readiness.blockers.contains("ISOLATE_REQUIRED"));
     }
 
     @Test
@@ -48,6 +68,7 @@ public class MicroCaseReadinessServiceTest {
         run.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
         when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
 
         MicroCaseReadinessForm readiness = service.getReadiness("case-1");
@@ -65,6 +86,7 @@ public class MicroCaseReadinessServiceTest {
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
         when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
 
         MicroCaseReadinessForm readiness = service.getReadiness("case-1");
@@ -90,6 +112,42 @@ public class MicroCaseReadinessServiceTest {
 
         assertFalse(readiness.finalReleaseReady);
         assertTrue(readiness.blockers.contains("AST_REVIEW_REQUIRED"));
+    }
+
+    @Test
+    public void noGrowthReadyAllowsFinalReleaseWithoutAnIsolate() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        microCase.setStage(MicroCaseStage.NO_GROWTH_READY.name());
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
+
+        MicroCaseReadinessForm readiness = service.getReadiness("case-1");
+
+        assertTrue(readiness.finalReleaseReady);
+        assertTrue(readiness.blockers.isEmpty());
+    }
+
+    @Test
+    public void openCriticalFollowUpBlocksFinalRelease() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        MicroIsolate isolate = significantIsolate();
+        MicroAstRun run = new MicroAstRun();
+        run.setStatus(MicroAstRunStatus.REVIEWED.name());
+        MicroCriticalCommunication communication = new MicroCriticalCommunication();
+        communication.setFollowUpNeeded(Boolean.TRUE);
+        communication.setAcknowledgementStatus(MicroCriticalCommunicationStatus.OPEN.name());
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of(communication));
+        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
+
+        MicroCaseReadinessForm readiness = service.getReadiness("case-1");
+
+        assertFalse(readiness.finalReleaseReady);
+        assertTrue(readiness.blockers.contains("CRITICAL_FOLLOW_UP_REQUIRED"));
     }
 
     private MicroIsolate significantIsolate() {

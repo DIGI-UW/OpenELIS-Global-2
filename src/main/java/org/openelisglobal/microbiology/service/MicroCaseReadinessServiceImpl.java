@@ -3,11 +3,14 @@ package org.openelisglobal.microbiology.service;
 import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseReadinessForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
+import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.springframework.stereotype.Service;
@@ -19,11 +22,14 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroAstRunDAO astRunDAO;
+    private final MicroCriticalCommunicationDAO communicationDAO;
 
-    public MicroCaseReadinessServiceImpl(MicroCaseDAO caseDAO, MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO) {
+    public MicroCaseReadinessServiceImpl(MicroCaseDAO caseDAO, MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO,
+            MicroCriticalCommunicationDAO communicationDAO) {
         this.caseDAO = caseDAO;
         this.isolateDAO = isolateDAO;
         this.astRunDAO = astRunDAO;
+        this.communicationDAO = communicationDAO;
     }
 
     @Override
@@ -34,7 +40,17 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
         readiness.caseId = microCase.getId();
         readiness.finalReleaseReady = true;
-        for (MicroIsolate isolate : isolateDAO.getByCaseId(caseId)) {
+        List<MicroIsolate> isolates = isolateDAO.getByCaseId(caseId);
+        boolean noGrowthReady = "NO_GROWTH_READY".equals(microCase.getStage());
+        if (isolates.isEmpty() && !noGrowthReady) {
+            readiness.finalReleaseReady = false;
+            readiness.blockers.add("ISOLATE_REQUIRED");
+        }
+        if (hasOpenCriticalFollowUp(caseId)) {
+            readiness.finalReleaseReady = false;
+            readiness.blockers.add("CRITICAL_FOLLOW_UP_REQUIRED");
+        }
+        for (MicroIsolate isolate : isolates) {
             if (MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name().equals(isolate.getSignificance())
                     && !hasReviewedAst(isolate.getId())) {
                 readiness.finalReleaseReady = false;
@@ -50,5 +66,15 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         List<MicroAstRun> runs = astRunDAO.getByIsolateId(isolateId);
         return !runs.isEmpty()
                 && runs.stream().allMatch(run -> MicroAstRunStatus.REVIEWED.name().equals(run.getStatus()));
+    }
+
+    private boolean hasOpenCriticalFollowUp(String caseId) {
+        for (MicroCriticalCommunication communication : communicationDAO.getByCaseId(caseId)) {
+            if (Boolean.TRUE.equals(communication.getFollowUpNeeded()) && !MicroCriticalCommunicationStatus.CLOSED
+                    .name().equals(communication.getAcknowledgementStatus())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

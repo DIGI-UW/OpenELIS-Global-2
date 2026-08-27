@@ -115,21 +115,6 @@ export const updateIsolateIdentification = (isolateId, payload) =>
     );
   });
 
-export const saveOrderDetail = (caseId, payload) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/cases/${caseId}/order-detail`,
-      JSON.stringify(payload),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
-    );
-  });
-
 export const getAstPanels = (workflowType) =>
   new Promise((resolve) => {
     getFromOpenElisServer(
@@ -376,6 +361,38 @@ export const closeCriticalCommunication = (communicationId, payload) =>
     );
   });
 
+export const getReportProjection = (caseId) =>
+  new Promise((resolve) => {
+    getFromOpenElisServer(
+      `/rest/microbiology/cases/${caseId}/release/preview`,
+      resolve,
+    );
+  });
+
+export const releasePreliminaryReport = (caseId) =>
+  postJsonResponse(
+    `/rest/microbiology/cases/${caseId}/release/preliminary`,
+    {},
+  );
+
+export const releaseFinalReport = (caseId) =>
+  postJsonResponse(`/rest/microbiology/cases/${caseId}/release/final`, {});
+
+export const saveOrderDetail = (caseId, payload) =>
+  new Promise((resolve) => {
+    putToOpenElisServerFullResponse(
+      `/rest/microbiology/cases/${caseId}/order-detail`,
+      JSON.stringify(payload),
+      (response) => {
+        if (!response) {
+          resolve({ status: 0 });
+          return;
+        }
+        response.json().then(resolve);
+      },
+    );
+  });
+
 const MicrobiologyService = {
   getPatientOrigins,
   getCaseDetail,
@@ -386,7 +403,6 @@ const MicrobiologyService = {
   addCaseNote,
   createIsolate,
   updateIsolateIdentification,
-  saveOrderDetail,
   getAstPanels,
   getAstSetupForIsolate,
   getAstPanelAntibiotics,
@@ -412,6 +428,10 @@ const MicrobiologyService = {
   logCriticalCommunication,
   acknowledgeCriticalCommunication,
   closeCriticalCommunication,
+  getReportProjection,
+  releasePreliminaryReport,
+  releaseFinalReport,
+  saveOrderDetail,
 };
 
 export default MicrobiologyService;

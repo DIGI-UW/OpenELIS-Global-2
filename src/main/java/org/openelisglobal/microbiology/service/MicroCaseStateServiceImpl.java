@@ -34,7 +34,7 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
         ALLOWED_TRANSITIONS.put(MicroCaseStage.REVIEW_READY,
                 EnumSet.of(MicroCaseStage.PRELIM_RELEASED, MicroCaseStage.FINAL_RELEASED));
         ALLOWED_TRANSITIONS.put(MicroCaseStage.PRELIM_RELEASED, EnumSet.of(MicroCaseStage.FINAL_RELEASED));
-        ALLOWED_TRANSITIONS.put(MicroCaseStage.FINAL_RELEASED, EnumSet.of(MicroCaseStage.AMENDED));
+        ALLOWED_TRANSITIONS.put(MicroCaseStage.FINAL_RELEASED, EnumSet.noneOf(MicroCaseStage.class));
     }
 
     private final MicroCaseDAO caseDAO;
@@ -53,6 +53,7 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
             throw new IllegalArgumentException("nextStage is required");
         }
         MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        MicroCaseMutationGuard.requireMutable(microCase);
         MicroCaseStage currentStage = MicroCaseStage.valueOf(microCase.getStage());
         if (!ALLOWED_TRANSITIONS.getOrDefault(currentStage, EnumSet.noneOf(MicroCaseStage.class)).contains(nextStage)) {
             throw new IllegalArgumentException("Invalid microbiology case stage transition");

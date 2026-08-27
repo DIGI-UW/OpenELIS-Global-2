@@ -31,6 +31,9 @@ const renderCase = (service) =>
     </MemoryRouter>,
   );
 
+const getWorkflowRegion = () =>
+  screen.getByRole("region", { name: "Case workflow" });
+
 const serviceStubs = {
   getCultureMethods: vi
     .fn()
@@ -53,6 +56,13 @@ const serviceStubs = {
     finalReleaseReady: true,
     blockers: [],
   }),
+  getReportProjection: vi.fn().mockResolvedValue({
+    reportableContent: false,
+    mappingConfigured: false,
+    projectedResultIds: [],
+  }),
+  releasePreliminaryReport: vi.fn(),
+  releaseFinalReport: vi.fn(),
   startAstRun: vi.fn(),
   recordAstReading: vi.fn(),
   overrideAstReading: vi.fn(),
@@ -103,7 +113,10 @@ describe("MicrobiologyCaseView", () => {
       preserveExistingWorkConfirmed: false,
     });
     await user.click(
-      screen.getByRole("button", { name: "Inoculation", exact: true }),
+      within(getWorkflowRegion()).getByRole("button", {
+        name: "Inoculation",
+        exact: true,
+      }),
     );
     expect(
       await screen.findByRole("button", { name: "Start inoculation" }),
@@ -131,7 +144,9 @@ describe("MicrobiologyCaseView", () => {
     renderCase(service);
 
     await user.click(
-      await screen.findByRole("button", {
+      within(
+        await screen.findByRole("region", { name: "Case workflow" }),
+      ).getByRole("button", {
         name: "Inoculation",
         exact: true,
       }),
@@ -182,7 +197,9 @@ describe("MicrobiologyCaseView", () => {
     renderCase(service);
 
     await user.click(
-      await screen.findByRole("button", { name: "Isolates", exact: true }),
+      within(
+        await screen.findByRole("region", { name: "Case workflow" }),
+      ).getByRole("button", { name: "Isolates", exact: true }),
     );
     await user.type(
       await screen.findByLabelText("Gram stain"),
@@ -229,7 +246,9 @@ describe("MicrobiologyCaseView", () => {
     renderCase(service);
 
     await user.click(
-      await screen.findByRole("button", {
+      within(
+        await screen.findByRole("region", { name: "Case workflow" }),
+      ).getByRole("button", {
         name: "Critical communication",
         exact: true,
       }),

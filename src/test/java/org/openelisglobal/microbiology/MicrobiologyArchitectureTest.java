@@ -18,6 +18,7 @@ import org.openelisglobal.microbiology.controller.rest.MicroCaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCaseTimelineRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroCriticalCommunicationRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroIsolateRestController;
+import org.openelisglobal.microbiology.controller.rest.MicroReportReleaseRestController;
 import org.openelisglobal.microbiology.controller.rest.MicroWorklistRestController;
 import org.openelisglobal.microbiology.controller.rest.MicrobiologyReferenceRestController;
 import org.openelisglobal.microbiology.controller.rest.MicrobiologyUatScenarioRestController;
@@ -32,7 +33,8 @@ public class MicrobiologyArchitectureTest {
                 MicroCaseInoculationRestController.class, MicroCaseNonconformanceRestController.class,
                 MicroCaseProtocolRestController.class, MicroCaseTimelineRestController.class,
                 MicrobiologyReferenceRestController.class, MicroWorklistRestController.class,
-                MicroCriticalCommunicationRestController.class, MicrobiologyUatScenarioRestController.class };
+                MicroCriticalCommunicationRestController.class, MicroReportReleaseRestController.class,
+                MicrobiologyUatScenarioRestController.class };
         for (Class<?> controller : controllers) {
             assertFalse(controller.isAnnotationPresent(Transactional.class));
             for (Method method : controller.getDeclaredMethods()) {
