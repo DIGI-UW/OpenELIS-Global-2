@@ -108,6 +108,11 @@ const ProviderWorkbenchPage = () => {
               "Prep must clear the inventory and QC gate before any panel can be dispatched.",
             )}
           />
+          {/* Deliberate divergence from FR-V2.5-16's "no in-page Tabs — use
+              sidebar children" (decided with the user, 2026-08-28): the four
+              workbench surfaces share one cycle banner and one state, so
+              sidebar child routes would multiply route plumbing for no
+              workflow gain. */}
           <Tabs>
             <TabList
               aria-label={t("eqa.provider.workbench.tabs", "Workbenches")}

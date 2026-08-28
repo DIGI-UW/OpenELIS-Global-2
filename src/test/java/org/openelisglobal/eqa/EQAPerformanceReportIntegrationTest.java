@@ -135,7 +135,7 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
     @Before
     public void seedCycleWithScores() {
         controller = new EQACycleRestController(cycleService, sampleEQAService, sampleService, analysisService,
-                resultService, reportService, reportCommentService);
+                resultService, reportService, reportCommentService, systemUserService);
 
         jdbc.update("INSERT INTO clinlims.localization (id, description)"
                 + " SELECT ?, 'EQA Report Section' WHERE NOT EXISTS"

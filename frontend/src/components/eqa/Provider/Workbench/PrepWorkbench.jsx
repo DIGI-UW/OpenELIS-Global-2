@@ -190,6 +190,16 @@ const PrepWorkbench = ({ prep, onChanged, onNotice }) => {
                   min={0}
                   value={draft.aliquotsReserved}
                   label={t("eqa.prep.reserved", "Aliquots reserved")}
+                  helperText={t(
+                    "eqa.prep.reserved.recommend",
+                    "{n} recommended: max(10% of participants, 5)",
+                    {
+                      n: Math.max(
+                        Math.ceil((prep.participantCount || 0) * 0.1),
+                        5,
+                      ),
+                    },
+                  )}
                   onChange={(_e, { value }) =>
                     setDraft(panel.panelId, {
                       aliquotsReserved: Number(value),
