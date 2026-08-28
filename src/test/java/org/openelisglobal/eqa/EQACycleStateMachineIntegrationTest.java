@@ -223,6 +223,33 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
     }
 
     @Test
+    public void theTransitionsEndpointNamesTheActorRatherThanNumberingThem() {
+        // FR-V2.5-16 (T-35): the timeline shows "timestamp + actor". A bare user
+        // id is not an actor to the person reading the page, so the endpoint
+        // resolves it; AUTO rows carry no user and resolve to null, which the
+        // client renders as the system actor.
+        long actorId = 9955L;
+        jdbc.update("INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name,"
+                + " initials, is_active, is_employee, lastupdated)"
+                + " SELECT ?, 'EQA_T35', 'eqa_t35_actor', 'Achieng', 'Grace', 'GA', 'Y', 'Y', now()"
+                + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_user WHERE id = ?)", actorId, actorId);
+
+        EQACycle cycle = newCycle();
+        cycleService.transition(cycle.getId(), EQACycleStatus.PANEL_RECEIVED, EQAStateMachine.PARTICIPANT,
+                EQATriggerType.MANUAL, EQATriggerEvent.MANUAL_OVERRIDE, actorId, "Courier delivered early", USER);
+        cycleService.transition(cycle.getId(), EQACycleStatus.TESTING, EQAStateMachine.PARTICIPANT, EQATriggerType.AUTO,
+                EQATriggerEvent.LAST_VALIDATED_RESULT, null, null, USER);
+
+        // AppTestConfig excludes eqa.controller.* from the scan, so the endpoint
+        // is exercised as a plain object over the real services it composes.
+        EQACycleRestController controller = new EQACycleRestController(cycleService, null, null, null, null, null, null,
+                systemUserService);
+        List<Map<String, Object>> rows = controller.transitions(cycle.getId());
+        assertEquals("Grace Achieng", rows.get(0).get("triggeredByName"));
+        assertNull("an automatic transition resolves to no actor name", rows.get(1).get("triggeredByName"));
+    }
+
+    @Test
     public void aManualTransitionWithoutAReasonIsRefused() {
         // AC-V2.1-19 requires a reason even on a happy-path manual move, which is
         // stricter than FR-V2.1-21's "off the happy path" wording.

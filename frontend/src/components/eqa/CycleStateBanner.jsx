@@ -95,6 +95,9 @@ const CycleStateBanner = ({ cycleId, status, hint, distributionMethod }) => {
                     {t("eqa.cycle.history.trigger", "Trigger")}
                   </TableHeader>
                   <TableHeader>
+                    {t("eqa.cycle.history.actor", "Actor")}
+                  </TableHeader>
+                  <TableHeader>
                     {t("eqa.cycle.history.reason", "Reason")}
                   </TableHeader>
                 </TableRow>
@@ -110,6 +113,12 @@ const CycleStateBanner = ({ cycleId, status, hint, distributionMethod }) => {
                       {row.triggerType === "MANUAL"
                         ? t("eqa.cycle.history.manual", "Manual override")
                         : row.triggerEvent || row.triggerType}
+                    </TableCell>
+                    <TableCell>
+                      {/* FR-V2.5-16: timestamp + actor. AUTO rows carry no
+                          user, so they read as the system acting. */}
+                      {row.triggeredByName ||
+                        t("eqa.cycle.history.systemActor", "System")}
                     </TableCell>
                     <TableCell>{row.reason || "—"}</TableCell>
                   </TableRow>

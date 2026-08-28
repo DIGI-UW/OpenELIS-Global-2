@@ -71,7 +71,7 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
     public void setUp() throws Exception {
         super.setUp();
         controller = new EQACycleRestController(cycleService, sampleEQAService, sampleService, analysisService,
-                resultService, performanceReportService, reportCommentService);
+                resultService, performanceReportService, reportCommentService, systemUserService);
         ensureStatusRows();
         cleanupSeed();
     }

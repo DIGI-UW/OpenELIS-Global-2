@@ -34,6 +34,8 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -69,10 +71,12 @@ public class EQACycleRestController extends BaseRestController {
     private final ResultService resultService;
     private final EQAPerformanceReportPDFService performanceReportService;
     private final EQAReportCommentService reportCommentService;
+    private final SystemUserService systemUserService;
 
     public EQACycleRestController(EQACycleService cycleService, SampleEQAService sampleEQAService,
             SampleService sampleService, AnalysisService analysisService, ResultService resultService,
-            EQAPerformanceReportPDFService performanceReportService, EQAReportCommentService reportCommentService) {
+            EQAPerformanceReportPDFService performanceReportService, EQAReportCommentService reportCommentService,
+            SystemUserService systemUserService) {
         this.cycleService = cycleService;
         this.sampleEQAService = sampleEQAService;
         this.sampleService = sampleService;
@@ -80,6 +84,7 @@ public class EQACycleRestController extends BaseRestController {
         this.resultService = resultService;
         this.performanceReportService = performanceReportService;
         this.reportCommentService = reportCommentService;
+        this.systemUserService = systemUserService;
     }
 
     /**
@@ -415,11 +420,29 @@ public class EQACycleRestController extends BaseRestController {
             dto.put("triggerType", t.getTriggerType() == null ? null : t.getTriggerType().name());
             dto.put("triggerEvent", t.getTriggerEvent() == null ? null : t.getTriggerEvent().name());
             dto.put("triggeredBy", t.getTriggeredBy());
+            dto.put("triggeredByName", resolveUserName(t.getTriggeredBy()));
             dto.put("reason", t.getReason());
             dto.put("occurredAt", t.getOccurredAt() == null ? null : t.getOccurredAt().toString());
             rows.add(dto);
         }
         return rows;
+    }
+
+    /**
+     * FR-V2.5-16: the timeline shows the actor, not a numeric user id. NULL for
+     * AUTO transitions — the client renders those as the system actor.
+     */
+    private String resolveUserName(Long triggeredBy) {
+        if (triggeredBy == null) {
+            return null;
+        }
+        SystemUser user = systemUserService.get(String.valueOf(triggeredBy));
+        if (user == null) {
+            return String.valueOf(triggeredBy);
+        }
+        String name = ((user.getFirstName() == null ? "" : user.getFirstName() + " ")
+                + (user.getLastName() == null ? "" : user.getLastName())).trim();
+        return name.isEmpty() ? String.valueOf(triggeredBy) : name;
     }
 
     /**

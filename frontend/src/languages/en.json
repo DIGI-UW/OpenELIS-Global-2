@@ -8605,5 +8605,7 @@
   "eqa.provider.kpi.openCycles": "Open cycles",
   "eqa.provider.kpi.enrolled": "Enrolled participants",
   "eqa.provider.kpi.followupsOpen": "Follow-ups open",
-  "eqa.provider.schemes.discipline": "Discipline"
+  "eqa.provider.schemes.discipline": "Discipline",
+  "eqa.cycle.history.actor": "Actor",
+  "eqa.cycle.history.systemActor": "System"
 }
