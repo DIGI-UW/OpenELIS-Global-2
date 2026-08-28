@@ -27,7 +27,8 @@ vi.mock("../../../common/PageBreadCrumb", () => ({
 const ENROLLMENTS = [
   { organizationId: 100, organizationName: "District Lab A", status: "Active" },
   { organizationId: 101, organizationName: "District Lab B", status: "Active" },
-  { organizationId: 102, organizationName: "Lapsed Lab", status: "Withdrawn" },
+  { organizationId: 102, organizationName: "District Lab C", status: "Active" },
+  { organizationId: 103, organizationName: "Lapsed Lab", status: "Withdrawn" },
 ];
 
 const renderWizard = () => {
@@ -152,17 +153,35 @@ describe("CycleWizard", () => {
     expect(screen.queryByText("Lapsed Lab")).not.toBeInTheDocument();
   });
 
-  test("the participants step cannot be left with nobody chosen", async () => {
+  test("step 3 preselects exactly the active enrollments", () => {
+    // FR-V2.5-02 step 3: default = all active, still editable — a cycle must
+    // not be one forgotten click from shipping to nobody.
     renderWizard();
     throughPanelStep();
     next();
 
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+
+    // The confirm step names each preselected lab — the withdrawn one is not
+    // among them.
+    next();
+    next();
+    expect(
+      screen.getByText("District Lab A, District Lab B, District Lab C"),
+    ).toBeInTheDocument();
+  });
+
+  test("deselecting every lab disables Next", async () => {
+    renderWizard();
+    throughPanelStep();
+    next();
 
     await userEvent.click(screen.getByRole("combobox"));
     await userEvent.click(screen.getByText("District Lab A"));
+    await userEvent.click(screen.getByText("District Lab B"));
+    await userEvent.click(screen.getByText("District Lab C"));
 
-    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
   });
 
   test("the whole cycle is one POST, and it lands on the new cycle's workbench", async () => {
@@ -176,8 +195,7 @@ describe("CycleWizard", () => {
     });
     throughPanelStep();
     next();
-    await userEvent.click(screen.getByRole("combobox"));
-    await userEvent.click(screen.getByText("District Lab A"));
+    // Step 3 preselects all active labs; the POST carries that default.
     next();
     fireEvent.click(screen.getByLabelText("CSV export"));
     next();
@@ -200,7 +218,7 @@ describe("CycleWizard", () => {
     expect(body.samples).toEqual([
       expect.objectContaining({ sampleCode: "PS-1", testId: "55" }),
     ]);
-    expect(body.participantOrganizationIds).toEqual([100]);
+    expect(body.participantOrganizationIds).toEqual([100, 101, 102]);
     // Nothing may be written before the last step.
     expect(body.aliquotsReserved).toBeUndefined();
 
@@ -220,8 +238,6 @@ describe("CycleWizard", () => {
 
     throughPanelStep();
     next();
-    await userEvent.click(screen.getByRole("combobox"));
-    await userEvent.click(screen.getByText("District Lab A"));
     next();
     next();
     fireEvent.click(
@@ -244,8 +260,6 @@ describe("CycleWizard", () => {
 
     throughPanelStep();
     next();
-    await userEvent.click(screen.getByRole("combobox"));
-    await userEvent.click(screen.getByText("District Lab A"));
     next();
 
     // Step 4 is the method, not the cold chain: that moved to the panel step.

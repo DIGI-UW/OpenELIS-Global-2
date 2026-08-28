@@ -8607,5 +8607,6 @@
   "eqa.provider.kpi.followupsOpen": "Follow-ups open",
   "eqa.provider.schemes.discipline": "Discipline",
   "eqa.cycle.history.actor": "Actor",
-  "eqa.cycle.history.systemActor": "System"
+  "eqa.cycle.history.systemActor": "System",
+  "eqa.prep.reserved.recommend": "{n} recommended: max(10% of participants, 5)"
 }

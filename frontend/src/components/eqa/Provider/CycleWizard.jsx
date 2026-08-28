@@ -111,15 +111,19 @@ const CycleWizard = () => {
     fetchTests(setTests);
     getFromOpenElisServer(
       `/rest/eqa/programs/${schemeId}/enrollments`,
-      (data) =>
-        setOrganizations(
-          (data || [])
-            .filter((e) => e.status === "Active" && e.organizationId != null)
-            .map((e) => ({
-              id: String(e.organizationId),
-              name: e.organizationName || String(e.organizationId),
-            })),
-        ),
+      (data) => {
+        const active = (data || [])
+          .filter((e) => e.status === "Active" && e.organizationId != null)
+          .map((e) => ({
+            id: String(e.organizationId),
+            name: e.organizationName || String(e.organizationId),
+          }));
+        setOrganizations(active);
+        // FR-V2.5-02 step 3: default = all active, still editable. Step 5
+        // names every selected lab before the single write, which is what
+        // keeps the default safe.
+        setSelectedOrgs(active);
+      },
     );
   }, [schemeId]);
 
@@ -662,6 +666,7 @@ const CycleWizard = () => {
                   "Select participants",
                 )}
                 items={organizations}
+                initialSelectedItems={selectedOrgs}
                 itemToString={(item) => (item ? item.name || item.id : "")}
                 onChange={({ selectedItems }) => setSelectedOrgs(selectedItems)}
                 selectionFeedback="top-after-reopen"
