@@ -10,6 +10,9 @@ public interface EQAProgramEnrollmentDAO extends BaseDAO<EQAProgramEnrollment, L
 
     List<EQAProgramEnrollment> findByProgramIdAndStatus(Long programId, String status);
 
+    /** Distinct organizations holding an active enrollment in any active scheme. */
+    long countDistinctActiveParticipantOrgs();
+
     boolean existsActiveEnrollment(Long programId, Long organizationId);
 
     /**

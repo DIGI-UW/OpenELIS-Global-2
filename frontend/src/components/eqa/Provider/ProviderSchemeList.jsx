@@ -16,11 +16,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tile,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { Link as RouterLink, useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { CycleStatusTag, hintStyle } from "../eqaCommon";
+import {
+  CycleStatusTag,
+  hintStyle,
+  kpiLabelStyle,
+  kpiValueStyle,
+} from "../eqaCommon";
 import { fetchProviderSchemes } from "./Workbench/workbenchApi";
 
 const breadcrumbs = [
@@ -47,15 +53,17 @@ const ProviderSchemeList = () => {
   const t = (id, defaultMessage, values) =>
     intl.formatMessage({ id, defaultMessage }, values);
 
-  const [schemes, setSchemes] = useState([]);
+  const [board, setBoard] = useState({ kpis: {}, schemes: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchProviderSchemes((data) => {
-      setSchemes(data);
+      setBoard(data);
       setLoading(false);
     });
   }, []);
+
+  const { kpis, schemes } = board;
 
   if (loading) {
     return <Loading />;
@@ -77,6 +85,41 @@ const ProviderSchemeList = () => {
               )}
             </p>
           </Section>
+        </Column>
+      </Grid>
+
+      <Grid condensed style={{ marginBottom: "1.5rem" }}>
+        <Column lg={4} md={2} sm={4}>
+          <Tile data-testid="kpi-active-schemes">
+            <h4 style={kpiLabelStyle}>
+              {t("eqa.provider.kpi.activeSchemes", "Active schemes")}
+            </h4>
+            <p style={kpiValueStyle}>{kpis.activeSchemes ?? 0}</p>
+          </Tile>
+        </Column>
+        <Column lg={4} md={2} sm={4}>
+          <Tile data-testid="kpi-open-cycles">
+            <h4 style={kpiLabelStyle}>
+              {t("eqa.provider.kpi.openCycles", "Open cycles")}
+            </h4>
+            <p style={kpiValueStyle}>{kpis.openCycles ?? 0}</p>
+          </Tile>
+        </Column>
+        <Column lg={4} md={2} sm={4}>
+          <Tile data-testid="kpi-enrolled">
+            <h4 style={kpiLabelStyle}>
+              {t("eqa.provider.kpi.enrolled", "Enrolled participants")}
+            </h4>
+            <p style={kpiValueStyle}>{kpis.enrolledParticipants ?? 0}</p>
+          </Tile>
+        </Column>
+        <Column lg={4} md={2} sm={4}>
+          <Tile data-testid="kpi-followups-open">
+            <h4 style={kpiLabelStyle}>
+              {t("eqa.provider.kpi.followupsOpen", "Follow-ups open")}
+            </h4>
+            <p style={kpiValueStyle}>{kpis.followupsOpen ?? 0}</p>
+          </Tile>
         </Column>
       </Grid>
 
@@ -106,6 +149,9 @@ const ProviderSchemeList = () => {
                     {t("eqa.provider.schemes.provider", "Provider")}
                   </TableHeader>
                   <TableHeader>{t("eqa.col.type", "Type")}</TableHeader>
+                  <TableHeader>
+                    {t("eqa.provider.schemes.discipline", "Discipline")}
+                  </TableHeader>
                   <TableHeader>
                     {t("eqa.provider.schemes.enrolled", "Enrolled labs")}
                   </TableHeader>
@@ -169,6 +215,7 @@ const SchemeRows = ({ scheme, t, onNewCycle }) => {
               )
             : "—"}
         </TableCell>
+        <TableCell>{scheme.discipline || "—"}</TableCell>
         <TableCell>{scheme.enrolledParticipantCount}</TableCell>
         <TableCell>{scheme.activeCycleCount}</TableCell>
         <TableCell>
@@ -184,7 +231,7 @@ const SchemeRows = ({ scheme, t, onNewCycle }) => {
           inner container at max-height 0, and the cycle table then paints over
           the scheme row above it — covering its own links. */}
       {expanded && (
-        <TableExpandedRow colSpan={8}>
+        <TableExpandedRow colSpan={9}>
           {cycles.length === 0 ? (
             <span style={hintStyle}>
               {t(

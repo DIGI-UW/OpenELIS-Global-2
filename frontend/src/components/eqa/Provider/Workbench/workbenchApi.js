@@ -20,9 +20,18 @@ import config from "../../../../config.json";
 const asList = (callback) => (data) =>
   callback(Array.isArray(data) ? data : []);
 
-/** FR-V2.5-01. Each scheme carries its cycles, so one read draws the list. */
+/**
+ * FR-V2.5-01. One read draws the whole board: `schemes` (each carrying its
+ * cycles) plus the `kpis` tile counts, so the tiles and the table cannot
+ * disagree. The same list-shape guard as asList, applied to the board's parts.
+ */
 export const fetchProviderSchemes = (callback) =>
-  getFromOpenElisServer("/rest/eqa/provider/schemes", asList(callback));
+  getFromOpenElisServer("/rest/eqa/provider/schemes", (data) =>
+    callback({
+      kpis: data && !Array.isArray(data) && data.kpis ? data.kpis : {},
+      schemes: data && Array.isArray(data.schemes) ? data.schemes : [],
+    }),
+  );
 
 export const fetchPrepStatus = (cycleId, callback) =>
   getFromOpenElisServer(`/rest/eqa/cycles/${cycleId}/prep`, (data) =>

@@ -75,6 +75,9 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     private OrganizationService organizationService;
 
     @Autowired
+    private EQAParticipantFollowupService followupService;
+
+    @Autowired
     private ShippingBoxService shippingBoxService;
 
     @Autowired
@@ -85,10 +88,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> getProviderSchemes() {
+    public Map<String, Object> getProviderSchemes() {
         List<Object[]> schemeRows = eqaProgramEnrollmentDAO.findProviderSchemeRows();
         if (schemeRows.isEmpty()) {
-            return List.of();
+            return board(List.of());
         }
 
         Map<Long, List<EQACycle>> cyclesByScheme = new LinkedHashMap<>();
@@ -157,6 +160,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             scheme.put("name", row[1]);
             scheme.put("provider", row[2]);
             scheme.put("schemeType", row[3] == null ? null : ((EQASchemeType) row[3]).name());
+            scheme.put("discipline", row[5]);
             scheme.put("enrolledParticipantCount", enrolled);
             // FR-V2.5-01: a dormant scheme must read 0, not its lifetime cycle total.
             scheme.put("activeCycleCount", activeCycleCount);
@@ -164,7 +168,28 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             scheme.put("cycles", cycleDtos);
             schemes.add(scheme);
         }
-        return schemes;
+        return board(schemes);
+    }
+
+    /**
+     * The list plus its KPI tiles in one response, so the numbers and the table are
+     * computed from the same read and cannot disagree.
+     */
+    private Map<String, Object> board(List<Map<String, Object>> schemes) {
+        int openCycles = 0;
+        for (Map<String, Object> scheme : schemes) {
+            openCycles += (Integer) scheme.get("activeCycleCount");
+        }
+        Map<String, Object> kpis = new LinkedHashMap<>();
+        kpis.put("activeSchemes", schemes.size());
+        kpis.put("openCycles", openCycles);
+        kpis.put("enrolledParticipants", eqaProgramEnrollmentDAO.countDistinctActiveParticipantOrgs());
+        kpis.put("followupsOpen", followupService.countOpenProviderFollowups());
+
+        Map<String, Object> board = new LinkedHashMap<>();
+        board.put("kpis", kpis);
+        board.put("schemes", schemes);
+        return board;
     }
 
     @Override
