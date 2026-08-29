@@ -101,7 +101,7 @@ export const createRequestsForSamples = async (sampleId, sampleTypes) => {
       sampleId: sampleId,
       typeOfSampleId: sample.sampleTypeId,
       sortOrder: i,
-      requestedQuantity: parseFloat(sample.quantity) || 1,
+      requestedQuantity: parseFloat(sample.quantity) || null,
       unitOfMeasureId: sample.quantityUnit || null,
       requestedTests: sample.tests?.map((t) => t.id || t).join(",") || "",
       requestedPanels: sample.panels?.map((p) => p.id || p).join(",") || "",
@@ -162,7 +162,6 @@ export const cancelRequest = (requestId) => {
  */
 export const convertRequestsToSamples = (pendingRequests) => {
   if (!pendingRequests || !Array.isArray(pendingRequests)) {
-    console.error("convertRequestsToSamples: invalid input", pendingRequests);
     return [];
   }
 
@@ -177,35 +176,38 @@ export const convertRequestsToSamples = (pendingRequests) => {
     }));
   };
 
-  return pendingRequests.map((request, index) => ({
-    index: index,
-    sampleTypeRequestId: request.id, // Track the original request
-    sampleItemId: "", // Will be populated when collected
-    sampleRejected: false,
-    rejectionReason: "",
-    sampleTypeId: request.typeOfSampleId,
-    sampleTypeName: request.typeOfSampleName,
-    // Panels need to be objects with id and name properties for the UI
-    panels: zipIdsAndNames(
-      request.requestedPanels,
-      request.requestedPanelNames,
-    ),
-    // Tests need to be objects with id and name properties for the UI
-    tests: zipIdsAndNames(request.requestedTests, request.requestedTestNames),
-    requestReferralEnabled: false,
-    referralItems: [],
-    quantity: request.requestedQuantity?.toString() || "1",
-    quantityUnit: request.unitOfMeasureId || "",
-    collectionConditions: "",
-    collectionDate: "",
-    collectionTime: "",
-    collectorId: "",
-    receivedDate: "",
-    receivedTime: "",
-    receivedBy: "",
-    hasNCE: false,
-    nceId: "",
-    // Status from request
-    status: request.status,
-  }));
+  return pendingRequests
+    .filter((request) => request.status !== "CANCELLED")
+    .map((request, index) => ({
+      index: index,
+      sampleTypeRequestId: request.id, // Track the original request
+      sampleItemId: "", // Will be populated when collected
+      sampleRejected: false,
+      rejectionReason: "",
+      sampleTypeId: request.typeOfSampleId,
+      sampleTypeName: request.typeOfSampleName,
+      // Panels need to be objects with id and name properties for the UI
+      panels: zipIdsAndNames(
+        request.requestedPanels,
+        request.requestedPanelNames,
+      ),
+      // Tests need to be objects with id and name properties for the UI
+      tests: zipIdsAndNames(request.requestedTests, request.requestedTestNames),
+      referralItems: [],
+      quantity: "",
+      quantityUnit: request.unitOfMeasureId || "",
+      collectionConditions: "",
+      collectionDate: "",
+      collectionTime: "",
+      collectorId: "",
+      labPerformedSampling: false,
+      receivedDate: "",
+      receivedTime: "",
+      receivedBy: "",
+      hasNCE: false,
+      nceId: "",
+      qcMetadata: null,
+      // Status from request
+      status: request.status,
+    }));
 };

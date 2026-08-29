@@ -66,6 +66,7 @@ const AddOrder = (props) => {
   const [paymentOptions, setPaymentOptions] = useState([]);
   const [samplingPerformed, setSamplingPerformed] = useState([]);
   const [siteNames, setSiteNames] = useState([]);
+  const [sampleTypeOptions, setSampleTypeOptions] = useState([]);
   // Ref (not state) because the value gates a one-time init inside an effect
   // and is never read during render — using state would trigger an extra
   // render and a react-hooks/set-state-in-effect lint violation.
@@ -276,6 +277,11 @@ const AddOrder = (props) => {
         setPaymentOptions(response.sampleOrderItems.paymentOptions);
         setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
         setProviders(response.sampleOrderItems.providersList);
+      }
+    });
+    getFromOpenElisServer("/rest/user-sample-types", (response) => {
+      if (componentMounted.current && Array.isArray(response)) {
+        setSampleTypeOptions(response);
       }
     });
     window.scrollTo(0, 0);
@@ -525,8 +531,13 @@ const AddOrder = (props) => {
       },
     });
   }
+  // getFromOpenElisServer yields undefined when the response is not JSON — an
+  // authorization redirect to the HTML login/Home page, or the server being
+  // unreachable. Keep the state an array so a failed load degrades to an empty
+  // department list instead of throwing on .map() during render and taking the
+  // whole Sample Entry route down through its error boundary.
   const loadDepartments = (data) => {
-    setDepartments(data);
+    setDepartments(data || []);
   };
 
   function handleLabNo(e, rawVal) {
@@ -700,6 +711,23 @@ const AddOrder = (props) => {
     () => (samples || []).filter((s) => s.tests && s.tests.length > 0),
     [samples],
   );
+
+  // The specimen names the sample-type picker offers, so the heading a sample is
+  // given here reads as the type the user chose on it rather than the number of
+  // the box it sits in. Same list the picker itself reads, so the two cannot
+  // disagree.
+  const sampleTypeNamesById = useMemo(() => {
+    const byId = {};
+    (sampleTypeOptions || []).forEach((type) => {
+      byId[String(type.id)] = type.value;
+    });
+    return byId;
+  }, [sampleTypeOptions]);
+
+  const sampleTypeNameOf = (sample) =>
+    sample && sample.sampleTypeId
+      ? sampleTypeNamesById[String(sample.sampleTypeId)]
+      : undefined;
 
   // Stable signature of the selected tests + sample types — re-fetch the
   // aggregation only when these change (not on every unrelated AddOrder render).
@@ -1018,7 +1046,9 @@ const AddOrder = (props) => {
                 label={
                   <>
                     <FormattedMessage id="order.search.requester.label" />{" "}
-                    <span className="requiredlabel">*</span>
+                    {configurationProperties.REQUESTER_REQUIRED === "true" && (
+                      <span className="requiredlabel">*</span>
+                    )}
                   </>
                 }
                 style={{ width: "!important 100%" }}
@@ -1026,7 +1056,7 @@ const AddOrder = (props) => {
                   <FormattedMessage id="order.invalid.requester.name.label" />
                 }
                 suggestions={providers.length > 0 ? providers : []}
-                required
+                required={configurationProperties.REQUESTER_REQUIRED === "true"}
               />
             </Column>
             <Column lg={8} md={4} sm={4}>
@@ -1061,8 +1091,10 @@ const AddOrder = (props) => {
                 })}
                 labelText={
                   <>
-                    <FormattedMessage id="order.requester.firstName.label" />
-                    <span className="requiredlabel">*</span>
+                    <FormattedMessage id="order.requester.firstName.label" />{" "}
+                    {configurationProperties.REQUESTER_REQUIRED === "true" && (
+                      <span className="requiredlabel">*</span>
+                    )}
                   </>
                 }
                 disabled={
@@ -1093,8 +1125,10 @@ const AddOrder = (props) => {
                 })}
                 labelText={
                   <>
-                    <FormattedMessage id="order.requester.lastName.label" />
-                    <span className="requiredlabel">*</span>
+                    <FormattedMessage id="order.requester.lastName.label" />{" "}
+                    {configurationProperties.REQUESTER_REQUIRED === "true" && (
+                      <span className="requiredlabel">*</span>
+                    )}
                   </>
                 }
                 disabled={
@@ -1585,6 +1619,9 @@ const AddOrder = (props) => {
                   <h4>
                     {" "}
                     <FormattedMessage id="label.button.sample" /> {index + 1}
+                    {sampleTypeNameOf(sample)
+                      ? ": " + sampleTypeNameOf(sample)
+                      : ""}
                   </h4>
                   <OrderResultReporting
                     selectedTests={sample.tests}

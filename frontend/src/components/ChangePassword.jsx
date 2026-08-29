@@ -21,17 +21,20 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import { NotificationContext } from "./layout/Layout";
+import UserSessionDetailsContext from "../UserSessionDetailsContext";
 
 function ChangePassword() {
   const intl = useIntl();
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
+  const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
 
   const changePassword = (values) => {
     setSubmitting(true);
-    // Call the API to change the password show success or error notification on success redirect to the login page
-    fetch(config.serverBaseUrl + "/ChangePasswordLogin", {
+    // apiCall=true makes the backend answer with an explicit JSON status; the
+    // legacy redirect response is indistinguishable from a security bounce
+    fetch(config.serverBaseUrl + "/ChangePasswordLogin?apiCall=true", {
       method: "POST",
       credentials: "include",
       headers: {
@@ -39,9 +42,10 @@ function ChangePassword() {
       },
       body: qs.stringify(values),
     })
-      .then((response) => {
-        console.log(response);
-        if (response.redirected === true) {
+      .then(async (response) => {
+        const data = await response.json();
+        setSubmitting(false);
+        if (response.status === 200) {
           addNotification({
             kind: NotificationKinds.success,
             title: intl.formatMessage({ id: "notification.title" }),
@@ -51,19 +55,25 @@ function ChangePassword() {
           });
           setNotificationVisible(true);
           setTimeout(() => {
-            window.location.href = "/login";
+            if (userSessionDetails.authenticated) {
+              logout();
+            } else {
+              window.location.href = "/login";
+            }
           }, 2000);
         } else {
           addNotification({
             kind: NotificationKinds.error,
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({
-              id: "notification.password.change.fail",
+              id:
+                data.error && intl.messages[data.error]
+                  ? data.error
+                  : "notification.password.change.fail",
             }),
           });
           setNotificationVisible(true);
         }
-        setSubmitting(false);
       })
       .catch((error) => {
         addNotification({
@@ -144,7 +154,9 @@ function ChangePassword() {
                       }),
                     )
                     .matches(
-                      /^(?=.*[*$#!])(?=.*[A-Z])[A-Za-z0-9*$#!]{7,}$/,
+                      // matches backend complexity (HaitiPasswordValidation):
+                      // 7+ chars of letters/digits/*$#! with >=1 special char
+                      /^(?=.*[*$#!])[A-Za-z0-9*$#!]{7,}$/,
                       intl.formatMessage({
                         id: "validation.password.specialChar",
                       }),
@@ -173,7 +185,7 @@ function ChangePassword() {
                       }),
                     )
                     .matches(
-                      /^(?=.*[*$#!])(?=.*[A-Z])[A-Za-z0-9*$#!]{7,}$/,
+                      /^(?=.*[*$#!])[A-Za-z0-9*$#!]{7,}$/,
                       intl.formatMessage({
                         id: "validation.password.specialChar",
                       }),
@@ -203,6 +215,7 @@ function ChangePassword() {
                       <TextInput
                         id="loginName"
                         name="loginName"
+                        autoComplete="username"
                         labelText={intl.formatMessage({
                           id: "login.msg.username",
                         })}
@@ -211,10 +224,16 @@ function ChangePassword() {
                           id: "login.msg.username",
                         })}
                         required={true}
+                        onBlur={formik.handleBlur}
+                        invalid={
+                          formik.touched.loginName && !!formik.errors.loginName
+                        }
+                        invalidText={formik.errors.loginName}
                       />
                       <PasswordInput
                         id="current-password"
                         name="password"
+                        autoComplete="current-password"
                         labelText={intl.formatMessage({
                           id: "login.login.current.password",
                         })}
@@ -223,11 +242,17 @@ function ChangePassword() {
                           id: "login.login.current.password",
                         })}
                         required={true}
+                        onBlur={formik.handleBlur}
+                        invalid={
+                          formik.touched.password && !!formik.errors.password
+                        }
+                        invalidText={formik.errors.password}
                       />
                       <br />
                       <PasswordInput
                         id="new-password"
                         name="newPassword"
+                        autoComplete="new-password"
                         labelText={intl.formatMessage({
                           id: "login.login.new.password",
                         })}
@@ -236,16 +261,17 @@ function ChangePassword() {
                           id: "login.login.new.password",
                         })}
                         required={true}
-                        // If only new password is not valid according to validation schema, make the vield invalid
                         onBlur={formik.handleBlur}
                         invalid={
-                          formik.errors.newPassword &&
-                          formik.touched.newPassword
+                          formik.touched.newPassword &&
+                          !!formik.errors.newPassword
                         }
+                        invalidText={formik.errors.newPassword}
                       />
                       <PasswordInput
                         id="repeat-new-password"
                         name="confirmPassword"
+                        autoComplete="new-password"
                         labelText={intl.formatMessage({
                           id: "login.login.repeat.password",
                         })}
@@ -257,9 +283,9 @@ function ChangePassword() {
                         onBlur={formik.handleBlur}
                         invalid={
                           formik.touched.confirmPassword &&
-                          formik.values.newPassword !==
-                            formik.values.confirmPassword
+                          !!formik.errors.confirmPassword
                         }
+                        invalidText={formik.errors.confirmPassword}
                       />
                       <Stack orientation="horizontal">
                         <Button

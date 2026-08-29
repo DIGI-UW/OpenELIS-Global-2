@@ -35,6 +35,13 @@ public interface PatientService extends BaseObjectService<Patient, String> {
 
     void persistPatientData(PatientManagementInfo patientInfo, Patient patient, String sysUserId);
 
+    /**
+     * Save the patient together with the attachments submitted alongside it — the
+     * photo and any new identification documents — in one transaction, so a patient
+     * is never left persisted after one of them fails.
+     */
+    void persistPatientDataWithAttachments(PatientManagementInfo patientInfo, Patient patient, String sysUserId);
+
     String getGUID(Patient patient);
 
     String getNationalId(Patient patient);

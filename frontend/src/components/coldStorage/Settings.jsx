@@ -8,7 +8,7 @@ import {
   Heading,
 } from "@carbon/react";
 import { Settings as SettingsIcon } from "@carbon/icons-react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { injectIntl } from "react-intl";
 import DeviceManagement from "./settings/DeviceManagement";
 import TemperatureThresholds from "./settings/TemperatureThresholds";
 import AlertSettings from "./settings/AlertSettings";

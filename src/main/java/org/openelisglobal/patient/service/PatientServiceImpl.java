@@ -19,6 +19,7 @@ import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.gender.service.GenderService;
 import org.openelisglobal.gender.valueholder.Gender;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
+import org.openelisglobal.patient.action.bean.PatientIdDocumentInfo;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.util.PatientUtil;
@@ -94,6 +95,10 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
 
     @Autowired
     private PatientContactService patientContactService;
+    @Autowired
+    private PatientPhotoService patientPhotoService;
+    @Autowired
+    private PatientIdDocumentService patientIdDocumentService;
 
     @PostConstruct
     public void initializeGlobalVariables() {
@@ -301,15 +306,23 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
         }
     }
 
-    /*
-     * (non-Javadoc)
-     *
+    /**
      * @see org.openelisglobal.common.services.IPatientService#getFirstName()
+     *
+     *      <p>
+     *      A sample is joined to its patient through sample_human, and that join is
+     *      optional — getPatientForSample answers null where no row exists. The
+     *      accessors that delegate to PersonService took a patient without
+     *      checking, though PersonService is itself null-safe throughout and every
+     *      other accessor here guards. Building a worklist row for a patient-less
+     *      sample therefore threw out of the middle of the loop and took the whole
+     *      section's query with it, so one such sample made its lab unit's worklist
+     *      return HTTP 500 while every other unit returned 200.
      */
     @Override
     @Transactional(readOnly = true)
     public String getFirstName(Patient patient) {
-        return personService.getFirstName(patient.getPerson());
+        return patient == null ? "" : personService.getFirstName(patient.getPerson());
     }
 
     /*
@@ -320,7 +333,7 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     @Override
     @Transactional(readOnly = true)
     public String getLastName(Patient patient) {
-        return personService.getLastName(patient.getPerson());
+        return patient == null ? "" : personService.getLastName(patient.getPerson());
     }
 
     /*
@@ -331,7 +344,7 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     @Override
     @Transactional(readOnly = true)
     public String getLastFirstName(Patient patient) {
-        return personService.getLastFirstName(patient.getPerson());
+        return patient == null ? "" : personService.getLastFirstName(patient.getPerson());
     }
 
     /*
@@ -395,7 +408,7 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     @Override
     @Transactional(readOnly = true)
     public String getPhone(Patient patient) {
-        return personService.getPhone(patient.getPerson());
+        return patient == null ? "" : personService.getPhone(patient.getPerson());
     }
 
     /*
@@ -406,7 +419,7 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     @Override
     @Transactional(readOnly = true)
     public Person getPerson(Patient patient) {
-        return patient.getPerson();
+        return patient == null ? null : patient.getPerson();
     }
 
     /*
@@ -602,6 +615,22 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     public List<String> getPatientIdentityBySampleStatusIdAndProject(List<Integer> inclusiveStatusIdList,
             String study) {
         return getBaseObjectDAO().getPatientIdentityBySampleStatusIdAndProject(inclusiveStatusIdList, study);
+    }
+
+    @Override
+    @Transactional
+    public void persistPatientDataWithAttachments(PatientManagementInfo patientInfo, Patient patient,
+            String sysUserId) {
+        persistPatientData(patientInfo, patient, sysUserId);
+        patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto(), sysUserId);
+        if (patientInfo.getIdDocuments() != null) {
+            for (PatientIdDocumentInfo document : patientInfo.getIdDocuments()) {
+                if (document.getId() == null && document.getData() != null) {
+                    patientIdDocumentService.saveDocument(patient.getId(), document.getData(), document.getCategory(),
+                            document.getDescription(), sysUserId);
+                }
+            }
+        }
     }
 
     @Override

@@ -5,7 +5,6 @@ import {
   Dropdown,
   NumberInput,
   TextArea,
-  FormLabel,
   Stack,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";

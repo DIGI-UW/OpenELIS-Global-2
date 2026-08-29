@@ -149,9 +149,7 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
                 fhirUuid = UUID.randomUUID();
             }
             provider.setFhirUuid(fhirUuid);
-            provider.getPerson().setSysUserId("1");
             provider.setPerson(personService.save(provider.getPerson()));
-            provider.setSysUserId("1");
             dbProvider = save(provider);
         }
         return dbProvider;

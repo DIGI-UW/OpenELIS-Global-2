@@ -24,7 +24,8 @@ import {
 } from "../../common/CustomNotification";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PatientSearchSection from "./sections/PatientSearchSection";
-import LocationSection from "./sections/LocationSection";
+import VectorSection from "./sections/VectorSection";
+import CollectionConditionsSection from "./sections/CollectionConditionsSection";
 import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
 import RequesterSection from "./sections/RequesterSection";
@@ -72,7 +73,7 @@ const OrderEnter = () => {
   const [workflowType, setWorkflowType] = useState(
     orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
       "clinical",
-  ); // "clinical" | "environmental"
+  ); // "clinical" | "environmental" | "vector"
   const [labUnitConfig, setLabUnitConfig] = useState(null);
   const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
@@ -165,7 +166,8 @@ const OrderEnter = () => {
 
   // Handle workflow type switch
   const handleWorkflowTypeChange = (index) => {
-    const newWorkflowType = index === 0 ? "clinical" : "environmental";
+    const newWorkflowType =
+      index === 0 ? "clinical" : index === 1 ? "environmental" : "vector";
     setWorkflowType(newWorkflowType);
 
     // Persist workflow type to orderData for backend storage
@@ -174,14 +176,13 @@ const OrderEnter = () => {
       ...prev,
       // Set top-level patientUpdateStatus for backend
       patientUpdateStatus:
-        newWorkflowType === "environmental"
+        newWorkflowType === "environmental" || newWorkflowType === "vector"
           ? "NO_ACTION"
           : prev.patientUpdateStatus,
       patientProperties: {
         ...prev.patientProperties,
-        // Also set inside patientProperties where backend reads it
         patientUpdateStatus:
-          newWorkflowType === "environmental"
+          newWorkflowType === "environmental" || newWorkflowType === "vector"
             ? "NO_ACTION"
             : prev.patientProperties?.patientUpdateStatus,
       },
@@ -200,11 +201,22 @@ const OrderEnter = () => {
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
   const hasPatientOrSite =
     workflowType === "environmental"
-      ? !!(envFields.samplingSiteId || envFields.samplingSiteName)
-      : !!(
-          orderData?.patientProperties?.lastName ||
-          orderData?.patientProperties?.nationalId
-        );
+      ? !!(
+          envFields.samplingSiteId ||
+          envFields.samplingSiteName ||
+          envFields.vecCollectionSiteId ||
+          envFields.vecCollectionSiteName
+        )
+      : workflowType === "vector"
+        ? !!(
+            envFields.vecCollectionSiteId ||
+            envFields.vecCollectionSiteName ||
+            envFields.vecOrganismGroupId
+          )
+        : !!(
+            orderData?.patientProperties?.lastName ||
+            orderData?.patientProperties?.nationalId
+          );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
   const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
 
@@ -252,7 +264,10 @@ const OrderEnter = () => {
     try {
       await saveOrderEntry(false); // silent=false
       markStepComplete("enter");
-      history.push("/order/collect");
+      const isVector =
+        orderData?.sampleOrderItems?.environmentalFields?.workflowType ===
+        "vector";
+      history.push(isVector ? "/order/label" : "/order/collect");
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -306,7 +321,6 @@ const OrderEnter = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={0}
       title="order.step.enter"
       canProceed={canProceed}
       onSave={handleSave}
@@ -458,7 +472,13 @@ const OrderEnter = () => {
             </h4>
             <ContentSwitcher
               onChange={({ index }) => handleWorkflowTypeChange(index)}
-              selectedIndex={workflowType === "clinical" ? 0 : 1}
+              selectedIndex={
+                workflowType === "clinical"
+                  ? 0
+                  : workflowType === "environmental"
+                    ? 1
+                    : 2
+              }
             >
               <Switch name="clinical">
                 <FormattedMessage
@@ -470,6 +490,12 @@ const OrderEnter = () => {
                 <FormattedMessage
                   id="workflow.environmental"
                   defaultMessage="Environmental / Other"
+                />
+              </Switch>
+              <Switch name="vector">
+                <FormattedMessage
+                  id="workflow.vector"
+                  defaultMessage="Vector Surveillance"
                 />
               </Switch>
             </ContentSwitcher>
@@ -492,9 +518,27 @@ const OrderEnter = () => {
           />
         )}
 
-        {/* Section 3: Location (Environmental) */}
+        {/* Section 3: Sampling Site (Environmental) */}
         {workflowType === "environmental" && (
-          <LocationSection
+          <VectorSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            isReadOnly={isReadOnly && !isEditMode}
+          />
+        )}
+
+        {/* Section 3b: Collection Conditions (Environmental only) */}
+        {workflowType === "environmental" && (
+          <CollectionConditionsSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            isReadOnly={isReadOnly && !isEditMode}
+          />
+        )}
+
+        {/* Section 3: Vector Surveillance */}
+        {workflowType === "vector" && (
+          <VectorSection
             orderData={orderData}
             setOrderData={setOrderData}
             isReadOnly={isReadOnly && !isEditMode}
@@ -522,6 +566,7 @@ const OrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          workflowType={workflowType}
         />
 
         {/* Section 7: Sample & Test Selection */}
@@ -531,6 +576,7 @@ const OrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          workflowType={workflowType}
         />
       </Stack>
     </OrderWorkflowLayout>

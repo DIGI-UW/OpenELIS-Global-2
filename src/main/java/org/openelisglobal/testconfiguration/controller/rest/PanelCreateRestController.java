@@ -15,6 +15,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.panelterminology.service.PanelTerminologyMappingService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemmodule.valueholder.SystemModule;
@@ -50,6 +51,8 @@ public class PanelCreateRestController extends BaseController {
     private PanelTestConfigurationUtil panelTestConfigurationUtil;
     @Autowired
     private PanelCreateService panelCreateService;
+    @Autowired
+    private PanelTerminologyMappingService panelTerminologyMappingService;
 
     public static final String NAME_SEPARATOR = "$";
 
@@ -141,6 +144,19 @@ public class PanelCreateRestController extends BaseController {
                     workplanResultModule, resultResultModule, validationValidationModule, sampleTypeId, systemUserId);
         } catch (LIMSRuntimeException e) {
             LogEvent.logDebug(e);
+        }
+
+        // A LOINC typed here has to reach the terminology mappings too, or the new
+        // Panel Editor shows nothing for the panel and saving there writes its
+        // empty set back over this column.
+        if (panel.getId() != null) {
+            try {
+                panelTerminologyMappingService.syncLegacyLoinc(panel.getId(), loinc, systemUserId);
+            } catch (LIMSRuntimeException e) {
+                // The panel itself is created; a mapping that did not follow is
+                // recoverable by opening the editor, so never fail the create.
+                LogEvent.logError(e);
+            }
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS);

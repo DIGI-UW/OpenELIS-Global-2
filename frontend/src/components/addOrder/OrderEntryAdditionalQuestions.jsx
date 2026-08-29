@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Select, SelectItem, Stack, Column, Grid } from "@carbon/react";
+import { Select, SelectItem, Column, Grid } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../index.css";
-import "../../App.css";
 import "../Style.css";
 import { getFromOpenElisServer } from "../utils/Utils";
 import Questionnaire from "../common/Questionnaire";

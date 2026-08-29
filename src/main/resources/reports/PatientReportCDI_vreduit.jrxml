@@ -1074,7 +1074,7 @@
 					</textElement>
 					<textFieldExpression><![CDATA[$F{testName}]]></textFieldExpression>
 				</textField>
-				<textField isBlankWhenNull="true">
+				<textField isBlankWhenNull="true" textAdjust="StretchHeight">
 					<reportElement stretchType="RelativeToTallestObject" x="373" y="0" width="110" height="12">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
@@ -1104,7 +1104,7 @@
 					</textElement>
 					<textFieldExpression><![CDATA[$F{alerts}]]></textFieldExpression>
 				</textField>
-				<textField isBlankWhenNull="true">
+				<textField isBlankWhenNull="true" textAdjust="StretchHeight">
 					<reportElement stretchType="RelativeToTallestObject" x="483" y="0" width="70" height="12">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>

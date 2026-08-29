@@ -1,7 +1,6 @@
 import {
   getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
-  postToOpenElisServerForBlob,
   postToOpenElisServerForPDF,
   putToOpenElisServer,
 } from "../utils/Utils";

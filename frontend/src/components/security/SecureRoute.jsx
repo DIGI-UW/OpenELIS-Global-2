@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useRef } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../layout/Layout";
 import { Route, useLocation } from "react-router-dom";
@@ -147,9 +147,7 @@ function SecureRoute(props) {
         <FormattedMessage id="stillThere.message" />
       </Modal>
       {loading && <Loading />}
-      {!loading &&
-        !userSessionDetails.authenticated &&
-        intl.formatMessage({ id: "notAuthenticated" })}
+      {!loading && !userSessionDetails.authenticated && <Loading />}
       {!loading && userSessionDetails.authenticated && permissionGranted && (
         <>{!stillThereOpen && <Route {...props} />}</>
       )}

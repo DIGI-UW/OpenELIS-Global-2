@@ -23,23 +23,22 @@
   <include relativeToChangelogFile="true" file="003-audit-trail-menu.xml"/>
   <!-- Electronic Signature (21 CFR Part 11 Compliance) -->
   <include relativeToChangelogFile="true" file="004-electronic-signature.xml"/>
+  <include relativeToChangelogFile="true" file="003-add-sampling-site-org-type.xml"/>
+  <include relativeToChangelogFile="true" file="004-create-site-code-sequence.xml"/>
   <!-- TAT Report menu entry under Reports (OGC-310) -->
   <include relativeToChangelogFile="true" file="005-tat-report-menu.xml"/>
 
   <!-- LocationPicker refactor (Phase 5c): rename /Storage/samples → /Storage/sample-items -->
   <include relativeToChangelogFile="true" file="006-storage-sidenav-rename.xml"/>
 
+  <!-- Daemon system user for background/scheduled operations -->
+  <include relativeToChangelogFile="true" file="003-daemon-system-user.xml"/>
+
   <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
   <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>
 
   <!-- Add storage_skipped field to sample table -->
   <include relativeToChangelogFile="true" file="add_storage_skipped_to_sample.xml"/>
-
-  <!-- Add 'sampling site' organization type for environmental workflows -->
-  <include relativeToChangelogFile="true" file="003-add-sampling-site-org-type.xml"/>
-
-  <!-- Sequence for auto-generating sampling site codes -->
-  <include relativeToChangelogFile="true" file="004-create-site-code-sequence.xml"/>
 
    <!-- Sample shipping management -->
   <include relativeToChangelogFile="true" file="shipment-001-create-shipping-box-table.xml"/>
@@ -58,6 +57,8 @@
   <include relativeToChangelogFile="true" file="shipment-014-move-menu-to-top-level.xml"/>
   <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
   <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-017-add-referral-stuck-threshold-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-018-add-inbound-and-origin.xml"/>
 
   <!-- Analyzer import diagnostics: structured reason for unmapped/failed staging rows -->
   <include relativeToChangelogFile="true" file="005-analyzer-results-import-issue-reason.xml"/>
@@ -82,6 +83,16 @@
   <!-- OGC-650 (LO-01-01): patient registration GPS lat/long on person -->
   <include relativeToChangelogFile="true" file="021-add-person-gps-columns.xml"/>
 
+  <!-- Compliance Standards Administration (S-01) - Vector & Environmental Testing Module -->
+  <include relativeToChangelogFile="true" file="018-compliance-standards-complete-feature.xml"/>
+  <include relativeToChangelogFile="true" file="019-compliance-threshold-add-descriptive.xml"/>
+  <include relativeToChangelogFile="true" file="020-compliance-threshold-add-select-map.xml"/>
+  <include relativeToChangelogFile="true" file="023-compliance-threshold-test-fk.xml"/>
+  <include relativeToChangelogFile="true" file="024-compliance-standard-sample-types.xml"/>
+  <include relativeToChangelogFile="true" file="025-compliance-rename-lastupdated-column.xml"/>
+  <include relativeToChangelogFile="true" file="026-compliance-threshold-value-map.xml"/>
+  <include relativeToChangelogFile="true" file="027-compliance-frs-data-model-alignment.xml"/>
+  <!-- OGC-669 (LO-01-01): add Madagascar address columns (province, fokontany, hamlet_or_lot) on person -->
   <!-- OGC-650 (LO-01-01): admin toggle for patient GPS capture (Patient Configuration Menu) -->
   <include relativeToChangelogFile="true" file="027-add-patient-gps-capture-config.xml"/>
 
@@ -99,8 +110,141 @@
 
   <include relativeToChangelogFile="true" file="031-widen-user-and-accession-columns.xml"/>
 
+  <include relativeToChangelogFile="true" file="028-vector-pool-fanout.xml"/>
+
+  <!-- Vector sampling site: add subtype, location_org_id; drop address -->
+  <include relativeToChangelogFile="true" file="028-vector-sampling-site-add-fields.xml"/>
+
+  <!-- Barcode label info: dedupe + unique constraint on code -->
+  <include relativeToChangelogFile="true" file="029-barcode-label-info-uk.xml"/>
+
+  <!-- Environmental manifest: add container, location_details, gps_latitude, gps_longitude to sample_item -->
+  <include relativeToChangelogFile="true" file="029-sample-item-env-manifest-fields.xml"/>
+
+  <!-- Environmental collection conditions: observation types for water temp, ambient temp, weather, preservation method, field notes -->
+  <include relativeToChangelogFile="true" file="031-env-collection-condition-observation-types.xml"/>
+  <include relativeToChangelogFile="true" file="030-remove-environmental-collect-menu.xml"/>
+
+  <!-- Environmental compliance standards: observation type for linked standard IDs (JSON array) -->
+  <include relativeToChangelogFile="true" file="032-env-compliance-standards-observation-type.xml"/>
+  <!-- V-03: all vector testing and identification schema changes -->
+  <include relativeToChangelogFile="true" file="026-v03-vector-testing-identification.xml"/>
+
+  <!-- V-03: deconvolution status moved from sample to vector_pool (lot-level tracking) -->
+  <include relativeToChangelogFile="true" file="036-vector-pool-decon-status.xml"/>
+
+  <!-- V-03: shrink external_id to VARCHAR(64); enforce max decon depth of 4 in app layer -->
+  <include relativeToChangelogFile="true" file="037-vector-pool-external-id-resize.xml"/>
+
+  <!-- V-03: move identification_status + deconvolution_status/pct from sample → vector_pool -->
+  <include relativeToChangelogFile="true" file="038-vector-status-move-to-pool.xml"/>
+
+  <!-- Compliance-scoped reference ranges: FK on result_limits + sample join table -->
+  <include relativeToChangelogFile="true" file="033-compliance-result-limits.xml"/>
+
+  <!-- required_by on sample (order level) — replaces OGC-527 sample_item approach -->
+  <include relativeToChangelogFile="true" file="035-move-required-by-to-sample.xml"/>
+
+  <!-- Add REQUIRED_BY_DEADLINE to alert type constraint -->
+  <include relativeToChangelogFile="true" file="036-add-required-by-alert-type.xml"/>
+
+  <!-- Add lab_performed_sampling flag to sample_item (Environmental Order Entry) -->
+  <include relativeToChangelogFile="true" file="037-add-lab-performed-sampling-to-sample-item.xml"/>
+
   <!-- Method shortcode column + test_method join table -->
   <include relativeToChangelogFile="true" file="039-test-method-links.xml"/>
+
+  <!-- Laporan Hasil: track when compliance report PDFs are generated per sample -->
+  <include relativeToChangelogFile="true" file="040-compliance-report-generation.xml"/>
+
+  <!-- Laporan Hasil: add Environmental Reports folder + Laporan Hasil entry to the Reports menu -->
+  <include relativeToChangelogFile="true" file="041-laporan-hasil-menu.xml"/>
+
+  <!-- Vector Surveillance M3: Manual Entry Helper field map (table + seed 8 metrics) -->
+  <include relativeToChangelogFile="true" file="043-manual-entry-field-map.xml"/>
+  <!-- Vector Surveillance M3: immutable Manual Entry submission audit -->
+  <include relativeToChangelogFile="true" file="044-manual-entry-submission-audit.xml"/>
+  <!-- Vector Surveillance M3: Manual Entry Helper + field-map admin permissions -->
+  <include relativeToChangelogFile="true" file="045-manual-entry-permissions.xml"/>
+
+  <!-- Expanded measurement uncertainty + coverage factor on result -->
+  <include relativeToChangelogFile="true" file="040-add-expanded-uncertainty-to-result.xml"/>
+  <!-- Compliance dashboard: composite index on observation_history for JOIN performance -->
+  <include relativeToChangelogFile="true" file="034-compliance-dashboard-indexes.xml"/>
+
+  <!-- Domain classification (CLINICAL / ENVIRONMENTAL / VECTOR) on test_section -->
+
+  <!-- V-04 (OGC-585) Vector Surveillance Reporting: dashboard access module + URL + grants -->
+  <include relativeToChangelogFile="true" file="042-vector-surveillance-dashboard-permissions.xml"/>
+
+  <!-- V-04 (OGC-585): result-value significance classification on test_result (catalog-driven positivity) -->
+  <include relativeToChangelogFile="true" file="046-add-test-result-significance.xml"/>
+
+  <!-- OGC-624 (S-14): subcontract metadata + lifecycle status on referral -->
+  <include relativeToChangelogFile="true" file="040-referral-subcontract-metadata.xml"/>
+
+  <!-- WhatsApp notification: payload template external id + dispatched template seed -->
+  <include relativeToChangelogFile="true" file="041-whatsapp-notification.xml"/>
+
+  <!-- OGC-624 (S-14) FR-02: subcontract lifecycle audit table -->
+  <include relativeToChangelogFile="true" file="042-referral-status-history.xml"/>
+
+  <!-- OGC-527 / X-01: configurable Notification Trigger system + REFERRAL_OUT seed -->
+  <include relativeToChangelogFile="true" file="043-notification-trigger-config.xml"/>
+
+  <!-- OGC-624 / S-14: SUBCONTRACT_DISPATCHED trigger seed (uses existing trigger system) -->
+  <include relativeToChangelogFile="true" file="044-subcontract-dispatched-trigger.xml"/>
+
+  <!-- Notification delivery audit log — backs the Sent Messages admin tab -->
+  <include relativeToChangelogFile="true" file="045-notification-log.xml"/>
+
+  <!-- coc_contact_email so COC_CONTACT recipient resolves to an email address -->
+  <include relativeToChangelogFile="true" file="046-coc-contact-email.xml"/>
+
+  <!-- S-09 (OGC-580): Sample Acceptance Checklist categories + per-domain enforcement settings -->
+  <include relativeToChangelogFile="true" file="047-sample-acceptance-checklist.xml"/>
+
+  <!-- S-09 (OGC-580): immutable per-sample Sample Acceptance Record -->
+  <include relativeToChangelogFile="true" file="048-sample-acceptance-record.xml"/>
+
+  <!-- S-09 (OGC-580): Resample linkage columns on sample -->
+  <include relativeToChangelogFile="true" file="049-sample-resample-links.xml"/>
+  <include relativeToChangelogFile="true" file="050-resample-notification-trigger.xml"/>
+
+  <!-- LHU report-level amendment metadata on sample -->
+  <include relativeToChangelogFile="true" file="051-sample-amendment-metadata.xml"/>
+
+  <!-- LHU PDF archival for ISO 17025 §7.8.8 compliance -->
+  <include relativeToChangelogFile="true" file="052-compliance-report-archive.xml"/>
+
+  <!-- OGC-799: manually_entered flag for Referral (Manual Entry path) -->
+  <include relativeToChangelogFile="true" file="053-referral-manually-entered.xml"/>
+
+  <!-- OGC-803/804: reception action columns on referral (reconcile + reject) -->
+  <include relativeToChangelogFile="true" file="054-referral-reception-actions.xml"/>
+
+  <!-- OGC-804: RejectedByReferenceLab terminal ANALYSIS status -->
+  <include relativeToChangelogFile="true" file="055-rejected-by-reference-lab-status.xml"/>
+
+  <!-- OGC-804: REFERRAL_REJECTED_NEEDS_RECOLLECTION notification trigger seed -->
+  <include relativeToChangelogFile="true" file="056-referral-rejected-trigger.xml"/>
+
+  <!-- OGC-803/804: in-app Alerts feature types for referral reception -->
+  <include relativeToChangelogFile="true" file="057-referral-alert-types.xml"/>
+
+  <!-- OGC-810: REFERRAL_NUDGE notification trigger seed (notify reference lab) -->
+  <include relativeToChangelogFile="true" file="058-referral-nudge-trigger.xml"/>
+  <!-- Requester element revamp — Organization contact fields, Person department, requestor_contact requester_type -->
+  <include relativeToChangelogFile="true" file="053-requester-element-revamp.xml"/>
+
+  <!-- restrictFreeTextRequestorEntry admin config for the Requestor "+ Add new" affordance -->
+  <include relativeToChangelogFile="true" file="054-requestor-free-text-restriction.xml"/>
+
+  <!-- Sampling Site inline-create: restrictFreeTextSampSiteEntry admin config for the "+ Add new site" affordance -->
+  <include relativeToChangelogFile="true" file="055-sampling-site-free-text-restriction.xml"/>
+
+  <!-- V-04 (OGC-585) collection density: trap-count + trap-nights observation types (sampling effort) -->
+  <include relativeToChangelogFile="true" file="059-vector-trap-effort-observation-types.xml"/>
 
   <!-- OGC-949 M1 / OGC-936: Test domain + WHONET reference/config -->
   <include relativeToChangelogFile="true" file="040-test-domain-amr-whonet.xml"/>
@@ -161,5 +305,69 @@
 
   <!-- OGC-1020 / R1: unified /Results worklist — lab-unit domain + route flag -->
   <include relativeToChangelogFile="true" file="059-results-r1-unified-worklist.xml"/>
+
+  <!-- OGC-1145 / FR-11: terminology mappings keyable by sample type (null = shared) -->
+  <include relativeToChangelogFile="true" file="060-terminology-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="061-awaiting-specimen-order-status.xml"/>
+  <include relativeToChangelogFile="true" file="062-result-limits-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="063-collapse-variant-groups.xml"/>
+
+  <!-- Vector-safe twin of 066 below: same domain-enum migration but mapping
+       demo-silnas legacy code 'V' to VECTOR instead of folding it into CLINICAL.
+       Runs first; whichever of the pair finds the column already widened MARK_RANs. -->
+  <include relativeToChangelogFile="true" file="064-preserve-vector-domain-code.xml"/>
+
+  <!-- OGC-296 Sample Type Management: WHONET code on TypeOfSample + per-sample-type terminology mappings -->
+  <include relativeToChangelogFile="true" file="064-add-whonet-code-to-type-of-sample.xml"/>
+  <include relativeToChangelogFile="true" file="065-sample-type-terminology-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="066-sample-type-domain-enum-migration.xml"/>
+  <include relativeToChangelogFile="true" file="067-sample-type-disposal-instructions.xml"/>
+
+  <!-- OGC-1142 FR-83 follow-up: dictionary-variant TEST_RESULT rows written with raw
+      free-text values instead of dictionary ids broke every getDictionaryById consumer -->
+  <include relativeToChangelogFile="true" file="068-repair-free-text-dictionary-options.xml"/>
+
+  <!-- Sample Entry Config: requesterRequired toggle for Search Requester + First/Last Name -->
+  <include relativeToChangelogFile="true" file="069-requester-required-config.xml"/>
+
+  <!-- OGC-1022 (R3): CRITICAL_RESULT alert type for critical-value acknowledgment -->
+  <include relativeToChangelogFile="true" file="070-critical-result-alert-type.xml"/>
+
+  <!-- OGC-811 (Results Entry v3): order attachments scoped to analysis / result component -->
+  <include relativeToChangelogFile="true" file="071-order-attachment-result-scope.xml"/>
+
+  <!-- OGC-811: legacy analysis result files become component-scoped order attachments -->
+  <include relativeToChangelogFile="true" file="072-migrate-result-files-to-order-attachments.xml"/>
+
+  <!-- OGC-811: notes authored on a component row are scoped to that component -->
+  <include relativeToChangelogFile="true" file="073-note-component-scope.xml"/>
+
+  <!-- OGC-224: panels carry a domain (backfilled CLINICAL); membership is domain-guarded -->
+  <include relativeToChangelogFile="true" file="074-panel-domain.xml"/>
+
+  <!-- OGC-224: panel terminology mappings (LOINC backfilled from panel.loinc, the FHIR routing key) -->
+  <include relativeToChangelogFile="true" file="075-panel-terminology-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="076-rule-component-sample-type-scope.xml"/>
+  <include relativeToChangelogFile="true" file="077-alert-rule-component-scope.xml"/>
+  <include relativeToChangelogFile="true" file="078-calculation-operand-result-map.xml"/>
+  <include relativeToChangelogFile="true" file="079-alert-rule-primary-component-backfill.xml"/>
+  <include relativeToChangelogFile="true" file="080-calculation-destination-component.xml"/>
+  <include relativeToChangelogFile="true" file="081-reflex-sample-type-backfill.xml"/>
+  <include relativeToChangelogFile="true" file="082-reflex-target-sample-type.xml"/>
+  <include relativeToChangelogFile="true" file="083-override-default-translation-config.xml"/>
+  <include relativeToChangelogFile="true" file="084-panel-loinc-terminology-backfill.xml"/>
+
+  <!-- Post-merge (demo-silnas sync): restore develop's "Add Generic Order" rename,
+       de-collide the Reports presentation order, and repoint Results > Referred Out
+       at the page that replaced the route this sync removed. Renumbered from 068 to
+       run after develop's changesets; each is guarded on the pre-fix state, so a
+       deployment that already applied it MARK_RANs. -->
+  <include relativeToChangelogFile="true" file="085-restore-add-order-menu-labels.xml"/>
+
+  <!-- Post-merge (demo-silnas sync): chk_alert_type as the union of both sides'
+       alert types — 057 (referral) and 070 (critical result) each redeclare the
+       whole constraint, so whichever ran second dropped the other's values. -->
+  <include relativeToChangelogFile="true" file="086-merge-alert-type-constraint-union.xml"/>
+
 
 </databaseChangeLog>

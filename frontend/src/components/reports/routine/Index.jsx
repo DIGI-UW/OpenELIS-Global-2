@@ -1,13 +1,31 @@
 import React, { useContext, useState, useEffect } from "react";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
-import { Heading, Grid, Column, Section, Loading } from "@carbon/react";
-import { injectIntl, FormattedMessage, useIntl } from "react-intl";
+import { Loading } from "@carbon/react";
+import { injectIntl, useIntl } from "react-intl";
 import PatientStatusReport from "../common/PatientStatusReport";
 import StatisticsReport from "./StatisticsReport";
 import ReferredOut from "./ReferredOut";
 import ReportByDate from "../common/ReportByDate";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { RoutineReportsMenu } from "../Routine";
+
+// The routine side nav already pairs every report URL with its title message,
+// so derive the leaf breadcrumb from it rather than duplicating the mapping.
+export const ROUTINE_REPORT_LABELS = RoutineReportsMenu.sideNavMenuItems.reduce(
+  (labels, group) => {
+    (group.SideNavMenuItem || []).forEach((item) => {
+      const query = item.link.split("?")[1];
+      const messageId = item.label?.props?.id;
+      if (query && messageId) {
+        const params = new URLSearchParams(query);
+        labels[`${params.get("type")}_${params.get("report")}`] = messageId;
+      }
+    });
+    return labels;
+  },
+  {},
+);
 
 export const RoutineReports = (props) => {
   const { type, report } = props;
@@ -83,6 +101,7 @@ export const RoutineReports = (props) => {
         />
       )}
 
+
     </>
   );
 };
@@ -116,7 +135,15 @@ const RoutineIndex = () => {
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },
-          { label: "routine.reports", link: "/RoutineReports" },
+          { label: "routine.reports", link: "" },
+          ...(ROUTINE_REPORT_LABELS[`${type}_${report}`]
+            ? [
+                {
+                  label: ROUTINE_REPORT_LABELS[`${type}_${report}`],
+                  link: "",
+                },
+              ]
+            : []),
         ]}
       />
       <div className="orderLegendBody">

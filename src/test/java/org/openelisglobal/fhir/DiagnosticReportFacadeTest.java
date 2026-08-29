@@ -32,6 +32,9 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
 
         executeDataSetWithStateManagement("testdata/result-facade.xml");
+        // result-facade.xml seeds result id=3/4; advance result_seq past them so
+        // result inserts don't collide on result_pk under adverse test ordering.
+        resyncSequence("clinlims.result_seq", "clinlims.result");
 
         servletContext = new MockServletContext();
 

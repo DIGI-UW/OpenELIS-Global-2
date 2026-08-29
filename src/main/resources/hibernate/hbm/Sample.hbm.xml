@@ -82,8 +82,17 @@
         <property name="clinicalOrderId"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
             column="clinical_order_id" />
+        <!-- S-09 (OGC-580) Resample linkage: original <-> replacement order -->
+        <property name="resampledFromSampleId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            column="resampled_from_sample_id" precision="10" />
+        <property name="resampledToSampleId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            column="resampled_to_sample_id" precision="10" />
         <property name="isConfirmation" column="is_confirmation"
             type="java.lang.Boolean" />
+        <property name="requiredBy" column="required_by"
+            type="java.sql.Timestamp" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
         <property name="gpsLatitude" column="gps_latitude"
@@ -106,6 +115,13 @@
             column="consent_recorded_at" type="java.sql.Timestamp" />
         <property name="consentRecordedBy"
             column="consent_recorded_by" type="java.lang.String" length="255" />
+        <!--LHU report-level amendment metadata -->
+        <property name="amendsLhuNumber" column="amends_lhu_number"
+            type="java.lang.String" />
+        <property name="amendmentNumber" column="amendment_number"
+            type="java.lang.Integer" />
+        <property name="amendmentReason" column="amendment_reason"
+            type="java.lang.String" />
 
         <!-- <set name="sampleOrganizations" inverse="true"> <key> <column name="SAMP_ID"
             precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"

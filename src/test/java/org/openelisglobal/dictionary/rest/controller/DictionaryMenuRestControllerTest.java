@@ -38,6 +38,7 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
         executeDataSetWithStateManagement("testdata/dictionary.xml");
         // dictionary.xml declares no system_user; ensure the audit user so the delete
         // flow can emit history regardless of which sibling test ran (and wiped it)
@@ -101,7 +102,8 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         status = mvcResult.getResponse().getStatus();
         assertEquals(200, status);
         content = mvcResult.getResponse().getContentAsString();
-        assertEquals(content, "Dictionary Menu deleted successfully");
+        // production's Jackson-at-index-0 serializes String bodies as JSON
+        assertEquals(content, "\"Dictionary Menu deleted successfully\"");
     }
 
     private Dictionary createDictionaryObject() {

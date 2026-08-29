@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.shipment.dao.BoxSampleItemDAO;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
 import org.openelisglobal.shipment.fhir.ShippingBoxFhirTransform;
@@ -37,6 +40,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Autowired
     private ShippingBoxFhirTransform shippingBoxFhirTransform;
 
+    @Autowired
+    private ReferralService referralService;
+
     @Override
     @Transactional(readOnly = true)
     public List<ShippingBox> getAllActiveBoxes() {
@@ -48,6 +54,32 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
         } catch (Exception e) {
             logger.error("Error getting all active shipping boxes", e);
             throw new LIMSRuntimeException("Error getting all active shipping boxes", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShippingBox> getActiveOutboundBoxes() {
+        try {
+            List<ShippingBox> boxes = shippingBoxDAO.findActiveByInbound(false);
+            boxes.forEach(this::initializeLazyAssociations);
+            return boxes;
+        } catch (Exception e) {
+            logger.error("Error getting active outbound shipping boxes", e);
+            throw new LIMSRuntimeException("Error getting active outbound shipping boxes", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShippingBox> getIncomingBoxes() {
+        try {
+            List<ShippingBox> boxes = shippingBoxDAO.findActiveByInbound(true);
+            boxes.forEach(this::initializeLazyAssociations);
+            return boxes;
+        } catch (Exception e) {
+            logger.error("Error getting incoming shipping boxes", e);
+            throw new LIMSRuntimeException("Error getting incoming shipping boxes", e);
         }
     }
 
@@ -222,6 +254,16 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
                         + ". Allowed transitions: " + currentState.getAllowedTransitions());
             }
 
+            // OGC-807: cannot reconcile a box while any contained referral is still
+            // awaiting its result (non-terminal, not lost).
+            if (newState == BoxState.RECONCILED) {
+                long blocking = referralService.countReferralsBlockingReconcile(id);
+                if (blocking > 0) {
+                    throw new IllegalStateException("Cannot reconcile box " + id + ": " + blocking
+                            + " referral(s) still awaiting result reconciliation");
+                }
+            }
+
             box.setState(newState);
             box.setLastupdated(new Timestamp(System.currentTimeMillis()));
             if (systemUserId != null) {
@@ -232,6 +274,7 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
             Timestamp now = new Timestamp(System.currentTimeMillis());
             if (newState == BoxState.SENT) {
                 box.setSentDate(now);
+                dispatchBoxReferrals(id, now, systemUserId);
             } else if (newState == BoxState.RECEIVED) {
                 box.setReceivedDate(now);
             } else if (newState == BoxState.RECONCILED) {
@@ -254,6 +297,22 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
         } catch (Exception e) {
             logger.error("Error changing box state", e);
             throw new LIMSRuntimeException("Error changing box state", e);
+        }
+    }
+
+    // Sending the box dispatches its DRAFT referrals (DRAFT -> REQUESTED) using the
+    // send time as handoff. Filter to DRAFT so the transition guard never throws
+    // and
+    // poisons this transaction; other statuses are already past dispatch.
+    private void dispatchBoxReferrals(Integer boxId, Timestamp handoff, Integer systemUserId) {
+        if (systemUserId == null) {
+            return;
+        }
+        String actorUserId = String.valueOf(systemUserId);
+        for (Referral referral : referralService.getReferralsByBoxId(boxId)) {
+            if (referral.getStatus() == ReferralStatus.DRAFT) {
+                referralService.dispatchReferral(referral.getId(), handoff, actorUserId, null);
+            }
         }
     }
 
@@ -280,7 +339,7 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getBoxesForDashboard() {
         try {
-            List<ShippingBox> boxes = shippingBoxDAO.findAllActive();
+            List<ShippingBox> boxes = shippingBoxDAO.findActiveByInbound(false);
             List<Map<String, Object>> result = new ArrayList<>();
 
             // Compile all DTOs within transaction

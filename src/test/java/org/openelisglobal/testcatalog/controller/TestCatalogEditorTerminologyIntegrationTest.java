@@ -1,11 +1,13 @@
 package org.openelisglobal.testcatalog.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -91,6 +93,7 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
 
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.test_terminology_mapping WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
     }
 
@@ -229,5 +232,75 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
         assertEquals(404, controller.getTerminology("99999999").getStatusCode().value());
         assertEquals(404, controller.saveTerminology("99999999", new TerminologyResponse(), authedRequest())
                 .getStatusCode().value());
+    }
+
+    // ── "No LOINC" flag ───────────────────────────────────────────────────────
+    // The flag warns that analyzer / electronic-order results can never route to
+    // this test. A LOINC mapping scoped to a component or a specimen is still a
+    // LOINC the resolver can match, so only a test with none at all is flagged.
+
+    /** A real component row, so a component-scoped mapping's FK resolves. */
+    private String insertComponent() {
+        String componentId = UUID.randomUUID().toString();
+        jdbc.update("INSERT INTO clinlims.test_result_component"
+                + " (id, test_id, code, label, display_order, is_active, lastupdated)"
+                + " VALUES (?, ?, 'C1', 'Component 1', 0, 'Y', NOW())", componentId, TEST_ID);
+        return componentId;
+    }
+
+    private void insertLoincMapping(String componentId, Long sampleTypeId) {
+        jdbc.update(
+                "INSERT INTO clinlims.test_terminology_mapping"
+                        + " (id, test_id, component_id, sample_type_id, source, code, relationship, is_active,"
+                        + " lastupdated) VALUES (?, ?, ?, ?, 'LOINC', '1234-5', 'SAME_AS', 'Y', NOW())",
+                UUID.randomUUID().toString(), TEST_ID, componentId, sampleTypeId);
+    }
+
+    @Test
+    public void noLoinc_isTrueOnlyWhenTheTestCarriesNoLoincAnywhere() {
+        assertTrue("a test with no LOINC at all is flagged", controller.getLoincIntegrity(testId()).getBody().noLoinc);
+
+        insertLoincMapping(insertComponent(), null);
+
+        assertFalse("a component-scoped LOINC mapping means the test is identifiable",
+                controller.getLoincIntegrity(testId()).getBody().noLoinc);
+    }
+
+    /**
+     * A whole-test mapping clears the flag even though the legacy
+     * {@code test.loinc} column is empty — the mappings are the source of truth,
+     * not the column.
+     */
+    @Test
+    public void noLoinc_isFalseForAWholeTestMappingWithNoLegacyColumn() {
+        assertTrue(controller.getLoincIntegrity(testId()).getBody().noLoinc);
+
+        insertLoincMapping(null, null);
+
+        assertFalse(controller.getLoincIntegrity(testId()).getBody().noLoinc);
+    }
+
+    /** A non-LOINC mapping is not a LOINC, so the warning stands. */
+    @Test
+    public void noLoinc_staysTrueForASnomedOnlyTest() {
+        jdbc.update(
+                "INSERT INTO clinlims.test_terminology_mapping"
+                        + " (id, test_id, component_id, source, code, relationship, is_active, lastupdated)"
+                        + " VALUES (?, ?, ?, 'SNOMED', '119364003', 'SAME_AS', 'Y', NOW())",
+                UUID.randomUUID().toString(), TEST_ID, insertComponent());
+
+        assertTrue(controller.getLoincIntegrity(testId()).getBody().noLoinc);
+    }
+
+    /** A soft-deleted mapping does not count. */
+    @Test
+    public void noLoinc_ignoresAnInactiveMapping() {
+        jdbc.update(
+                "INSERT INTO clinlims.test_terminology_mapping"
+                        + " (id, test_id, component_id, source, code, relationship, is_active, lastupdated)"
+                        + " VALUES (?, ?, ?, 'LOINC', '1234-5', 'SAME_AS', 'N', NOW())",
+                UUID.randomUUID().toString(), TEST_ID, insertComponent());
+
+        assertTrue(controller.getLoincIntegrity(testId()).getBody().noLoinc);
     }
 }

@@ -88,12 +88,9 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   const autoSelectOnResults = useRef(false);
 
   const handlePatientImport = (patientId: string) => {
-    console.log("Import button clicked, patientId:", patientId);
-
     const patientSelected = patientSearchResults.find(
       (patient) => patient.patientID === patientId,
     );
-    console.log("Patient selected:", patientSelected);
 
     if (!patientSelected) {
       addNotification({
@@ -277,15 +274,17 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   };
 
   const fetchPatientDetails = (patientDetails: PatientRecord) => {
+    // Hand the patient on from inside the callback: the consumer seeds its form
+    // from this object once, so a photo attached later never reaches it.
     getFromOpenElisServer(
       `/rest/patient-photos/${patientDetails.patientPK}/${false}`,
       (response) => {
-        if (response && response.data) {
-          patientDetails.photo = response.data;
-        }
+        props.getSelectedPatient!({
+          ...patientDetails,
+          photo: response && response.data ? response.data : "",
+        });
       },
     );
-    props.getSelectedPatient!(patientDetails);
   };
 
   const handleDatePickerChange = (date: string) => {

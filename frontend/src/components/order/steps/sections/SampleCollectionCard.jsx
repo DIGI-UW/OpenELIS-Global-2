@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useContext, useEffect } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
+import { ConfigurationContext } from "../../../layout/Layout";
 import {
   Tile,
   Grid,
@@ -8,14 +9,14 @@ import {
   Button,
   Select,
   SelectItem,
-  NumberInput,
   TextInput,
   DatePicker,
   DatePickerInput,
   TimePicker,
   Link,
+  Checkbox,
 } from "@carbon/react";
-import { Printer, TrashCan } from "@carbon/icons-react";
+import { Printer } from "@carbon/icons-react";
 
 /**
  * SampleCollectionCard - Card for a single sample with collection details
@@ -44,8 +45,6 @@ const SampleCollectionCard = ({
 }) => {
   const intl = useIntl();
 
-  // Auto-populate dates/times for new samples that don't have values yet
-  // collectionDate/Time default to now; receivedDate/Time default to server values
   useEffect(() => {
     if (!sample.sampleItemId && !isReadOnly) {
       const updates = {};
@@ -96,6 +95,9 @@ const SampleCollectionCard = ({
     onUpdate(sampleIndex, { [field]: value });
   };
 
+  const { configurationProperties } = useContext(ConfigurationContext);
+  const isDayFirst = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+
   const formatDateForPicker = (dateStr) => {
     if (!dateStr) return "";
     if (dateStr.includes("/")) {
@@ -103,7 +105,9 @@ const SampleCollectionCard = ({
     }
     const parts = dateStr.split("-");
     if (parts.length === 3) {
-      return `${parts[1]}/${parts[2]}/${parts[0]}`;
+      return isDayFirst
+        ? `${parts[2]}/${parts[1]}/${parts[0]}`
+        : `${parts[1]}/${parts[2]}/${parts[0]}`;
     }
     return dateStr;
   };
@@ -112,7 +116,10 @@ const SampleCollectionCard = ({
     if (!dateStr) return "";
     const parts = dateStr.split("/");
     if (parts.length === 3) {
-      return `${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
+      const [first, second, year] = parts;
+      const month = isDayFirst ? second : first;
+      const day = isDayFirst ? first : second;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     }
     return dateStr;
   };
@@ -218,19 +225,19 @@ const SampleCollectionCard = ({
 
         {/* Quantity */}
         <Column lg={4} md={4} sm={2}>
-          <NumberInput
+          <TextInput
             id={`quantity-${sampleIndex}`}
-            label={intl.formatMessage({
+            labelText={intl.formatMessage({
               id: "collect.sample.quantity",
               defaultMessage: "Quantity",
             })}
-            value={sample.quantity || ""}
-            onChange={(e, { value }) => handleFieldChange("quantity", value)}
+            type="number"
+            min="0"
+            step="0.5"
+            value={sample.quantity ?? ""}
+            onChange={(e) => handleFieldChange("quantity", e.target.value)}
             onWheel={(e) => e.target.blur()}
-            min={0}
-            step={0.5}
             disabled={isReadOnly}
-            hideSteppers
           />
         </Column>
 
@@ -278,7 +285,7 @@ const SampleCollectionCard = ({
         <Column lg={4} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
-            maxDate={new Date().toISOString()}
+            maxDate={new Date()}
             value={formatDateForPicker(sample.collectionDate)}
             onChange={(dates) => {
               if (dates && dates[0]) {
@@ -342,6 +349,22 @@ const SampleCollectionCard = ({
             disabled={isReadOnly}
           />
         </Column>
+
+        {/* Lab Performed Sampling */}
+        <Column lg={7} md={4} sm={4} className="checkbox-column">
+          <Checkbox
+            id={`labPerformedSampling-${sampleIndex}`}
+            labelText={intl.formatMessage({
+              id: "collect.sample.labPerformedSampling",
+              defaultMessage: "Lab performed sampling",
+            })}
+            checked={!!sample.labPerformedSampling}
+            onChange={(_, { checked }) =>
+              handleFieldChange("labPerformedSampling", checked)
+            }
+            disabled={isReadOnly}
+          />
+        </Column>
       </Grid>
 
       {/* Received at Lab Section */}
@@ -366,7 +389,7 @@ const SampleCollectionCard = ({
           <Column lg={4} md={4} sm={4}>
             <DatePicker
               datePickerType="single"
-              maxDate={new Date().toISOString()}
+              maxDate={new Date()}
               onChange={(dates) => {
                 if (dates && dates[0]) {
                   const month = String(dates[0].getMonth() + 1).padStart(
@@ -434,21 +457,6 @@ const SampleCollectionCard = ({
             )}
           </Column>
         </Grid>
-      </div>
-
-      {/* NCE Link */}
-      <div className="nce-section">
-        <Link
-          className="nce-link"
-          onClick={() => {
-            // TODO: Navigate to NCE form
-          }}
-        >
-          <FormattedMessage
-            id="collect.sample.nce.link"
-            defaultMessage="Report Non-Conforming Event (NCE)"
-          />
-        </Link>
       </div>
     </Tile>
   );

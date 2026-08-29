@@ -18,6 +18,7 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -50,6 +51,9 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
 
     @Autowired
     private OrganizationService organizationService;
+
+    @Autowired
+    private DaemonContextExecutor daemonContextExecutor;
 
     @Value("${org.openelisglobal.facility.country:}")
     private String facilityCountry;
@@ -378,8 +382,10 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
             syncToLocalFhirServer();
             syncToRemoteFhirServers();
 
-            // Persist / update the facility row in the OpenELIS DB
-            syncToOpenElisDb();
+            // Persist / update the facility row in the OpenELIS DB.
+            // Runs in daemon context — this is a system operation at startup
+            // per the Daemon Eligibility Contract (Mechanism 2).
+            daemonContextExecutor.executeAsDaemon(this::syncToOpenElisDb);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "initialize",
                     "Facility Organization initialized successfully with UUID: " + facilityUuid + ", Name: "

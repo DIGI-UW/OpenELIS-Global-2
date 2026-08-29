@@ -1115,134 +1115,181 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> searchLocations(String searchTerm) {
-        List<Map<String, Object>> results = new ArrayList<>();
+        // Collect candidate results keyed by "type:id" to deduplicate when the same
+        // node surfaces both as a direct match and as a descendant of another match.
+        java.util.LinkedHashMap<String, Map<String, Object>> seen = new java.util.LinkedHashMap<>();
 
-        // Search across all hierarchy levels
         List<Map<String, Object>> rooms = storageSearchService.searchRooms(searchTerm);
         List<Map<String, Object>> devices = storageSearchService.searchDevices(searchTerm);
         List<Map<String, Object>> shelves = storageSearchService.searchShelves(searchTerm);
         List<Map<String, Object>> racks = storageSearchService.searchRacks(searchTerm);
 
-        // Add hierarchical paths and type information
+        // --- Rooms matched directly: add room + entire subtree ---
         for (Map<String, Object> room : rooms) {
-            Map<String, Object> result = new HashMap<>(room);
-            result.put("hierarchicalPath", room.get("name"));
-            result.put("type", "room");
-            // Rooms have no parents
-            results.add(result);
+            String roomName = (String) room.get("name");
+            Object roomId = room.get("id");
+            // Room itself
+            Map<String, Object> r = new HashMap<>(room);
+            r.put("hierarchicalPath", roomName);
+            r.put("type", "room");
+            r.put("depth", 0);
+            seen.put("room:" + roomId, r);
+            // Expand children
+            if (roomId instanceof Integer) {
+                expandRoomSubtree((Integer) roomId, roomName, seen);
+            }
         }
 
+        // --- Devices matched directly: add device + its subtree ---
         for (Map<String, Object> device : devices) {
-            Map<String, Object> result = new HashMap<>(device);
+            Object deviceId = device.get("id");
             String roomName = (String) device.get("roomName");
             String deviceName = (String) device.get("name");
-            String path = roomName != null ? roomName + " > " + deviceName : deviceName;
-            result.put("hierarchicalPath", path);
-            // Ensure type is set to hierarchy level (device is already set by
-            // getDevicesForAPI)
-            result.put("type", "device");
-            // Preserve deviceType from getDevicesForAPI (physical type: freezer,
-            // refrigerator, etc.)
-            // deviceType is already in the map from getDevicesForAPI, no need to override
-
-            // Ensure parentRoomId and parentRoomName are explicitly set
-            Object parentRoomId = device.get("parentRoomId");
-            if (parentRoomId != null) {
-                result.put("parentRoomId", parentRoomId);
+            String path = roomName != null ? roomName + " › " + deviceName : deviceName;
+            Map<String, Object> r = new HashMap<>(device);
+            r.put("hierarchicalPath", path);
+            r.put("type", "device");
+            r.put("depth", roomName != null ? 1 : 0);
+            seen.putIfAbsent("device:" + deviceId, r);
+            if (deviceId instanceof Integer) {
+                expandDeviceSubtree((Integer) deviceId, path, seen);
             }
-            if (roomName != null) {
-                result.put("parentRoomName", roomName);
-            }
-
-            results.add(result);
         }
 
+        // --- Shelves matched directly: add shelf + its subtree ---
         for (Map<String, Object> shelf : shelves) {
-            Map<String, Object> result = new HashMap<>(shelf);
+            Object shelfId = shelf.get("id");
             String roomName = (String) shelf.get("roomName");
             String deviceName = (String) shelf.get("deviceName");
             String shelfLabel = (String) shelf.get("label");
-            StringBuilder pathBuilder = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
+            int depth = 0;
             if (roomName != null) {
-                pathBuilder.append(roomName).append(" > ");
+                sb.append(roomName).append(" › ");
+                depth++;
             }
             if (deviceName != null) {
-                pathBuilder.append(deviceName).append(" > ");
+                sb.append(deviceName).append(" › ");
+                depth++;
             }
-            pathBuilder.append(shelfLabel);
-            result.put("hierarchicalPath", pathBuilder.toString());
-            result.put("type", "shelf");
-
-            // Ensure parent IDs and names are explicitly set (they should already be in the
-            // map from getShelvesForAPI)
-            Object parentDeviceId = shelf.get("parentDeviceId");
-            Object parentRoomId = shelf.get("parentRoomId");
-            if (parentDeviceId != null) {
-                result.put("parentDeviceId", parentDeviceId);
+            sb.append(shelfLabel);
+            Map<String, Object> r = new HashMap<>(shelf);
+            r.put("hierarchicalPath", sb.toString());
+            r.put("type", "shelf");
+            r.put("depth", depth);
+            seen.putIfAbsent("shelf:" + shelfId, r);
+            if (shelfId instanceof Integer) {
+                expandShelfSubtree((Integer) shelfId, sb.toString(), seen);
             }
-            if (parentRoomId != null) {
-                result.put("parentRoomId", parentRoomId);
-            }
-            // Parent names should already be in the map, but ensure they're explicitly set
-            if (deviceName != null) {
-                result.put("parentDeviceName", deviceName);
-            }
-            if (roomName != null) {
-                result.put("parentRoomName", roomName);
-            }
-
-            results.add(result);
         }
 
+        // --- Racks matched directly: add rack + its boxes ---
         for (Map<String, Object> rack : racks) {
-            Map<String, Object> result = new HashMap<>(rack);
+            Object rackId = rack.get("id");
             String roomName = (String) rack.get("roomName");
             String deviceName = (String) rack.get("deviceName");
             String shelfLabel = (String) rack.get("shelfLabel");
             String rackLabel = (String) rack.get("label");
-            StringBuilder pathBuilder = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
+            int depth = 0;
             if (roomName != null) {
-                pathBuilder.append(roomName).append(" > ");
+                sb.append(roomName).append(" › ");
+                depth++;
             }
             if (deviceName != null) {
-                pathBuilder.append(deviceName).append(" > ");
+                sb.append(deviceName).append(" › ");
+                depth++;
             }
             if (shelfLabel != null) {
-                pathBuilder.append(shelfLabel).append(" > ");
+                sb.append(shelfLabel).append(" › ");
+                depth++;
             }
-            pathBuilder.append(rackLabel);
-            result.put("hierarchicalPath", pathBuilder.toString());
-            result.put("type", "rack");
-
-            // Ensure parent IDs and names are explicitly set (they should already be in the
-            // map from getRacksForAPI)
-            Object parentShelfId = rack.get("parentShelfId");
-            Object parentDeviceId = rack.get("parentDeviceId");
-            Object parentRoomId = rack.get("parentRoomId");
-            if (parentShelfId != null) {
-                result.put("parentShelfId", parentShelfId);
+            sb.append(rackLabel);
+            Map<String, Object> r = new HashMap<>(rack);
+            r.put("hierarchicalPath", sb.toString());
+            r.put("type", "rack");
+            r.put("depth", depth);
+            seen.putIfAbsent("rack:" + rackId, r);
+            if (rackId instanceof Integer) {
+                expandRackSubtree((Integer) rackId, sb.toString(), seen);
             }
-            if (parentDeviceId != null) {
-                result.put("parentDeviceId", parentDeviceId);
-            }
-            if (parentRoomId != null) {
-                result.put("parentRoomId", parentRoomId);
-            }
-            // Parent names should already be in the map, but ensure they're explicitly set
-            if (shelfLabel != null) {
-                result.put("parentShelfLabel", shelfLabel);
-            }
-            if (deviceName != null) {
-                result.put("parentDeviceName", deviceName);
-            }
-            if (roomName != null) {
-                result.put("parentRoomName", roomName);
-            }
-
-            results.add(result);
         }
 
+        // Sort by hierarchicalPath so siblings appear grouped
+        List<Map<String, Object>> results = new ArrayList<>(seen.values());
+        results.sort(java.util.Comparator.comparing(m -> String.valueOf(m.getOrDefault("hierarchicalPath", ""))));
         return results;
+    }
+
+    private void expandRoomSubtree(Integer roomId, String roomPath,
+            java.util.LinkedHashMap<String, Map<String, Object>> seen) {
+        List<Map<String, Object>> devices = getDevicesForAPI(roomId);
+        for (Map<String, Object> device : devices) {
+            Object deviceId = device.get("id");
+            String deviceName = (String) device.get("name");
+            String devicePath = roomPath + " › " + deviceName;
+            Map<String, Object> r = new HashMap<>(device);
+            r.put("hierarchicalPath", devicePath);
+            r.put("type", "device");
+            r.put("depth", 1);
+            seen.putIfAbsent("device:" + deviceId, r);
+            if (deviceId instanceof Integer) {
+                expandDeviceSubtree((Integer) deviceId, devicePath, seen);
+            }
+        }
+    }
+
+    private void expandDeviceSubtree(Integer deviceId, String devicePath,
+            java.util.LinkedHashMap<String, Map<String, Object>> seen) {
+        List<Map<String, Object>> shelves = getShelvesForAPI(deviceId);
+        for (Map<String, Object> shelf : shelves) {
+            Object shelfId = shelf.get("id");
+            String shelfLabel = (String) shelf.get("label");
+            String shelfPath = devicePath + " › " + shelfLabel;
+            int depth = (int) java.util.Optional.ofNullable(seen.get("device:" + deviceId)).map(d -> d.get("depth"))
+                    .orElse(1) + 1;
+            Map<String, Object> r = new HashMap<>(shelf);
+            r.put("hierarchicalPath", shelfPath);
+            r.put("type", "shelf");
+            r.put("depth", depth);
+            seen.putIfAbsent("shelf:" + shelfId, r);
+            if (shelfId instanceof Integer) {
+                expandShelfSubtree((Integer) shelfId, shelfPath, seen);
+            }
+        }
+    }
+
+    private void expandShelfSubtree(Integer shelfId, String shelfPath,
+            java.util.LinkedHashMap<String, Map<String, Object>> seen) {
+        List<Map<String, Object>> racks = getRacksForAPI(shelfId);
+        for (Map<String, Object> rack : racks) {
+            Object rackId = rack.get("id");
+            String rackLabel = (String) rack.get("label");
+            String rackPath = shelfPath + " › " + rackLabel;
+            Map<String, Object> r = new HashMap<>(rack);
+            r.put("hierarchicalPath", rackPath);
+            r.put("type", "rack");
+            seen.putIfAbsent("rack:" + rackId, r);
+            if (rackId instanceof Integer) {
+                expandRackSubtree((Integer) rackId, rackPath, seen);
+            }
+        }
+    }
+
+    private void expandRackSubtree(Integer rackId, String rackPath,
+            java.util.LinkedHashMap<String, Map<String, Object>> seen) {
+        List<Map<String, Object>> boxes = getBoxesForAPI(rackId);
+        for (Map<String, Object> box : boxes) {
+            Object boxId = box.get("id");
+            String boxLabel = (String) box.get("label");
+            String boxPath = rackPath + " › " + boxLabel;
+            Map<String, Object> r = new HashMap<>(box);
+            r.put("hierarchicalPath", boxPath);
+            r.put("type", "box");
+            // Ensure "name" is populated so the frontend REPLACE_SELECTION action has it
+            r.putIfAbsent("name", boxLabel);
+            seen.putIfAbsent("box:" + boxId, r);
+        }
     }
 
     // ========== Phase 6: Location CRUD Operations - Constraint Validation Methods

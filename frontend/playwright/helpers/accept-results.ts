@@ -73,6 +73,25 @@ export async function acceptAndVerifyResults(
     stagedCountBeforeSave = await stagedRows().count();
   }
 
+  // OGC-1145 FR-8 — a specimen-ambiguous row (its test runs on several sample
+  // types) offers a chooser and would be HELD awaiting specimen if accepted
+  // without a choice. Acceptance propagates to every row of an accession's
+  // group, and only the group's first row carries the accession cell that
+  // stagedRows() matches — so do what the reviewer does and pick a specimen on
+  // EVERY chooser on the page, group members included.
+  const sampleTypeSelects = page.locator('select[id$=".typeOfSampleId"]');
+  const chooserCount = await sampleTypeSelects.count();
+  for (let i = 0; i < chooserCount; i++) {
+    const sampleTypeSelect = sampleTypeSelects.nth(i);
+    const firstOption = await sampleTypeSelect
+      .locator('option:not([value=""])')
+      .first()
+      .getAttribute("value");
+    if (firstOption) {
+      await sampleTypeSelect.selectOption(firstOption);
+    }
+  }
+
   for (let i = 0; i < stagedCountBeforeSave; i++) {
     const acceptInput = stagedRows()
       .nth(i)

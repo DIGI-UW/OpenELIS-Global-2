@@ -34,6 +34,7 @@ import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
 import "./AnalyzersList.css";
 
@@ -293,6 +294,13 @@ const AnalyzersList = () => {
         data-testid="analyzers-list-header"
       >
         <div className="analyzers-list-header-title">
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "" },
+              { label: "analyzer.page.hierarchy.list", link: "" },
+            ]}
+          />
           <PageTitle
             breadcrumbs={[
               {

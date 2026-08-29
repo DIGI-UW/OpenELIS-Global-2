@@ -148,7 +148,13 @@ const ReflexCalcSection = ({ testId }) => {
                   <TableRow key={r.id} data-testid={`reflex-row-${r.id}`}>
                     <TableCell>
                       <Link
-                        href={REFLEX_RULES_URL}
+                        // A legacy reflex row belongs to no rule record, so there
+                        // is nothing to open on its own — fall back to the list.
+                        href={
+                          r.ruleId
+                            ? `${REFLEX_RULES_URL}?id=${encodeURIComponent(r.ruleId)}`
+                            : REFLEX_RULES_URL
+                        }
                         target="_blank"
                         renderIcon={Launch}
                       >
@@ -187,10 +193,16 @@ const ReflexCalcSection = ({ testId }) => {
           <strong>
             <FormattedMessage id="label.testCatalog.reflexCalc.calc.feedsInto" />
           </strong>
+          {/* Same InlineNotification treatment as the Reflex Tests block above. */}
           {data.feedsInto.length === 0 ? (
-            <p>
-              <FormattedMessage id="label.testCatalog.reflexCalc.calc.empty" />
-            </p>
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: "label.testCatalog.reflexCalc.calc.feedsInto.empty",
+              })}
+            />
           ) : (
             <Table size="sm" aria-label="calc-feeds-into">
               <TableHead>
@@ -209,7 +221,15 @@ const ReflexCalcSection = ({ testId }) => {
               <TableBody>
                 {data.feedsInto.map((c) => (
                   <TableRow key={c.id} data-testid={`feeds-row-${c.id}`}>
-                    <TableCell>{c.name}</TableCell>
+                    <TableCell>
+                      <Link
+                        href={`${CALC_URL}?id=${encodeURIComponent(c.id)}`}
+                        target="_blank"
+                        renderIcon={Launch}
+                      >
+                        {c.name || "—"}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <code>{c.formula}</code>
                     </TableCell>
@@ -226,9 +246,14 @@ const ReflexCalcSection = ({ testId }) => {
             <FormattedMessage id="label.testCatalog.reflexCalc.calc.calculatedBy" />
           </strong>
           {data.calculatedBy.length === 0 ? (
-            <p>
-              <FormattedMessage id="label.testCatalog.reflexCalc.calc.empty" />
-            </p>
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: "label.testCatalog.reflexCalc.calc.calculatedBy.empty",
+              })}
+            />
           ) : (
             <Table size="sm" aria-label="calc-calculated-by">
               <TableHead>
@@ -244,7 +269,15 @@ const ReflexCalcSection = ({ testId }) => {
               <TableBody>
                 {data.calculatedBy.map((c) => (
                   <TableRow key={c.id} data-testid={`calcby-row-${c.id}`}>
-                    <TableCell>{c.name}</TableCell>
+                    <TableCell>
+                      <Link
+                        href={`${CALC_URL}?id=${encodeURIComponent(c.id)}`}
+                        target="_blank"
+                        renderIcon={Launch}
+                      >
+                        {c.name || "—"}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <code>{c.formula}</code>
                     </TableCell>

@@ -6,8 +6,14 @@ import AlertSummaryTiles from "./AlertSummaryTiles";
 import AlertsTable from "./AlertsTable";
 import AlertAcknowledgeModal from "./AlertAcknowledgeModal";
 import EQADeadlineSummary from "./EQADeadlineSummary";
+import PageBreadCrumb from "../common/PageBreadCrumb";
 
 const AUTO_REFRESH_INTERVAL = 60000;
+
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "alerts.dashboard.title", link: "/Alerts" },
+];
 
 const AlertsDashboard = () => {
   const intl = useIntl();
@@ -67,7 +73,7 @@ const AlertsDashboard = () => {
   const handleAcknowledgeSubmit = (alertId, comment) => {
     const payload = comment ? JSON.stringify({ notes: comment }) : "{}";
     putToOpenElisServer(
-      `/rest/alerts/${alertId}/acknowledge`,
+      `/rest/alerts/dashboard/${alertId}/acknowledge`,
       payload,
       (status) => {
         if (status === 200) {
@@ -87,6 +93,7 @@ const AlertsDashboard = () => {
 
   return (
     <div className="alerts-dashboard pageContent">
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>{intl.formatMessage({ id: "alerts.dashboard.title" })}</h2>
 
       <AlertSummaryTiles summary={summary} />
@@ -106,6 +113,12 @@ const AlertsDashboard = () => {
             <SelectItem
               value="EQA_DEADLINE"
               text={intl.formatMessage({ id: "alerts.type.eqa_deadline" })}
+            />
+            <SelectItem
+              value="REQUIRED_BY_DEADLINE"
+              text={intl.formatMessage({
+                id: "alerts.type.required_by_deadline",
+              })}
             />
             <SelectItem
               value="SAMPLE_EXPIRATION"

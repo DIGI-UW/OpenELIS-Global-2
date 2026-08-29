@@ -6,6 +6,8 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.valueholder.Test;
 
@@ -47,6 +49,13 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
 
     ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient);
 
+    /**
+     * OGC-1145 Phase 2 — specimen-aware selection: limits scoped to
+     * {@code sampleTypeId} win over shared (null-scope) rows; null sample type
+     * evaluates against the shared set.
+     */
+    ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient, String sampleTypeId);
+
     ResultLimit getResultLimitForTestAndPatient(Test test, Patient patient);
 
     /**
@@ -57,6 +66,9 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      */
     ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient);
 
+    /** Specimen-aware variant of the component selection (OGC-1145 Phase 2). */
+    ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient, String sampleTypeId);
+
     List<IdValuePair> getPredefinedAgeRanges();
 
     List<ResultLimit> getResultLimits(String testId);
@@ -64,4 +76,29 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
     List<ResultLimit> getResultLimits(Test test);
 
     ResultLimit getResultLimitForAnalysis(Analysis analysis);
+
+    List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis);
+
+    List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis, String resultValue);
+
+    /**
+     * The reference range for one displayed result row: a multi-component test uses
+     * the range of the component the result belongs to, any other test uses the
+     * test-level range, and both are chosen for the patient's age/gender and scoped
+     * to the analysis's specimen.
+     *
+     * <p>
+     * This is the single selection behind both Results Entry and Validation, so the
+     * two screens cannot show different ranges for the same result.
+     */
+    ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient);
+
+    /**
+     * As above, but for a caller that already knows which component it is rendering
+     * — a results screen lays out one row per component, including components with
+     * no result recorded yet, and each row must show its own component's range.
+     * {@code componentId} wins when set; otherwise the component is derived from
+     * the result.
+     */
+    ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient, String componentId);
 }

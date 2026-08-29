@@ -27,7 +27,6 @@ import {
   Warning,
   Calendar,
   Time,
-  User,
   Download,
 } from "@carbon/icons-react";
 import { LineChart } from "@carbon/charts-react";

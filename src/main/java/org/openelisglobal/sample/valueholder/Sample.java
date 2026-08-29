@@ -39,6 +39,13 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private String accessionNumber;
     private String packageId;
     private String domain;
+    // S-09 (OGC-580) Resample linkage: original <-> replacement order
+    private String resampledFromSampleId;
+    private String resampledToSampleId;
+    // OGC-776 (S-15e) LHU report-level amendment
+    private String amendsLhuNumber;
+    private Integer amendmentNumber;
+    private String amendmentReason;
     private String nextItemSequence;
     private String revision;
     private Date enteredDate;
@@ -50,6 +57,7 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private Timestamp collectionDate;
     private String collectionDateForDisplay;
     private String collectionTimeForDisplay;
+    private Timestamp requiredBy;
     private String clientReference;
     private String status;
     private Date releasedDate;
@@ -131,12 +139,60 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
         collectionTimeForDisplay = DateUtil.convertTimestampToStringTime(collectionDate);
     }
 
+    public Timestamp getRequiredBy() {
+        return requiredBy;
+    }
+
+    public void setRequiredBy(Timestamp requiredBy) {
+        this.requiredBy = requiredBy;
+    }
+
     public String getDomain() {
         return domain;
     }
 
     public void setDomain(String domain) {
         this.domain = domain;
+    }
+
+    public String getResampledFromSampleId() {
+        return resampledFromSampleId;
+    }
+
+    public void setResampledFromSampleId(String resampledFromSampleId) {
+        this.resampledFromSampleId = resampledFromSampleId;
+    }
+
+    public String getResampledToSampleId() {
+        return resampledToSampleId;
+    }
+
+    public void setResampledToSampleId(String resampledToSampleId) {
+        this.resampledToSampleId = resampledToSampleId;
+    }
+
+    public String getAmendsLhuNumber() {
+        return amendsLhuNumber;
+    }
+
+    public void setAmendsLhuNumber(String amendsLhuNumber) {
+        this.amendsLhuNumber = amendsLhuNumber;
+    }
+
+    public Integer getAmendmentNumber() {
+        return amendmentNumber;
+    }
+
+    public void setAmendmentNumber(Integer amendmentNumber) {
+        this.amendmentNumber = amendmentNumber;
+    }
+
+    public String getAmendmentReason() {
+        return amendmentReason;
+    }
+
+    public void setAmendmentReason(String amendmentReason) {
+        this.amendmentReason = amendmentReason;
     }
 
     public Date getEnteredDate() {

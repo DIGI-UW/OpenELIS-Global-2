@@ -1,5 +1,5 @@
 import React from "react";
-import { Grid, Column, Button, Tag } from "@carbon/react";
+import { Button, Tag } from "@carbon/react";
 import { Time } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 

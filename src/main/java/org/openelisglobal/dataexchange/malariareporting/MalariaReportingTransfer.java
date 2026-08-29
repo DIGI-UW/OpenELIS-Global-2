@@ -20,6 +20,7 @@ import java.util.List;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportQueueType;
 import org.openelisglobal.dataexchange.common.ITransmissionResponseHandler;
@@ -100,7 +101,9 @@ public class MalariaReportingTransfer {
         private void bufferResults(String msg) {
             ReportExternalExport report = new ReportExternalExport();
             report.setData(msg);
-            report.setSysUserId("1");
+            UserContextHolder uch = SpringContext.getBean(UserContextHolder.class);
+            report.setSysUserId(
+                    uch.getCurrentSysUserId() != null ? uch.getCurrentSysUserId() : uch.getDaemonSysUserId());
             report.setEventDate(DateUtil.getNowAsTimestamp());
             report.setCollectionDate(DateUtil.getNowAsTimestamp());
             report.setTypeId(QUEUE_TYPE_ID);
@@ -131,6 +134,8 @@ public class MalariaReportingTransfer {
 
         private void markResultsAsSent() {
             Timestamp now = DateUtil.getNowAsTimestamp();
+            UserContextHolder uch = SpringContext.getBean(UserContextHolder.class);
+            String sysUserId = uch.getCurrentSysUserId() != null ? uch.getCurrentSysUserId() : uch.getDaemonSysUserId();
 
             List<DocumentTrack> documents = new ArrayList<>();
 
@@ -140,7 +145,7 @@ public class MalariaReportingTransfer {
                 document.setRecordId(result.getId());
                 document.setReportTime(now);
                 document.setTableId(RESULT_REFERRANCE_TABLE_ID);
-                document.setSysUserId("1");
+                document.setSysUserId(sysUserId);
                 documents.add(document);
             }
 

@@ -8,12 +8,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -24,18 +26,21 @@ import org.springframework.transaction.annotation.Transactional;
  * CSV format for defining sample types.
  *
  * Expected CSV format:
- * description,localAbbreviation,domain,isActive,sortOrder,localization:en,localization:fr
+ * description,localAbbreviation,domain,isActive,sortOrder,loinc,localization:en,localization:fr
  * Whole Blood,WB,H,Y,1,Whole Blood,Sang Total Serum,SER,H,Y,2,Serum,Sérum
  * Plasma,PLS,H,Y,3,Plasma,Plasma Urine,UR,H,Y,4,Urine,Urine
  *
  * Notes: - First line is the header (required) - description and
  * localAbbreviation are required fields - domain defaults to "H" (Human) if not
  * specified - isActive defaults to "Y" if not specified - sortOrder is optional
- * (auto-assigned if not provided) - localization:xx columns (where xx is a
- * locale code like en, fr, es) provide translations - If no localization
- * columns are provided, description is used as the default value for the
- * fallback locale (en) - Existing sample types with matching localAbbreviation
- * and domain will be updated
+ * (auto-assigned if not provided) - loinc is optional; a code given here is
+ * recorded as a LOINC / SAME_AS terminology mapping, which is what the Sample
+ * Type Editor reads, and an omitted column says nothing about LOINC rather than
+ * asking for an existing mapping to be cleared - localization:xx columns (where
+ * xx is a locale code like en, fr, es) provide translations - If no
+ * localization columns are provided, description is used as the default value
+ * for the fallback locale (en) - Existing sample types with matching
+ * localAbbreviation and domain will be updated
  */
 @Component
 public class TypeOfSampleConfigurationHandler implements DomainConfigurationHandler {
@@ -51,6 +56,9 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
 
     @Autowired
     private LocalizationValueService localizationValueService;
+
+    @Autowired
+    private SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService;
 
     @Override
     public String getDomainName() {
@@ -87,6 +95,9 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         int domainIndex = findColumnIndex(headers, "domain");
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
+        // Optional: a LOINC code for the specimen, surfaced in the Sample Type
+        // Editor as a LOINC / SAME_AS terminology mapping.
+        int loincIndex = findColumnIndex(headers, "loinc");
 
         // Detect localization columns (localization:en, localization:fr, etc.)
         Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
@@ -106,7 +117,8 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             try {
                 String[] values = parseCsvLine(line);
                 TypeOfSample sampleType = processCsvLine(values, descriptionIndex, localAbbreviationIndex, domainIndex,
-                        isActiveIndex, sortOrderIndex, localizationColumns, lineNumber, fileName, nextSortOrder);
+                        isActiveIndex, sortOrderIndex, loincIndex, localizationColumns, lineNumber, fileName,
+                        nextSortOrder);
                 if (sampleType != null) {
                     processedSampleTypes.add(sampleType);
                     nextSortOrder++;
@@ -213,8 +225,8 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     }
 
     private TypeOfSample processCsvLine(String[] values, int descriptionIndex, int localAbbreviationIndex,
-            int domainIndex, int isActiveIndex, int sortOrderIndex, Map<String, Integer> localizationColumns,
-            int lineNumber, String fileName, int defaultSortOrder) {
+            int domainIndex, int isActiveIndex, int sortOrderIndex, int loincIndex,
+            Map<String, Integer> localizationColumns, int lineNumber, String fileName, int defaultSortOrder) {
 
         // Get required fields
         String description = getValueOrEmpty(values, descriptionIndex);
@@ -252,13 +264,38 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             updateSampleTypeFromCsv(existingSampleType, values, description, localAbbreviation, isActiveIndex,
                     sortOrderIndex, localizationColumns, defaultSortOrder);
             typeOfSampleService.update(existingSampleType);
+            syncLoincMapping(existingSampleType, values, loincIndex);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Updated existing sample type: " + description + " (" + localAbbreviation + ")");
             return existingSampleType;
         } else {
             // Create new sample type
-            return createSampleType(values, description, localAbbreviation, domain, isActiveIndex, sortOrderIndex,
-                    localizationColumns, defaultSortOrder);
+            TypeOfSample created = createSampleType(values, description, localAbbreviation, domain, isActiveIndex,
+                    sortOrderIndex, localizationColumns, defaultSortOrder);
+            syncLoincMapping(created, values, loincIndex);
+            return created;
+        }
+    }
+
+    /**
+     * Record a configured LOINC code as a terminology mapping on the sample type.
+     *
+     * <p>
+     * A code in the configuration file is only useful if the editor can see it, and
+     * the editor reads the mapping store. Failures are logged rather than raised:
+     * one unusable code must not abandon the rest of the file, and the sample type
+     * itself is already saved by this point.
+     */
+    private void syncLoincMapping(TypeOfSample sampleType, String[] values, int loincIndex) {
+        String loinc = getValueOrEmpty(values, loincIndex);
+        if (sampleType == null || sampleType.getId() == null || loinc.isEmpty()) {
+            return;
+        }
+        try {
+            sampleTypeTerminologyMappingService.syncConfiguredLoinc(sampleType.getId(), loinc, "1");
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "syncLoincMapping", "Could not record LOINC " + loinc
+                    + " for sample type " + sampleType.getDescription() + ": " + e.getMessage());
         }
     }
 
@@ -273,7 +310,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     private TypeOfSample findSampleTypeByDescriptionAndDomain(String description, String domain) {
         TypeOfSample searchType = new TypeOfSample();
         searchType.setDescription(description);
-        searchType.setDomain(domain);
+        searchType.setDomain(Domain.normalize(domain));
         return typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, true);
     }
 
@@ -301,8 +338,6 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             }
         }
 
-        sampleType.setSysUserId("1"); // System user for configuration loading
-
         // Handle localization
         processLocalization(sampleType, values, description, localizationColumns);
     }
@@ -319,7 +354,6 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         // Set legacy en/fr fields for compatibility
         localization.setEnglish(translations.getOrDefault("en", description));
         localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", description)));
-        localization.setSysUserId("1");
         String localizationId = localizationService.insert(localization);
         localization.setId(localizationId);
 
@@ -332,7 +366,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         TypeOfSample sampleType = new TypeOfSample();
         sampleType.setDescription(description);
         sampleType.setLocalAbbreviation(localAbbreviation);
-        sampleType.setDomain(domain);
+        sampleType.setDomain(Domain.normalize(domain));
         sampleType.setLocalization(localization);
 
         // Set active status
@@ -356,8 +390,6 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         } else {
             sampleType.setSortOrder(defaultSortOrder);
         }
-
-        sampleType.setSysUserId("1"); // System user for configuration loading
 
         String sampleTypeId = typeOfSampleService.insert(sampleType);
         sampleType.setId(sampleTypeId);
@@ -413,7 +445,6 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             localization.setDescription("sampleType name");
             localization.setEnglish(translations.getOrDefault("en", description));
             localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", description)));
-            localization.setSysUserId("1");
             String localizationId = localizationService.insert(localization);
             localization.setId(localizationId);
             sampleType.setLocalization(localization);
