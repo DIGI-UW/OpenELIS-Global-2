@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.action.IActionConstants;
@@ -25,6 +26,7 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.privilege.service.PrivilegeService;
 import org.openelisglobal.privilege.valueholder.Privilege;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -215,7 +217,15 @@ public class LoginPageController extends BaseController {
                 setLabunitRolesForExistingUserFromDB(session);
                 Set<String> roles = new HashSet<>();
                 for (Integer roleId : userRoleService.getRoleIdsForUser(session.getUserId())) {
-                    roles.add(roleService.getRoleById(roleId).getName().trim());
+                    // getRoleById returns null for a missing row (no stub fallback,
+                    // unlike getRoleByName). A stale system_user_role pointing at a
+                    // deleted role id would otherwise NPE here — and this runs on
+                    // /session, the endpoint the UI polls to bootstrap, so an NPE
+                    // 500s the session call and locks the user out entirely.
+                    Role role = roleService.getRoleById(roleId);
+                    if (role != null && role.getName() != null) {
+                        roles.add(role.getName().trim());
+                    }
                 }
                 session.setRoles(roles);
             } else if (principal instanceof DefaultSaml2AuthenticatedPrincipal) {
@@ -270,21 +280,28 @@ public class LoginPageController extends BaseController {
             Map<String, List<String>> userLabRolesMap = new HashMap<>();
             if (userLabUnits.contains(ALL_LAB_UNITS)) {
                 roleMaps.stream().filter(map -> map.getLabUnit().equals(ALL_LAB_UNITS))
-                        .forEach(map -> userLabRolesMap.put(map.getLabUnit(),
-                                map.getRoles().stream()
-                                        .map(r -> roleService.getRoleById(Integer.valueOf(r.trim())).getName().trim())
-                                        .collect(Collectors.toList())));
+                        .forEach(map -> userLabRolesMap.put(map.getLabUnit(), map.getRoles().stream()
+                                .map(r -> resolveRoleName(r)).filter(Objects::nonNull).collect(Collectors.toList())));
             } else {
                 for (LabUnitRoleMap map : roleMaps) {
                     userLabRolesMap.put(testSectionService.get(map.getLabUnit()).getLocalizedName(),
-                            map.getRoles().stream()
-                                    .map(r -> roleService.getRoleById(Integer.valueOf(r.trim())).getName().trim())
+                            map.getRoles().stream().map(r -> resolveRoleName(r)).filter(Objects::nonNull)
                                     .collect(Collectors.toList()));
                 }
             }
 
             session.setUserLabRolesMap(userLabRolesMap);
         }
+    }
+
+    /**
+     * Null-safe role-name lookup by id. getRoleById returns null for a missing row
+     * (a stale lab_unit_role_map entry pointing at a deleted role); callers filter
+     * these out rather than NPE on /session and lock the user out of the UI.
+     */
+    private String resolveRoleName(String roleId) {
+        Role role = roleService.getRoleById(Integer.valueOf(roleId.trim()));
+        return (role != null && role.getName() != null) ? role.getName().trim() : null;
     }
 
     @Override

@@ -23,14 +23,17 @@ public interface RoleService extends BaseObjectService<Role, Integer> {
     @PreAuthorize("hasAuthority('PRIV_ROLE_MANAGE')")
     List<Role> getPageOfRoles(int startingRecNo);
 
-    // Name->role resolution is an operational primitive (getUserTestSections,
-    // logbook/results/reports screens all resolve a role id by name for the
-    // current user's own workflow), NOT the role-administration surface — those
-    // methods (getAllRoles/getPageOfRoles/getReferencingRoles) keep PRIV_ROLE_VIEW.
-    // Gate at PRIV_ORDER_VIEW, the privilege every operational lab-unit role holds,
-    // so ordinary Results/Reports/Validation/Reception users don't get denied
-    // (which crashed the report page: the 500 made labUnits a non-array).
-    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
+    // Ungated identity primitive, like getRoleById below. Name->role resolution is
+    // used across operational workflows (getUserTestSections,
+    // logbook/results/reports
+    // screens, and UserServiceImpl resolving the Global-Admin role id) — NOT the
+    // role-administration surface, which stays gated (getAllRoles/getPageOfRoles/
+    // getReferencingRoles keep PRIV_ROLE_*). It was briefly gated on
+    // PRIV_ORDER_VIEW
+    // to stop a report-page 500, but that coupled role lookup to the order domain:
+    // it under-privileged roles without order:view (User Account Administrator,
+    // Audit Trail — breaking the user-admin screen) and over-privileged everyone
+    // else. A plain name->id read leaks no sensitive data, so leave it ungated.
     Role getRoleByName(String name);
 
     @PreAuthorize("hasAuthority('PRIV_ROLE_MANAGE')")

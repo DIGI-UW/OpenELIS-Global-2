@@ -22,7 +22,14 @@ public interface UserService {
     void saveUserLabUnitRoles(SystemUser systemUser, Map<String, Set<String>> selectedLabUnitRolesMap,
             String loggedOnUserId);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    // Returns another user's role and lab-unit assignments —
+    // identity/administration
+    // data, not result data. Must match the delegate
+    // (UserRoleService.getUserLabUnitRoles,
+    // PRIV_USER_ROLE_VIEW) so routing through UserService cannot downgrade the
+    // required
+    // privilege and let a result-viewer enumerate any user's RBAC assignments.
+    @PreAuthorize("hasAuthority('PRIV_USER_ROLE_VIEW')")
     UserLabUnitRoles getUserLabUnitRoles(String systemUserId);
 
     @PreAuthorize("hasAuthority('PRIV_USER_MANAGE')")

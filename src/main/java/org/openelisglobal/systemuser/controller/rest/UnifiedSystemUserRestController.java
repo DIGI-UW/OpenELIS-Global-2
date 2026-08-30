@@ -50,6 +50,7 @@ import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
@@ -146,6 +147,12 @@ public class UnifiedSystemUserRestController extends BaseController {
         return idValues;
     }
 
+    // User-administration screen: reads any user's identity, account state, and
+    // role/lab-unit assignments by caller-supplied id. Gated at the controller so
+    // access does not depend on whatever privilege the services it touches happen
+    // to require. (The /users and /users/{roleName} lookups above stay open — they
+    // feed technician/pathologist dropdowns on non-admin screens.)
+    @PreAuthorize("hasAuthority('PRIV_USER_MANAGE')")
     @GetMapping(value = "/UnifiedSystemUser")
     public ResponseEntity<UnifiedSystemUserForm> showUnifiedSystemUser(HttpServletRequest request,
             @RequestParam(name = "ID", defaultValue = "") String id)
@@ -440,6 +447,7 @@ public class UnifiedSystemUserRestController extends BaseController {
         return roleService.getAllActiveRoles();
     }
 
+    @PreAuthorize("hasAuthority('PRIV_USER_MANAGE')")
     @PostMapping(value = "/UnifiedSystemUser")
     public Map<String, String> showUpdateUnifiedSystemUser(HttpServletRequest request,
             @RequestBody @Valid UnifiedSystemUserForm form, BindingResult result) {
