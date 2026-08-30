@@ -226,8 +226,13 @@ public class ServicePrivilegeCoverageTest {
         }
 
         private static boolean hasAuthorityExpression(String expression) {
-            return expression != null && expression.contains("hasAuthority(")
-                    && !expression.contains("hasAnyAuthority(");
+            // Accept both the single-privilege hasAuthority('PRIV_*') and the
+            // multi-privilege hasAnyAuthority('PRIV_A','PRIV_B') form. A method that
+            // legitimately admits either of two privileges (e.g. result:enter OR
+            // result:modify) should satisfy coverage on its own merits rather than
+            // being forced to opt out of the scan via @CrossDomainService.
+            return expression != null
+                    && (expression.contains("hasAuthority(") || expression.contains("hasAnyAuthority("));
         }
 
         static class MethodEntry {

@@ -33,11 +33,19 @@
             <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
             <tableExists tableName="system_privilege" schemaName="clinlims"/>
             <tableExists tableName="system_role" schemaName="clinlims"/>
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.system_role_privilege
-            </sqlCheck>
         </preConditions>
-        <comment>Seed complete standalone privilege sets for all base roles</comment>
+        <!--
+          Seed complete standalone privilege sets for all base roles.
+
+          Each mapping is inserted idempotently (AND NOT EXISTS on the pair) rather
+          than guarding the whole batch on an empty-table precondition. A single
+          pre-existing row (a pilot, a partially-applied migration, a restored DB, a
+          site-specific seed) must NOT cause the batch to be marked-ran and skip the
+          remaining ~50 mappings — that would silently leave every non-admin role with
+          zero PRIV_* authorities and lock those users out post-upgrade. The
+          system_role_privilege_uq unique constraint (012-002) backs this.
+        -->
+        <comment>Seed complete standalone privilege sets for all base roles (idempotent per-row)</comment>
 
         <!-- ==================== RECEPTION ==================== -->
         <!--
@@ -50,55 +58,68 @@
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'order:create';
+            WHERE r.name = 'Reception' AND p.name = 'order:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'order:view';
+            WHERE r.name = 'Reception' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'order:edit';
+            WHERE r.name = 'Reception' AND p.name = 'order:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'patient:view';
+            WHERE r.name = 'Reception' AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'patient:create';
+            WHERE r.name = 'Reception' AND p.name = 'patient:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'patient:edit';
+            WHERE r.name = 'Reception' AND p.name = 'patient:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'provider:view';
+            WHERE r.name = 'Reception' AND p.name = 'provider:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'organization:view';
+            WHERE r.name = 'Reception' AND p.name = 'organization:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'sample_requester:view';
+            WHERE r.name = 'Reception' AND p.name = 'sample_requester:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'nce:view';
+            WHERE r.name = 'Reception' AND p.name = 'nce:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'nce:create';
+            WHERE r.name = 'Reception' AND p.name = 'nce:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'shipment:view';
+            WHERE r.name = 'Reception' AND p.name = 'shipment:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reception' AND p.name = 'shipment:create';
+            WHERE r.name = 'Reception' AND p.name = 'shipment:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== RESULTS ==================== -->
@@ -113,27 +134,33 @@
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Results' AND p.name = 'result:view';
+            WHERE r.name = 'Results' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Results' AND p.name = 'result:enter';
+            WHERE r.name = 'Results' AND p.name = 'result:enter'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Results' AND p.name = 'result:modify';
+            WHERE r.name = 'Results' AND p.name = 'result:modify'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Results' AND p.name = 'order:view';
+            WHERE r.name = 'Results' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Results' AND p.name = 'referral:view';
+            WHERE r.name = 'Results' AND p.name = 'referral:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Results' AND p.name = 'storage:view';
+            WHERE r.name = 'Results' AND p.name = 'storage:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== VALIDATION ==================== -->
@@ -148,31 +175,38 @@
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Validation' AND p.name = 'result:view';
+            WHERE r.name = 'Validation' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Validation' AND p.name = 'result:validate';
+            WHERE r.name = 'Validation' AND p.name = 'result:validate'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Validation' AND p.name = 'order:view';
+            WHERE r.name = 'Validation' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Validation' AND p.name = 'referral:view';
+            WHERE r.name = 'Validation' AND p.name = 'referral:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Validation' AND p.name = 'nce:view';
+            WHERE r.name = 'Validation' AND p.name = 'nce:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Validation' AND p.name = 'nce:edit';
+            WHERE r.name = 'Validation' AND p.name = 'nce:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Validation' AND p.name = 'nce:assign';
+            WHERE r.name = 'Validation' AND p.name = 'nce:assign'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== PATHOLOGIST ==================== -->
@@ -185,19 +219,23 @@
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Pathologist' AND p.name = 'result:view';
+            WHERE r.name = 'Pathologist' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Pathologist' AND p.name = 'result:validate';
+            WHERE r.name = 'Pathologist' AND p.name = 'result:validate'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Pathologist' AND p.name = 'result:pathology-sign-off';
+            WHERE r.name = 'Pathologist' AND p.name = 'result:pathology-sign-off'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Pathologist' AND p.name = 'order:view';
+            WHERE r.name = 'Pathologist' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== CYTOPATHOLOGIST ==================== -->
@@ -208,19 +246,23 @@
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Cytopathologist' AND p.name = 'result:view';
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Cytopathologist' AND p.name = 'result:validate';
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:validate'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Cytopathologist' AND p.name = 'result:cytopathology-sign-off';
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:cytopathology-sign-off'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Cytopathologist' AND p.name = 'order:view';
+            WHERE r.name = 'Cytopathologist' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== REPORTS ==================== -->
@@ -232,67 +274,80 @@
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reports' AND p.name = 'report:run';
+            WHERE r.name = 'Reports' AND p.name = 'report:run'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reports' AND p.name = 'report:export';
+            WHERE r.name = 'Reports' AND p.name = 'report:export'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reports' AND p.name = 'order:view';
+            WHERE r.name = 'Reports' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reports' AND p.name = 'result:view';
+            WHERE r.name = 'Reports' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Reports' AND p.name = 'patient:view';
+            WHERE r.name = 'Reports' AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== EQA COORDINATOR ==================== -->
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:manage';
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:manage'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:view';
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'EQA Coordinator' AND p.name = 'report:run';
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'report:run'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'EQA Coordinator' AND p.name = 'result:view';
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== USER ACCOUNT ADMINISTRATOR ==================== -->
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'User Account Administrator' AND p.name = 'user:manage';
+            WHERE r.name = 'User Account Administrator' AND p.name = 'user:manage'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== AUDIT TRAIL ==================== -->
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Audit Trail' AND p.name = 'audit:view';
+            WHERE r.name = 'Audit Trail' AND p.name = 'audit:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <!-- ==================== ANALYSER IMPORT ==================== -->
         <sql>
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:import';
+            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:import'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:configure';
+            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:configure'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
         </sql>
 
         <rollback>
