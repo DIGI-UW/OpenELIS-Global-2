@@ -293,29 +293,60 @@ ensure_qc_lot() {
   local lot_file="$TMP_DIR/control-lot.json"
   local response_file="$TMP_DIR/control-lot-response.json"
   local existing_file="$TMP_DIR/control-lot-existing.json"
-  local existing_id=""
   local status
 
   status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$existing_file" -w "%{http_code}" \
     -u "$TEST_USER:$TEST_PASS" "$OE_API/qc/controlLot/byLotNumber/LOT-HIVVL-N" || true)"
   if [ "$status" = "200" ]; then
-    existing_id="$(python3 - "$existing_file" <<'PY'
-import json, sys
-print(json.load(open(sys.argv[1], encoding="utf-8")).get("id", ""))
+    python3 - "$existing_file" "$mapping_file" "$analyzer_id" <<'PY'
+import json
+import sys
+
+existing_path, mapping_path, analyzer_id = sys.argv[1:]
+with open(existing_path, encoding="utf-8") as handle:
+    existing = json.load(handle)
+with open(mapping_path, encoding="utf-8") as handle:
+    mapping = json.load(handle)
+
+matches = [test for test in mapping.get("tests", []) if test.get("rawCode") == "HIV-VL"]
+if len(matches) != 1 or not matches[0].get("testId"):
+    raise SystemExit("GeneXpert HIV-VL site mapping is not bound to one OpenELIS test")
+
+expected = {
+    "lotNumber": "LOT-HIVVL-N",
+    "testId": str(matches[0]["testId"]),
+    "instrumentId": str(analyzer_id),
+    "calculationMethod": "MANUFACTURER_FIXED",
+    "manufacturerMean": 1250.0,
+    "manufacturerStdDev": 125.0,
+    "status": "ACTIVE",
+}
+mismatches = [
+    f"{field}: expected {value!r}, found {existing.get(field)!r}"
+    for field, value in expected.items()
+    if str(existing.get(field)) != str(value)
+]
+if mismatches:
+    raise SystemExit(
+        "Existing OGC-1054 QC lot conflicts with the assembled story:\n  "
+        + "\n  ".join(mismatches)
+    )
+
+print("  Existing operational QC lot matches the assembled story")
 PY
-)"
+    return 0
   elif [ "$status" != "404" ]; then
     echo "ERROR: Control lot lookup returned HTTP $status" >&2
     sed 's/^/  /' "$existing_file" >&2
     return 1
   fi
 
-  python3 - "$mapping_file" "$lot_file" "$analyzer_id" "$existing_id" <<'PY'
+  python3 - "$mapping_file" "$lot_file" "$analyzer_id" <<'PY'
 import datetime
 import json
 import sys
 
-mapping_path, destination, analyzer_id, existing_id = sys.argv[1:]
+mapping_path, destination, analyzer_id = sys.argv[1:]
 with open(mapping_path, encoding="utf-8") as handle:
     mapping = json.load(handle)
 matches = [test for test in mapping.get("tests", []) if test.get("rawCode") == "HIV-VL"]
@@ -323,7 +354,6 @@ if len(matches) != 1 or not matches[0].get("testId"):
     raise SystemExit("GeneXpert HIV-VL site mapping is not bound to one OpenELIS test")
 now = datetime.datetime.now(datetime.timezone.utc)
 payload = {
-    "id": existing_id or None,
     "productName": "GeneXpert HIV-1 Viral Load Control",
     "lotNumber": "LOT-HIVVL-N",
     "manufacturer": "Cepheid",

@@ -18,7 +18,7 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   Dropdown,
-  ActionableNotification,
+  Callout,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
@@ -471,12 +471,9 @@ const AnalyzersList = () => {
       )}
 
       {firstAttentionAnalyzer && (
-        <ActionableNotification
-          kind="error"
-          inline
+        <Callout
+          kind="warning"
           lowContrast
-          hideCloseButton
-          hasFocus={false}
           data-testid="held-results-attention"
           title={intl.formatMessage(
             {

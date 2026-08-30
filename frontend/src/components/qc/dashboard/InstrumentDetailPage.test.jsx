@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -52,13 +52,33 @@ describe("InstrumentDetailPage analyzer context", () => {
   });
 
   it("opens the linked QC detail at the top of the page", async () => {
+    let resolveInstrument;
+    getFromOpenElisServer.mockImplementation((_url, callback) => {
+      resolveInstrument = callback;
+    });
+
     renderPage();
+
+    expect(window.scrollTo).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      resolveInstrument({
+        instrumentId: "42",
+        instrumentName: "GeneXpert - Main Lab",
+        instrumentType: "GeneXpert",
+        instrumentLocation: "Molecular Biology",
+        complianceColor: "NOT_CONFIGURED",
+        analyteDetails: [],
+        activeControlLots: 0,
+      });
+    });
 
     await screen.findByRole("heading", {
       level: 1,
       name: "GeneXpert - Main Lab",
     });
 
+    expect(window.scrollTo).toHaveBeenCalledTimes(2);
     expect(window.scrollTo).toHaveBeenCalledWith({
       top: 0,
       left: 0,

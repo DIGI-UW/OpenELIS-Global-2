@@ -599,6 +599,7 @@ describe("AnalyzersList", () => {
     expect(screen.getByTestId("held-results-attention")).toHaveTextContent(
       "GeneXpert bench 1",
     );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByTestId("held-results-tag-1")).toHaveTextContent(
       "Needs attention",
     );

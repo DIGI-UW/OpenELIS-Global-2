@@ -178,6 +178,7 @@ test.describe("OGC-1054 assembled analyzer MVP", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: GENEXPERT }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(page.locator("#mainHeader")).toBeInViewport();
     await expect(page.getByText(/HIV Viral Load/).first()).toBeVisible({
       timeout: LONG_TIMEOUT,
     });

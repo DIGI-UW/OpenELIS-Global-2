@@ -1,5 +1,31 @@
 /* InstrumentDetailModal styles */
 
+.instrument-detail-page {
+  min-width: 0;
+  padding: var(--cds-spacing-07, 2rem) var(--cds-spacing-05, 1rem);
+}
+
+.instrument-detail-content > h1 {
+  color: var(--cds-text-primary, #161616);
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.25;
+  margin: var(--cds-spacing-06, 1.5rem) 0 var(--cds-spacing-03, 0.5rem);
+  overflow-wrap: anywhere;
+}
+
+.instrument-detail-status-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-03, 0.5rem);
+  margin-bottom: var(--cds-spacing-06, 1.5rem);
+}
+
+.instrument-detail-back-button {
+  margin-top: var(--cds-spacing-05, 1rem);
+}
+
 /* Subtitle with instrument metadata */
 .instrument-detail-subtitle {
   display: flex;
@@ -29,6 +55,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+  margin-bottom: var(--cds-spacing-06, 1.5rem);
 }
 
 .instrument-detail-analyte-card {
