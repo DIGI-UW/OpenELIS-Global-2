@@ -38,12 +38,12 @@ export class AnalyzerListPage {
     });
   }
 
-  /** Assert the page has loaded (root + header + stats visible) */
+  /** Assert the page and analyzer data have loaded. */
   async expectLoaded() {
-    // Wait for analyzers API to complete (stats grid populated)
     await expect(this.root).toBeVisible({ timeout: NAV_TIMEOUT });
     await expect(this.header).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(this.statsGrid).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(this.tableContainer).toBeVisible({ timeout: LONG_TIMEOUT });
   }
 
   /** Get a stat tile value by testid suffix (total, active, inactive) */

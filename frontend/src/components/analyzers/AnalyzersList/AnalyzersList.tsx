@@ -476,6 +476,7 @@ const AnalyzersList = () => {
           inline
           lowContrast
           hideCloseButton
+          hasFocus={false}
           data-testid="held-results-attention"
           title={intl.formatMessage(
             {

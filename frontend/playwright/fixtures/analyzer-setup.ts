@@ -31,6 +31,7 @@ export class AnalyzerSetupPage {
 
   async fillName(name: string) {
     await this.nameInput.click();
+    await expect(this.nameInput).toBeFocused();
     await this.nameInput.press("ControlOrMeta+A");
     await this.nameInput.pressSequentially(name);
     await expect(this.nameInput).toHaveValue(name);
@@ -51,6 +52,10 @@ export class AnalyzerSetupPage {
         Boolean(url.searchParams.get("revision")),
       { timeout: UI_TIMEOUT },
     );
+    await expect(this.typePicker).toHaveValue(
+      new RegExp(escapeRegExp(profileName), "i"),
+    );
+    await expect(this.nameInput).toBeEditable();
   }
 
   async selectFirstLabUnit() {
