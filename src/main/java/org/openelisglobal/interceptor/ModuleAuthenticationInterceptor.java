@@ -58,10 +58,17 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
                     "======> NOT ALLOWED ACCESS TO THIS MODULE");
             LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission");
             if (isRestFullPath(path)) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                // Unauthenticated requests never reach this interceptor
+                // (SecurityConfig .anyRequest().authenticated() runs in the filter
+                // chain first), so every denial here is an authenticated user lacking
+                // module permission — 403, not 401. This matches SecurityConfig's
+                // AccessDeniedHandler, which returns 403 JSON for the same class of
+                // failure; a 401 would also imply a WWW-Authenticate challenge (not
+                // set) and make frontends force a spurious re-login.
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
-                String jsonResponse = "{ \"status\": 401, \"message\": \"Not Authorized\" }";
+                String jsonResponse = "{ \"status\": 403, \"message\": \"Not Authorized\" }";
                 response.getWriter().write(jsonResponse);
                 response.getWriter().flush();
             } else {
