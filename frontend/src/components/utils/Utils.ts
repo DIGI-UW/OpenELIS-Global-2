@@ -695,6 +695,62 @@ export const RoleEquivalentPrivileges = {
   "Global Administrator": [Privileges.SYSTEM_CONFIGURE],
 };
 
+/**
+ * Pure route-access decision used by SecureRoute (extracted so it is unit
+ * testable). Given the session and a route's guard props ({ role, privilege,
+ * labUnitRole }), returns whether access is granted.
+ *
+ * Semantics:
+ * - No guard props at all → granted (an authenticated user may enter).
+ * - An explicit role/privilege is satisfied by holding that role OR the
+ *   privilege it maps to (RoleEquivalentPrivileges) OR an explicitly-listed
+ *   privilege.
+ * - A labUnitRole is satisfied by holding the named lab-unit role (or the
+ *   AllLabUnits wildcard).
+ * - When a route names BOTH an explicit role/privilege AND a labUnitRole,
+ *   EITHER one grants access (OR) — e.g. the Pathology dashboard is reachable
+ *   both by a global Pathologist (role / sign-off privilege) and by a
+ *   technician assigned the Pathology unit's Results lab role. When only one
+ *   dimension is named, the unnamed dimension is trivially satisfied (AND).
+ */
+export const computeRouteAccess = (userDetails, props = {}) => {
+  const requestedRoles = [].concat(props.role || []);
+  const equivalentPrivileges = requestedRoles.flatMap(
+    (role) => RoleEquivalentPrivileges[role] || [],
+  );
+  const explicitPrivileges = [].concat(props.privilege || []);
+  const explicitAccessRequested =
+    Boolean(props.role) || Boolean(props.privilege);
+  const matchesExplicitRoleOrPrivilege =
+    requestedRoles.some(
+      (role) => userDetails?.roles && userDetails.roles.includes(role),
+    ) ||
+    hasPrivilege(userDetails, ...equivalentPrivileges, ...explicitPrivileges);
+  const hasRole = !explicitAccessRequested || matchesExplicitRoleOrPrivilege;
+
+  let containsLabUnitRole = false;
+  if (props.labUnitRole) {
+    Object.keys(props.labUnitRole).forEach((labunit) => {
+      if (userDetails?.userLabRolesMap) {
+        const userRoles = userDetails.userLabRolesMap["AllLabUnits"]
+          ? userDetails.userLabRolesMap["AllLabUnits"]
+          : userDetails.userLabRolesMap[labunit] || [];
+        props.labUnitRole[labunit].forEach((r) => {
+          if (userRoles.includes(r)) {
+            containsLabUnitRole = true;
+          }
+        });
+      }
+    });
+  }
+  const hasLabUnitRole = !props.labUnitRole || containsLabUnitRole;
+
+  if (explicitAccessRequested && props.labUnitRole) {
+    return matchesExplicitRoleOrPrivilege || containsLabUnitRole;
+  }
+  return hasRole && hasLabUnitRole;
+};
+
 // this is complicated to enable it to format "smartly" as a person types
 // possible rework could allow it to only format completed numbers
 

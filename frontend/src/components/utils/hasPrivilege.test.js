@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeRouteAccess,
   hasPrivilege,
   Privileges,
   RoleEquivalentPrivileges,
@@ -109,5 +110,81 @@ describe("RoleEquivalentPrivileges", () => {
     const equivalents = RoleEquivalentPrivileges[Roles.RESULTS];
     expect(hasPrivilege(resultsSession, ...equivalents)).toBe(true);
     expect(hasPrivilege(validationOnlySession, ...equivalents)).toBe(false);
+  });
+});
+
+describe("computeRouteAccess", () => {
+  // Route guard mirroring the Pathology dashboard: reachable by the global
+  // Pathologist role/privilege OR by the Pathology unit's Results lab role.
+  const PATHOLOGY_GUARD = {
+    role: Roles.PATHOLOGIST,
+    labUnitRole: { Pathology: [Roles.RESULTS] },
+  };
+
+  const globalPathologist = {
+    authenticated: true,
+    roles: [Roles.PATHOLOGIST],
+    privileges: [
+      Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+      Privileges.RESULT_VIEW,
+      Privileges.ORDER_VIEW,
+    ],
+    userLabRolesMap: {},
+  };
+
+  const pathologyUnitTech = {
+    authenticated: true,
+    roles: [],
+    privileges: [Privileges.RESULT_ENTER],
+    userLabRolesMap: { Pathology: [Roles.RESULTS] },
+  };
+
+  const receptionOnly = {
+    authenticated: true,
+    roles: [Roles.RECEPTION],
+    privileges: [Privileges.ORDER_CREATE],
+    userLabRolesMap: {},
+  };
+
+  it("grants the Pathology route to a GLOBAL Pathologist (the bug fix — no lab-unit role)", () => {
+    expect(computeRouteAccess(globalPathologist, PATHOLOGY_GUARD)).toBe(true);
+  });
+
+  it("grants the Pathology route to a Pathology-unit Results technician", () => {
+    expect(computeRouteAccess(pathologyUnitTech, PATHOLOGY_GUARD)).toBe(true);
+  });
+
+  it("still denies the Pathology route to an unrelated role", () => {
+    expect(computeRouteAccess(receptionOnly, PATHOLOGY_GUARD)).toBe(false);
+  });
+
+  it("grants via the sign-off privilege even without the role name", () => {
+    const privOnly = {
+      authenticated: true,
+      roles: [],
+      privileges: [Privileges.RESULT_PATHOLOGY_SIGN_OFF],
+      userLabRolesMap: {},
+    };
+    expect(computeRouteAccess(privOnly, PATHOLOGY_GUARD)).toBe(true);
+  });
+
+  it("honors the AllLabUnits wildcard lab-role", () => {
+    const wildcard = {
+      authenticated: true,
+      roles: [],
+      privileges: [],
+      userLabRolesMap: { AllLabUnits: [Roles.RESULTS] },
+    };
+    expect(computeRouteAccess(wildcard, PATHOLOGY_GUARD)).toBe(true);
+  });
+
+  it("grants a route with no guard props to any authenticated user", () => {
+    expect(computeRouteAccess(receptionOnly, {})).toBe(true);
+  });
+
+  it("keeps AND-of-one semantics: a lab-unit-only guard still requires that lab role", () => {
+    const labOnlyGuard = { labUnitRole: { Pathology: [Roles.RESULTS] } };
+    expect(computeRouteAccess(globalPathologist, labOnlyGuard)).toBe(false);
+    expect(computeRouteAccess(pathologyUnitTech, labOnlyGuard)).toBe(true);
   });
 });
