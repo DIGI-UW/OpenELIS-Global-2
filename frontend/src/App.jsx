@@ -476,28 +476,28 @@ export default function App() {
                   path="/PathologyDashboard"
                   exact
                   render={() => <PathologyDashboard />}
-                  role=""
+                  role={Roles.PATHOLOGIST}
                   labUnitRole={{ Pathology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
                   path="/PathologyCaseView/:pathologySampleId"
                   exact
                   render={() => <PathologyCaseView />}
-                  role=""
+                  role={Roles.PATHOLOGIST}
                   labUnitRole={{ Pathology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
                   path="/ImmunohistochemistryDashboard"
                   exact
                   render={() => <ImmunohistochemistryDashboard />}
-                  role=""
+                  role={Roles.PATHOLOGIST}
                   labUnitRole={{ Immunohistochemistry: [Roles.RESULTS] }}
                 />
                 <SecureRoute
                   path="/ImmunohistochemistryCaseView/:immunohistochemistrySampleId"
                   exact
                   render={() => <ImmunohistochemistryCaseView />}
-                  role=""
+                  role={Roles.PATHOLOGIST}
                   labUnitRole={{ Immunohistochemistry: [Roles.RESULTS] }}
                 />
                 <SecureRoute
