@@ -1,0 +1,124 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Observation History Types -->
+    <observation_history_type id="1"
+        type_name="SampleRecordStatus" description="Sample Record Status" />
+    <observation_history_type id="2"
+        type_name="PatientRecordStatus" description="Patient Record Status" />
+
+    <!-- Dictionary Category for REC_STATUS -->
+    <dictionary_category id="1" name="REC_STATUS"
+        description="Record Status" local_abbrev="REC_STATUS" />
+
+    <!-- Dictionary Entries for Record Status -->
+    <dictionary id="1" dictionary_category_id="1" is_active="Y"
+        sort_order="1" dict_entry="Not Start" local_abbrev="Not Start"
+        display_key="Not Start" />
+    <dictionary id="2" dictionary_category_id="1" is_active="Y"
+        sort_order="2" dict_entry="Init Ent" local_abbrev="Init Ent"
+        display_key="Init Ent" />
+    <dictionary id="3" dictionary_category_id="1" is_active="Y"
+        sort_order="3" dict_entry="Valid Ent" local_abbrev="Valid Ent"
+        display_key="Valid Ent" />
+
+    <!-- Order Statuses -->
+    <status_of_sample id="101" name="Test Entered"
+        status_type="ORDER" description="Test Entered" is_active="Y"
+        display_key="order.entered" code="1" />
+    <status_of_sample id="102" name="Testing Started"
+        status_type="ORDER" description="Testing Started" is_active="Y"
+        display_key="order.started" code="2" />
+    <status_of_sample id="103" name="Testing finished"
+        status_type="ORDER" description="Testing finished" is_active="Y"
+        display_key="order.finished" code="3" />
+    <status_of_sample id="104" name="NonConforming"
+        status_type="ORDER" description="NonConforming" is_active="Y"
+        display_key="order.nonconforming" code="4" />
+
+    <!-- Analysis Statuses -->
+    <status_of_sample id="201" name="Not Tested"
+        status_type="ANALYSIS" description="Not Tested" is_active="Y"
+        display_key="analysis.nottested" code="5" />
+    <status_of_sample id="202" name="Test Canceled"
+        status_type="ANALYSIS" description="Test Canceled" is_active="Y"
+        display_key="analysis.canceled" code="6" />
+    <status_of_sample id="203" name="Technical Acceptance"
+        status_type="ANALYSIS" description="Technical Acceptance"
+        is_active="Y" display_key="analysis.techaccept" code="7" />
+    <status_of_sample id="204" name="Technical Rejected"
+        status_type="ANALYSIS" description="Technical Rejected" is_active="Y"
+        display_key="analysis.techreject" code="8" />
+    <status_of_sample id="205" name="Biologist Rejection"
+        status_type="ANALYSIS" description="Biologist Rejection" is_active="Y"
+        display_key="analysis.bioreject" code="9" />
+    <status_of_sample id="206" name="Finalized"
+        status_type="ANALYSIS" description="Finalized" is_active="Y"
+        display_key="analysis.finalized" code="10" />
+    <status_of_sample id="207" name="NonConforming"
+        status_type="ANALYSIS" description="NonConforming" is_active="Y"
+        display_key="analysis.nonconforming" code="11" />
+    <status_of_sample id="208" name="Sample Rejected"
+        status_type="ANALYSIS" description="Sample Rejected" is_active="Y"
+        display_key="analysis.samplerejected" code="12" />
+
+    <!-- Sample Statuses -->
+    <status_of_sample id="301" name="SampleEntered"
+        status_type="SAMPLE" description="SampleEntered" is_active="Y"
+        display_key="sample.entered" code="13" />
+    <status_of_sample id="302" name="SampleCanceled"
+        status_type="SAMPLE" description="SampleCanceled" is_active="Y"
+        display_key="sample.canceled" code="14" />
+    <status_of_sample id="303" name="Sample Rejected"
+        status_type="SAMPLE" description="Sample Rejected" is_active="Y"
+        display_key="sample.rejected" code="15" />
+    <status_of_sample id="304" name="SampleDisposed"
+        status_type="SAMPLE" description="SampleDisposed" is_active="Y"
+        display_key="sample.disposed" code="16" />
+
+    <!-- External Order Statuses -->
+    <status_of_sample id="401" name="Entered"
+        status_type="EXTERNAL_ORDER" description="Entered" is_active="Y"
+        display_key="extorder.entered" code="17" />
+    <status_of_sample id="402" name="Cancelled"
+        status_type="EXTERNAL_ORDER" description="Cancelled" is_active="Y"
+        display_key="extorder.cancelled" code="18" />
+    <status_of_sample id="403" name="Realized"
+        status_type="EXTERNAL_ORDER" description="Realized" is_active="Y"
+        display_key="extorder.realized" code="19" />
+    <status_of_sample id="404" name="NonConforming"
+        status_type="EXTERNAL_ORDER" description="NonConforming" is_active="Y"
+        display_key="extorder.nonconforming" code="20" />
+    <status_of_sample id="405" name="AwaitingSpecimen"
+        status_type="EXTERNAL_ORDER" description="AwaitingSpecimen"
+        is_active="Y" display_key="extorder.awaitingspecimen" code="21" />
+
+    <!-- Test Patient and Sample for persistRecordStatusForSample -->
+    <person id="5000" last_name="Doe" first_name="John"
+        city="Kampala" country="Uganda" work_phone="12345678"
+        lastUpdated="2023-11-01 12:00:00" />
+    <patient id="5000" person_id="5000" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="NAT123" fhir_uuid="550e8400-e29b-41d4-a716-446655440500" />
+    <sample id="6000" accession_number="123456789" domain="H"
+        status_id="101" fhir_uuid="550e8400-e29b-41d4-a716-446655440600"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample_human samp_id="6000" patient_id="5000" id="7000"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- Test Analysis -->
+    <test id="8000" name="Test 1" description="Test 1 desc"
+        sort_order="1" guid="550e8400-e29b-41d4-a716-446655440800"
+        is_active="Y" lastupdated="2023-12-01 12:00:00" />
+    <localization id="1" description="Blood Sample Desc" />
+    <type_of_sample id="8500" description="Blood Sample"
+        domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="8600" samp_id="6000" sort_order="1"
+        typeosamp_id="8500" status_id="101" lastupdated="2023-12-01 12:00:00" />
+    <analysis id="9000" sampitem_id="8600" test_id="8000"
+        status_id="206" fhir_uuid="550e8400-e29b-41d4-a716-446655440900"
+        revision="1" analysis_type="ROUTINE" />
+
+</dataset>
