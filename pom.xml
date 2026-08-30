@@ -700,7 +700,8 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgresql.version}</version>
-            <scope>scope</scope>
+            <!-- compile scope needed for classes used by JsonBinaryType -->
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
