@@ -19,5 +19,6 @@ public interface TestSectionTestAssignService {
      *
      * @return the updated tests
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<Test> assignTestsToSection(List<String> testIds, String targetSectionId, String sysUserId);
 }
