@@ -30,6 +30,7 @@ CI_COMPOSE_FILES=($(compose_args_ci))
 FIXTURE_SCRIPT="$REPO_ROOT/src/test/resources/load-test-fixtures.sh"
 SEED_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-analyzers.sh"
 MVP_TRAFFIC_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-mvp-traffic.sh"
+FIXTURE_DB_TARGET_TEST="$REPO_ROOT/projects/analyzer-harness/scripts/test-fixture-loader-db-target.sh"
 REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-reusable.yml"
 
 PRECHECK_ONLY=false
@@ -337,8 +338,15 @@ check_file "$CI_HARNESS_COMPOSE"
 check_file "$FIXTURE_SCRIPT"
 check_file "$SEED_SCRIPT"
 check_file "$MVP_TRAFFIC_SCRIPT"
+check_file "$FIXTURE_DB_TARGET_TEST"
 check_file "$REUSABLE_WORKFLOW"
 check_file "$FRONTEND_DIR/package-lock.json"
+
+if bash "$FIXTURE_DB_TARGET_TEST"; then
+  pass "fixture loader honors an explicit database container"
+else
+  fail "fixture loader ignored an explicit database container"
+fi
 
 if [[ -f "$REPO_ROOT/.env" ]]; then
   pass ".env exists at repo root"

@@ -445,9 +445,16 @@ verify_fixtures() {
 
 # Determine execution method: Docker or direct psql
 USE_DOCKER=false
-DB_CONTAINER=""
+DB_CONTAINER="${DB_CONTAINER:-}"
 if command -v docker &> /dev/null; then
-    DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    if [ -n "$DB_CONTAINER" ]; then
+        if [ "$(docker inspect --format '{{.State.Running}}' "$DB_CONTAINER" 2>/dev/null)" != "true" ]; then
+            echo "ERROR: Explicit database container is not running: $DB_CONTAINER"
+            exit 1
+        fi
+    else
+        DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    fi
     if [ -n "$DB_CONTAINER" ]; then
         USE_DOCKER=true
         echo "Using Docker container: $DB_CONTAINER"
