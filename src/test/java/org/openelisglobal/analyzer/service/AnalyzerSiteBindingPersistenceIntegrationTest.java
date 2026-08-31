@@ -14,6 +14,7 @@ import jakarta.persistence.PersistenceContext;
 import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
+import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.dao.AnalyzerActivationRecordDAO;
@@ -100,6 +101,11 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    @Before
+    public void resyncAnalyzerSequence() {
+        resyncSequence("analyzer_seq", "analyzer");
+    }
 
     @Test
     public void savedCatalogBindingsAndConfirmationReloadFromPostgres() {
