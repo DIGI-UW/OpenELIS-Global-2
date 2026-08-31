@@ -18,6 +18,9 @@ fi
 
 BASE_URL="${BASE_URL:-https://localhost}"
 MOCK_URL="${MOCK_URL:-http://localhost:8085}"
+BRIDGE_ADMIN_URL="${BRIDGE_ADMIN_URL:-https://localhost:8442}"
+BRIDGE_USER="${BRIDGE_USER:-admin}"
+BRIDGE_PASS="${BRIDGE_PASS:-adminADMIN!}"
 TEST_USER="${TEST_USER:-admin}"
 TEST_PASS="${TEST_PASS:-adminADMIN!}"
 
@@ -30,6 +33,8 @@ FLUOROCYCLER_PROFILE="fluorocycler-xt"
 KNOWN_ACCESSION="DEV01261000000000001"
 UNKNOWN_TEST_ACCESSION="DEV01261000000000002"
 UNKNOWN_VALUE_ACCESSION="DEV01261000000000003"
+UNKNOWN_VALUE_TEST_CODE="MTB-RIF"
+UNKNOWN_VALUE_RAW="REVIEW REQUIRED"
 FILE_ACCESSION_ONE="DEV01263000000000001"
 FILE_ACCESSION_TWO="DEV01263000000000002"
 
@@ -109,6 +114,8 @@ PY
 prepare_profile_mapping() {
   local profile_id="$1"
   local profile_revision="$2"
+  local held_test_code="${3:-}"
+  local held_result_value="${4:-}"
   local mapping_file="$TMP_DIR/$profile_id-mapping.json"
   local catalog_file="$TMP_DIR/mapping-catalog.json"
   local selection_file="$TMP_DIR/$profile_id-catalog-selections.json"
@@ -151,12 +158,13 @@ PY
       "$TMP_DIR/result-options-$test_id.json" "OpenELIS result options for test $test_id"
   done < <(jq -r 'to_entries[].value // empty' "$selection_file" | sort -u)
 
-  mapping_action="$(python3 - "$mapping_file" "$selection_file" "$TMP_DIR" "$update_file" <<'PY'
+  mapping_action="$(python3 - "$mapping_file" "$selection_file" "$TMP_DIR" "$update_file" \
+    "$held_test_code" "$held_result_value" <<'PY'
 import json
 import os
 import sys
 
-mapping_path, selection_path, options_dir, destination = sys.argv[1:]
+mapping_path, selection_path, options_dir, destination, held_test_code, held_result_value = sys.argv[1:]
 with open(mapping_path, encoding="utf-8") as handle:
     mapping = json.load(handle)
 with open(selection_path, encoding="utf-8") as handle:
@@ -181,6 +189,12 @@ for test in mapping.get("tests", []):
         with open(os.path.join(options_dir, f"result-options-{test_id}.json"), encoding="utf-8") as handle:
             options = json.load(handle)
     for result in test.get("results", []):
+        if (
+            test["sourceRowKey"] == held_test_code
+            and result["rawValue"] == held_result_value
+        ):
+            changed = True
+            continue
         matches = [
             option for option in options
             if option.get("label", "").strip().casefold() == result["rawValue"].strip().casefold()
@@ -377,6 +391,36 @@ PY
   send_json POST "$OE_API/qc/controlLot" "$lot_file" "$response_file" "Create operational QC lot"
 }
 
+reset_bridge_file_state() {
+  local analyzer_id="$1"
+  local response_file="$TMP_DIR/bridge-file-reset.json"
+  local status
+
+  status="$(curl -sk --connect-timeout 5 --max-time 30 -o "$response_file" -w "%{http_code}" \
+    -u "$BRIDGE_USER:$BRIDGE_PASS" -X POST \
+    "$BRIDGE_ADMIN_URL/admin/reset?analyzerId=$analyzer_id" || true)"
+  if [ "$status" != "200" ]; then
+    echo "ERROR: Bridge FILE reset returned HTTP $status" >&2
+    sed 's/^/  /' "$response_file" >&2
+    return 1
+  fi
+  python3 - "$response_file" "$analyzer_id" <<'PY'
+import json
+import sys
+
+path, analyzer_id = sys.argv[1:]
+with open(path, encoding="utf-8") as handle:
+    response = json.load(handle)
+if response.get("reset") is not True or str(response.get("analyzerId")) != analyzer_id:
+    raise SystemExit(f"Bridge did not confirm FILE reset for analyzer {analyzer_id}: {response}")
+print(
+    "  Reset Bridge FILE state: "
+    f"{response.get('stateRowsRemoved', 0)} state rows, "
+    f"{response.get('filesRemoved', 0)} files"
+)
+PY
+}
+
 push_astm() {
   local label="$1"
   local accession="$2"
@@ -409,8 +453,8 @@ PY
 
 push_story_traffic() {
   push_astm known-patient "$KNOWN_ACCESSION" MTB-RIF "NOT DETECTED"
-  push_astm unknown-test "$UNKNOWN_TEST_ACCESSION" UNMAPPED-MTB "REVIEW REQUIRED"
-  push_astm unknown-value "$UNKNOWN_VALUE_ACCESSION" MTB-RIF "REVIEW REQUIRED"
+  push_astm unknown-test "$UNKNOWN_TEST_ACCESSION" UNMAPPED-MTB "$UNKNOWN_VALUE_RAW"
+  push_astm unknown-value "$UNKNOWN_VALUE_ACCESSION" "$UNKNOWN_VALUE_TEST_CODE" "$UNKNOWN_VALUE_RAW"
 
   cat > "$TMP_DIR/qc-payload.json" <<'JSON'
 {"destination":"tcp://openelis-analyzer-bridge:9600","qc":true,"qc_deviation":0}
@@ -488,11 +532,13 @@ GENEXPERT_REVISION="$(analyzer_field "$GENEXPERT_NAME" profileRevision)"
 FLUOROCYCLER_ID="$(analyzer_field "$FLUOROCYCLER_NAME" id)"
 FLUOROCYCLER_REVISION="$(analyzer_field "$FLUOROCYCLER_NAME" profileRevision)"
 
-prepare_profile_mapping "$GENEXPERT_PROFILE" "$GENEXPERT_REVISION"
+prepare_profile_mapping "$GENEXPERT_PROFILE" "$GENEXPERT_REVISION" \
+  "$UNKNOWN_VALUE_TEST_CODE" "$UNKNOWN_VALUE_RAW"
 prepare_profile_mapping "$FLUOROCYCLER_PROFILE" "$FLUOROCYCLER_REVISION"
 adopt_mapping_and_activate "$GENEXPERT_ID" "$GENEXPERT_PROFILE"
 adopt_mapping_and_activate "$FLUOROCYCLER_ID" "$FLUOROCYCLER_PROFILE"
 ensure_qc_lot "$GENEXPERT_ID"
+reset_bridge_file_state "$FLUOROCYCLER_ID"
 
 echo "Sending real priority analyzer traffic through Bridge..."
 push_story_traffic
