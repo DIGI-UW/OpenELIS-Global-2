@@ -37,9 +37,17 @@ function escapeRegExp(value: string): string {
 async function analyzerRow(page: Page, name: string): Promise<Locator> {
   const search = page.getByTestId("analyzer-search-input");
   await search.fill(name);
-  const row = page.getByRole("row", {
-    name: new RegExp(escapeRegExp(name), "i"),
+  const nameCell = page.locator('[data-testid^="analyzer-name-"]').filter({
+    hasText: new RegExp(`^\\s*${escapeRegExp(name)}(?:\\s|$)`, "i"),
   });
+  await expect(nameCell).toHaveCount(1, { timeout: LONG_TIMEOUT });
+  const nameTestId = await nameCell.getAttribute("data-testid");
+  if (!nameTestId) {
+    throw new Error(`Analyzer name cell for ${name} has no stable identifier`);
+  }
+  const row = page.getByTestId(
+    nameTestId.replace("analyzer-name-", "analyzer-row-"),
+  );
   await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
   return row;
 }
