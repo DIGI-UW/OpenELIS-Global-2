@@ -357,4 +357,57 @@
         </rollback>
     </changeSet>
 
+    <!--
+      Grants user_role:view to the operational base roles.
+
+      This is a SEPARATE changeset, not extra rows in 012-004 above, so it also
+      applies to databases where 012-004 has already run (a pilot, or anyone who
+      upgraded before this fix).
+
+      Why these roles need it: UserRoleService/UserService#getUserLabUnitRoles is a
+      SELF-scoping read — every one of these callers passes the CALLER'S OWN id:
+
+        MenuController#isGlobalScopeUser            -> GET /rest/menu   (every page load)
+        OrderSearchRestController#isGlobalScopeUser -> order search
+        PatientDashBoardProvider#isGlobalScopeUser  -> patient dashboard
+        LoginPageController                         -> GET /session
+
+      Without the grant those screens throw AccessDeniedException for every
+      non-admin (403 on /rest/menu = no navigation tree at all). The privilege only
+      ever reveals the caller's own lab-unit assignments on these paths; the
+      cross-user administrative surface is gated separately at PRIV_USER_MANAGE on
+      UnifiedSystemUserRestController, and user_role:manage (write) is still
+      Global-Admin-only.
+
+      SelfIdentityMethodsUngatedTest asserts this grant exists.
+    -->
+    <changeSet author="openelis" id="012-004b-grant-user-role-view-to-operational-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant user_role:view to operational base roles (self-scoping lab-unit read)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Reception', 'Results', 'Validation', 'Pathologist', 'Cytopathologist',
+                             'Reports', 'EQA Coordinator', 'User Account Administrator',
+                             'Audit Trail', 'Analyser Import')
+              AND p.name = 'user_role:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE privilege_id = (SELECT id FROM clinlims.system_privilege WHERE name = 'user_role:view')
+                  AND system_role_id IN (
+                      SELECT id FROM clinlims.system_role
+                      WHERE name IN ('Reception', 'Results', 'Validation', 'Pathologist', 'Cytopathologist',
+                                     'Reports', 'EQA Coordinator', 'User Account Administrator',
+                                     'Audit Trail', 'Analyser Import'));
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
