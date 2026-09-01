@@ -11,6 +11,7 @@ import {
   Link,
   Button,
   Loading,
+  Stack,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Redirect, useLocation } from "react-router-dom";
@@ -153,14 +154,16 @@ const Index = () => {
 
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
-          <Section level={1}>
-            <Heading>{pageTitle}</Heading>
-          </Section>
-        </Column>
-      </Grid>
+      <Stack gap={5}>
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section level={1}>
+              <Heading>{pageTitle}</Heading>
+            </Section>
+          </Column>
+        </Grid>
+      </Stack>
       <div className="orderLegendBody">
         {notificationVisible === true ? <AlertDialog /> : ""}
         {isLoading && <Loading></Loading>}

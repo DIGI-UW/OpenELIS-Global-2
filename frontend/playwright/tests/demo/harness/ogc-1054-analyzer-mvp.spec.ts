@@ -88,18 +88,26 @@ test.describe("OGC-1054 assembled analyzer MVP", () => {
 
     await page.getByRole("button", { name: "Review held results" }).click();
     await expect(page).toHaveURL(/\/AnalyzerResults\?id=\d+$/);
-    await expect(
-      page.getByRole("heading", {
-        level: 1,
-        name: `Analyzer: ${GENEXPERT}`,
-      }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    const resultsHeading = page.getByRole("heading", {
+      level: 1,
+      name: `Analyzer: ${GENEXPERT}`,
+    });
+    await expect(resultsHeading).toBeVisible({ timeout: LONG_TIMEOUT });
     const resultsBreadcrumb = page.getByRole("navigation", {
       name: "Breadcrumb",
     });
     await expect(
       resultsBreadcrumb.getByRole("link", { name: "Analyzers" }),
     ).toHaveAttribute("href", "/analyzers");
+    const [breadcrumbBox, headingBox] = await Promise.all([
+      resultsBreadcrumb.boundingBox(),
+      resultsHeading.boundingBox(),
+    ]);
+    expect(breadcrumbBox).not.toBeNull();
+    expect(headingBox).not.toBeNull();
+    expect(
+      headingBox.y - (breadcrumbBox.y + breadcrumbBox.height),
+    ).toBeGreaterThanOrEqual(16);
 
     const unknownTestRow = page.getByRole("row", {
       name: new RegExp(UNKNOWN_TEST_ACCESSION),
