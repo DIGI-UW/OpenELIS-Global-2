@@ -24,8 +24,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * OGC-935 — the EQA programme configuration handler. A deployment's programme
  * registry is CSV under {@code configuration/backend/eqa-programs/}, loaded by
  * the configuration-initialization framework; these tests feed the handler
- * directly, including the shipped CPHL template, and assert the upsert
- * semantics row by row.
+ * directly, including the CPHL deployment-volume configuration, and assert the
+ * upsert semantics row by row.
  */
 public class EQAProgramConfigurationHandlerIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -56,7 +56,7 @@ public class EQAProgramConfigurationHandlerIntegrationTest extends BaseWebContex
 
     @Test
     public void shippedCphlTemplateLoadsSixProgrammesAndRerunsWithoutDuplicating() throws Exception {
-        Path template = Path.of("docs/eqa/cphl-eqa-programs.csv");
+        Path template = Path.of("volume/configuration/backend/eqa-programs/cphl-eqa-programs.csv");
         try (InputStream first = Files.newInputStream(template)) {
             handler.processConfiguration(first, template.getFileName().toString());
         }
