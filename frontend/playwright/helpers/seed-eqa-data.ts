@@ -502,6 +502,9 @@ export function seedFollowups(runTag: string): FollowupSeed {
     const summary =
       `{"source":"external","unacceptable":[{"analyteId":${analyteId},"reported":"210.0",` +
       `"target":"100.0","zScore":"3.61","performanceStatus":"UNACCEPTABLE"}]}`;
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_participant_followup WHERE cycle_id = ${cycleId}`,
+    );
     for (const organizationId of [selfOrganizationId, foreignOrganizationId]) {
       psql(
         `INSERT INTO ${SCHEMA}.eqa_participant_followup (id, scheme_id, cycle_id, participant_org_id,` +
@@ -510,9 +513,6 @@ export function seedFollowups(runTag: string): FollowupSeed {
           ` ${organizationId}, $json$${summary}$json$, 'NOTIFIED', now(), false, '1')`,
       );
     }
-    seeded.push(
-      `DELETE FROM ${SCHEMA}.eqa_participant_followup WHERE cycle_id = ${cycleId}`,
-    );
   } catch (error) {
     seeded.drain();
     throw error;
@@ -580,6 +580,9 @@ export function seedReceiptConditions(runTag: string): ReceiptConditionsSeed {
     cycleId = insertCycle(schemeId, `E2E ${runTag} receipt cycle`, "SHIPPED");
     seeded.push(`DELETE FROM ${SCHEMA}.eqa_cycle WHERE id = ${cycleId}`);
 
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_cycle_participant WHERE cycle_id = ${cycleId}`,
+    );
     for (const organizationId of [
       overdueOrganizationId,
       damagedOrganizationId,
@@ -589,9 +592,6 @@ export function seedReceiptConditions(runTag: string): ReceiptConditionsSeed {
           ` VALUES (nextval('${SCHEMA}.eqa_cycle_participant_seq'), ${cycleId}, ${organizationId}, '1')`,
       );
     }
-    seeded.push(
-      `DELETE FROM ${SCHEMA}.eqa_cycle_participant WHERE cycle_id = ${cycleId}`,
-    );
 
     const boxIds: string[] = [];
     const shipmentIds: string[] = [];
@@ -656,6 +656,169 @@ export function seedReceiptConditions(runTag: string): ReceiptConditionsSeed {
     overdueOrganizationName,
     damagedOrganizationName,
     damageNotes,
+    restore: () => seeded.drain(),
+  };
+}
+
+export interface OversightSeed {
+  schemeName: string;
+  cycleName: string;
+  sectionName: string;
+  analystName: string;
+  analyteName: string;
+  restore: () => void;
+}
+
+/**
+ * Scored participant results plus one competency event, which is what the
+ * three oversight dashboards read.
+ *
+ * Lab Performance reads eqa_participant_result — not the provider-side
+ * eqa_result — joined up through the cycle to the scheme, and skips any row
+ * whose performance_status is null. The section shown in the coverage matrix
+ * comes from the analysis behind the result, falling back to the scheme's own
+ * test section, so the scheme carries one and the results leave analysis_id
+ * null. Two results are planted, one acceptable and one not, so the matrix
+ * cell takes the worst verdict and the recent row can be checked against a
+ * known count.
+ *
+ * Analyst Competency unions competency events with scored results the events
+ * do not already cover. One unacceptable-score event is planted: a single
+ * evaluable sample sits under the four-sample evidence floor, so the analyst
+ * reads as under review rather than competent, which is the honest band for
+ * one data point.
+ */
+export function seedOversightData(runTag: string): OversightSeed {
+  asSafeString(runTag, "runTag");
+  const schemeName = `E2E ${runTag} oversight scheme`;
+  const cycleName = `E2E ${runTag} oversight cycle`;
+  const seeded = undoStack();
+
+  let sectionName: string;
+  let analystName: string;
+  let analyteName: string;
+  try {
+    const section = psql(
+      `SELECT id || '|' || name FROM ${SCHEMA}.test_section ORDER BY id LIMIT 1`,
+    ).split("|");
+    const sectionId = asInt(section[0], "section id");
+    sectionName = section.slice(1).join("|");
+
+    // One analyte per result: eqa_participant_result is unique on round,
+    // enrollment and analyte together, so two verdicts need two analytes.
+    const analytes = psql(
+      `SELECT string_agg(id || '~' || name, '#') FROM (SELECT id, name FROM ${SCHEMA}.analyte` +
+        ` ORDER BY id LIMIT 2) a`,
+    )
+      .split("#")
+      .map((row) => row.split("~"));
+    if (analytes.length < 2) {
+      throw new Error(`Need 2 analytes, found ${analytes.length}`);
+    }
+    const analyteIds = analytes.map((a) => asInt(a[0], "analyte id"));
+    // The competency event hangs off the failing result, so its analyte is
+    // the one the evidence table shows.
+    analyteName = analytes[1].slice(1).join("~");
+
+    // A dedicated analyst, not the acting user: this stack's admin already
+    // carries a decade of prior competency rows, which would decide the band
+    // instead of the evidence seeded here. A system user is enough — the
+    // analyst is only ever referenced, never logged in as.
+    analystName = `Analyst${asSafeString(runTag, "runTag")}`;
+    const analystId = asInt(
+      psql(
+        `INSERT INTO ${SCHEMA}.system_user (id, external_id, login_name, last_name, first_name, initials,` +
+          ` is_active, is_employee, lastupdated) VALUES (nextval('${SCHEMA}.system_user_seq'),` +
+          ` 'e2e-${asSafeString(runTag, "runTag")}', 'e2e-${asSafeString(runTag, "runTag")}',` +
+          ` '${analystName}', 'E2E', 'E2E', 'Y', 'Y', now()) RETURNING id`,
+      ),
+      "analyst id",
+    );
+    seeded.push(`DELETE FROM ${SCHEMA}.system_user WHERE id = ${analystId}`);
+
+    const schemeId = asInt(
+      psql(
+        `INSERT INTO ${SCHEMA}.eqa_program (id, fhir_uuid, name, is_active, sys_user_id, provider, scheme_type,` +
+          ` test_section_id) VALUES (nextval('${SCHEMA}.eqa_program_seq'), gen_random_uuid(),` +
+          ` '${asSafeString(schemeName, "scheme name")}', true, '1', 'E2E External Provider', 'REGIONAL_PT',` +
+          ` ${sectionId}) RETURNING id`,
+      ),
+      "scheme id",
+    );
+    seeded.push(`DELETE FROM ${SCHEMA}.eqa_program WHERE id = ${schemeId}`);
+
+    // Dates sit inside the twelve-month window every rollup applies, and the
+    // submission lands before the deadline so the cycle is not counted late.
+    const cycleId = asInt(
+      psql(
+        `INSERT INTO ${SCHEMA}.eqa_cycle (id, fhir_uuid, scheme_id, cycle_number, cycle_name, status,` +
+          ` planned_start_date, planned_end_date, created_by, sys_user_id)` +
+          ` VALUES (nextval('${SCHEMA}.eqa_cycle_seq'), gen_random_uuid(), ${schemeId}, 1,` +
+          ` '${asSafeString(cycleName, "cycle name")}', 'SCORED', now() - interval '60 days',` +
+          ` now() - interval '30 days', 1, '1') RETURNING id`,
+      ),
+      "cycle id",
+    );
+    seeded.push(`DELETE FROM ${SCHEMA}.eqa_cycle WHERE id = ${cycleId}`);
+
+    const roundId = asInt(
+      psql(
+        `INSERT INTO ${SCHEMA}.eqa_round (id, fhir_uuid, cycle_id, round_number, distribution_date,` +
+          ` submission_deadline, sample_count, status, sys_user_id)` +
+          ` VALUES (nextval('${SCHEMA}.eqa_round_seq'), gen_random_uuid(), ${cycleId}, 1,` +
+          ` now() - interval '60 days', now() - interval '30 days', 2, 'CLOSED', '1') RETURNING id`,
+      ),
+      "round id",
+    );
+    seeded.push(`DELETE FROM ${SCHEMA}.eqa_round WHERE id = ${roundId}`);
+
+    const enrollmentId = insertSelfEnrollment(schemeName);
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_lab_program_enrollment WHERE id = ${enrollmentId}`,
+    );
+
+    // Registered before the inserts: a failure part way through the loop
+    // must still unwind the rows already written.
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_participant_result WHERE cycle_id = ${cycleId}`,
+    );
+    const resultIds: string[] = [];
+    for (const [index, verdict] of ["ACCEPTABLE", "UNACCEPTABLE"].entries()) {
+      resultIds.push(
+        asInt(
+          psql(
+            `INSERT INTO ${SCHEMA}.eqa_participant_result (id, fhir_uuid, cycle_id, round_id,` +
+              ` lab_enrollment_id, analyte_id, result_value, submission_status, performance_status,` +
+              ` assigned_analyst_id, submitted_at, score_received_at, sys_user_id)` +
+              ` VALUES (nextval('${SCHEMA}.eqa_participant_result_seq'), gen_random_uuid(), ${cycleId},` +
+              ` ${roundId}, ${enrollmentId}, ${analyteIds[index]}, '100', 'SCORED', '${verdict}',` +
+              ` ${analystId},` +
+              ` now() - interval '40 days', now() - interval '35 days', '1') RETURNING id`,
+          ),
+          "result id",
+        ),
+      );
+    }
+    psql(
+      `INSERT INTO ${SCHEMA}.eqa_analyst_competency_event (id, analyst_id, event_type, event_date, scheme_id,` +
+        ` cycle_id, participant_result_id, analyte_id, sys_user_id)` +
+        ` VALUES (nextval('${SCHEMA}.eqa_analyst_competency_event_seq'), ${analystId}, 'UNACCEPTABLE_SCORE',` +
+        ` current_date - 35, ${schemeId}, ${cycleId}, ${resultIds[1]}, ${analyteIds[1]}, '1')`,
+    );
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_analyst_competency_event WHERE cycle_id = ${cycleId}`,
+    );
+  } catch (error) {
+    seeded.drain();
+    throw error;
+  }
+
+  return {
+    schemeName,
+    cycleName,
+    sectionName,
+    analystName,
+    analyteName,
     restore: () => seeded.drain(),
   };
 }
