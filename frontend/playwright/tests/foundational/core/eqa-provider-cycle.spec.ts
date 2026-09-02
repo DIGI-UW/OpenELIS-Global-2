@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { test, expect } from "../../../helpers/test-base";
 import {
   UI_TIMEOUT,
@@ -294,8 +295,26 @@ test.describe("EQA provider cycle lifecycle", () => {
       // proof the download addressed this cycle and participant.
       const download = page.waitForEvent("download");
       await outlierRow.getByRole("link", { name: "Scores CSV" }).click();
-      expect((await download).suggestedFilename()).toBe(
+      const file = await download;
+      expect(file.suggestedFilename()).toBe(
         `eqa-scores-cycle-${cycleId}-org-${seed.organizationIds[0]}.csv`,
+      );
+      // Read the file, not just its name: a download that arrives empty or
+      // carrying another participant's rows would otherwise pass.
+      const csv = readFileSync(await file.path(), "utf8")
+        .trim()
+        .split("\n");
+      expect(csv[0]).toBe(
+        "test,result_value,target_value,z_score,performance_status,scored_on",
+      );
+      expect(csv).toHaveLength(RESULTS_PER_ORGANIZATION + 1);
+      // This participant's planted outlier, scored unacceptable, and its two
+      // clean results.
+      expect(csv.filter((line) => line.includes("UNACCEPTABLE"))).toHaveLength(
+        1,
+      );
+      expect(csv.filter((line) => line.includes("ACCEPTABLE"))).toHaveLength(
+        RESULTS_PER_ORGANIZATION,
       );
 
       // The return must succeed. The FHIR endpoint answers HTTP 200 even

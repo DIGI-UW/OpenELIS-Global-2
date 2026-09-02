@@ -132,8 +132,16 @@ test.describe.serial("EQA participant lane", () => {
         await expect(page).toHaveURL(/SamplePatientEntry\?isEQA=true/, {
           timeout: UI_TIMEOUT,
         });
-        // The EQA box is pre-armed by ?isEQA=true and loads the EQA placeholder
-        // patient, so the patient step needs no input.
+        // The deep link arms the EQA box and loads the placeholder patient,
+        // so the patient step needs no input. It does not preselect the
+        // programme or the cycle, and the requirement says it should: the
+        // receipt fields only appear once both are chosen, so today a user
+        // arriving from "Receive panel" still has to pick them by hand. That
+        // is reported with this branch rather than worked around here, and it
+        // is not the one-line fix it looks like — the cycle id could be
+        // passed, but the programme select is keyed on this laboratory's own
+        // free-text enrollments, which carry no link back to a scheme, so
+        // there is nothing to preselect it from.
         await expect(page.locator("#eqa-sample-checkbox")).toBeChecked({
           timeout: UI_TIMEOUT,
         });
@@ -142,6 +150,7 @@ test.describe.serial("EQA participant lane", () => {
         await expect(
           page.getByRole("heading", { name: "EQA Sample Information" }),
         ).toBeVisible({ timeout: UI_TIMEOUT });
+        await expect(page.locator("select#eqa-program")).toHaveValue("");
         await page
           .locator("select#eqa-program")
           .selectOption({ label: seed.programName });

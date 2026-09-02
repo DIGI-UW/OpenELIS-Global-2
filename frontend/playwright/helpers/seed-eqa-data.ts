@@ -1041,37 +1041,37 @@ export function seedParticipantUser(): void {
   );
 }
 
-export interface InHousePanelSeed {
+export interface InHouseSchemeSeed {
+  schemeId: string;
+  cycleId: string;
   schemeName: string;
-  panelName: string;
-  blindCode: string;
   restore: () => void;
 }
 
 /**
- * An in-house panel sitting in DISTRIBUTED, which is the only status that
- * offers unblinding.
+ * An in-house scheme and cycle, with no panel.
  *
- * The scheme has to be IN_HOUSE: the panels page filters the scheme picker on
- * that type, so a panel under any other scheme is unreachable there. Target
- * values are sealed while the panel is distributed and revealed only to a
- * caller holding the unblind privilege, which is the behaviour worth driving
- * in a browser.
+ * The panel is created through the application's own endpoint rather than
+ * planted here, because a panel's target values are encrypted by an attribute
+ * converter on the way in. A value written straight to the column cannot be
+ * decrypted on read: the panels endpoint answers 500 and the page, which
+ * guards only against a null reply, hands the error body to its tile
+ * arithmetic and dies. Seeding the target also could not test the one thing
+ * worth testing — that a sealed target is withheld from a caller without the
+ * unblind privilege.
+ *
+ * The scheme must be IN_HOUSE: the panels page filters its picker on that
+ * type, so a panel under any other scheme is unreachable there.
  */
-export function seedInHousePanel(runTag: string): InHousePanelSeed {
+export function seedInHouseScheme(runTag: string): InHouseSchemeSeed {
   asSafeString(runTag, "runTag");
   const schemeName = `E2E ${runTag} in-house scheme`;
-  const panelName = `E2E ${runTag} panel`;
-  const blindCode = `BLIND${asSafeString(runTag, "runTag")}`;
   const seeded = undoStack();
 
+  let schemeId: string;
+  let cycleId: string;
   try {
-    const analyteId = asInt(
-      psql(`SELECT id FROM ${SCHEMA}.analyte ORDER BY id LIMIT 1`),
-      "analyte id",
-    );
-
-    const schemeId = asInt(
+    schemeId = asInt(
       psql(
         `INSERT INTO ${SCHEMA}.eqa_program (id, fhir_uuid, name, is_active, sys_user_id, provider, scheme_type)` +
           ` VALUES (nextval('${SCHEMA}.eqa_program_seq'), gen_random_uuid(),` +
@@ -1082,49 +1082,42 @@ export function seedInHousePanel(runTag: string): InHousePanelSeed {
     );
     seeded.push(`DELETE FROM ${SCHEMA}.eqa_program WHERE id = ${schemeId}`);
 
-    const cycleId = insertCycle(
-      schemeId,
-      `E2E ${runTag} in-house cycle`,
-      "SHIPPED",
-    );
+    cycleId = insertCycle(schemeId, `E2E ${runTag} in-house cycle`, "SHIPPED");
     seeded.push(`DELETE FROM ${SCHEMA}.eqa_cycle WHERE id = ${cycleId}`);
-
-    const panelId = asInt(
-      psql(
-        `INSERT INTO ${SCHEMA}.eqa_panel (id, fhir_uuid, scheme_id, cycle_id, panel_name, status, source_type,` +
-          ` storage_temp, unblind_date, aliquots_produced, aliquots_reserved, aliquots_shipped,` +
-          ` homogeneity_qc_passed, sys_user_id) VALUES (nextval('${SCHEMA}.eqa_panel_seq'), gen_random_uuid(),` +
-          ` ${schemeId}, ${cycleId}, '${asSafeString(panelName, "panel name")}', 'DISTRIBUTED',` +
-          ` 'IN_HOUSE_ALIQUOTED', 'REFRIGERATED_2_8C', current_date + 3, 4, 1, 1, true, '1') RETURNING id`,
-      ),
-      "panel id",
-    );
-    seeded.push(`DELETE FROM ${SCHEMA}.eqa_panel WHERE id = ${panelId}`);
-
-    // Registered before the insert so a failure still unwinds.
-    seeded.push(
-      `DELETE FROM ${SCHEMA}.eqa_panel_sample WHERE panel_id = ${panelId}`,
-    );
-    // The target value is deliberately left unset. It is stored encrypted
-    // through a Jasypt attribute converter, so a plaintext number planted
-    // here fails to decrypt on read: the panels endpoint answers 500 and the
-    // page — which guards only against a null reply — hands the error body
-    // to its tile arithmetic and dies. A sealed panel with no target still
-    // renders as sealed, which is what this spec is about.
-    psql(
-      `INSERT INTO ${SCHEMA}.eqa_panel_sample (id, panel_id, sample_code, blind_code, analyte_id,` +
-        ` target_unit, sys_user_id) VALUES (nextval('${SCHEMA}.eqa_panel_sample_seq'),` +
-        ` ${panelId}, 'S01', '${blindCode}', ${analyteId}, 'mg', '1')`,
-    );
   } catch (error) {
     seeded.drain();
     throw error;
   }
 
   return {
+    schemeId,
+    cycleId,
     schemeName,
-    panelName,
-    blindCode,
-    restore: () => reportCleanupFailures(seeded.drain()),
+    restore: () => {
+      const failures = sweep([
+        `DELETE FROM ${SCHEMA}.eqa_panel_sample WHERE panel_id IN` +
+          ` (SELECT id FROM ${SCHEMA}.eqa_panel WHERE scheme_id = ${schemeId})`,
+        `DELETE FROM ${SCHEMA}.eqa_panel WHERE scheme_id = ${schemeId}`,
+      ]);
+      reportCleanupFailures([...failures, ...seeded.drain()]);
+    },
   };
 }
+
+/**
+ * Move a panel to the status that offers unblinding.
+ *
+ * The application reaches DISTRIBUTED by sealing a panel and creating one
+ * blinded order per aliquot, which needs an analyst roster and tests carrying
+ * analyte mappings. That is the wizard's job and is covered by its own tests;
+ * this is only the state change, so the spec can start from a distributed
+ * panel without asserting how it got there.
+ */
+export function markPanelDistributed(panelId: string): void {
+  psql(
+    `UPDATE ${SCHEMA}.eqa_panel SET status = 'DISTRIBUTED' WHERE id = ${asInt(panelId, "panel id")}`,
+  );
+}
+
+/** The participant-only fixture user, and the role that grants participant
+ * EQA access without the provider grant. */

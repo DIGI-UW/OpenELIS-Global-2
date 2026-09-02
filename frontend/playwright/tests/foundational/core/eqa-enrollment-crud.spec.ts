@@ -74,6 +74,9 @@ test.describe("EQA self-enrollment", () => {
       await expect(page.locator("tr", { hasText: RENAMED })).toBeVisible({
         timeout: UI_TIMEOUT,
       });
+      // Editing must replace the row, not add a second one: this run's tag
+      // should match exactly one enrollment.
+      await expect(page.locator("tbody tr", { hasText: RUN })).toHaveCount(1);
     });
 
     await test.step("deactivating flips the status tag", async () => {
