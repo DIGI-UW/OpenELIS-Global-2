@@ -46,7 +46,12 @@ test.describe("EQA provider cycle lifecycle", () => {
   test("a wizard-created cycle ships, delivers, opens submissions on its own, and scores", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
+    // One test walks the whole lane on purpose: every step needs the state
+    // the previous one left behind, and re-seeding it per test would mean
+    // asserting against rows no user action produced. It runs long — five
+    // participants, two downloads and a dozen writes.
+    test.setTimeout(600_000);
+    let cycleId = "";
     const banner = (state: string) =>
       expect(page.getByText(state, { exact: true }).first()).toBeVisible({
         timeout: UI_TIMEOUT,
@@ -130,6 +135,8 @@ test.describe("EQA provider cycle lifecycle", () => {
           timeout: LONG_TIMEOUT,
         },
       );
+      cycleId = page.url().match(/cycles\/(\d+)\/workbench/)?.[1] ?? "";
+      expect(cycleId).not.toBe("");
     });
 
     await test.step("prep clears the gate and the cycle is cleared to ship", async () => {
@@ -174,6 +181,26 @@ test.describe("EQA provider cycle lifecycle", () => {
           timeout: UI_TIMEOUT,
         });
       }
+      // Pack list and label are rendered client-side from the row, so the
+      // filename carries the box code and is the only proof of which box the
+      // document describes. Arm the download before clicking: the generator
+      // is not awaited by its handler.
+      // Rows do not render in seed order, so scope by participant name.
+      const documentRow = page.locator("tr", {
+        hasText: seed.organizationNames[0],
+      });
+      for (const [control, prefix] of [
+        ["Pack list", "manifest"],
+        ["Label", "label"],
+      ]) {
+        const download = page.waitForEvent("download");
+        await documentRow.getByRole("button", { name: control }).click();
+        const file = await download;
+        expect(file.suggestedFilename()).toBe(
+          `${prefix}-EQA-C${cycleId}-${seed.organizationIds[0]}.pdf`,
+        );
+      }
+
       await page.locator('label[for="select-all-shipments"]').click();
       await page.getByRole("button", { name: `Mark ${N} shipped` }).click();
       await expect(
@@ -217,10 +244,6 @@ test.describe("EQA provider cycle lifecycle", () => {
     });
 
     await test.step("scoring walks the banner to Scored", async () => {
-      const cycleId = page.url().match(/cycles\/(\d+)\/workbench/)?.[1];
-      if (!cycleId) {
-        throw new Error(`No cycle id in workbench URL: ${page.url()}`);
-      }
       seedReportedResults(cycleId, seed.organizationIds);
       await page.reload({ timeout: NAV_TIMEOUT });
       await expect(page.getByRole("tab", { name: "Prep" })).toBeVisible({
@@ -249,6 +272,91 @@ test.describe("EQA provider cycle lifecycle", () => {
       ).toBeVisible();
     });
 
+    await test.step("scores leave the system as CSV and over FHIR", async () => {
+      const outlierRow = page.locator("tr", {
+        hasText: seed.organizationNames[0],
+      });
+      // The CSV is an anchor to a REST endpoint built from the configured
+      // server base URL — a link, not a button. Its filename is the only
+      // proof the download addressed this cycle and participant.
+      const download = page.waitForEvent("download");
+      await outlierRow.getByRole("link", { name: "Scores CSV" }).click();
+      expect((await download).suggestedFilename()).toBe(
+        `eqa-scores-cycle-${cycleId}-org-${seed.organizationIds[0]}.csv`,
+      );
+
+      // The FHIR return answers 200 even when the store refuses the bundle,
+      // so the page reports body.success rather than the status code. Either
+      // outcome is a correctly wired result; a silent no-op is not, which is
+      // what this asserts.
+      await outlierRow.getByRole("button", { name: "Send scores" }).click();
+      await expect(
+        page
+          .getByText(/Scores returned over FHIR\.|FHIR submission failed/)
+          .first(),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+    });
+
+    await test.step("a repeat panel is dispatched from the reserve", async () => {
+      const outlierRow = page.locator("tr", {
+        hasText: seed.organizationNames[0],
+      });
+      await outlierRow.getByRole("button", { name: "Send repeat" }).click();
+      // Prep reserved five aliquots for a one-sample panel, so the reserve
+      // covers this repeat and no override note is required.
+      await expect(
+        page.getByRole("heading", { name: "Send a repeat panel" }),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      await page
+        .locator("#eqa-repeat-override-note")
+        .fill(`E2E ${RUN}: reserve covers this repeat`);
+      await page.getByRole("button", { name: "Send repeat" }).last().click();
+      await expect(
+        page.getByText("Repeat panel dispatched.").first(),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      // The monitor follows the newest box, so the row reverts to in transit
+      // and is marked as a repeat.
+      await expect(outlierRow.getByText("Repeat shipment")).toBeVisible({
+        timeout: UI_TIMEOUT,
+      });
+      await expect(outlierRow.getByText("In transit")).toBeVisible();
+      await expect(
+        outlierRow.getByRole("button", { name: "Mark received" }),
+      ).toBeVisible();
+    });
+
+    await test.step("a pre-approved comment is attached to the report", async () => {
+      await page.getByRole("tab", { name: "Report comments" }).click();
+      await expect(
+        page.getByText("No comments on this cycle's report yet."),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      // Only library entries can be printed, so the picker is the whole
+      // interface: pick the first approved wording and attach it.
+      await page.getByRole("combobox", { name: "Approved comments" }).click();
+      // Scope to the picker's own listbox: the page header carries a locale
+      // select whose options would otherwise match first.
+      const firstComment = page
+        .getByRole("listbox", { name: "Approved comments" })
+        .getByRole("option")
+        .first();
+      await expect(firstComment).toBeVisible({ timeout: UI_TIMEOUT });
+      const wording = (await firstComment.textContent())?.trim() ?? "";
+      expect(wording).not.toBe("");
+      await firstComment.click();
+      await page.getByRole("button", { name: "Add to report" }).click();
+      await expect(
+        page.getByText("1 comment(s) added to the report"),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+
+      const commentRow = page.locator("tr", { hasText: wording });
+      await expect(commentRow).toBeVisible();
+      // Removal has no toast of its own — the table going empty is the signal.
+      await commentRow.getByRole("button", { name: "Remove" }).click();
+      await expect(
+        page.getByText("No comments on this cycle's report yet."),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+    });
+
     await test.step("cycle history carries the manual create and system walks", async () => {
       await page.getByRole("button", { name: "Cycle history" }).click();
       await expect(page.getByText("Manual override").first()).toBeVisible({
@@ -263,6 +371,7 @@ test.describe("EQA provider cycle lifecycle", () => {
       // Scoring enqueues a follow-up per failing participant. The register is
       // reached by the monitor's own link, so the navigation is covered too.
       // This step leaves the workbench, so it runs last.
+      await page.getByRole("tab", { name: "Receipts & scoring" }).click();
       await page.getByRole("link", { name: "Follow-up register" }).click();
       await expect(
         page.getByRole("heading", { name: "Participant follow-up" }),
