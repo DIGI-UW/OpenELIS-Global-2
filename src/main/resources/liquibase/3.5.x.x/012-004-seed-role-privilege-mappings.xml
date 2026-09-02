@@ -358,6 +358,45 @@
     </changeSet>
 
     <!--
+      Grants organization:view to the roles that already hold referral:view.
+
+      Referring a sample out means picking a referral LAB, and that dropdown is
+      built by DisplayListService.createReferralOrganizationList() ->
+      OrganizationService.getOrganizationsByTypeName(..., "referralLab"), which is
+      gated PRIV_ORGANIZATION_VIEW. 012-004 gives organization:view to Reception
+      only, so Results and Validation — the roles that actually refer samples, and
+      the only ones granted referral:view — got AccessDeniedException from
+      GET /rest/displayList/REFERRAL_ORGANIZATIONS on the result-entry and
+      validation screens (observed as HTTP 500 in E2E run 33568673124).
+
+      Scope note: this is a read of the referral-lab picklist (id + name), not the
+      organization administration surface — organization:manage stays unset for
+      these roles, so they still cannot create or edit organizations.
+    -->
+    <changeSet author="openelis" id="012-004c-grant-organization-view-to-referring-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant organization:view to Results/Validation (referral-lab picklist)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Results', 'Validation')
+              AND p.name = 'organization:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE privilege_id = (SELECT id FROM clinlims.system_privilege WHERE name = 'organization:view')
+                  AND system_role_id IN (SELECT id FROM clinlims.system_role WHERE name IN ('Results', 'Validation'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
       Grants user_role:view to the operational base roles.
 
       This is a SEPARATE changeset, not extra rows in 012-004 above, so it also
