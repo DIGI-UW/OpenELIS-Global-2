@@ -117,6 +117,44 @@ function insertProgram(
   );
 }
 
+/** Box codes must follow the dispatcher's own convention or the receipt
+ * monitor will not match the box to its participant. */
+function boxCode(cycleId: string, organizationId: string): string {
+  return `EQA-C${cycleId}-${organizationId}`;
+}
+
+function insertOrganization(id: string, name: string): void {
+  psql(
+    `INSERT INTO ${SCHEMA}.organization (id, name, mls_sentinel_lab_flag, is_active, lastupdated)` +
+      ` VALUES (${asInt(id, "org id")}, '${asSafeString(name, "org name")}', 'N', 'Y', now())`,
+  );
+}
+
+function insertCycle(schemeId: string, name: string, status: string): string {
+  return asInt(
+    psql(
+      `INSERT INTO ${SCHEMA}.eqa_cycle (id, fhir_uuid, scheme_id, cycle_number, cycle_name, status,` +
+        ` created_by, sys_user_id) VALUES (nextval('${SCHEMA}.eqa_cycle_seq'), gen_random_uuid(),` +
+        ` ${schemeId}, 1, '${asSafeString(name, "cycle name")}', '${asSafeString(status, "status")}', 1, '1')` +
+        ` RETURNING id`,
+    ),
+    "cycle id",
+  );
+}
+
+/** A self-enrollment row, needed wherever a receipt's NOT NULL
+ * lab_enrollment_id has to point somewhere real. */
+function insertSelfEnrollment(programName: string): string {
+  return asInt(
+    psql(
+      `INSERT INTO ${SCHEMA}.eqa_lab_program_enrollment (id, provider, program_name, is_active, sys_user_id)` +
+        ` VALUES (nextval('${SCHEMA}.eqa_lab_enroll_seq'), 'E2E External Provider',` +
+        ` '${asSafeString(programName, "program name")}', true, '1') RETURNING id`,
+    ),
+    "enrollment id",
+  );
+}
+
 export interface ParticipantCycleSeed {
   programId: string;
   enrollmentId: string;
@@ -378,4 +416,246 @@ export function seedReportedResults(
       );
     });
   });
+}
+
+/**
+ * The organization this installation calls itself, which is what splits the
+ * two follow-up surfaces: rows about this lab belong to the participant
+ * Follow-Up Queue, every other row to the provider register. The backend
+ * resolves it from the SiteName site-information value, falling back to the
+ * literal "This laboratory" when that is blank, and returns null when no
+ * organization carries the name — in which case the queue can never
+ * populate. The write path creates the row on demand, so a seeder that needs
+ * a queue row does the same.
+ */
+function selfOrganizationName(): string {
+  const siteName = psql(
+    `SELECT trim(coalesce((SELECT value FROM ${SCHEMA}.site_information WHERE name = 'SiteName'), ''))`,
+  );
+  return siteName === "" ? "This laboratory" : siteName;
+}
+
+export interface FollowupSeed {
+  cycleId: string;
+  cycleName: string;
+  selfOrganizationId: string;
+  foreignOrganizationId: string;
+  foreignOrganizationName: string;
+  analyteName: string;
+  restore: () => void;
+}
+
+/**
+ * Two follow-up rows on one cycle: one about this lab and one about another
+ * participant, which is the whole of the split rule between the Follow-Up
+ * Queue and the provider register.
+ */
+export function seedFollowups(runTag: string): FollowupSeed {
+  asSafeString(runTag, "runTag");
+  const schemeName = `E2E ${runTag} followup scheme`;
+  const cycleName = `E2E ${runTag} followup cycle`;
+  const foreignOrganizationName = `E2E ${runTag} Foreign Lab`;
+  const seeded = undoStack();
+
+  let cycleId: string;
+  let selfOrganizationId: string;
+  let foreignOrganizationId: string;
+  let analyteName: string;
+  try {
+    const selfName = selfOrganizationName();
+    selfOrganizationId = psql(
+      `SELECT id FROM ${SCHEMA}.organization WHERE trim(lower(name)) = lower('${asSafeString(selfName, "self org name")}')`,
+    );
+    if (selfOrganizationId === "") {
+      // No row names this lab yet, so the queue would be empty whatever we
+      // seed. Create it exactly as the enqueue path would, and remove it
+      // again — a pre-existing row is left alone.
+      selfOrganizationId = String(intSafeIdBase() + 90);
+      insertOrganization(selfOrganizationId, selfName);
+      seeded.push(
+        `DELETE FROM ${SCHEMA}.organization WHERE id = ${selfOrganizationId}`,
+      );
+    } else {
+      asInt(selfOrganizationId, "self org id");
+    }
+
+    foreignOrganizationId = String(intSafeIdBase() + 91);
+    insertOrganization(foreignOrganizationId, foreignOrganizationName);
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.organization WHERE id = ${foreignOrganizationId}`,
+    );
+
+    const schemeId = insertProgram(schemeName, "E2E External Provider", false);
+    seeded.push(`DELETE FROM ${SCHEMA}.eqa_program WHERE id = ${schemeId}`);
+
+    cycleId = insertCycle(schemeId, cycleName, "SCORED");
+    seeded.push(`DELETE FROM ${SCHEMA}.eqa_cycle WHERE id = ${cycleId}`);
+
+    const analyte = psql(
+      `SELECT id || '|' || name FROM ${SCHEMA}.analyte ORDER BY id LIMIT 1`,
+    ).split("|");
+    const analyteId = asInt(analyte[0], "analyte id");
+    analyteName = analyte.slice(1).join("|");
+
+    // The summary JSON is what the triage tables render, so it carries a
+    // realistic failing row rather than an empty array.
+    const summary =
+      `{"source":"external","unacceptable":[{"analyteId":${analyteId},"reported":"210.0",` +
+      `"target":"100.0","zScore":"3.61","performanceStatus":"UNACCEPTABLE"}]}`;
+    for (const organizationId of [selfOrganizationId, foreignOrganizationId]) {
+      psql(
+        `INSERT INTO ${SCHEMA}.eqa_participant_followup (id, scheme_id, cycle_id, participant_org_id,` +
+          ` participant_result_summary_json, followup_status, notified_at, persistent_failure_flag,` +
+          ` sys_user_id) VALUES (nextval('${SCHEMA}.eqa_participant_followup_seq'), ${schemeId}, ${cycleId},` +
+          ` ${organizationId}, $json$${summary}$json$, 'NOTIFIED', now(), false, '1')`,
+      );
+    }
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_participant_followup WHERE cycle_id = ${cycleId}`,
+    );
+  } catch (error) {
+    seeded.drain();
+    throw error;
+  }
+
+  return {
+    cycleId,
+    cycleName,
+    selfOrganizationId,
+    foreignOrganizationId,
+    foreignOrganizationName,
+    analyteName,
+    restore: () => {
+      // Triage writes competency events against the cycle's scheme.
+      psql(
+        `DELETE FROM ${SCHEMA}.eqa_analyst_competency_event WHERE cycle_id = ${cycleId}`,
+      );
+      seeded.drain();
+    },
+  };
+}
+
+export interface ReceiptConditionsSeed {
+  cycleId: string;
+  overdueOrganizationName: string;
+  damagedOrganizationName: string;
+  damageNotes: string;
+  restore: () => void;
+}
+
+/**
+ * A dispatched cycle holding the two receipt conditions a provider has to
+ * notice, neither of which the happy path produces.
+ *
+ * Overdue is derived, never stored: the monitor tags a shipment whose
+ * estimated delivery is more than two business days past, so the date is
+ * planted well behind today. Arrived damaged needs both halves — the
+ * shipment delivered AND a panel receipt carrying integrity_ok false whose
+ * shipment_id is set. Only the participant receipt endpoint sets that
+ * column; the Add Order path leaves it null, which is why a receipt recorded
+ * there stays invisible to the provider.
+ */
+export function seedReceiptConditions(runTag: string): ReceiptConditionsSeed {
+  asSafeString(runTag, "runTag");
+  const schemeName = `E2E ${runTag} receipt scheme`;
+  const overdueOrganizationName = `E2E ${runTag} Late Lab`;
+  const damagedOrganizationName = `E2E ${runTag} Broken Lab`;
+  const damageNotes = `E2E ${runTag} cold chain broken`;
+  const seeded = undoStack();
+
+  let cycleId: string;
+  try {
+    const base = intSafeIdBase();
+    const overdueOrganizationId = String(base + 80);
+    const damagedOrganizationId = String(base + 81);
+    insertOrganization(overdueOrganizationId, overdueOrganizationName);
+    insertOrganization(damagedOrganizationId, damagedOrganizationName);
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.organization WHERE id IN (${overdueOrganizationId}, ${damagedOrganizationId})`,
+    );
+
+    const schemeId = insertProgram(schemeName, "This laboratory", false);
+    seeded.push(`DELETE FROM ${SCHEMA}.eqa_program WHERE id = ${schemeId}`);
+
+    cycleId = insertCycle(schemeId, `E2E ${runTag} receipt cycle`, "SHIPPED");
+    seeded.push(`DELETE FROM ${SCHEMA}.eqa_cycle WHERE id = ${cycleId}`);
+
+    for (const organizationId of [
+      overdueOrganizationId,
+      damagedOrganizationId,
+    ]) {
+      psql(
+        `INSERT INTO ${SCHEMA}.eqa_cycle_participant (id, cycle_id, organization_id, sys_user_id)` +
+          ` VALUES (nextval('${SCHEMA}.eqa_cycle_participant_seq'), ${cycleId}, ${organizationId}, '1')`,
+      );
+    }
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_cycle_participant WHERE cycle_id = ${cycleId}`,
+    );
+
+    const boxIds: string[] = [];
+    const shipmentIds: string[] = [];
+    for (const [organizationId, boxState, shipmentStatus, delivered] of [
+      [overdueOrganizationId, "SENT", "IN_TRANSIT", false],
+      [damagedOrganizationId, "RECEIVED", "DELIVERED", true],
+    ] as [string, string, string, boolean][]) {
+      const boxId = asInt(
+        psql(
+          `INSERT INTO ${SCHEMA}.shipping_box (id, box_id, fhir_uuid, destination_facility_id, state,` +
+            ` created_date, archived, sys_user_id, lastupdated, eqa_cycle_id, sent_date${delivered ? ", received_date" : ""})` +
+            ` VALUES (nextval('${SCHEMA}.shipping_box_seq'), '${boxCode(cycleId, organizationId)}',` +
+            ` gen_random_uuid(), ${organizationId}, '${boxState}', now(), false, 1, now(), ${cycleId},` +
+            ` now() - interval '10 days'${delivered ? ", now() - interval '1 day'" : ""}) RETURNING id`,
+        ),
+        "box id",
+      );
+      boxIds.push(boxId);
+      shipmentIds.push(
+        asInt(
+          psql(
+            `INSERT INTO ${SCHEMA}.shipment (id, shipping_box_id, courier, tracking_number, shipped_date,` +
+              ` estimated_delivery_date, ${delivered ? "actual_delivery_date, " : ""}status, sys_user_id,` +
+              ` lastupdated) VALUES (nextval('${SCHEMA}.shipment_seq'), ${boxId}, 'E2E courier',` +
+              ` 'TRK-${asSafeString(runTag, "runTag")}-${organizationId}', now() - interval '10 days',` +
+              ` now() - interval '7 days', ${delivered ? "now() - interval '1 day', " : ""}'${shipmentStatus}',` +
+              ` 1, now()) RETURNING id`,
+          ),
+          "shipment id",
+        ),
+      );
+    }
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.shipment WHERE id IN (${shipmentIds.join(", ")})`,
+    );
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.shipping_box WHERE id IN (${boxIds.join(", ")})`,
+    );
+
+    const enrollmentId = insertSelfEnrollment(schemeName);
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_lab_program_enrollment WHERE id = ${enrollmentId}`,
+    );
+
+    psql(
+      `INSERT INTO ${SCHEMA}.eqa_panel_receipt (id, cycle_id, lab_enrollment_id, shipment_id, received_date,` +
+        ` received_by, integrity_ok, integrity_notes, sys_user_id)` +
+        ` VALUES (nextval('${SCHEMA}.eqa_panel_receipt_seq'), ${cycleId}, ${enrollmentId},` +
+        ` ${shipmentIds[1]}, now() - interval '1 day', 1, false,` +
+        ` '${asSafeString(damageNotes, "damage notes")}', '1')`,
+    );
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_panel_receipt WHERE cycle_id = ${cycleId}`,
+    );
+  } catch (error) {
+    seeded.drain();
+    throw error;
+  }
+
+  return {
+    cycleId,
+    overdueOrganizationName,
+    damagedOrganizationName,
+    damageNotes,
+    restore: () => seeded.drain(),
+  };
 }
