@@ -33,7 +33,6 @@ import { useIntl } from "react-intl";
 import { getFromOpenElisServer, hasQaPermission } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ProgramForm from "./ProgramForm";
-import ParticipantsTab from "./ParticipantsTab";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import SystemSettingsTab from "./SystemSettingsTab";
 
@@ -263,9 +262,6 @@ const ProgramManagement = () => {
             <Tab renderIcon={DataCheck}>
               {intl.formatMessage({ id: "eqa.admin.tab.programs" })}
             </Tab>
-            <Tab renderIcon={GroupPresentation}>
-              {intl.formatMessage({ id: "eqa.admin.tab.participants" })}
-            </Tab>
             <Tab renderIcon={Settings}>
               {intl.formatMessage({ id: "eqa.admin.tab.systemSettings" })}
             </Tab>
@@ -405,11 +401,6 @@ const ProgramManagement = () => {
                   )}
                 </DataTable>
               )}
-            </TabPanel>
-
-            {/* Participants Tab */}
-            <TabPanel>
-              <ParticipantsTab programs={programs} />
             </TabPanel>
 
             {/* System Settings Tab */}

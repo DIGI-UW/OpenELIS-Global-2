@@ -135,4 +135,9 @@
 
   <!-- EQA V2.3 — OGC-611: per-analyst capture opt-in on a scheme (qa-070) -->
   <include file="liquibase/qa/037-eqa-scheme-per-analyst.xml" />
+
+  <!-- EQA V2 — OGC-608: V1 absorption — synthetic cycles for legacy
+       distributions (qa-072). Must follow qa/028: it re-declares the
+       trigger-event CHECK that qa/024 and qa/028 extended. -->
+  <include file="liquibase/qa/022-backfill-v1-distribution-cycles.xml" />
 </databaseChangeLog>

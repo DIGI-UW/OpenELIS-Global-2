@@ -106,12 +106,12 @@ public class EQACycleMappingValidationTest {
     public void auditVocabulariesMatchTheCheckConstraints() {
         assertEquals(Arrays.asList("PARTICIPANT", "PROVIDER"), names(EQAStateMachine.values()));
         assertEquals(Arrays.asList("AUTO", "MANUAL"), names(EQATriggerType.values()));
-        // PANEL_RECEIPT joined with liquibase qa/024 and FIRST_SHIPMENT_SENT with
-        // qa/028 — each extends the DB CHECK in step.
+        // PANEL_RECEIPT joined with liquibase qa/024, FIRST_SHIPMENT_SENT with
+        // qa/028 and V1_BACKFILL with qa/022 — each extends the DB CHECK in step.
         assertEquals(Arrays.asList("LAST_VALIDATED_RESULT", "FHIR_SUBMIT_SUCCESS", "FHIR_SUBMIT_FAILURE_RETRY",
                 "SCORE_INTAKE", "DEADLINE_TIMER", "ALL_SHIPMENTS_DELIVERED", "ALL_SUBMISSIONS_RECEIVED", "PANEL_SEAL",
                 "PANEL_UNBLIND", "HOMOGENEITY_QC_PASSED", "MANUAL_OVERRIDE", "SCHEDULED_JOB", "PANEL_RECEIPT",
-                "FIRST_SHIPMENT_SENT"), names(EQATriggerEvent.values()));
+                "FIRST_SHIPMENT_SENT", "V1_BACKFILL"), names(EQATriggerEvent.values()));
     }
 
     @Test

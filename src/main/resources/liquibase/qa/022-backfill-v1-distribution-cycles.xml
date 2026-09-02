@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2 V1 absorption (OGC-608): every COMPLETED legacy distribution gains a
+    closed, historical cycle so finished V1 rounds appear in the cycle-centric V2
+    pages. Active V1 distributions are not migrated (V1 never stored the roster
+    or panel a live V2 cycle needs) and legacy scores stay read-only in the V1
+    eqa_result table. See docs/eqa/v1-distribution-absorption.md.
+
+    Include ordering: this file must run AFTER qa/028 — the trigger-event CHECK
+    extension below re-declares the full list from qa/028, and the backfill
+    inserts into tables created by qa/015 and qa/016.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-072-add-v1-backfill-trigger-event">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM pg_constraint
+                WHERE conname = 'eqa_cycle_state_transition_trigger_event_chk'
+            </sqlCheck>
+        </preConditions>
+        <comment>Allow V1_BACKFILL as a cycle-transition trigger event</comment>
+        <sql>
+            ALTER TABLE clinlims.eqa_cycle_state_transition
+            DROP CONSTRAINT eqa_cycle_state_transition_trigger_event_chk;
+
+            ALTER TABLE clinlims.eqa_cycle_state_transition
+            ADD CONSTRAINT eqa_cycle_state_transition_trigger_event_chk
+            CHECK (trigger_event IN ('LAST_VALIDATED_RESULT', 'FHIR_SUBMIT_SUCCESS', 'FHIR_SUBMIT_FAILURE_RETRY',
+                'SCORE_INTAKE', 'DEADLINE_TIMER', 'ALL_SHIPMENTS_DELIVERED', 'ALL_SUBMISSIONS_RECEIVED',
+                'PANEL_SEAL', 'PANEL_UNBLIND', 'HOMOGENEITY_QC_PASSED', 'MANUAL_OVERRIDE', 'SCHEDULED_JOB',
+                'PANEL_RECEIPT', 'FIRST_SHIPMENT_SENT', 'V1_BACKFILL'))
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.eqa_cycle_state_transition
+                DROP CONSTRAINT eqa_cycle_state_transition_trigger_event_chk;
+
+                ALTER TABLE clinlims.eqa_cycle_state_transition
+                ADD CONSTRAINT eqa_cycle_state_transition_trigger_event_chk
+                CHECK (trigger_event IN ('LAST_VALIDATED_RESULT', 'FHIR_SUBMIT_SUCCESS', 'FHIR_SUBMIT_FAILURE_RETRY',
+                    'SCORE_INTAKE', 'DEADLINE_TIMER', 'ALL_SHIPMENTS_DELIVERED', 'ALL_SUBMISSIONS_RECEIVED',
+                    'PANEL_SEAL', 'PANEL_UNBLIND', 'HOMOGENEITY_QC_PASSED', 'MANUAL_OVERRIDE', 'SCHEDULED_JOB',
+                    'PANEL_RECEIPT', 'FIRST_SHIPMENT_SENT'))
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-075-warn-active-v1-distributions">
+        <!-- No change of its own: the precondition is the point. Active V1
+             distributions are not migrated and their pages are removed, so the
+             upgrade log names how many are about to become unreachable. -->
+        <preConditions onFail="WARN"
+            onFailMessage="EQA V1 absorption: active (non-COMPLETED) distributions without a cycle exist and will not be migrated or reachable after this upgrade. Complete or discard them, then re-run qa-073 if they should become history. See docs/eqa/v1-distribution-absorption.md.">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.eqa_distribution
+                WHERE cycle_id IS NULL AND status &lt;&gt; 'COMPLETED'
+            </sqlCheck>
+        </preConditions>
+        <comment>Startup warning when active V1 distributions are left behind</comment>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-073-backfill-v1-distribution-cycles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="eqa_cycle" schemaName="clinlims"/>
+        </preConditions>
+        <comment>One CLOSED historical cycle per COMPLETED legacy distribution; active
+            distributions are left unlinked. Each synthetic cycle gets one V1_BACKFILL
+            audit row, which is also the rollback marker. Idempotent: only
+            distributions with no cycle link are touched.</comment>
+        <sqlFile path="022-v1-distribution-cycle-backfill.sql" relativeToChangelogFile="true"
+            splitStatements="false" stripComments="true"/>
+        <rollback>
+            <!-- Refuses when any synthetic cycle has activity recorded after the
+                 migration; see the rollback file for the exact checks. -->
+            <sqlFile path="022-v1-distribution-cycle-rollback.sql" relativeToChangelogFile="true"
+                splitStatements="false" stripComments="false"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-074-deactivate-superseded-eqa-menus">
+        <comment>Legacy EQA Orders and Distribution menu rows are superseded by
+            My Cycles and Provider Cycles; the old URLs stay reachable through
+            redirects. My Programs stays active.</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false" />
+            <where>
+                element_id IN ('menu_eqa_orders', 'menu_eqa_distribution', 'menu_eqa_mgmt_distributions')
+            </where>
+        </update>
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="is_active" valueBoolean="true" />
+                <where>
+                    element_id IN ('menu_eqa_orders', 'menu_eqa_distribution', 'menu_eqa_mgmt_distributions')
+                </where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-076-flatten-eqa-tests-menu-group">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_tests'
+            </sqlCheck>
+        </preConditions>
+        <comment>With Orders gone the "EQA Tests" group held one child; My Programs moves
+            directly under EQA (between the management group and My Cycles) and the
+            empty group is deactivated.</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
+            <column name="presentation_order" valueNumeric="25" />
+            <where>element_id = 'menu_eqa_my_programs'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false" />
+            <where>element_id = 'menu_eqa_tests'</where>
+        </update>
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="is_active" valueBoolean="true" />
+                <where>element_id = 'menu_eqa_tests'</where>
+            </update>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa_tests')" />
+                <column name="presentation_order" valueNumeric="2" />
+                <where>element_id = 'menu_eqa_my_programs'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
