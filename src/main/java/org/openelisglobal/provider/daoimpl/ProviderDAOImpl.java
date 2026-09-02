@@ -14,6 +14,7 @@
 package org.openelisglobal.provider.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Date;
 import java.util.List;
 import java.util.Vector;
 import org.apache.commons.beanutils.PropertyUtils;
@@ -235,5 +236,35 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in ProviderDAOImpl getTotalSearchedProviderCountByPhone()", e);
         }
+    }
+
+    @Override
+    public List<Provider> getProvidersByLastUpdated(Date fromDate, Date toDate, int pageStart, int pageSize) {
+        List<Provider> list = new Vector<>();
+        try {
+            StringBuilder hql = new StringBuilder("FROM Provider p WHERE 1=1");
+            if (fromDate != null) {
+                hql.append(" AND p.lastupdated >= :fromDate");
+            }
+            if (toDate != null) {
+                hql.append(" AND p.lastupdated <= :toDate");
+            }
+            hql.append(" ORDER BY p.lastupdated DESC");
+            Query<Provider> query = entityManager.unwrap(Session.class).createQuery(hql.toString(), Provider.class);
+            if (fromDate != null) {
+                query.setParameter("fromDate", fromDate);
+            }
+            if (toDate != null) {
+                query.setParameter("toDate", toDate);
+            }
+            query.setFirstResult(pageStart - 1);
+            query.setMaxResults(pageSize);
+            list = query.list();
+
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in ProviderDAOImpl getProvidersByLastUpdated()", e);
+        }
+        return list;
     }
 }

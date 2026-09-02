@@ -21,6 +21,7 @@ import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
+import java.util.List;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
@@ -33,10 +34,13 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.fhir.search.searchparams.PractitionerSearchParams;
+import org.openelisglobal.fhir.util.FhirSearchHelper;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.search.service.PractitionerSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -45,6 +49,9 @@ public class PractitionerProvider implements IResourceProvider {
 
     @Autowired
     private FhirUtil util;
+
+    @Autowired
+    private PractitionerSearchService practitionerSearchService;
 
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -231,11 +238,27 @@ public class PractitionerProvider implements IResourceProvider {
 
         String methodName = "searchPractitionerBundle";
         LogEvent.logDebug(this.getClass().getSimpleName(), methodName,
-                "Searching for Practitioners (returning Bundle)");
+                "Searching for Practitioners from LOCAL database");
 
         try {
 
-            Bundle bundle = util.forwardSearchToFhirStore(request);
+            PractitionerSearchParams params = PractitionerSearchParams.builder().identifier(identifier).given(given)
+                    .family(family).id(id).lastUpdated(lastUpdated).pageStart(FhirSearchHelper.getPageStart(request))
+                    .pageSize(FhirSearchHelper.getPageSize(request)).activeOnly(true).build();
+
+            List<Provider> providers = practitionerSearchService.searchProviders(params);
+
+            Bundle bundle = new Bundle();
+            bundle.setType(Bundle.BundleType.SEARCHSET);
+            bundle.setTotal(providers.size());
+
+            for (Provider provider : providers) {
+                Practitioner practitioner = fhirTransformService.transformProviderToPractitioner(provider);
+                bundle.addEntry().setResource(practitioner).getSearch().setMode(Bundle.SearchEntryMode.MATCH);
+            }
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), methodName,
+                    "Returning " + providers.size() + " practitioner results");
 
             return bundle;
 

@@ -240,4 +240,132 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         assertFalse(deletedProvider.getActive());
     }
 
+    @Test
+    public void searchPractitioner_byLastUpdated_shouldReturnProvidersInDateRange() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+        request.addParameter("_lastUpdated", "ge2025-02-01");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(2, bundle.get("total").asInt());
+        assertTrue(bundle.has("entry"));
+        assertEquals(2, bundle.get("entry").size());
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdated_withDateRange_shouldReturnProviders() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+        request.addParameter("_lastUpdated", "ge2025-02-01");
+        request.addParameter("_lastUpdated", "le2025-02-28");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(2, bundle.get("total").asInt());
+        assertEquals(2, bundle.get("entry").size());
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdated_withNoMatch_shouldReturnEmptyBundle() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+        request.addParameter("_lastUpdated", "ge2024-01-01");
+        request.addParameter("_lastUpdated", "le2024-12-31");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(0, bundle.get("total").asInt());
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdated_withOnlyFromDate_shouldReturnProviders() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+        request.addParameter("_lastUpdated", "ge2025-02-01");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(2, bundle.get("total").asInt());
+        assertEquals(2, bundle.get("entry").size());
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdated_withOnlyToDate_shouldReturnProviders() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+        request.addParameter("_lastUpdated", "le2025-02-14");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(0, bundle.get("total").asInt());
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdated_withExactDate_shouldReturnProviders() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+        request.addParameter("_lastUpdated", "eq2025-02-15");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(2, bundle.get("total").asInt());
+        assertEquals(2, bundle.get("entry").size());
+    }
+
+    @Test
+    public void searchPractitioner_withoutParams_shouldReturnAllActivePractitioners() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(1, bundle.get("total").asInt());
+        assertTrue(bundle.has("entry"));
+        assertEquals(1, bundle.get("entry").size());
+
+        for (JsonNode entry : bundle.get("entry")) {
+            JsonNode practitioner = entry.get("resource");
+            assertEquals("Practitioner", practitioner.get("resourceType").asText());
+            assertNotNull(practitioner.get("id"));
+        }
+    }
+
 }

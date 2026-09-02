@@ -2,9 +2,11 @@ package org.openelisglobal.provider.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.UUID;
 import org.junit.Before;
@@ -158,6 +160,72 @@ public class ProviderServiceTest extends BaseWebContextSensitiveTest {
         int totalCount = providerService.getTotalSearchedProviderCount(providerType);
         assertTrue("should be a value greater than or equal to zero", totalCount >= 0);
 
+    }
+
+    @Test
+    public void getProvidersByLastUpdated_shouldReturnProvidersInDateRange() throws Exception {
+        // Test data has lastupdated = "2025-02-15 12:00:00" for both providers
+        Timestamp fromDate = Timestamp.valueOf("2025-02-01 00:00:00");
+        Timestamp toDate = Timestamp.valueOf("2025-02-28 23:59:59");
+
+        List<Provider> providers = providerService.getProvidersByLastUpdated(fromDate, toDate, 1, 50);
+
+        assertNotNull("Should return providers", providers);
+        assertEquals("Should return 2 providers in date range", 2, providers.size());
+    }
+
+    @Test
+    public void getProvidersByLastUpdated_withOnlyFromDate_shouldReturnProviders() throws Exception {
+        Timestamp fromDate = Timestamp.valueOf("2025-02-01 00:00:00");
+
+        List<Provider> providers = providerService.getProvidersByLastUpdated(fromDate, null, 1, 50);
+
+        assertNotNull("Should return providers", providers);
+        assertEquals("Should return 2 providers after Feb 1, 2025", 2, providers.size());
+    }
+
+    @Test
+    public void getProvidersByLastUpdated_withOnlyToDate_shouldReturnProviders() throws Exception {
+        Timestamp toDate = Timestamp.valueOf("2025-02-14 23:59:59");
+
+        List<Provider> providers = providerService.getProvidersByLastUpdated(null, toDate, 1, 50);
+
+        assertNotNull("Should return empty list", providers);
+        assertEquals("Should return 0 providers before Feb 15, 2025", 0, providers.size());
+    }
+
+    @Test
+    public void getProvidersByLastUpdated_withNoDates_shouldReturnAllProviders() throws Exception {
+        List<Provider> providers = providerService.getProvidersByLastUpdated(null, null, 1, 50);
+
+        assertNotNull("Should return providers", providers);
+        assertEquals("Should return all 2 providers", 2, providers.size());
+    }
+
+    @Test
+    public void getProvidersByLastUpdated_withNoMatchingDates_shouldReturnEmptyList() throws Exception {
+        Timestamp fromDate = Timestamp.valueOf("2024-01-01 00:00:00");
+        Timestamp toDate = Timestamp.valueOf("2024-12-31 23:59:59");
+
+        List<Provider> providers = providerService.getProvidersByLastUpdated(fromDate, toDate, 1, 50);
+
+        assertNotNull("Should return empty list, not null", providers);
+        assertEquals("Should return 0 providers", 0, providers.size());
+    }
+
+    @Test
+    public void getProvidersByLastUpdated_withPagination_shouldReturnPagedResults() throws Exception {
+        Timestamp fromDate = Timestamp.valueOf("2025-02-01 00:00:00");
+
+        List<Provider> page1 = providerService.getProvidersByLastUpdated(fromDate, null, 1, 1);
+        List<Provider> page2 = providerService.getProvidersByLastUpdated(fromDate, null, 2, 1);
+
+        assertNotNull("Page 1 should not be null", page1);
+        assertNotNull("Page 2 should not be null", page2);
+        assertEquals("Page 1 should have 1 provider", 1, page1.size());
+        assertEquals("Page 2 should have 1 provider", 1, page2.size());
+        assertNotEquals("Page 1 and Page 2 should have different providers", page1.get(0).getId(),
+                page2.get(0).getId());
     }
 
 }

@@ -1,5 +1,6 @@
 package org.openelisglobal.provider.service;
 
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -47,4 +48,7 @@ public interface ProviderService extends BaseObjectService<Provider, String> {
     void deactivateProviders(List<Provider> providers);
 
     Provider insertOrUpdateProviderByFhirUuid(UUID fhirUuid, Provider provider);
+
+    List<Provider> getProvidersByLastUpdated(Date fromDate, Date toDate, int pageStart, int pageSize);
+
 }

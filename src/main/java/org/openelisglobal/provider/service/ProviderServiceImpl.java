@@ -1,5 +1,6 @@
 package org.openelisglobal.provider.service;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -153,5 +154,12 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
             dbProvider = save(provider);
         }
         return dbProvider;
+    }
+
+    @Override()
+    @Transactional(readOnly = true)
+
+    public List<Provider> getProvidersByLastUpdated(Date fromDate, Date toDate, int pageStart, int pageSize) {
+        return baseObjectDAO.getProvidersByLastUpdated(fromDate, toDate, pageStart, pageSize);
     }
 }
