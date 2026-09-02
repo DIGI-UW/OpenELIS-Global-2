@@ -42,7 +42,9 @@ cycle exists only so the history is visible.
 
 Active V1 distributions become unreachable once the V1 pages are removed. Before
 deploying a build that carries `qa/022`, either complete them in V1 so the
-migration closes them as history, or discard them. Check with:
+migration closes them as history, or discard them. The `qa-075` changeset has no
+change of its own; its precondition writes a warning to the startup log when
+such rows exist, so a missed cleanup is visible at upgrade time. Check with:
 
 ```sql
 SELECT id, distribution_name, status

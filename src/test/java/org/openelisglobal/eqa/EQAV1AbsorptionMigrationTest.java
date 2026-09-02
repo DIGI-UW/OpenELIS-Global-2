@@ -44,7 +44,8 @@ import org.springframework.util.FileCopyUtils;
  * <li>the V2 provider scheme read lists the migrated cycle as closed history;
  * <li>the rollback removes exactly what the backfill created, and refuses when
  * a migrated cycle has been used since;
- * <li>the superseded legacy menu rows are off and My Programs stays on.
+ * <li>the superseded legacy menu rows are off, My Programs stays on and moves
+ * directly under EQA once its one-child group is retired.
  * </ul>
  */
 public class EQAV1AbsorptionMigrationTest extends EQASpineTestBase {
@@ -222,6 +223,13 @@ public class EQAV1AbsorptionMigrationTest extends EQASpineTestBase {
             assertFalse(elementId + " should be deactivated", menuIsActive(elementId));
         }
         assertTrue("menu_eqa_my_programs should stay active", menuIsActive("menu_eqa_my_programs"));
+        // The one-child "EQA Tests" group is gone: My Programs sits directly under EQA.
+        assertFalse("menu_eqa_tests should be deactivated", menuIsActive("menu_eqa_tests"));
+        Map<String, Object> myPrograms = jdbc.queryForMap("SELECT p.element_id AS parent, m.presentation_order"
+                + " FROM clinlims.menu m JOIN clinlims.menu p ON p.id = m.parent_id"
+                + " WHERE m.element_id = 'menu_eqa_my_programs'");
+        assertEquals("menu_eqa", myPrograms.get("parent"));
+        assertEquals(25, ((Number) myPrograms.get("presentation_order")).intValue());
     }
 
     private void runSql(String classpathFile) throws IOException {

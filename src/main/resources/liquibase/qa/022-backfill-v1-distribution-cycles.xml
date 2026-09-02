@@ -49,6 +49,20 @@
         </rollback>
     </changeSet>
 
+    <changeSet author="openelisglobal" id="qa-075-warn-active-v1-distributions">
+        <!-- No change of its own: the precondition is the point. Active V1
+             distributions are not migrated and their pages are removed, so the
+             upgrade log names how many are about to become unreachable. -->
+        <preConditions onFail="WARN"
+            onFailMessage="EQA V1 absorption: active (non-COMPLETED) distributions without a cycle exist and will not be migrated or reachable after this upgrade. Complete or discard them, then re-run qa-073 if they should become history. See docs/eqa/v1-distribution-absorption.md.">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.eqa_distribution
+                WHERE cycle_id IS NULL AND status &lt;&gt; 'COMPLETED'
+            </sqlCheck>
+        </preConditions>
+        <comment>Startup warning when active V1 distributions are left behind</comment>
+    </changeSet>
+
     <changeSet author="openelisglobal" id="qa-073-backfill-v1-distribution-cycles">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="eqa_cycle" schemaName="clinlims"/>
@@ -83,6 +97,37 @@
                 <where>
                     element_id IN ('menu_eqa_orders', 'menu_eqa_distribution', 'menu_eqa_mgmt_distributions')
                 </where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-076-flatten-eqa-tests-menu-group">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_tests'
+            </sqlCheck>
+        </preConditions>
+        <comment>With Orders gone the "EQA Tests" group held one child; My Programs moves
+            directly under EQA (between the management group and My Cycles) and the
+            empty group is deactivated.</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
+            <column name="presentation_order" valueNumeric="25" />
+            <where>element_id = 'menu_eqa_my_programs'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false" />
+            <where>element_id = 'menu_eqa_tests'</where>
+        </update>
+        <rollback>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="is_active" valueBoolean="true" />
+                <where>element_id = 'menu_eqa_tests'</where>
+            </update>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa_tests')" />
+                <column name="presentation_order" valueNumeric="2" />
+                <where>element_id = 'menu_eqa_my_programs'</where>
             </update>
         </rollback>
     </changeSet>
