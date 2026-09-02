@@ -311,11 +311,26 @@ export function seedProviderScheme(runTag: string): ProviderSchemeSeed {
   };
 }
 
+/** Reported results planted per organization, so a spec can assert the score
+ * cell ("{unacceptable} unacceptable of {RESULTS_PER_ORGANIZATION}"). */
+export const RESULTS_PER_ORGANIZATION = 3;
+
 /**
- * Plant the score container: one eqa_distribution on the cycle plus one
- * reported eqa_result per organization, clustered around 100 so every
- * verdict is ACCEPTABLE. scoreCycle counts non-null result_value rows on the
- * cycle's distribution and refuses below MIN_PARTICIPANTS_FOR_STATS (5).
+ * Plant the score container: one eqa_distribution on the cycle plus reported
+ * eqa_result rows, three tests per organization. scoreCycle refuses below
+ * MIN_PARTICIPANTS_FOR_STATS (5) reported rows, so five organizations give a
+ * comfortable fifteen.
+ *
+ * The first organization's first result is planted far from the pack, which
+ * makes it UNACCEPTABLE and every other row ACCEPTABLE. The arithmetic is
+ * worth stating, because a smaller seed cannot reach the verdict at all:
+ * statistics pool every result in the distribution (not per test), so with n
+ * rows of which n-1 are identical the odd one out scores exactly
+ * (n-1)/sqrt(n) whatever its magnitude — 3.61 at n=15, over the
+ * unacceptable threshold of 3.0, where five rows would cap at 1.79 and never
+ * leave ACCEPTABLE. One unacceptable participant is what makes scoring
+ * enqueue a follow-up, which is the behaviour under test.
+ *
  * Rows are swept by the scheme-scoped restore().
  */
 export function seedReportedResults(
@@ -328,13 +343,21 @@ export function seedReportedResults(
     "scheme id",
   );
   // eqa_result.test_id references test(id) — the panel's own rows key on
-  // analyte, not test — so borrow the lowest existing test the way
-  // seed-qc-sigma-data.ts does. Which test it is does not matter: the row
-  // only has to satisfy the FK and the (distribution, org, test) key.
-  const testId = asInt(
-    psql(`SELECT id FROM ${SCHEMA}.test ORDER BY id LIMIT 1`),
-    "test id",
-  );
+  // analyte, not test — so borrow existing tests the way
+  // seed-qc-sigma-data.ts does. Which tests they are does not matter: the
+  // rows only have to satisfy the FK and the (distribution, org, test) key.
+  const testIds = psql(
+    `SELECT string_agg(id::text, ',') FROM (SELECT id FROM ${SCHEMA}.test ORDER BY id` +
+      ` LIMIT ${RESULTS_PER_ORGANIZATION}) t`,
+  )
+    .split(",")
+    .map((id) => asInt(id, "test id"));
+  if (testIds.length < RESULTS_PER_ORGANIZATION) {
+    throw new Error(
+      `Need ${RESULTS_PER_ORGANIZATION} tests in the catalog, found ${testIds.length}`,
+    );
+  }
+
   const distributionId = asInt(
     psql(
       `INSERT INTO ${SCHEMA}.eqa_distribution (id, fhir_uuid, eqa_program_id, distribution_name,` +
@@ -344,12 +367,15 @@ export function seedReportedResults(
     ),
     "distribution id",
   );
-  organizationIds.forEach((orgId, i) => {
-    psql(
-      `INSERT INTO ${SCHEMA}.eqa_result (id, fhir_uuid, eqa_distribution_id, participant_organization_id,` +
-        ` test_id, result_value, target_value, submission_method, submission_date, sys_user_id)` +
-        ` VALUES (nextval('${SCHEMA}.eqa_result_seq'), gen_random_uuid(), ${distributionId},` +
-        ` ${asInt(orgId, "result org")}, ${testId}, ${100 + i * 0.5}, 100, 'MANUAL', now(), '1')`,
-    );
+  organizationIds.forEach((orgId, orgIndex) => {
+    testIds.forEach((testId, testIndex) => {
+      const outlier = orgIndex === 0 && testIndex === 0;
+      psql(
+        `INSERT INTO ${SCHEMA}.eqa_result (id, fhir_uuid, eqa_distribution_id, participant_organization_id,` +
+          ` test_id, result_value, target_value, submission_method, submission_date, sys_user_id)` +
+          ` VALUES (nextval('${SCHEMA}.eqa_result_seq'), gen_random_uuid(), ${distributionId},` +
+          ` ${asInt(orgId, "result org")}, ${testId}, ${outlier ? 200 : 100}, 100, 'MANUAL', now(), '1')`,
+      );
+    });
   });
 }

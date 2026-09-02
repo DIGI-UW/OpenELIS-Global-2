@@ -9,6 +9,7 @@ import {
   seedReportedResults,
   ProviderSchemeSeed,
   PROVIDER_PARTICIPANT_COUNT,
+  RESULTS_PER_ORGANIZATION,
 } from "../../../helpers/seed-eqa-data";
 
 /**
@@ -233,7 +234,19 @@ test.describe("EQA provider cycle lifecycle", () => {
         ),
       ).toBeVisible({ timeout: UI_TIMEOUT });
       await banner("Scored");
-      await expect(page.getByText("0 unacceptable of 1").first()).toBeVisible();
+      // The planted outlier belongs to the first participant, so exactly one
+      // of its three results is unacceptable and every other lab is clean.
+      const outlierRow = page.locator("tr", {
+        hasText: seed.organizationNames[0],
+      });
+      await expect(
+        outlierRow.getByText(`1 unacceptable of ${RESULTS_PER_ORGANIZATION}`),
+      ).toBeVisible();
+      await expect(
+        page
+          .locator("tr", { hasText: seed.organizationNames[1] })
+          .getByText(`0 unacceptable of ${RESULTS_PER_ORGANIZATION}`),
+      ).toBeVisible();
     });
 
     await test.step("cycle history carries the manual create and system walks", async () => {
@@ -244,6 +257,25 @@ test.describe("EQA provider cycle lifecycle", () => {
       await expect(
         page.getByText("System", { exact: true }).first(),
       ).toBeVisible();
+    });
+
+    await test.step("the unacceptable participant reaches the follow-up register", async () => {
+      // Scoring enqueues a follow-up per failing participant. The register is
+      // reached by the monitor's own link, so the navigation is covered too.
+      // This step leaves the workbench, so it runs last.
+      await page.getByRole("link", { name: "Follow-up register" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Participant follow-up" }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      const registerRow = page.locator("tr", {
+        hasText: seed.organizationNames[0],
+      });
+      await expect(registerRow).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(registerRow.getByText("Notified")).toBeVisible();
+      // Clean labs are correspondence-free: no row is opened for them.
+      await expect(
+        page.locator("tr", { hasText: seed.organizationNames[1] }),
+      ).toHaveCount(0);
     });
   });
 });
