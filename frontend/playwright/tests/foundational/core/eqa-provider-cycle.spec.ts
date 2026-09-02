@@ -141,10 +141,23 @@ test.describe("EQA provider cycle lifecycle", () => {
 
     await test.step("prep clears the gate and the cycle is cleared to ship", async () => {
       await banner("Prep in progress");
-      // Gate starts blocked: no aliquots, QC unchecked.
       await expect(
         page.getByText("Ready-to-ship gate", { exact: true }),
       ).toBeVisible({ timeout: UI_TIMEOUT });
+
+      // The gate must actually refuse first, or supplying valid data proves
+      // nothing: a regression that let a cycle ship with no aliquots and no
+      // QC would pass a test that only checks the happy path. A fresh cycle
+      // has neither, so both blockers are named and the action is disabled.
+      const readyToShip = page.getByRole("button", {
+        name: "Mark cycle ready to ship",
+      });
+      await expect(readyToShip).toBeDisabled();
+      await expect(page.getByText(/needs \d+ aliquots, has 0/)).toBeVisible();
+      await expect(
+        page.getByText(/has not passed homogeneity QC/),
+      ).toBeVisible();
+      await expect(page.getByText("All prep requirements met")).toHaveCount(0);
       // 1 sample x 5 participants + 5 reserved = 10 aliquots needed.
       await page.locator('input[id^="produced-"]').fill("10");
       await page.locator('input[id^="reserved-"]').fill("5");
@@ -156,9 +169,9 @@ test.describe("EQA provider cycle lifecycle", () => {
       await expect(page.getByText("All prep requirements met")).toBeVisible({
         timeout: UI_TIMEOUT,
       });
-      await page
-        .getByRole("button", { name: "Mark cycle ready to ship" })
-        .click();
+      // Only now is dispatch permitted.
+      await expect(readyToShip).toBeEnabled();
+      await readyToShip.click();
       await banner("Ready to ship");
     });
 
@@ -285,15 +298,13 @@ test.describe("EQA provider cycle lifecycle", () => {
         `eqa-scores-cycle-${cycleId}-org-${seed.organizationIds[0]}.csv`,
       );
 
-      // The FHIR return answers 200 even when the store refuses the bundle,
-      // so the page reports body.success rather than the status code. Either
-      // outcome is a correctly wired result; a silent no-op is not, which is
-      // what this asserts.
+      // The return must succeed. The FHIR endpoint answers HTTP 200 even
+      // when the store refuses the bundle — the page reads the body's
+      // success flag — so accepting either message would leave a broken
+      // egress path permanently green.
       await outlierRow.getByRole("button", { name: "Send scores" }).click();
       await expect(
-        page
-          .getByText(/Scores returned over FHIR\.|FHIR submission failed/)
-          .first(),
+        page.getByText("Scores returned over FHIR.").first(),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
     });
 

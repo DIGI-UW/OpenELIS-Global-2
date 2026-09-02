@@ -16,6 +16,12 @@ import { UI_TIMEOUT, NAV_TIMEOUT } from "../../../helpers/timeouts";
  * lanes, which is where it has been spent.
  */
 
+/**
+ * Landmarks are matched inside the main content region, never across the
+ * whole page: the side navigation already contains words like "Participants"
+ * and "EQA Distribution", so an unscoped search would let a blank routed page
+ * pass on nav text — precisely the regression these checks exist to catch.
+ */
 const ROUTES: [string, string][] = [
   ["/qa/eqa/management", "Program Administration"],
   ["/qa/eqa/results", "EQA Results & Analysis"],
@@ -32,9 +38,9 @@ test.describe("EQA first-generation routes", () => {
       test.setTimeout(120_000);
       await page.goto(route, { timeout: NAV_TIMEOUT });
       await expect(page).toHaveURL(new RegExp(route.replace(/\//g, "\\/")));
-      await expect(page.getByText(landmark).first()).toBeVisible({
-        timeout: UI_TIMEOUT,
-      });
+      await expect(
+        page.getByRole("main").getByText(landmark, { exact: true }).first(),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
     });
   }
 });

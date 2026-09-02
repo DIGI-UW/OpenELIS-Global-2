@@ -94,37 +94,57 @@ function intSafeIdBase(): number {
  * Each insert pushes its own delete; the stack drains in reverse.
  */
 function undoStack() {
-  const undo: (() => void)[] = [];
+  const undo: { statement: string; run: () => void }[] = [];
   return {
-    push: (statement: string) => undo.push(() => psql(statement)),
-    drain: () => {
+    push: (statement: string) =>
+      undo.push({ statement, run: () => psql(statement) }),
+    /** Unwind in reverse. Every entry is attempted even if an earlier one
+     * fails, and the failures are returned rather than swallowed. */
+    drain: (): string[] => {
+      const failures: string[] = [];
       while (undo.length > 0) {
+        const entry = undo.pop();
         try {
-          undo.pop()?.();
-        } catch {
-          // best effort: keep unwinding the rest of the stack
+          entry?.run();
+        } catch (error) {
+          failures.push(`${entry?.statement}: ${String(error).slice(0, 200)}`);
         }
       }
+      return failures;
     },
   };
 }
 
 /**
- * Run cleanup statements, each in its own error boundary.
+ * Run cleanup statements in the order given, attempting all of them, and
+ * return whatever failed.
  *
- * Rows the test run itself wrote are deleted before the seeded rows unwind,
- * and one statement failing must not abort the rest: an unguarded sequence
- * left a panel receipt behind once, which then blocked its enrollment and
- * scheme from being deleted at all. Best effort per statement, in the order
- * given.
+ * One statement failing must not abort the rest — an unguarded sequence left
+ * a panel receipt behind once, which then held a foreign key on its
+ * enrollment and stranded the whole scheme. But a swallowed failure is just
+ * as bad the other way: the run goes green while rows accumulate in a shared
+ * database. So failures come back to the caller, which raises them once
+ * cleanup has finished.
  */
-function sweep(statements: string[]): void {
+function sweep(statements: string[]): string[] {
+  const failures: string[] = [];
   for (const statement of statements) {
     try {
       psql(statement);
-    } catch {
-      // best effort: a blocked delete must not strand the rest
+    } catch (error) {
+      failures.push(`${statement}: ${String(error).slice(0, 200)}`);
     }
+  }
+  return failures;
+}
+
+/** Raise whatever cleanup could not delete, after every statement has run. */
+function reportCleanupFailures(failures: string[]): void {
+  if (failures.length > 0) {
+    throw new Error(
+      `Seed cleanup left ${failures.length} statement(s) unapplied — rows may be` +
+        ` orphaned in a shared database:\n  ${failures.join("\n  ")}`,
+    );
   }
 }
 
@@ -246,7 +266,7 @@ export function seedParticipantCycle(runTag: string): ParticipantCycleSeed {
     programName,
     cycleName,
     restore: () => {
-      sweep([
+      const failures = sweep([
         `DELETE FROM ${SCHEMA}.eqa_participant_result WHERE cycle_id = ${cycleId}`,
         `DELETE FROM ${SCHEMA}.eqa_panel_receipt WHERE cycle_id = ${cycleId}`,
         `DELETE FROM ${SCHEMA}.eqa_panel_receipt WHERE lab_enrollment_id = ${enrollmentId}`,
@@ -258,7 +278,7 @@ export function seedParticipantCycle(runTag: string): ParticipantCycleSeed {
       ]);
       // Rows the UI run wrote are gone; the seeded cycle, enrollment and
       // scheme unwind in reverse insert order.
-      seeded.drain();
+      reportCleanupFailures([...failures, ...seeded.drain()]);
     },
   };
 }
@@ -326,7 +346,7 @@ export function seedProviderScheme(runTag: string): ProviderSchemeSeed {
     organizationIds,
     organizationNames,
     restore: () => {
-      sweep([
+      const failures = sweep([
         `DELETE FROM ${SCHEMA}.eqa_participant_followup WHERE scheme_id = ${programId}`,
         `DELETE FROM ${SCHEMA}.eqa_result WHERE eqa_distribution_id IN (${distributions})`,
         `DELETE FROM ${SCHEMA}.eqa_distribution WHERE cycle_id IN (${cycles})`,
@@ -336,6 +356,12 @@ export function seedProviderScheme(runTag: string): ProviderSchemeSeed {
         `DELETE FROM ${SCHEMA}.shipment WHERE shipping_box_id IN (${boxes})`,
         `DELETE FROM ${SCHEMA}.box_sample_item WHERE shipping_box_id IN (${boxes})`,
         `DELETE FROM ${SCHEMA}.shipping_box WHERE eqa_cycle_id IN (${cycles})`,
+        // Also by panel-sample linkage, not only by box: a repeat box that
+        // lost its cycle link would otherwise keep a foreign key on the
+        // panel samples and strand the panel behind it.
+        `DELETE FROM ${SCHEMA}.box_sample_item WHERE eqa_panel_sample_id IN` +
+          ` (SELECT ps.id FROM ${SCHEMA}.eqa_panel_sample ps JOIN ${SCHEMA}.eqa_panel p` +
+          ` ON ps.panel_id = p.id WHERE p.cycle_id IN (${cycles}))`,
         `DELETE FROM ${SCHEMA}.eqa_panel_sample WHERE panel_id IN` +
           ` (SELECT id FROM ${SCHEMA}.eqa_panel WHERE cycle_id IN (${cycles}))`,
         `DELETE FROM ${SCHEMA}.eqa_panel WHERE cycle_id IN (${cycles})`,
@@ -345,7 +371,7 @@ export function seedProviderScheme(runTag: string): ProviderSchemeSeed {
       ]);
       // Test-created rows are gone; the seeded enrollments, scheme and
       // organizations unwind in reverse insert order.
-      seeded.drain();
+      reportCleanupFailures([...failures, ...seeded.drain()]);
     },
   };
 }
@@ -440,9 +466,13 @@ export interface FollowupSeed {
   cycleId: string;
   cycleName: string;
   selfOrganizationId: string;
+  selfOrganizationName: string;
   foreignOrganizationId: string;
   foreignOrganizationName: string;
   analyteName: string;
+  /** Name of the analyst carrying the dismissed result, so a spec can find
+   * the competency row the dismissal is supposed to write. */
+  analystName: string;
   restore: () => void;
 }
 
@@ -462,8 +492,10 @@ export function seedFollowups(runTag: string): FollowupSeed {
   let selfOrganizationId: string;
   let foreignOrganizationId: string;
   let analyteName: string;
+  let analystName: string;
+  let selfName: string;
   try {
-    const selfName = selfOrganizationName();
+    selfName = selfOrganizationName();
     selfOrganizationId = psql(
       `SELECT id FROM ${SCHEMA}.organization WHERE trim(lower(name)) = lower('${asSafeString(selfName, "self org name")}')`,
     );
@@ -498,10 +530,59 @@ export function seedFollowups(runTag: string): FollowupSeed {
     const analyteId = asInt(analyte[0], "analyte id");
     analyteName = analyte.slice(1).join("|");
 
-    // The summary JSON is what the triage tables render, so it carries a
-    // realistic failing row rather than an empty array.
+    // A real participant result behind the follow-up, carrying an analyst.
+    // Dismissal only records a competency event for result ids named in the
+    // summary, and only when that row exists and has an analyst assigned —
+    // a summary without the id dismisses successfully and writes nothing,
+    // which would make any assertion about the competency trail vacuous.
+    analystName = `Analyst${asSafeString(runTag, "runTag")}`;
+    const analystId = asInt(
+      psql(
+        `INSERT INTO ${SCHEMA}.system_user (id, external_id, login_name, last_name, first_name, initials,` +
+          ` is_active, is_employee, lastupdated) VALUES (nextval('${SCHEMA}.system_user_seq'),` +
+          ` 'e2e-fu-${asSafeString(runTag, "runTag")}', 'e2e-fu-${asSafeString(runTag, "runTag")}',` +
+          ` '${analystName}', 'E2E', 'E2E', 'Y', 'Y', now()) RETURNING id`,
+      ),
+      "analyst id",
+    );
+    seeded.push(`DELETE FROM ${SCHEMA}.system_user WHERE id = ${analystId}`);
+
+    const roundId = asInt(
+      psql(
+        `INSERT INTO ${SCHEMA}.eqa_round (id, fhir_uuid, cycle_id, round_number, distribution_date,` +
+          ` submission_deadline, sample_count, status, sys_user_id)` +
+          ` VALUES (nextval('${SCHEMA}.eqa_round_seq'), gen_random_uuid(), ${cycleId}, 1,` +
+          ` now() - interval '30 days', now() - interval '10 days', 1, 'CLOSED', '1') RETURNING id`,
+      ),
+      "round id",
+    );
+    seeded.push(`DELETE FROM ${SCHEMA}.eqa_round WHERE id = ${roundId}`);
+
+    const enrollmentId = insertSelfEnrollment(schemeName);
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_lab_program_enrollment WHERE id = ${enrollmentId}`,
+    );
+
+    seeded.push(
+      `DELETE FROM ${SCHEMA}.eqa_participant_result WHERE cycle_id = ${cycleId}`,
+    );
+    const participantResultId = asInt(
+      psql(
+        `INSERT INTO ${SCHEMA}.eqa_participant_result (id, fhir_uuid, cycle_id, round_id, lab_enrollment_id,` +
+          ` analyte_id, result_value, submission_status, performance_status, assigned_analyst_id, submitted_at,` +
+          ` score_received_at, sys_user_id) VALUES (nextval('${SCHEMA}.eqa_participant_result_seq'),` +
+          ` gen_random_uuid(), ${cycleId}, ${roundId}, ${enrollmentId}, ${analyteId}, '210',` +
+          ` 'SCORED', 'UNACCEPTABLE', ${analystId}, now() - interval '20 days',` +
+          ` now() - interval '15 days', '1') RETURNING id`,
+      ),
+      "participant result id",
+    );
+
+    // The summary JSON is what the triage tables render and what dismissal
+    // reads result ids from, so it carries a realistic failing row.
     const summary =
-      `{"source":"external","unacceptable":[{"analyteId":${analyteId},"reported":"210.0",` +
+      `{"source":"external","unacceptable":[{"participantResultId":${participantResultId},` +
+      `"analyteId":${analyteId},"reported":"210.0",` +
       `"target":"100.0","zScore":"3.61","performanceStatus":"UNACCEPTABLE"}]}`;
     seeded.push(
       `DELETE FROM ${SCHEMA}.eqa_participant_followup WHERE cycle_id = ${cycleId}`,
@@ -523,15 +604,17 @@ export function seedFollowups(runTag: string): FollowupSeed {
     cycleId,
     cycleName,
     selfOrganizationId,
+    selfOrganizationName: selfName,
     foreignOrganizationId,
     foreignOrganizationName,
     analyteName,
+    analystName,
     restore: () => {
       // Triage writes competency events against the cycle's scheme.
-      sweep([
+      const failures = sweep([
         `DELETE FROM ${SCHEMA}.eqa_analyst_competency_event WHERE cycle_id = ${cycleId}`,
       ]);
-      seeded.drain();
+      reportCleanupFailures([...failures, ...seeded.drain()]);
     },
   };
 }
@@ -657,7 +740,7 @@ export function seedReceiptConditions(runTag: string): ReceiptConditionsSeed {
     overdueOrganizationName,
     damagedOrganizationName,
     damageNotes,
-    restore: () => seeded.drain(),
+    restore: () => reportCleanupFailures(seeded.drain()),
   };
 }
 
@@ -820,7 +903,7 @@ export function seedOversightData(runTag: string): OversightSeed {
     sectionName,
     analystName,
     analyteName,
-    restore: () => seeded.drain(),
+    restore: () => reportCleanupFailures(seeded.drain()),
   };
 }
 
@@ -854,7 +937,10 @@ export function removeSelfEnrollments(programNamePrefix: string): void {
 /** The participant-only fixture user, and the role that grants participant
  * EQA access without the provider grant. */
 export const PARTICIPANT_USER = "e2eparticipant";
-const PARTICIPANT_ROLE = "Results";
+/** Both bench roles, matching the grant liquibase gives participant EQA
+ * access: Reception opens order entry, Results opens result entry. */
+const PARTICIPANT_ROLES = "'Results', 'Reception'";
+const PARTICIPANT_ROLE_COUNT = 2;
 
 /**
  * Ensure a participant-only login exists, so a spec can see the EQA module
@@ -869,27 +955,89 @@ const PARTICIPANT_ROLE = "Results";
  * step with the existing test user.
  */
 export function seedParticipantUser(): void {
-  const existing = psql(
-    `SELECT id FROM ${SCHEMA}.login_user WHERE login_name = '${PARTICIPANT_USER}'`,
-  );
-  if (existing !== "") {
-    return;
-  }
+  // One statement, so the three rows and the role grant either all land or
+  // none do: a half-created user would be picked up by the early-exit check
+  // on the next run and never repaired.
+  //
+  // The id comes from login_user_seq, not from max(id) + 1. Taking the max
+  // leaves the sequence behind the table, and the next user the application
+  // creates then asks for an id that already exists — a primary key
+  // collision seeded by a test fixture. The setval first repairs a sequence
+  // any earlier fixture may already have left behind.
   psql(
-    `INSERT INTO ${SCHEMA}.login_user (id, login_name, password, password_expired_dt, account_locked,` +
-      ` account_disabled, is_admin, user_time_out, last_updated)` +
-      ` SELECT (SELECT max(id) + 1 FROM ${SCHEMA}.login_user), '${PARTICIPANT_USER}', password,` +
-      ` '2031-12-31', 'N', 'N', 'N', '720', now() FROM ${SCHEMA}.login_user WHERE login_name = 'admin'`,
-  );
-  psql(
-    `INSERT INTO ${SCHEMA}.system_user (id, external_id, login_name, last_name, first_name, initials,` +
-      ` is_active, is_employee, lastupdated) VALUES (nextval('${SCHEMA}.system_user_seq'),` +
-      ` '${PARTICIPANT_USER}', '${PARTICIPANT_USER}', 'Participant', 'E2E', 'EP', 'Y', 'Y', now())`,
-  );
-  psql(
-    `INSERT INTO ${SCHEMA}.system_user_role (system_user_id, role_id)` +
-      ` SELECT su.id, r.id FROM ${SCHEMA}.system_user su, ${SCHEMA}.system_role r` +
-      ` WHERE su.login_name = '${PARTICIPANT_USER}' AND r.name = '${PARTICIPANT_ROLE}'`,
+    `DO $seed$
+     DECLARE
+       map_id integer;
+       user_id integer;
+     BEGIN
+       -- Keep the existing user only if it is complete: a login, a system
+       -- user, and every role expected. An existence check that stopped at
+       -- one role left a half-granted user in place run after run, and the
+       -- spec then failed on a permission the fixture was supposed to give.
+       IF EXISTS (SELECT 1 FROM ${SCHEMA}.login_user WHERE login_name = '${PARTICIPANT_USER}')
+          AND (SELECT count(DISTINCT r.name) FROM ${SCHEMA}.system_user su
+               JOIN ${SCHEMA}.system_user_role sur ON sur.system_user_id = su.id
+               JOIN ${SCHEMA}.system_role r ON r.id = sur.role_id
+               WHERE su.login_name = '${PARTICIPANT_USER}'
+                 AND r.name IN (${PARTICIPANT_ROLES})) = ${PARTICIPANT_ROLE_COUNT}
+          AND EXISTS (SELECT 1 FROM ${SCHEMA}.lab_unit_roles lur
+                      JOIN ${SCHEMA}.system_user su ON su.id = lur.system_user_id
+                      WHERE su.login_name = '${PARTICIPANT_USER}') THEN
+         RETURN;
+       END IF;
+
+       DELETE FROM ${SCHEMA}.lab_unit_roles WHERE system_user_id IN
+         (SELECT id FROM ${SCHEMA}.system_user WHERE login_name = '${PARTICIPANT_USER}');
+       DELETE FROM ${SCHEMA}.user_lab_unit_roles WHERE system_user_id IN
+         (SELECT id FROM ${SCHEMA}.system_user WHERE login_name = '${PARTICIPANT_USER}');
+       DELETE FROM ${SCHEMA}.system_user_role WHERE system_user_id IN
+         (SELECT id FROM ${SCHEMA}.system_user WHERE login_name = '${PARTICIPANT_USER}');
+       DELETE FROM ${SCHEMA}.system_user WHERE login_name = '${PARTICIPANT_USER}';
+       DELETE FROM ${SCHEMA}.login_user WHERE login_name = '${PARTICIPANT_USER}';
+
+       PERFORM setval('${SCHEMA}.login_user_seq',
+         GREATEST((SELECT max(id) FROM ${SCHEMA}.login_user),
+                  (SELECT last_value FROM ${SCHEMA}.login_user_seq)));
+
+       INSERT INTO ${SCHEMA}.login_user (id, login_name, password, password_expired_dt, account_locked,
+         account_disabled, is_admin, user_time_out, last_updated)
+       SELECT nextval('${SCHEMA}.login_user_seq'), '${PARTICIPANT_USER}', password,
+         '2031-12-31', 'N', 'N', 'N', '720', now()
+       FROM ${SCHEMA}.login_user WHERE login_name = 'admin';
+
+       INSERT INTO ${SCHEMA}.system_user (id, external_id, login_name, last_name, first_name, initials,
+         is_active, is_employee, lastupdated)
+       VALUES (nextval('${SCHEMA}.system_user_seq'), '${PARTICIPANT_USER}', '${PARTICIPANT_USER}',
+         'Participant', 'E2E', 'EP', 'Y', 'Y', now());
+
+       INSERT INTO ${SCHEMA}.system_user_role (system_user_id, role_id)
+       SELECT su.id, r.id FROM ${SCHEMA}.system_user su, ${SCHEMA}.system_role r
+       WHERE su.login_name = '${PARTICIPANT_USER}' AND r.name IN (${PARTICIPANT_ROLES});
+
+       -- Lab units, which an administrator never needs: it is handed every
+       -- unit implicitly, while a non-administrator with no unit mapping is
+       -- offered no sample types at all and cannot enter an order. The
+       -- mapping is the same three-table shape the user admin screen writes —
+       -- a map row naming the unit, the roles that apply within it, and the
+       -- link to the user. A fixture user without it is not a realistic
+       -- laboratory user, and a spec running as one would fail on data
+       -- rather than on behaviour.
+       INSERT INTO ${SCHEMA}.lab_unit_role_map (lab_unit_role_map_id, lab_unit)
+       VALUES (nextval('${SCHEMA}.lab_unit_role_map_lab_unit_role_map_id_seq'), 'AllLabUnits')
+       RETURNING lab_unit_role_map_id INTO map_id;
+
+       INSERT INTO ${SCHEMA}.lab_roles (lab_unit_role_map_id, role)
+       SELECT map_id, r.id::text FROM ${SCHEMA}.system_role r WHERE r.name IN (${PARTICIPANT_ROLES});
+
+       SELECT id INTO user_id FROM ${SCHEMA}.system_user WHERE login_name = '${PARTICIPANT_USER}';
+
+       INSERT INTO ${SCHEMA}.user_lab_unit_roles (system_user_id, last_updated)
+       VALUES (user_id, now());
+
+       INSERT INTO ${SCHEMA}.lab_unit_roles (system_user_id, lab_unit_role_map_id)
+       VALUES (user_id, map_id);
+     END
+     $seed$;`,
   );
 }
 
@@ -977,6 +1125,6 @@ export function seedInHousePanel(runTag: string): InHousePanelSeed {
     schemeName,
     panelName,
     blindCode,
-    restore: () => seeded.drain(),
+    restore: () => reportCleanupFailures(seeded.drain()),
   };
 }

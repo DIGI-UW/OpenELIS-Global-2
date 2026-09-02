@@ -20,6 +20,12 @@ const RUN = Date.now().toString(36);
 const PROGRAM = `E2E ${RUN} enrollment`;
 const RENAMED = `${PROGRAM} revised`;
 
+// Enrolling is the laboratory's own act, and the write endpoints are gated on
+// the participant permission rather than an administrative one — so the spec
+// signs in as a bench user. Running it as an administrator would pass even if
+// the grant a real laboratory relies on were revoked.
+test.use({ storageState: "playwright/.auth/participant.json" });
+
 test.describe("EQA self-enrollment", () => {
   test.afterAll(() => {
     // The page can deactivate a row but never delete one, so the only way to

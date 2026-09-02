@@ -97,6 +97,24 @@ test.describe("EQA follow-up registers", () => {
       );
     });
 
+    await test.step("the dismissal is recorded against the analyst", async () => {
+      // Dismissing is supposed to record a competency event for the category
+      // chosen. It only does so for result ids named in the follow-up's
+      // summary, so the seed points at a real result with an analyst
+      // assigned — without that, the dismissal still reports success and
+      // records nothing, and this assertion is what tells the two apart.
+      await page.goto("/qa/eqa/analyst-competency", { timeout: NAV_TIMEOUT });
+      const analystRow = page.locator("tr", { hasText: seed.analystName });
+      await expect(analystRow).toBeVisible({ timeout: UI_TIMEOUT });
+      await analystRow.getByRole("button", { name: "View history" }).click();
+      const history = page.getByTestId(/^history-/).first();
+      await expect(history).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(history.getByText("Dismissed — equipment")).toBeVisible();
+      // An equipment dismissal excuses the sample rather than counting it as
+      // a pass or a failure.
+      await expect(history.getByText("Excused").first()).toBeVisible();
+    });
+
     await test.step("the register holds the other lab's row and triages it", async () => {
       await page.goto("/qa/eqa/provider/follow-ups", { timeout: NAV_TIMEOUT });
       await expect(
@@ -104,6 +122,14 @@ test.describe("EQA follow-up registers", () => {
       ).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(foreignRow()).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(foreignRow().getByText("Notified")).toBeVisible();
+      // The other direction of the split: this lab's own row is corrective
+      // work, not correspondence, so the register must not carry it.
+      await expect(page.locator("tr", { hasText: seed.cycleName })).toHaveCount(
+        1,
+      );
+      await expect(
+        page.locator("tr", { hasText: seed.selfOrganizationName }),
+      ).toHaveCount(0);
 
       // Triage lives in the expanded panel on this page too, alongside the
       // per-test evidence the correspondence is about.
