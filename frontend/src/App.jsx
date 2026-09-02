@@ -27,9 +27,6 @@ import AddLocationPage from "./components/storage/pages/AddLocationPage";
 import AddBoxPage from "./components/storage/pages/AddBoxPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
-import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
-import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
-import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderSchemeList from "./components/eqa/Provider/ProviderSchemeList";
 import CycleWizard from "./components/eqa/Provider/CycleWizard";
@@ -745,7 +742,7 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 {/* QA v0.5 IA rehome (OGC-691): EQA pages moved to /qa/eqa/* */}
-                <Redirect exact from="/EQAOrders" to="/qa/eqa/orders" />
+                <Redirect exact from="/EQAOrders" to="/qa/eqa/my-cycles" />
                 <Redirect
                   exact
                   from="/EQAMyPrograms"
@@ -759,21 +756,16 @@ export default function App() {
                   to="/qa/eqa/participants"
                 />
                 <Redirect
-                  exact
-                  from="/EQADistribution/create"
-                  to="/qa/eqa/distribution/create"
-                />
-                <Redirect
-                  exact
                   from="/EQADistribution"
-                  to="/qa/eqa/distribution"
+                  to="/qa/eqa/provider/schemes"
                 />
-                <SecureRoute
-                  path="/qa/eqa/orders"
-                  exact
-                  component={() => <EQAOrdersPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
+                {/* EQA V2 absorbed the V1 order list and distribution pages (OGC-608):
+                    orders live on My Cycles, distributions are provider cycles. The
+                    old URLs redirect for one release so bookmarks keep working. */}
+                <Redirect exact from="/qa/eqa/orders" to="/qa/eqa/my-cycles" />
+                <Redirect
+                  from="/qa/eqa/distribution"
+                  to="/qa/eqa/provider/schemes"
                 />
                 {/* qa/019 menu row (T-12) ships the FRS path; page lives in the
                     /qa/eqa/* family with its V1 siblings (T-24 card note). */}
@@ -814,20 +806,6 @@ export default function App() {
                   path="/qa/eqa/participants"
                   exact
                   component={() => <EQAParticipantsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
-                />
-                <SecureRoute
-                  path="/qa/eqa/distribution/create"
-                  exact
-                  component={() => <CreateDistribution />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
-                />
-                <SecureRoute
-                  path="/qa/eqa/distribution"
-                  exact
-                  component={() => <EQADistributionDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                   permission="qa.view.eqa"
                 />

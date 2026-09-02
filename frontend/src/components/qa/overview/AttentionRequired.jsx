@@ -150,7 +150,7 @@ const AttentionRequired = () => {
         <LiveRow
           count={eqaDue}
           labelKey="qa.overview.attention.eqaDue"
-          onClick={() => history.push("/qa/eqa/orders")}
+          onClick={() => history.push("/qa/eqa/my-cycles")}
         />
         <ComingSoon
           variant="row"

@@ -135,9 +135,9 @@ describe("ProgramManagement", () => {
     expect(screen.getAllByText("EQA Programs").length).toBeGreaterThanOrEqual(
       1,
     );
-    expect(screen.getAllByText("Participants").length).toBeGreaterThanOrEqual(
-      1,
-    );
+    // The participants tab was removed: enrollment administration lives on
+    // the standalone /qa/eqa/participants page.
+    expect(screen.queryByText("Participants")).toBeNull();
     expect(
       screen.getAllByText("System Settings").length,
     ).toBeGreaterThanOrEqual(1);
