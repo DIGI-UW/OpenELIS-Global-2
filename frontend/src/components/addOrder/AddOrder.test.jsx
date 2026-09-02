@@ -397,49 +397,108 @@ describe("AddOrder — Result Reporting sample headings", () => {
 });
 
 // ---------------------------------------------------------------------------
-// OGC-1191 — Editing an existing order must not be able to reassign the
-// specimen's accession number. On the modify path the editable Lab Number
-// input (bound to newAccessionNumber, the SampleEdit reassignment field) and
-// its "Generate" link are not rendered; the number is shown as static text.
-// On the add path both are still present.
+// OGC-1191 — Editing an existing order must never SILENTLY reassign the
+// specimen's accession number. On the modify path the inline editable Lab
+// Number input (bound to newAccessionNumber, the SampleEdit reassignment field)
+// and its inline "Generate" link are not rendered; the number is shown as
+// static text. Reassignment is still possible, but only as a deliberate action:
+// a "Reassign Lab Number" button opens a confirmation dialog, and only an
+// explicit Confirm writes the candidate to newAccessionNumber. On the add path
+// the inline input + Generate link are unchanged and no Reassign button shows.
 // ---------------------------------------------------------------------------
-describe("AddOrder — Lab Number is not editable/reassignable on modify (OGC-1191)", () => {
+describe("AddOrder — Lab Number reassignment is deliberate on modify (OGC-1191)", () => {
   beforeEach(() => {
     utilsMock.getFromOpenElisServer.mockReset();
     utilsMock.postToOpenElisServerJsonResponse.mockReset();
+    utilsMock.getFromOpenElisServer.mockImplementation(() => {});
     utilsMock.postToOpenElisServerJsonResponse.mockImplementation(() => {});
   });
 
-  test("add order offers the Generate accession link", () => {
+  const modifyValues = (extra = {}) => ({
+    ...baseOrderFormValues(),
+    accessionNumber: "DEV01260000000000519",
+    newAccessionNumber: "",
+    ...extra,
+  });
+
+  test("add order offers the inline Generate accession link and no Reassign button", () => {
     renderAddOrder({ isModifyOrder: false });
     expect(
       document.querySelector('[data-cy="generate-labNumber"]'),
     ).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-cy="reassign-labNumber-open"]'),
+    ).not.toBeInTheDocument();
   });
 
-  test("modify order does NOT offer the Generate link", () => {
-    renderAddOrder({
-      isModifyOrder: true,
-      orderFormValues: {
-        ...baseOrderFormValues(),
-        accessionNumber: "DEV01260000000000519",
-        newAccessionNumber: "",
-      },
-    });
+  test("modify order does NOT offer the inline Generate link", () => {
+    renderAddOrder({ isModifyOrder: true, orderFormValues: modifyValues() });
     expect(
       document.querySelector('[data-cy="generate-labNumber"]'),
     ).not.toBeInTheDocument();
   });
 
   test("modify order shows the existing accession number as static text", () => {
-    renderAddOrder({
-      isModifyOrder: true,
-      orderFormValues: {
-        ...baseOrderFormValues(),
-        accessionNumber: "DEV01260000000000519",
-        newAccessionNumber: "",
-      },
+    renderAddOrder({ isModifyOrder: true, orderFormValues: modifyValues() });
+    const headings = screen.getAllByRole("heading", { level: 5 });
+    expect(
+      headings.some((h) => h.textContent.includes("DEV01260000000000519")),
+    ).toBe(true);
+  });
+
+  test("modify order offers a deliberate Reassign Lab Number button", () => {
+    renderAddOrder({ isModifyOrder: true, orderFormValues: modifyValues() });
+    expect(
+      document.querySelector('[data-cy="reassign-labNumber-open"]'),
+    ).toBeInTheDocument();
+  });
+
+  test("confirming the dialog stages the generated number onto newAccessionNumber", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation((endPoint, cb) => {
+      if (endPoint === "/rest/SampleEntryGenerateScanProvider") {
+        cb({ status: true, body: "DEV01260000000000777" });
+      }
     });
-    expect(screen.getByText(/DEV01260000000000519/)).toBeInTheDocument();
+    const { setOrderFormValues } = renderAddOrder({
+      isModifyOrder: true,
+      orderFormValues: modifyValues(),
+    });
+
+    fireEvent.click(
+      document.querySelector('[data-cy="reassign-labNumber-open"]'),
+    );
+    // Generate a candidate inside the confirmation dialog...
+    fireEvent.click(
+      document.querySelector('[data-cy="reassign-generate-labNumber"]'),
+    );
+    // ...then explicitly confirm (the danger modal's primary button).
+    fireEvent.click(screen.getByRole("button", { name: /Reassign$/ }));
+
+    const staged = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .reverse()
+      .find((arg) => arg && "newAccessionNumber" in arg);
+    expect(staged.newAccessionNumber).toBe("DEV01260000000000777");
+  });
+
+  test("a staged reassignment shows a pending warning with an Undo that clears it", () => {
+    const { setOrderFormValues } = renderAddOrder({
+      isModifyOrder: true,
+      orderFormValues: modifyValues({
+        newAccessionNumber: "DEV01260000000000777",
+      }),
+    });
+
+    expect(
+      screen.getByText("Pending Lab Number reassignment"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/DEV01260000000000777/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Undo/i }));
+    const cleared = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .reverse()
+      .find((arg) => arg && "newAccessionNumber" in arg);
+    expect(cleared.newAccessionNumber).toBe("");
   });
 });

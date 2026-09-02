@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActionableNotification,
   Button,
   Checkbox,
   DataTable,
@@ -79,6 +80,12 @@ const AddOrder = (props) => {
   // drives the order-level LabelsSection (API mode). Null until the first fetch
   // (or when no sample carries tests), in which case the section is not shown.
   const [labelRequest, setLabelRequest] = useState(null);
+
+  // OGC-1191: deliberate Lab Number reassignment on the modify path. The
+  // confirmation dialog holds the candidate number locally; only an explicit
+  // Confirm writes it to newAccessionNumber (the SampleEdit reassignment field).
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [pendingReassign, setPendingReassign] = useState("");
 
   const ATTACHMENT_MAX_FILES = 5;
   const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024;
@@ -439,6 +446,44 @@ const AddOrder = (props) => {
       "/rest/SampleEntryGenerateScanProvider",
       fetchGeneratedAccessionNo,
     );
+  };
+
+  const openReassign = () => {
+    setPendingReassign(orderFormValues.newAccessionNumber || "");
+    setReassignOpen(true);
+  };
+
+  const cancelReassign = () => {
+    setReassignOpen(false);
+    setPendingReassign("");
+  };
+
+  const confirmReassign = () => {
+    setOrderFormValues({
+      ...orderFormValues,
+      newAccessionNumber: pendingReassign.trim(),
+    });
+    setReassignOpen(false);
+  };
+
+  const undoReassign = () => {
+    setOrderFormValues({
+      ...orderFormValues,
+      newAccessionNumber: "",
+    });
+    setPendingReassign("");
+  };
+
+  const handleReassignGeneration = (e) => {
+    if (e) {
+      e.preventDefault();
+    }
+    getFromOpenElisServer("/rest/SampleEntryGenerateScanProvider", (res) => {
+      if (res.status) {
+        setPendingReassign(res.body);
+        setNotificationVisible(false);
+      }
+    });
   };
 
   function accessionNumberValidationResults(res) {
@@ -843,14 +888,94 @@ const AddOrder = (props) => {
                   <FormattedMessage id="sample.label.labnumber" />:{" "}
                   {orderFormValues.accessionNumber}
                 </h5>
+                {orderFormValues.newAccessionNumber ? (
+                  <ActionableNotification
+                    kind="warning"
+                    lowContrast
+                    inline
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "sample.labnumber.reassign.pending.title",
+                    })}
+                    subtitle={intl.formatMessage(
+                      { id: "sample.labnumber.reassign.pending" },
+                      { number: orderFormValues.newAccessionNumber },
+                    )}
+                    actionButtonLabel={intl.formatMessage({
+                      id: "sample.labnumber.reassign.undo",
+                    })}
+                    onActionButtonClick={undoReassign}
+                    data-cy="reassign-labNumber-pending"
+                  />
+                ) : null}
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  data-cy="reassign-labNumber-open"
+                  onClick={openReassign}
+                >
+                  <FormattedMessage id="sample.labnumber.reassign.button" />
+                </Button>
+                <Modal
+                  open={reassignOpen}
+                  danger
+                  size="sm"
+                  modalHeading={intl.formatMessage({
+                    id: "sample.labnumber.reassign.heading",
+                  })}
+                  primaryButtonText={intl.formatMessage({
+                    id: "sample.labnumber.reassign.confirm",
+                  })}
+                  secondaryButtonText={intl.formatMessage({
+                    id: "label.button.cancel",
+                  })}
+                  primaryButtonDisabled={!pendingReassign.trim()}
+                  onRequestClose={cancelReassign}
+                  onRequestSubmit={confirmReassign}
+                  data-cy="reassign-labNumber-modal"
+                >
+                  <p>
+                    <FormattedMessage id="sample.labnumber.reassign.warning" />
+                  </p>
+                  <p>
+                    <FormattedMessage id="sample.labnumber.reassign.current" />
+                    {": "}
+                    <strong>{orderFormValues.accessionNumber}</strong>
+                  </p>
+                  <CustomLabNumberInput
+                    name="reassign-labNo"
+                    id="reassign-labNo"
+                    placeholder={intl.formatMessage({
+                      id: "input.placeholder.labNo",
+                    })}
+                    value={pendingReassign}
+                    onChange={(e, rawVal) =>
+                      setPendingReassign(rawVal ? rawVal : e?.target?.value)
+                    }
+                    labelText={
+                      <FormattedMessage id="sample.label.labnumber.new" />
+                    }
+                  />
+                  <div>
+                    <FormattedMessage id="label.order.scan.text" />{" "}
+                    <Link
+                      data-cy="reassign-generate-labNumber"
+                      href="#"
+                      onClick={(e) => handleReassignGeneration(e)}
+                    >
+                      <FormattedMessage id="sample.label.labnumber.generate" />
+                    </Link>
+                  </div>
+                </Modal>
               </Column>
             )}
 
-            {/* OGC-1191 — Editing an existing order must never reassign the
-                specimen's accession number. On the modify path the number is
-                already shown as static text above; the editable input bound to
-                newAccessionNumber (the SampleEdit reassignment field) and the
-                Generate link are offered only when creating a new order. */}
+            {/* OGC-1191 — Editing an existing order must never silently reassign
+                the specimen's accession number. On the modify path the number is
+                shown as static text above with a deliberate, confirmed Reassign
+                action; the editable input bound to newAccessionNumber (the
+                SampleEdit reassignment field) and its Generate link are offered
+                only when creating a new order. */}
             {!isModifyOrder && (
               <Column lg={8} md={4} sm={4}>
                 <div>
