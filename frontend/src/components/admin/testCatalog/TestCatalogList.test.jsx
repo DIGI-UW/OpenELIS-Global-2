@@ -223,6 +223,44 @@ describe("TestCatalogList", () => {
     }
   });
 
+  /**
+   * Typing must not be interrupted: a search refresh leaves the toolbar Search
+   * mounted (focus/cursor kept) and keeps the previous rows on screen instead of
+   * swapping the whole table — search included — for a full-table spinner.
+   * Reverting the fix unmounts both, so this fails.
+   */
+  it("keeps the search box and current rows mounted during a search refresh", () => {
+    vi.useFakeTimers();
+    try {
+      let refreshPending = false;
+      getFromOpenElisServer.mockImplementation((url, cb) => {
+        if (!url.includes("/tests")) return cb([]); // sample-types reference fetch
+        if (refreshPending) return; // hold the refresh in-flight -> loading stays true
+        cb(
+          pageOf([
+            { testId: "7", name: "Glucose", domain: "CLINICAL", active: true },
+          ]),
+        );
+      });
+      renderList();
+      expect(screen.getByText("Glucose")).toBeInTheDocument();
+
+      refreshPending = true;
+      const search = screen.getByPlaceholderText(
+        messages["label.testCatalog.list.search"],
+      );
+      fireEvent.change(search, { target: { value: "glu" } });
+      act(() => vi.advanceTimersByTime(300)); // debounce fires -> refresh now loading
+
+      expect(
+        screen.getByPlaceholderText(messages["label.testCatalog.list.search"]),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Glucose")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows the sample type in its own column", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url.includes("/tests")) {
