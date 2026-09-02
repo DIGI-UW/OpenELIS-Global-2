@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-028-create-vector-pool-seq" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not><sequenceExists sequenceName="vector_pool_seq" schemaName="clinlims"/></not>
+    </preConditions>
+    <createSequence sequenceName="vector_pool_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+  </changeSet>
+
+  <changeSet id="3.5.0-028-create-vector-pool" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="vector_pool" schemaName="clinlims"/></not>
+    </preConditions>
+    <comment>Vector pool: a many-organism testing arrangement; analyses for pool-level tests attach to this row.</comment>
+    <createTable tableName="vector_pool" schemaName="clinlims">
+      <column name="id" type="NUMERIC(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="sample_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"
+          foreignKeyName="fk_vector_pool_sample"
+          referencedTableSchemaName="clinlims" referencedTableName="sample" referencedColumnNames="id"/>
+      </column>
+      <column name="parent_pool_id" type="NUMERIC(10,0)" remarks="NULL for top-level pools; set on sub-pools created by deconvolution.">
+        <constraints nullable="true"
+          foreignKeyName="fk_vector_pool_parent"
+          referencedTableSchemaName="clinlims" referencedTableName="vector_pool" referencedColumnNames="id"/>
+      </column>
+      <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
+      <column name="sys_user_id" type="VARCHAR(255)"/>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+    <createIndex tableName="vector_pool" indexName="ix_vector_pool_sample_id" schemaName="clinlims">
+      <column name="sample_id"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="3.5.0-028-create-vector-pool-member" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="vector_pool_member" schemaName="clinlims"/></not>
+    </preConditions>
+    <comment>
+      M:N join between vector_pool and sample_item. Two FK columns + audit
+      timestamp; deliberately no per-row metadata. Forward-compatible with V-03
+      deconvolution (same organism in multiple pools across rounds = extra rows,
+      no schema change).
+    </comment>
+    <createTable tableName="vector_pool_member" schemaName="clinlims">
+      <column name="vector_pool_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"
+          foreignKeyName="fk_vpm_vector_pool"
+          referencedTableSchemaName="clinlims" referencedTableName="vector_pool" referencedColumnNames="id"/>
+      </column>
+      <column name="sample_item_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"
+          foreignKeyName="fk_vpm_sample_item"
+          referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+    <addPrimaryKey tableName="vector_pool_member" schemaName="clinlims"
+                   columnNames="vector_pool_id, sample_item_id"
+                   constraintName="pk_vector_pool_member"/>
+    <createIndex tableName="vector_pool_member" indexName="ix_vpm_sample_item" schemaName="clinlims">
+      <column name="sample_item_id"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="3.5.0-028-add-analysis-vector-pool-id" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not><columnExists tableName="analysis" columnName="vector_pool_id" schemaName="clinlims"/></not>
+    </preConditions>
+    <addColumn tableName="analysis" schemaName="clinlims">
+      <column name="vector_pool_id" type="NUMERIC(10,0)" remarks="Mutually exclusive with sampitem_id (see ck_analysis_pool_or_item).">
+        <constraints nullable="true"
+          foreignKeyName="fk_analysis_vector_pool"
+          referencedTableSchemaName="clinlims" referencedTableName="vector_pool" referencedColumnNames="id"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-028-relax-analysis-sampitem-not-null" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="analysis" columnName="sampitem_id" schemaName="clinlims"/>
+      <!-- Skip if a prior hotfix/manual change already made the column nullable;
+           Postgres errors on DROP NOT NULL when the column is already nullable. -->
+      <sqlCheck expectedResult="NO">
+        SELECT is_nullable FROM information_schema.columns
+        WHERE table_schema = 'clinlims' AND table_name = 'analysis' AND column_name = 'sampitem_id'
+      </sqlCheck>
+    </preConditions>
+    <comment>Pool-level analyses leave sampitem_id NULL; relax the NOT NULL constraint.</comment>
+    <dropNotNullConstraint tableName="analysis" columnName="sampitem_id" schemaName="clinlims" columnDataType="NUMERIC(10,0)"/>
+  </changeSet>
+
+  <changeSet id="3.5.0-028-add-analysis-pool-or-item-check" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="analysis" columnName="vector_pool_id" schemaName="clinlims"/>
+      <!-- Skip if the constraint already exists (partial rerun / manual DDL /
+           divergent env); Postgres errors on duplicate constraint names. -->
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM pg_constraint c
+        JOIN pg_namespace n ON n.oid = c.connamespace
+        WHERE n.nspname = 'clinlims' AND c.conname = 'ck_analysis_pool_or_item'
+      </sqlCheck>
+    </preConditions>
+    <comment>Exactly one of sampitem_id / vector_pool_id must be set on every analysis.</comment>
+    <sql>
+      ALTER TABLE clinlims.analysis
+        ADD CONSTRAINT ck_analysis_pool_or_item
+        CHECK (
+          (sampitem_id IS NOT NULL AND vector_pool_id IS NULL)
+          OR
+          (sampitem_id IS NULL AND vector_pool_id IS NOT NULL)
+        );
+    </sql>
+    <rollback>
+      <sql>ALTER TABLE clinlims.analysis DROP CONSTRAINT IF EXISTS ck_analysis_pool_or_item;</sql>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="3.5.0-028-index-analysis-vector-pool-id" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not><indexExists indexName="ix_analysis_vector_pool_id" schemaName="clinlims"/></not>
+    </preConditions>
+    <createIndex tableName="analysis" indexName="ix_analysis_vector_pool_id" schemaName="clinlims">
+      <column name="vector_pool_id"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

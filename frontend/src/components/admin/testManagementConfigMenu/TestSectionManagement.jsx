@@ -62,6 +62,13 @@ function TestSectionManagement() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
+                  id="TestSectionEdit"
+                  href="/MasterListsPage/TestSectionEdit"
+                >
+                  <FormattedMessage id="admin.labUnit.edit.title" />
+                </ClickableTile>
+                <br />
+                <ClickableTile
                   id="TestSectionOrder"
                   href="/MasterListsPage/TestSectionOrder"
                 >

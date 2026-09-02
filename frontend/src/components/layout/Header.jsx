@@ -531,7 +531,12 @@ function OEHeader({
           <SideNavMenu
             // IMPORTANT: use stable key (elementId) to prevent React from reusing the wrong subtree
             // when the menu list shape changes (roles/plugins/async load).
-            title={intl.formatMessage({ id: menuItem.menu.displayKey })}
+            // plugin-contributed menus (analyzers) carry a literal name as their
+            // display key, not a message id — fall back to it instead of erroring
+            title={intl.formatMessage({
+              id: menuItem.menu.displayKey,
+              defaultMessage: menuItem.menu.displayKey,
+            })}
             defaultExpanded={carbonExpanded}
             isActive={carbonIsActive}
             onToggle={() => {
@@ -604,7 +609,10 @@ function OEHeader({
             }}
           >
             <span style={{ fontSize: `${100 - 5 * Math.max(level - 1, 0)}%` }}>
-              <FormattedMessage id={menuItem.menu.displayKey} />
+              <FormattedMessage
+                id={menuItem.menu.displayKey}
+                defaultMessage={menuItem.menu.displayKey}
+              />
             </span>
           </span>
         </SideNavMenuItem>

@@ -29,6 +29,7 @@ import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageTitle from "../../common/PageTitle/PageTitle";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 const STATUS_TAG = {
   ESTABLISHMENT: "gray",
@@ -137,6 +138,14 @@ const ControlLotList = () => {
 
   return (
     <div data-testid="control-lot-list">
+      <PageBreadCrumb
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          { label: "analyzer.page.hierarchy.root", link: "" },
+          { label: "qc.dashboard.title", link: "" },
+          { label: "qc.controlLots.title", link: "" },
+        ]}
+      />
       <PageTitle
         breadcrumbs={[
           {

@@ -119,7 +119,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   });
 
   const [data, setData] = useState([]);
-  const [testSections, setTestSections] = useState([]);
+  const [testSections, setTestSections] = useState<
+    { id: string; value: string }[]
+  >([]);
   const [selectedTestSection, setSelectedTestSection] = useState("");
   const [loading, setLoading] = useState(true);
   const componentMounted = useRef(true);
@@ -187,23 +189,17 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   }, [selectedTile]);
 
   useEffect(() => {
-    getFromOpenElisServer(
-      "/rest/user-test-sections/ALL",
-      (fetchedTestSections) => {
-        fetchTestSections(fetchedTestSections);
-      },
-    );
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
-
-  const fetchTestSections = (res) => {
-    setTestSections(res);
-    hasRole(userSessionDetails, "Global Administrator")
-      ? setSelectedTestSection("all")
-      : setSelectedTestSection(res[0]?.id);
-  };
+    if (!userSessionDetails?.loginName) return;
+    getFromOpenElisServer("/rest/user-test-sections/ALL", (res: any) => {
+      const sections = Array.isArray(res) ? res : [];
+      setTestSections(sections);
+      if (hasRole(userSessionDetails, "Global Administrator")) {
+        setSelectedTestSection("all");
+      } else {
+        setSelectedTestSection(sections[0]?.id);
+      }
+    });
+  }, [userSessionDetails]);
 
   const loadNextResultsPage = () => {
     setLoading(true);

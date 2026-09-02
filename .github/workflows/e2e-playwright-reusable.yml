@@ -108,7 +108,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             echo "::group::Playwright install attempt $attempt"
-            if timeout 4m npx playwright install --only-shell chromium; then
+            if timeout --kill-after=30s 6m npx playwright install --only-shell chromium; then
               echo "::endgroup::"
               exit 0
             fi
@@ -179,7 +179,18 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             echo "::group::Playwright install attempt $attempt"
-            if timeout 4m npx playwright install --only-shell chromium --with-deps; then
+            # A timed-out --with-deps attempt orphans apt-get still holding the
+            # dpkg lock, which fails every subsequent retry with exit 100.
+            # Reclaim the lock before retrying so a slow-mirror attempt 1 does
+            # not doom the whole step.
+            if [ "$attempt" -gt 1 ]; then
+              sudo pkill -9 -x apt-get 2>/dev/null || true
+              sudo pkill -9 -x dpkg 2>/dev/null || true
+              sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock \
+                /var/lib/apt/lists/lock 2>/dev/null || true
+              sudo dpkg --configure -a 2>/dev/null || true
+            fi
+            if timeout --kill-after=30s 6m npx playwright install --only-shell chromium --with-deps; then
               echo "::endgroup::"
               exit 0
             fi

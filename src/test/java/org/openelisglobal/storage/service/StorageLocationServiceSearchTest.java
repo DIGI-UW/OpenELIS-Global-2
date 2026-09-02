@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
@@ -13,6 +14,11 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.storage.dao.StorageBoxDAO;
+import org.openelisglobal.storage.dao.StorageDeviceDAO;
+import org.openelisglobal.storage.dao.StorageRackDAO;
+import org.openelisglobal.storage.dao.StorageRoomDAO;
+import org.openelisglobal.storage.dao.StorageShelfDAO;
 
 /**
  * Test for StorageLocationService.searchLocations to verify parent IDs and
@@ -24,20 +30,31 @@ public class StorageLocationServiceSearchTest {
     @Mock
     private StorageSearchService storageSearchService;
 
+    @Mock
+    private StorageRoomDAO storageRoomDAO;
+
+    @Mock
+    private StorageDeviceDAO storageDeviceDAO;
+
+    @Mock
+    private StorageShelfDAO storageShelfDAO;
+
+    @Mock
+    private StorageRackDAO storageRackDAO;
+
+    @Mock
+    private StorageBoxDAO storageBoxDAO;
+
     @InjectMocks
     private StorageLocationServiceImpl storageLocationService;
 
     @Before
     public void setUp() {
-        // Use reflection to inject mock
-        try {
-            java.lang.reflect.Field searchServiceField = StorageLocationServiceImpl.class
-                    .getDeclaredField("storageSearchService");
-            searchServiceField.setAccessible(true);
-            searchServiceField.set(storageLocationService, storageSearchService);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to inject mock", e);
-        }
+        // Stub subtree-expansion DAO calls to return empty lists so tests focus on
+        // directly-matched results without NullPointerExceptions.
+        when(storageShelfDAO.findByParentDeviceId(any())).thenReturn(new ArrayList<>());
+        when(storageRackDAO.findByParentShelfId(any())).thenReturn(new ArrayList<>());
+        when(storageBoxDAO.findByParentRackId(any())).thenReturn(new ArrayList<>());
     }
 
     @Test

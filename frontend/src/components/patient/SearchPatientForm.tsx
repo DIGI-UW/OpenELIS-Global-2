@@ -88,12 +88,9 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   const autoSelectOnResults = useRef(false);
 
   const handlePatientImport = (patientId: string) => {
-    console.log("Import button clicked, patientId:", patientId);
-
     const patientSelected = patientSearchResults.find(
       (patient) => patient.patientID === patientId,
     );
-    console.log("Patient selected:", patientSelected);
 
     if (!patientSelected) {
       addNotification({

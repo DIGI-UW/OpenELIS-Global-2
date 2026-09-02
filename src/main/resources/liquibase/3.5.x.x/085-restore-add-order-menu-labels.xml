@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Two presentation regressions introduced by the demo-silnas sync, fixed forward
+    rather than by editing 3.4.x.x/025 and 3.5.x.x/041-042, which have already run
+    on the demo-silnas deployment (editing them would break their checksums).
+    -->
+
+    <!--
+    develop deliberately renamed the multi-domain order workflow to "Add Generic
+    Order" (sidenav.label.addorder) so it would not collide with the legacy
+    "Add Order" entry (menu_sample_add / banner.menu.sampleAdd). 025 deactivated
+    that menu and introduced menu_add_order pointing at sidenav.label.add.order,
+    whose English value is "Add Order" — reinstating the very collision the rename
+    removed, so the Sample menu showed two "Add Order" children. Point the new
+    parent at the renamed key, which is already translated in every locale.
+    -->
+    <changeSet id="OGC-restore-add-generic-order-label" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_add_order' AND display_key = 'sidenav.label.add.order'
+            </sqlCheck>
+        </preConditions>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="display_key" value="sidenav.label.addorder"/>
+            <column name="tool_tip_key" value="sidenav.label.addorder"/>
+            <where>element_id = 'menu_add_order'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="display_key" value="sidenav.label.add.order"/>
+                <column name="tool_tip_key" value="sidenav.label.add.order"/>
+                <where>element_id = 'menu_add_order'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!--
+    041-laporan-hasil-menu.xml and 042-vector-surveillance-dashboard-permissions.xml
+    both insert a Reports child at presentation_order 5, leaving the two siblings in
+    a nondeterministic order. Move the vector surveillance entry to 6.
+    -->
+    <changeSet id="OGC-vector-surveillance-menu-order" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_reports_vectorsurveillance' AND presentation_order = 5
+            </sqlCheck>
+        </preConditions>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="presentation_order" valueNumeric="6"/>
+            <where>element_id = 'menu_reports_vectorsurveillance'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="presentation_order" valueNumeric="5"/>
+                <where>element_id = 'menu_reports_vectorsurveillance'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!--
+    The sync deleted develop's /ReferredOutTests route and its component, replacing
+    the page with /SampleShipment/reference-lab-results, but left menu_results_referred
+    active and still pointing at the removed route — so Results > Referred Out landed
+    on a dead route. Repoint it at the replacement rather than deactivating it, so the
+    feature stays reachable where develop users expect to find it.
+    -->
+    <changeSet id="OGC-repoint-referred-out-menu" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_results_referred' AND action_url = '/ReferredOutTests'
+            </sqlCheck>
+        </preConditions>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="action_url" value="/SampleShipment/reference-lab-results"/>
+            <where>element_id = 'menu_results_referred'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="action_url" value="/ReferredOutTests"/>
+                <where>element_id = 'menu_results_referred'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

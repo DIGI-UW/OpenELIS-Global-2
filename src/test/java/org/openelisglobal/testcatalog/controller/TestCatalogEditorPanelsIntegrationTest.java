@@ -3,15 +3,16 @@ package org.openelisglobal.testcatalog.controller;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
 import java.util.UUID;
 import org.junit.After;
-import org.junit.Assume;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationServiceImpl;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.login.valueholder.UserSessionData;
-import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.MembershipItem;
@@ -38,6 +39,17 @@ import org.springframework.mock.web.MockHttpSession;
 public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final long TEST_ID = 95451L;
+
+    /**
+     * The two panels these tests operate on are seeded here rather than taken from
+     * whatever Liquibase left behind: under a full-suite run earlier classes can
+     * leave fewer than two active panels, which used to skip this class entirely.
+     */
+    private static final long PANEL_A_ID = 95452L;
+
+    private static final long PANEL_B_ID = 95453L;
+
+    private static final long SAMPLE_TYPE_ID = 95454L;
 
     @Autowired
     private TestService testService;
@@ -66,6 +78,8 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @Autowired
     private org.openelisglobal.panel.service.PanelService panelService;
     @Autowired
+    private LocalizationService localizationService;
+    @Autowired
     private org.openelisglobal.panelitem.service.PanelItemService panelItemService;
     @Autowired
     private javax.sql.DataSource dataSource;
@@ -84,11 +98,9 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
                 analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
                 panelService, panelItemService);
-        List<Panel> panels = panelService.getAllActivePanels();
-        Assume.assumeTrue("needs at least two Liquibase-seeded panels", panels.size() >= 2);
-        panelAId = panels.get(0).getId();
-        panelBId = panels.get(1).getId();
         cleanup();
+        panelAId = seedPanel(PANEL_A_ID, "PanelsITAlpha");
+        panelBId = seedPanel(PANEL_B_ID, "PanelsITBeta");
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
@@ -100,9 +112,78 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
         cleanup();
     }
 
+    /**
+     * Sample types are ambient data here — the derived-sample-type assertions only
+     * need one to exist. Other classes' DBUnit datasets empty the table, so seed
+     * one when it is missing rather than reading whatever happens to be there.
+     */
+    private Long ensureSampleType() {
+        java.util.List<Long> existing = jdbc.queryForList("SELECT id FROM clinlims.type_of_sample ORDER BY id LIMIT 1",
+                Long.class);
+        if (!existing.isEmpty()) {
+            return existing.get(0);
+        }
+        Localization nameLocalization = LocalizationServiceImpl.createNewLocalization("PanelsITSampleType",
+                "PanelsITSampleType", LocalizationServiceImpl.LocalizationType.TEST_NAME);
+        nameLocalization.setSysUserId("1");
+        String localizationId = localizationService.insert(nameLocalization);
+        jdbc.update(
+                "INSERT INTO clinlims.type_of_sample (id, description, name_localization_id, is_active, lastupdated)"
+                        + " VALUES (?, ?, ?, true, NOW())",
+                SAMPLE_TYPE_ID, "PanelsITSampleType", Long.parseLong(localizationId));
+        typeOfSampleService.clearCache();
+        return SAMPLE_TYPE_ID;
+    }
+
+    private void refreshPanelLists() {
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_INACTIVE);
+    }
+
+    private String seedPanel(long id, String name) {
+        Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(name, name,
+                LocalizationServiceImpl.LocalizationType.PANEL_NAME);
+        nameLocalization.setSysUserId("1");
+        String localizationId = localizationService.insert(nameLocalization);
+        jdbc.update(
+                "INSERT INTO clinlims.panel (id, name, description, is_active, sort_order, domain,"
+                        + " name_localization_id, lastupdated) VALUES (?, ?, ?, 'Y', 1, 'CLINICAL', ?, NOW())",
+                id, name, name, Long.parseLong(localizationId));
+        refreshPanelLists();
+        return String.valueOf(id);
+    }
+
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.panel_item WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        java.util.List<Long> seededSampleTypeLocalizations = jdbc.queryForList(
+                "SELECT name_localization_id FROM clinlims.type_of_sample WHERE id = ?", Long.class, SAMPLE_TYPE_ID);
+        jdbc.update("DELETE FROM clinlims.sampletype_test WHERE sample_type_id = ?", SAMPLE_TYPE_ID);
+        jdbc.update("DELETE FROM clinlims.sampletype_panel WHERE sample_type_id = ?", SAMPLE_TYPE_ID);
+        jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id = ?", SAMPLE_TYPE_ID);
+        for (Long localizationId : seededSampleTypeLocalizations) {
+            if (localizationId != null) {
+                jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id = ?", localizationId);
+                jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", localizationId);
+            }
+        }
+        typeOfSampleService.clearCache();
+        for (long panelId : new long[] { PANEL_A_ID, PANEL_B_ID }) {
+            java.util.List<Long> localizationIds = jdbc
+                    .queryForList("SELECT name_localization_id FROM clinlims.panel WHERE id = ?", Long.class, panelId);
+            jdbc.update("DELETE FROM clinlims.panel_item WHERE panel_id = ?", panelId);
+            jdbc.update("DELETE FROM clinlims.sampletype_panel WHERE panel_id = ?", panelId);
+            jdbc.update("DELETE FROM clinlims.panel_terminology_mapping WHERE panel_id = ?", panelId);
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", panelId);
+            for (Long localizationId : localizationIds) {
+                if (localizationId != null) {
+                    jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id = ?", localizationId);
+                    jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", localizationId);
+                }
+            }
+        }
+        refreshPanelLists();
     }
 
     private String testId() {
@@ -174,12 +255,60 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @org.junit.Test
     public void listPanels_includesSeededPanels() {
         boolean found = false;
-        for (PanelOption o : controller.listPanels()) {
+        for (PanelOption o : controller.listPanels(false)) {
             if (panelAId.equals(o.id)) {
                 found = true;
             }
         }
         assertTrue("the seeded panel should appear in the typeahead list", found);
+    }
+
+    /**
+     * OGC-224 — the list endpoint carries the management fields the Panels list
+     * renders: domain (backfilled CLINICAL by liquibase 074), test count, derived
+     * sample types (from member tests — panels store none), and the active flag.
+     * The picker contract ({id, name}) stays untouched.
+     */
+    @org.junit.Test
+    public void listPanels_managementFields_domainTestCountAndDerivedSampleTypes() {
+        Long sampleTypeId = ensureSampleType();
+        jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (952224, ?, ?)",
+                sampleTypeId, TEST_ID);
+        // the test->sample-type map is a lazy singleton cache; the jdbc seed
+        // above is invisible to it until cleared
+        typeOfSampleService.clearCache();
+        try {
+            put(membership(panelAId, 1));
+
+            PanelOption row = controller.listPanels(true).stream().filter(o -> panelAId.equals(o.id)).findFirst()
+                    .orElse(null);
+            assertTrue("the panel must appear in the management list", row != null);
+            assertEquals("existing panels backfill to CLINICAL", "CLINICAL", row.domain);
+            assertTrue("the member test must be counted", row.testCount >= 1);
+            assertTrue("sample types derive from the member tests", !row.sampleTypes.isEmpty());
+            assertTrue("the panel is active", row.active);
+        } finally {
+            jdbc.update("DELETE FROM clinlims.sampletype_test WHERE id = 952224");
+            typeOfSampleService.clearCache();
+        }
+    }
+
+    /**
+     * OGC-224 — the management list includes inactive panels only when asked
+     * (includeInactive=true); the default stays active-only so the test editor's
+     * add-to-panel typeahead never offers an inactive panel.
+     */
+    @org.junit.Test
+    public void listPanels_includeInactiveGatesInactivePanels() {
+        jdbc.update("UPDATE clinlims.panel SET is_active = 'N' WHERE id = ?", Long.parseLong(panelBId));
+        try {
+            boolean inDefault = controller.listPanels(false).stream().anyMatch(o -> panelBId.equals(o.id));
+            boolean inManagement = controller.listPanels(true).stream().anyMatch(o -> panelBId.equals(o.id));
+            assertTrue("default list must exclude the inactive panel", !inDefault);
+            assertTrue("management list must include the inactive panel", inManagement);
+        } finally {
+            jdbc.update("UPDATE clinlims.panel SET is_active = 'Y' WHERE id = ?", Long.parseLong(panelBId));
+        }
     }
 
     @org.junit.Test
@@ -207,5 +336,531 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
         assertEquals(422, resp.getStatusCode().value());
         // The whole request is rejected — no partial write for the valid panel.
         assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
+    }
+
+    /**
+     * Free-text panel creation (OGC-1112 FR-43) — create-if-not-exists, over HTTP
+     * so the real bean (with its field-injected localization service) and Jackson
+     * binding are exercised. A new name creates the panel (201); the SAME name
+     * again returns the existing panel (200, same id) instead of a duplicate or the
+     * previous blank 500 (uncaught LIMSDuplicateRecordException). The created panel
+     * is immediately assignable and the membership round-trips.
+     */
+    @org.junit.Test
+    public void createPanel_isCreateIfNotExists_andAssignable() throws Exception {
+        org.openelisglobal.login.valueholder.UserSessionData usd = new org.openelisglobal.login.valueholder.UserSessionData();
+        usd.setSytemUserId(1);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        try {
+            org.springframework.test.web.servlet.MvcResult created = mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/rest/test-catalog/panels")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"PanelsIT Freetext\"}").session(session))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                    .andReturn();
+            String panelId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+
+            // same name again — the existing panel, not a duplicate, not a 500
+            org.springframework.test.web.servlet.MvcResult again = mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/rest/test-catalog/panels")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"PanelsIT Freetext\"}").session(session))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andReturn();
+            org.junit.Assert.assertEquals(panelId,
+                    json.readTree(again.getResponse().getContentAsString()).get("id").asText());
+            Integer rows = jdbc.queryForObject("SELECT count(*) FROM clinlims.panel WHERE name = 'PanelsIT Freetext'",
+                    Integer.class);
+            org.junit.Assert.assertEquals(Integer.valueOf(1), rows);
+
+            // the created panel is assignable and the membership persists
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/tests/" + testId() + "/panels")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"memberships\":[{\"panelId\":\"" + panelId + "\",\"position\":4}]}").session(session))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.memberships[0].panelId").value(panelId));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .get("/rest/test-catalog/tests/" + testId() + "/panels").session(session))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.memberships[0].panelId").value(panelId));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.panel_item WHERE test_id = ?", TEST_ID);
+            jdbc.update("DELETE FROM clinlims.panel WHERE name = 'PanelsIT Freetext'");
+        }
+    }
+
+    private static MockHttpSession authedSession() {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        return session;
+    }
+
+    /**
+     * OGC-224 C2 — the panel envelope reads back the management fields; unknown and
+     * non-numeric ids are 404s.
+     */
+    @org.junit.Test
+    public void getPanel_envelope_and404Guards() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/rest/test-catalog/panels/" + panelAId).session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.id")
+                        .value(panelAId))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.domain")
+                        .value("CLINICAL"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.name")
+                        .isNotEmpty());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/rest/test-catalog/panels/99999999").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/rest/test-catalog/panels/notanumber").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
+    }
+
+    /**
+     * OGC-224 C2 — Basic Info rename updates BOTH name sources (PANEL.NAME and the
+     * display localization order entry reads), and the response carries the saved
+     * row.
+     */
+    @org.junit.Test
+    public void savePanelBasicInfo_renameUpdatesNameAndLocalization() throws Exception {
+        String originalName = jdbc.queryForObject("SELECT name FROM clinlims.panel WHERE id = ?", String.class,
+                Long.parseLong(panelAId));
+        try {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"PanelsIT Renamed\",\"description\":\"renamed by IT\"}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.name")
+                            .value("PanelsIT Renamed"));
+            assertEquals("PanelsIT Renamed", jdbc.queryForObject("SELECT name FROM clinlims.panel WHERE id = ?",
+                    String.class, Long.parseLong(panelAId)));
+            assertEquals("PanelsIT Renamed",
+                    jdbc.queryForObject("SELECT lv.value FROM clinlims.localization_value lv"
+                            + " JOIN clinlims.panel p ON p.name_localization_id = lv.localization_id"
+                            + " WHERE p.id = ? AND lv.locale = 'en'", String.class, Long.parseLong(panelAId)));
+            assertEquals("renamed by IT", jdbc.queryForObject("SELECT description FROM clinlims.panel WHERE id = ?",
+                    String.class, Long.parseLong(panelAId)));
+        } finally {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"" + originalName + "\",\"description\":\"" + originalName + "\"}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+        }
+    }
+
+    /**
+     * OGC-224 C2 — the FRS activation rules: a zero-test panel can never be
+     * activated (422); once it has a member it can; deactivating is always allowed;
+     * a create with active=false starts inactive.
+     */
+    @org.junit.Test
+    public void savePanelBasicInfo_activationRules() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        org.springframework.test.web.servlet.MvcResult created = mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/test-catalog/panels")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"PanelsIT Act\",\"active\":false}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                .andReturn();
+        String panelId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+        try {
+            assertEquals("N", jdbc.queryForObject("SELECT is_active FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(panelId)));
+
+            // zero tests → activation is rejected
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"active\":true}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity());
+
+            // give it a member test → activation succeeds
+            put(membership(panelId, 1));
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"active\":true}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.active")
+                            .value(true));
+
+            // deactivating is always allowed
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"active\":false}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.active")
+                            .value(false));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.panel_item WHERE panel_id = ?", Long.parseLong(panelId));
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", Long.parseLong(panelId));
+        }
+    }
+
+    /**
+     * OGC-224 C3 — the panel-side Tests write: ordered membership round-trip (add,
+     * reorder, remove), SAMPLETYPE_PANEL kept in sync with the derived sample-type
+     * set on every write, and auto-activate honored only for the create flow's
+     * first test.
+     */
+    @org.junit.Test
+    public void savePanelTests_roundTrip_syncsSampleTypePanel_andAutoActivates() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        Long sampleTypeId = ensureSampleType();
+        jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (952225, ?, ?)",
+                sampleTypeId, TEST_ID);
+        org.springframework.test.web.servlet.MvcResult created = mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/test-catalog/panels")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"PanelsIT Tests\",\"active\":false}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                .andReturn();
+        String panelId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+        try {
+            // create flow: first test + autoActivate → membership, sync, ACTIVE
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/tests")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"tests\":[{\"testId\":\"" + testId() + "\",\"position\":1}],\"autoActivate\":true}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.tests[0].testId").value(testId()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.panel.active").value(true));
+            assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                    "SELECT count(*) FROM clinlims.sampletype_panel WHERE panel_id = ?" + " AND sample_type_id = ?",
+                    Integer.class, Long.parseLong(panelId), sampleTypeId));
+
+            // removing every test empties membership AND the junction; the
+            // active state is untouched (editing never auto-flips)
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/tests")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"tests\":[]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.panel.testCount").value(0))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.panel.active").value(true));
+            assertEquals(Integer.valueOf(0),
+                    jdbc.queryForObject("SELECT count(*) FROM clinlims.sampletype_panel WHERE panel_id = ?",
+                            Integer.class, Long.parseLong(panelId)));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.sampletype_panel WHERE panel_id = ?", Long.parseLong(panelId));
+            jdbc.update("DELETE FROM clinlims.panel_item WHERE panel_id = ?", Long.parseLong(panelId));
+            jdbc.update("DELETE FROM clinlims.sampletype_test WHERE id = 952225");
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", Long.parseLong(panelId));
+        }
+    }
+
+    /**
+     * OGC-224 C3 — the domain guard on BOTH sides of the one model: a test whose
+     * domain differs from the panel's is rejected (422) by the panel-side Tests
+     * write and by the test-side memberships write.
+     */
+    @org.junit.Test
+    public void membershipWrites_rejectCrossDomainTests() throws Exception {
+        jdbc.update("UPDATE clinlims.test SET domain = 'ENVIRONMENTAL' WHERE id = ?", TEST_ID);
+        try {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelAId + "/tests")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"tests\":[{\"testId\":\"" + testId() + "\",\"position\":1}]}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/tests/" + testId() + "/panels")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"memberships\":[{\"panelId\":\"" + panelAId + "\",\"position\":1}]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity());
+            assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
+        } finally {
+            jdbc.update("UPDATE clinlims.test SET domain = 'CLINICAL' WHERE id = ?", TEST_ID);
+        }
+    }
+
+    /**
+     * OGC-224 C3 — the test-side memberships write (the other view of the one
+     * model) also keeps SAMPLETYPE_PANEL in sync, including on removal.
+     */
+    @org.junit.Test
+    public void saveTestPanels_syncsSampleTypePanel() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        Long sampleTypeId = ensureSampleType();
+        jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (952226, ?, ?)",
+                sampleTypeId, TEST_ID);
+        org.springframework.test.web.servlet.MvcResult created = mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/test-catalog/panels")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"PanelsIT SyncTS\",\"active\":false}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                .andReturn();
+        String panelId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+        try {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/tests/" + testId() + "/panels")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"memberships\":[{\"panelId\":\"" + panelId + "\",\"position\":1}]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+            assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                    "SELECT count(*) FROM clinlims.sampletype_panel WHERE panel_id = ?" + " AND sample_type_id = ?",
+                    Integer.class, Long.parseLong(panelId), sampleTypeId));
+
+            // dropping the membership from the test side clears the junction too
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/tests/" + testId() + "/panels")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"memberships\":[]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+            assertEquals(Integer.valueOf(0),
+                    jdbc.queryForObject("SELECT count(*) FROM clinlims.sampletype_panel WHERE panel_id = ?",
+                            Integer.class, Long.parseLong(panelId)));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.sampletype_panel WHERE panel_id = ?", Long.parseLong(panelId));
+            jdbc.update("DELETE FROM clinlims.panel_item WHERE panel_id = ?", Long.parseLong(panelId));
+            jdbc.update("DELETE FROM clinlims.sampletype_test WHERE id = 952226");
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", Long.parseLong(panelId));
+        }
+    }
+
+    /**
+     * OGC-224 C3 — without the create-flow flag a first test never auto-flips the
+     * active state (editing an existing panel preserves it as-is).
+     */
+    @org.junit.Test
+    public void savePanelTests_noAutoActivateOutsideCreateFlow() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        org.springframework.test.web.servlet.MvcResult created = mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/test-catalog/panels")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"PanelsIT NoAuto\",\"active\":false}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                .andReturn();
+        String panelId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+        try {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/tests")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"tests\":[{\"testId\":\"" + testId() + "\",\"position\":1}]}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.panel.active").value(false));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.panel_item WHERE panel_id = ?", Long.parseLong(panelId));
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", Long.parseLong(panelId));
+        }
+    }
+
+    /**
+     * OGC-224 C2 — domain writes are validated: an unknown domain is 422, and the
+     * domain can never move away from existing member tests (a panel never mixes
+     * domains).
+     */
+    @org.junit.Test
+    public void savePanelBasicInfo_domainValidationAndMemberGuard() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"domain\":\"BOGUS\"}")
+                .session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isUnprocessableEntity());
+
+        // TEST_ID's test.domain defaults to CLINICAL — with it as a member,
+        // moving the panel to ENVIRONMENTAL would mix domains → 422
+        put(membership(panelAId, 1));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"domain\":\"ENVIRONMENTAL\"}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isUnprocessableEntity());
+
+        // the members' own domain is always acceptable
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"domain\":\"CLINICAL\"}")
+                .session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.domain")
+                        .value("CLINICAL"));
+    }
+
+    /**
+     * OGC-224 C4 — the panel terminology mapper: reconcile keyed (source, code)
+     * with reactivation, WHONET accepted, validation 422s, and panel.loinc kept
+     * denormalized to the SAME_AS LOINC mapping (the FHIR routing key) — cleared
+     * when the mapping is removed, restored on re-add without a unique violation.
+     */
+    @org.junit.Test
+    public void panelTerminology_reconcile_andLoincDenormalization() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        org.springframework.test.web.servlet.MvcResult created = mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/test-catalog/panels")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"PanelsIT Terms\",\"active\":false}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                .andReturn();
+        String panelId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+        try {
+            // LOINC (primary) + WHONET both accepted; loinc denormalizes
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"24331-1\","
+                            + "\"relationship\":\"SAME_AS\"},{\"source\":\"WHONET\",\"code\":\"WN-1\"}]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.mappings.length()").value(2));
+            assertEquals("24331-1", jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(panelId)));
+
+            // dropping the LOINC mapping soft-deletes it and clears panel.loinc
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"WN-1\"}]}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.mappings.length()").value(1));
+            assertEquals(null, jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(panelId)));
+            assertEquals("N",
+                    jdbc.queryForObject(
+                            "SELECT is_active FROM clinlims.panel_terminology_mapping"
+                                    + " WHERE panel_id = ? AND source = 'LOINC' AND code = '24331-1'",
+                            String.class, Long.parseLong(panelId)));
+
+            // re-adding the same (source, code) reactivates — no unique collision
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"24331-1\","
+                            + "\"relationship\":\"SAME_AS\"}]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+            assertEquals(Integer.valueOf(1),
+                    jdbc.queryForObject(
+                            "SELECT count(*) FROM clinlims.panel_terminology_mapping"
+                                    + " WHERE panel_id = ? AND source = 'LOINC' AND code = '24331-1'",
+                            Integer.class, Long.parseLong(panelId)));
+            assertEquals("24331-1", jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(panelId)));
+
+            // validation: unknown source and in-request duplicates are 422s
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"BOGUS\",\"code\":\"1\"}]}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity());
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelId + "/terminology")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"1\"},"
+                            + "{\"source\":\"LOINC\",\"code\":\"1\"}]}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.panel_terminology_mapping WHERE panel_id = ?", Long.parseLong(panelId));
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", Long.parseLong(panelId));
+        }
+    }
+
+    /**
+     * OGC-224 C4 — the liquibase backfill seeded a SAME_AS LOINC mapping for every
+     * panel that already carried a PANEL.LOINC (deprecate-in-place).
+     */
+    @org.junit.Test
+    public void panelTerminology_backfillCoversExistingLoincs() {
+        assertEquals("the backfill changeset must have run", Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.databasechangelog WHERE id = ?", Integer.class,
+                        "OGC-224-panel-loinc-mapping-backfill"));
+        // The backfill only promises coverage for panels that existed when it ran, so
+        // exclude anything written afterwards — other tests in the suite create
+        // panels of their own, and counting those made this assertion depend on run
+        // order rather than on the migration.
+        Integer unmapped = jdbc
+                .queryForObject(
+                        "SELECT count(*) FROM clinlims.panel p WHERE p.loinc IS NOT NULL AND length(trim(p.loinc)) > 0"
+                                + " AND p.lastupdated < (SELECT dateexecuted FROM clinlims.databasechangelog"
+                                + " WHERE id = 'OGC-224-panel-loinc-mapping-backfill')"
+                                + " AND NOT EXISTS (SELECT 1 FROM clinlims.panel_terminology_mapping m"
+                                + " WHERE m.panel_id = p.id AND m.source = 'LOINC' AND m.code = trim(p.loinc))",
+                        Integer.class);
+        assertEquals(Integer.valueOf(0), unmapped);
+    }
+
+    /**
+     * OGC-224 C5 / OGC-1140 — a panel created inline from a test inherits that
+     * test's domain and is Active on creation (the test becomes its first member).
+     * An absent or unknown domain falls back to CLINICAL, the launch scope, so the
+     * historic name-only contract keeps working.
+     */
+    @org.junit.Test
+    public void createPanel_inheritsDomain_andDefaultsClinical() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        String inherited = null;
+        String legacy = null;
+        try {
+            org.springframework.test.web.servlet.MvcResult envCreated = mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/rest/test-catalog/panels")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"PanelsIT Env\",\"domain\":\"ENVIRONMENTAL\"}")
+                            .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                    .andReturn();
+            inherited = json.readTree(envCreated.getResponse().getContentAsString()).get("id").asText();
+            assertEquals("ENVIRONMENTAL", jdbc.queryForObject("SELECT domain FROM clinlims.panel WHERE id = ?",
+                    String.class, Long.parseLong(inherited)));
+            // Active on creation (OGC-1140) — the caller adds the test right after
+            assertEquals("Y", jdbc.queryForObject("SELECT is_active FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(inherited)));
+
+            // the historic name-only payload still works and lands CLINICAL
+            org.springframework.test.web.servlet.MvcResult legacyCreated = mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/rest/test-catalog/panels")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"PanelsIT NoDom\"}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                    .andReturn();
+            legacy = json.readTree(legacyCreated.getResponse().getContentAsString()).get("id").asText();
+            assertEquals("CLINICAL", jdbc.queryForObject("SELECT domain FROM clinlims.panel WHERE id = ?", String.class,
+                    Long.parseLong(legacy)));
+        } finally {
+            for (String id : new String[] { inherited, legacy }) {
+                if (id != null) {
+                    jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", Long.parseLong(id));
+                }
+            }
+        }
     }
 }

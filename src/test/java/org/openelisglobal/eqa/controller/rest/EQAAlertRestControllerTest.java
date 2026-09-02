@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,8 +27,11 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 @RunWith(MockitoJUnitRunner.class)
 public class EQAAlertRestControllerTest {
@@ -39,6 +41,15 @@ public class EQAAlertRestControllerTest {
 
     @InjectMocks
     private EQAAlertRestController controller;
+
+    /** OGC-1022 (R3): the acknowledging user now comes from the session. */
+    private MockHttpServletRequest requestForUser(int systemUserId) {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(systemUserId);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true).setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        return request;
+    }
 
     @Test
     public void testGetAlertsDashboard_ReturnsAllAlerts() {
@@ -224,18 +235,18 @@ public class EQAAlertRestControllerTest {
         Map<String, String> body = new HashMap<>();
         body.put("comment", "Acknowledged");
 
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body);
+        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body, requestForUser(7));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(alertService).acknowledgeAlert(eq(1L), isNull());
-        verify(alertService).resolveAlert(eq(1L), isNull(), eq("Acknowledged"));
+        verify(alertService).acknowledgeAlert(eq(1L), eq(7));
+        verify(alertService).resolveAlert(eq(1L), eq(7), eq("Acknowledged"));
     }
 
     @Test
     public void testAcknowledgeAlert_NotFound_Returns404() {
         when(alertService.get(999L)).thenReturn(null);
 
-        ResponseEntity<?> response = controller.acknowledgeAlert(999L, null);
+        ResponseEntity<?> response = controller.acknowledgeAlert(999L, null, requestForUser(7));
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
@@ -246,7 +257,7 @@ public class EQAAlertRestControllerTest {
                 "Critical");
         when(alertService.get(1L)).thenReturn(criticalAlert);
 
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, null);
+        ResponseEntity<?> response = controller.acknowledgeAlert(1L, null, requestForUser(7));
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         verify(alertService, never()).acknowledgeAlert(anyLong(), any());
@@ -261,7 +272,7 @@ public class EQAAlertRestControllerTest {
         Map<String, String> body = new HashMap<>();
         body.put("comment", "   ");
 
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body);
+        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body, requestForUser(7));
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         verify(alertService, never()).acknowledgeAlert(anyLong(), any());
@@ -276,11 +287,11 @@ public class EQAAlertRestControllerTest {
         Map<String, String> body = new HashMap<>();
         body.put("comment", "Issue investigated and resolved");
 
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body);
+        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body, requestForUser(7));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(alertService).acknowledgeAlert(eq(1L), isNull());
-        verify(alertService).resolveAlert(eq(1L), isNull(), eq("Issue investigated and resolved"));
+        verify(alertService).acknowledgeAlert(eq(1L), eq(7));
+        verify(alertService).resolveAlert(eq(1L), eq(7), eq("Issue investigated and resolved"));
     }
 
     @Test
@@ -288,10 +299,10 @@ public class EQAAlertRestControllerTest {
         Alert alert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Warning");
         when(alertService.get(1L)).thenReturn(alert);
 
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, null);
+        ResponseEntity<?> response = controller.acknowledgeAlert(1L, null, requestForUser(7));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(alertService).acknowledgeAlert(eq(1L), isNull());
+        verify(alertService).acknowledgeAlert(eq(1L), eq(7));
         verify(alertService, never()).resolveAlert(anyLong(), any(), anyString());
     }
 
@@ -304,11 +315,11 @@ public class EQAAlertRestControllerTest {
         Map<String, String> body = new HashMap<>();
         body.put("comment", "Resolving");
 
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body);
+        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body, requestForUser(7));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(alertService, never()).acknowledgeAlert(anyLong(), any());
-        verify(alertService).resolveAlert(eq(1L), isNull(), eq("Resolving"));
+        verify(alertService).resolveAlert(eq(1L), eq(7), eq("Resolving"));
     }
 
     private Alert createAlert(Long id, AlertType type, AlertSeverity severity, AlertStatus status, String message) {

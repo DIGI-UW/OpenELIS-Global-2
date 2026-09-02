@@ -281,9 +281,18 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
 
     @Override
     public boolean patientReportHasBeenDone(Analysis analysis) {
-        return analysis == null ? false
-                : SpringContext.getBean(IReportTrackingService.class).getLastReportForSample(
-                        analysis.getSampleItem().getSample(), ReportTrackingService.ReportType.PATIENT) != null;
+        if (analysis == null) {
+            return false;
+        }
+        // Pool-level analyses (vectorPoolId set) have sampleItem=null; resolve
+        // the sample via AnalysisAnchorService so we don't NPE.
+        org.openelisglobal.sample.valueholder.Sample sample = SpringContext
+                .getBean(org.openelisglobal.analysis.service.AnalysisAnchorService.class).resolveSample(analysis);
+        if (sample == null) {
+            return false;
+        }
+        return SpringContext.getBean(IReportTrackingService.class).getLastReportForSample(sample,
+                ReportTrackingService.ReportType.PATIENT) != null;
     }
 
     @Override
@@ -381,8 +390,30 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesForStatusIdExcludingQc(String status) {
+        return baseObjectDAO.getAnalysesForStatusIdExcludingQc(status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String status) {
+        return baseObjectDAO.getCollectedAnalysesForStatusIdExcludingQc(status);
+    }
+
+    @Override
     public int getCountOfAnalysesForStatusIds(List<String> statusIdList) {
         return baseObjectDAO.getCountOfAnalysesForStatusIds(statusIdList);
+    }
+
+    @Override
+    public int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
+        return baseObjectDAO.getCountOfAnalysesForStatusIdsExcludingQc(statusIdList);
+    }
+
+    @Override
+    public int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
+        return baseObjectDAO.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statusIdList);
     }
 
     @Override
@@ -445,12 +476,31 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String sectionId, List<String> statusList,
+            boolean sortedByDateAndAccession) {
+        return baseObjectDAO.getPageAnalysisByTestSectionAndStatusExcludingQc(sectionId, statusList,
+                sortedByDateAndAccession);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getPageAnalysisAtAccessionNumberAndStatus(String accessionNumber, List<String> statusList,
             boolean sortedByDateAndAccession) {
         if (accessionNumber != null && accessionNumber.contains(".")) {
             accessionNumber = accessionNumber.substring(0, accessionNumber.indexOf('.'));
         }
         return baseObjectDAO.getPageAnalysisAtAccessionNumberAndStatus(accessionNumber, statusList,
+                sortedByDateAndAccession);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getPageAnalysisAtAccessionNumberAndStatusExcludingQc(String accessionNumber,
+            List<String> statusList, boolean sortedByDateAndAccession) {
+        if (accessionNumber != null && accessionNumber.contains(".")) {
+            accessionNumber = accessionNumber.substring(0, accessionNumber.indexOf('.'));
+        }
+        return baseObjectDAO.getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList,
                 sortedByDateAndAccession);
     }
 
@@ -520,6 +570,14 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     public List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList) {
         return getBaseObjectDAO().getAllAnalysisByTestSectionAndStatus(testSectionId, analysisStatusList,
+                sampleStatusList);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAllAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList, List<String> sampleStatusList) {
+        return getBaseObjectDAO().getAllAnalysisByTestSectionAndStatusExcludingQc(testSectionId, analysisStatusList,
                 sampleStatusList);
     }
 
@@ -691,6 +749,12 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId) {
+        return getBaseObjectDAO().getAnalysesByVectorPoolId(vectorPoolId);
+    }
+
+    @Override
     @Transactional
     public void updateAllNoAuditTrail(List<Analysis> updatedAnalysis) {
         for (Analysis analysis : updatedAnalysis) {
@@ -716,8 +780,21 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    public int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList,
+            List<String> sampleStatusList) {
+        return baseObjectDAO.getCountAnalysisByTestSectionAndStatusExcludingQc(testSectionId, analysisStatusList,
+                sampleStatusList);
+    }
+
+    @Override
     public int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList) {
         return baseObjectDAO.getCountAnalysisByTestSectionAndStatus(testSectionId, analysisStatusList);
+    }
+
+    @Override
+    public int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList) {
+        return baseObjectDAO.getCountAnalysisByTestSectionAndStatusExcludingQc(testSectionId, analysisStatusList);
     }
 
     @Override
@@ -797,6 +874,37 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     public int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds) {
         return baseObjectDAO.getCountOfAnalysisStartedOnByStatusId(startedDate, statusIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList, testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfAnalysisCompletedOnByStatusIdAndTestSections(completedDate, statusIds,
+                testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(startedDate, statusIds,
+                testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfAnalysisStartedOnByStatusIdAndTestSections(startedDate, statusIds,
+                testSectionIds);
     }
 
     @Override

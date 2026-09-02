@@ -26,6 +26,8 @@ import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.compliance.service.ComplianceStandardService;
+import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
@@ -46,12 +48,15 @@ import org.openelisglobal.notification.valueholder.NotificationConfigOption.Noti
 import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
+import org.openelisglobal.organization.service.OrganizationContactService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.organization.valueholder.OrganizationContact;
 import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.ProgramSampleService;
@@ -63,6 +68,7 @@ import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
@@ -115,6 +121,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Autowired
     private OrganizationService organizationService;
     @Autowired
+    private OrganizationContactService organizationContactService;
+    @Autowired
     private TestNotificationConfigService testNotificationConfigService;
     @Autowired
     private AnalysisNotificationConfigService analysisNotificationConfigService;
@@ -129,7 +137,17 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Autowired
     private BarcodeInfoService barcodeInfoService;
     @Autowired
+    private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
+    @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
+    @Autowired
+    private ComplianceStandardService complianceStandardService;
+    @Autowired
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private org.openelisglobal.vector.service.VectorPoolFanOutService vectorPoolFanOutService;
+    @Autowired
+    private org.openelisglobal.referral.service.ReferralSetService referralSetService;
     @Autowired
     private OrderLabelRequestService orderLabelRequestService;
 
@@ -150,6 +168,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         updateData.setPatientId(patientUpdate.getPatientId(form));
 
         persistProviderData(updateData);
+        persistRequestorContactData(updateData);
         persistSampleData(updateData);
 
         // Only persist requester data and observations if sample was successfully
@@ -168,7 +187,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
 
             persistObservations(updateData);
+            persistComplianceStandards(updateData);
         }
+
+        persistOrderEntryReferrals(updateData, form);
 
         request.getSession().setAttribute("lastAccessionNumber", updateData.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", updateData.getPatientId());
@@ -182,6 +204,25 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         // tx had already committed by the time listeners ran.
         eventPublisher.publishEvent(new org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent(this,
                 updateData, patientInfo, form));
+    }
+
+    /**
+     * Persists order-entry "Refer Out / Subcontract" rows in the same transaction
+     * as the sample save so referral rows are not lost when the async FHIR
+     * transform listener throws. Sets {@code referralsPersistedSynchronously=true}
+     * on success so the legacy async leg in
+     * {@code FhirTransformServiceImpl.transformPersistOrderEntryFhirObjects}
+     * short-circuits and does not double-write.
+     */
+    void persistOrderEntryReferrals(SamplePatientUpdateData updateData, SamplePatientEntryForm form) {
+        if (!form.getUseReferral()) {
+            return;
+        }
+        if (form.getReferralItems() == null || form.getReferralItems().isEmpty()) {
+            return;
+        }
+        referralSetService.createDraftReferralSetsForOrderEntry(form.getReferralItems(), updateData);
+        updateData.setReferralsPersistedSynchronously(true);
     }
 
     private void persistObservations(SamplePatientUpdateData updateData) {
@@ -219,6 +260,34 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 observationHistoryService.insert(observation);
             }
         }
+    }
+
+    private void persistComplianceStandards(SamplePatientUpdateData updateData) {
+        List<String> ids = updateData.getPendingComplianceStandardIds();
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        String sampleId = updateData.getSample() != null ? updateData.getSample().getId() : null;
+        if (GenericValidator.isBlankOrNull(sampleId)) {
+            return;
+        }
+        List<SampleComplianceStandard> links = new ArrayList<>();
+        int priority = 0;
+        for (String standardId : ids) {
+            ComplianceStandard standard = complianceStandardService.get(standardId);
+            if (standard == null) {
+                LogEvent.logWarn("SamplePatientEntryServiceImpl", "persistComplianceStandards",
+                        "Compliance standard not found for id=" + standardId + ", skipping");
+                continue;
+            }
+            SampleComplianceStandard link = new SampleComplianceStandard();
+            link.setSample(updateData.getSample());
+            link.setComplianceStandard(standard);
+            link.setPriority(priority++);
+            link.setSysUserId(updateData.getCurrentUserId());
+            links.add(link);
+        }
+        sampleComplianceStandardService.replaceAllForSample(sampleId, links);
     }
 
     private void persistOrganizationData(SamplePatientUpdateData updateData) {
@@ -268,6 +337,19 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             updateData.getProvider().setPerson(updateData.getProviderPerson());
 
             providerService.save(updateData.getProvider());
+        }
+    }
+
+    /**
+     * Saves the standalone Requestor contact Person for Environmental/Vector orders
+     * (built by {@code SamplePatientUpdateData.initRequestorContact}). Unlike the
+     * Provider path, there is no wrapper entity — Requestor is persisted as a bare
+     * Person and linked to the sample via a {@code requestor_contact}-typed
+     * SampleRequester row in {@link #persistRequesterData}.
+     */
+    private void persistRequestorContactData(SamplePatientUpdateData updateData) {
+        if (updateData.getRequestorPerson() != null) {
+            personService.save(updateData.getRequestorPerson());
         }
     }
 
@@ -364,6 +446,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
                     savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
                     savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
+                    savedItem.setLabPerformedSampling(sampleTestCollection.item.isLabPerformedSampling());
                     // Keep existing typeOfSample if incoming is null (don't change sample type
                     // during collection)
                     if (sampleTestCollection.item.getTypeOfSample() != null) {
@@ -399,6 +482,11 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // This prevents "transient instance" errors when creating Analysis objects
             sampleTestCollection.item = savedItem;
 
+            // Create QC profile if this sample item is a QC sample (OGC-554)
+            if (!GenericValidator.isBlankOrNull(sampleTestCollection.qcType)) {
+                createQcProfile(sampleTestCollection, updateData, savedItem);
+            }
+
             if (savedItem.isRejected()) {
                 String rejectReasonId = savedItem.getRejectReasonId();
                 String currentUserId = savedItem.getSysUserId();
@@ -431,6 +519,32 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
                 if (updateData.getCustomNotificationLogic()) {
                     persistAnalysisNotificationConfigs(analysis, updateData);
+                }
+            }
+        }
+
+        org.openelisglobal.sample.valueholder.Sample submittedSample = updateData.getSample();
+        boolean isVectorOrder = submittedSample != null && "V".equals(submittedSample.getDomain());
+        if (isVectorOrder) {
+            String sysUserId = updateData.getCurrentUserId();
+            for (SampleTestCollection stc : updateData.getSampleItemsTests()) {
+                if (stc.item == null || stc.item.getId() == null) {
+                    continue;
+                }
+                Double itemQty = stc.item.getQuantity();
+                int poolCount = itemQty == null ? 0 : itemQty.intValue();
+                if (poolCount <= 1) {
+                    continue;
+                }
+                List<SampleItem> siblings = vectorPoolFanOutService.fanOut(stc.item, stc.analysises, poolCount,
+                        sysUserId);
+                if (siblings.isEmpty()) {
+                    continue;
+                }
+                // Parent is hard-deleted by fanOut; siblings get the labels instead.
+                specimenLabelQuantities.remove(stc.item);
+                for (SampleItem sibling : siblings) {
+                    specimenLabelQuantities.put(sibling, 1);
                 }
             }
         }
@@ -568,15 +682,32 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
     }
 
-    private void persistRequesterData(SamplePatientUpdateData updateData) {
+    void persistRequesterData(SamplePatientUpdateData updateData) {
         if (updateData.getProviderPerson() != null && !org.apache.commons.validator.GenericValidator
                 .isBlankOrNull(updateData.getProviderPerson().getId())) {
-            SampleRequester sampleRequester = new SampleRequester();
-            sampleRequester.setRequesterId(updateData.getProviderPerson().getId());
-            sampleRequester.setRequesterTypeId(TableIdService.getInstance().PROVIDER_REQUESTER_TYPE_ID);
-            sampleRequester.setSampleId(Long.parseLong(updateData.getSample().getId()));
-            sampleRequester.setSysUserId(updateData.getCurrentUserId());
-            sampleRequesterService.insert(sampleRequester);
+            // Bug (2026-07-06, same class as the Requestor fix): this used to
+            // unconditionally insert() a new sample_requester row on every
+            // save, including edits to an order that already had a
+            // provider-typed row — duplicating the link on every re-save.
+            // Reuse the existing row for this sample if one exists; only
+            // insert when there truly isn't one yet.
+            long providerTypeId = TableIdService.getInstance().PROVIDER_REQUESTER_TYPE_ID;
+            SampleRequester existingProviderRequester = sampleRequesterService
+                    .getRequestersForSampleId(updateData.getSample().getId()).stream()
+                    .filter(r -> r.getRequesterTypeId() == providerTypeId).findFirst().orElse(null);
+
+            if (existingProviderRequester != null) {
+                existingProviderRequester.setRequesterId(updateData.getProviderPerson().getId());
+                existingProviderRequester.setSysUserId(updateData.getCurrentUserId());
+                sampleRequesterService.update(existingProviderRequester);
+            } else {
+                SampleRequester sampleRequester = new SampleRequester();
+                sampleRequester.setRequesterId(updateData.getProviderPerson().getId());
+                sampleRequester.setRequesterTypeId(providerTypeId);
+                sampleRequester.setSampleId(Long.parseLong(updateData.getSample().getId()));
+                sampleRequester.setSysUserId(updateData.getCurrentUserId());
+                sampleRequesterService.insert(sampleRequester);
+            }
         }
 
         if (updateData.getRequesterSite() != null) {
@@ -607,6 +738,70 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // }
             sampleRequesterService.insert(updateData.getRequesterSiteDepartment());
         }
+
+        // Standalone Requestor contact (Environmental/Vector) — independent
+        // of the Requesting Organization/Provider handled above.
+        String requestorOrganizationId = null;
+        if (updateData.getRequestorPerson() != null && updateData.getRequesterContact() != null
+                && !GenericValidator.isBlankOrNull(updateData.getRequestorPerson().getId())) {
+            // Bug (2026-07-06): this used to unconditionally insert() a new
+            // sample_requester row on every save, including edits to an
+            // order that already had a requestor_contact row — so every
+            // re-save duplicated the link (6 duplicate rows observed for one
+            // sample). Reuse the existing row for this sample if one exists;
+            // only insert when there truly isn't one yet.
+            long requestorContactTypeId = TableIdService.getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID;
+            SampleRequester existingRequesterContact = sampleRequesterService
+                    .getRequestersForSampleId(updateData.getSample().getId()).stream()
+                    .filter(r -> r.getRequesterTypeId() == requestorContactTypeId).findFirst().orElse(null);
+
+            if (existingRequesterContact != null) {
+                existingRequesterContact.setRequesterId(updateData.getRequestorPerson().getId());
+                existingRequesterContact.setSysUserId(updateData.getCurrentUserId());
+                sampleRequesterService.update(existingRequesterContact);
+            } else {
+                updateData.getRequesterContact().setRequesterId(updateData.getRequestorPerson().getId());
+                updateData.getRequesterContact().setSampleId(Long.parseLong(updateData.getSample().getId()));
+                sampleRequesterService.insert(updateData.getRequesterContact());
+            }
+        }
+
+        if (updateData.getRequesterSite() != null) {
+            requestorOrganizationId = updateData.getNewOrganization() != null ? updateData.getNewOrganization().getId()
+                    : String.valueOf(updateData.getRequesterSite().getRequesterId());
+        }
+
+        // When both a Requesting Organization and a Requestor contact are
+        // bound on the same order, link them via OrganizationContact for future
+        // "suggested contacts for this org" reuse. Pure side-effect: does not gate
+        // save and does not replace the two independent SampleRequester rows above.
+        if (updateData.getRequestorPerson() != null && !GenericValidator.isBlankOrNull(requestorOrganizationId)
+                && !GenericValidator.isBlankOrNull(updateData.getRequestorPerson().getId())) {
+            linkOrganizationContactIfNeeded(requestorOrganizationId, updateData.getRequestorPerson().getId(),
+                    updateData.getCurrentUserId());
+        }
+    }
+
+    private void linkOrganizationContactIfNeeded(String organizationId, String personId, String currentUserId) {
+        List<OrganizationContact> existingContacts = organizationContactService
+                .getListForOrganizationId(organizationId);
+        boolean alreadyLinked = existingContacts.stream()
+                .anyMatch(contact -> contact.getPerson() != null && personId.equals(contact.getPerson().getId()));
+        if (alreadyLinked) {
+            return;
+        }
+
+        // A bare `new Person()` with only an id set is a transient POJO to
+        // Hibernate, not a managed entity — cascading the many-to-one save
+        // throws TransientPropertyValueException. Load the already-persisted
+        // Person (persistRequestorContactData/persistProviderData run before
+        // this in persistData, so personId is guaranteed saved by now).
+        Person person = personService.get(personId);
+        OrganizationContact organizationContact = new OrganizationContact();
+        organizationContact.setOrganizationId(organizationId);
+        organizationContact.setPerson(person);
+        organizationContact.setSysUserId(currentUserId);
+        organizationContactService.insert(organizationContact);
     }
 
     private void persistInitialSampleConditions(SamplePatientUpdateData updateData) {
@@ -684,6 +879,32 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         // this will be used as an identifier for the service request as well
         analysis.setFhirUuid(UUID.randomUUID());
         return analysis;
+    }
+
+    private void createQcProfile(SampleTestCollection stc, SamplePatientUpdateData updateData, SampleItem savedItem) {
+        org.openelisglobal.qc.valueholder.SampleItemQcProfile qcProfile = new org.openelisglobal.qc.valueholder.SampleItemQcProfile();
+        qcProfile.setId(UUID.randomUUID().toString());
+        qcProfile.setSampleItemId(Integer.valueOf(savedItem.getId()));
+        qcProfile.setQcType(stc.qcType);
+        qcProfile.setSystemUserId(Integer.valueOf(savedItem.getSysUserId()));
+        qcProfile.setSysUserId(savedItem.getSysUserId());
+
+        if (!GenericValidator.isBlankOrNull(stc.qcParentSampleIndex)) {
+            int parentIdx = Integer.parseInt(stc.qcParentSampleIndex);
+            List<SampleTestCollection> allStcs = updateData.getSampleItemsTests();
+            if (parentIdx >= 0 && parentIdx < allStcs.size()) {
+                SampleItem parentItem = allStcs.get(parentIdx).item;
+                if (parentItem != null && parentItem.getId() != null) {
+                    qcProfile.setParentSampleItemId(Integer.valueOf(parentItem.getId()));
+                }
+            }
+        }
+
+        if ("CONTROL".equals(stc.qcType) && !GenericValidator.isBlankOrNull(stc.qcExpectedValue)) {
+            qcProfile.setExpectedValue(new java.math.BigDecimal(stc.qcExpectedValue));
+        }
+
+        sampleItemQcProfileDAO.insert(qcProfile);
     }
 
     /**

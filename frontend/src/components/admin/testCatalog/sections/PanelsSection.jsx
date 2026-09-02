@@ -18,7 +18,7 @@ import { Add, TrashCan, View, ArrowUp, ArrowDown } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
   postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
@@ -40,7 +40,7 @@ const toInt = (v) => {
   return Number.isNaN(n) ? null : n;
 };
 
-const PanelsSection = ({ testId }) => {
+const PanelsSection = ({ testId, testDomain }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -126,37 +126,108 @@ const PanelsSection = ({ testId }) => {
   const removePanel = (panelId) =>
     setMemberships((prev) => prev.filter((m) => m.panelId !== panelId));
 
-  // FR-43: name-only inline create. The panel is created, added to the picker,
-  // and this test assigned to it; further setup lives in Panel Management.
-  const createPanel = () => {
-    const name = newPanelName.trim();
-    if (!name) {
-      return;
-    }
-    setCreating(true);
-    postToOpenElisServerFullResponse(
-      "/rest/test-catalog/panels",
-      JSON.stringify({ name }),
+  // Persist the given membership list; on success adopt the SERVER's response
+  // as the rendered state (never the optimistic local list), so the page
+  // immediately shows exactly what was saved. On failure the staged edits are
+  // kept for correction and an error is shown — no fake success.
+  const persistMemberships = (list, successMessage, onDone) => {
+    setSaving(true);
+    const payload = {
+      memberships: list.map((m) => ({
+        panelId: m.panelId,
+        position: toInt(m.position),
+      })),
+    };
+    putToOpenElisServerFullResponse(
+      `/rest/test-catalog/tests/${testId}/panels`,
+      JSON.stringify(payload),
       (response) => {
-        setCreating(false);
-        if (response && response.status === 201) {
-          response.json().then((panel) => {
-            setPanels((prev) => [...prev, panel]);
-            addPanel(panel);
-            setNewPanelName("");
-            setNotificationVisible(true);
+        setSaving(false);
+        setNotificationVisible(true);
+        if (response && response.status === 200) {
+          response.json().then((saved) => {
+            setMemberships(saved.memberships || []);
             addNotification({
               kind: "success",
               title: intl.formatMessage({
                 id: "label.testCatalog.section.panels",
               }),
-              message: intl.formatMessage(
-                { id: "notification.testCatalog.panels.created" },
-                { name: panel.name },
-              ),
+              message: successMessage,
             });
+            if (onDone) {
+              onDone(true);
+            }
           });
         } else {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "error.title" }),
+            message: intl.formatMessage({ id: "server.error.msg" }),
+          });
+          if (onDone) {
+            onDone(false);
+          }
+        }
+      },
+    );
+  };
+
+  // FR-43: name-only inline create — create-if-not-exists on the backend,
+  // assign to this test and PERSIST in the same action (previously the
+  // assignment was only staged and silently lost unless the separate Save was
+  // also clicked). Further panel setup lives in Panel Management.
+  const createPanel = () => {
+    const name = newPanelName.trim();
+    if (!name) {
+      return;
+    }
+    // a name that matches a panel already in the picker just assigns it
+    const known = panels.find(
+      (p) => p.name && p.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (known && memberships.some((m) => m.panelId === known.id)) {
+      setNewPanelName("");
+      return;
+    }
+    setCreating(true);
+    const assignAndPersist = (panel) => {
+      setPanels((prev) =>
+        prev.some((p) => p.id === panel.id) ? prev : [...prev, panel],
+      );
+      const next = [
+        ...memberships,
+        { panelId: panel.id, panelName: panel.name, position: null },
+      ];
+      setMemberships(next);
+      setComboKey((k) => k + 1);
+      persistMemberships(
+        next,
+        intl.formatMessage(
+          { id: "notification.testCatalog.panels.created" },
+          { name: panel.name },
+        ),
+        (ok) => {
+          setCreating(false);
+          if (ok) {
+            setNewPanelName("");
+          }
+        },
+      );
+    };
+    if (known) {
+      assignAndPersist(known);
+      return;
+    }
+    postToOpenElisServerFullResponse(
+      "/rest/test-catalog/panels",
+      // OGC-1140: the new panel inherits this test's domain (the membership
+      // write below makes the test its first member, so it starts Active)
+      JSON.stringify({ name, domain: testDomain || "CLINICAL" }),
+      (response) => {
+        if (response && (response.status === 201 || response.status === 200)) {
+          response.json().then(assignAndPersist);
+        } else {
+          setCreating(false);
           setNotificationVisible(true);
           addNotification({
             kind: "error",
@@ -168,40 +239,12 @@ const PanelsSection = ({ testId }) => {
     );
   };
 
-  const handleSave = () => {
-    setSaving(true);
-    const payload = {
-      memberships: memberships.map((m) => ({
-        panelId: m.panelId,
-        position: toInt(m.position),
-      })),
-    };
-    putToOpenElisServer(
-      `/rest/test-catalog/tests/${testId}/panels`,
-      JSON.stringify(payload),
-      (status) => {
-        setSaving(false);
-        setNotificationVisible(true);
-        if (status === 200) {
-          addNotification({
-            kind: "success",
-            title: intl.formatMessage({
-              id: "label.testCatalog.section.panels",
-            }),
-            message: intl.formatMessage({
-              id: "label.testCatalog.panels.saved",
-            }),
-          });
-        } else {
-          addNotification({
-            kind: "error",
-            title: intl.formatMessage({ id: "error.title" }),
-            message: intl.formatMessage({ id: "server.error.msg" }),
-          });
-        }
-      },
+  const handleSave = () =>
+    persistMemberships(
+      memberships,
+      intl.formatMessage({ id: "label.testCatalog.panels.saved" }),
+      null,
     );
-  };
 
   if (loading) {
     return (

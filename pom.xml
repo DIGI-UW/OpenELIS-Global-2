@@ -14,9 +14,9 @@
         <maven.java.release>21</maven.java.release>
         <major.version>3</major.version>
         <minor.version>2</minor.version>
-        <state.version>1</state.version>
+        <state.version>2</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>11</fix.version>
+        <fix.version>0</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -651,7 +651,12 @@
         <dependency>
             <groupId>org.jfree</groupId>
             <artifactId>jfreechart</artifactId>
-            <version>1.5.0</version>
+            <!-- Pinned to the 1.0.x line on purpose: JasperReports 6.15.0 compiles
+                its DefaultChartTheme against it and calls AbstractRenderer.setBaseItemLabelsVisible,
+                which 1.5.x renamed to setDefaultItemLabelsVisible. On 1.5.0 every charted
+                report died with NoSuchMethodError at fill time (Section Performance Indicator,
+                the app's only charted template). Raise this only together with JasperReports. -->
+            <version>1.0.19</version>
         </dependency>
         <dependency>
             <groupId>com.googlecode.json-simple</groupId>
@@ -695,7 +700,8 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgresql.version}</version>
-            <scope>scope</scope>
+            <!-- compile scope needed for classes used by JsonBinaryType -->
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>

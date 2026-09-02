@@ -120,8 +120,26 @@
         <!-- UOM type mapping (OGC-356 environmental workflow) -->
         <class>org.openelisglobal.unitofmeasure.valueholder.UomTypeMap</class>
 
+        <!-- Vector Surveillance entities -->
+        <class>org.openelisglobal.vector.valueholder.VectorOrganismGroup</class>
+        <class>org.openelisglobal.vector.valueholder.VectorTrapType</class>
+        <class>org.openelisglobal.vector.valueholder.VectorSpecies</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPool</class>
+        <class>org.openelisglobal.vector.valueholder.VectorPoolMember</class>
+
+        <!-- V-03 Vector Testing & Identification entities -->
+        <class>org.openelisglobal.vector.identification.valueholder.VectorSpecimenIdentification</class>
+        <class>org.openelisglobal.vector.identification.valueholder.VectorMolecularRecord</class>
+
+        <!-- V-04 M3: Vector Surveillance Manual Entry Helper entities -->
+        <class>org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntryFieldMap</class>
+        <class>org.openelisglobal.reports.vectorsurveillance.manualentry.valueholder.ManualEntrySubmissionAudit</class>
+
         <!-- QA Checklist domain (OGC-356 step 4) -->
         <class>org.openelisglobal.qachecklist.valueholder.SampleQaChecklist</class>
+
+        <!-- Sample Acceptance Record (S-09 / OGC-580) -->
+        <class>org.openelisglobal.sampleacceptance.valueholder.SampleAcceptanceRecord</class>
 
         <!-- Sample Type Request (OGC-356) -->
         <class>org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest</class>
@@ -136,6 +154,17 @@
         <class>org.openelisglobal.qc.valueholder.WestgardRuleConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCRuleViolation</class>
         <class>org.openelisglobal.qc.valueholder.QCAlert</class>
+
+        <class>org.openelisglobal.compliance.valueholder.ComplianceStandard</class>
+        <class>org.openelisglobal.compliance.valueholder.ParameterGroup</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceThreshold</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceReportArchive</class>
+
+        <!-- QC Result Evaluation entities (OGC-554 S-08) -->
+        <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>
+        <class>org.openelisglobal.qc.valueholder.TestQcThreshold</class>
+        <class>org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment</class>
 
         <!-- Barcode Label Presets (OGC-285 M2) -->
         <class>org.openelisglobal.labelpreset.valueholder.LabelPreset</class>

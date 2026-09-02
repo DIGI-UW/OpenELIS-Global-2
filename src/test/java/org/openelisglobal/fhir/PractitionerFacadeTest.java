@@ -240,4 +240,725 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         assertFalse(deletedProvider.getActive());
     }
 
+    @Test
+    public void searchPractitioner_withoutParamsShouldReturnAllPractitioners() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(2, bundle.get("total").asInt());
+
+        assertTrue(bundle.has("entry"));
+        assertEquals(2, bundle.get("entry").size());
+
+        for (JsonNode entry : bundle.get("entry")) {
+            JsonNode practitioner = entry.get("resource");
+
+            assertEquals("Practitioner", practitioner.get("resourceType").asText());
+
+            assertNotNull(practitioner.get("id"));
+            assertTrue(practitioner.has("name"));
+        }
+    }
+
+    @Test
+    public void searchPractitioner_byFamilyName_shouldReturnMatchingPractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("family", "Doe");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals(1, bundle.get("total").asInt());
+        assertEquals(1, bundle.get("entry").size());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals("Practitioner", practitioner.get("resourceType").asText());
+
+        assertEquals("Doe", practitioner.get("name").get(0).get("family").asText());
+
+        assertEquals("John", practitioner.get("name").get(0).get("given").get(0).asText());
+
+        assertTrue(practitioner.get("active").asBoolean());
+    }
+
+    @Test
+    public void searchPractitioner_byGivenName_shouldReturnMatchingPractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given", "James");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+        assertEquals(1, bundle.get("entry").size());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals("Practitioner", practitioner.get("resourceType").asText());
+
+        assertEquals("James", practitioner.get("name").get(0).get("given").get(0).asText());
+
+        assertEquals("Mulizi", practitioner.get("name").get(0).get("family").asText());
+
+        assertFalse(practitioner.get("active").asBoolean());
+    }
+
+    @Test
+    public void searchPractitioner_withUnknownGivenName_shouldReturnEmptyBundle() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given", "NotExisting");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(0, bundle.get("total").asInt());
+
+        if (bundle.has("entry")) {
+            assertEquals(0, bundle.get("entry").size());
+        }
+    }
+
+    @Test
+    public void searchPractitioner_byIdentifier_shouldReturnPractitioner() throws Exception {
+
+        Provider provider = providerService.get("1");
+
+        String identifier = provider.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("identifier", identifier);
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals(1, bundle.get("total").asInt());
+        assertEquals(1, bundle.get("entry").size());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals(identifier, practitioner.get("id").asText());
+
+        assertEquals("Practitioner", practitioner.get("resourceType").asText());
+    }
+
+    @Test
+    public void searchPractitioner_byId_shouldReturnPractitioner() throws Exception {
+
+        Provider provider = providerService.get("1");
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_id", provider.getFhirUuidAsString());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+    }
+
+    @Test
+    public void searchPractitioner_withoutParameters_shouldReturnAllPractitioners() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(2, bundle.get("total").asInt());
+        assertEquals(2, bundle.get("entry").size());
+    }
+
+    @Test
+    public void searchPractitioner_byId_shouldReturnMatchingPractitioner() throws Exception {
+
+        Provider provider = providerService.get("1");
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_id", provider.getFhirUuidAsString());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+        assertEquals(1, bundle.get("entry").size());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals(provider.getFhirUuidAsString(), practitioner.get("id").asText());
+    }
+
+    @Test
+    public void searchPractitioner_byUnknownId_shouldReturnEmptyBundle() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_id", "00000000-0000-0000-0000-000000000000");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(0, bundle.get("total").asInt());
+
+        if (bundle.has("entry")) {
+            assertEquals(0, bundle.get("entry").size());
+        }
+    }
+
+    @Test
+    public void searchPractitioner_byIdentifier_shouldReturnMatchingPractitioner() throws Exception {
+
+        Provider provider = providerService.get("1");
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("identifier", provider.getFhirUuidAsString());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+        assertEquals(1, bundle.get("entry").size());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals(provider.getFhirUuidAsString(), practitioner.get("id").asText());
+    }
+
+    @Test
+    public void searchPractitioner_byIdentifierWithSystem_shouldReturnMatchingPractitioner() throws Exception {
+
+        Provider provider = providerService.get("1");
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("identifier",
+                "http://openelis-global.org/provider_uuid|" + provider.getFhirUuidAsString());
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+        assertEquals(1, bundle.get("entry").size());
+    }
+
+    @Test
+    public void searchPractitioner_byGivenPrefix_shouldReturnMatchingPractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given", "Joh");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals("John", practitioner.get("name").get(0).get("given").get(0).asText());
+    }
+
+    @Test
+    public void searchPractitioner_byUnknownGivenName_shouldReturnEmptyBundle() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given", "NotExisting");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(0, bundle.get("total").asInt());
+
+        if (bundle.has("entry")) {
+            assertEquals(0, bundle.get("entry").size());
+        }
+    }
+
+    @Test
+    public void searchPractitioner_byFamilyPrefix_shouldReturnMatchingPractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("family", "Mul");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        assertEquals("Mulizi", bundle.get("entry").get(0).get("resource").get("name").get(0).get("family").asText());
+    }
+
+    @Test
+    public void searchPractitioner_byName_shouldMatchGivenName() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("name", "John");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals("John", practitioner.get("name").get(0).get("given").get(0).asText());
+    }
+
+    @Test
+    public void searchPractitioner_byName_shouldMatchFamilyName() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("name", "Mulizi");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals("Mulizi", practitioner.get("name").get(0).get("family").asText());
+    }
+
+    @Test
+    public void searchPractitioner_byGivenContains_shouldReturnMatchingPractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given:contains", "ame");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        assertEquals("James",
+                bundle.get("entry").get(0).get("resource").get("name").get(0).get("given").get(0).asText());
+    }
+
+    @Test
+    public void searchPractitioner_byFamilyContains_shouldReturnMatchingPractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("family:contains", "uli");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        assertEquals("Mulizi", bundle.get("entry").get(0).get("resource").get("name").get(0).get("family").asText());
+    }
+
+    @Test
+    public void searchPractitioner_byGivenExact_shouldReturnMatchingPractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given:exact", "John");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        assertEquals("John",
+                bundle.get("entry").get(0).get("resource").get("name").get(0).get("given").get(0).asText());
+    }
+
+    @Test
+    public void searchPractitioner_byFamilyExact_shouldReturnMatchingPractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("family:exact", "Doe");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        assertEquals("Doe", bundle.get("entry").get(0).get("resource").get("name").get(0).get("family").asText());
+    }
+
+    @Test
+    public void searchPractitioner_byGivenAndFamily_shouldReturnMatchingPractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given", "John");
+        request.addParameter("family", "Doe");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals("John", practitioner.get("name").get(0).get("given").get(0).asText());
+
+        assertEquals("Doe", practitioner.get("name").get(0).get("family").asText());
+    }
+
+    @Test
+    public void searchPractitioner_byConflictingGivenAndFamily_shouldReturnEmptyBundle() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given", "John");
+        request.addParameter("family", "Mulizi");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(0, bundle.get("total").asInt());
+
+        if (bundle.has("entry")) {
+            assertEquals(0, bundle.get("entry").size());
+        }
+    }
+
+    @Test
+    public void searchPractitioner_withCommaSeparatedGivenNames_shouldUseOrSemantics() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given", "John,James");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(2, bundle.get("total").asInt());
+        assertEquals(2, bundle.get("entry").size());
+    }
+
+    @Test
+    public void searchPractitioner_withRepeatedGivenNames_shouldUseAndSemantics() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("given", "John");
+        request.addParameter("given", "James");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(0, bundle.get("total").asInt());
+
+        if (bundle.has("entry")) {
+            assertEquals(0, bundle.get("entry").size());
+        }
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdatedGreaterThanOrEqual_shouldReturnBothPractitioners() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_lastUpdated", "ge2025-02-15");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("Bundle", bundle.get("resourceType").asText());
+        assertEquals("searchset", bundle.get("type").asText());
+        assertEquals(2, bundle.get("total").asInt());
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdatedAfterFixtureDate_shouldReturnEmptyBundle() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_lastUpdated", "gt2025-02-15T12:00:00Z");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(0, bundle.get("total").asInt());
+
+        if (bundle.has("entry")) {
+            assertEquals(0, bundle.get("entry").size());
+        }
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdatedLessThanOrEqual_shouldReturnBothPractitioners() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_lastUpdated", "le2025-02-15T12:00:00Z");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(2, bundle.get("total").asInt());
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdatedBeforeFixtureDate_shouldReturnEmptyBundle() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_lastUpdated", "lt2025-02-15");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(0, bundle.get("total").asInt());
+    }
+
+    @Test
+    public void searchPractitioner_byLastUpdatedRange_shouldReturnBothPractitioners() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_lastUpdated", "ge2025-02-01");
+
+        request.addParameter("_lastUpdated", "le2025-02-28");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(2, bundle.get("total").asInt());
+        assertEquals(2, bundle.get("entry").size());
+    }
+
+    @Test
+    public void searchPractitioner_byFamilyAndLastUpdated_shouldReturnOnePractitioner() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("family", "Doe");
+        request.addParameter("_lastUpdated", "ge2025-02-01");
+        request.addParameter("_lastUpdated", "le2025-02-28");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        JsonNode practitioner = bundle.get("entry").get(0).get("resource");
+
+        assertEquals("Doe", practitioner.get("name").get(0).get("family").asText());
+    }
+
+    @Test
+    public void searchPractitioner_withCount_shouldLimitBundleEntries() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_count", "1");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(2, bundle.get("total").asInt());
+        assertEquals(1, bundle.get("entry").size());
+    }
+
+    @Test
+    public void searchPractitioner_byIdAndFamily_shouldReturnMatchingPractitioner() throws Exception {
+
+        Provider provider = providerService.get("1");
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
+
+        request.addParameter("_id", provider.getFhirUuidAsString());
+
+        request.addParameter("family", "Doe");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(200, response.getStatus());
+
+        JsonNode bundle = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals(1, bundle.get("total").asInt());
+
+        assertEquals(provider.getFhirUuidAsString(), bundle.get("entry").get(0).get("resource").get("id").asText());
+    }
 }

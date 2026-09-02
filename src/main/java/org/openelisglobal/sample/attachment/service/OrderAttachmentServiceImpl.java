@@ -52,10 +52,19 @@ public class OrderAttachmentServiceImpl extends AuditableBaseObjectServiceImpl<O
     @Override
     @Transactional
     public OrderAttachment createAttachmentFromUpload(Long sampleId, MultipartFile file, Integer uploadedBy) {
+        return createAttachmentFromUpload(sampleId, file, uploadedBy, null, null);
+    }
+
+    @Override
+    @Transactional
+    public OrderAttachment createAttachmentFromUpload(Long sampleId, MultipartFile file, Integer uploadedBy,
+            Long analysisId, String testResultComponentId) {
         validateFile(file);
         try {
             OrderAttachment attachment = new OrderAttachment();
             attachment.setSampleId(sampleId);
+            attachment.setAnalysisId(analysisId);
+            attachment.setTestResultComponentId(testResultComponentId);
             attachment.setOriginalFileName(file.getOriginalFilename());
             attachment.setFileType(file.getContentType());
             attachment.setFileSizeBytes(file.getSize());

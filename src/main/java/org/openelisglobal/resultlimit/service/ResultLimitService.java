@@ -7,6 +7,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.valueholder.Test;
 
@@ -75,6 +76,10 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
     List<ResultLimit> getResultLimits(Test test);
 
     ResultLimit getResultLimitForAnalysis(Analysis analysis);
+
+    List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis);
+
+    List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis, String resultValue);
 
     /**
      * The reference range for one displayed result row: a multi-component test uses

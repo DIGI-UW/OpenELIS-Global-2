@@ -122,14 +122,17 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // External ID - user-friendly identifier (e.g., "EXT-1765401458866")
             map.put("sampleItemExternalId", sampleItem.getExternalId() != null ? sampleItem.getExternalId() : "");
 
-            // Get parent Sample accession number for context
+            // Get parent Sample accession number and storageSkipped flag
             if (sampleItem.getSample() != null) {
                 map.put("sampleAccessionNumber",
                         sampleItem.getSample().getAccessionNumber() != null
                                 ? sampleItem.getSample().getAccessionNumber()
                                 : "");
+                Boolean storageSkipped = sampleItem.getSample().getStorageSkipped();
+                map.put("storageSkipped", Boolean.TRUE.equals(storageSkipped));
             } else {
                 map.put("sampleAccessionNumber", "");
+                map.put("storageSkipped", false);
             }
             map.put("type",
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
@@ -213,11 +216,21 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
         SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItemId);
         if (assignment == null) {
-            return new HashMap<>();
+            // OGC-1026: unassigned samples still report their quantity snapshot so
+            // the Results page can render usage/disposal actions.
+            Map<String, Object> unassigned = new HashMap<>();
+            putQuantitySnapshot(unassigned, sampleItemId);
+            if (!unassigned.isEmpty()) {
+                unassigned.put("sampleItemId", sampleItemId);
+                unassigned.put("location", "");
+                unassigned.put("hierarchicalPath", "");
+            }
+            return unassigned;
         }
 
         Map<String, Object> result = new HashMap<>();
         result.put("sampleItemId", sampleItemId);
+        putQuantitySnapshot(result, sampleItemId);
 
         String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
         result.put("location", hierarchicalPath != null ? hierarchicalPath : "");
@@ -410,6 +423,85 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
                     e);
         }
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> recordSampleUsage(String sampleItemId, java.math.BigDecimal amountUsed,
+            boolean markUsedUp, String sysUserId) {
+        try {
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("SampleItem ID is required");
+            }
+            if (sysUserId == null || sysUserId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("sysUserId is required for usage audit");
+            }
+            SampleItem sampleItem = resolveSampleItem(sampleItemId);
+
+            if (statusService.matches(sampleItem.getStatusId(),
+                    org.openelisglobal.common.services.StatusService.SampleStatus.Disposed)) {
+                throw new LIMSRuntimeException("SampleItem is already disposed");
+            }
+
+            java.math.BigDecimal baseline = sampleItem.getRemainingQuantity();
+            if (baseline == null && sampleItem.getQuantity() != null) {
+                baseline = java.math.BigDecimal.valueOf(sampleItem.getQuantity());
+            }
+
+            java.math.BigDecimal newRemaining;
+            if (markUsedUp) {
+                newRemaining = java.math.BigDecimal.ZERO;
+            } else {
+                if (amountUsed == null || amountUsed.signum() <= 0) {
+                    throw new LIMSRuntimeException("Amount used must be a positive number");
+                }
+                if (baseline == null) {
+                    throw new LIMSRuntimeException("SampleItem does not track a quantity; use mark-used-up instead");
+                }
+                newRemaining = baseline.subtract(amountUsed).max(java.math.BigDecimal.ZERO);
+            }
+
+            sampleItem.setRemainingQuantity(newRemaining);
+            sampleItem.setSysUserId(sysUserId);
+            sampleItemService.update(sampleItem);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("sampleItemId", sampleItem.getId());
+            response.put("quantity", sampleItem.getQuantity());
+            response.put("remainingQuantity", newRemaining);
+            response.put("exhausted", newRemaining.signum() == 0);
+            return response;
+        } catch (StaleObjectStateException e) {
+            throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
+                    e);
+        }
+    }
+
+    /**
+     * OGC-1026: quantity snapshot for the Results page sample-status block —
+     * remaining falls back to the initial quantity for legacy samples that predate
+     * remaining-quantity tracking. No-op when the sample can't be resolved so the
+     * legacy empty-location contract is preserved. Looks up via the DAO's Optional
+     * get, NOT resolveSampleItem — its nested {@code sampleItemService.get} throws
+     * on unknown ids and marks the surrounding read-only transaction rollback-only
+     * even when caught, turning the legacy 200-for-unknown-id contract into a 500
+     * at commit.
+     */
+    private void putQuantitySnapshot(Map<String, Object> target, String sampleItemId) {
+        if (sampleItemId == null || !sampleItemId.trim().matches("\\d+")) {
+            return;
+        }
+        SampleItem sampleItem = sampleItemDAO.get(sampleItemId.trim()).orElse(null);
+        if (sampleItem == null) {
+            return;
+        }
+        target.put("quantity", sampleItem.getQuantity());
+        target.put("remainingQuantity", sampleItem.getRemainingQuantity() != null ? sampleItem.getRemainingQuantity()
+                : (sampleItem.getQuantity() != null ? java.math.BigDecimal.valueOf(sampleItem.getQuantity()) : null));
+        target.put("unitOfMeasure",
+                sampleItem.getUnitOfMeasure() != null ? sampleItem.getUnitOfMeasure().getUnitOfMeasureName() : null);
+        target.put("disposed", statusService.matches(sampleItem.getStatusId(),
+                org.openelisglobal.common.services.StatusService.SampleStatus.Disposed));
     }
 
     @Override

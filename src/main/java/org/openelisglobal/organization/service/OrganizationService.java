@@ -65,6 +65,4 @@ public interface OrganizationService extends BaseObjectService<Organization, Str
      * @return List of organizations with types eagerly loaded
      */
     List<Organization> searchOrganizationsWithTypes(String filter);
-
-    String generateSiteCode();
 }
