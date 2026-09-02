@@ -481,6 +481,23 @@ describe("AddOrder — Lab Number reassignment is deliberate on modify (OGC-1191
     expect(staged.newAccessionNumber).toBe("DEV01260000000000777");
   });
 
+  test("Undo and Reassign render as buttons on one actions row", () => {
+    renderAddOrder({
+      isModifyOrder: true,
+      orderFormValues: modifyValues({
+        newAccessionNumber: "DEV01260000000000777",
+      }),
+    });
+    const row = document.querySelector(".reassignLabNumberActions");
+    expect(row).toBeInTheDocument();
+    const undo = row.querySelector('[data-cy="reassign-labNumber-undo"]');
+    const reassign = row.querySelector('[data-cy="reassign-labNumber-open"]');
+    expect(undo).toBeInTheDocument();
+    expect(reassign).toBeInTheDocument();
+    expect(undo.tagName).toBe("BUTTON");
+    expect(reassign.tagName).toBe("BUTTON");
+  });
+
   test("a staged reassignment shows a pending warning with an Undo that clears it", () => {
     const { setOrderFormValues } = renderAddOrder({
       isModifyOrder: true,

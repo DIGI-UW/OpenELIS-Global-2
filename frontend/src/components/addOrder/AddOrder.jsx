@@ -888,40 +888,47 @@ const AddOrder = (props) => {
                   {orderFormValues.accessionNumber}
                 </h5>
                 {orderFormValues.newAccessionNumber ? (
-                  <>
-                    <InlineNotification
-                      kind="warning"
-                      lowContrast
-                      hideCloseButton
-                      title={intl.formatMessage({
-                        id: "sample.labnumber.reassign.pending.title",
-                      })}
-                      subtitle={intl.formatMessage(
-                        { id: "sample.labnumber.reassign.pending" },
-                        { number: orderFormValues.newAccessionNumber },
-                      )}
-                      data-cy="reassign-labNumber-pending"
-                    />
-                    <Link
+                  <InlineNotification
+                    kind="warning"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "sample.labnumber.reassign.pending.title",
+                    })}
+                    subtitle={intl.formatMessage(
+                      { id: "sample.labnumber.reassign.pending" },
+                      { number: orderFormValues.newAccessionNumber },
+                    )}
+                    data-cy="reassign-labNumber-pending"
+                  />
+                ) : null}
+                <div
+                  className="reassignLabNumberActions"
+                  style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    alignItems: "center",
+                  }}
+                >
+                  {orderFormValues.newAccessionNumber ? (
+                    <Button
+                      kind="tertiary"
+                      size="sm"
                       data-cy="reassign-labNumber-undo"
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        undoReassign();
-                      }}
+                      onClick={undoReassign}
                     >
                       <FormattedMessage id="sample.labnumber.reassign.undo" />
-                    </Link>
-                  </>
-                ) : null}
-                <Button
-                  kind="ghost"
-                  size="sm"
-                  data-cy="reassign-labNumber-open"
-                  onClick={openReassign}
-                >
-                  <FormattedMessage id="sample.labnumber.reassign.button" />
-                </Button>
+                    </Button>
+                  ) : null}
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    data-cy="reassign-labNumber-open"
+                    onClick={openReassign}
+                  >
+                    <FormattedMessage id="sample.labnumber.reassign.button" />
+                  </Button>
+                </div>
                 <Modal
                   open={reassignOpen}
                   danger

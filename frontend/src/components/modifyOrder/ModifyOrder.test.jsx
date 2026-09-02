@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
@@ -123,5 +123,66 @@ describe("ModifyOrder — gating validation errors are shown (OGC-1191 D)", () =
     );
     expect(errorNodes.length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /submit/i })).toBeDisabled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1191 — after a successful reassignment the specimen carries its new
+// accession, so the page URL must switch to the new Lab Number (the old one no
+// longer exists). reflectReassignmentOnSuccess also moves sampleOrderItems.labNo
+// to the new number, which is what OrderSuccessMessage prints labels from.
+// ---------------------------------------------------------------------------
+describe("ModifyOrder — successful reassignment switches to the new Lab Number (OGC-1191)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerFullResponse.mockReset();
+  });
+
+  const validReassignedPayload = () => ({
+    accessionNumber: "OLD01260000000000001",
+    newAccessionNumber: "NEW01260000000000009",
+    sampleOrderItems: {
+      labNo: "OLD01260000000000001",
+      referringSiteName: "QA_AUTO Referring Clinic",
+      referringSiteId: "42",
+      providerLastName: "Doe",
+      providerFirstName: "Jane",
+    },
+  });
+
+  test("on a confirmed save, the URL accessionNumber becomes the new number", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/ModifyOrder?accessionNumber=OLD01260000000000001",
+    );
+
+    let submitCallback;
+    utilsMock.postToOpenElisServerFullResponse.mockImplementation(
+      (url, body, cb) => {
+        submitCallback = cb;
+      },
+    );
+    const getLoad = mountAndCaptureLoad();
+    getLoad()(validReassignedPayload());
+
+    // Advance Program -> Sample -> Order.
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+
+    // A valid order keeps Submit enabled; submit and let the backend confirm.
+    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    expect(submitCallback, "submit should POST to SampleEdit").toBeTypeOf(
+      "function",
+    );
+
+    await act(async () => {
+      await submitCallback({ ok: true });
+    });
+
+    expect(window.location.search).toContain(
+      "accessionNumber=NEW01260000000000009",
+    );
+    expect(window.location.search).not.toContain("OLD01260000000000001");
   });
 });

@@ -147,6 +147,29 @@ const ModifyOrder = () => {
     });
   };
 
+  // OGC-1191 — after a successful reassignment the specimen carries its new
+  // accession, so the post-save label print and the page URL must both switch
+  // to the new number; the old one no longer exists. No-op when nothing was
+  // reassigned.
+  const reflectReassignmentOnSuccess = () => {
+    const reassigned = orderFormValues.newAccessionNumber;
+    if (!reassigned || reassigned === orderFormValues.accessionNumber) {
+      return;
+    }
+    setOrderFormValues({
+      ...orderFormValues,
+      accessionNumber: reassigned,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        labNo: reassigned,
+      },
+      newAccessionNumber: "",
+    });
+    const url = new URL(window.location.href);
+    url.searchParams.set("accessionNumber", reassigned);
+    window.history.replaceState(null, "", url.toString());
+  };
+
   // Advance to the success page only after the backend confirms. On 4xx/5xx,
   // surface the actual reason from the response body (the SampleEdit endpoint
   // returns {"message":"..."} on errors like "Position B12 is already
@@ -154,6 +177,7 @@ const ModifyOrder = () => {
   const handlePost = async (response) => {
     setIsSubmitting(false);
     if (response && response.ok) {
+      reflectReassignmentOnSuccess();
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
         NotificationKinds.success,
