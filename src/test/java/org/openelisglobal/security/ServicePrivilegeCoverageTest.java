@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.junit.Test;
 import org.springframework.asm.AnnotationVisitor;
 import org.springframework.asm.ClassReader;
@@ -214,7 +215,7 @@ public class ServicePrivilegeCoverageTest {
 
             // Per-method check
             for (MethodEntry m : methods) {
-                if (!m.hasPreAuthorize) {
+                if (!m.hasPreAuthorize && !isSelfIdentityRead(simpleClassName, m.name)) {
                     collectedViolations.add(String.format("%s#%s - missing @PreAuthorize(\"hasAuthority('PRIV_*')\")",
                             simpleClassName, m.name));
                 }
@@ -223,6 +224,32 @@ public class ServicePrivilegeCoverageTest {
 
         List<String> violations() {
             return collectedViolations;
+        }
+
+        /**
+         * Deliberately ungated self-identity reads: {Interface}#{method} pairs whose
+         * argument is, in every caller, the CALLER'S OWN system-user id.
+         *
+         * <p>
+         * These answer "which lab units am I assigned to" / "what are my roles" and so
+         * cannot require a privilege — the caller's own scoping is the answer, and on
+         * {@code GET /rest/menu} the gate fires before any menu filtering can happen.
+         * Gating {@code getUserTestSections} on {@code PRIV_RESULT_VIEW} (which
+         * Reception does not hold) denied Reception there and, via the RuntimeException
+         * advice, surfaced as a 500 that logged the user out.
+         *
+         * <p>
+         * Kept as a narrow per-method list rather than putting
+         * {@code @CrossDomainService} on {@code UserService}: that annotation exempts
+         * the WHOLE interface, which would also silently un-check
+         * {@code updateLoginUser} and {@code saveUserLabUnitRoles} — the two most
+         * sensitive writes in the file. {@code SelfIdentityMethodsUngatedTest} asserts
+         * the other half of the contract, that these stay ungated on purpose.
+         */
+        private static final Set<String> SELF_IDENTITY_READS = Set.of("UserService#getUserTestSections");
+
+        private static boolean isSelfIdentityRead(String simpleName, String methodName) {
+            return SELF_IDENTITY_READS.contains(simpleName + "#" + methodName);
         }
 
         private static boolean hasAuthorityExpression(String expression) {

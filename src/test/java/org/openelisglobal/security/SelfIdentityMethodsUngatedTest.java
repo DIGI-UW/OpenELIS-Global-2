@@ -61,7 +61,13 @@ public class SelfIdentityMethodsUngatedTest {
      */
     private static final String[][] SELF_IDENTITY_METHODS = { { UserRoleService.class.getName(), "getRoleIdsForUser" },
             { UserRoleService.class.getName(), "userInRole" }, { RoleService.class.getName(), "getRoleById" },
-            { RoleService.class.getName(), "getRoleByName" } };
+            { RoleService.class.getName(), "getRoleByName" },
+            // Every caller passes getSysUserId(request)/usd.getSystemUserId() to
+            // scope its own view. Gated on PRIV_RESULT_VIEW it denied Reception
+            // (which has no result:view) on GET /rest/menu — see E2E run
+            // 33568673124, where that single denial logged the user out and took
+            // 52 core specs with it.
+            { "org.openelisglobal.systemuser.service.UserService", "getUserTestSections" } };
 
     @Test
     public void selfIdentityMethodsCarryNoPreAuthorize() {
@@ -102,6 +108,45 @@ public class SelfIdentityMethodsUngatedTest {
     private static final String[][] NON_ADMIN_REACHABLE = { { UserRoleService.class.getName(), "getUserLabUnitRoles",
             "MenuController/OrderSearchRestController/PatientDashBoardProvider #isGlobalScopeUser"
                     + " and LoginPageController /session" } };
+
+    /**
+     * Privileges a role must hold for a screen that role is expected to use. {role,
+     * privilege, what breaks without it}.
+     */
+    private static final String[][] REQUIRED_ROLE_PRIVILEGES = {
+            // Referring a sample out needs the referral-LAB picklist, built by
+            // OrganizationService#getOrganizationsByTypeName (PRIV_ORGANIZATION_VIEW).
+            { "Results", "organization:view", "GET /rest/displayList/REFERRAL_ORGANIZATIONS on result entry" },
+            { "Validation", "organization:view", "GET /rest/displayList/REFERRAL_ORGANIZATIONS on validation" } };
+
+    @Test
+    public void rolesHoldThePrivilegesTheirScreensRequire() throws IOException {
+        String xml = new String(Files.readAllBytes(SEED));
+        List<String> violations = new ArrayList<>();
+
+        for (String[] req : REQUIRED_ROLE_PRIVILEGES) {
+            String role = req[0];
+            String priv = req[1];
+            // Matches both the per-row form (r.name = 'X') and the IN-list form
+            // (r.name IN ('X', 'Y')) used by the later grant changesets.
+            boolean granted = false;
+            for (String stmt : xml.split("INSERT INTO")) {
+                if (!stmt.contains("'" + priv + "'")) {
+                    continue;
+                }
+                if (Pattern.compile("r\\.name\\s*=\\s*'" + Pattern.quote(role) + "'").matcher(stmt).find() || Pattern
+                        .compile("r\\.name\\s+IN\\s*\\([^)]*'" + Pattern.quote(role) + "'").matcher(stmt).find()) {
+                    granted = true;
+                    break;
+                }
+            }
+            if (!granted) {
+                violations.add(role + " is not granted '" + priv + "' — breaks " + req[2]);
+            }
+        }
+
+        assertTrue("Roles must hold the privileges their own screens need: " + violations, violations.isEmpty());
+    }
 
     @Test
     public void privilegesOnNonAdminReachableMethodsAreHeldByAtLeastOneBaseRole() throws IOException {

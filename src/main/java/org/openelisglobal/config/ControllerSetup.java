@@ -1,5 +1,6 @@
 package org.openelisglobal.config;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
@@ -44,6 +46,61 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         binder.registerCustomEditor(AuthType.class, new CaseInsensitiveEnumPropertyEditor<>(AuthType.class));
         binder.registerCustomEditor(ProgrammedConnection.class,
                 new CaseInsensitiveEnumPropertyEditor<>(ProgrammedConnection.class));
+    }
+
+    /**
+     * An authorization denial is a 403, not a 500.
+     *
+     * <p>
+     * {@code AccessDeniedException} is a {@code RuntimeException}, so without this
+     * more-specific handler it fell into {@link #handleRuntimeException} below and
+     * every {@code @PreAuthorize} denial reaching a controller was reported as HTTP
+     * 500. That also pre-empted Spring Security's {@code AccessDeniedHandler}
+     * (SecurityConfig), which never saw the exception because this
+     * {@code @ControllerAdvice} had already converted it into a normal response.
+     *
+     * <p>
+     * The practical damage was much worse than a wrong status code: the frontend
+     * treats a 500 on a bootstrap call as a dead backend and bounces to /login,
+     * whereas a 403 is handled as "you may not see this". A Reception-only user
+     * hitting the {@code PRIV_RESULT_VIEW} gate behind {@code GET /rest/menu} was
+     * therefore logged out instead of simply getting a filtered menu — which is
+     * what took out 52 core E2E specs in run 33568673124.
+     *
+     * <p>
+     * Only API-shaped paths are answered here. For a page controller the
+     * established behaviour is SecurityConfig's redirect to /Home?access=denied,
+     * which is friendlier than a JSON body rendered into a browser window, so those
+     * are rethrown and left to that handler — this advice must not silently change
+     * the outcome for the ~98 ModelAndView controllers.
+     */
+    @ExceptionHandler(value = { org.springframework.security.access.AccessDeniedException.class })
+    protected ResponseEntity<Object> handleAccessDeniedException(
+            org.springframework.security.access.AccessDeniedException ex, WebRequest request)
+            throws org.springframework.security.access.AccessDeniedException {
+        if (!isApiRequest(request)) {
+            // Page request: let SecurityConfig's AccessDeniedHandler redirect.
+            throw ex;
+        }
+        // Denials are expected control flow under privilege-based RBAC, so log at
+        // warn without a stack trace rather than as an error.
+        LogEvent.logWarn(this.getClass().getSimpleName(), "handleAccessDeniedException",
+                "Access denied: " + ex.getMessage());
+        return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.FORBIDDEN), new HttpHeaders(),
+                HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Mirrors the prefixes SecurityConfig's AccessDeniedHandler answers with JSON,
+     * so the two stay consistent about what counts as an API call.
+     */
+    private boolean isApiRequest(WebRequest request) {
+        if (!(request instanceof ServletWebRequest servletRequest)) {
+            return false;
+        }
+        HttpServletRequest raw = servletRequest.getRequest();
+        String path = raw.getRequestURI().substring(raw.getContextPath().length());
+        return path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider");
     }
 
     @ExceptionHandler(value = { RuntimeException.class })
