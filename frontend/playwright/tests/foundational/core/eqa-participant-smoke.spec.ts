@@ -237,5 +237,19 @@ test.describe("EQA participant lane", () => {
         timeout: SHORT_TIMEOUT,
       });
     });
+
+    await test.step("the EQA orders register lists the order by lab number", async () => {
+      // The orders page is the participant's flat view of every EQA sample,
+      // keyed on the accession this spec created rather than on the cycle.
+      await page.goto("/qa/eqa/orders", { timeout: NAV_TIMEOUT });
+      await expect(
+        page.getByRole("heading", { name: "EQA Orders" }),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      const orderRow = page.locator("tr", { hasText: accession });
+      await expect(orderRow).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(orderRow.getByText(seed.programName)).toBeVisible();
+      // Every analysis is finalized by now, so the derived status is complete.
+      await expect(orderRow.getByText("Completed")).toBeVisible();
+    });
   });
 });

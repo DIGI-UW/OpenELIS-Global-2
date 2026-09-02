@@ -822,3 +822,30 @@ export function seedOversightData(runTag: string): OversightSeed {
     restore: () => seeded.drain(),
   };
 }
+
+/**
+ * Remove self-enrollments whose programme name starts with the given prefix.
+ * The enrollment page can deactivate a row but never delete one, so a spec
+ * that creates enrollments through the UI has no in-app way to clean up.
+ */
+export function removeSelfEnrollments(programNamePrefix: string): void {
+  asSafeString(programNamePrefix, "programme name prefix");
+  const ids = psql(
+    `SELECT string_agg(id::text, ',') FROM ${SCHEMA}.eqa_lab_program_enrollment` +
+      ` WHERE program_name LIKE '${programNamePrefix}%'`,
+  );
+  if (ids === "") {
+    return;
+  }
+  const enrollmentIds = ids.split(",").map((id) => asInt(id, "enrollment id"));
+  const list = enrollmentIds.join(", ");
+  psql(
+    `DELETE FROM ${SCHEMA}.eqa_lab_enrollment_test_map WHERE enrollment_id IN (${list})`,
+  );
+  psql(
+    `DELETE FROM ${SCHEMA}.eqa_lab_enrollment_lab_unit WHERE enrollment_id IN (${list})`,
+  );
+  psql(
+    `DELETE FROM ${SCHEMA}.eqa_lab_program_enrollment WHERE id IN (${list})`,
+  );
+}
