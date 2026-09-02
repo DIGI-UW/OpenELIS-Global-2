@@ -2,25 +2,33 @@ import { execFileSync } from "node:child_process";
 import { resolveDbContainer } from "./db-container";
 
 /**
- * EQA lifecycle E2E seeding (participant smoke + provider cycle specs).
+ * EQA E2E seeding, shared by the EQA specs.
  *
- * Seeded directly via `docker exec psql` (same pattern as
- * seed-eqa-shipped-cycle.ts). Two seeders:
+ * Every seeder writes through `docker exec psql`, following the conventions
+ * of seed-eqa-shipped-cycle.ts: guarded interpolation, organization ids that
+ * fit a signed 32-bit int, and an undo stack so a seeder that fails half way
+ * through unwinds instead of orphaning rows in a shared database.
  *
- * - seedParticipantCycle: a scheme this lab is self-enrolled in plus a
- *   PLANNED cycle — the exact starting state of the participant lane. The
- *   spec then drives Add Order (panel receipt), results and Review & submit
- *   through the real UI/REST paths.
- * - seedProviderScheme: a scheme this lab provides with five Active
- *   participant enrollments and NO cycle — the wizard creates the cycle, so
- *   restore() sweeps by scheme id to catch everything the test run writes.
+ * What each one sets up:
  *
- * Plus seedReportedResults: the >=5 reported eqa_result rows scoreCycle
- * demands (MIN_PARTICIPANTS_FOR_STATS) — the participant submissions
- * themselves are out of scope for the provider spec, so the score container
- * rows are planted the way an intake would write them. Values are clustered
- * so the z-score verdicts stay ACCEPTABLE and the spec never depends on
- * statistics behaviour, which the backend ITs own.
+ * - seedParticipantCycle: a scheme this lab is enrolled in plus a planned
+ *   cycle — the starting state of the participant lane, which the spec then
+ *   drives through Add Order, results and review.
+ * - seedProviderScheme: a scheme this lab provides with five active
+ *   participant enrollments and no cycle, since the wizard creates it. Its
+ *   restore sweeps by scheme, so everything the run writes goes too.
+ * - seedReportedResults: the score container, with one participant planted
+ *   far enough from the pack to be unacceptable — which is what makes
+ *   scoring enqueue a follow-up.
+ * - seedFollowups: one follow-up about this lab and one about another, the
+ *   whole of the split between the two registers.
+ * - seedReceiptConditions: a dispatched cycle holding an overdue shipment
+ *   and a damaged arrival, neither of which a healthy dispatch produces.
+ * - seedOversightData: scored participant results and a competency event,
+ *   which is what the three oversight dashboards read.
+ * - seedInHousePanel: a distributed blinded panel, whose targets stay sealed.
+ * - seedParticipantUser: a login without the provider grant, for the one
+ *   spec that has to be someone other than an administrator.
  */
 
 const SCHEMA = "clinlims";
@@ -99,6 +107,25 @@ function undoStack() {
       }
     },
   };
+}
+
+/**
+ * Run cleanup statements, each in its own error boundary.
+ *
+ * Rows the test run itself wrote are deleted before the seeded rows unwind,
+ * and one statement failing must not abort the rest: an unguarded sequence
+ * left a panel receipt behind once, which then blocked its enrollment and
+ * scheme from being deleted at all. Best effort per statement, in the order
+ * given.
+ */
+function sweep(statements: string[]): void {
+  for (const statement of statements) {
+    try {
+      psql(statement);
+    } catch {
+      // best effort: a blocked delete must not strand the rest
+    }
+  }
 }
 
 function insertProgram(
@@ -219,22 +246,16 @@ export function seedParticipantCycle(runTag: string): ParticipantCycleSeed {
     programName,
     cycleName,
     restore: () => {
-      psql(
+      sweep([
         `DELETE FROM ${SCHEMA}.eqa_participant_result WHERE cycle_id = ${cycleId}`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.eqa_panel_receipt WHERE cycle_id = ${cycleId}`,
-      );
-      psql(`DELETE FROM ${SCHEMA}.sample_eqa WHERE cycle_id = ${cycleId}`);
-      psql(
+        `DELETE FROM ${SCHEMA}.eqa_panel_receipt WHERE lab_enrollment_id = ${enrollmentId}`,
+        `DELETE FROM ${SCHEMA}.sample_eqa WHERE cycle_id = ${cycleId}`,
+        `DELETE FROM ${SCHEMA}.sample_eqa WHERE eqa_enrollment_id = ${enrollmentId}`,
         `DELETE FROM ${SCHEMA}.eqa_cycle_state_transition WHERE cycle_id = ${cycleId}`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.eqa_lab_enrollment_test_map WHERE enrollment_id = ${enrollmentId}`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.eqa_lab_enrollment_lab_unit WHERE enrollment_id = ${enrollmentId}`,
-      );
+      ]);
       // Rows the UI run wrote are gone; the seeded cycle, enrollment and
       // scheme unwind in reverse insert order.
       seeded.drain();
@@ -305,43 +326,23 @@ export function seedProviderScheme(runTag: string): ProviderSchemeSeed {
     organizationIds,
     organizationNames,
     restore: () => {
-      psql(
+      sweep([
         `DELETE FROM ${SCHEMA}.eqa_participant_followup WHERE scheme_id = ${programId}`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.eqa_result WHERE eqa_distribution_id IN (${distributions})`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.eqa_distribution WHERE cycle_id IN (${cycles})`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.eqa_participant_result WHERE cycle_id IN (${cycles})`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.eqa_panel_receipt WHERE cycle_id IN (${cycles})`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.eqa_cycle_state_transition WHERE cycle_id IN (${cycles})`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.shipment WHERE shipping_box_id IN (${boxes})`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.box_sample_item WHERE shipping_box_id IN (${boxes})`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.shipping_box WHERE eqa_cycle_id IN (${cycles})`,
-      );
-      psql(
         `DELETE FROM ${SCHEMA}.eqa_panel_sample WHERE panel_id IN` +
           ` (SELECT id FROM ${SCHEMA}.eqa_panel WHERE cycle_id IN (${cycles}))`,
-      );
-      psql(`DELETE FROM ${SCHEMA}.eqa_panel WHERE cycle_id IN (${cycles})`);
-      psql(`DELETE FROM ${SCHEMA}.eqa_round WHERE cycle_id IN (${cycles})`);
-      psql(
+        `DELETE FROM ${SCHEMA}.eqa_panel WHERE cycle_id IN (${cycles})`,
+        `DELETE FROM ${SCHEMA}.eqa_round WHERE cycle_id IN (${cycles})`,
         `DELETE FROM ${SCHEMA}.eqa_cycle_participant WHERE cycle_id IN (${cycles})`,
-      );
-      psql(`DELETE FROM ${SCHEMA}.eqa_cycle WHERE scheme_id = ${programId}`);
+        `DELETE FROM ${SCHEMA}.eqa_cycle WHERE scheme_id = ${programId}`,
+      ]);
       // Test-created rows are gone; the seeded enrollments, scheme and
       // organizations unwind in reverse insert order.
       seeded.drain();
@@ -527,9 +528,9 @@ export function seedFollowups(runTag: string): FollowupSeed {
     analyteName,
     restore: () => {
       // Triage writes competency events against the cycle's scheme.
-      psql(
+      sweep([
         `DELETE FROM ${SCHEMA}.eqa_analyst_competency_event WHERE cycle_id = ${cycleId}`,
-      );
+      ]);
       seeded.drain();
     },
   };
