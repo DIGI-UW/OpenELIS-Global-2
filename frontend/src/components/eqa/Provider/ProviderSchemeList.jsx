@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Button,
   Column,
@@ -21,6 +21,8 @@ import {
 import { useIntl } from "react-intl";
 import { Link as RouterLink, useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { hasQaPermission } from "../../utils/Utils";
 import {
   CycleStatusTag,
   hintStyle,
@@ -53,17 +55,73 @@ const ProviderSchemeList = () => {
   const t = (id, defaultMessage, values) =>
     intl.formatMessage({ id, defaultMessage }, values);
 
+  // FR-V2.5-01 role-conditional composition (T-39): the provider panel only
+  // renders for the provider grant; a participant-only viewer gets links to
+  // the participant surfaces instead of a blank page. The menu row itself is
+  // visible to every EQA viewer today (menu reads are not permission-filtered)
+  // — hiding it and the FR's sidebar hint are deferred to OGC-1151, which will
+  // also need a system_module_url mapping for this route; until then this
+  // fallback is what an ungranted click lands on.
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const isProvider = hasQaPermission(userSessionDetails, "qa.eqa.provider");
+
   const [board, setBoard] = useState({ kpis: {}, schemes: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isProvider) {
+      return;
+    }
     fetchProviderSchemes((data) => {
       setBoard(data);
       setLoading(false);
     });
-  }, []);
+  }, [isProvider]);
 
   const { kpis, schemes } = board;
+
+  if (!isProvider) {
+    return (
+      <>
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth>
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              title={t(
+                "eqa.provider.schemes.participantOnly.title",
+                "Participant view only",
+              )}
+              subtitle={t(
+                "eqa.provider.schemes.participantOnly.body",
+                "Provider scheme administration needs the provider grant. Your lab's participation lives on the pages below.",
+              )}
+            />
+            <ul style={{ marginTop: "0.75rem" }}>
+              <li>
+                <RouterLink to="/qa/eqa/my-programs">
+                  {t(
+                    "eqa.provider.schemes.link.myPrograms",
+                    "My enrollments — schemes this lab takes part in",
+                  )}
+                </RouterLink>
+              </li>
+              <li>
+                <RouterLink to="/qa/eqa/my-cycles">
+                  {t(
+                    "eqa.provider.schemes.link.myCycles",
+                    "My Cycles — panels, results and deadlines",
+                  )}
+                </RouterLink>
+              </li>
+            </ul>
+          </Column>
+        </Grid>
+      </>
+    );
+  }
 
   if (loading) {
     return <Loading />;

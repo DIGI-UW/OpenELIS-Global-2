@@ -5,9 +5,14 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import messages from "../../../../languages/en.json";
 import ProviderSchemeList from "../ProviderSchemeList";
+import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 
-vi.mock("../../../utils/Utils", () => ({
+// Keep the real hasQaPermission (incl. its Global Administrator fallback) —
+// mocking it would let the composition tests stay green while the production
+// predicate regresses. Same pattern as EQAParticipantsPage.test.jsx.
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
   getFromOpenElisServer: vi.fn(),
 }));
 
@@ -48,25 +53,36 @@ const KPIS = {
   followupsOpen: 0,
 };
 
-const renderList = (schemes = SCHEMES, kpis = KPIS) => {
+const renderList = (
+  schemes = SCHEMES,
+  kpis = KPIS,
+  permissions = ["qa.eqa.provider"],
+  roles = [],
+) => {
   getFromOpenElisServer.mockImplementation((url, cb) =>
     url === "/rest/eqa/provider/schemes" ? cb({ kpis, schemes }) : cb([]),
   );
   const history = [];
   const view = render(
     <IntlProvider locale="en" messages={messages}>
-      <MemoryRouter initialEntries={["/qa/eqa/provider/schemes"]}>
-        <Route path="/qa/eqa/provider/schemes" exact>
-          <ProviderSchemeList />
-        </Route>
-        <Route
-          path="/qa/eqa/provider/schemes/:schemeId/cycles/new"
-          render={({ match }) => {
-            history.push(match.url);
-            return <div>wizard</div>;
-          }}
-        />
-      </MemoryRouter>
+      <UserSessionDetailsContext.Provider
+        value={{
+          userSessionDetails: { authenticated: true, roles, permissions },
+        }}
+      >
+        <MemoryRouter initialEntries={["/qa/eqa/provider/schemes"]}>
+          <Route path="/qa/eqa/provider/schemes" exact>
+            <ProviderSchemeList />
+          </Route>
+          <Route
+            path="/qa/eqa/provider/schemes/:schemeId/cycles/new"
+            render={({ match }) => {
+              history.push(match.url);
+              return <div>wizard</div>;
+            }}
+          />
+        </MemoryRouter>
+      </UserSessionDetailsContext.Provider>
     </IntlProvider>,
   );
   return { ...view, history };
@@ -147,6 +163,40 @@ describe("ProviderSchemeList", () => {
     renderList([]);
 
     expect(screen.getByText("No schemes to provide yet")).toBeInTheDocument();
+  });
+
+  // FR-V2.5-01 role-conditional composition (T-39)
+  test("a participant-only viewer gets the participant links, not the provider table", () => {
+    renderList(SCHEMES, KPIS, ["qa.view.eqa"]);
+
+    expect(screen.getByText("Participant view only")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /My enrollments/ }),
+    ).toHaveAttribute("href", "/qa/eqa/my-programs");
+    expect(screen.getByRole("link", { name: /My Cycles/ })).toHaveAttribute(
+      "href",
+      "/qa/eqa/my-cycles",
+    );
+    // No provider surface, and no provider fetch either — the hiding is UI
+    // composition (FR-V2.5-01); the endpoint stays read-guarded like every
+    // provider GET (EQARestGuardMatrixTest).
+    expect(screen.queryByText("National HIV VL PT")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("kpi-active-schemes")).not.toBeInTheDocument();
+    expect(getFromOpenElisServer).not.toHaveBeenCalled();
+  });
+
+  test("the provider grant renders the scheme table, not the participant hint", () => {
+    renderList();
+
+    expect(screen.queryByText("Participant view only")).not.toBeInTheDocument();
+    expect(screen.getByText("National HIV VL PT")).toBeInTheDocument();
+  });
+
+  test("Global Administrator passes the gate without the explicit permission", () => {
+    renderList(SCHEMES, KPIS, [], ["Global Administrator"]);
+
+    expect(screen.queryByText("Participant view only")).not.toBeInTheDocument();
+    expect(screen.getByText("National HIV VL PT")).toBeInTheDocument();
   });
 
   test("a scheme with no cycle yet says so instead of rendering an empty table", () => {

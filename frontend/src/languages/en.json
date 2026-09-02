@@ -8608,5 +8608,9 @@
   "eqa.provider.schemes.discipline": "Discipline",
   "eqa.cycle.history.actor": "Actor",
   "eqa.cycle.history.systemActor": "System",
-  "eqa.prep.reserved.recommend": "{n} recommended: max(10% of participants, 5)"
+  "eqa.prep.reserved.recommend": "{n} recommended: max(10% of participants, 5)",
+  "eqa.provider.schemes.participantOnly.title": "Participant view only",
+  "eqa.provider.schemes.participantOnly.body": "Provider scheme administration needs the provider grant. Your lab's participation lives on the pages below.",
+  "eqa.provider.schemes.link.myPrograms": "My enrollments — schemes this lab takes part in",
+  "eqa.provider.schemes.link.myCycles": "My Cycles — panels, results and deadlines"
 }
