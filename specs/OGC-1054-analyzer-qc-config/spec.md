@@ -1,6 +1,6 @@
 # OGC-1054 Analyzer Management Specification
 
-**Updated:** 2026-08-24
+**Updated:** 2026-09-02
 
 **Execution:** [authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
 
@@ -32,11 +32,11 @@ internals.
 
 ## The Three Objects
 
-| Object | Owner | Purpose |
-| --- | --- | --- |
-| Analyzer profile revision | Bridge | Immutable analyzer-type definition with exactly two jobs: define analyzer communication/runtime behavior and provide defaults for a new connection |
-| Analyzer connection | Bridge | Durable configured instrument with a profile pin, entered values, configuration revision, probe evidence, and runtime lifecycle |
-| OpenELIS analyzer | OpenELIS | Local instrument identity, lab units, Bridge connection reference, local catalog binding, verification/audit, activation intent, results, and QC links |
+| Object                    | Owner    | Purpose                                                                                                                                                |
+| ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Analyzer profile revision | Bridge   | Immutable analyzer-type definition with exactly two jobs: define analyzer communication/runtime behavior and provide defaults for a new connection     |
+| Analyzer connection       | Bridge   | Durable configured instrument with a profile pin, entered values, configuration revision, probe evidence, and runtime lifecycle                        |
+| OpenELIS analyzer         | OpenELIS | Local instrument identity, lab units, Bridge connection reference, local catalog binding, verification/audit, activation intent, results, and QC links |
 
 `Analyzer Type` is the lab-facing composed view of a Bridge profile revision and
 its OpenELIS site binding. It is not a second profile entity or plugin registry.
@@ -159,8 +159,17 @@ profile detail, mappings, revision history, create, duplicate, publish,
 deactivate, and reactivate. Meaningful list, profile, revision, tab, filter, and
 return state is represented in the URL and every page has a linkable breadcrumb.
 
+Create continues from the type identity, protocol, and connection choice into
+an editable Bridge draft that can be published. Duplicate is single-submit,
+preserves Bridge lineage, leaves the source unchanged, and starts a separate
+OpenELIS site binding from the source's local mapping decisions. The copied
+binding must be confirmed independently before use.
+
 The page composes Bridge profile data with OpenELIS mapping completeness and
-usage. It never exposes the superseded local `AnalyzerType` plugin registry.
+usage. Completeness and attention include profile-declared concepts and observed
+unresolved tests/values, and update after incoming traffic or a site-binding
+change. The page never exposes the superseded local `AnalyzerType` plugin
+registry.
 
 ### Mapping And Verification
 
@@ -177,6 +186,9 @@ Operational-QC state never changes or invalidates this verification.
 
 Analyzer setup reviews this shared binding. Resolve/Edit opens the same Analyzer
 Types editor with a return URL; no per-analyzer mapping editor exists.
+Authorized users resolve both unknown tests and unknown values through this
+catalog-backed workflow. The original held result remains unchanged; the
+confirmed decision applies to the next matching message.
 
 ### Guided Analyzer Setup
 
@@ -191,9 +203,9 @@ Analyzer Types authoring workflow and returns after a profile is published.
 
 Connect creates or edits the Bridge-owned connection through generic fields.
 The connection test shows structured success, failure, timeout, missing-setting,
-and endpoint information. It never silently changes the selected data flow. A
-failed two-way test may offer an explicit Bridge-described results-only choice;
-the user must choose it.
+and endpoint information, and the latest evidence remains visible after reload.
+It never silently changes the selected data flow. A failed two-way test may
+offer an explicit Bridge-described results-only choice; the user must choose it.
 
 Activation requires:
 
@@ -212,13 +224,18 @@ provided.
 
 Bridge sends normalized patient/control traffic with connection identity,
 profile reference, classification, and raw context. Known traffic reaches the
-correct OE workflow. Unknown tests or values are durably held, visibly flagged,
-and never clinically posted or dropped. Resolution uses valid local catalog
-choices, is audited, and deterministically affects the next matching result.
+correct OE workflow, and normal, held, control, and FILE review shows its source
+analyzer identity and raw source context. Unknown tests or values are durably
+held, visibly flagged, included in Analyzer Type completeness/attention, and
+never clinically posted or dropped. Resolution uses valid active local catalog
+choices, is audited, leaves the held record unchanged, and deterministically
+affects the next matching result.
 
 Control-result recognition is profile/runtime behavior in Bridge. Operational
 QC is a separate linked OpenELIS workflow and result-release concern.
-`AnalyzerQcRule` and `QcRun` are not part of the target architecture.
+Analyzer-scoped QC offers only active Tests mapped for that analyzer when a
+control lot is created. `AnalyzerQcRule` and `QcRun` are not part of the
+target architecture, and operational QC never gates analyzer activation.
 
 ## One-Time Upgrade Migration
 
