@@ -36,7 +36,7 @@
   "admin.labUnit.list.filter.domain": "Filtrer par domaine",
   "admin.legacy": "Administration héritée",
   "button.back": "← Back to List",
-  "button.labUnit.add": "Add Lab Unit",
+  "button.labUnit.add": "Ajouter une unité de labo",
   "button.labUnit.create": "Create Lab Unit",
   "button.labUnit.creating": "Création...",
   "button.labUnit.tests.assign": "Assign tests",

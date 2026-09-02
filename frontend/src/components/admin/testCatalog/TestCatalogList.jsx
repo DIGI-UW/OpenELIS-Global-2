@@ -437,231 +437,227 @@ const TestsList = () => {
           )}
 
         <Column lg={16} md={8} sm={4}>
-          {loading ? (
-            <Loading
-              description={intl.formatMessage({ id: "label.loading" })}
-              withOverlay={false}
-            />
-          ) : error ? (
-            <InlineNotification
-              kind="error"
-              lowContrast
-              hideCloseButton
-              title={intl.formatMessage({ id: "label.testCatalog.list.error" })}
-            />
-          ) : (
-            <DataTable rows={tableRows} headers={headers}>
-              {({
-                rows,
-                headers: hdrs,
-                getHeaderProps,
-                getRowProps,
-                getSelectionProps,
-                getBatchActionProps,
-                getTableProps,
-                getToolbarProps,
-                selectedRows,
-              }) => (
-                <TableContainer>
-                  <TableToolbar {...getToolbarProps()}>
-                    <TableBatchActions {...getBatchActionProps()}>
-                      <TableBatchAction
-                        renderIcon={Edit}
-                        disabled={selectedRows.length < 2}
-                        onClick={() => openRelatedEditor(selectedRows)}
-                      >
-                        {intl.formatMessage({
-                          id: "button.testCatalog.editRelated",
-                        })}
-                      </TableBatchAction>
-                    </TableBatchActions>
-                    <TableToolbarContent>
-                      <Search
-                        size="lg"
-                        id="test-search"
-                        labelText={intl.formatMessage({ id: "label.search" })}
-                        placeholder={intl.formatMessage({
-                          id: "label.testCatalog.list.search",
-                        })}
-                        onChange={(e) => {
-                          setPage(1);
-                          setSearch(e.target.value);
-                        }}
-                        value={search}
-                      />
-                      <Button
-                        renderIcon={Add}
-                        onClick={openNewTest}
-                        data-testid="new-test-button"
-                      >
-                        {intl.formatMessage({
-                          id: "button.testCatalog.newTest",
-                        })}
-                      </Button>
-                    </TableToolbarContent>
-                  </TableToolbar>
-                  {tableRows.length === 0 ? (
-                    <InlineNotification
-                      kind="info"
-                      lowContrast
-                      hideCloseButton
-                      title={intl.formatMessage({
-                        id: "label.testCatalog.list.empty",
+          <DataTable rows={tableRows} headers={headers}>
+            {({
+              rows,
+              headers: hdrs,
+              getHeaderProps,
+              getRowProps,
+              getSelectionProps,
+              getBatchActionProps,
+              getTableProps,
+              getToolbarProps,
+              selectedRows,
+            }) => (
+              <TableContainer>
+                <TableToolbar {...getToolbarProps()}>
+                  <TableBatchActions {...getBatchActionProps()}>
+                    <TableBatchAction
+                      renderIcon={Edit}
+                      disabled={selectedRows.length < 2}
+                      onClick={() => openRelatedEditor(selectedRows)}
+                    >
+                      {intl.formatMessage({
+                        id: "button.testCatalog.editRelated",
                       })}
+                    </TableBatchAction>
+                  </TableBatchActions>
+                  <TableToolbarContent>
+                    <Search
+                      size="lg"
+                      id="test-search"
+                      labelText={intl.formatMessage({ id: "label.search" })}
+                      placeholder={intl.formatMessage({
+                        id: "label.testCatalog.list.search",
+                      })}
+                      onChange={(e) => {
+                        setPage(1);
+                        setSearch(e.target.value);
+                      }}
+                      value={search}
                     />
-                  ) : (
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          <TableSelectAll {...getSelectionProps()} />
-                          {hdrs.map((header) => (
-                            <TableHeader
-                              key={header.key}
-                              {...getHeaderProps({ header })}
+                    <Button
+                      renderIcon={Add}
+                      onClick={openNewTest}
+                      data-testid="new-test-button"
+                    >
+                      {intl.formatMessage({
+                        id: "button.testCatalog.newTest",
+                      })}
+                    </Button>
+                  </TableToolbarContent>
+                </TableToolbar>
+                {error ? (
+                  <InlineNotification
+                    kind="error"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "label.testCatalog.list.error",
+                    })}
+                  />
+                ) : loading && tableRows.length === 0 ? (
+                  <Loading
+                    description={intl.formatMessage({ id: "label.loading" })}
+                    withOverlay={false}
+                  />
+                ) : tableRows.length === 0 ? (
+                  <InlineNotification
+                    kind="info"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "label.testCatalog.list.empty",
+                    })}
+                  />
+                ) : (
+                  <Table {...getTableProps()}>
+                    <TableHead>
+                      <TableRow>
+                        <TableSelectAll {...getSelectionProps()} />
+                        {hdrs.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => {
+                        const source = tableRows.find((t) => t.id === row.id);
+                        return (
+                          <React.Fragment key={row.id}>
+                            <TableRow
+                              {...getRowProps({ row })}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  openEditor(row.id);
+                                }
+                              }}
+                              tabIndex={0}
+                              data-cy={`test-row-${row.id}`}
                             >
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {rows.map((row) => {
-                          const source = tableRows.find((t) => t.id === row.id);
-                          return (
-                            <React.Fragment key={row.id}>
-                              <TableRow
-                                {...getRowProps({ row })}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    openEditor(row.id);
-                                  }
-                                }}
-                                tabIndex={0}
-                                data-cy={`test-row-${row.id}`}
-                              >
-                                {/* The checkbox selects the row for the batch
+                              {/* The checkbox selects the row for the batch
                                     action and must not open the editor. It is
                                     left outside the clickable area rather than
                                     stopping propagation: TableSelectRow accepts
                                     a fixed set of props and drops onClick, so a
                                     handler passed to it never reaches the DOM
                                     and the click reaches the row regardless. */}
-                                <TableSelectRow
-                                  {...getSelectionProps({ row })}
-                                />
-                                {row.cells.map((cell) => (
-                                  <TableCell
-                                    key={cell.id}
-                                    onClick={() => openEditor(row.id)}
-                                    style={{ cursor: "pointer" }}
-                                  >
-                                    {cell.info.header === "domain" ? (
-                                      <>
-                                        {cell.value && (
-                                          <Tag type="gray" size="sm">
-                                            {intl.formatMessage({
-                                              id: `label.testCatalog.basicInfo.domain.${cell.value}`,
-                                              defaultMessage: cell.value,
-                                            })}
-                                          </Tag>
-                                        )}
-                                      </>
-                                    ) : cell.info.header === "status" ? (
-                                      <Tag
-                                        type={
+                              <TableSelectRow {...getSelectionProps({ row })} />
+                              {row.cells.map((cell) => (
+                                <TableCell
+                                  key={cell.id}
+                                  onClick={() => openEditor(row.id)}
+                                  style={{ cursor: "pointer" }}
+                                >
+                                  {cell.info.header === "domain" ? (
+                                    <>
+                                      {cell.value && (
+                                        <Tag type="gray" size="sm">
+                                          {intl.formatMessage({
+                                            id: `label.testCatalog.basicInfo.domain.${cell.value}`,
+                                            defaultMessage: cell.value,
+                                          })}
+                                        </Tag>
+                                      )}
+                                    </>
+                                  ) : cell.info.header === "status" ? (
+                                    <Tag
+                                      type={
+                                        source && source.active
+                                          ? "green"
+                                          : "cool-gray"
+                                      }
+                                      size="sm"
+                                    >
+                                      <FormattedMessage
+                                        id={
                                           source && source.active
-                                            ? "green"
-                                            : "cool-gray"
+                                            ? "label.testCatalog.basicInfo.active"
+                                            : "label.testCatalog.list.filter.inactive"
                                         }
-                                        size="sm"
-                                      >
-                                        <FormattedMessage
-                                          id={
-                                            source && source.active
-                                              ? "label.testCatalog.basicInfo.active"
-                                              : "label.testCatalog.list.filter.inactive"
-                                          }
-                                        />
+                                      />
+                                    </Tag>
+                                  ) : cell.info.header === "sampleType" &&
+                                    source &&
+                                    (source.sampleTypes || []).length > 1 ? (
+                                    // OGC-1145 FR-9 — one row per test; the cell
+                                    // summarizes its specimens, full list in the
+                                    // tooltip.
+                                    <span title={source.sampleTypes.join(", ")}>
+                                      {intl.formatMessage(
+                                        {
+                                          id: "label.testCatalog.list.sampleTypesSummary",
+                                        },
+                                        {
+                                          first: source.sampleTypes[0],
+                                          n: source.sampleTypes.length - 1,
+                                        },
+                                      )}
+                                    </span>
+                                  ) : (
+                                    cell.value
+                                  )}
+                                  {cell.info.header === "name" &&
+                                    source &&
+                                    source.amr && (
+                                      <Tag type="magenta" size="sm">
+                                        <FormattedMessage id="label.testCatalog.list.amrTag" />
                                       </Tag>
-                                    ) : cell.info.header === "sampleType" &&
-                                      source &&
-                                      (source.sampleTypes || []).length > 1 ? (
-                                      // OGC-1145 FR-9 — one row per test; the cell
-                                      // summarizes its specimens, full list in the
-                                      // tooltip.
-                                      <span
-                                        title={source.sampleTypes.join(", ")}
-                                      >
-                                        {intl.formatMessage(
-                                          {
-                                            id: "label.testCatalog.list.sampleTypesSummary",
-                                          },
-                                          {
-                                            first: source.sampleTypes[0],
-                                            n: source.sampleTypes.length - 1,
-                                          },
-                                        )}
-                                      </span>
-                                    ) : (
-                                      cell.value
                                     )}
-                                    {cell.info.header === "name" &&
-                                      source &&
-                                      source.amr && (
-                                        <Tag type="magenta" size="sm">
-                                          <FormattedMessage id="label.testCatalog.list.amrTag" />
-                                        </Tag>
-                                      )}
-                                    {cell.info.header === "name" &&
-                                      source &&
-                                      source.active &&
-                                      !source.hasLoinc && (
-                                        <Tag type="warm-gray" size="sm">
-                                          <FormattedMessage id="label.testCatalog.list.noLoinc" />
-                                        </Tag>
-                                      )}
-                                    {cell.info.header === "name" &&
-                                      source &&
-                                      source.coverageIncomplete && (
-                                        <Tag type="red" size="sm">
-                                          <FormattedMessage id="label.testCatalog.list.coverageIncomplete" />
-                                        </Tag>
-                                      )}
-                                    {/* FR-61b/62/63 — per-row issue tags, errors first,
+                                  {cell.info.header === "name" &&
+                                    source &&
+                                    source.active &&
+                                    !source.hasLoinc && (
+                                      <Tag type="warm-gray" size="sm">
+                                        <FormattedMessage id="label.testCatalog.list.noLoinc" />
+                                      </Tag>
+                                    )}
+                                  {cell.info.header === "name" &&
+                                    source &&
+                                    source.coverageIncomplete && (
+                                      <Tag type="red" size="sm">
+                                        <FormattedMessage id="label.testCatalog.list.coverageIncomplete" />
+                                      </Tag>
+                                    )}
+                                  {/* FR-61b/62/63 — per-row issue tags, errors first,
                                       tooltip carries the one-line explanation. */}
-                                    {cell.info.header === "name" &&
-                                      source &&
-                                      [...source.findings]
-                                        .sort(
-                                          (a, b) =>
-                                            SEVERITY_RANK[a.severity] -
-                                            SEVERITY_RANK[b.severity],
-                                        )
-                                        .map((f, fi) => (
-                                          <Tag
-                                            key={fi}
-                                            type={findingTagType(f.severity)}
-                                            size="sm"
-                                            title={f.message}
-                                          >
-                                            {f.message}
-                                          </Tag>
-                                        ))}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            </React.Fragment>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  )}
-                </TableContainer>
-              )}
-            </DataTable>
-          )}
-          {!loading && !error && (
+                                  {cell.info.header === "name" &&
+                                    source &&
+                                    [...source.findings]
+                                      .sort(
+                                        (a, b) =>
+                                          SEVERITY_RANK[a.severity] -
+                                          SEVERITY_RANK[b.severity],
+                                      )
+                                      .map((f, fi) => (
+                                        <Tag
+                                          key={fi}
+                                          type={findingTagType(f.severity)}
+                                          size="sm"
+                                          title={f.message}
+                                        >
+                                          {f.message}
+                                        </Tag>
+                                      ))}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          </React.Fragment>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </TableContainer>
+            )}
+          </DataTable>
+          {!error && tableRows.length > 0 && (
             <Pagination
               page={page}
               pageSize={pageSize}

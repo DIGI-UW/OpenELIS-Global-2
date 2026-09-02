@@ -263,4 +263,5 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         assertEquals(404, response.getStatus());
     }
+
 }

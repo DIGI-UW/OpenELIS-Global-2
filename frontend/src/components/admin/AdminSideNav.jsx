@@ -130,6 +130,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   );
   const editorLabUnitId = labUnitEditorMatch ? labUnitEditorMatch[1] : null;
 
+  // Whether the shell is showing Lab Units, selected or not — mirrors the panel
+  // and sample-type contexts so the plain /LabUnitManagement list greys out the
+  // lab-unit sections instead of falling through to the test sections.
+  const inLabUnitsContext =
+    !!editorLabUnitId || /\/LabUnitManagement(\/|$)/.test(location.pathname);
+
   // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
   useEffect(() => {
@@ -408,6 +414,24 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                 <FormattedMessage id={`label.labUnit.section.${sectionKey}`} />
               </SideNavMenuItem>
             ))}
+          </>
+        ) : inLabUnitsContext ? (
+          <>
+            {/* OGC-189 — lab-unit context with nothing selected: caption + the
+                lab-unit sections shown greyed, like Panels / Sample Types /
+                Tests, rather than falling through to the test sections. */}
+            {sectionsCaption(
+              "labUnitSectionsHelp",
+              "labUnitSectionsContext",
+              "sidenav.label.admin.labUnit.sectionsHelper",
+            )}
+            {LAB_UNIT_SECTIONS.map((sectionKey) =>
+              disabledSection(
+                `labUnit-section-${sectionKey}`,
+                "labUnitSectionsHelp",
+                <FormattedMessage id={`label.labUnit.section.${sectionKey}`} />,
+              ),
+            )}
           </>
         ) : inPanelsContext ? (
           <>
