@@ -19,6 +19,7 @@ import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
 import java.util.List;
@@ -138,6 +139,11 @@ public class PatientProvider implements IResourceProvider {
             }
 
             Errors errors = new BindException(patientInfo, "patientInfo");
+
+            if (StringUtils.isBlank(patientInfo.getLastName()) && StringUtils.isBlank(patientInfo.getFirstName())) {
+                errors.reject("error.patient.name.required", "Patient must have at least a family or given name");
+            }
+
             ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
 
             if (errors.hasErrors()) {
@@ -148,8 +154,9 @@ public class PatientProvider implements IResourceProvider {
                     LogEvent.logError(this.getClass().getSimpleName(), method,
                             "Validation error: " + error.getDefaultMessage());
                 }
-                outcome.setOperationOutcome(operationOutcome);
-                return outcome;
+                throw new UnprocessableEntityException(errors.getAllErrors().stream()
+                        .map(ObjectError::getDefaultMessage).reduce((a, b) -> a + "; " + b).orElse("Validation failed"),
+                        operationOutcome);
             }
 
             Patient patient = new Patient();
@@ -198,6 +205,8 @@ public class PatientProvider implements IResourceProvider {
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Patient creation completed successfully: " + patient.getId());
 
+        } catch (UnprocessableEntityException | InvalidRequestException e) {
+            throw e;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Exception during patient creation: " + e.getMessage());
@@ -398,7 +407,13 @@ public class PatientProvider implements IResourceProvider {
      * @return the matching Patient, or {@code null} if not found
      */
     private Patient getPatientByFhirId(String fhirUuid) {
-        List<Patient> matches = patientService.getAllMatching("fhirUuid", UUID.fromString(fhirUuid));
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(fhirUuid);
+        } catch (IllegalArgumentException e) {
+            throw new ResourceNotFoundException("Patient/" + fhirUuid);
+        }
+        List<Patient> matches = patientService.getAllMatching("fhirUuid", uuid);
         return matches.isEmpty() ? null : matches.get(0);
     }
 
