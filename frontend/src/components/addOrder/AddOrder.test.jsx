@@ -494,7 +494,9 @@ describe("AddOrder — Lab Number reassignment is deliberate on modify (OGC-1191
     ).toBeInTheDocument();
     expect(screen.getByText(/DEV01260000000000777/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Undo/i }));
+    fireEvent.click(
+      document.querySelector('[data-cy="reassign-labNumber-undo"]'),
+    );
     const cleared = setOrderFormValues.mock.calls
       .map((c) => c[0])
       .reverse()

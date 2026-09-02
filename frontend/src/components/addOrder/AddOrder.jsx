@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActionableNotification,
   Button,
   Checkbox,
   DataTable,
@@ -889,24 +888,31 @@ const AddOrder = (props) => {
                   {orderFormValues.accessionNumber}
                 </h5>
                 {orderFormValues.newAccessionNumber ? (
-                  <ActionableNotification
-                    kind="warning"
-                    lowContrast
-                    inline
-                    hideCloseButton
-                    title={intl.formatMessage({
-                      id: "sample.labnumber.reassign.pending.title",
-                    })}
-                    subtitle={intl.formatMessage(
-                      { id: "sample.labnumber.reassign.pending" },
-                      { number: orderFormValues.newAccessionNumber },
-                    )}
-                    actionButtonLabel={intl.formatMessage({
-                      id: "sample.labnumber.reassign.undo",
-                    })}
-                    onActionButtonClick={undoReassign}
-                    data-cy="reassign-labNumber-pending"
-                  />
+                  <>
+                    <InlineNotification
+                      kind="warning"
+                      lowContrast
+                      hideCloseButton
+                      title={intl.formatMessage({
+                        id: "sample.labnumber.reassign.pending.title",
+                      })}
+                      subtitle={intl.formatMessage(
+                        { id: "sample.labnumber.reassign.pending" },
+                        { number: orderFormValues.newAccessionNumber },
+                      )}
+                      data-cy="reassign-labNumber-pending"
+                    />
+                    <Link
+                      data-cy="reassign-labNumber-undo"
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        undoReassign();
+                      }}
+                    >
+                      <FormattedMessage id="sample.labnumber.reassign.undo" />
+                    </Link>
+                  </>
                 ) : null}
                 <Button
                   kind="ghost"
