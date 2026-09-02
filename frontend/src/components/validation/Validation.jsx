@@ -79,11 +79,6 @@ const Validation = (props) => {
   const [qcAckChecked, setQcAckChecked] = useState(false);
   const [qcJustification, setQcJustification] = useState("");
 
-  // S-08 FR-04: failed QC samples in the current batch, populated by the GET.
-  // The acknowledgment is only required when there's a release pending — if the
-  // validation queue is empty (e.g. the client analysis was already released in a
-  // prior session), the failure record still exists on the result but there's
-  // nothing to gate, so the panel stays hidden.
   const qcFailures = props.results?.qcFailureList || [];
   const hasPendingResults = (props.results?.resultList?.length ?? 0) > 0;
   const qcAckRequired = qcFailures.length > 0 && hasPendingResults;
@@ -100,6 +95,11 @@ const Validation = (props) => {
       componentMounted.current = false;
     };
   }, []);
+
+  const selectedRowCount = () => {
+    const results = (props.results && props.results.resultList) || [];
+    return results.filter((r) => r.isAccepted || r.isRejected).length;
+  };
 
   const columns = [
     {
@@ -221,6 +221,18 @@ const Validation = (props) => {
     if (isSubmitting) {
       return;
     }
+    if (selectedRowCount() === 0) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "validation.save.noRowsSelected",
+          defaultMessage: "Select at least one row to save.",
+        }),
+      });
+      setNotificationVisible(true);
+      return;
+    }
     setIsSubmitting(true);
     postToOpenElisServer(
       "/rest/AccessionValidation",
@@ -228,6 +240,7 @@ const Validation = (props) => {
       handleResponse,
     );
   };
+
   const handleResponse = (status) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
@@ -235,7 +248,6 @@ const Validation = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/validation" + props.params;
     }
     addNotification({
       kind: kind,
@@ -243,13 +255,9 @@ const Validation = (props) => {
       message: message,
     });
     setNotificationVisible(true);
+    setTimeout(() => setNotificationVisible(false), 5000);
   };
 
-  /**
-   * Posts the QC failure acknowledgment for the current batch. Resolves on 2xx,
-   * rejects otherwise. Called via ESignatureButton.onBeforeSign so the ack
-   * persists before any E-Sign ceremony opens.
-   */
   const postQcAcknowledgment = () => {
     if (!qcAckRequired) {
       return Promise.resolve();
@@ -285,7 +293,6 @@ const Validation = (props) => {
         message: intl.formatMessage({ id: "error.validation.qc.ackFailed" }),
       });
       setNotificationVisible(true);
-      // Re-throw so ESignatureButton aborts the ceremony.
       throw error;
     }
   };
@@ -437,11 +444,17 @@ const Validation = (props) => {
           </div>
         );
       }
-
       case "save":
         return (
           <>
-            <div data-testid="Checkbox">
+            <div
+              data-testid="Checkbox"
+              style={{
+                backgroundColor: row.isAccepted ? "#d0e8ff" : "transparent",
+                borderRadius: "4px",
+                padding: "2px",
+              }}
+            >
               <Field name="isAccepted">
                 {({ field }) => (
                   <Checkbox
@@ -456,24 +469,30 @@ const Validation = (props) => {
             </div>
           </>
         );
-
       case "retest":
         return (
           <>
-            <Field name="isRejected">
-              {({ field }) => (
-                <Checkbox
-                  id={"resultList" + row.id + ".isRejected"}
-                  name={"resultList[" + row.id + "].isRejected"}
-                  labelText=""
-                  value={true}
-                  onChange={(e) => handleCheckBox(e, row.id)}
-                />
-              )}
-            </Field>
+            <div
+              style={{
+                backgroundColor: row.isRejected ? "#ffe0d0" : "transparent",
+                borderRadius: "4px",
+                padding: "2px",
+              }}
+            >
+              <Field name="isRejected">
+                {({ field }) => (
+                  <Checkbox
+                    id={"resultList" + row.id + ".isRejected"}
+                    name={"resultList[" + row.id + "].isRejected"}
+                    labelText=""
+                    value={true}
+                    onChange={(e) => handleCheckBox(e, row.id)}
+                  />
+                )}
+              </Field>
+            </div>
           </>
         );
-
       case "notes":
         return (
           <>
@@ -490,7 +509,6 @@ const Validation = (props) => {
             </div>
           </>
         );
-
       case "pastNotes":
         return (
           <>
@@ -499,7 +517,6 @@ const Validation = (props) => {
             </div>
           </>
         );
-
       case "uncertainty": {
         const uVal = row.expandedUncertainty;
         if (!uVal) return null;
@@ -517,7 +534,6 @@ const Validation = (props) => {
           </span>
         );
       }
-
       case "result": {
         const holdingStatus = getHoldingStatus(row);
         const holdingStyle = holdingStatus
@@ -569,10 +585,9 @@ const Validation = (props) => {
             );
         }
       }
-
       default:
+        return row.result;
     }
-    return row.result;
   };
 
   return (
@@ -584,8 +599,8 @@ const Validation = (props) => {
               <img
                 src={config.serverBaseUrl + "/images/nonconforming.gif"}
                 alt="nonconforming"
-                width="25" // Set your desired width
-                height="20" // Set your desired height
+                width="25"
+                height="20"
               />
             </picture>
             <b>
@@ -812,7 +827,9 @@ const Validation = (props) => {
               recordId={getFirstAnalysisId()}
               onBeforeSign={handleBeforeSign}
               onSign={handleSave}
-              disabled={isSubmitting || !qcAckSatisfied}
+              disabled={
+                isSubmitting || !qcAckSatisfied || selectedRowCount() === 0
+              }
               style={{ marginTop: "16px" }}
             >
               <FormattedMessage id="label.button.validate" />
