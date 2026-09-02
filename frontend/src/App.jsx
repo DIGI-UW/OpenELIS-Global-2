@@ -117,7 +117,7 @@ import {
 } from "./components/resultPage/unified/routeGates";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
-import { languages, languageMessages } from "./languages";
+import { resolveMessagesForLocale } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -204,13 +204,16 @@ import {
 } from "./components/vectorIdentification";
 
 export default function App() {
-  const defaultLocale =
-    localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
+  // The stored preference, or the browser's full tag (region kept: fr-MG
+  // resolves to its own bundle, not just fr). The resolver accepts either
+  // spelling (fr_MG / fr-MG) and always returns usable messages, so a stale
+  // stored value can never break startup.
+  const initial = resolveMessagesForLocale(
+    localStorage.getItem("locale") || navigator.language,
+  );
 
-  const initialLocale = languages[defaultLocale] ? defaultLocale : "en";
-
-  const [locale, setLocale] = useState(initialLocale);
-  const [messages, setMessages] = useState(languages[initialLocale].messages);
+  const [locale, setLocale] = useState(initial.code);
+  const [messages, setMessages] = useState(initial.messages);
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
@@ -343,14 +346,14 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    // Check if we have messages for this language
-    const messages = languageMessages[lang] || languages[lang]?.messages;
-    if (!messages) {
-      lang = "en";
-    }
-    setLocale(lang);
-    setMessages(languageMessages[lang] || languages["en"].messages);
-    localStorage.setItem("locale", lang);
+    // The selector hands over whatever code the locales config declared —
+    // underscore or hyphen, any casing. Resolve it to the canonical code and
+    // the best bundle (exact, then base language, then English) so a
+    // configured locale like fr_MG lands on its own translations.
+    const resolved = resolveMessagesForLocale(lang);
+    setLocale(resolved.code);
+    setMessages(resolved.messages);
+    localStorage.setItem("locale", resolved.code);
   };
 
   const changeLanguageBackend = async (lang) => {
