@@ -849,3 +849,45 @@ export function removeSelfEnrollments(programNamePrefix: string): void {
     `DELETE FROM ${SCHEMA}.eqa_lab_program_enrollment WHERE id IN (${list})`,
   );
 }
+
+/** The participant-only fixture user, and the role that grants participant
+ * EQA access without the provider grant. */
+export const PARTICIPANT_USER = "e2eparticipant";
+const PARTICIPANT_ROLE = "Results";
+
+/**
+ * Ensure a participant-only login exists, so a spec can see the EQA module
+ * as someone who is not a provider. Everything provider-side ORs in the
+ * global administrator role, which is why the ordinary test user can never
+ * render the participant-only branch.
+ *
+ * Idempotent, and deliberately permanent: a per-run user would need a
+ * per-run storage state and a teardown hook the suite does not have. The
+ * password is admin's own hash, copied — bcrypt hashing lives in Java, so a
+ * SQL seeder cannot compute one, and this keeps the fixture credentials in
+ * step with the existing test user.
+ */
+export function seedParticipantUser(): void {
+  const existing = psql(
+    `SELECT id FROM ${SCHEMA}.login_user WHERE login_name = '${PARTICIPANT_USER}'`,
+  );
+  if (existing !== "") {
+    return;
+  }
+  psql(
+    `INSERT INTO ${SCHEMA}.login_user (id, login_name, password, password_expired_dt, account_locked,` +
+      ` account_disabled, is_admin, user_time_out, last_updated)` +
+      ` SELECT (SELECT max(id) + 1 FROM ${SCHEMA}.login_user), '${PARTICIPANT_USER}', password,` +
+      ` '2031-12-31', 'N', 'N', 'N', '720', now() FROM ${SCHEMA}.login_user WHERE login_name = 'admin'`,
+  );
+  psql(
+    `INSERT INTO ${SCHEMA}.system_user (id, external_id, login_name, last_name, first_name, initials,` +
+      ` is_active, is_employee, lastupdated) VALUES (nextval('${SCHEMA}.system_user_seq'),` +
+      ` '${PARTICIPANT_USER}', '${PARTICIPANT_USER}', 'Participant', 'E2E', 'EP', 'Y', 'Y', now())`,
+  );
+  psql(
+    `INSERT INTO ${SCHEMA}.system_user_role (system_user_id, role_id)` +
+      ` SELECT su.id, r.id FROM ${SCHEMA}.system_user su, ${SCHEMA}.system_role r` +
+      ` WHERE su.login_name = '${PARTICIPANT_USER}' AND r.name = '${PARTICIPANT_ROLE}'`,
+  );
+}
