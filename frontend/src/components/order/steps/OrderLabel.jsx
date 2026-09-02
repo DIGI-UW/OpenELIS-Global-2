@@ -1,5 +1,13 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { useHistory, useLocation } from "react-router-dom";
+import { useWorkflowPrefix } from "../OrderContext";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -10,6 +18,9 @@ import {
   TableHeader,
   TableBody,
   TableCell,
+  TableExpandHeader,
+  TableExpandRow,
+  TableExpandedRow,
   Button,
   Tag,
   NumberInput,
@@ -28,6 +39,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import LocationPickerInline from "../../storage/LocationPicker/LocationPickerInline";
+import OrderReferOutSection from "./referOut/OrderReferOutSection";
 import {
   getDeepestLocationSelection,
   positionToCoordinate,
@@ -36,6 +48,7 @@ import {
 import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
+  putToOpenElisServer,
 } from "../../utils/Utils";
 
 /**
@@ -54,14 +67,13 @@ const OrderLabel = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
+  const workflowPrefix = useWorkflowPrefix();
   const {
     orderData,
     samples,
     setSamples,
-    saveOrder,
     setCurrentStep,
     labNumber: contextLabNumber,
-    stepProgress,
     markStepComplete,
     orderId,
     storageSkipped,
@@ -82,15 +94,32 @@ const OrderLabel = () => {
   // wizard.
   const urlLabNumber = new URLSearchParams(location.search).get("labNumber");
 
+  // Persist storageSkipped using the resolved labNumber (context labNumber may be
+  // null on fresh creation flow before loadOrder has been called)
+  const handleStorageSkippedChange = useCallback(
+    (checked) => {
+      setStorageSkipped(checked);
+      if (labNumber) {
+        putToOpenElisServer(
+          `/rest/order/storage-skipped?labNumber=${encodeURIComponent(labNumber)}&storageSkipped=${checked}`,
+          null,
+          Function.prototype,
+        );
+      }
+    },
+    [labNumber, setStorageSkipped],
+  );
+
+  // Redirect to enter step if no order is loaded
   useEffect(() => {
     if (orderId || labNumber || isLoading) return;
     if (urlLabNumber) {
       loadOrder(urlLabNumber).catch(() => {
-        history.replace("/order/enter");
+        history.replace(`${workflowPrefix}/enter`);
       });
       return;
     }
-    history.replace("/order/enter");
+    history.replace(`${workflowPrefix}/enter`);
   }, [orderId, labNumber, isLoading, urlLabNumber, loadOrder, history]);
 
   // Label printing state - order label + one entry per sample
@@ -103,16 +132,75 @@ const OrderLabel = () => {
   });
   const [printedLabels, setPrintedLabels] = useState(new Set());
 
-  // Update label quantities when samples change
+  // For vector orders, the label table can grow into thousands of rows if a
+  // pool has many organisms. Collapse the per-organism rows into one row per
+  // pool (grouped by sample/animal type) with a Carbon-DataTable
+  // expandable row exposing the paginated specimen list inline.
+  const isVectorWorkflow = workflowPrefix === "/order/vector";
+  const POOL_PAGE_SIZE = 25;
+  const [poolPage, setPoolPage] = useState({});
+
+  const labelFallbackSampleName = intl.formatMessage({
+    id: "sample.fallback.name",
+    defaultMessage: "Sample",
+  });
+
+  // Group unvoided samples into pools for the pool view. Each group collects
+  // its specimens (sample_items) sorted by sort_order so the barcode range and
+  // pagination show in submission order. Group key is vectorPoolId (the stable
+  // pool identifier) so two pools of the same animal stay distinct rows.
+  const poolGroups = useMemo(() => {
+    if (!isVectorWorkflow) return [];
+    const visible = (samples || []).filter(
+      (s) => !s?.voided && !s?.sampleRejected,
+    );
+    const groups = new Map();
+    visible.forEach((sample, index) => {
+      const key =
+        sample?.vectorPoolId ||
+        sample?.typeOfSampleId ||
+        sample?.sampleTypeId ||
+        `unknown-${index}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          name:
+            sample?.sampleTypeName || sample?.name || labelFallbackSampleName,
+          specimens: [],
+        });
+      }
+      groups.get(key).specimens.push({ ...sample, _originalIndex: index });
+    });
+    return Array.from(groups.values()).map((g) => ({
+      ...g,
+      specimens: g.specimens.sort((a, b) => {
+        const sa = parseInt(a.sortOrder, 10);
+        const sb = parseInt(b.sortOrder, 10);
+        if (Number.isFinite(sa) && Number.isFinite(sb)) return sa - sb;
+        return 0;
+      }),
+    }));
+  }, [samples, isVectorWorkflow, labelFallbackSampleName]);
+
+  // Update label quantities when samples change.
+  // For vector orders, allocate one slot per pool group (the row in the main
+  // table) — individual specimens that show up in the expanded panel still
+  // use the existing sample-<index> slots so their Print buttons keep
+  // working without special-casing.
   useEffect(() => {
     setLabelQuantities((prev) => {
       const updated = { order: prev.order || 1 };
+      if (isVectorWorkflow) {
+        poolGroups.forEach((pool) => {
+          updated[`pool-${pool.key}`] = prev[`pool-${pool.key}`] || 1;
+        });
+      }
       samples.forEach((_, index) => {
         updated[`sample-${index}`] = prev[`sample-${index}`] || 1;
       });
       return updated;
     });
-  }, [samples]);
+  }, [samples, isVectorWorkflow, poolGroups]);
 
   // Storage assignment state
   const [selectedSampleIndex, setSelectedSampleIndex] = useState(0);
@@ -153,48 +241,163 @@ const OrderLabel = () => {
       setAssignedStorage(initialStorage);
     }
     setConditionNotes((prev) => ({ ...prev, ...initialNotes }));
+  }, [samples]);
 
-    // If label step was completed but no samples have storage, it means storage was skipped
-    if (
-      stepProgress.label &&
-      samples.length > 0 &&
-      !hasAnyStorage &&
-      !storageSkipped
-    ) {
-      setStorageSkipped(true);
+  // Keep the storage selector off rejected/voided specimens. They're excluded
+  // from the dropdown options (and from labels/refer-out), so a stale index —
+  // e.g. the default 0 landing on a rejected specimen that sorts first — would
+  // desync the detail card (showing the rejected sample) from the selector.
+  useEffect(() => {
+    const isLive = (i) =>
+      samples[i] && !samples[i].sampleRejected && !samples[i].voided;
+    if (samples.length > 0 && !isLive(selectedSampleIndex)) {
+      const firstLive = samples.findIndex(
+        (s) => s && !s.sampleRejected && !s.voided,
+      );
+      if (firstLive >= 0 && firstLive !== selectedSampleIndex) {
+        setSelectedSampleIndex(firstLive);
+      }
     }
-  }, [samples, stepProgress.label, storageSkipped, setStorageSkipped]);
+  }, [samples, selectedSampleIndex]);
 
   // Get current sample being configured
   const currentSample = samples[selectedSampleIndex] || {};
+
+  // Count specimens that are actually storable (rejected/voided are excluded
+  // from the selector); drives whether the multi-sample picker is worth showing.
+  const liveSampleCount = samples.filter(
+    (s) => s && !s.sampleRejected && !s.voided,
+  ).length;
 
   // Build patient info for order label
   const patientName = orderData?.patientProperties
     ? `${orderData.patientProperties.lastName || ""}, ${orderData.patientProperties.firstName || ""}`.trim()
     : "---";
 
-  // Build label rows - Order label + one row per sample
-  const labelRows = [
-    {
-      id: "order",
-      name: intl.formatMessage({
-        id: "label.type.order",
-        defaultMessage: "Order Label",
-      }),
-      content: `Lab Nr: ${labNumber || "---"} | Patient: ${patientName}`,
-      barcode: labNumber || "---",
-    },
-    // Add a row for each sample
-    ...samples.map((sample, index) => ({
+  // Build label rows - Order label + one row per printable sample.
+  //
+  // Vector pool fan-out hard-deletes the "pool of N" parent sample_item, so
+  // only the N per-organism siblings survive — no voided placeholder remains
+  // to skip. The voided filter below is defensive for any non-vector workflow
+  // that may soft-delete a sample_item. The id encodes the row's index in
+  // the *full* samples array so handlePrintLabel / assignedStorage /
+  // setSamples lookups stay aligned with the unfiltered list everywhere else
+  // in this component.
+  const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+  const siteName =
+    envFields.samplingSiteName ||
+    envFields.vecCollectionSiteName ||
+    envFields.collectionSiteName ||
+    "";
+
+  const labNrPrefix = intl.formatMessage({
+    id: "label.order.labNrPrefix",
+    defaultMessage: "Lab Nr",
+  });
+  const patientPrefix = intl.formatMessage({
+    id: "label.order.patientPrefix",
+    defaultMessage: "Patient",
+  });
+  const orderLabelRow = {
+    id: "order",
+    name: intl.formatMessage({
+      id: "label.type.order",
+      defaultMessage: "Order Label",
+    }),
+    content: `${labNrPrefix}: ${labNumber || "---"} | ${patientPrefix}: ${patientName}`,
+    barcode: labNumber || "---",
+  };
+
+  // Build a per-specimen row from a (sample, original-index, display-index)
+  // triple. Shared by the flat path (clinical/environmental) and by the
+  // expanded-pool panel under vector.
+  const buildSpecimenRow = (sample, index, displayIndex) => {
+    const specimenBarcode =
+      labNumber && sample.sortOrder
+        ? `${labNumber}.${sample.sortOrder}`
+        : `${labNumber || "---"}-${index + 1}`;
+    const typeName =
+      sample.sampleTypeName || sample.name || labelFallbackSampleName;
+    const contentParts = [typeName];
+    if (siteName) contentParts.push(siteName);
+    contentParts.push(sample.collectionDate || "---");
+    return {
       id: `sample-${index}`,
       name: `${intl.formatMessage({
         id: "label.type.sample",
         defaultMessage: "Sample Label",
-      })} ${index + 1}`,
-      content: `${sample.sampleTypeName || "Sample"} | ${sample.collectionDate || "---"}`,
-      barcode: sample.sampleItemId || `${labNumber}-${index + 1}`,
-    })),
+      })} ${displayIndex + 1}`,
+      content: contentParts.join(" | "),
+      barcode: specimenBarcode,
+      qcMetadata: sample.qcMetadata || null,
+    };
+  };
+
+  const flatSpecimenRows = samples
+    .map((sample, index) => ({ sample, index }))
+    // Exclude voided and rejected/resampled specimens — a rejected specimen is
+    // shown read-only in the QA intake-acceptance table, not labelled/stored here.
+    .filter(({ sample }) => !sample?.voided && !sample?.sampleRejected)
+    .map(({ sample, index }, displayIndex) =>
+      buildSpecimenRow(sample, index, displayIndex),
+    );
+
+  // Vector orders collapse to one row per pool (grouped by sample type) so
+  // a "pool of 1000" doesn't render 1001 table rows. The individual rows
+  // are still reachable via the per-pool expand toggle, paginated.
+  const poolSummaryRows = poolGroups.map((pool) => {
+    const first = pool.specimens[0];
+    const last = pool.specimens[pool.specimens.length - 1];
+    const barcodeRange =
+      pool.specimens.length === 0
+        ? "---"
+        : labNumber && first?.sortOrder && last?.sortOrder
+          ? pool.specimens.length === 1
+            ? `${labNumber}.${first.sortOrder}`
+            : `${labNumber}.${first.sortOrder} – ${labNumber}.${last.sortOrder}`
+          : labNumber || "---";
+    const poolContentParts = [pool.name];
+    if (siteName) poolContentParts.push(siteName);
+    poolContentParts.push(first?.collectionDate || "---");
+    return {
+      id: `pool-${pool.key}`,
+      kind: "pool",
+      poolKey: pool.key,
+      name: intl.formatMessage(
+        {
+          id: "label.type.pool",
+          defaultMessage: "Pool of {count} {animal}",
+        },
+        { count: pool.specimens.length, animal: pool.name },
+      ),
+      content: poolContentParts.join(" | "),
+      barcode: barcodeRange,
+      pool,
+    };
+  });
+
+  const labelRows = [
+    orderLabelRow,
+    ...(isVectorWorkflow ? poolSummaryRows : flatSpecimenRows),
   ];
+
+  const renderQcTag = (qcMeta) => {
+    if (!qcMeta?.qcType) return null;
+    const tagType =
+      qcMeta.qcType === "BLANK"
+        ? "blue"
+        : qcMeta.qcType === "DUPLICATE"
+          ? "teal"
+          : "purple";
+    return (
+      <Tag type={tagType} size="sm">
+        <FormattedMessage
+          id={`qc.type.${qcMeta.qcType.toLowerCase()}`}
+          defaultMessage={`QC: ${qcMeta.qcType}`}
+        />
+      </Tag>
+    );
+  };
 
   const handleQuantityChange = (labelType, value) => {
     setLabelQuantities((prev) => ({
@@ -213,6 +416,14 @@ const OrderLabel = () => {
     // effect so the servlet's Override prompt fires when reached.
     if (labelType === "order") {
       url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=order&quantity=${quantity}`;
+    } else if (labelType.startsWith("pool-")) {
+      // Pool row: fire one specimenOrder request and let the servlet emit a
+      // multi-page PDF with one barcode per organism. For single-pool
+      // vector orders this is exactly right; for multi-pool orders the
+      // servlet currently doesn't filter by sample type so it'll print
+      // every pool's specimens — a known limitation until a sampleTypeId
+      // filter is added on the backend.
+      url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=specimenOrder&quantity=${quantity}`;
     } else if (labelType.startsWith("sample-")) {
       // Specimen URL uses labNo.<sortOrder> (1-based) so the servlet targets
       // a single sample item rather than every item on the order.
@@ -269,10 +480,12 @@ const OrderLabel = () => {
   };
 
   const handlePrintAllLabels = () => {
-    // type=default prints the order label and one specimen label per sample
-    // item in one PDF. Honors the same numPrinted cap as the per-row buttons.
-    const totalQuantity = Math.max(labelQuantities.order || 1, 1);
-    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${totalQuantity}`;
+    const orderQty = Math.max(labelQuantities.order || 1, 1);
+    // type=default prints order label + all specimen labels in one PDF.
+    // The servlet's environmental specimen handling uses getSampleItemsBySampleId
+    // (no status filter) for env/vector via isEnvOrVectorSample, so all
+    // specimens are included regardless of status.
+    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${orderQty}`;
     if (!openPrintWindow(url)) {
       return;
     }
@@ -458,20 +671,11 @@ const OrderLabel = () => {
 
   const handleSave = async () => {
     try {
-      // Save the order first so new samples get sampleItemIds. Use the
-      // returned samples (not the stale closure value) for the storage
-      // assignment loop.
-      const saveResult = await saveOrder();
-      const updatedSamples =
-        saveResult?.samples?.length > 0 ? saveResult.samples : samples;
-
-      // Persist any pending storage assignments against the now-real sampleItemIds
-      await savePendingStorageAssignments(updatedSamples);
-
-      // Update notes for existing assignments (if notes changed)
+      await savePendingStorageAssignments();
       await updateStorageNotes();
-
-      // Update step progress
+      if (!allSamplesHaveStorage && !storageSkipped) {
+        handleStorageSkippedChange(true);
+      }
       markStepComplete("label");
       addNotification({
         kind: NotificationKinds.success,
@@ -492,22 +696,18 @@ const OrderLabel = () => {
 
   const handleSaveAndNext = async () => {
     try {
-      // Save the order first so new samples get sampleItemIds. Use the
-      // returned samples (not the stale closure value) for the storage
-      // assignment loop.
-      const saveResult = await saveOrder();
-      const updatedSamples =
-        saveResult?.samples?.length > 0 ? saveResult.samples : samples;
-
-      // Persist any pending storage assignments against the now-real sampleItemIds
-      await savePendingStorageAssignments(updatedSamples);
-
-      // Update notes for existing assignments (if notes changed)
+      await savePendingStorageAssignments();
       await updateStorageNotes();
-
+      if (!allSamplesHaveStorage && !storageSkipped) {
+        handleStorageSkippedChange(true);
+      }
       markStepComplete("label");
       setCurrentStep(3);
-      history.push("/order/qa");
+      history.push(
+        labNumber
+          ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`
+          : `${workflowPrefix}/qa`,
+      );
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
@@ -524,12 +724,8 @@ const OrderLabel = () => {
     samples.length > 0 &&
     samples.every((s, idx) => s.storageLocationId || assignedStorage[idx]);
 
-  // Check if we can proceed:
-  // - At least one label printed AND
-  // - Either all samples have storage OR user has checked "skip storage"
-  const canProceed =
-    (printedLabels.has("order") || printedLabels.has("sample")) &&
-    (allSamplesHaveStorage || storageSkipped);
+  // Label printing and storage are both optional — users can skip directly to QA Review
+  const canProceed = true;
 
   // Don't render if no order loaded (will redirect)
   if (!orderId && !labNumber) {
@@ -538,7 +734,6 @@ const OrderLabel = () => {
 
   return (
     <OrderWorkflowLayout
-      currentStep={2}
       title="order.step.label"
       canProceed={canProceed}
       onSave={handleSave}
@@ -612,6 +807,15 @@ const OrderLabel = () => {
             <Table {...getTableProps()} size="md">
               <TableHead>
                 <TableRow>
+                  {/* Empty header cell aligned with TableExpandRow's
+                      chevron column. Only pool rows expand, but every
+                      row needs the column to keep alignment. */}
+                  <TableExpandHeader
+                    aria-label={intl.formatMessage({
+                      id: "label.expand.poolDetails",
+                      defaultMessage: "Expand pool details",
+                    })}
+                  />
                   {headers.map((header) => (
                     <TableHeader
                       key={header.key}
@@ -626,9 +830,15 @@ const OrderLabel = () => {
                 {rows.map((row) => {
                   const labelId = row.id;
                   const labelRow = labelRows.find((lr) => lr.id === labelId);
-                  return (
-                    <TableRow key={row.id} {...getRowProps({ row })}>
-                      <TableCell>{labelRow?.name}</TableCell>
+                  const isPoolRow = labelRow?.kind === "pool";
+                  const cells = (
+                    <>
+                      <TableCell>
+                        <span className="label-type-cell">
+                          {labelRow?.name}
+                          {renderQcTag(labelRow?.qcMetadata)}
+                        </span>
+                      </TableCell>
                       <TableCell>{labelRow?.content}</TableCell>
                       <TableCell>
                         <code>{labelRow?.barcode}</code>
@@ -663,7 +873,187 @@ const OrderLabel = () => {
                           />
                         </Button>
                       </TableCell>
-                    </TableRow>
+                    </>
+                  );
+
+                  if (!isPoolRow) {
+                    // Order-label row (and clinical/environmental sample
+                    // rows) aren't expandable — render plain TableRow with
+                    // an empty placeholder cell to match the chevron column.
+                    return (
+                      <TableRow key={row.id} {...getRowProps({ row })}>
+                        <TableCell />
+                        {cells}
+                      </TableRow>
+                    );
+                  }
+
+                  // Pool rows: use Carbon's expandable variant. Carbon
+                  // manages row.isExpanded internally via the chevron
+                  // click; we read it here to gate the expanded panel.
+                  const pool = labelRow.pool;
+                  const totalPages = Math.max(
+                    1,
+                    Math.ceil(pool.specimens.length / POOL_PAGE_SIZE),
+                  );
+                  const currentPage = Math.min(
+                    poolPage[labelRow.poolKey] || 0,
+                    totalPages - 1,
+                  );
+                  const start = currentPage * POOL_PAGE_SIZE;
+                  const visible = pool.specimens.slice(
+                    start,
+                    start + POOL_PAGE_SIZE,
+                  );
+                  return (
+                    <React.Fragment key={row.id}>
+                      <TableExpandRow
+                        isExpanded={row.isExpanded}
+                        ariaLabel={
+                          row.isExpanded
+                            ? intl.formatMessage({
+                                id: "label.pool.collapse",
+                                defaultMessage: "Hide individual specimens",
+                              })
+                            : intl.formatMessage({
+                                id: "label.pool.expand",
+                                defaultMessage: "Show individual specimens",
+                              })
+                        }
+                        {...getRowProps({ row })}
+                      >
+                        {cells}
+                      </TableExpandRow>
+                      {row.isExpanded && (
+                        <TableExpandedRow colSpan={headers.length + 1}>
+                          <div className="pool-expansion-panel">
+                            <div className="pool-expansion-header">
+                              <h5>
+                                <FormattedMessage
+                                  id="label.pool.expansion.title"
+                                  defaultMessage="{animal} specimens ({count})"
+                                  values={{
+                                    animal: pool.name,
+                                    count: pool.specimens.length,
+                                  }}
+                                />
+                              </h5>
+                              <span className="pool-expansion-page">
+                                <FormattedMessage
+                                  id="label.pool.expansion.page"
+                                  defaultMessage="Page {page} of {total}"
+                                  values={{
+                                    page: currentPage + 1,
+                                    total: totalPages,
+                                  }}
+                                />
+                              </span>
+                            </div>
+                            <Table size="sm" className="pool-expansion-table">
+                              <TableHead>
+                                <TableRow>
+                                  <TableHeader>#</TableHeader>
+                                  <TableHeader>
+                                    <FormattedMessage
+                                      id="label.barcode"
+                                      defaultMessage="Barcode"
+                                    />
+                                  </TableHeader>
+                                  <TableHeader>
+                                    <FormattedMessage
+                                      id="label.print"
+                                      defaultMessage="Print"
+                                    />
+                                  </TableHeader>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {visible.map((sample) => {
+                                  const index = sample._originalIndex;
+                                  const specimenRow = buildSpecimenRow(
+                                    sample,
+                                    index,
+                                    index,
+                                  );
+                                  const subLabelId = specimenRow.id;
+                                  return (
+                                    <TableRow key={subLabelId}>
+                                      <TableCell>
+                                        {sample.sortOrder || "—"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <code>{specimenRow.barcode}</code>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Button
+                                          kind="ghost"
+                                          size="sm"
+                                          renderIcon={
+                                            printedLabels.has(subLabelId)
+                                              ? Checkmark
+                                              : Printer
+                                          }
+                                          onClick={() =>
+                                            handlePrintLabel(subLabelId)
+                                          }
+                                        >
+                                          <FormattedMessage
+                                            id="label.print"
+                                            defaultMessage="Print"
+                                          />
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                            {totalPages > 1 && (
+                              <div className="pool-expansion-pager">
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    setPoolPage((prev) => ({
+                                      ...prev,
+                                      [labelRow.poolKey]: Math.max(
+                                        0,
+                                        currentPage - 1,
+                                      ),
+                                    }))
+                                  }
+                                  disabled={currentPage === 0}
+                                >
+                                  <FormattedMessage
+                                    id="label.pool.expansion.prev"
+                                    defaultMessage="Previous"
+                                  />
+                                </Button>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    setPoolPage((prev) => ({
+                                      ...prev,
+                                      [labelRow.poolKey]: Math.min(
+                                        totalPages - 1,
+                                        currentPage + 1,
+                                      ),
+                                    }))
+                                  }
+                                  disabled={currentPage >= totalPages - 1}
+                                >
+                                  <FormattedMessage
+                                    id="label.pool.expansion.next"
+                                    defaultMessage="Next"
+                                  />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </TableExpandedRow>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </TableBody>
@@ -704,15 +1094,21 @@ const OrderLabel = () => {
         {samples.length > 0 &&
           (() => {
             const assignedCount = samples.filter(
-              (s, idx) => s.storageLocationId || assignedStorage[idx],
+              (s, idx) =>
+                !s.sampleRejected &&
+                (s.storageLocationId || assignedStorage[idx]),
             ).length;
-            const unassignedCount = samples.length - assignedCount;
+            const unassignedCount =
+              samples.filter((s) => !s.sampleRejected).length - assignedCount;
             const unassignedNames = samples
               .map((sample, idx) => {
                 const isAssigned =
                   sample.storageLocationId || assignedStorage[idx];
-                if (!isAssigned) {
-                  return sample.sampleTypeName || `Sample ${idx + 1}`;
+                if (!sample.sampleRejected && !isAssigned) {
+                  const baseName =
+                    sample.sampleTypeName || sample.name || `Sample ${idx + 1}`;
+                  const qcType = sample.qcMetadata?.qcType;
+                  return qcType ? `${baseName} (QC: ${qcType})` : baseName;
                 }
                 return null;
               })
@@ -726,15 +1122,30 @@ const OrderLabel = () => {
                     kind={storageSkipped ? "info" : "warning"}
                     lowContrast
                     hideCloseButton
-                    title={intl.formatMessage(
-                      {
-                        id: "storage.unassigned.title",
-                        defaultMessage:
-                          "{count} sample(s) without storage assignment",
-                      },
-                      { count: unassignedCount },
-                    )}
-                    subtitle={unassignedNames}
+                    title={
+                      storageSkipped
+                        ? intl.formatMessage(
+                            {
+                              id: "storage.skipped.title",
+                              defaultMessage:
+                                "Storage skipped for {count} sample(s)",
+                            },
+                            { count: unassignedCount },
+                          )
+                        : intl.formatMessage({
+                            id: "storage.unassigned.title",
+                            defaultMessage: "Unassigned Samples",
+                          })
+                    }
+                    subtitle={
+                      storageSkipped
+                        ? intl.formatMessage({
+                            id: "storage.skipAssignment",
+                            defaultMessage:
+                              "No storage required - samples will be processed immediately",
+                          })
+                        : unassignedNames
+                    }
                     style={{ marginBottom: "1rem" }}
                   />
                   <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
@@ -749,7 +1160,9 @@ const OrderLabel = () => {
                         { count: unassignedCount },
                       )}
                       checked={storageSkipped}
-                      onChange={(_, { checked }) => setStorageSkipped(checked)}
+                      onChange={(_, { checked }) =>
+                        handleStorageSkippedChange(checked)
+                      }
                     />
                   </div>
                 </>
@@ -774,7 +1187,7 @@ const OrderLabel = () => {
           })()}
 
         {/* Sample Selector for multi-sample orders */}
-        {samples.length > 1 && (
+        {liveSampleCount > 1 && (
           <div className="sample-selector">
             <Select
               id="sample-selector"
@@ -785,15 +1198,23 @@ const OrderLabel = () => {
               value={selectedSampleIndex}
               onChange={(e) => setSelectedSampleIndex(Number(e.target.value))}
             >
-              {samples.map((sample, index) => (
-                <SelectItem
-                  key={index}
-                  value={index}
-                  text={`${sample.sampleTypeName || "Sample"} ${index + 1}${
-                    assignedStorage[index] ? " (Assigned)" : ""
-                  }`}
-                />
-              ))}
+              {samples.map((sample, index) => {
+                if (sample.sampleRejected) return null;
+                const baseName =
+                  sample.sampleTypeName || sample.name || "Sample";
+                const qcType = sample.qcMetadata?.qcType;
+                const qcSuffix = qcType ? ` [QC: ${qcType}]` : "";
+                const assignedSuffix = assignedStorage[index]
+                  ? " (Assigned)"
+                  : "";
+                return (
+                  <SelectItem
+                    key={index}
+                    value={index}
+                    text={`${baseName} ${index + 1}${qcSuffix}${assignedSuffix}`}
+                  />
+                );
+              })}
             </Select>
           </div>
         )}
@@ -819,7 +1240,8 @@ const OrderLabel = () => {
                 />
                 :
               </strong>{" "}
-              {currentSample.sampleTypeName || "---"}
+              {currentSample.sampleTypeName || currentSample.name || "---"}{" "}
+              {renderQcTag(currentSample.qcMetadata)}
             </span>
             <span>
               <strong>
@@ -862,6 +1284,7 @@ const OrderLabel = () => {
             /assign or /move POST fires when the user saves the order
             form — see savePendingStorageAssignments. */}
         <LocationPickerInline
+          allowCreate={false}
           onChange={(state) => {
             const deepest = getDeepestLocationSelection(state.selection, {
               requireAssignable: true,
@@ -899,6 +1322,8 @@ const OrderLabel = () => {
           />
         </div>
       </Tile>
+
+      <OrderReferOutSection />
     </OrderWorkflowLayout>
   );
 };

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    Admin-gated "+ Add new" affordance for the
+    Environmental/Vector Requestor contact. Mirrors the pre-existing
+    restrictFreeTextProviderEntry (liquibase/2.6.x.x/provider.xml) and
+    restrictFreeTextRefSiteEntry seed rows in the same site_information
+    domain (sampleEntryConfig, id=10) — same shape, new name, so the admin
+    "General Configuration" screen picks it up automatically alongside the
+    other two restrict-free-text toggles.
+  -->
+
+  <changeSet id="3.5.0-054-add-restrict-free-text-requestor-entry" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'restrictFreeTextRequestorEntry'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="site_information" schemaName="clinlims">
+      <column name="id" valueSequenceNext="site_information_seq"/>
+      <column name="name" value="restrictFreeTextRequestorEntry"/>
+      <column name="lastupdated" valueComputed="now()"/>
+      <column name="description" value="Users cannot enter new Environmental/Vector Requestor contacts through sample entry"/>
+      <column name="value" value="false"/>
+      <column name="encrypted" valueBoolean="false"/>
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'sampleEntryConfig')"/>
+      <column name="value_type" value="boolean"/>
+      <column name="instruction_key" value="siteInfo.instruction.freerequestor.req.i"/>
+      <column name="group" valueNumeric="0"/>
+      <column name="description_key" value="siteInfo.instruction.freerequestor.req.d"/>
+      <column name="name_key" value="siteInfo.restrictFreeTextRequestorEntry"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

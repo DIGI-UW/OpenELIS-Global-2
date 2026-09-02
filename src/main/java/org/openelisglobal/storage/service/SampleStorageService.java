@@ -73,6 +73,25 @@ public interface SampleStorageService {
             String sysUserId);
 
     /**
+     * Record usage against a SampleItem's remaining quantity (OGC-1026, Results
+     * Entry v3 R7). Partial use decrements {@code remainingQuantity} (never below
+     * zero); {@code markUsedUp} zeroes it — "exhausted" is remaining == 0, not a
+     * status, and disposal stays an explicit follow-up step. The update rides
+     * {@code SampleItemService.update} so the global audit row reflects the acting
+     * user.
+     *
+     * @param sampleItemId flexible identifier (internal id, accession number, or
+     *                     external id)
+     * @param amountUsed   amount consumed; required unless markUsedUp
+     * @param markUsedUp   true to zero the remaining quantity outright
+     * @param sysUserId    acting user's numeric id (required for audit)
+     * @return quantity snapshot: sampleItemId, quantity, remainingQuantity,
+     *         exhausted
+     */
+    java.util.Map<String, Object> recordSampleUsage(String sampleItemId, java.math.BigDecimal amountUsed,
+            boolean markUsedUp, String sysUserId);
+
+    /**
      * List storage movements for a SampleItem with the acting user's display name
      * resolved. Returns one Map per movement with the same shape the audit modal
      * already renders, plus a {@code movedByUserName} field.

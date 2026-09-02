@@ -257,16 +257,28 @@ export const postToOpenElisServerJsonResponse = <
     .then((response) => {
       // Check if response is ok (status 200-299)
       if (!response.ok) {
-        // For error responses, try to parse JSON error message
-        return response.json().then((errorJson) => {
-          // Include status code in error response for better error handling
-          return {
-            ...errorJson,
+        // For error responses, try to parse JSON. If the body is empty
+        // (older endpoints return .build() with no payload) the parse will
+        // fail — preserve the HTTP status so callers can still distinguish
+        // a 409 from a network error.
+        return response
+          .text()
+          .then((raw) => {
+            const parsed = raw ? JSON.parse(raw) : {};
+            return {
+              ...parsed,
+              status: response.status,
+              statusCode: response.status,
+              statusText: response.statusText,
+            };
+          })
+          .catch(() => ({
+            error: `Request failed (HTTP ${response.status} ${response.statusText || ""})`,
+            message: `Request failed (HTTP ${response.status} ${response.statusText || ""})`,
             status: response.status,
             statusCode: response.status,
             statusText: response.statusText,
-          };
-        });
+          }));
       }
       // For successful responses, parse JSON normally
       return response.json();
@@ -309,6 +321,35 @@ export const postToOpenElisServerForBlob = (
       body: payLoad as BodyInit,
     },
   )
+    .then(handleSessionError)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.blob().then((blob) => ({ blob, response }));
+    })
+    .then(({ blob, response }) => {
+      callback(blob, response);
+    })
+    .catch((error) => {
+      console.error(error);
+      if (errorCallback) {
+        errorCallback(error);
+      }
+    });
+};
+
+export const getFromOpenElisServerForBlob = (
+  endPoint: string,
+  callback: (blob: Blob, response: Response) => void,
+  errorCallback?: (error: Error) => void,
+): void => {
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    headers: {
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+  })
     .then(handleSessionError)
     .then((response) => {
       if (!response.ok) {
@@ -395,6 +436,51 @@ export const putToOpenElisServer = (
     .catch((error) => {
       console.error(error);
       callback(0);
+    });
+};
+
+export const putToOpenElisServerJsonResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (json: any, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void => {
+  fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "Accept-Language": getAcceptLanguageHeader(),
+    },
+    body: payLoad,
+  })
+    .then(handleSessionError)
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then((errorJson) => ({
+          ...errorJson,
+          status: response.status,
+          statusCode: response.status,
+          statusText: response.statusText,
+        }));
+      }
+      return response.json();
+    })
+    .then((json) => {
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      console.error("putToOpenElisServerJsonResponse error:", error);
+      callback(
+        {
+          error: error.message || "Network error",
+          message: error.message || "Network error",
+          status: 0,
+        },
+        extraParams,
+      );
     });
 };
 

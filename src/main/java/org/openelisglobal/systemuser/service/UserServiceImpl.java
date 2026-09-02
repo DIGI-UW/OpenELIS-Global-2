@@ -228,9 +228,6 @@ public class UserServiceImpl implements UserService {
                         if (roleId == null) {
                             userLabUnits.add(roles.getLabUnit());
                         } else {
-                            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                                    "getUserTestSections", "Checking labUnit=" + roles.getLabUnit() + ", roles="
-                                            + roles.getRoles() + ", roleId=" + roleId);
                             if (roles.getRoles().contains(roleId)) {
                                 userLabUnits.add(roles.getLabUnit());
                             }
@@ -238,22 +235,14 @@ public class UserServiceImpl implements UserService {
 
                     });
                 }
-                org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getUserTestSections",
-                        "User " + systemUserId + " roleId=" + roleId + ", userLabUnits=" + userLabUnits);
                 List<IdValuePair> allTestSections = DisplayListService.getInstance()
                         .getList(ListType.TEST_SECTION_ACTIVE);
-                if (userLabUnits.contains(UnifiedSystemUserController.ALL_LAB_UNITS)) {
-                    org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                            "getUserTestSections",
-                            "User has AllLabUnits, returning all " + allTestSections.size() + " test sections");
+                if (isadmin || userLabUnits.contains(UnifiedSystemUserController.ALL_LAB_UNITS)) {
                     return allTestSections;
                 } else {
                     userTestSections = allTestSections.stream()
                             .filter(testSection -> userLabUnits.contains(testSection.getId()))
                             .collect(Collectors.toList());
-                    org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                            "getUserTestSections", "User has " + userLabUnits.size() + " lab units, returning "
-                                    + userTestSections.size() + " test sections");
                     return userTestSections;
                 }
             } else if (principal instanceof DefaultSaml2AuthenticatedPrincipal

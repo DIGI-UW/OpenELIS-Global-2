@@ -31,6 +31,14 @@
   //  color: $text-05; // WIP
 }
 
+// The specimen and component the graphed series belongs to — the test name
+// alone does not identify it once a test has several of either.
+.trendlineContext {
+  @include type.type-style("helper-text-01");
+  color: var(--cds-text-secondary, #525252);
+  margin-right: 4px;
+}
+
 :global(.cds--cc--area path.area) {
   stroke: none;
   fill: #a7f0ba;

@@ -27,6 +27,7 @@ import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
 import TestCatalog from "./testManagement/ViewTestCatalog";
 import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
+import PanelEditor from "./testCatalog/PanelEditor";
 import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
@@ -38,6 +39,7 @@ import ManageMethod from "./testManagement/ManageMethod";
 import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCancellation/BatchTestReassignmentAndCancelation";
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit";
+import NotificationTriggerConfig from "./notificationTriggerConfig/NotificationTriggerConfig";
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
@@ -49,7 +51,9 @@ import MethodCreate from "./testManagementConfigMenu/MethodCreate";
 import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement";
 import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate";
 import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder";
-import SampleTypeManagement from "./sampleTypeManagement/SampleTypeManagement.jsx";
+import SampleTypeEditor from "./sampleTypeManagement/SampleTypeManagement.jsx";
+import LegacySampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement";
+import LabUnitManagement from "./labUnitManagement/LabUnitManagement.jsx";
 import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign";
 import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder";
 import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate";
@@ -63,10 +67,13 @@ import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign";
 import TestActivation from "./testManagementConfigMenu/TestActivation";
 import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry";
 import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry";
+import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry";
 import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRenameEntry";
+import TestSectionEdit from "./testManagementConfigMenu/TestSectionEdit";
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
 import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry";
+import ComplianceStandardsAdmin from "./complianceStandards/ComplianceStandardsAdmin";
 import {
   LanguageManagement,
   TranslationManagement,
@@ -74,6 +81,8 @@ import {
 import ExternalConnectionMenu from "./externalConnections/ExternalConnectionMenu";
 import ExternalConnectionAddModify from "./externalConnections/ExternalConnectionAddModify";
 import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
+import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
+import SampleAcceptanceChecklistSetup from "./sampleAcceptance/SampleAcceptanceChecklistSetup";
 import AdminDashboard from "./AdminDashboard";
 
 function Admin() {
@@ -92,6 +101,12 @@ function Admin() {
       <Route
         path={`${path}/TestCatalogEditor/group/:ids/:section?`}
         component={CombinedTestEditor}
+      />
+      {/* OGC-224 — panel entity segment must precede the generic :testId
+          route, which would otherwise swallow "panel" as a test id. */}
+      <Route
+        path={`${path}/TestCatalogEditor/panel/:panelId/:section?`}
+        component={PanelEditor}
       />
       <Route
         path={`${path}/TestCatalogEditor/:testId?/:section?`}
@@ -174,9 +189,21 @@ function Admin() {
         path={`${path}/TestSectionTestAssign`}
         component={TestSectionTestAssign}
       />
+      {/* Manage Sample Types under the legacy Test Management menu keeps opening
+          the legacy page. The new editor answers on its own path so that link,
+          and every other legacy one, is left where it was. */}
       <Route
-        path={`${path}/SampleTypeManagement/:sampleTypeId?/:section?`}
-        component={SampleTypeManagement}
+        path={`${path}/SampleTypeManagement`}
+        exact
+        component={LegacySampleTypeManagement}
+      />
+      <Route
+        path={`${path}/SampleTypeEditor/:sampleTypeId?/:section?`}
+        component={SampleTypeEditor}
+      />
+      <Route
+        path={`${path}/LabUnitManagement/:labUnitId?/:section?`}
+        component={LabUnitManagement}
       />
       <Route path={`${path}/SampleTypeCreate`} component={SampleTypeCreate} />
       <Route path={`${path}/SampleTypeOrder`} component={SampleTypeOrder} />
@@ -186,6 +213,8 @@ function Admin() {
       />
       <Route path={`${path}/UomManagement`} component={UomManagement} />
       <Route path={`${path}/UomCreate`} component={UomCreate} />
+      {/* OGC-224 — the legacy Panel pages stay authoritative until the new
+          Panels context is stabilized; they are not redirected. */}
       <Route path={`${path}/PanelManagement`} component={PanelManagement} />
       <Route path={`${path}/PanelCreate`} component={PanelCreate} />
       <Route path={`${path}/PanelOrder`} component={PanelOrder} />
@@ -194,15 +223,24 @@ function Admin() {
       <Route path={`${path}/TestRenameEntry`} component={TestRenameEntry} />
       <Route path={`${path}/PanelRenameEntry`} component={PanelRenameEntry} />
       <Route
+        path={`${path}/SampleTypeRenameEntry`}
+        component={SampleTypeRenameEntry}
+      />
+      <Route
         path={`${path}/TestSectionRenameEntry`}
         component={TestSectionRenameEntry}
       />
+      <Route path={`${path}/TestSectionEdit`} component={TestSectionEdit} />
       <Route path={`${path}/UomRenameEntry`} component={UomRenameEntry} />
       <Route
         path={`${path}/SelectListRenameEntry`}
         component={SelectListRenameEntry}
       />
       <Route path={`${path}/MethodRenameEntry`} component={MethodRenameEntry} />
+      <Route
+        path={`${path}/ComplianceStandardsAdmin`}
+        component={ComplianceStandardsAdmin}
+      />
       <Route
         path={`${path}/languageManagement`}
         component={LanguageManagement}
@@ -309,6 +347,10 @@ function Admin() {
         path={`${path}/testNotificationConfig`}
         component={TestNotificationConfigEdit}
       />
+      <Route
+        path={`${path}/notificationTriggerConfig`}
+        component={NotificationTriggerConfig}
+      />
       <Route path={`${path}/DictionaryMenu`} component={DictionaryManagement} />
       <Route path={`${path}/PluginFile`} component={PluginList} />
       <Route
@@ -325,6 +367,14 @@ function Admin() {
         component={ExternalConnectionAddModify}
       />
       <Route path={`${path}/DatabaseCleaning`} component={DatabaseCleaning} />
+      <Route
+        path={`${path}/vectorSurveillanceSetup`}
+        component={VectorSurveillanceSetup}
+      />
+      <Route
+        path={`${path}/SampleAcceptanceChecklist`}
+        component={SampleAcceptanceChecklistSetup}
+      />
       <Route
         path={path}
         exact

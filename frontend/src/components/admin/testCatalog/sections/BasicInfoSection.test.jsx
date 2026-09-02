@@ -20,7 +20,7 @@ vi.mock("../../../layout/Layout", async () => {
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
-  putToOpenElisServer: vi.fn(),
+  putToOpenElisServerJsonResponse: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
   postToOpenElisServerFullResponse: vi.fn(),
 }));
@@ -33,10 +33,11 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import BasicInfoSection from "./BasicInfoSection";
+import { NotificationContext } from "../../../layout/Layout";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
@@ -57,7 +58,7 @@ const renderSection = (testId = "42") =>
 // the modal applied or reverted the change — assert on that rather than on
 // Carbon's controlled-radio checked state (unreliable to read in jsdom).
 const savedDomain = () =>
-  JSON.parse(putToOpenElisServer.mock.calls[0][1]).domain;
+  JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]).domain;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -91,7 +92,10 @@ beforeEach(() => {
       });
     }
   });
-  putToOpenElisServer.mockImplementation((url, payload, cb) => cb(200));
+  // Success echoes the saved BasicInfo body (no status field).
+  putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+    cb({ testId: "42" }),
+  );
 });
 
 describe("BasicInfoSection domain-switch modal", () => {
@@ -103,7 +107,9 @@ describe("BasicInfoSection domain-switch modal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
     expect(savedDomain()).toBe("ENVIRONMENTAL");
   });
 
@@ -123,7 +129,9 @@ describe("BasicInfoSection domain-switch modal", () => {
 
     // ...and a subsequent Save persists the unchanged domain.
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
     expect(savedDomain()).toBe("CLINICAL");
   });
 
@@ -133,9 +141,12 @@ describe("BasicInfoSection domain-switch modal", () => {
     // AMR starts false in the loaded form; flip it on.
     fireEvent.click(screen.getByRole("switch", { name: /AMR surveillance/ }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
     expect(
-      JSON.parse(putToOpenElisServer.mock.calls[0][1]).antimicrobialResistance,
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1])
+        .antimicrobialResistance,
     ).toBe(true);
   });
 
@@ -145,8 +156,32 @@ describe("BasicInfoSection domain-switch modal", () => {
     // Active starts true in the loaded form; flip it off.
     fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).active).toBe(false);
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]).active,
+    ).toBe(false);
+  });
+
+  // Activation sets orderable server-side, so deactivating has to clear it —
+  // otherwise the test is left at active=false, orderable=true, which reads as
+  // orderable in the editor while Add Order ignores it.
+  it("clears orderable when the test is deactivated", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    expect(screen.getByRole("switch", { name: /Orderable/ })).toBeChecked();
+
+    fireEvent.click(screen.getByRole("switch", { name: /Active/ }));
+    expect(screen.getByRole("switch", { name: /Orderable/ })).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    const body = JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]);
+    expect(body.active).toBe(false);
+    expect(body.orderable).toBe(false);
   });
 
   it("activating with coverage gaps requires acknowledgment (the safety gate)", async () => {
@@ -279,8 +314,10 @@ describe("BasicInfoSection domain-switch modal", () => {
     await user.click(await screen.findByRole("option", { name: /Plasma/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    const body = JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]);
     expect(body.labUnitId).toBe("8");
     expect(body.sampleTypeIds).toEqual(expect.arrayContaining(["2", "3"]));
   });
@@ -297,7 +334,7 @@ describe("BasicInfoSection domain-switch modal", () => {
       await screen.findByTestId("sample-type-required-error"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-    expect(putToOpenElisServer).not.toHaveBeenCalled();
+    expect(putToOpenElisServerJsonResponse).not.toHaveBeenCalled();
   });
 
   it("shows an error state when the fetch fails", async () => {
@@ -329,5 +366,73 @@ describe("BasicInfoSection create mode (testId=new)", () => {
       "/rest/test-catalog/tests/new/basic-info",
       expect.anything(),
     );
+  });
+});
+
+/**
+ * OGC-1180 — TEST.description is unique in the database. The save used to hand
+ * a duplicate straight to the constraint: an HTTP 500 with an empty body and
+ * the generic "server error" toast. The endpoint now answers 409 with
+ * {conflict: "description"}, and the section must tell the user which field to
+ * change rather than shrugging.
+ */
+describe("BasicInfoSection duplicate-description conflict (OGC-1180)", () => {
+  const renderWithNotificationSpy = (addNotification) =>
+    render(
+      <MemoryRouter
+        initialEntries={["/MasterListsPage/TestCatalogEditor/42/basic-info"]}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <NotificationContext.Provider
+            value={{ addNotification, setNotificationVisible: () => {} }}
+          >
+            <BasicInfoSection testId="42" />
+          </NotificationContext.Provider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+  it("a 409 naming the description shows the duplicate-description message", async () => {
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({ status: 409, conflict: "description" }),
+    );
+    const addNotification = vi.fn();
+    renderWithNotificationSpy(addNotification);
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(addNotification).toHaveBeenCalled());
+    expect(addNotification.mock.calls[0][0].kind).toBe("error");
+    expect(addNotification.mock.calls[0][0].message).toBe(
+      messages["error.testCatalog.description.inUse"],
+    );
+  });
+
+  it("any other failure keeps the generic error message", async () => {
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({ status: 500, error: "Internal Server Error" }),
+    );
+    const addNotification = vi.fn();
+    renderWithNotificationSpy(addNotification);
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(addNotification).toHaveBeenCalled());
+    expect(addNotification.mock.calls[0][0].message).toBe(
+      messages["server.error.msg"],
+    );
+  });
+
+  it("a successful save still reports success", async () => {
+    const addNotification = vi.fn();
+    renderWithNotificationSpy(addNotification);
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(addNotification).toHaveBeenCalled());
+    expect(addNotification.mock.calls[0][0].kind).toBe("success");
   });
 });

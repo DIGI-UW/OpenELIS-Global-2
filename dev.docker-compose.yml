@@ -124,6 +124,11 @@ services:
         volumes:
             - './frontend/src:/app/src'
             - './frontend/public:/app/public'
+            # Translations a deployment supplies for itself, layered over the
+            # bundled ones when OVERRIDE_DEFAULT_TRANSLATION is on. Vite serves
+            # public/ at the web root, so these land at /translation/<locale>.json
+            # — the same URL the nginx image serves them from in production.
+            - './volume/translation:/app/public/translation'
             - './frontend/package.json:/app/package.json:ro'
             - './frontend/package-lock.json:/app/package-lock.json:ro'
             - './frontend/vite.config.ts:/app/vite.config.ts:ro'
@@ -132,7 +137,11 @@ services:
         tty: true
 
     proxy:
-        image: nginx:1.15-alpine
+        # nginx 1.15 (2018) predates arm64 alpine builds that run on Apple Silicon:
+        # its worker dies with SIGILL (illegal instruction) on every request, so the
+        # whole app is unreachable through the proxy on an arm64 host. 1.27-alpine is
+        # already used by projects/analyzer-harness/docker-compose.dev.yml.
+        image: nginx:1.27-alpine
         # build:
         #     context: ./nginx-proxy
         #     dockerfile: Dockerfile

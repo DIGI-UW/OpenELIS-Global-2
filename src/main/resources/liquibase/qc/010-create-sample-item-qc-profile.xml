@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- SampleItemQcProfile: 1:1 QC metadata for sample items -->
+    <changeSet id="qc-010-create-sample-item-qc-profile" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_item_qc_profile"/>
+            </not>
+        </preConditions>
+        <comment>Create QC profile table linking QC metadata to sample items (OGC-554)</comment>
+        <createTable tableName="sample_item_qc_profile">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="INT">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="qc_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_sample_item_id" type="INT"/>
+            <column name="expected_value" type="NUMERIC(15,5)"/>
+            <column name="control_lot_id" type="VARCHAR(36)"/>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="sample_item_qc_profile"
+            baseColumnNames="sample_item_id"
+            constraintName="fk_qc_profile_sample_item"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="sample_item_qc_profile"
+            baseColumnNames="parent_sample_item_id"
+            constraintName="fk_qc_profile_parent_sample_item"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="sample_item_qc_profile"
+            baseColumnNames="control_lot_id"
+            constraintName="fk_qc_profile_control_lot"
+            referencedTableName="qc_control_lot"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="sample_item_qc_profile"
+            baseColumnNames="sys_user_id"
+            constraintName="fk_qc_profile_sys_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <createIndex tableName="sample_item_qc_profile" indexName="idx_qc_profile_qc_type">
+            <column name="qc_type"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="sample_item_qc_profile"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

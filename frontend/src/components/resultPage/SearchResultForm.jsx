@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
+import React, { useContext, useEffect, useState, useRef, useMemo } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
 import {
@@ -21,6 +21,7 @@ import {
   SelectItem,
   Loading,
   Link,
+  Tag,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -32,7 +33,6 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import SearchPatientForm from "../patient/SearchPatientForm";
 import SendToAnalyzerButton from "../modifyOrder/SendToAnalyzerButton";
-import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
 import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
@@ -73,12 +73,112 @@ function labNumberForLogbookSearch(accessionNumber) {
 }
 
 function ResultSearchPage() {
+  const intl = useIntl();
   const [originalResultForm, setOriginalResultForm] = useState({
     testResult: [],
   });
   const [resultForm, setResultForm] = useState(originalResultForm);
   const [searchBy, setSearchBy] = useState({ type: "", doRange: false });
   const [param, setParam] = useState("&accessionNumber=");
+
+  // ── Pool filter state (lifted here so SearchResultForm can render the controls
+  //    right-aligned beside the search button) ─────────────────────────────────
+  const [poolLotFilter, setPoolLotFilter] = useState("");
+  const [poolIdFilter, setPoolIdFilter] = useState("");
+
+  // Reset filters whenever a new result set arrives.
+  useEffect(() => {
+    setPoolLotFilter("");
+    setPoolIdFilter("");
+  }, [resultForm]);
+
+  const allRows = resultForm?.testResult ?? [];
+
+  // Unique accession numbers that have at least one pool-anchored row.
+  const poolLotOptions = useMemo(() => {
+    const seen = new Set();
+    return allRows
+      .filter((r) => r.vectorPoolId)
+      .map((r) => r.accessionNumber)
+      .filter((acc) => acc && !seen.has(acc) && seen.add(acc));
+  }, [allRows]);
+
+  // Pool options for the currently-selected lot (or all lots if none chosen).
+  const poolOptions = useMemo(() => {
+    const base = poolLotFilter
+      ? allRows.filter((r) => r.accessionNumber === poolLotFilter)
+      : allRows;
+    const seen = new Map();
+    base
+      .filter((r) => r.vectorPoolId)
+      .forEach((r) => {
+        const key = String(r.vectorPoolId);
+        if (!seen.has(key)) {
+          seen.set(key, {
+            id: key,
+            label: r.vectorPoolLabel || "",
+            count: r.vectorPoolMemberCount,
+            type: r.sampleType,
+            accession: r.accessionNumber,
+          });
+        }
+      });
+    return [...seen.values()];
+  }, [allRows, poolLotFilter]);
+
+  const formatPoolLabel = (opt) => {
+    const suffix = opt.label || "";
+    let base;
+    if (!suffix) {
+      base = intl.formatMessage({
+        id: "result.pool.intake",
+        defaultMessage: "Intake pool",
+      });
+    } else if (/^-P\d+/.test(suffix)) {
+      const parts = suffix.slice(1).split("-"); // ["P01"] or ["P01","S2","S1"]
+      const poolNum = parseInt(parts[0].slice(1), 10);
+      const poolPart = intl.formatMessage(
+        { id: "result.pool.pool", defaultMessage: "Pool {n}" },
+        { n: String(poolNum).padStart(2, "0") },
+      );
+      const subParts = parts
+        .slice(1)
+        .map((seg, i) =>
+          intl.formatMessage(
+            { id: "result.pool.subpool", defaultMessage: "Sub-pool {n}" },
+            { n: seg.slice(1) },
+          ),
+        );
+      base = [poolPart, ...subParts].join(" · ");
+    } else if (suffix.startsWith("-s")) {
+      base = intl.formatMessage(
+        { id: "result.pool.subpool", defaultMessage: "Sub-pool {n}" },
+        { n: suffix.slice(2) },
+      );
+    } else {
+      base = intl.formatMessage(
+        { id: "result.pool.subpool", defaultMessage: "Sub-pool {n}" },
+        { n: suffix.replace(/^[-.]/, "") },
+      );
+    }
+    const detail =
+      opt.count > 0 ? ` (${opt.count}${opt.type ? " " + opt.type : ""})` : "";
+    return opt.accession && !poolLotFilter
+      ? `${opt.accession} — ${base}${detail}`
+      : `${base}${detail}`;
+  };
+
+  // Rows visible in the table after applying active pool filters.
+  // Saving still operates on the full resultForm — only display is narrowed.
+  const filteredRowCount = useMemo(() => {
+    if (poolIdFilter)
+      return allRows.filter((r) => String(r.vectorPoolId) === poolIdFilter)
+        .length;
+    if (poolLotFilter)
+      return allRows.filter((r) => r.accessionNumber === poolLotFilter).length;
+    return allRows.length;
+  }, [allRows, poolLotFilter, poolIdFilter]);
+  // ── End pool filter ─────────────────────────────────────────────────────────
 
   const setResults = (resultForm) => {
     setOriginalResultForm(resultForm);
@@ -104,6 +204,18 @@ function ResultSearchPage() {
         setParam={setParam}
         setSearchBy={setSearchBy}
         setResults={setResults}
+        poolLotOptions={poolLotOptions}
+        poolOptions={poolOptions}
+        poolLotFilter={poolLotFilter}
+        poolIdFilter={poolIdFilter}
+        onPoolLotChange={(v) => {
+          setPoolLotFilter(v);
+          setPoolIdFilter("");
+        }}
+        onPoolIdChange={setPoolIdFilter}
+        formatPoolLabel={formatPoolLabel}
+        totalRows={allRows.length}
+        filteredRowCount={filteredRowCount}
       />
       {loadedAccession && hasResults && (
         <Grid>
@@ -120,6 +232,8 @@ function ResultSearchPage() {
         results={resultForm}
         setResultForm={setResultForm}
         refreshOnSubmit={true}
+        poolLotFilter={poolLotFilter}
+        poolIdFilter={poolIdFilter}
       />
     </>
   );
@@ -158,6 +272,28 @@ export function SearchResultForm(props) {
 
   const setResultsWithId = (results) => {
     if (results.testResult) {
+      // /AccessionResults is a patient-result view; QC duplicates/blanks belong
+      // on the QC review surfaces (/LogbookResults, /RangeResults) instead.
+      if (window.location.pathname === "/AccessionResults") {
+        results.testResult = results.testResult.filter((row) => !row.qcType);
+      }
+      // Group each QC row directly beneath its client parent so the table
+      // reads as parent → children rather than scattering BLANKs to the end.
+      // Key 1: groupId binds QC rows (parentSampleItemId) to their parent
+      //   (own sampleItemId). Key 2: parent (qcType null) first within group.
+      //   Key 3: sequenceNumber for stable order across QC siblings.
+      const groupKey = (row) =>
+        parseInt(row.parentSampleItemId ?? row.sampleItemId, 10) ||
+        Number.MAX_SAFE_INTEGER;
+      const seqKey = (row) =>
+        parseInt(row.sequenceNumber, 10) || Number.MAX_SAFE_INTEGER;
+      results.testResult = results.testResult.slice().sort((a, b) => {
+        return (
+          groupKey(a) - groupKey(b) ||
+          (a.qcType ? 1 : 0) - (b.qcType ? 1 : 0) ||
+          seqKey(a) - seqKey(b)
+        );
+      });
       var i = 0;
       if (results.testResult) {
         results.testResult.forEach((item) => (item.id = "" + i++));
@@ -727,13 +863,129 @@ export function SearchResultForm(props) {
 
                 {searchBy.type !== "patient" && searchBy.type !== "unit" && (
                   <Column lg={16} md={8} sm={4}>
-                    <Button
-                      style={{ marginTop: "16px" }}
-                      type="submit"
-                      id="searchResults"
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-end",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: "0.75rem",
+                        marginTop: "16px",
+                      }}
                     >
-                      <FormattedMessage id="label.button.search" />
-                    </Button>
+                      <Button type="submit" id="searchResults">
+                        <FormattedMessage id="label.button.search" />
+                      </Button>
+
+                      {props.poolLotOptions?.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-end",
+                            flexWrap: "wrap",
+                            gap: "0.75rem",
+                          }}
+                        >
+                          <Select
+                            id="pool-lot-filter"
+                            labelText={intl.formatMessage({
+                              id: "result.pool.filter.lot",
+                              defaultMessage: "Lot",
+                            })}
+                            value={props.poolLotFilter}
+                            onChange={(e) =>
+                              props.onPoolLotChange(e.target.value)
+                            }
+                            size="sm"
+                            style={{ minWidth: 160 }}
+                          >
+                            <SelectItem
+                              value=""
+                              text={intl.formatMessage({
+                                id: "result.pool.filter.allLots",
+                                defaultMessage: "All lots",
+                              })}
+                            />
+                            {props.poolLotOptions.map((acc) => (
+                              <SelectItem key={acc} value={acc} text={acc} />
+                            ))}
+                          </Select>
+
+                          <Select
+                            id="pool-id-filter"
+                            labelText={intl.formatMessage({
+                              id: "result.pool.filter.pool",
+                              defaultMessage: "Pool",
+                            })}
+                            value={props.poolIdFilter}
+                            onChange={(e) =>
+                              props.onPoolIdChange(e.target.value)
+                            }
+                            disabled={
+                              !props.poolLotFilter &&
+                              props.poolOptions?.length === 0
+                            }
+                            size="sm"
+                            style={{ minWidth: 200 }}
+                          >
+                            <SelectItem
+                              value=""
+                              text={intl.formatMessage({
+                                id: "result.pool.filter.allPools",
+                                defaultMessage: "All pools",
+                              })}
+                            />
+                            {props.poolOptions?.map((opt) => (
+                              <SelectItem
+                                key={opt.id}
+                                value={opt.id}
+                                text={props.formatPoolLabel(opt)}
+                              />
+                            ))}
+                          </Select>
+
+                          {(props.poolLotFilter || props.poolIdFilter) && (
+                            <>
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                style={{ alignSelf: "flex-end" }}
+                                onClick={() => {
+                                  props.onPoolLotChange("");
+                                  props.onPoolIdChange("");
+                                }}
+                              >
+                                {intl.formatMessage({
+                                  id: "result.pool.filter.clear",
+                                  defaultMessage: "Clear filter",
+                                })}
+                              </Button>
+                              <span
+                                style={{
+                                  fontSize: "0.75rem",
+                                  color: "var(--cds-text-secondary, #525252)",
+                                  alignSelf: "flex-end",
+                                  paddingBottom: "0.5rem",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {intl.formatMessage(
+                                  {
+                                    id: "result.pool.filter.count",
+                                    defaultMessage:
+                                      "{shown} of {total} results",
+                                  },
+                                  {
+                                    shown: props.filteredRowCount,
+                                    total: props.totalRows,
+                                  },
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </Column>
                 )}
               </Grid>
@@ -782,8 +1034,6 @@ export function SearchResultForm(props) {
           </Grid>
         </>
       )}
-
-      {searchBy.type === "ReferredOutTests" && <ReferredOutTests />}
 
       <>
         {pagination && (
@@ -843,11 +1093,13 @@ export function SearchResults(props) {
   const [pageSize, setPageSize] = useState(100);
   const [acceptAsIs, setAcceptAsIs] = useState([]);
   const [referalOrganizations, setReferalOrganizations] = useState([]);
-  const [methods, setMethods] = useState([]);
+  const [methodsByTestId, setMethodsByTestId] = useState({});
+  const [defaultMethodByTestId, setDefaultMethodByTestId] = useState({});
   const [referralReasons, setReferralReasons] = useState([]);
   const [rejectReasons, setRejectReasons] = useState([]);
   const [rejectedItems, setRejectedItems] = useState({});
   const [validationState, setValidationState] = useState({});
+  const [testDateOverrides, setTestDateOverrides] = useState({});
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -857,6 +1109,8 @@ export function SearchResults(props) {
   const [storageModalRow, setStorageModalRow] = useState(null);
 
   const componentMounted = useRef(false);
+  const holdingTimeNotifiedRows = useRef(new Set());
+  const [uncertaintyFocusedId, setUncertaintyFocusedId] = useState(null);
   // Saved multiselect values per row, frozen once the user starts editing so
   // the Current Result column keeps showing what is persisted, not the
   // in-progress selection (multiSelectResultValues is the editable field).
@@ -869,7 +1123,7 @@ export function SearchResults(props) {
       "/rest/displayList/REFERRAL_ORGANIZATIONS",
       loadReferalOrganizations,
     );
-    getFromOpenElisServer("/rest/displayList/METHODS", loadMethods);
+    // methods loaded per-test on demand (see loadMethodsForTest)
     getFromOpenElisServer(
       "/rest/displayList/REFERRAL_REASONS",
       loadReferalReasons,
@@ -892,6 +1146,41 @@ export function SearchResults(props) {
 
   useEffect(() => {
     if (props.results.testResult) {
+      const uniqueTestIds = [
+        ...new Set(
+          props.results.testResult.map((r) => r.testId).filter(Boolean),
+        ),
+      ];
+      uniqueTestIds.forEach((testId) => loadMethodsForTest(testId));
+    }
+  }, [props.results.testResult]);
+
+  useEffect(() => {
+    if (props.results.testResult) {
+      const newlyExceeded = props.results.testResult.filter(
+        (row) =>
+          getHoldingStatus(row) === "exceeded" &&
+          !holdingTimeNotifiedRows.current.has(row.id),
+      );
+      if (newlyExceeded.length > 0) {
+        newlyExceeded.forEach((row) =>
+          holdingTimeNotifiedRows.current.add(row.id),
+        );
+        const testNames = newlyExceeded
+          .map((r) => r.testName || r.accessionNumber)
+          .filter(Boolean)
+          .join(", ");
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "holding.time.exceeded.title" }),
+          message: intl.formatMessage(
+            { id: "holding.time.exceeded.message" },
+            { tests: testNames },
+          ),
+        });
+        setNotificationVisible(true);
+      }
+
       let newValidationState = { ...validationState };
       props.results.testResult.forEach((row) => {
         if (row.resultType === "N") {
@@ -930,10 +1219,21 @@ export function SearchResults(props) {
     }
   };
 
-  const loadMethods = (values) => {
-    if (componentMounted.current) {
-      setMethods(values);
-    }
+  const loadMethodsForTest = (testId) => {
+    if (!testId || methodsByTestId[testId]) return;
+    getFromOpenElisServer(`/rest/methods-for-test/${testId}`, (res) => {
+      if (componentMounted.current) {
+        const methods = res?.methods || res || [];
+        const defaultMethodId = res?.defaultMethodId || null;
+        setMethodsByTestId((prev) => ({ ...prev, [testId]: methods }));
+        if (defaultMethodId) {
+          setDefaultMethodByTestId((prev) => ({
+            ...prev,
+            [testId]: defaultMethodId,
+          }));
+        }
+      }
+    });
   };
 
   const loadReferalReasons = (values) => {
@@ -946,17 +1246,6 @@ export function SearchResults(props) {
     if (componentMounted.current) {
       setRejectReasons(values);
     }
-  };
-
-  const downloadFile = (fileName, content, fileType) => {
-    var win = window.open();
-    win.document.write(
-      '<iframe src="' +
-        fileType +
-        ";base64," +
-        content +
-        '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-    );
   };
 
   const addRejectResult = () => {
@@ -981,6 +1270,63 @@ export function SearchResults(props) {
     }
   };
 
+  const parseDisplayDate = (dateStr) => {
+    if (!dateStr) return NaN;
+    const isFrench = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+    const [datePart, timePart] = dateStr.trim().split(/\s+/);
+    const dateParts = datePart ? datePart.split("/") : [];
+    if (dateParts.length !== 3) return NaN;
+    // MM/dd/yyyy or dd/MM/yyyy
+    const [a, b, year] = dateParts.map(Number);
+    const month = isFrench ? b : a;
+    const day = isFrench ? a : b;
+    const [hours, minutes] = timePart
+      ? timePart.split(":").map(Number)
+      : [0, 0];
+    return new Date(year, month - 1, day, hours || 0, minutes || 0).getTime();
+  };
+
+  const getHoldingStatus = (row) => {
+    if (!row.timeHolding || !row.collectionDate) {
+      return null;
+    }
+    const effectiveTestDate = testDateOverrides[row.id] ?? row.testDate;
+    if (!effectiveTestDate) {
+      return null;
+    }
+    const holdingMinutes = parseInt(row.timeHolding, 10);
+    if (isNaN(holdingMinutes) || holdingMinutes <= 0) {
+      return null;
+    }
+    const collectionMs = parseDisplayDate(row.collectionDate);
+    const resultMs = parseDisplayDate(effectiveTestDate);
+    if (isNaN(collectionMs) || isNaN(resultMs)) {
+      return null;
+    }
+    const holdingMs = holdingMinutes * 60 * 1000;
+    const elapsedMs = resultMs - collectionMs;
+    const fraction = elapsedMs / holdingMs;
+    if (fraction > 1) return "exceeded";
+    if (fraction > 0.75) return "imminent";
+    if (fraction > 0.5) return "approaching";
+    return "on-time";
+  };
+
+  const HOLDING_STATUS_STYLE = {
+    "on-time": { outline: "2px solid #24a148", borderRadius: "4px" }, // green
+    approaching: { outline: "2px solid #8d8d8d", borderRadius: "4px" }, // warm-gray
+    imminent: { outline: "2px solid #FF6B00", borderRadius: "4px" }, // orange
+    exceeded: { outline: "2px solid #ee538b", borderRadius: "4px" }, // magenta
+  };
+
+  // Tints QC rows so they read as supporting context under their parent client sample.
+  const qcRowStyles = [
+    {
+      when: (row) => Boolean(row?.qcType),
+      style: { background: "#f4f4f4" },
+    },
+  ];
+
   var columns = [
     {
       id: "sampleInfo",
@@ -991,6 +1337,33 @@ export function SearchResults(props) {
       sortable: true,
       selector: (row) => row.accessionNumber,
       width: "16rem",
+    },
+    {
+      id: "sampleKind",
+      name: intl.formatMessage({ id: "column.name.sampleKind" }),
+      cell: (row) => {
+        if (!row.qcType) {
+          return (
+            <Tag size="sm" type="outline">
+              {intl.formatMessage({ id: "label.sampleKind.client" })}
+            </Tag>
+          );
+        }
+        const labelKey = `label.sampleKind.${row.qcType.toLowerCase()}`;
+        return (
+          <span style={{ display: "inline-flex", gap: "0.25rem" }}>
+            <Tag size="sm" type="purple">
+              {intl.formatMessage({ id: "label.sampleKind.qc" })}
+            </Tag>
+            <Tag size="sm" type="warm-gray">
+              {intl.formatMessage({ id: labelKey, defaultMessage: row.qcType })}
+            </Tag>
+          </span>
+        );
+      },
+      selector: (row) => row.qcType || "Client sample",
+      sortable: true,
+      width: "11rem",
     },
     {
       id: "testDate",
@@ -1012,6 +1385,7 @@ export function SearchResults(props) {
             return;
           }
           row.testDate = combined;
+          setTestDateOverrides((prev) => ({ ...prev, [row.id]: combined }));
           handleChange(
             {
               target: {
@@ -1073,6 +1447,33 @@ export function SearchResults(props) {
       width: "8rem",
     },
     {
+      id: "complianceStatus",
+      name: intl.formatMessage({ id: "column.name.statusPerRegulation" }),
+      omit: !props.results?.testResult?.some(
+        (r) => r.complianceStatuses?.length > 0,
+      ),
+      cell: (row) => {
+        if (!row.complianceStatuses?.length) return null;
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+            {row.complianceStatuses.map((cs) => (
+              <Tag
+                key={cs.standardId}
+                type={cs.pass ? "green" : "red"}
+                size="sm"
+              >
+                {cs.pass
+                  ? intl.formatMessage({ id: "result.compliance.pass" })
+                  : intl.formatMessage({ id: "result.compliance.fail" })}{" "}
+                &mdash; {cs.standardName}
+              </Tag>
+            ))}
+          </div>
+        );
+      },
+      width: "18rem",
+    },
+    {
       id: "accept",
       name: intl.formatMessage({ id: "column.name.accept" }),
       cell: (row, index, column, id) => {
@@ -1091,6 +1492,14 @@ export function SearchResults(props) {
       width: "14rem",
     },
     {
+      id: "uncertainty",
+      name: intl.formatMessage({ id: "column.name.uncertainty" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "8rem",
+    },
+    {
       id: "currentResult",
       name: intl.formatMessage({ id: "column.name.currentResult" }),
       cell: (row, index, column, id) => {
@@ -1106,6 +1515,41 @@ export function SearchResults(props) {
       },
       width: "25rem",
     },
+    {
+      id: "qcStatus",
+      name: intl.formatMessage({ id: "column.name.qcStatus" }),
+      cell: (row) => {
+        if (!row.qcType || !row.qcStatus) {
+          return "—";
+        }
+        const type =
+          row.qcStatus === "PASS"
+            ? "green"
+            : row.qcStatus === "FAIL"
+              ? "red"
+              : "gray";
+        const labelKey =
+          row.qcStatus === "PASS"
+            ? "label.qc.pass"
+            : row.qcStatus === "FAIL"
+              ? "label.qc.fail"
+              : null;
+        return (
+          <Tag size="sm" type={type}>
+            {labelKey ? intl.formatMessage({ id: labelKey }) : row.qcStatus}
+          </Tag>
+        );
+      },
+      selector: (row) => row.qcStatus || "",
+      width: "7rem",
+    },
+    {
+      id: "qcDetail",
+      name: intl.formatMessage({ id: "column.name.qcDetail" }),
+      cell: (row) => (row.qcType ? row.qcDetail || "—" : ""),
+      selector: (row) => row.qcDetail || "",
+      width: "16rem",
+    },
   ];
 
   const renderCell = (row, index, column, id) => {
@@ -1116,11 +1560,14 @@ export function SearchResults(props) {
     const sampleType = fullTestName.substring(splitIndex);
 
     console.debug("renderCell: index: " + index + ", id: " + id);
+    // DUPLICATE QC rows are visually nested under their parent client row.
+    const sampleInfoIndent =
+      row.qcType === "DUPLICATE" ? { paddingLeft: "1rem" } : {};
     switch (column.id) {
       case "sampleInfo":
         // return <input id={"results_" + id} type="text" size="6"></input>
         return (
-          <>
+          <div style={sampleInfoIndent}>
             <div>
               <Button
                 onClick={async () => {
@@ -1149,22 +1596,54 @@ export function SearchResults(props) {
               {(formatLabNum
                 ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
                 : row.accessionNumber) +
-                "-" +
-                row.sequenceNumber}
+                (row.vectorPoolId
+                  ? row.vectorPoolLabel || ""
+                  : "-" + row.sequenceNumber)}
               {row.isEqaSample && <EQABadge priority={row.eqaPriority} />}
+              {/* Pool-anchored result rows carry the pool size + animal so a
+                  reviewer scanning the table sees that multiple test rows
+                  belong to one pool. Rows already cluster by accession+sequence,
+                  so adjacent rows with the same vectorPoolId form a visual
+                  group. */}
+              {row.vectorPoolId && row.vectorPoolMemberCount > 0 && (
+                <>
+                  {" "}
+                  <Tag type="purple" size="sm">
+                    <FormattedMessage
+                      id="result.vectorPool.label"
+                      defaultMessage="Pool of {count} {animal}"
+                      values={{
+                        count: row.vectorPoolMemberCount,
+                        animal: row.sampleType || (
+                          <FormattedMessage
+                            id="sample.fallback.name"
+                            defaultMessage="Sample"
+                          />
+                        ),
+                      }}
+                    />
+                  </Tag>
+                </>
+              )}
               <br></br>
-              {row.patientName} <br></br>
-              {row.patientInfo}
-              <br></br>
-              <br></br>
+              {row.patientName ? (
+                <>
+                  {row.patientName} <br></br>
+                  {row.patientInfo}
+                  <br></br>
+                  <br></br>
+                </>
+              ) : null}
             </div>
-            <div>
-              <AsyncAvatar
-                patientId={row.patientId}
-                hasPhoto={true}
-                patientName={row.patientName || ""}
-              />
-            </div>
+            {row.patientName ? (
+              <div>
+                <AsyncAvatar
+                  patientId={row.patientId}
+                  hasPhoto={true}
+                  patientName={row.patientName || ""}
+                />
+              </div>
+            ) : null}
             {row.nonconforming && (
               <picture>
                 <img
@@ -1175,7 +1654,7 @@ export function SearchResults(props) {
                 />
               </picture>
             )}
-          </>
+          </div>
         );
       case "testName":
         return (
@@ -1196,6 +1675,20 @@ export function SearchResults(props) {
       case "accept":
         return (
           <div style={{ paddingRight: "2rem", marginRight: "1rem" }}>
+            <Field name="forceTechApproval">
+              {() => (
+                <Checkbox
+                  data-cy="checkTestResult"
+                  id={"testResult" + row.id + ".forceTechApproval"}
+                  name={"testResult[" + row.id + "].forceTechApproval"}
+                  labelText=""
+                  //defaultChecked={acceptAsIs}
+                  disabled={Boolean(row.qcType)}
+                  onChange={(e) => handleAcceptAsIsChange(e, row.id)}
+                />
+              )}
+            </Field>
+
             <AcceptUnconditionallyGuard
               rowId={row.id}
               accepted={!!acceptAsIs[row.id]}
@@ -1262,52 +1755,62 @@ export function SearchResults(props) {
           </>
         );
 
-      case "result":
+      case "result": {
+        const holdingStatus = getHoldingStatus(row);
+        const holdingStyle = holdingStatus
+          ? HOLDING_STATUS_STYLE[holdingStatus]
+          : {};
         switch (row.resultType) {
           case "D":
             return (
-              <Select
-                className="result"
-                id={"resultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                noLabel={true}
-                onChange={(e) => validateResults(e, row.id)}
-                value={row.resultValue}
-              >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
-                <SelectItem text="" value="" />
-                {row.dictionaryResults.map(
-                  (dictionaryResult, dictionaryResult_index) => (
-                    <SelectItem
-                      text={dictionaryResult.value}
-                      value={dictionaryResult.id}
-                      key={dictionaryResult_index}
-                    />
-                  ),
-                )}
-              </Select>
+              <div style={holdingStyle}>
+                <Select
+                  className="result"
+                  id={"resultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  noLabel={true}
+                  onChange={(e) => validateResults(e, row.id)}
+                  value={row.resultValue}
+                >
+                  {/* {...updateShadowResult(e, this, param.rowId)} */}
+                  <SelectItem text="" value="" />
+                  {row.dictionaryResults.map(
+                    (dictionaryResult, dictionaryResult_index) => (
+                      <SelectItem
+                        text={dictionaryResult.value}
+                        value={dictionaryResult.id}
+                        key={dictionaryResult_index}
+                      />
+                    ),
+                  )}
+                </Select>
+              </div>
             );
 
           case "M":
             return (
-              <ResultMultiSelect
-                id={`multiResultValue${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
+              <div style={holdingStyle}>
+                <ResultMultiSelect
+                  id={`multiResultValue${row.id}`}
+                  name={`testResult[${row.id}].multiSelectResultValues`}
+                  dictionaryValues={row.dictionaryResults}
+                  value={row.multiSelectResultValues}
+                  onChange={(e) => handleChange(e, row.id)}
+                />
+              </div>
             );
 
           case "C":
             return (
-              <CascadingMultiSelect
-                id={`multiResult${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
+              <div style={holdingStyle}>
+                <CascadingMultiSelect
+                  id={`multiResult${row.id}`}
+                  name={`testResult[${row.id}].multiSelectResultValues`}
+                  dictionaryValues={row.dictionaryResults}
+                  value={row.multiSelectResultValues}
+                  onChange={(e) => handleChange(e, row.id)}
+                />
+              </div>
             );
 
           case "N":
@@ -1318,7 +1821,7 @@ export function SearchResults(props) {
                 labelText=""
                 type="number"
                 value={row.resultValue}
-                style={validationState[row.id]?.style}
+                style={{ ...validationState[row.id]?.style, ...holdingStyle }}
                 onBlur={(e) => {
                   if (
                     validationState[row.id]?.isInvalid &&
@@ -1365,31 +1868,95 @@ export function SearchResults(props) {
 
           case "R":
             return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
+              <div style={holdingStyle}>
+                <TextArea
+                  id={"ResultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  rows={1}
+                  labelText=""
+                  onChange={(e) => handleChange(e, row.id)}
+                  value={row.resultValue}
+                />
+              </div>
             );
 
           case "A":
             return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
+              <div style={holdingStyle}>
+                <TextArea
+                  id={"ResultValue" + row.id}
+                  name={"testResult[" + row.id + "].resultValue"}
+                  rows={1}
+                  labelText=""
+                  onChange={(e) => handleChange(e, row.id)}
+                  value={row.resultValue}
+                />
+              </div>
             );
 
           default:
             return row.resultValue;
         }
+      }
+
+      case "uncertainty": {
+        const uVal = row.expandedUncertainty;
+        const isFocused = uncertaintyFocusedId === row.id;
+        const hasValue = uVal !== "" && uVal !== null && uVal !== undefined;
+        if (!isFocused && hasValue) {
+          return (
+            <span
+              style={{
+                fontVariantNumeric: "tabular-nums",
+                cursor: "text",
+                color: "var(--cds-text-primary, #161616)",
+                display: "inline-block",
+                minWidth: "4rem",
+              }}
+              onClick={() => setUncertaintyFocusedId(row.id)}
+            >
+              <span
+                style={{
+                  color: "var(--cds-text-secondary, #525252)",
+                  marginRight: "0.125rem",
+                }}
+              >
+                {intl.formatMessage({ id: "results.uncertainty.value.prefix" })}
+              </span>
+              {uVal}
+            </span>
+          );
+        }
+        return (
+          <TextInput
+            id={"expandedUncertainty" + row.id}
+            name={"testResult[" + row.id + "].expandedUncertainty"}
+            labelText=""
+            type="number"
+            min={0}
+            step={0.001}
+            autoFocus={isFocused}
+            defaultValue={uVal ?? ""}
+            onBlur={(e) => {
+              const val = e.target.value;
+              const form = { ...props.results };
+              const rows = [...form.testResult];
+              rows[row.id] = {
+                ...rows[row.id],
+                expandedUncertainty: val,
+                isModified: "true",
+              };
+              form.testResult = rows;
+              props.setResultForm(form);
+              setUncertaintyFocusedId(null);
+            }}
+            invalid={hasValue && Number(uVal) < 0}
+            invalidText={intl.formatMessage({
+              id: "results.uncertainty.validation.negative",
+            })}
+          />
+        );
+      }
 
       case "currentResult":
         switch (row.resultType) {
@@ -1633,39 +2200,24 @@ export function SearchResults(props) {
                 id: "referral.label.testmethod",
               })}
               onChange={(e) => handleChange(e, data.id)}
-              value={data.testMethod}
+              value={
+                data.testMethod || defaultMethodByTestId[data.testId] || ""
+              }
             >
               <SelectItem text="" value="" />
-              {methods.map((method, method_index) => (
-                <SelectItem
-                  text={method.value}
-                  value={method.id}
-                  key={method_index}
-                />
-              ))}
+              {(methodsByTestId[data.testId] || []).map(
+                (method, method_index) => (
+                  <SelectItem
+                    text={method.value}
+                    value={method.id}
+                    key={method_index}
+                  />
+                ),
+              )}
             </Select>
           </Column>
           <Column lg={2}>
-            <CompactFileInput
-              data={data}
-              results={props.results}
-              setResultForm={props.setResultForm}
-            />
-
-            {data.resultFile && data.resultFile.fileName && (
-              <Link
-                onClick={() =>
-                  downloadFile(
-                    data.resultFile.fileName,
-                    data.resultFile.content,
-                    data.resultFile.fileType,
-                  )
-                }
-                style={{ fontSize: "12px" }}
-              >
-                {data.resultFile.fileName}
-              </Link>
-            )}
+            <CompactFileInput data={data} />
           </Column>
           <Column lg={2}>
             <span
@@ -1888,8 +2440,22 @@ export function SearchResults(props) {
   };
   const validateResults = (e, rowId) => {
     console.debug("validateResults:" + e.target.value);
-    // e.target.value;
     handleChange(e, rowId);
+    if (!holdingTimeNotifiedRows.current.has(rowId)) {
+      const row = props.results?.testResult?.find((r) => r.id === rowId);
+      if (row && getHoldingStatus(row) === "exceeded") {
+        holdingTimeNotifiedRows.current.add(rowId);
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "holding.time.exceeded.title" }),
+          message: intl.formatMessage(
+            { id: "holding.time.exceeded.message" },
+            { tests: row.testName || row.accessionNumber || rowId },
+          ),
+        });
+        setNotificationVisible(true);
+      }
+    }
   };
 
   const validateNumericResults = (value, row) => {
@@ -2155,6 +2721,17 @@ export function SearchResults(props) {
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
+      if (getHoldingStatus(result) === "exceeded") {
+        const exceededNote = intl.formatMessage({
+          id: "holding.time.exceeded.note",
+        });
+        result.note = result.note
+          ? result.note + "\n" + exceededNote
+          : exceededNote;
+      }
+      // attachments live in order_attachment now (OGC-811); round-tripping
+      // the legacy inline resultFile would clone a result_file row per save
+      delete result.resultFile;
     });
     postToOpenElisServerJsonResponse(
       searchEndPoint,
@@ -2219,6 +2796,23 @@ export function SearchResults(props) {
     }
   };
 
+  // Apply pool filters passed down from ResultSearchPage (display-only — the
+  // full props.results is still used for saving so nothing is dropped on submit).
+  const poolLotFilter = props.poolLotFilter || "";
+  const poolIdFilter = props.poolIdFilter || "";
+  const allRows = props.results?.testResult ?? [];
+  const displayRows = useMemo(() => {
+    if (poolIdFilter)
+      return allRows.filter((r) => String(r.vectorPoolId) === poolIdFilter);
+    if (poolLotFilter)
+      return allRows.filter((r) => r.accessionNumber === poolLotFilter);
+    return allRows;
+  }, [allRows, poolLotFilter, poolIdFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [poolLotFilter, poolIdFilter]);
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -2262,14 +2856,12 @@ export function SearchResults(props) {
               //onBlur={handleBlur}
             >
               <DataTable
-                data={props.results?.testResult?.slice(
-                  (page - 1) * pageSize,
-                  page * pageSize,
-                )}
+                data={displayRows.slice((page - 1) * pageSize, page * pageSize)}
                 columns={columns}
                 isSortable
                 expandableRows
                 expandableRowsComponent={renderReferral}
+                conditionalRowStyles={qcRowStyles}
               ></DataTable>
               <Pagination
                 style={{ marginTop: "1.5rem" }}
@@ -2277,7 +2869,7 @@ export function SearchResults(props) {
                 page={page}
                 pageSize={pageSize}
                 pageSizes={[10, 20, 30, 50, 100]}
-                totalItems={props.results?.testResult?.length}
+                totalItems={displayRows.length}
                 forwardText={intl.formatMessage({ id: "pagination.forward" })}
                 backwardText={intl.formatMessage({ id: "pagination.backward" })}
                 itemRangeText={(min, max, total) =>

@@ -213,6 +213,18 @@ export const CustomTestDataDisplay = ({ testToDisplay }) => {
           </Section>
         </Section>
       </Column>
+      {testToDisplay.timeHolding && (
+        <Column lg={4} md={4} sm={4}>
+          <Section>
+            <Section>
+              <Section>
+                <FormattedMessage id="test.timeHolding" /> :{" "}
+                {testToDisplay.timeHolding}
+              </Section>
+            </Section>
+          </Section>
+        </Column>
+      )}
 
       {testToDisplay &&
         testToDisplay?.hasDictionaryValues &&

@@ -17,7 +17,10 @@ const augmentObstreeData = (node, prefix) => {
     );
     outData.hasData = outData.subSets.some((subNode) => subNode.hasData);
   }
-  if (exist(outData?.hiNormal, outData?.lowNormal)) {
+  // The server sends the reference range already resolved for this patient,
+  // specimen and component; only fall back to the raw bounds when it has none
+  // (a range it cannot express as text, such as a dictionary normal).
+  if (!outData?.range && exist(outData?.hiNormal, outData?.lowNormal)) {
     outData.range = `${outData.lowNormal} – ${outData.hiNormal}`;
   }
   if (outData?.obs?.length) {

@@ -227,17 +227,33 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
     @Transactional(readOnly = true)
     public TypeOfSample getTypeOfSampleByLocalAbbrevAndDomain(String localAbbrev, String domain)
             throws LIMSRuntimeException {
-        String sql = "From TypeOfSample tos where tos.localAbbreviation = :localAbbrev and tos.domain = :domain";
         try {
-            Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
-            query.setParameter("localAbbrev", localAbbrev);
-            query.setParameter("domain", domain);
-            TypeOfSample typeOfSample = query.uniqueResult();
+            TypeOfSample typeOfSample = findByLocalAbbrevAndExactDomain(localAbbrev, domain);
+            if (typeOfSample == null) {
+                Domain resolved = Domain.fromRaw(domain);
+                if (resolved != null && !resolved.name().equals(domain)) {
+                    typeOfSample = findByLocalAbbrevAndExactDomain(localAbbrev, resolved.name());
+                }
+            }
             return typeOfSample;
         } catch (HibernateException e) {
             handleException(e, "getTypeOfSampeByLocalAbbreviationAndDomain");
         }
         return null;
+    }
+
+    /**
+     * Callers pass either the legacy one-character code or the enum value stored
+     * since the OGC-296 migration, so a miss on the raw value is retried against
+     * the canonical enum name. Matched one value at a time because local_abbrev is
+     * not unique across domains, so an IN clause could break uniqueResult().
+     */
+    private TypeOfSample findByLocalAbbrevAndExactDomain(String localAbbrev, String domain) {
+        String sql = "From TypeOfSample tos where tos.localAbbreviation = :localAbbrev and tos.domain = :domain";
+        Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
+        query.setParameter("localAbbrev", localAbbrev);
+        query.setParameter("domain", domain);
+        return query.uniqueResult();
     }
 
     /**
@@ -249,6 +265,8 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
         switch (domain) {
         case ANIMAL:
             return List.of(Domain.VECTOR.name(), "A");
+        case VECTOR:
+            return List.of(Domain.VECTOR.name(), "V");
         case ENVIRONMENTAL:
             return List.of(Domain.ENVIRONMENTAL.name(), "E");
         case HUMAN:

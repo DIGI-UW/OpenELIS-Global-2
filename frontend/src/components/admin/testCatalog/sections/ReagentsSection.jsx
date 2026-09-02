@@ -20,7 +20,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { Add, TrashCan } from "@carbon/icons-react";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   putToOpenElisServer,
@@ -50,6 +50,7 @@ const ReagentsSection = ({ testId }) => {
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [unlinkTarget, setUnlinkTarget] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
     if (!testId) {
@@ -105,9 +106,25 @@ const ReagentsSection = ({ testId }) => {
     return "green";
   };
 
-  // PUT the row (usage type / quantity / unit). Optimistic: the UI already shows
-  // the edited values; on failure we roll the row back to the server snapshot.
-  const saveRow = (id, overrides = {}) => {
+  /** Whether this row's pending edit differs from what the server holds. */
+  const isRowDirty = (id) => {
+    const link = byId[id];
+    if (!link) {
+      return false;
+    }
+    const current = edits[id] || {};
+    return !(
+      current.usageType === (link.usageType || "PRIMARY") &&
+      String(current.quantityPerTest ?? "") ===
+        (link.quantityPerTest != null ? String(link.quantityPerTest) : "") &&
+      (current.quantityUnit || "") === (link.quantityUnit || "")
+    );
+  };
+
+  // PUT one row (usage type / quantity / unit). Driven by Save, never by leaving a
+  // field. Optimistic: the UI already shows the edited values; on failure the row
+  // rolls back to the server snapshot.
+  const saveRow = (id, overrides = {}, onDone) => {
     const link = byId[id];
     if (!link) {
       return;
@@ -137,6 +154,10 @@ const ReagentsSection = ({ testId }) => {
           setReagents((prev) =>
             prev.map((r) => (r.id === id ? { ...r, ...payload } : r)),
           );
+          if (onDone) {
+            onDone(true);
+            return;
+          }
           setNotification({
             kind: "success",
             text: intl.formatMessage({
@@ -156,6 +177,10 @@ const ReagentsSection = ({ testId }) => {
               quantityUnit: link.quantityUnit || "",
             },
           }));
+          if (onDone) {
+            onDone(false);
+            return;
+          }
           setNotification({
             kind: "error",
             text: intl.formatMessage({
@@ -166,6 +191,59 @@ const ReagentsSection = ({ testId }) => {
         }
       },
     );
+  };
+
+  const dirtyRowIds = reagents.map((r) => r.id).filter(isRowDirty);
+
+  // Commit every pending row edit. One outcome for the batch, so a partial failure
+  // leaves the edits in place to retry rather than reporting success.
+  const handleSave = () => {
+    if (dirtyRowIds.length === 0 || saving) {
+      return;
+    }
+    setSaving(true);
+    setNotification(null);
+    let pending = dirtyRowIds.length;
+    let failed = 0;
+    dirtyRowIds.forEach((id) => {
+      saveRow(id, {}, (ok) => {
+        if (!ok) {
+          failed += 1;
+        }
+        pending -= 1;
+        if (pending > 0) {
+          return;
+        }
+        setSaving(false);
+        setNotification({
+          kind: failed > 0 ? "error" : "success",
+          text: intl.formatMessage({
+            id:
+              failed > 0
+                ? "label.testCatalog.reagents.saveError"
+                : "label.testCatalog.reagents.updated",
+          }),
+        });
+      });
+    });
+  };
+
+  const handleCancel = () => {
+    setEdits(
+      reagents.reduce(
+        (acc, r) => ({
+          ...acc,
+          [r.id]: {
+            usageType: r.usageType || "PRIMARY",
+            quantityPerTest:
+              r.quantityPerTest != null ? String(r.quantityPerTest) : "",
+            quantityUnit: r.quantityUnit || "",
+          },
+        }),
+        {},
+      ),
+    );
+    setNotification(null);
   };
 
   const confirmUnlink = () => {
@@ -350,20 +428,16 @@ const ReagentsSection = ({ testId }) => {
                             labelText=""
                             size="sm"
                             value={e.usageType || "PRIMARY"}
-                            onChange={(ev) => {
-                              setEdit(link.id, "usageType", ev.target.value);
-                              saveRow(link.id, { usageType: ev.target.value });
-                            }}
+                            onChange={(ev) =>
+                              setEdit(link.id, "usageType", ev.target.value)
+                            }
                           >
                             <SelectItem value="PRIMARY" text="PRIMARY" />
                             <SelectItem value="SECONDARY" text="SECONDARY" />
                           </Select>
                         </TableCell>
                         <TableCell>
-                          <div
-                            style={{ display: "flex", gap: "0.5rem" }}
-                            onBlur={() => saveRow(link.id)}
-                          >
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
                             <NumberInput
                               id={`qty-${link.id}`}
                               label=""
@@ -431,6 +505,36 @@ const ReagentsSection = ({ testId }) => {
           )}
         </DataTable>
       )}
+
+      {dirtyRowIds.length > 0 && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "label.testCatalog.reagents.unsaved",
+          })}
+        />
+      )}
+
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <Button
+          kind="primary"
+          data-testid="reagents-save"
+          disabled={saving || dirtyRowIds.length === 0}
+          onClick={handleSave}
+        >
+          <FormattedMessage id="label.button.save" />
+        </Button>
+        <Button
+          kind="ghost"
+          data-testid="reagents-cancel"
+          disabled={saving || dirtyRowIds.length === 0}
+          onClick={handleCancel}
+        >
+          <FormattedMessage id="label.button.cancel" />
+        </Button>
+      </div>
 
       <LinkReagentModal
         open={linkModalOpen}

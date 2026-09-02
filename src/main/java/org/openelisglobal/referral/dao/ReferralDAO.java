@@ -71,7 +71,7 @@ public interface ReferralDAO extends BaseDAO<Referral, String> {
      * @param sampleItemId - the PK of a SampleItem
      * @return list of referrals for this sample item
      */
-    public List<Referral> getReferralsBySampleItemId(Integer sampleItemId);
+    public List<Referral> getReferralsBySampleItemId(String sampleItemId);
 
     /**
      * Get all unassigned referrals grouped by sample item. Returns distinct sample

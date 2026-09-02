@@ -24,18 +24,19 @@ You can find more information on how to set up OpenELIS at our
 
 ### CI Status
 
-[![01 - Backend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml)
+All badges report the status of the latest **merge to `develop`**
+(`event=push`), not per-PR runs.
+
+[![01 - Backend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml?query=branch%3Adevelop+event%3Apush)
 ![Coverage](https://raw.githubusercontent.com/DIGI-UW/OpenELIS-Global-2/refs/heads/gh-pages/badges/jacoco.svg)
 
-[![02 - Frontend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml)
+[![02 - Frontend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml?query=branch%3Adevelop+event%3Apush)
 
-[![03 - Playwright Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml)
+[![03 - E2E Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml?query=branch%3Adevelop+event%3Apush)
 
-[![04 - Cypress Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml)
+[![Dev Images - Backend](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-dev-backend-images.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-dev-backend-images.yml?query=branch%3Adevelop+event%3Apush)
 
-[![E2E Wrapper Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml)
-
-[![Installer Packaging Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
+[![Dev Images - Frontend](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-dev-frontend-images.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-dev-frontend-images.yml?query=branch%3Adevelop+event%3Apush)
 
 ### CI Architecture
 
@@ -228,6 +229,42 @@ accessing any of these links, simply follow these steps:
         npm install
         npm run build
         npm run cy:run # this will run e2e testing same CI
+
+### Environmental & Compliance-Scoped Result Evaluation
+
+Environmental orders support multi-standard compliance evaluation. When an order
+is placed with one or more compliance standards selected (e.g. PP No. 22/2021,
+WHO-DWG-4), the result entry screen shows per-standard PASS/FAIL pills inline
+with each test result under a **Status — Per Regulation** column.
+
+**How it works:**
+
+1. Admin configures compliance standards and their per-test thresholds under
+   **Administration → Compliance Standards**. Each standard has parameter groups
+   with thresholds (RANGE, MINIMUM, MAXIMUM, etc.) linked to specific tests.
+
+2. When placing an environmental order, select the applicable compliance
+   standards in the **Applicable Compliance Standards** section. These are
+   stored in the `sample_compliance_standards` join table.
+
+3. On result entry, the system evaluates each entered value against the
+   `compliance_threshold` rows for that test + standard combination and returns
+   `complianceStatuses` (array of `{standardId, standardName, pass}`) alongside
+   each result row.
+
+4. The result entry screen renders green `PASS — <standard>` or red
+   `FAIL — <standard>` pills. The column is hidden when no compliance standards
+   are attached to the loaded result set.
+
+**Key entities:**
+
+- `compliance_standard` — the regulatory standard (e.g. PP No. 22/2021)
+- `parameter_group` — groups thresholds within a standard
+- `compliance_threshold` — per-test threshold with type and bounds
+- `sample_compliance_standards` — join table linking a sample to its standards
+
+Non-environmental and non-compliance orders are unaffected; the existing
+normal/abnormal background-colour logic is unchanged.
 
 ### AI-Assisted Development (SpecKit)
 

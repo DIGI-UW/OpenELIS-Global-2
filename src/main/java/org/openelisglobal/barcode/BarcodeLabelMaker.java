@@ -37,6 +37,7 @@ import org.openelisglobal.barcode.labeltype.SlideLabel;
 import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
 import org.openelisglobal.barcode.util.BarcodeConfigUtil;
+import org.openelisglobal.barcode.valueholder.BarcodeLabelInfo;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AltYearAccessionValidator;
@@ -45,6 +46,8 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.PathologySampleService;
@@ -269,18 +272,20 @@ public class BarcodeLabelMaker {
                 labels.add(orderLabel);
             }
 
-            // 1 specimen label per sampleitem
-            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
+            // 1 specimen label per sampleitem — use getSampleItemsBySampleId (no status
+            // filter) for all workflows. The status filter was meant to exclude drafts but
+            // at the label step the order is already submitted, and clinical items may not
+            // be in Entered status depending on the save path.
+            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleId(sample.getId());
+            boolean isEnvOrVector = isEnvOrVectorSample(sample);
             for (SampleItem sampleItem : sampleItemList) {
-                SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                        labNo);
+                SpecimenLabel specLabel = isEnvOrVector ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
+                        : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
                 int specimenQuantity = BarcodeConfigUtil.parseIntSafe(
                         ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED),
                         1);
                 specLabel.setNumLabels(specimenQuantity);
                 specLabel.linkBarcodeLabelInfo();
-                // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);
                 if (shouldQueueLabel(specLabel, specimenQuantity, override)) {
                     labels.add(specLabel);
@@ -307,18 +312,19 @@ public class BarcodeLabelMaker {
                 labNo = labNo.substring(0, separatorIndex);
             }
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
-            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
+            boolean isEnvOrVectorSpec = isEnvOrVectorSample(sample);
+            List<SampleItem> sampleItemList = isEnvOrVectorSpec
+                    ? sampleItemService.getSampleItemsBySampleId(sample.getId())
+                    : sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(), getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 // when no specimen number was supplied, print labels for every sample item;
                 // otherwise only for the matching sort order
                 if (specimenNumber == null || sampleItem.getSortOrder().equals(specimenNumber)) {
-                    SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                            labNo);
+                    SpecimenLabel specLabel = isEnvOrVectorSpec ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
+                            : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                     specLabel.setNumLabels(requestedQuantity);
                     specLabel.linkBarcodeLabelInfo();
-                    // get sysUserId from login module
                     specLabel.setSysUserId(sysUserId);
                     if (shouldQueueLabel(specLabel, requestedQuantity, override)) {
                         labels.add(specLabel);
@@ -328,15 +334,16 @@ public class BarcodeLabelMaker {
             // all specimen for an order case
         } else if ("specimenOrder".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
-            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
+            boolean isEnvOrVectorSpecOrder = isEnvOrVectorSample(sample);
+            List<SampleItem> sampleItemList = isEnvOrVectorSpecOrder
+                    ? sampleItemService.getSampleItemsBySampleId(sample.getId())
+                    : sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(), getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
-                SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                        labNo);
+                SpecimenLabel specLabel = isEnvOrVectorSpecOrder ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
+                        : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
                 int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                 specLabel.setNumLabels(requestedQuantity);
                 specLabel.linkBarcodeLabelInfo();
-                // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);
                 if (shouldQueueLabel(specLabel, requestedQuantity, override)) {
                     labels.add(specLabel);
@@ -451,6 +458,18 @@ public class BarcodeLabelMaker {
         return StringUtils.defaultString(sampleItem.getTypeOfSample().getLocalizedName());
     }
 
+    private boolean isEnvOrVectorSample(Sample sample) {
+        ObservationHistoryService observationHistoryService = SpringContext.getBean(ObservationHistoryService.class);
+        String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        return "environmental".equals(workflowType) || "vector".equals(workflowType);
+    }
+
+    private SpecimenLabel buildEnvSpecimenLabel(Sample sample, SampleItem sampleItem, String labNo) {
+        SampleService sampleService = SpringContext.getBean(SampleService.class);
+        return new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
+    }
+
     private String resolveBlockIdContext(PathologySample pathologySample) {
         if (pathologySample == null || pathologySample.getBlocks() == null || pathologySample.getBlocks().isEmpty()
                 || pathologySample.getBlocks().get(0) == null || pathologySample.getBlocks().get(0).getId() == null) {
@@ -535,13 +554,17 @@ public class BarcodeLabelMaker {
                     }
                 }
                 try {
-                    getBarcodeLabelService().save(label.getLabelInfo());
+                    upsertLabelInfo(label);
                 } catch (jakarta.persistence.OptimisticLockException | org.hibernate.StaleObjectStateException e) {
                     // Tolerate concurrent print requests racing to update the same label row
                     LogEvent.logWarn("BarcodeLabelMaker", "createLabelsAsStreamWithMaximumPrints",
                             "Optimistic lock on label print count (concurrent request): " + e.getMessage());
+                } catch (jakarta.persistence.PersistenceException e) {
+                    // Unique-constraint violation — a concurrent request inserted the same code
+                    // between our getDataByCode check and our insert. Recover by merging into
+                    // the winning row instead of failing the whole print request.
+                    mergePrintIncrementAfterRace(label, e);
                 } catch (RuntimeException e) {
-                    // DB connectivity, constraint violations, etc. — rethrow so the caller knows
                     throw e;
                 }
             }
@@ -552,6 +575,57 @@ public class BarcodeLabelMaker {
         }
 
         return stream;
+    }
+
+    private void upsertLabelInfo(Label label) {
+        BarcodeLabelInfo info = label != null ? label.getLabelInfo() : null;
+        if (info == null) {
+            return;
+        }
+        // If the info object has no DB id, a row for this code may already exist from a
+        // previous print. Load it and merge our increment rather than blindly
+        // inserting.
+        if (info.getId() == null || (info.getId() instanceof String && ((String) info.getId()).isBlank())) {
+            String code = info.getCode();
+            if (code != null && !code.isBlank()) {
+                BarcodeLabelInfo existing = getBarcodeLabelService().getDataByCode(code);
+                if (existing != null) {
+                    existing.setNumPrinted(existing.getNumPrinted() + info.getNumPrinted());
+                    existing.setSysUserId(sysUserId);
+                    label.setLabelInfo(existing);
+                    info = existing;
+                }
+            }
+        }
+        getBarcodeLabelService().save(info);
+    }
+
+    private void mergePrintIncrementAfterRace(Label label, RuntimeException originalError) {
+        BarcodeLabelInfo losingInfo = label != null ? label.getLabelInfo() : null;
+        String code = losingInfo != null ? losingInfo.getCode() : null;
+        int delta = losingInfo != null ? losingInfo.getNumPrinted() : 0;
+        if (code == null || delta <= 0) {
+            LogEvent.logWarn("BarcodeLabelMaker", "mergePrintIncrementAfterRace",
+                    "Unique-constraint conflict on label code " + code + " with no recoverable delta: "
+                            + originalError.getMessage());
+            return;
+        }
+        try {
+            BarcodeLabelInfo persisted = getBarcodeLabelService().getDataByCode(code);
+            if (persisted == null) {
+                LogEvent.logWarn("BarcodeLabelMaker", "mergePrintIncrementAfterRace", "Constraint conflict on " + code
+                        + " but no persisted row resolvable; " + "print count for this request not recorded.");
+                return;
+            }
+            persisted.setNumPrinted(persisted.getNumPrinted() + delta);
+            persisted.setSysUserId(sysUserId);
+            getBarcodeLabelService().save(persisted);
+            label.setLabelInfo(persisted);
+        } catch (RuntimeException retryEx) {
+            LogEvent.logError("BarcodeLabelMaker", "mergePrintIncrementAfterRace",
+                    "Failed to merge label print count after constraint conflict for code " + code + ": "
+                            + retryEx.getMessage());
+        }
     }
 
     // parse label info to draw label and add to document

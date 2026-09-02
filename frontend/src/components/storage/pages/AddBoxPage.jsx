@@ -259,7 +259,16 @@ export default function AddBoxPage() {
         <Button kind="secondary" onClick={navigateBack}>
           <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
         </Button>
-        <Button kind="primary" onClick={handleSubmit} disabled={saving}>
+        <Button
+          kind="primary"
+          onClick={handleSubmit}
+          disabled={
+            saving ||
+            !formData.label.trim() ||
+            !formData.code.trim() ||
+            !formData.parentRackId
+          }
+        >
           <FormattedMessage id="label.add" defaultMessage="Add" />
         </Button>
       </div>

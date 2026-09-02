@@ -6,6 +6,7 @@ import {
   Stack,
   Grid,
   Column,
+  InlineNotification,
 } from "@carbon/react";
 import EditSample from "./EditSample";
 import AddOrder from "../addOrder/AddOrder";
@@ -116,7 +117,10 @@ const ModifyOrder = () => {
   const loadOrderValues = (data) => {
     if (componentMounted.current) {
       if (data.sampleOrderItems) {
-        data.sampleOrderItems.referringSiteName = "";
+        // OGC-1191 — Do not blank the loaded referring-site name. It carried
+        // over from the Vite migration and left a required field empty in form
+        // state while the AutoComplete still displayed it from referringSiteId,
+        // hiding the emptied value from the user.
         setOrderFormValues(data);
         setPatientHeaderInfo({
           patientName: data.patientName || "",
@@ -143,6 +147,29 @@ const ModifyOrder = () => {
     });
   };
 
+  // OGC-1191 — after a successful reassignment the specimen carries its new
+  // accession, so the post-save label print and the page URL must both switch
+  // to the new number; the old one no longer exists. No-op when nothing was
+  // reassigned.
+  const reflectReassignmentOnSuccess = () => {
+    const reassigned = orderFormValues.newAccessionNumber;
+    if (!reassigned || reassigned === orderFormValues.accessionNumber) {
+      return;
+    }
+    setOrderFormValues({
+      ...orderFormValues,
+      accessionNumber: reassigned,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        labNo: reassigned,
+      },
+      newAccessionNumber: "",
+    });
+    const url = new URL(window.location.href);
+    url.searchParams.set("accessionNumber", reassigned);
+    window.history.replaceState(null, "", url.toString());
+  };
+
   // Advance to the success page only after the backend confirms. On 4xx/5xx,
   // surface the actual reason from the response body (the SampleEdit endpoint
   // returns {"message":"..."} on errors like "Position B12 is already
@@ -150,6 +177,7 @@ const ModifyOrder = () => {
   const handlePost = async (response) => {
     setIsSubmitting(false);
     if (response && response.ok) {
+      reflectReassignmentOnSuccess();
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
         NotificationKinds.success,
@@ -381,6 +409,24 @@ const ModifyOrder = () => {
                       setPage={setPage}
                     />
                   )}
+                  {/* OGC-1191 — Submit is gated on these validation errors but
+                      they were computed and never shown, so a required field
+                      the user cannot see (e.g. Requester Last Name) left Submit
+                      permanently disabled with nothing on screen explaining
+                      why. Surface each gating error so the block is legible. */}
+                  {page === orderPageNumber &&
+                    errors?.errors?.length > 0 &&
+                    errors.errors.map((message, index) => (
+                      <InlineNotification
+                        key={index}
+                        kind="error"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({ id: "error.title" })}
+                        subtitle={message}
+                        data-cy="modify-order-validation-error"
+                      />
+                    ))}
                   <div className="navigationButtonsLayout">
                     {page !== firstPageNumber && page <= orderPageNumber && (
                       <Button

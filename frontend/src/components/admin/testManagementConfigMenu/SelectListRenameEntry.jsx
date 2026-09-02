@@ -57,6 +57,7 @@ function SelectListRenameEntry() {
   const [selectedItem, setSelectedItem] = useState({});
   const [selectedItemChange, setSelectedItemChange] = useState({});
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const [entityId, setEntityId] = useState();
 
   useEffect(() => {
     componentMounted.current = true;
@@ -131,6 +132,33 @@ function SelectListRenameEntry() {
     setSelectedItem(item);
     setSelectedItemChange(item);
     setSelectedIndex(index);
+    setEntityId(item.id);
+  };
+
+  useEffect(() => {
+    if (entityId) {
+      getFromOpenElisServer(
+        `/rest/EntityNamesProvider?entityId=${entityId}&entityName=resultSelectOption`,
+        handleEntityNames,
+      );
+    }
+  }, [entityId]);
+
+  /**
+   * The option list carries only the name of the locale it was read in, so the
+   * stored translations have to be fetched before either field can be shown —
+   * otherwise saving sends whatever was on screen as every language.
+   */
+  const handleEntityNames = (res) => {
+    const names = (res && res.name) || {};
+    const merge = (prev) => ({
+      ...prev,
+      displayValueEnglish: names.english ?? prev.displayValueEnglish,
+      // An option whose name has never been translated has no French to show.
+      displayValueFrench: names.french ?? "",
+    });
+    setSelectedItem(merge);
+    setSelectedItemChange(merge);
   };
 
   const onInputChangeEn = (e) => {
@@ -189,7 +217,9 @@ function SelectListRenameEntry() {
       const extractedValues = selectListRenameListShow.map((item) => ({
         id: item.id,
         displayValueEnglish: item.displayValue,
-        displayValueFrench: item.displayValue,
+        // Filled from the stored translations when the option is opened. Copying
+        // the displayed name here would submit it as the French one.
+        displayValueFrench: "",
       }));
       setDisplayValueList(extractedValues);
     }
@@ -266,8 +296,7 @@ function SelectListRenameEntry() {
                 {displayValueList &&
                 selectedItem &&
                 selectedItem.id &&
-                selectedItem.displayValueEnglish &&
-                selectedItem.displayValueFrench ? (
+                selectedItem.displayValueEnglish ? (
                   <Grid fullWidth={true}>
                     <Column lg={16} md={8} sm={4}>
                       <Section>
@@ -309,7 +338,7 @@ function SelectListRenameEntry() {
                         }
                       />
                       <br />
-                      {/* <>
+                      <>
                         <FormattedMessage id="french.current" /> :{" "}
                         {selectedItem.displayValueFrench}
                       </>
@@ -323,12 +352,11 @@ function SelectListRenameEntry() {
                         onChange={(e) => {
                           onInputChangeFr(e);
                         }}
-                        required
                         invalid={inputError}
                         invalidText={
                           <FormattedMessage id="required.invalidtext" />
                         }
-                      /> */}
+                      />
                     </Column>
                   </Grid>
                 ) : (

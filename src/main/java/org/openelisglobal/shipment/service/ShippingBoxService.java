@@ -17,6 +17,20 @@ public interface ShippingBoxService {
     List<ShippingBox> getAllActiveBoxes();
 
     /**
+     * Get active outbound (non-inbound) shipping boxes
+     *
+     * @return List of outbound shipping boxes
+     */
+    List<ShippingBox> getActiveOutboundBoxes();
+
+    /**
+     * Get active incoming (FHIR-imported) shipping boxes
+     *
+     * @return List of incoming shipping boxes
+     */
+    List<ShippingBox> getIncomingBoxes();
+
+    /**
      * Get shipping box by ID
      *
      * @param id Box ID
