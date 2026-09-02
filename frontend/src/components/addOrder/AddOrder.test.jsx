@@ -395,3 +395,51 @@ describe("AddOrder — Result Reporting sample headings", () => {
     expect(heading("Sample 1")).toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// OGC-1191 — Editing an existing order must not be able to reassign the
+// specimen's accession number. On the modify path the editable Lab Number
+// input (bound to newAccessionNumber, the SampleEdit reassignment field) and
+// its "Generate" link are not rendered; the number is shown as static text.
+// On the add path both are still present.
+// ---------------------------------------------------------------------------
+describe("AddOrder — Lab Number is not editable/reassignable on modify (OGC-1191)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(() => {});
+  });
+
+  test("add order offers the Generate accession link", () => {
+    renderAddOrder({ isModifyOrder: false });
+    expect(
+      document.querySelector('[data-cy="generate-labNumber"]'),
+    ).toBeInTheDocument();
+  });
+
+  test("modify order does NOT offer the Generate link", () => {
+    renderAddOrder({
+      isModifyOrder: true,
+      orderFormValues: {
+        ...baseOrderFormValues(),
+        accessionNumber: "DEV01260000000000519",
+        newAccessionNumber: "",
+      },
+    });
+    expect(
+      document.querySelector('[data-cy="generate-labNumber"]'),
+    ).not.toBeInTheDocument();
+  });
+
+  test("modify order shows the existing accession number as static text", () => {
+    renderAddOrder({
+      isModifyOrder: true,
+      orderFormValues: {
+        ...baseOrderFormValues(),
+        accessionNumber: "DEV01260000000000519",
+        newAccessionNumber: "",
+      },
+    });
+    expect(screen.getByText(/DEV01260000000000519/)).toBeInTheDocument();
+  });
+});

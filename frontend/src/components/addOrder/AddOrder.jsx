@@ -846,49 +846,52 @@ const AddOrder = (props) => {
               </Column>
             )}
 
-            <Column lg={8} md={4} sm={4}>
-              <div>
-                <CustomLabNumberInput
-                  name="labNo"
-                  placeholder={intl.formatMessage({
-                    id: "input.placeholder.labNo",
-                  })}
-                  value={
-                    isModifyOrder
-                      ? orderFormValues.newAccessionNumber
-                      : orderFormValues.sampleOrderItems.labNo
-                  }
-                  //onMouseLeave={handleLabNoValidation}
-                  onClick={() => handleChange("sampleOrderItems.labNo")}
-                  onChange={handleLabNo}
-                  onKeyPress={handleKeyPress}
-                  labelText={
-                    <>
-                      <FormattedMessage id="sample.label.labnumber" />{" "}
-                      <span className="requiredlabel">*</span>
-                    </>
-                  }
-                  id="labNo"
-                  invalid={
-                    changed["sampleOrderItems.labNo"] &&
-                    error("sampleOrderItems.labNo")
-                      ? true
-                      : false
-                  }
-                  invalidText={error("sampleOrderItems.labNo")}
-                />
+            {/* OGC-1191 — Editing an existing order must never reassign the
+                specimen's accession number. On the modify path the number is
+                already shown as static text above; the editable input bound to
+                newAccessionNumber (the SampleEdit reassignment field) and the
+                Generate link are offered only when creating a new order. */}
+            {!isModifyOrder && (
+              <Column lg={8} md={4} sm={4}>
                 <div>
-                  <FormattedMessage id="label.order.scan.text" />{" "}
-                  <Link
-                    data-cy="generate-labNumber"
-                    href="#"
-                    onClick={(e) => handleLabNoGeneration(e)}
-                  >
-                    <FormattedMessage id="sample.label.labnumber.generate" />
-                  </Link>
+                  <CustomLabNumberInput
+                    name="labNo"
+                    placeholder={intl.formatMessage({
+                      id: "input.placeholder.labNo",
+                    })}
+                    value={orderFormValues.sampleOrderItems.labNo}
+                    //onMouseLeave={handleLabNoValidation}
+                    onClick={() => handleChange("sampleOrderItems.labNo")}
+                    onChange={handleLabNo}
+                    onKeyPress={handleKeyPress}
+                    labelText={
+                      <>
+                        <FormattedMessage id="sample.label.labnumber" />{" "}
+                        <span className="requiredlabel">*</span>
+                      </>
+                    }
+                    id="labNo"
+                    invalid={
+                      changed["sampleOrderItems.labNo"] &&
+                      error("sampleOrderItems.labNo")
+                        ? true
+                        : false
+                    }
+                    invalidText={error("sampleOrderItems.labNo")}
+                  />
+                  <div>
+                    <FormattedMessage id="label.order.scan.text" />{" "}
+                    <Link
+                      data-cy="generate-labNumber"
+                      href="#"
+                      onClick={(e) => handleLabNoGeneration(e)}
+                    >
+                      <FormattedMessage id="sample.label.labnumber.generate" />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </Column>
+              </Column>
+            )}
             <Column lg={8} md={4} sm={4}>
               <Select
                 id="priorityId"
