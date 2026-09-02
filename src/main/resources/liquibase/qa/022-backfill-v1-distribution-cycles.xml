@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2 V1 absorption (OGC-608): every legacy distribution gains a synthetic
-    cycle so V1 data appears in the cycle-centric V2 pages. Legacy scores stay
-    read-only in the V1 eqa_result table (decision 2026-09-02); only the
-    distribution-to-cycle link is backfilled.
+    EQA V2 V1 absorption (OGC-608): every COMPLETED legacy distribution gains a
+    closed, historical cycle so finished V1 rounds appear in the cycle-centric V2
+    pages. Active V1 distributions are not migrated (V1 never stored the roster
+    or panel a live V2 cycle needs) and legacy scores stay read-only in the V1
+    eqa_result table. See docs/eqa/v1-distribution-absorption.md.
 
     Include ordering: this file must run AFTER qa/028 — the trigger-event CHECK
     extension below re-declares the full list from qa/028, and the backfill
@@ -52,35 +53,17 @@
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="eqa_cycle" schemaName="clinlims"/>
         </preConditions>
-        <comment>One synthetic provider cycle per legacy distribution; cycle state derived
-            from the distribution status (DRAFT to PLANNED, PREPARED to READY_TO_SHIP,
-            SHIPPED to SHIPPED, COMPLETED to CLOSED). Each synthetic cycle gets one
-            V1_BACKFILL audit row, which also makes the rollback exact. Idempotent:
-            only distributions with no cycle link are touched.</comment>
+        <comment>One CLOSED historical cycle per COMPLETED legacy distribution; active
+            distributions are left unlinked. Each synthetic cycle gets one V1_BACKFILL
+            audit row, which is also the rollback marker. Idempotent: only
+            distributions with no cycle link are touched.</comment>
         <sqlFile path="022-v1-distribution-cycle-backfill.sql" relativeToChangelogFile="true"
             splitStatements="false" stripComments="true"/>
         <rollback>
-            <!-- The V1_BACKFILL audit rows identify the synthetic cycles, so
-                 capture their ids before deleting anything. Cycles that gained
-                 rounds after the backfill make the last delete fail on the
-                 round FK — deliberate: rollback refuses to destroy real work. -->
-            <sql>
-                CREATE TEMP TABLE v1_backfill_cycles AS
-                SELECT DISTINCT t.cycle_id FROM clinlims.eqa_cycle_state_transition t
-                WHERE t.trigger_event = 'V1_BACKFILL';
-
-                UPDATE clinlims.eqa_distribution d
-                SET cycle_id = NULL
-                WHERE d.cycle_id IN (SELECT cycle_id FROM v1_backfill_cycles);
-
-                DELETE FROM clinlims.eqa_cycle_state_transition t
-                WHERE t.cycle_id IN (SELECT cycle_id FROM v1_backfill_cycles);
-
-                DELETE FROM clinlims.eqa_cycle c
-                WHERE c.id IN (SELECT cycle_id FROM v1_backfill_cycles);
-
-                DROP TABLE v1_backfill_cycles;
-            </sql>
+            <!-- Refuses when any synthetic cycle has activity recorded after the
+                 migration; see the rollback file for the exact checks. -->
+            <sqlFile path="022-v1-distribution-cycle-rollback.sql" relativeToChangelogFile="true"
+                splitStatements="false" stripComments="false"/>
         </rollback>
     </changeSet>
 
