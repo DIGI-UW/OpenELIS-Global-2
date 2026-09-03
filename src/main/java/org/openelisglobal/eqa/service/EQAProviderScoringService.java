@@ -64,6 +64,14 @@ public interface EQAProviderScoringService {
      */
     Map<String, Object> importReportedCsv(Long cycleId, Long organizationId, String csv, String sysUserId);
 
+    /**
+     * Take in values keyed by analyte <i>name</i> — the identity another instance
+     * shares — resolving each to the scheme's test. The answer is the grid plus an
+     * {@code unmapped} list naming analytes this scheme does not run.
+     */
+    Map<String, Object> takeInByAnalyteName(Long cycleId, Long organizationId,
+            Map<String, String> reportedByAnalyteName, EQASubmissionMethod method, String sysUserId);
+
     /** One participant's scores returned over FHIR (FR-V2.5-04). */
     Map<String, Object> distributeScores(Long cycleId, Long organizationId);
 }

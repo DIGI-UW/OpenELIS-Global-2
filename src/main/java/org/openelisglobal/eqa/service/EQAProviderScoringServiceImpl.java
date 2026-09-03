@@ -285,16 +285,8 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             throw new IllegalArgumentException(
                     "The CSV needs analyte_name and result_value columns (the participant's export bundle)");
         }
-        EQACycle cycle = cycle(cycleId);
-        Map<String, Long> testByAnalyteName = new HashMap<>();
-        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
-            String name = analyteName(analyteIdOrNull(assignment.getTestId()));
-            if (Boolean.TRUE.equals(assignment.getIsActive()) && name != null) {
-                testByAnalyteName.put(name.trim().toLowerCase(), assignment.getTestId());
-            }
-        }
-        Map<Long, String> reported = new LinkedHashMap<>();
-        List<String> errors = new ArrayList<>();
+        Map<String, String> byAnalyteName = new LinkedHashMap<>();
+        Map<String, Integer> rowOf = new HashMap<>();
         for (int i = 1; i < lines.length; i++) {
             if (lines[i].isBlank()) {
                 continue;
@@ -305,17 +297,45 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             if (value.isEmpty()) {
                 continue;
             }
+            byAnalyteName.put(name, value);
+            rowOf.put(name, i + 1);
+        }
+        Map<String, Object> grid = takeInByAnalyteName(cycleId, organizationId, byAnalyteName,
+                EQASubmissionMethod.FILE_UPLOAD, sysUserId);
+        List<String> errors = new ArrayList<>();
+        for (Object unmapped : (List<?>) grid.get("unmapped")) {
+            errors.add("Row " + rowOf.get(String.valueOf(unmapped)) + ": no test in this scheme reports '" + unmapped
+                    + "'");
+        }
+        grid.put("imported", byAnalyteName.size() - errors.size());
+        grid.put("errors", errors);
+        return grid;
+    }
+
+    @Override
+    public Map<String, Object> takeInByAnalyteName(Long cycleId, Long organizationId,
+            Map<String, String> reportedByAnalyteName, EQASubmissionMethod method, String sysUserId) {
+        EQACycle cycle = cycle(cycleId);
+        Map<String, Long> testByAnalyteName = new HashMap<>();
+        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
+            String name = analyteName(analyteIdOrNull(assignment.getTestId()));
+            if (Boolean.TRUE.equals(assignment.getIsActive()) && name != null) {
+                testByAnalyteName.put(name.trim().toLowerCase(), assignment.getTestId());
+            }
+        }
+        Map<Long, String> reported = new LinkedHashMap<>();
+        List<String> unmapped = new ArrayList<>();
+        for (Map.Entry<String, String> entry : reportedByAnalyteName.entrySet()) {
+            String name = entry.getKey() == null ? "" : entry.getKey().trim();
             Long testId = testByAnalyteName.get(name.toLowerCase());
             if (testId == null) {
-                errors.add("Row " + (i + 1) + ": no test in this scheme reports '" + name + "'");
+                unmapped.add(name);
                 continue;
             }
-            reported.put(testId, value);
+            reported.put(testId, entry.getValue());
         }
-        Map<String, Object> grid = takeIn(cycleId, organizationId, reported, EQASubmissionMethod.FILE_UPLOAD,
-                sysUserId);
-        grid.put("imported", reported.size());
-        grid.put("errors", errors);
+        Map<String, Object> grid = takeIn(cycleId, organizationId, reported, method, sysUserId);
+        grid.put("unmapped", unmapped);
         return grid;
     }
 
