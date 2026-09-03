@@ -22,8 +22,8 @@ import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Provider-side intake of participant results (OGC-613, FR-V2.5-03): phoned and
- * emailed values keyed on the provider, numbers and qualitative words alike, a
+ * Provider-side intake of participant results (OGC-613): phoned and emailed
+ * values keyed on the provider, numbers and qualitative words alike, a
  * participant's export bundle imported by analyte name, peer statistics per
  * test, and qualitative verdicts judged against the panel's sealed target.
  */

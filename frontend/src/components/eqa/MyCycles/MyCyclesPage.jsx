@@ -182,7 +182,7 @@ const MyCyclesPage = () => {
   };
 
   // "New cycle": a participant records a cycle for a provider that does not
-  // send consignments to this OpenELIS (FR-V2.2-09). Consignments from an
+  // send consignments to this OpenELIS. Consignments from an
   // OpenELIS provider open their cycle on import, so this is the fallback.
   const EMPTY_NEW_CYCLE = {
     schemeName: "",

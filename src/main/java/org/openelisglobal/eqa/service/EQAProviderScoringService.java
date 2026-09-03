@@ -42,9 +42,9 @@ public interface EQAProviderScoringService {
     String buildScoreCsv(Long cycleId, Long organizationId);
 
     /**
-     * The intake grid for one participant (FR-V2.5-03): the scheme's tests with the
-     * value already on file for each, so phoned and emailed results can be keyed on
-     * the provider side.
+     * The intake grid for one participant: the scheme's tests with the value
+     * already on file for each, so phoned and emailed results can be keyed on the
+     * provider side.
      */
     Map<String, Object> intakeGrid(Long cycleId, Long organizationId);
 

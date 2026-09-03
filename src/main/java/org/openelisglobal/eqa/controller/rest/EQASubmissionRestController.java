@@ -85,8 +85,8 @@ public class EQASubmissionRestController extends BaseRestController {
      * FR-V2.3-01 tiers read. Provider act, so it takes the manage grant.
      */
     /**
-     * FR-V2.2-08 by file: the provider's scores CSV pasted or uploaded from My
-     * Cycles — {@code {"csv": "test,analyte_name,...", "labEnrollmentId": 3}}.
+     * Scores by file: the provider's scores CSV pasted or uploaded from My Cycles —
+     * {@code {"csv": "test,analyte_name,...", "labEnrollmentId": 3}}.
      */
     @PostMapping(value = "/cycles/{cycleId}/score-intake/csv", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.MANAGE)

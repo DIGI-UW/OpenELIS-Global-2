@@ -18,8 +18,8 @@ import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * FR-V2.2-08 by file (OGC-610): a participant pastes the provider's scores CSV
- * and its submitted results are scored, matched by analyte name; rows naming an
+ * Scores by file (OGC-610): a participant pastes the provider's scores CSV and
+ * its submitted results are scored, matched by analyte name; rows naming an
  * analyte this laboratory does not know are reported, and a second paste has
  * nothing left to score.
  */

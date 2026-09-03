@@ -109,7 +109,7 @@ public class EQAPanelReceiptRestController extends BaseRestController {
         dto.put("labEnrollmentId", receipt.getLabEnrollmentId());
         dto.put("shipmentId", receipt.getShipmentId());
         dto.put("shippingBoxId", receipt.getShippingBoxId());
-        // The box code is the receipt's shipment reference (FR-V2.2-12).
+        // The box code is the receipt's shipment reference.
         ShippingBox box = receipt.getShippingBoxId() == null ? null
                 : shippingBoxService.getBoxById(receipt.getShippingBoxId());
         dto.put("boxCode", box == null ? null : box.getBoxId());

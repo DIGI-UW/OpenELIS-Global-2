@@ -153,7 +153,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
     });
   };
 
-  // FR-V2.5-03: the provider keys what a participant phoned or emailed, or
+  // The provider keys what a participant phoned or emailed, or
   // pastes the participant's export bundle. Values are kept as reported —
   // numbers or words such as "Reactive" — and saving overwrites what is on file.
   const [intake, setIntake] = useState(null);

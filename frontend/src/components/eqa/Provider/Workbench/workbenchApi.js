@@ -184,7 +184,7 @@ export const distributeScores = (cycleId, organizationId, callback) =>
 export const scoresCsvUrl = (cycleId, organizationId) =>
   `${config.serverBaseUrl}/rest/eqa/cycles/${cycleId}/scores/${organizationId}/csv`;
 
-// --- FR-V2.5-03 provider-side result intake (phoned/emailed results, export bundles) ---
+// --- Provider-side result intake (phoned/emailed results, export bundles) ---
 
 /** The scheme's tests with what this participant has reported so far. */
 export const fetchIntake = (cycleId, organizationId, callback) =>

@@ -21,10 +21,10 @@ public interface EQAPanelReceiptService extends BaseObjectService<EQAPanelReceip
 
     /**
      * As above, also taking delivery of the imported consignment
-     * {@code shippingBoxId} (FR-V2.2-12): the box goes RECEIVED in the same
-     * transaction, which completes the provider's SupplyDelivery so its monitor
-     * learns the panel arrived, and the receipt records the box as its shipment
-     * reference. A box already received stays as it is.
+     * {@code shippingBoxId}: the box goes RECEIVED in the same transaction, which
+     * completes the provider's SupplyDelivery so its monitor learns the panel
+     * arrived, and the receipt records the box as its shipment reference. A box
+     * already received stays as it is.
      */
     EQAPanelReceipt recordReceipt(Long cycleId, Long labEnrollmentId, Integer shipmentId, Integer shippingBoxId,
             BigDecimal receivedTempC, Boolean integrityOk, String integrityNotes, Long receivedBy, String sysUserId);

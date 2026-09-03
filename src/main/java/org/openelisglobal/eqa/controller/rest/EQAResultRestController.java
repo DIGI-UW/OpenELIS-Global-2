@@ -40,7 +40,7 @@ public class EQAResultRestController extends BaseRestController {
     private EQAProviderScoringService scoringService;
 
     /**
-     * FR-V2.5-03: what a participant has reported so far, per test of the scheme.
+     * What a participant has reported so far, per test of the scheme.
      */
     @GetMapping(value = "/cycles/{cycleId}/results", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> cycleResults(@PathVariable Long cycleId, @RequestParam Long organizationId) {
@@ -48,8 +48,8 @@ public class EQAResultRestController extends BaseRestController {
     }
 
     /**
-     * FR-V2.5-03: provider-side entry of a participant's phoned or emailed results
-     * — {@code {"organizationId": 12, "results": [{"testId": 7, "value":
+     * Provider-side entry of a participant's phoned or emailed results —
+     * {@code {"organizationId": 12, "results": [{"testId": 7, "value":
      * "Reactive"}]}}. Numbers and qualitative words alike; a blank value leaves the
      * test untouched.
      */
@@ -75,8 +75,8 @@ public class EQAResultRestController extends BaseRestController {
     }
 
     /**
-     * FR-V2.5-03: import the participant's export bundle CSV as pasted or uploaded
-     * — {@code {"organizationId": 12, "csv":
+     * Import the participant's export bundle CSV as pasted or uploaded —
+     * {@code {"organizationId": 12, "csv":
      * "cycle_id,...,analyte_name,result_value,..."}}.
      */
     @PostMapping(value = "/cycles/{cycleId}/results/import", produces = MediaType.APPLICATION_JSON_VALUE)

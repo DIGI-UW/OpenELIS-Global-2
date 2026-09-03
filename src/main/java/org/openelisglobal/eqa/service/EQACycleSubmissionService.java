@@ -78,7 +78,7 @@ public interface EQACycleSubmissionService {
     int intakeScores(Long cycleId, Long labEnrollmentId, List<Map<String, Object>> scores, String sysUserId);
 
     /**
-     * FR-V2.2-08 by file: the provider's score CSV (columns analyte_name,
+     * Scores by file: the provider's score CSV (columns analyte_name,
      * performance_status, z_score; the rest is ignored) applied through
      * {@link #intakeScores}. Analytes are matched by name — the provider's ids are
      * its own. Answers {@code scored} and the {@code unmapped} analyte names this
