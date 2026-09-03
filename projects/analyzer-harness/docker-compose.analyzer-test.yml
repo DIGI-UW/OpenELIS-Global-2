@@ -30,8 +30,8 @@ services:
       - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
       - MOCK_CONTAINER_NAME=openelis-astm-simulator
       - ANALYZER_BRIDGE_PROFILES_DIR=/data/bridge-profiles
-      - BRIDGE_USER=${BRIDGE_SECURITY_USERNAME:-admin}
-      - BRIDGE_PASS=${BRIDGE_SECURITY_PASSWORD:-adminADMIN!}
+      - BRIDGE_USER=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - BRIDGE_PASS=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
     command: >
       python -u server.py
       --port 9600
@@ -82,13 +82,13 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       # Bridge admin/upload UI Basic Auth. Aligned with OE admin so the harness
-      # ships one credential pair instead of two — closes the known-default
-      # (bridge/changeme) exposure once the bridge vhost is served over LE.
+      # The harness uses one overridable credential pair for the mock, Bridge,
+      # and OpenELIS client.
       # Property keys per bridge SecurityConfig: bridge.security.*.
       # Note: BRIDGE_AUTH_PASSWORD is a silent no-op — nothing in the bridge
       # reads it; the correct keys are BRIDGE_SECURITY_USERNAME / _PASSWORD.
-      - BRIDGE_SECURITY_USERNAME=${BRIDGE_SECURITY_USERNAME:-admin}
-      - BRIDGE_SECURITY_PASSWORD=${BRIDGE_SECURITY_PASSWORD:-adminADMIN!}
+      - BRIDGE_SECURITY_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - BRIDGE_SECURITY_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
       - BRIDGE_FILE_ENABLED=true
       - LOGGING_LEVEL_ORG_ITECH=INFO
       # Bridge connects directly to OE (not through proxy), so no /api/ prefix
@@ -130,8 +130,8 @@ services:
   oe.openelis.org:
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
-      - ANALYZER_BRIDGE_USERNAME=admin
-      - ANALYZER_BRIDGE_PASSWORD=adminADMIN!
+      - ANALYZER_BRIDGE_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - ANALYZER_BRIDGE_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
     networks:
       default:
       analyzer-net:

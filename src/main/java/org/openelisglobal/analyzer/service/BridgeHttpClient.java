@@ -41,10 +41,16 @@ public class BridgeHttpClient {
     private final HttpClient httpClient;
     private final String authorizationHeader;
 
-    public BridgeHttpClient(@Value("${analyzer.bridge.username:bridge}") String username,
-            @Value("${analyzer.bridge.password:changeme}") String password) {
+    public BridgeHttpClient(@Value("${analyzer.bridge.username:}") String username,
+            @Value("${analyzer.bridge.password:}") String password) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Analyzer Bridge username must be configured");
+        }
+        if (password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Analyzer Bridge password must be configured");
+        }
         this.httpClient = buildTrustAllClient();
-        String credentials = username + ":" + password;
+        String credentials = username.trim() + ":" + password.trim();
         this.authorizationHeader = "Basic "
                 + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     }

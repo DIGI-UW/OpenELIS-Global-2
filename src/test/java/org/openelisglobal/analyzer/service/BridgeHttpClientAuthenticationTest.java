@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
@@ -47,5 +48,16 @@ public class BridgeHttpClientAuthenticationTest {
                 .encodeToString("bridge-user:bridge-secret".getBytes(StandardCharsets.UTF_8));
         assertEquals(200, response.status);
         assertEquals("Basic " + credentials, authorization.get());
+    }
+
+    @Test
+    public void constructorRejectsMissingBridgeCredentials() {
+        IllegalArgumentException missingUsername = assertThrows(IllegalArgumentException.class,
+                () -> new BridgeHttpClient(" ", "bridge-secret"));
+        IllegalArgumentException missingPassword = assertThrows(IllegalArgumentException.class,
+                () -> new BridgeHttpClient("bridge-user", " "));
+
+        assertEquals("Analyzer Bridge username must be configured", missingUsername.getMessage());
+        assertEquals("Analyzer Bridge password must be configured", missingPassword.getMessage());
     }
 }
