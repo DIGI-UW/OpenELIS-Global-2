@@ -41,11 +41,11 @@ public class BridgeHttpClientAuthenticationTest {
         });
         server.start();
 
-        BridgeHttpClient client = new BridgeHttpClient("bridge-user", "bridge-secret");
+        BridgeHttpClient client = new BridgeHttpClient("bridge-user", " bridge-secret ");
         BridgeHttpClient.BridgeResponse response = client.get(endpoint, Duration.ofSeconds(2));
 
         String credentials = Base64.getEncoder()
-                .encodeToString("bridge-user:bridge-secret".getBytes(StandardCharsets.UTF_8));
+                .encodeToString("bridge-user: bridge-secret ".getBytes(StandardCharsets.UTF_8));
         assertEquals(200, response.status);
         assertEquals("Basic " + credentials, authorization.get());
     }

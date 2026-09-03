@@ -50,7 +50,7 @@ public class BridgeHttpClient {
             throw new IllegalArgumentException("Analyzer Bridge password must be configured");
         }
         this.httpClient = buildTrustAllClient();
-        String credentials = username.trim() + ":" + password.trim();
+        String credentials = username + ":" + password;
         this.authorizationHeader = "Basic "
                 + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     }
