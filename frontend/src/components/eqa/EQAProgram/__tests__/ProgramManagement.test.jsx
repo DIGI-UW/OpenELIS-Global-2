@@ -1,12 +1,18 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import ProgramManagement from "../ProgramManagement";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import ProgramForm from "../ProgramForm";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+  putToOpenElisServerFullResponse,
+} from "../../../utils/Utils";
 
 vi.mock("../../../../components/common/PageBreadCrumb", () => {
   return {
@@ -160,6 +166,140 @@ describe("ProgramManagement", () => {
 });
 
 describe("ProgramForm", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const catalog = [
+    { id: 55, value: "HIV Viral Load" },
+    { id: 56, value: "CD4 count" },
+  ];
+
+  const serveCatalog = (assignments = []) =>
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/displayList/ALL_TESTS") callback(catalog);
+      else if (url.endsWith("/tests")) callback(assignments);
+      else callback([]);
+    });
+
+  test("an in-house scheme needs no provider and says so on the way out", () => {
+    serveCatalog();
+    const { container } = renderWithIntl(
+      <ProgramForm program={null} onClose={vi.fn()} />,
+    );
+
+    fireEvent.change(container.querySelector("#program-scheme-type"), {
+      target: { value: "IN_HOUSE" },
+    });
+    expect(container.querySelector("#program-provider")).toBeNull();
+
+    fireEvent.change(container.querySelector("#program-name"), {
+      target: { value: "In-house blinded PT" },
+    });
+    fireEvent.click(screen.getByText("Add Program"));
+
+    expect(screen.queryByText("Provider is required")).toBeNull();
+    const [, payload] = postToOpenElisServerFullResponse.mock.calls[0];
+    expect(JSON.parse(payload)).toMatchObject({
+      name: "In-house blinded PT",
+      schemeType: "IN_HOUSE",
+      provider: "",
+    });
+  });
+
+  test("an external scheme carries the type the user picked", () => {
+    serveCatalog();
+    const { container } = renderWithIntl(
+      <ProgramForm program={null} onClose={vi.fn()} />,
+    );
+
+    fireEvent.change(container.querySelector("#program-name"), {
+      target: { value: "Regional serology" },
+    });
+    fireEvent.change(container.querySelector("#program-scheme-type"), {
+      target: { value: "REGIONAL_PT" },
+    });
+    fireEvent.change(container.querySelector("#program-provider"), {
+      target: { value: "CPHL" },
+    });
+    fireEvent.click(screen.getByText("Add Program"));
+
+    const [, payload] = postToOpenElisServerFullResponse.mock.calls[0];
+    expect(JSON.parse(payload).schemeType).toBe("REGIONAL_PT");
+  });
+
+  test("adding a test to the scheme writes the new map", async () => {
+    serveCatalog([{ id: 1, testId: 55, isActive: true }]);
+    putToOpenElisServerFullResponse.mockImplementation((url, body, callback) =>
+      callback({ ok: true, json: () => Promise.resolve({}) }),
+    );
+    const onClose = vi.fn();
+
+    const { container } = renderWithIntl(
+      <ProgramForm
+        program={{
+          id: 7,
+          name: "Regional serology",
+          provider: "CPHL",
+          schemeType: "REGIONAL_PT",
+          isActive: true,
+        }}
+        onClose={onClose}
+      />,
+    );
+
+    // The prefilled map is loaded from the scheme, so clearing it is a real
+    // change the endpoint has to be told about.
+    const user = userEvent.setup();
+    await user.click(
+      container.querySelector("#program-tests .cds--list-box__field"),
+    );
+    await user.click(screen.getByRole("option", { name: /CD4 count/ }));
+    await user.click(screen.getByText("Save Program"));
+
+    await waitFor(() =>
+      expect(
+        putToOpenElisServerFullResponse.mock.calls.some(
+          ([url]) => url === "/rest/eqa/programs/7/tests",
+        ),
+      ).toBe(true),
+    );
+    const [, body] = putToOpenElisServerFullResponse.mock.calls.find(
+      ([called]) => called === "/rest/eqa/programs/7/tests",
+    );
+    expect(JSON.parse(body).testIds.sort()).toEqual([55, 56]);
+  });
+
+  test("saving a scheme with an unchanged test map writes no test map", async () => {
+    serveCatalog([{ id: 1, testId: 55, isActive: true }]);
+    putToOpenElisServerFullResponse.mockImplementation((url, body, callback) =>
+      callback({ ok: true, json: () => Promise.resolve({ id: 7 }) }),
+    );
+    const onClose = vi.fn();
+
+    renderWithIntl(
+      <ProgramForm
+        program={{
+          id: 7,
+          name: "Regional serology",
+          provider: "CPHL",
+          schemeType: "REGIONAL_PT",
+          isActive: true,
+        }}
+        onClose={onClose}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Save Program"));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+    expect(
+      putToOpenElisServerFullResponse.mock.calls.some(
+        ([url]) => url === "/rest/eqa/programs/7/tests",
+      ),
+    ).toBe(false);
+  });
+
   test("renders create mode with correct heading", () => {
     renderWithIntl(<ProgramForm program={null} onClose={vi.fn()} />);
     expect(screen.getByText("Add New EQA Program")).toBeTruthy();

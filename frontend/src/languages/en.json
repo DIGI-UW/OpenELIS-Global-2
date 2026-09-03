@@ -8188,7 +8188,7 @@
   "eqa.inhouse.status": "Status",
   "eqa.inhouse.actions": "Actions",
   "eqa.inhouse.launchWizard": "Launch blinding wizard",
-  "eqa.inhouse.noSchemes": "No in-house scheme exists yet. Create one under EQA scheme management first.",
+  "eqa.inhouse.noSchemes": "No in-house scheme exists yet. Create one under EQA Program Management, choosing the In-house scheme type.",
   "eqa.inhouse.labels.print": "Print label sheet",
   "eqa.inhouse.labels.error": "Could not generate the label sheet",
   "eqa.inhouse.unblind.now": "Unblind now",
@@ -8560,5 +8560,10 @@
   "eqa.cycle.importScores.import": "Import scores",
   "eqa.cycle.importScores.imported": "{count} scores recorded.",
   "eqa.cycle.importScores.unmapped": "Not recognised here: {names}",
-  "eqa.cycle.importScores.failed": "Could not import the scores"
+  "eqa.cycle.importScores.failed": "Could not import the scores",
+  "eqa.program.schemeType": "Scheme type",
+  "eqa.program.schemeType.helper": "In-house schemes are run by this laboratory and need no provider; every other type does.",
+  "eqa.program.tests.placeholder": "Select tests",
+  "eqa.program.tests.helper": "The tests participants report on. Provider result entry and CSV import offer these, so a scheme with none cannot take in results.",
+  "eqa.program.tests.saveFailed": "The scheme was saved, but its tests were not. Reopen it and try again."
 }
