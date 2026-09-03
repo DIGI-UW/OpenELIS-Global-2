@@ -77,7 +77,30 @@
           "uniqueItems": true,
           "items": { "type": "string", "minLength": 1 }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "BOUND" } },
+            "required": ["state"]
+          },
+          "then": { "required": ["testId", "resultOptionIds"] }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "ACKNOWLEDGED_INCOMPLETE" } },
+            "required": ["state"]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["testId"] },
+                { "required": ["resultOptionIds"] }
+              ]
+            }
+          }
+        }
+      ]
     },
     "verification": {
       "type": "object",

@@ -59,6 +59,26 @@ public class AnalyzerOwnershipContractTest {
     }
 
     @Test
+    public void boundVerificationRowsRequireCompleteCatalogTargets() throws Exception {
+        for (String field : new String[] { "testId", "resultOptionIds" }) {
+            JsonNode analyzer = localFixture("openelis-analyzer-reference.json").deepCopy();
+            ((com.fasterxml.jackson.databind.node.ObjectNode) analyzer.path("verification").path("rowStates").path(0))
+                    .remove(field);
+
+            assertFalse(field, localValidationMessages("openelis-analyzer-reference.schema.json", analyzer).isEmpty());
+        }
+    }
+
+    @Test
+    public void acknowledgedIncompleteVerificationRowsRejectCatalogTargets() throws Exception {
+        JsonNode analyzer = localFixture("openelis-analyzer-reference.json").deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) analyzer.path("verification").path("rowStates").path(1))
+                .put("testId", "openelis-test-17");
+
+        assertFalse(localValidationMessages("openelis-analyzer-reference.schema.json", analyzer).isEmpty());
+    }
+
+    @Test
     public void migrationPlanApplyAndVerifyCoverTheSameReleasedAnalyzers() throws Exception {
         JsonNode plan = migrationFixture("analyzer-migration-plan.json");
         JsonNode apply = migrationFixture("analyzer-migration-apply.json");
