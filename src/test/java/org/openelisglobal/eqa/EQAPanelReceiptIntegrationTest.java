@@ -1,7 +1,10 @@
 package org.openelisglobal.eqa;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -48,6 +51,81 @@ public class EQAPanelReceiptIntegrationTest extends EQASpineTestBase {
                         + " VALUES (?, ?, 'DHL', 'TRK-' || ?, 'IN_TRANSIT', now(), ?, now())",
                 id, id, id, Integer.parseInt(USER));
         return id;
+    }
+
+    /**
+     * An imported consignment: a box with no shipment row, as the FHIR import
+     * creates it.
+     */
+    private Integer seedBox(int id, String state) {
+        jdbc.update("INSERT INTO clinlims.organization (id, name, mls_sentinel_lab_flag, is_active, lastupdated)"
+                + " VALUES ('9950', 'Receipt Test Lab', 'N', 'Y', now()) ON CONFLICT (id) DO NOTHING");
+        jdbc.update(
+                "INSERT INTO clinlims.shipping_box (id, box_id, fhir_uuid, destination_facility_id, state,"
+                        + " created_date, archived, sys_user_id, lastupdated)"
+                        + " VALUES (?, 'BOX-' || ?, gen_random_uuid(), 9950, ?, now(), false, ?, now())",
+                id, id, state, Integer.parseInt(USER));
+        return id;
+    }
+
+    @Test
+    public void receiptWithAnInboundConsignment_takesDeliveryAndLinksTheBox() {
+        seedEnrollment(ENROLLMENT, "Consignment program");
+        EQAProgram scheme = insertScheme("Consignment scheme", EQASchemeType.INTERNATIONAL_PT, "NHLS");
+        Long cycleId = insertCycle(scheme, 1);
+        Integer boxId = seedBox(9953, "IN_TRANSIT");
+
+        EQAPanelReceipt receipt = receiptService.recordReceipt(cycleId, ENROLLMENT, null, boxId, null, true, null,
+                ADMIN_USER_ID, USER);
+
+        assertEquals("the receipt records the consignment it took delivery of", boxId, receipt.getShippingBoxId());
+        assertEquals("taking the panel in receives the box", "RECEIVED",
+                jdbc.queryForObject("SELECT state FROM clinlims.shipping_box WHERE id = ?", String.class, boxId));
+        assertNotNull(jdbc.queryForObject("SELECT received_date FROM clinlims.shipping_box WHERE id = ?",
+                Timestamp.class, boxId));
+        assertEquals("PANEL_RECEIVED",
+                jdbc.queryForObject("SELECT status FROM clinlims.eqa_cycle WHERE id = ?", String.class, cycleId));
+
+        EQAPanelReceipt again = receiptService.recordReceipt(cycleId, ENROLLMENT, null, boxId, null, true, null,
+                ADMIN_USER_ID, USER);
+        assertEquals("a second save is a read", receipt.getId(), again.getId());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.eqa_panel_receipt WHERE cycle_id = ?", Integer.class, cycleId));
+    }
+
+    @Test
+    public void receiptForAConsignmentAlreadyReceived_linksItWithoutAnotherStateChange() {
+        seedEnrollment(ENROLLMENT, "Received-first program");
+        EQAProgram scheme = insertScheme("Received-first scheme", EQASchemeType.INTERNATIONAL_PT, "NHLS");
+        Long cycleId = insertCycle(scheme, 1);
+        Integer boxId = seedBox(9954, "RECEIVED");
+
+        EQAPanelReceipt receipt = receiptService.recordReceipt(cycleId, ENROLLMENT, null, boxId, null, true, null,
+                ADMIN_USER_ID, USER);
+
+        assertEquals(boxId, receipt.getShippingBoxId());
+        assertEquals("RECEIVED",
+                jdbc.queryForObject("SELECT state FROM clinlims.shipping_box WHERE id = ?", String.class, boxId));
+        assertEquals("PANEL_RECEIVED",
+                jdbc.queryForObject("SELECT status FROM clinlims.eqa_cycle WHERE id = ?", String.class, cycleId));
+    }
+
+    @Test
+    public void unknownConsignment_rollsBackTheWholeReceipt() {
+        seedEnrollment(ENROLLMENT, "Ghost consignment program");
+        EQAProgram scheme = insertScheme("Ghost consignment scheme", EQASchemeType.INTERNATIONAL_PT, "NHLS");
+        Long cycleId = insertCycle(scheme, 1);
+
+        try {
+            receiptService.recordReceipt(cycleId, ENROLLMENT, null, 424243, null, true, null, ADMIN_USER_ID, USER);
+            fail("a consignment that does not exist must refuse the receipt");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("424243"));
+        }
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.eqa_panel_receipt WHERE cycle_id = ?", Integer.class, cycleId));
+        assertEquals("PLANNED",
+                jdbc.queryForObject("SELECT status FROM clinlims.eqa_cycle WHERE id = ?", String.class, cycleId));
     }
 
     @Test

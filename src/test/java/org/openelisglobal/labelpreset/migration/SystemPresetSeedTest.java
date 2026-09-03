@@ -72,7 +72,7 @@ import org.w3c.dom.NodeList;
  */
 public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
 
-    private static final String SEED_CHANGESET = "liquibase/3.3.x.x/030-seed-system-presets.xml";
+    static final String SEED_CHANGESET = "liquibase/3.3.x.x/030-seed-system-presets.xml";
     /**
      * Field-seed changeset (031). The Liquibase init run executes 030 THEN 031, so
      * the pristine baseline has every system preset carrying its {@code LAB_NUMBER}
@@ -82,6 +82,14 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
      * {@code label_preset_field}.
      */
     static final String FIELD_SEED_CHANGESET = "liquibase/3.3.x.x/031-seed-system-preset-fields.xml";
+    /**
+     * Universality backfill changeset (032). The seed SQL in 030 inserts every
+     * system preset with {@code is_universal} at its column default of false; 032
+     * is what marks Specimen Label universal. Re-running 030 alone therefore
+     * restores the presets in a state the pristine baseline never had, and every
+     * later reader of the seeded Specimen Label sees a non-universal preset.
+     */
+    static final String UNIVERSAL_BACKFILL_CHANGESET = "liquibase/3.3.x.x/032-label-preset-is-universal.xml";
     private static final String FIXTURE = "fixtures/v1-barcode-config.sql";
 
     /**
@@ -104,18 +112,8 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
 
     @After
     public void restoreCanonicalSeed() throws Exception {
-        // Leave the DB the way the rest of the suite expects: canonical system presets
-        // (built from fallbacks, since no barcode.* keys remain), their LAB_NUMBER
-        // field
-        // rows (re-seeded via 031, since clearSystemPresets cascade-deleted them), and
-        // no
-        // fixture keys. The Testcontainer is shared + committed (NOT_SUPPORTED), so
-        // this
-        // restore protects sibling tests that read label_preset / label_preset_field.
-        clearSystemPresets();
         clearBarcodeSiteInformation();
-        runRealSeedChangesetSql();
-        executeSeedSql(dataSource, FIELD_SEED_CHANGESET);
+        restoreCanonicalSeed(dataSource);
     }
 
     @Test
@@ -147,6 +145,44 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
                 "seed must read fixture dimensions, not fallbacks — "
                         + "Specimen Label width should not equal the canonical fallback " + FALLBACK_WIDTH,
                 isWidthEqual("Specimen Label", FALLBACK_WIDTH));
+    }
+
+    /**
+     * The restore this class runs after every test is what sibling classes read for
+     * the rest of the suite, so it must reproduce the whole init run and not just
+     * the insert half. Re-running 030 alone leaves Specimen Label at the column
+     * default of false, and the aggregation tests that assert the universal column
+     * then fail depending only on surefire ordering.
+     */
+    @Test
+    public void restoreCanonicalSeed_leavesSpecimenLabelUniversal() throws Exception {
+        clearSystemPresets();
+
+        restoreCanonicalSeed(dataSource);
+
+        assertEquals("restore must re-apply the universality backfill, not only the preset insert", Boolean.TRUE,
+                isSpecimenLabelUniversal());
+        assertEquals("restore must leave exactly one seeded Specimen Label", 1, countSeededSpecimenLabels());
+    }
+
+    private Boolean isSpecimenLabelUniversal() throws Exception {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement stmt = conn.prepareStatement("SELECT is_universal FROM clinlims.label_preset"
+                        + " WHERE is_system = true AND name = 'Specimen Label'");
+                ResultSet rs = stmt.executeQuery()) {
+            assertTrue("the seeded Specimen Label preset must exist after a restore", rs.next());
+            return rs.getBoolean(1);
+        }
+    }
+
+    private int countSeededSpecimenLabels() throws Exception {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(*) FROM clinlims.label_preset"
+                        + " WHERE is_system = true AND name = 'Specimen Label'");
+                ResultSet rs = stmt.executeQuery()) {
+            rs.next();
+            return rs.getInt(1);
+        }
     }
 
     @Test
@@ -246,38 +282,75 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
     // ----------------------------------------------------------------------------------------------
 
     static void executeSeedSql(DataSource dataSource, String changesetPath) throws Exception {
-        String seedSql = extractSeedSql(changesetPath);
+        executeChangesetSql(dataSource, changesetPath, "INSERT INTO");
+    }
+
+    /** Runs the {@code UPDATE} block of a changeset, such as 032's backfill. */
+    static void executeUpdateSql(DataSource dataSource, String changesetPath) throws Exception {
+        executeChangesetSql(dataSource, changesetPath, "UPDATE CLINLIMS.LABEL_PRESET");
+    }
+
+    private static void executeChangesetSql(DataSource dataSource, String changesetPath, String statementKeyword)
+            throws Exception {
+        String sql = extractChangesetSql(changesetPath, statementKeyword);
         try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            stmt.execute(seedSql);
+            stmt.execute(sql);
         }
     }
 
-    /**
-     * Parses the changeset XML and returns the text of its (single) {@code <sql>}
-     * child. Reads the production artifact so the executed SQL is never a copy.
-     */
     static String extractSeedSql(String changesetPath) throws Exception {
+        return extractChangesetSql(changesetPath, "INSERT INTO");
+    }
+
+    /**
+     * Parses the changeset XML and returns the text of the top-level {@code <sql>}
+     * block containing {@code statementKeyword}. Reads the production artifact so
+     * the executed SQL is never a copy. Only {@code <sql>} elements whose parent is
+     * a {@code <changeSet>} are considered, so a {@code <rollback>} carrying the
+     * inverse statement never matches.
+     */
+    static String extractChangesetSql(String changesetPath, String statementKeyword) throws Exception {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);
         DocumentBuilder builder = factory.newDocumentBuilder();
         ClassPathResource resource = new ClassPathResource(changesetPath);
         try (InputStream in = resource.getInputStream()) {
             NodeList sqlNodes = builder.parse(in).getElementsByTagNameNS("*", "sql");
-            // The seed changeset contains exactly one top-level <sql> insert block;
-            // <rollback>
-            // wraps its own <sql>, so filter to the element whose parent is a <changeSet>.
+            // <rollback> wraps its own <sql> and carries the inverse statement, so
+            // filter to the elements whose parent is a <changeSet> before matching on
+            // the keyword.
             for (int i = 0; i < sqlNodes.getLength(); i++) {
                 Element sql = (Element) sqlNodes.item(i);
                 String parentLocal = sql.getParentNode().getLocalName();
                 if (parentLocal != null && parentLocal.equals("changeSet")) {
                     String text = sql.getTextContent();
-                    if (text != null && text.toUpperCase().contains("INSERT INTO")) {
+                    if (text != null && text.toUpperCase().contains(statementKeyword)) {
                         return text;
                     }
                 }
             }
-            throw new IllegalStateException("No top-level <sql> INSERT block found in changeset " + changesetPath);
+            throw new IllegalStateException(
+                    "No top-level <sql> " + statementKeyword + " block found in changeset " + changesetPath);
         }
+    }
+
+    /**
+     * Rebuilds the canonical system presets the way the Liquibase init run leaves
+     * them, for a test that cleared them: 030 re-inserts the presets, 031 re-adds
+     * the LAB_NUMBER field rows {@link #clearSystemPresets(DataSource)}
+     * cascade-deleted, and 032 re-marks Specimen Label universal.
+     *
+     * <p>
+     * The Testcontainer is shared and committed ({@code NOT_SUPPORTED}), so an
+     * incomplete restore is not local damage — it is the state every later test
+     * class in the run reads. Add the matching call here whenever a new changeset
+     * conditions the seeded presets.
+     */
+    static void restoreCanonicalSeed(DataSource dataSource) throws Exception {
+        clearSystemPresets(dataSource);
+        executeSeedSql(dataSource, SEED_CHANGESET);
+        executeSeedSql(dataSource, FIELD_SEED_CHANGESET);
+        executeUpdateSql(dataSource, UNIVERSAL_BACKFILL_CHANGESET);
     }
 
     static void clearSystemPresets(DataSource dataSource) throws Exception {

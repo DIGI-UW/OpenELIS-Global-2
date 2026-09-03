@@ -49,6 +49,8 @@ public class SamplePatientEntryEQAReceiptIntegrationTest extends EQASpineTestBas
         jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id = ?", SAMPLE_ID);
         super.cleanEqaTables();
         jdbc.update("DELETE FROM clinlims.sample WHERE id = ?", SAMPLE_ID);
+        jdbc.update("DELETE FROM clinlims.shipping_box WHERE id = 9955");
+        jdbc.update("DELETE FROM clinlims.organization WHERE id = '9950'");
     }
 
     private void seedSample() {
@@ -92,6 +94,32 @@ public class SamplePatientEntryEQAReceiptIntegrationTest extends EQASpineTestBas
                 new java.math.BigDecimal("4.5").compareTo(
                         jdbc.queryForObject("SELECT received_temp_c FROM clinlims.eqa_panel_receipt WHERE cycle_id = ?",
                                 java.math.BigDecimal.class, cycleId)));
+        assertEquals(EQACycleStatus.PANEL_RECEIVED, readBack(cycleId).getStatus());
+    }
+
+    /**
+     * FR-V2.2-12: the receipt on Add Order takes delivery of the imported
+     * consignment it names.
+     */
+    @Test
+    public void orderSaveWithAConsignment_receivesTheBoxAndRecordsItOnTheReceipt() {
+        Long cycleId = seedCycle("Order receipt with consignment");
+        jdbc.update("INSERT INTO clinlims.organization (id, name, mls_sentinel_lab_flag, is_active, lastupdated)"
+                + " VALUES ('9950', 'Receipt Test Lab', 'N', 'Y', now()) ON CONFLICT (id) DO NOTHING");
+        jdbc.update(
+                "INSERT INTO clinlims.shipping_box (id, box_id, fhir_uuid, destination_facility_id, state,"
+                        + " created_date, archived, sys_user_id, lastupdated)"
+                        + " VALUES (9955, 'BOX-9955', gen_random_uuid(), 9950, 'IN_TRANSIT', now(), false, ?, now())",
+                Integer.parseInt(USER));
+        SamplePatientUpdateData order = eqaOrder(cycleId, ENROLLMENT);
+        order.setEqaShippingBoxId("9955");
+
+        impl().persistSampleEQAData(order);
+
+        assertEquals(Integer.valueOf(9955), jdbc.queryForObject(
+                "SELECT shipping_box_id FROM clinlims.eqa_panel_receipt WHERE cycle_id = ?", Integer.class, cycleId));
+        assertEquals("RECEIVED",
+                jdbc.queryForObject("SELECT state FROM clinlims.shipping_box WHERE id = 9955", String.class));
         assertEquals(EQACycleStatus.PANEL_RECEIVED, readBack(cycleId).getStatus());
     }
 

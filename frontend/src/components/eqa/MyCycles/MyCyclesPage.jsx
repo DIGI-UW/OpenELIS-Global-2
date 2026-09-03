@@ -19,8 +19,10 @@ import {
   TableBody,
   TableCell,
   Loading,
+  Modal,
+  TextInput,
 } from "@carbon/react";
-import { ChevronDown, ChevronUp, Download } from "@carbon/react/icons";
+import { Add, ChevronDown, ChevronUp, Download } from "@carbon/react/icons";
 import { useIntl } from "react-intl";
 import { Link as RouterLink, useHistory } from "react-router-dom";
 import config from "../../../config.json";
@@ -32,7 +34,12 @@ import {
   kpiLabelStyle,
   kpiValueStyle,
 } from "../eqaCommon";
-import { fetchMyCycles, submitCycle } from "./cyclesApi";
+import {
+  createMyCycle,
+  fetchMyCycles,
+  fetchMyPrograms,
+  submitCycle,
+} from "./cyclesApi";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -135,6 +142,52 @@ const MyCyclesPage = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [submitNotice, setSubmitNotice] = useState(null);
+
+  // "New cycle": a participant records a cycle for a provider that does not
+  // send consignments to this OpenELIS (FR-V2.2-09). Consignments from an
+  // OpenELIS provider open their cycle on import, so this is the fallback.
+  const EMPTY_NEW_CYCLE = {
+    schemeName: "",
+    cycleName: "",
+    distributionDate: "",
+    submissionDeadline: "",
+  };
+  const [newCycleOpen, setNewCycleOpen] = useState(false);
+  const [newCycle, setNewCycle] = useState(EMPTY_NEW_CYCLE);
+  const [myPrograms, setMyPrograms] = useState([]);
+  const [newCycleError, setNewCycleError] = useState(null);
+  const [newCycleNotice, setNewCycleNotice] = useState(null);
+  const [savingCycle, setSavingCycle] = useState(false);
+
+  const openNewCycle = () => {
+    setNewCycleError(null);
+    setNewCycle(EMPTY_NEW_CYCLE);
+    fetchMyPrograms(setMyPrograms);
+    setNewCycleOpen(true);
+  };
+
+  const handleCreateCycle = () => {
+    setSavingCycle(true);
+    setNewCycleError(null);
+    createMyCycle(newCycle, (result) => {
+      setSavingCycle(false);
+      if (!result.ok) {
+        setNewCycleError(
+          result.error ||
+            t("eqa.cycle.new.error", "Could not create the cycle"),
+        );
+        return;
+      }
+      setNewCycleOpen(false);
+      setNewCycleNotice(
+        t(
+          "eqa.cycle.new.created",
+          'Cycle created. It is listed as Planned; use "Receive panel" when the panel arrives.',
+        ),
+      );
+      fetchMyCycles(setCycles);
+    });
+  };
 
   useEffect(() => {
     fetchMyCycles((data) => {
@@ -444,6 +497,24 @@ const MyCyclesPage = () => {
                 "Cycles your lab is participating in. Result entry and validation happen in the standard OpenELIS result pipeline — this page tracks progress and routes you there.",
               )}
             </p>
+            <Button
+              kind="tertiary"
+              size="sm"
+              renderIcon={Add}
+              onClick={openNewCycle}
+              style={{ marginBottom: "1rem" }}
+            >
+              {t("eqa.btn.newCycle", "New cycle")}
+            </Button>
+            {newCycleNotice && (
+              <InlineNotification
+                kind="success"
+                lowContrast
+                title={newCycleNotice}
+                onCloseButtonClick={() => setNewCycleNotice(null)}
+                style={{ marginBottom: "1rem" }}
+              />
+            )}
           </Section>
 
           <Grid condensed style={{ marginBottom: "1.5rem" }}>
@@ -740,6 +811,98 @@ const MyCyclesPage = () => {
           )}
         </Column>
       </Grid>
+
+      {newCycleOpen && (
+        <Modal
+          open
+          size="sm"
+          modalHeading={t("eqa.cycle.new.heading", "New EQA cycle")}
+          primaryButtonText={t("eqa.cycle.new.create", "Create cycle")}
+          secondaryButtonText={t("eqa.queue.cancel", "Cancel")}
+          primaryButtonDisabled={
+            savingCycle ||
+            !newCycle.schemeName ||
+            !newCycle.cycleName.trim() ||
+            !newCycle.submissionDeadline
+          }
+          onRequestClose={() => setNewCycleOpen(false)}
+          onSecondarySubmit={() => setNewCycleOpen(false)}
+          onRequestSubmit={handleCreateCycle}
+        >
+          <p style={{ color: "#525252", marginBottom: "1rem" }}>
+            {t(
+              "eqa.cycle.new.help",
+              'For a provider that does not send consignments to this OpenELIS: record the cycle the panel belongs to so it appears here with "Receive panel". Consignments from an OpenELIS provider open their cycle on import.',
+            )}
+          </p>
+          {newCycleError && (
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={newCycleError}
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+          <Select
+            id="new-cycle-scheme"
+            labelText={t(
+              "eqa.cycle.new.scheme",
+              "Programme (from My Programs)",
+            )}
+            helperText={
+              myPrograms.length === 0
+                ? t(
+                    "eqa.cycle.new.noPrograms",
+                    "Enroll in a programme under My Programs first.",
+                  )
+                : undefined
+            }
+            value={newCycle.schemeName}
+            onChange={(e) =>
+              setNewCycle({ ...newCycle, schemeName: e.target.value })
+            }
+          >
+            <SelectItem value="" text="" />
+            {myPrograms.map((prog) => (
+              <SelectItem
+                key={prog.id}
+                value={prog.programName}
+                text={prog.programName}
+              />
+            ))}
+          </Select>
+          <TextInput
+            id="new-cycle-name"
+            labelText={t("eqa.cycle.new.name", "Cycle name")}
+            value={newCycle.cycleName}
+            onChange={(e) =>
+              setNewCycle({ ...newCycle, cycleName: e.target.value })
+            }
+            style={{ marginTop: "1rem" }}
+          />
+          <TextInput
+            id="new-cycle-distribution"
+            type="date"
+            labelText={t("eqa.cycle.new.distributionDate", "Distribution date")}
+            value={newCycle.distributionDate}
+            onChange={(e) =>
+              setNewCycle({ ...newCycle, distributionDate: e.target.value })
+            }
+            style={{ marginTop: "1rem" }}
+          />
+          <TextInput
+            id="new-cycle-deadline"
+            type="date"
+            labelText={t("eqa.cycle.new.deadline", "Submission deadline")}
+            value={newCycle.submissionDeadline}
+            onChange={(e) =>
+              setNewCycle({ ...newCycle, submissionDeadline: e.target.value })
+            }
+            style={{ marginTop: "1rem" }}
+          />
+        </Modal>
+      )}
     </div>
   );
 };

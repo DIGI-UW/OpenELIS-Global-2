@@ -71,13 +71,11 @@ public class SystemPresetSeedMalformedInputTest extends BaseWebContextSensitiveT
 
     @After
     public void restoreCanonicalSeed() throws Exception {
-        // Restore the pristine baseline for sibling tests: canonical presets + their
-        // LAB_NUMBER field rows (031 re-run, since clearSystemPresets cascade-deletes
-        // them) + no fixture keys. Shared committed Testcontainer (NOT_SUPPORTED).
-        SystemPresetSeedTest.clearSystemPresets(dataSource);
+        // Restore the pristine baseline for sibling tests: canonical presets, their
+        // LAB_NUMBER field rows, the universality backfill, and no fixture keys.
+        // Shared committed Testcontainer (NOT_SUPPORTED).
         SystemPresetSeedTest.clearBarcodeSiteInformation(dataSource);
-        SystemPresetSeedTest.executeSeedSql(dataSource, SEED_CHANGESET);
-        SystemPresetSeedTest.executeSeedSql(dataSource, SystemPresetSeedTest.FIELD_SEED_CHANGESET);
+        SystemPresetSeedTest.restoreCanonicalSeed(dataSource);
     }
 
     @Test

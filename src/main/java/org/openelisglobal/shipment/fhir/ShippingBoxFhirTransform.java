@@ -7,6 +7,7 @@ import java.util.Map;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.DateType;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.IntegerType;
@@ -21,6 +22,8 @@ import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliverySuppliedItemComponent;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
+import org.openelisglobal.eqa.service.EQACycleService;
+import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.shipment.dao.BoxSampleItemDAO;
 import org.openelisglobal.shipment.valueholder.BoxSampleItem;
@@ -56,6 +59,13 @@ public class ShippingBoxFhirTransform {
      * panel material too, which has no Specimen resource and so no EXT_SPECIMEN.
      */
     public static final String EXT_CONTENT_ITEM = "http://openelis.org/fhir/extension/shipment-content-item";
+    /**
+     * The EQA cycle a provider consignment belongs to — scheme name, cycle number
+     * and name, distribution date, submission deadline — so a participant OpenELIS
+     * can open the matching local cycle on import instead of waiting for a REST
+     * call.
+     */
+    public static final String EXT_EQA_CYCLE = "http://openelis.org/fhir/extension/eqa-cycle";
     /** Anchor for the contained Location the destination reference points at. */
     static final String CONTAINED_DESTINATION_ID = "destination-facility";
 
@@ -190,7 +200,34 @@ public class ShippingBoxFhirTransform {
         // Extensions — specimen references and type summary
         addSpecimenExtensions(supplyDelivery, boxSampleItems);
 
+        addEqaCycleExtension(supplyDelivery, box);
+
         return supplyDelivery;
+    }
+
+    private void addEqaCycleExtension(SupplyDelivery supplyDelivery, ShippingBox box) {
+        if (box.getEqaCycleId() == null) {
+            return;
+        }
+        EQACycle cycle = SpringContext.getBean(EQACycleService.class).get(box.getEqaCycleId());
+        if (cycle == null || cycle.getScheme() == null) {
+            return;
+        }
+        Extension ext = new Extension(EXT_EQA_CYCLE);
+        ext.addExtension(new Extension("scheme", new StringType(cycle.getScheme().getName())));
+        if (cycle.getCycleNumber() != null) {
+            ext.addExtension(new Extension("number", new IntegerType(cycle.getCycleNumber())));
+        }
+        if (cycle.getCycleName() != null) {
+            ext.addExtension(new Extension("name", new StringType(cycle.getCycleName())));
+        }
+        if (cycle.getPlannedStartDate() != null) {
+            ext.addExtension(new Extension("distributionDate", new DateType(cycle.getPlannedStartDate())));
+        }
+        if (cycle.getPlannedEndDate() != null) {
+            ext.addExtension(new Extension("submissionDeadline", new DateType(cycle.getPlannedEndDate())));
+        }
+        supplyDelivery.addExtension(ext);
     }
 
     /**

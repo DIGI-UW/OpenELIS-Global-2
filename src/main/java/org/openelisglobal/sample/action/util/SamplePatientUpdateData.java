@@ -113,6 +113,7 @@ public class SamplePatientUpdateData {
     private String eqaReceivedTempC;
     private Boolean eqaIntegrityOk;
     private String eqaIntegrityNotes;
+    private String eqaShippingBoxId;
 
     private boolean customNotificationLogic;
     private List<String> patientEmailNotificationTestIds;
@@ -972,6 +973,14 @@ public class SamplePatientUpdateData {
 
     public void setEqaIntegrityNotes(String eqaIntegrityNotes) {
         this.eqaIntegrityNotes = eqaIntegrityNotes;
+    }
+
+    public String getEqaShippingBoxId() {
+        return eqaShippingBoxId;
+    }
+
+    public void setEqaShippingBoxId(String eqaShippingBoxId) {
+        this.eqaShippingBoxId = eqaShippingBoxId;
     }
 
     /**

@@ -22,6 +22,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.eqa.controller.rest.EQACycleRestController;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQACycleService;
+import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAParticipantResultService;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
 import org.openelisglobal.eqa.service.EQAReportCommentService;
@@ -102,6 +103,8 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
 
     @Autowired
     private EQAReportCommentService reportCommentService;
+    @Autowired
+    private EQALabProgramEnrollmentService enrollmentService;
 
     @Autowired
     private SystemUserService systemUserService;
@@ -135,7 +138,7 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
     @Before
     public void seedCycleWithScores() {
         controller = new EQACycleRestController(cycleService, sampleEQAService, sampleService, analysisService,
-                resultService, reportService, reportCommentService, systemUserService);
+                resultService, reportService, reportCommentService, systemUserService, enrollmentService);
 
         jdbc.update("INSERT INTO clinlims.localization (id, description)"
                 + " SELECT ?, 'EQA Report Section' WHERE NOT EXISTS"

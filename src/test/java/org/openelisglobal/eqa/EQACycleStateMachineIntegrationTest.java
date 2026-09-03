@@ -243,7 +243,7 @@ public class EQACycleStateMachineIntegrationTest extends EQASpineTestBase {
         // AppTestConfig excludes eqa.controller.* from the scan, so the endpoint
         // is exercised as a plain object over the real services it composes.
         EQACycleRestController controller = new EQACycleRestController(cycleService, null, null, null, null, null, null,
-                systemUserService);
+                systemUserService, null);
         List<Map<String, Object>> rows = controller.transitions(cycle.getId());
         assertEquals("Grace Achieng", rows.get(0).get("triggeredByName"));
         assertNull("an automatic transition resolves to no actor name", rows.get(1).get("triggeredByName"));

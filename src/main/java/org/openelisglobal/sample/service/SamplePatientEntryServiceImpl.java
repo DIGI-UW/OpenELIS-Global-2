@@ -504,7 +504,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (cycleId != null && enrollmentId != null) {
             BigDecimal receivedTempC = GenericValidator.isBlankOrNull(updateData.getEqaReceivedTempC()) ? null
                     : new BigDecimal(updateData.getEqaReceivedTempC());
-            eqaPanelReceiptService.recordReceipt(cycleId, enrollmentId, null, receivedTempC,
+            Integer shippingBoxId = GenericValidator.isBlankOrNull(updateData.getEqaShippingBoxId()) ? null
+                    : Integer.valueOf(updateData.getEqaShippingBoxId());
+            eqaPanelReceiptService.recordReceipt(cycleId, enrollmentId, null, shippingBoxId, receivedTempC,
                     updateData.getEqaIntegrityOk(), updateData.getEqaIntegrityNotes(),
                     Long.valueOf(updateData.getCurrentUserId()), updateData.getCurrentUserId());
         }

@@ -8523,5 +8523,22 @@
   "eqa.provider.schemes.participantOnly.title": "Participant view only",
   "eqa.provider.schemes.participantOnly.body": "Provider scheme administration needs the provider grant. Your lab's participation lives on the pages below.",
   "eqa.provider.schemes.link.myPrograms": "My enrollments — schemes this lab takes part in",
-  "eqa.provider.schemes.link.myCycles": "My Cycles — panels, results and deadlines"
+  "eqa.provider.schemes.link.myCycles": "My Cycles — panels, results and deadlines",
+  "eqa.btn.newCycle": "New cycle",
+  "eqa.cycle.new.heading": "New EQA cycle",
+  "eqa.cycle.new.help": "For a provider that does not send consignments to this OpenELIS: record the cycle the panel belongs to so it appears here with \"Receive panel\". Consignments from an OpenELIS provider open their cycle on import.",
+  "eqa.cycle.new.scheme": "Programme (from My Programs)",
+  "eqa.cycle.new.name": "Cycle name",
+  "eqa.cycle.new.distributionDate": "Distribution date",
+  "eqa.cycle.new.deadline": "Submission deadline",
+  "eqa.cycle.new.create": "Create cycle",
+  "eqa.cycle.new.created": "Cycle created. It is listed as Planned; use \"Receive panel\" when the panel arrives.",
+  "eqa.cycle.new.error": "Could not create the cycle",
+  "eqa.cycle.new.noPrograms": "Enroll in a programme under My Programs first.",
+  "eqa.order.receipt.consignment": "Inbound consignment",
+  "eqa.order.receipt.consignment.none": "None — received outside the shipment module",
+  "eqa.order.receipt.consignment.thisCycle": "this cycle",
+  "eqa.order.receipt.consignment.help": "Choosing the consignment takes delivery of it and tells the provider the panel arrived.",
+  "eqa.order.receipt.reference": "Shipment reference",
+  "eqa.order.receipt.referenceRecorded": "Consignment {code} received."
 }

@@ -20,6 +20,9 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
   const [existingReceipt, setExistingReceipt] = useState(null);
   // Both lists have answered; the deep link below waits for that.
   const [listsLoaded, setListsLoaded] = useState(0);
+  // Imported consignments waiting for reception; the receipt takes delivery of
+  // the one chosen here, which is what tells the provider the panel arrived.
+  const [inboundBoxes, setInboundBoxes] = useState([]);
 
   const sampleOrder = orderFormValues?.sampleOrderItems || {};
   const cycleId = sampleOrder.eqaCycleId || "";
@@ -42,6 +45,15 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
       }
       if (componentMounted.current) setListsLoaded((n) => n + 1);
     });
+
+    getFromOpenElisServer(
+      "/rest/shipping-box/by-state/IN_TRANSIT",
+      (response) => {
+        if (componentMounted.current && Array.isArray(response)) {
+          setInboundBoxes(response);
+        }
+      },
+    );
 
     return () => {
       componentMounted.current = false;
@@ -99,6 +111,30 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
   }, [cycleId, enrollmentId]);
 
   // Ignore a receipt still held from a previously picked cycle.
+  // Consignments already linked to the chosen cycle come first; a box imported
+  // before the cycle existed, or for another cycle, stays selectable.
+  const consignmentOptions = [...inboundBoxes]
+    .sort((a, b) => {
+      const aMatch = String(a.eqaCycleId) === String(cycleId) ? 0 : 1;
+      const bMatch = String(b.eqaCycleId) === String(cycleId) ? 0 : 1;
+      return aMatch - bMatch || String(a.boxId).localeCompare(String(b.boxId));
+    })
+    .map((box) => ({
+      id: box.id,
+      boxId: box.boxId,
+      label:
+        box.boxId +
+        (String(box.eqaCycleId) === String(cycleId)
+          ? ` · ${intl.formatMessage({ id: "eqa.order.receipt.consignment.thisCycle" })}`
+          : "") +
+        (box.destinationFacilityName
+          ? ` — ${box.destinationFacilityName}`
+          : ""),
+    }));
+  const selectedBox = consignmentOptions.find(
+    (box) => String(box.id) === String(sampleOrder.eqaShippingBoxId || ""),
+  );
+
   const receiptOnFile =
     existingReceipt && String(existingReceipt.cycleId) === String(cycleId)
       ? existingReceipt
@@ -217,9 +253,59 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
                     id="eqa.order.receipt.recorded"
                     values={{ date: receiptOnFile.receivedDate }}
                   />
+                  {receiptOnFile.boxCode && (
+                    <>
+                      {" "}
+                      <FormattedMessage
+                        id="eqa.order.receipt.referenceRecorded"
+                        values={{ code: receiptOnFile.boxCode }}
+                      />
+                    </>
+                  )}
                 </p>
               ) : (
                 <Grid>
+                  <Column lg={16} md={8} sm={4}>
+                    <Select
+                      id="eqa-consignment"
+                      labelText={intl.formatMessage({
+                        id: "eqa.order.receipt.consignment",
+                      })}
+                      helperText={intl.formatMessage({
+                        id: "eqa.order.receipt.consignment.help",
+                      })}
+                      value={sampleOrder.eqaShippingBoxId || ""}
+                      onChange={(e) =>
+                        updateField("eqaShippingBoxId", e.target.value)
+                      }
+                    >
+                      <SelectItem
+                        value=""
+                        text={intl.formatMessage({
+                          id: "eqa.order.receipt.consignment.none",
+                        })}
+                      />
+                      {consignmentOptions.map((box) => (
+                        <SelectItem
+                          key={box.id}
+                          value={String(box.id)}
+                          text={box.label}
+                        />
+                      ))}
+                    </Select>
+                  </Column>
+                  {selectedBox && (
+                    <Column lg={16} md={8} sm={4}>
+                      <TextInput
+                        id="eqa-shipment-reference"
+                        readOnly
+                        labelText={intl.formatMessage({
+                          id: "eqa.order.receipt.reference",
+                        })}
+                        value={selectedBox.boxId}
+                      />
+                    </Column>
+                  )}
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="eqa-received-temp"
