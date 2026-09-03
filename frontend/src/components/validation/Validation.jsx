@@ -11,7 +11,7 @@ import {
   Tag,
   TextArea,
 } from "@carbon/react";
-import { Copy, Launch } from "@carbon/icons-react";
+import { Copy, Launch, WarningAltFilled } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
@@ -25,6 +25,13 @@ import config from "../../config.json";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
+import {
+  FILTERS,
+  LANE_CLEAR,
+  countByFilter,
+  filterTriaged,
+  triageRows,
+} from "./validationTriage";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -78,6 +85,7 @@ const Validation = (props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [qcAckChecked, setQcAckChecked] = useState(false);
   const [qcJustification, setQcJustification] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
 
   // S-08 FR-04: failed QC samples in the current batch, populated by the GET.
   // The acknowledgment is only required when there's a release pending — if the
@@ -93,6 +101,16 @@ const Validation = (props) => {
     qcFailures[0]?.accessionNumber ||
     props.results?.accessionNumber ||
     props.results?.resultList?.[0]?.accessionNumber;
+
+  const triaged = triageRows(props.results?.resultList);
+  const filterCounts = countByFilter(triaged);
+  const visibleRows = filterTriaged(triaged, activeFilter).map(
+    (item) => item.row,
+  );
+  const triageByRowId = new Map(triaged.map((item) => [item.row.id, item]));
+  const clearLaneCount = triaged.filter(
+    (item) => item.lane === LANE_CLEAR,
+  ).length;
 
   useEffect(() => {
     componentMounted.current = true;
@@ -144,6 +162,14 @@ const Validation = (props) => {
         return renderCell(row, index, column, id);
       },
       width: "8rem",
+    },
+    {
+      id: "checkBeforeRelease",
+      name: intl.formatMessage({ id: "label.validation.checkBeforeRelease" }),
+      cell: (row, index, column, id) => {
+        return renderCell(row, index, column, id);
+      },
+      width: "14rem",
     },
     {
       id: "save",
@@ -438,6 +464,34 @@ const Validation = (props) => {
         );
       }
 
+      case "checkBeforeRelease": {
+        const triage = triageByRowId.get(row.id);
+        if (!triage || triage.chips.length === 0) {
+          return null;
+        }
+        return (
+          <div
+            data-testid={`check-before-release-${row.id}`}
+            style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}
+          >
+            {triage.chips.map((chip) => (
+              <Tag
+                key={chip}
+                type="red"
+                size="sm"
+                renderIcon={WarningAltFilled}
+              >
+                <strong>
+                  {intl.formatMessage({
+                    id: `label.validation.signal.${chip}`,
+                  })}
+                </strong>
+              </Tag>
+            ))}
+          </div>
+        );
+      }
+
       case "save":
         return (
           <>
@@ -648,6 +702,52 @@ const Validation = (props) => {
           </Column>
         </Grid>
       )}
+      {triaged.length > 0 && (
+        <div
+          data-testid="validation-triage-filters"
+          role="group"
+          aria-label={intl.formatMessage({
+            id: "label.validation.triage.filterLabel",
+          })}
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+            alignItems: "center",
+            margin: "1rem 0",
+          }}
+        >
+          {FILTERS.map((filter) => (
+            <Button
+              key={filter}
+              size="sm"
+              kind={activeFilter === filter ? "primary" : "tertiary"}
+              aria-pressed={activeFilter === filter}
+              data-testid={`triage-filter-${filter}`}
+              onClick={() => {
+                setActiveFilter(filter);
+                setPage(1);
+              }}
+            >
+              {intl.formatMessage({ id: `label.validation.filter.${filter}` })}{" "}
+              ({filterCounts[filter]})
+            </Button>
+          ))}
+          <span
+            data-testid="validation-lane-summary"
+            style={{ marginLeft: "auto", display: "flex", gap: "0.25rem" }}
+          >
+            <Tag type="green" size="sm">
+              {intl.formatMessage({ id: "label.validation.lane.clear" })}:{" "}
+              {clearLaneCount}
+            </Tag>
+            <Tag type="gray" size="sm">
+              {intl.formatMessage({ id: "label.validation.lane.needsReview" })}:{" "}
+              {triaged.length - clearLaneCount}
+            </Tag>
+          </span>
+        </div>
+      )}
       <Formik
         initialValues={ValidationSearchFormValues}
         //validationSchema={}
@@ -657,14 +757,7 @@ const Validation = (props) => {
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
             <DataTable
-              data={
-                props.results
-                  ? props?.results?.resultList?.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )
-                  : []
-              }
+              data={visibleRows.slice((page - 1) * pageSize, page * pageSize)}
               columns={columns}
               isSortable
             ></DataTable>
@@ -673,13 +766,7 @@ const Validation = (props) => {
               page={page}
               pageSize={pageSize}
               pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={
-                props.results
-                  ? props.results.resultList
-                    ? props.results.resultList.length
-                    : 0
-                  : 0
-              }
+              totalItems={visibleRows.length}
               forwardText={intl.formatMessage({ id: "pagination.forward" })}
               backwardText={intl.formatMessage({ id: "pagination.backward" })}
               itemRangeText={(min, max, total) =>
