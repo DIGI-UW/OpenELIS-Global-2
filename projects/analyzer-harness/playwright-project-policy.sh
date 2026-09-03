@@ -46,7 +46,7 @@ assert_harness_project_has_specs() {
       ;;
   esac
 
-  if ! find "$spec_dir" -maxdepth 1 -type f -name '*.spec.ts' -print -quit 2>/dev/null | grep -q .; then
+  if ! find "$spec_dir" -type f -name '*.spec.ts' -print -quit 2>/dev/null | grep -q .; then
     if [[ "$project" == "harness-foundational" ]]; then
       echo "ERROR: project '$project' has no analyzer foundational specs" >&2
     else
