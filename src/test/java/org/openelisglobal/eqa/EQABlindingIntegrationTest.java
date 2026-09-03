@@ -141,6 +141,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
         // organization row is FK-referenced by the follow-up register.
         jdbc.update("DELETE FROM clinlims.eqa_participant_followup");
         jdbc.update("DELETE FROM clinlims.organization WHERE name = 'This laboratory'");
+        jdbc.update("DELETE FROM clinlims.dictionary WHERE local_abbrev = 'IHACC'");
     }
 
     // ---- fixture builders ----
@@ -203,6 +204,30 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
                         + " lastupdated, fhir_uuid)"
                         + " VALUES (nextval('clinlims.result_seq'), ?, 'N', ?, 1, 'Y', now(), gen_random_uuid())",
                 analysisId, value);
+    }
+
+    /**
+     * A dictionary result the way result entry writes one: result_type 'D' with the
+     * dictionary id as the value. The existing helper writes 'N', which never
+     * reaches the escaping branch of the display formatter.
+     */
+    private void enterDictionaryResultViaPipeline(String blindCode, long dictionaryId) {
+        Long analysisId = jdbc.queryForObject(
+                "SELECT a.id FROM clinlims.analysis a JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                        + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                Long.class, blindCode);
+        jdbc.update(
+                "INSERT INTO clinlims.result (id, analysis_id, result_type, value, sort_order, is_reportable,"
+                        + " lastupdated, fhir_uuid)"
+                        + " VALUES (nextval('clinlims.result_seq'), ?, 'D', ?, 1, 'Y', now(), gen_random_uuid())",
+                analysisId, String.valueOf(dictionaryId));
+    }
+
+    private long seedDictionaryEntry(String entry) {
+        Long id = jdbc.queryForObject("SELECT nextval('clinlims.dictionary_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.dictionary (id, is_active, dict_entry, local_abbrev, lastupdated)"
+                + " VALUES (?, 'Y', ?, 'IHACC', now())", id, entry);
+        return id;
     }
 
     private Map<String, Object> panelRow(Long panelId) {
@@ -436,6 +461,45 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
         assertEquals("UNACCEPTABLE", bySample.get(failingSample).get("performance_status"));
         assertEquals("only the analyst who entered nothing misses the deadline", "MISSED_DEADLINE",
                 bySample.get(silentSample).get("submission_status"));
+    }
+
+    @Test
+    public void unblind_scoresAnAccentedDictionaryAnswerAgainstItsIdenticalTarget() {
+        // The defect this covers: the reported value was read through the display
+        // formatter, which escapes a dictionary entry for HTML. An analyst who
+        // answered "Negatif" with its accent was compared as "N&eacute;gatif"
+        // against the target a supervisor typed in the clear, so an answer
+        // identical to the target scored UNACCEPTABLE — and the same escaped
+        // string went to the provider over FHIR and in the export CSV. The other
+        // categorical cases here use ASCII words written as numeric-typed rows,
+        // which never reach that branch.
+        EQAProgram scheme = inHouseScheme("IH Accent Scheme");
+        EQACycle cycle = readBack(insertCycle(scheme, 1));
+        EQAPanel panel = panelWith(scheme, cycle, EQAPanelStatus.PREPARING, LocalDate.now().plusDays(1));
+        String target = "N\u00e9gatif";
+        Long matching = insertPanelSample(panel, "IH-01", "IHBLIND-AC1", CATEGORICAL_ANALYTE, target, null, null);
+        Long differing = insertPanelSample(panel, "IH-02", "IHBLIND-AC2", CATEGORICAL_ANALYTE, target, null, null);
+
+        blindingService.sealAndDistribute(panel.getId(), List.of(new BlindOrderSpec(matching, SEEDED_TEST_ID, 1L),
+                new BlindOrderSpec(differing, SEEDED_TEST_ID, 1L)), USER);
+
+        enterDictionaryResultViaPipeline("IHBLIND-AC1", seedDictionaryEntry(target));
+        enterDictionaryResultViaPipeline("IHBLIND-AC2", seedDictionaryEntry("Positif"));
+
+        blindingService.unblindAndScore(panel.getId(), USER, EQAUnblindMethod.MANUAL);
+
+        Map<Long, Map<String, Object>> bySample = new java.util.HashMap<>();
+        for (Map<String, Object> row : jdbc.queryForList("SELECT panel_sample_id, performance_status, result_value"
+                + " FROM clinlims.eqa_participant_result WHERE cycle_id = ?", cycle.getId())) {
+            bySample.put(((Number) row.get("panel_sample_id")).longValue(), row);
+        }
+        assertEquals("the accented entry is stored as itself, not as markup", target,
+                bySample.get(matching).get("result_value"));
+        assertEquals("an answer identical to the target is acceptable", "ACCEPTABLE",
+                bySample.get(matching).get("performance_status"));
+        assertEquals("Positif", bySample.get(differing).get("result_value"));
+        assertEquals("a different answer is still unacceptable", "UNACCEPTABLE",
+                bySample.get(differing).get("performance_status"));
     }
 
     @Test
