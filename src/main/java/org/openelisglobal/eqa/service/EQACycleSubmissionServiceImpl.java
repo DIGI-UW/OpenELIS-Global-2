@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -659,6 +660,61 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             advanceTo(cycle, SCORED, EQATriggerType.AUTO, EQATriggerEvent.SCORE_INTAKE, null, null, sysUserId);
         }
         return scored;
+    }
+
+    @Override
+    public Map<String, Object> intakeScoresCsv(Long cycleId, Long labEnrollmentId, String csv, String sysUserId) {
+        if (csv == null || csv.isBlank()) {
+            throw new IllegalArgumentException("The CSV is empty");
+        }
+        String[] lines = EqaCsv.lines(csv);
+        List<String> header = EqaCsv.split(lines[0]);
+        int nameColumn = EqaCsv.indexOf(header, "analyte_name");
+        int verdictColumn = EqaCsv.indexOf(header, "performance_status");
+        int zColumn = EqaCsv.indexOf(header, "z_score");
+        if (nameColumn < 0 || verdictColumn < 0) {
+            throw new IllegalArgumentException(
+                    "The CSV needs analyte_name and performance_status columns (the provider's scores CSV)");
+        }
+        AnalyteService analyteService = SpringContext.getBean(AnalyteService.class);
+        List<Map<String, Object>> scores = new ArrayList<>();
+        List<String> unmapped = new ArrayList<>();
+        for (int i = 1; i < lines.length; i++) {
+            if (lines[i].isBlank()) {
+                continue;
+            }
+            List<String> cells = EqaCsv.split(lines[i]);
+            String name = EqaCsv.cell(cells, nameColumn);
+            String verdict = EqaCsv.cell(cells, verdictColumn);
+            if (name.isEmpty() || verdict.isEmpty()) {
+                continue;
+            }
+            Analyte probe = new Analyte();
+            probe.setAnalyteName(name);
+            Analyte analyte = analyteService.getAnalyteByName(probe, true);
+            if (analyte == null) {
+                unmapped.add(name);
+                continue;
+            }
+            Map<String, Object> score = new LinkedHashMap<>();
+            score.put("analyteId", Long.valueOf(analyte.getId()));
+            score.put("performance", verdict);
+            String z = EqaCsv.cell(cells, zColumn);
+            if (!z.isEmpty()) {
+                score.put("zScore", z);
+            }
+            scores.add(score);
+        }
+        if (scores.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No row names an analyte this laboratory knows" + (unmapped.isEmpty() ? "" : ": " + unmapped));
+        }
+        int scored = intakeScores(cycleId, labEnrollmentId, scores, sysUserId);
+        Map<String, Object> outcome = new LinkedHashMap<>();
+        outcome.put("cycleId", cycleId);
+        outcome.put("scored", scored);
+        outcome.put("unmapped", unmapped);
+        return outcome;
     }
 
     private EQAParticipantResult resolveScoredRow(Long cycleId, Long labEnrollmentId, Map<String, Object> entry) {

@@ -20,6 +20,7 @@ import {
   TableCell,
   Loading,
   Modal,
+  TextArea,
   TextInput,
 } from "@carbon/react";
 import { Add, ChevronDown, ChevronUp, Download } from "@carbon/react/icons";
@@ -38,6 +39,7 @@ import {
   createMyCycle,
   fetchMyCycles,
   fetchMyPrograms,
+  importScoresCsv,
   submitCycle,
 } from "./cyclesApi";
 
@@ -142,6 +144,42 @@ const MyCyclesPage = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [submitNotice, setSubmitNotice] = useState(null);
+
+  // Scores from a provider that is not an OpenELIS arrive as a file; a provider
+  // OpenELIS delivers them through the FHIR store on its own.
+  const [scoreImport, setScoreImport] = useState(null);
+  const [importNotice, setImportNotice] = useState(null);
+
+  const handleImportScores = () => {
+    setScoreImport({ ...scoreImport, busy: true, error: null });
+    importScoresCsv(scoreImport.cycle.id, scoreImport.csv, (result) => {
+      if (!result.ok) {
+        setScoreImport({
+          ...scoreImport,
+          busy: false,
+          error:
+            result.error ||
+            t("eqa.cycle.importScores.failed", "Could not import the scores"),
+        });
+        return;
+      }
+      setScoreImport(null);
+      setImportNotice(
+        t("eqa.cycle.importScores.imported", "{count} scores recorded.", {
+          count: result.scored,
+        }) +
+          (result.unmapped.length
+            ? " " +
+              t(
+                "eqa.cycle.importScores.unmapped",
+                "Not recognised here: {names}",
+                { names: result.unmapped.join(", ") },
+              )
+            : ""),
+      );
+      fetchMyCycles(setCycles);
+    });
+  };
 
   // "New cycle": a participant records a cycle for a provider that does not
   // send consignments to this OpenELIS (FR-V2.2-09). Consignments from an
@@ -269,7 +307,20 @@ const MyCyclesPage = () => {
 
   const renderExpanded = (cycle) => (
     <div style={{ padding: "0.5rem 0" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div
+        style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}
+      >
+        {cycle.status === "submitted" && (
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() =>
+              setScoreImport({ cycle, csv: "", error: null, busy: false })
+            }
+          >
+            {t("eqa.cycle.importScores", "Import scores (CSV)")}
+          </Button>
+        )}
         <Button
           kind="ghost"
           size="sm"
@@ -491,6 +542,15 @@ const MyCyclesPage = () => {
             <Heading>
               {t("eqa.participant.myCycles.title", "My EQA Cycles")}
             </Heading>
+            {importNotice && (
+              <InlineNotification
+                kind="success"
+                lowContrast
+                title={importNotice}
+                onCloseButtonClick={() => setImportNotice(null)}
+                style={{ marginBottom: "1rem" }}
+              />
+            )}
             <p style={{ color: "#525252", marginBottom: "1rem" }}>
               {t(
                 "eqa.participant.myCycles.subtitle",
@@ -900,6 +960,50 @@ const MyCyclesPage = () => {
               setNewCycle({ ...newCycle, submissionDeadline: e.target.value })
             }
             style={{ marginTop: "1rem" }}
+          />
+        </Modal>
+      )}
+      {scoreImport && (
+        <Modal
+          open
+          size="sm"
+          modalHeading={t(
+            "eqa.cycle.importScores.heading",
+            "Import the provider's scores",
+          )}
+          primaryButtonText={t(
+            "eqa.cycle.importScores.import",
+            "Import scores",
+          )}
+          secondaryButtonText={t("eqa.queue.cancel", "Cancel")}
+          primaryButtonDisabled={scoreImport.busy || !scoreImport.csv.trim()}
+          onRequestClose={() => setScoreImport(null)}
+          onSecondarySubmit={() => setScoreImport(null)}
+          onRequestSubmit={handleImportScores}
+        >
+          <p style={{ color: "#525252", marginBottom: "1rem" }}>
+            {t(
+              "eqa.cycle.importScores.help",
+              "Paste the scores CSV the provider sent (analyte_name and performance_status columns). Scores from a provider OpenELIS arrive on their own through the FHIR store.",
+            )}
+          </p>
+          {scoreImport.error && (
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={scoreImport.error}
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+          <TextArea
+            id="score-import-csv"
+            labelText={t("eqa.cycle.importScores.csv", "Scores CSV")}
+            value={scoreImport.csv}
+            onChange={(e) =>
+              setScoreImport({ ...scoreImport, csv: e.target.value })
+            }
+            rows={5}
           />
         </Modal>
       )}

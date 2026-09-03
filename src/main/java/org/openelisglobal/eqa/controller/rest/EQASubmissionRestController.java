@@ -84,6 +84,24 @@ public class EQASubmissionRestController extends BaseRestController {
      * FR-V2.2-08 score intake: the provider's verdicts, with the Z-score the
      * FR-V2.3-01 tiers read. Provider act, so it takes the manage grant.
      */
+    /**
+     * FR-V2.2-08 by file: the provider's scores CSV pasted or uploaded from My
+     * Cycles — {@code {"csv": "test,analyte_name,...", "labEnrollmentId": 3}}.
+     */
+    @PostMapping(value = "/cycles/{cycleId}/score-intake/csv", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    public ResponseEntity<?> intakeScoresCsv(HttpServletRequest request, @PathVariable Long cycleId,
+            @RequestBody Map<String, Object> body) {
+        try {
+            return ResponseEntity.ok(cycleSubmissionService.intakeScoresCsv(cycleId, longField(body, "labEnrollmentId"),
+                    stringField(body, "csv"), getSysUserId(request)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping(value = "/cycles/{cycleId}/score-intake", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.MANAGE)
     public ResponseEntity<?> intakeScores(HttpServletRequest request, @PathVariable Long cycleId,

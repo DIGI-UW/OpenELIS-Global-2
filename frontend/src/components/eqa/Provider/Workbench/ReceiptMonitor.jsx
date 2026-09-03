@@ -274,7 +274,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
       report(
         response,
         "eqa.score.distributed",
-        "Scores returned over FHIR.",
+        "Scores placed in the FHIR store for the participant to collect.",
         "eqa.score.distributeFailed",
       ),
     );

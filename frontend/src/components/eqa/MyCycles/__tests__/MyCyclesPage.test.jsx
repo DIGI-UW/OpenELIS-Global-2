@@ -166,6 +166,44 @@ describe("MyCyclesPage", () => {
     expect(screen.queryByText(/Cycle created/)).toBeNull();
   });
 
+  test("Import scores (CSV) posts the pasted file for a submitted cycle and reports the outcome", async () => {
+    const submitted = {
+      ...MOCK_CYCLES[0],
+      id: 9,
+      status: "SUBMITTED",
+      participantState: "SUBMITTED",
+      samples: [],
+    };
+    renderPage(UNCYCLED_ORDERS, [submitted]);
+    // A submitted cycle sits outside the default in-flight bucket.
+    fireEvent.change(document.getElementById("cycle-bucket-filter"), {
+      target: { value: "all" },
+    });
+    fireEvent.click(screen.getByTestId("cycle-row-9"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Import scores (CSV)" }),
+    );
+    fireEvent.change(screen.getByLabelText("Scores CSV"), {
+      target: { value: "analyte_name,performance_status\nHIV VL,ACCEPTABLE" },
+    });
+    postToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: true,
+        json: () => Promise.resolve({ scored: 1, unmapped: ["Ghost"] }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Import scores" }));
+
+    const [url, body] = postToOpenElisServerFullResponse.mock.calls[0];
+    expect(url).toBe("/rest/eqa/cycles/9/score-intake/csv");
+    expect(JSON.parse(body)).toEqual({
+      csv: "analyte_name,performance_status\nHIV VL,ACCEPTABLE",
+    });
+    expect(
+      await screen.findByText(/1 scores recorded\. Not recognised here: Ghost/),
+    ).toBeInTheDocument();
+  });
+
   test("row expansion reveals sample progress with result-entry deep links", () => {
     renderPage();
     fireEvent.click(screen.getByTestId("cycle-row-1"));

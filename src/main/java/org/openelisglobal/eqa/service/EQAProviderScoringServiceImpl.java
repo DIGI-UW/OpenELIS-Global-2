@@ -171,12 +171,17 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     @Override
     @Transactional(readOnly = true)
     public String buildScoreCsv(Long cycleId, Long organizationId) {
-        StringBuilder csv = new StringBuilder("test,result_value,target_value,z_score,performance_status,scored_on\n");
+        // analyte_name is what a participant on another instance matches on when it
+        // imports these scores: test ids and names are the provider's own.
+        StringBuilder csv = new StringBuilder(
+                "test,analyte_name,result_value,target_value,z_score,performance_status,scored_on\n");
         for (EQAResult result : resultsFor(cycleId, organizationId)) {
-            // Only the test name is escaped: it is the one free-text cell. Running a
-            // decimal through csvEscape would quote a negative Z as a formula and
-            // print it as '-0.28 (found driving the download, 2026-08-24).
+            // Only the free-text cells are escaped. Running a decimal through csvEscape
+            // would quote a negative Z as a formula and print it as '-0.28 (found
+            // driving the download, 2026-08-24).
+            String analyte = analyteName(analyteIdOrNull(result.getTestId()));
             csv.append(StringUtil.csvEscape(testName(result.getTestId()))).append(',')
+                    .append(analyte == null ? "" : StringUtil.csvEscape(analyte)).append(',')
                     .append(result.getResultText() != null ? StringUtil.csvEscape(result.getResultText())
                             : number(result.getResultValue()))
                     .append(',').append(number(result.getTargetValue())).append(',').append(number(result.getZScore()))
@@ -277,10 +282,10 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         if (csv == null || csv.isBlank()) {
             throw new IllegalArgumentException("The CSV is empty");
         }
-        String[] lines = csv.split("\\r?\\n");
-        List<String> header = splitCsv(lines[0]);
-        int nameColumn = indexOfHeader(header, "analyte_name");
-        int valueColumn = indexOfHeader(header, "result_value");
+        String[] lines = EqaCsv.lines(csv);
+        List<String> header = EqaCsv.split(lines[0]);
+        int nameColumn = EqaCsv.indexOf(header, "analyte_name");
+        int valueColumn = EqaCsv.indexOf(header, "result_value");
         if (nameColumn < 0 || valueColumn < 0) {
             throw new IllegalArgumentException(
                     "The CSV needs analyte_name and result_value columns (the participant's export bundle)");
@@ -291,9 +296,9 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             if (lines[i].isBlank()) {
                 continue;
             }
-            List<String> cells = splitCsv(lines[i]);
-            String name = nameColumn < cells.size() ? cells.get(nameColumn).trim() : "";
-            String value = valueColumn < cells.size() ? cells.get(valueColumn).trim() : "";
+            List<String> cells = EqaCsv.split(lines[i]);
+            String name = EqaCsv.cell(cells, nameColumn);
+            String value = EqaCsv.cell(cells, valueColumn);
             if (value.isEmpty()) {
                 continue;
             }
@@ -389,47 +394,6 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         }
         Analyte analyte = SpringContext.getBean(AnalyteService.class).get(String.valueOf(analyteId));
         return analyte == null ? null : analyte.getAnalyteName();
-    }
-
-    private static int indexOfHeader(List<String> header, String name) {
-        for (int i = 0; i < header.size(); i++) {
-            if (name.equalsIgnoreCase(header.get(i).trim())) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * RFC 4180 enough for an export bundle: quoted cells may carry commas and
-     * doubled quotes.
-     */
-    private static List<String> splitCsv(String line) {
-        List<String> cells = new ArrayList<>();
-        StringBuilder cell = new StringBuilder();
-        boolean quoted = false;
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (quoted) {
-                if (c == '"' && i + 1 < line.length() && line.charAt(i + 1) == '"') {
-                    cell.append('"');
-                    i++;
-                } else if (c == '"') {
-                    quoted = false;
-                } else {
-                    cell.append(c);
-                }
-            } else if (c == '"') {
-                quoted = true;
-            } else if (c == ',') {
-                cells.add(cell.toString());
-                cell.setLength(0);
-            } else {
-                cell.append(c);
-            }
-        }
-        cells.add(cell.toString());
-        return cells;
     }
 
     // ---- helpers ----
