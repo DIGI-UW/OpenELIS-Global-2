@@ -45,6 +45,7 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
 
     private EQAProgram scheme;
     private EQACycle cycle;
+    private EQAPanel panel;
 
     @Before
     public void seed() {
@@ -66,7 +67,7 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
         cycle = readBack(insertCycle(scheme, 1));
         jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'SUBMISSIONS_OPEN' WHERE id = ?", cycle.getId());
 
-        EQAPanel panel = insertPanel(scheme, p -> {
+        panel = insertPanel(scheme, p -> {
             p.setCycle(cycle);
             p.setPanelName("Intake panel");
         });
@@ -156,6 +157,49 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
                         Integer.class, cycle.getId()));
     }
 
+    /**
+     * The peer z-score cannot carry a verdict at the roster size scoring requires:
+     * with the sample standard deviation taken over every reported value, the
+     * largest z anyone can reach is (n-1)/sqrt(n), which is 1.79 for five
+     * participants — below the questionable threshold, let alone the unacceptable
+     * one. So a laboratory reporting double the target used to score acceptable.
+     * The panel's sealed target and range decide instead, and the z stays on the
+     * row as the reported statistic. The other tests here keep twelve participants,
+     * where the ceiling happens to clear 3, which is why this went unnoticed.
+     */
+    @Test
+    public void aNumericOutlierIsUnacceptableAtTheFiveParticipantScoringFloor() {
+        EQAPanelSample sealed = new EQAPanelSample();
+        sealed.setPanel(panel);
+        sealed.setSampleCode("S02");
+        sealed.setAnalyteId(ANALYTE_VL);
+        sealed.setTargetValue("40");
+        sealed.setAcceptanceRangeLow(new BigDecimal("36"));
+        sealed.setAcceptanceRangeHigh(new BigDecimal("44"));
+        sealed.setSysUserId(USER);
+        eqaPanelSampleDAO.insert(sealed);
+
+        String[] reported = { "39.5", "40", "40.5", "41", "80" };
+        for (int i = 0; i < reported.length; i++) {
+            scoringService.takeIn(cycle.getId(), FIRST_ORG + i, Map.of(TEST_VL, reported[i]),
+                    EQASubmissionMethod.MANUAL, USER);
+        }
+        long outlier = FIRST_ORG + reported.length - 1;
+
+        scoringService.scoreCycle(cycle.getId(), USER);
+
+        assertEquals("a value inside the sealed range is acceptable", "ACCEPTABLE", verdict(FIRST_ORG, TEST_VL));
+        assertEquals("double the target is unacceptable however tight the peer group is", "UNACCEPTABLE",
+                verdict(outlier, TEST_VL));
+        assertTrue("the peer z is still reported, and is below the threshold it could not reach",
+                zScore(outlier, TEST_VL).abs().compareTo(new BigDecimal("2")) < 0);
+        assertEquals("the report and the scores CSV can show what the number was judged against", 0,
+                targetValue(outlier, TEST_VL).compareTo(new BigDecimal("40")));
+        assertEquals("the failure reaches the follow-up register", Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_participant_followup WHERE cycle_id = ?",
+                        Integer.class, cycle.getId()));
+    }
+
     @Test
     public void aParticipantExportBundleImportsByAnalyteName() {
         String csv = "cycle_id,cycle_name,round_number,analyte_id,analyte_name,result_value,result_unit,"
@@ -231,6 +275,13 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
                 "SELECT performance_status FROM clinlims.eqa_result"
                         + " WHERE participant_organization_id = ? AND test_id = ?",
                 String.class, organizationId, testId);
+    }
+
+    private BigDecimal targetValue(long organizationId, long testId) {
+        return jdbc.queryForObject(
+                "SELECT target_value FROM clinlims.eqa_result"
+                        + " WHERE participant_organization_id = ? AND test_id = ?",
+                BigDecimal.class, organizationId, testId);
     }
 
     private BigDecimal zScore(long organizationId, long testId) {

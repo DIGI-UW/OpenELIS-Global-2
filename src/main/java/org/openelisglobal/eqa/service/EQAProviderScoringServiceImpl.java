@@ -144,8 +144,14 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
                     + " reported results; this cycle has " + reported);
         }
 
+        // The peer statistics run first and stay on the row as the reported z. They
+        // cannot carry the verdict on their own: with the sample SD taken over every
+        // reported value, the largest z anyone can reach is (n-1)/sqrt(n) — 1.79 at
+        // the five participants MIN_PARTICIPANTS_FOR_STATS requires, below the
+        // questionable threshold — so a laboratory reporting double the target scored
+        // acceptable. Where the panel sealed a target, that target is the verdict.
         eqaStatisticsService.calculateAndUpdateStatistics(distribution.getId());
-        judgeReportedText(cycle, distribution.getId());
+        judgeAgainstPanelTargets(cycle, distribution.getId());
         advanceToScored(cycle, sysUserId);
 
         int followups = 0;
@@ -345,33 +351,46 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     }
 
     /**
-     * Qualitative results have no peer mean: the verdict is an exact,
-     * case-insensitive match against the panel's sealed target for the test's
-     * analyte (the same rule in-house scoring applies). A test with no sealed
-     * target leaves the verdict blank rather than guessing.
+     * Judge every reported value against the target its panel sealed, numeric and
+     * qualitative alike, through the same comparison the in-house lane uses. A
+     * qualitative result has no peer z and never had one; a numeric result keeps
+     * the z the statistics pass computed, as the reported statistic beside the
+     * verdict rather than as the verdict.
+     *
+     * <p>
+     * A result whose analyte has no sealed target keeps whatever the peer
+     * statistics decided — a scheme that reports without a target has nothing else
+     * to be judged against.
      */
-    private void judgeReportedText(EQACycle cycle, Long distributionId) {
-        Map<Long, String> targetByAnalyte = new HashMap<>();
+    private void judgeAgainstPanelTargets(EQACycle cycle, Long distributionId) {
+        Map<Long, EQAPanelSample> targetByAnalyte = new HashMap<>();
         for (EQAPanel panel : eqaPanelDAO.getAllMatching("cycle.id", cycle.getId())) {
             for (EQAPanelSample sample : eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId())) {
                 if (sample.getAnalyteId() != null && sample.getTargetValue() != null) {
-                    targetByAnalyte.put(sample.getAnalyteId(), sample.getTargetValue().trim());
+                    targetByAnalyte.put(sample.getAnalyteId(), sample);
                 }
             }
         }
         for (EQAResult result : eqaResultDAO.findByDistributionId(distributionId)) {
-            if (result.getResultText() == null || result.getResultValue() != null) {
-                continue;
-            }
             Long analyteId = analyteIdOrNull(result.getTestId());
-            String target = analyteId == null ? null : targetByAnalyte.get(analyteId);
+            EQAPanelSample target = analyteId == null ? null : targetByAnalyte.get(analyteId);
             if (target == null) {
                 continue;
             }
-            result.setZScore(null);
-            result.setPerformanceStatus(
-                    target.equalsIgnoreCase(result.getResultText().trim()) ? EQAPerformanceStatus.ACCEPTABLE
-                            : EQAPerformanceStatus.UNACCEPTABLE);
+            String reported = result.getResultText() != null ? result.getResultText()
+                    : result.getResultValue() == null ? null : result.getResultValue().toPlainString();
+            if (reported == null) {
+                continue;
+            }
+            if (result.getResultText() != null) {
+                // Qualitative: no peer mean to place it against.
+                result.setZScore(null);
+            } else {
+                // The report and the scores CSV show what a number was judged against;
+                // a target that is a word has no column here and needs none.
+                result.setTargetValue(EqaPanelVerdict.numericTargetOf(target));
+            }
+            result.setPerformanceStatus(EqaPanelVerdict.of(target, reported));
             eqaResultDAO.update(result);
         }
     }
