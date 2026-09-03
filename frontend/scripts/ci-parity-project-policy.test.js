@@ -63,13 +63,13 @@ describe("analyzer harness Playwright project policy", () => {
     expect(result.status).toBe(0);
   });
 
-  test("foundational parity discovers nested analyzer scenarios", () => {
+  test("demo parity discovers nested analyzer scenarios", () => {
     const tempRoot = mkdtempSync(
       path.join(tmpdir(), "analyzer-harness-policy-"),
     );
     const nestedSpec = path.join(
       tempRoot,
-      "frontend/playwright/tests/foundational/harness/mapping/review.spec.ts",
+      "frontend/playwright/tests/demo/harness/mapping/review.spec.ts",
     );
     mkdirSync(path.dirname(nestedSpec), { recursive: true });
     writeFileSync(nestedSpec, "");
@@ -79,7 +79,7 @@ describe("analyzer harness Playwright project policy", () => {
         "bash",
         [
           "-c",
-          'source "$1"; assert_harness_project_has_specs "$2" "harness-foundational"',
+          'source "$1"; assert_harness_project_has_specs "$2" "harness-demo"',
           "test",
           policy,
           tempRoot,
