@@ -92,10 +92,13 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         confirmation.setConfirmedAt(Timestamp.from(Instant.now()));
         confirmation.setSysUserId(effectiveActor);
         confirmationDAO.insert(confirmation);
-        confirmation.setAuditEventId(requireText(
-                auditTrailService.saveNewHistory(confirmation, effectiveActor, AUDIT_TABLE), "audit event ID"));
-        confirmationDAO.update(confirmation);
-        return toView(confirmation, AnalyzerSiteBindingConfirmationView.State.CURRENT);
+        String auditEventId = auditTrailService.saveNewHistory(confirmation, effectiveActor, AUDIT_TABLE);
+        if (hasText(auditEventId)) {
+            confirmation.setAuditEventId(auditEventId);
+            confirmationDAO.update(confirmation);
+            return toView(confirmation, AnalyzerSiteBindingConfirmationView.State.CURRENT);
+        }
+        return toView(confirmation, AnalyzerSiteBindingConfirmationView.State.STALE);
     }
 
     @Override

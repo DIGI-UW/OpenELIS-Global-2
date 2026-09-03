@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -21,10 +24,13 @@ import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerInstanceRestControllerTest {
@@ -35,12 +41,14 @@ public class AnalyzerInstanceRestControllerTest {
     private AnalyzerInstanceService service;
 
     private AnalyzerInstanceRestController controller;
+    private MockMvc mockMvc;
     private AnalyzerInstanceRequest input;
     private MockHttpServletRequest request;
 
     @Before
     public void setUp() {
         controller = new AnalyzerInstanceRestController(service);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ControllerSetup()).build();
         input = new AnalyzerInstanceRequest();
         input.setName("Synthetic bench 1");
         input.setProfileId("fixture.synthetic-connection");
@@ -125,6 +133,15 @@ public class AnalyzerInstanceRestControllerTest {
         assertEquals(true, analyzers.get(0).get("connected"));
         assertFalse(analyzers.get(0).containsKey("connection"));
         verify(service).list();
+    }
+
+    @Test
+    public void reportsServiceValidationAsBadRequest() throws Exception {
+        when(service.get("missing")).thenThrow(new IllegalArgumentException("Analyzer not found"));
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/missing"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Analyzer not found"));
     }
 
     private static AnalyzerInstanceView connectedView() {

@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -105,6 +106,22 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         assertEquals(request.confirmedRows(), confirmed.confirmedRows());
         assertEquals(request.excludedRows(), confirmed.excludedRows());
         verify(auditTrailService).saveNewHistory(saved.getValue(), "17", "analyzer_site_binding_confirmation");
+    }
+
+    @Test
+    public void disabledHistoryLeavesTheSavedConfirmationStaleWithoutASecondWrite() {
+        when(auditTrailService.saveNewHistory(any(AnalyzerSiteBindingConfirmation.class), eq("17"),
+                eq("analyzer_site_binding_confirmation"))).thenReturn(null);
+
+        AnalyzerSiteBindingConfirmationView confirmed = service.confirm(completeCandidate("61", BINDING_FINGERPRINT),
+                RECOGNITION_FINGERPRINT, exactRequest(), "17");
+
+        ArgumentCaptor<AnalyzerSiteBindingConfirmation> saved = ArgumentCaptor
+                .forClass(AnalyzerSiteBindingConfirmation.class);
+        verify(confirmationDAO).insert(saved.capture());
+        assertNull(saved.getValue().getAuditEventId());
+        verify(confirmationDAO, never()).update(any(AnalyzerSiteBindingConfirmation.class));
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, confirmed.state());
     }
 
     @Test
