@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   TextInput,
   TextArea,
   Toggle,
+  FilterableMultiSelect,
   InlineNotification,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
+  getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
   resolveApiErrorMessage,
@@ -26,10 +28,89 @@ const ProgramForm = ({ program, onClose }) => {
   const [providerError, setProviderError] = useState("");
   const [saveError, setSaveError] = useState("");
 
+  // The tests this programme collects. Provider intake reads exactly this map —
+  // the results grid and its CSV import both iterate it — so a programme with
+  // none of them cannot take in a single participant result.
+  const [tests, setTests] = useState([]);
+  const [selectedTests, setSelectedTests] = useState([]);
+  const [assignedTestIds, setAssignedTestIds] = useState([]);
+  // FilterableMultiSelect takes its selection on mount only, so it waits for
+  // both reads rather than mounting empty and never catching up.
+  const [testsReady, setTestsReady] = useState(false);
+
+  useEffect(() => {
+    // The unscoped catalog, as the participant enrollment form uses: /rest/test-list
+    // is narrowed by the caller's Results lab-unit role, which a QA Officer has no
+    // reason to hold.
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (data) => {
+      // A nameless entry would reach Carbon's sort as undefined and take the
+      // dialog down with it, so it is dropped rather than offered.
+      const items = (Array.isArray(data) ? data : [])
+        .filter((t) => t && t.id != null && t.value)
+        .map((t) => ({ id: String(t.id), text: String(t.value) }));
+      setTests(items);
+
+      if (!isEditing) {
+        setTestsReady(true);
+        return;
+      }
+      getFromOpenElisServer(
+        `/rest/eqa/programs/${program.id}/tests`,
+        (assignments) => {
+          const ids = (Array.isArray(assignments) ? assignments : [])
+            .filter((a) => a.isActive !== false)
+            .map((a) => String(a.testId));
+          setAssignedTestIds(ids);
+          setSelectedTests(items.filter((t) => ids.includes(t.id)));
+          setTestsReady(true);
+        },
+      );
+    });
+  }, []);
+
+  const saveTestAssignments = (programId, done) => {
+    const chosen = selectedTests.map((t) => String(t.id));
+    const unchanged =
+      chosen.length === assignedTestIds.length &&
+      chosen.every((id) => assignedTestIds.includes(id));
+    // Every save would otherwise delete and re-create the rows, so a rename would
+    // churn assignments it never touched.
+    if (unchanged) {
+      done();
+      return;
+    }
+    putToOpenElisServerFullResponse(
+      `/rest/eqa/programs/${programId}/tests`,
+      JSON.stringify({ testIds: chosen.map(Number) }),
+      (response) => {
+        if (response && response.ok) {
+          done();
+          return;
+        }
+        Promise.resolve(
+          response ? response.json().catch(() => null) : null,
+        ).then((body) =>
+          setSaveError(
+            resolveApiErrorMessage(intl, body, "eqa.program.tests.saveFailed"),
+          ),
+        );
+      },
+    );
+  };
+
   // keep the modal open and show why the server refused, instead of closing as if saved
   const handleResponse = (response) => {
     if (response && response.ok) {
-      if (onClose) onClose();
+      Promise.resolve(response.json().catch(() => null)).then((body) => {
+        const programId = isEditing ? program.id : body?.id;
+        if (programId == null) {
+          if (onClose) onClose();
+          return;
+        }
+        saveTestAssignments(programId, () => {
+          if (onClose) onClose();
+        });
+      });
       return;
     }
     Promise.resolve(response ? response.json().catch(() => null) : null).then(
@@ -139,6 +220,20 @@ const ProgramForm = ({ program, onClose }) => {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+        {testsReady && (
+          <FilterableMultiSelect
+            id="program-tests"
+            titleText={intl.formatMessage({ id: "eqa.program.tests" })}
+            helperText={intl.formatMessage({ id: "eqa.program.tests.helper" })}
+            items={tests}
+            itemToString={(item) => (item ? item.text : "")}
+            initialSelectedItems={selectedTests}
+            onChange={(e) => setSelectedTests(e.selectedItems)}
+            placeholder={intl.formatMessage({
+              id: "eqa.program.tests.select",
+            })}
+          />
+        )}
         <Toggle
           id="program-per-analyst"
           labelText={intl.formatMessage({

@@ -2122,6 +2122,8 @@
   "eqa.program.status": "Status",
   "eqa.program.tests": "Assigned Tests",
   "eqa.program.tests.assign": "Assign Tests",
+  "eqa.program.tests.helper": "Result intake for this program offers exactly these tests, on the results grid and in its CSV import.",
+  "eqa.program.tests.saveFailed": "The program was saved but its tests were not. Reopen it and set them again.",
   "eqa.program.tests.select": "Select tests to assign",
   "eqa.provider.label": "EQA Provider Organization",
   "eqa.provider.sampleId": "Provider Sample ID",
