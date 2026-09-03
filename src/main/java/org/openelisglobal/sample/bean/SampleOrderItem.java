@@ -245,6 +245,8 @@ public class SampleOrderItem implements Serializable {
     private String eqaReceivedTempC;
     private Boolean eqaIntegrityOk;
     private String eqaIntegrityNotes;
+    /** The imported consignment (shipping box) this receipt takes delivery of. */
+    private String eqaShippingBoxId;
 
     // Informed consent fields
     private Boolean consentGiven;
@@ -747,6 +749,14 @@ public class SampleOrderItem implements Serializable {
 
     public void setEqaIntegrityNotes(String eqaIntegrityNotes) {
         this.eqaIntegrityNotes = eqaIntegrityNotes;
+    }
+
+    public String getEqaShippingBoxId() {
+        return eqaShippingBoxId;
+    }
+
+    public void setEqaShippingBoxId(String eqaShippingBoxId) {
+        this.eqaShippingBoxId = eqaShippingBoxId;
     }
 
     public Map<String, Object> getEnvironmentalFields() {

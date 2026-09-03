@@ -52,6 +52,12 @@ public class EQAPanelReceipt extends BaseObject<Long> {
     @Column(name = "shipment_id")
     private Integer shipmentId;
 
+    /**
+     * The imported consignment this receipt took delivery of, when there was one.
+     */
+    @Column(name = "shipping_box_id")
+    private Integer shippingBoxId;
+
     @Column(name = "received_date", nullable = false)
     private Date receivedDate;
 

@@ -8,6 +8,8 @@ import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.eqa.service.EQAPanelReceiptService;
 import org.openelisglobal.eqa.valueholder.EQAPanelReceipt;
+import org.openelisglobal.shipment.service.ShippingBoxService;
+import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,9 +34,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class EQAPanelReceiptRestController extends BaseRestController {
 
     private final EQAPanelReceiptService receiptService;
+    private final ShippingBoxService shippingBoxService;
 
-    public EQAPanelReceiptRestController(EQAPanelReceiptService receiptService) {
+    public EQAPanelReceiptRestController(EQAPanelReceiptService receiptService, ShippingBoxService shippingBoxService) {
         this.receiptService = receiptService;
+        this.shippingBoxService = shippingBoxService;
     }
 
     /** Idempotent: 201 on first record, 200 with the existing row afterwards. */
@@ -62,6 +66,11 @@ public class EQAPanelReceiptRestController extends BaseRestController {
         if (rawShipment != null && !String.valueOf(rawShipment).isBlank()) {
             shipmentId = Integer.valueOf(String.valueOf(rawShipment));
         }
+        Integer shippingBoxId = null;
+        Object rawBox = body.get("shippingBoxId");
+        if (rawBox != null && !String.valueOf(rawBox).isBlank()) {
+            shippingBoxId = Integer.valueOf(String.valueOf(rawBox));
+        }
 
         BigDecimal receivedTempC = null;
         Object rawTemp = body.get("receivedTempC");
@@ -75,8 +84,8 @@ public class EQAPanelReceiptRestController extends BaseRestController {
         boolean existedBefore = !receiptService
                 .getAllMatching(Map.of("cycle.id", cycleId, "labEnrollmentId", labEnrollmentId)).isEmpty();
 
-        EQAPanelReceipt receipt = receiptService.recordReceipt(cycleId, labEnrollmentId, shipmentId, receivedTempC,
-                integrityOk, stringField(body, "integrityNotes"), receivedBy, sysUserId);
+        EQAPanelReceipt receipt = receiptService.recordReceipt(cycleId, labEnrollmentId, shipmentId, shippingBoxId,
+                receivedTempC, integrityOk, stringField(body, "integrityNotes"), receivedBy, sysUserId);
 
         return ResponseEntity.status(existedBefore ? HttpStatus.OK : HttpStatus.CREATED).body(toDto(cycleId, receipt));
     }
@@ -99,6 +108,11 @@ public class EQAPanelReceiptRestController extends BaseRestController {
         dto.put("cycleId", cycleId);
         dto.put("labEnrollmentId", receipt.getLabEnrollmentId());
         dto.put("shipmentId", receipt.getShipmentId());
+        dto.put("shippingBoxId", receipt.getShippingBoxId());
+        // The box code is the receipt's shipment reference (FR-V2.2-12).
+        ShippingBox box = receipt.getShippingBoxId() == null ? null
+                : shippingBoxService.getBoxById(receipt.getShippingBoxId());
+        dto.put("boxCode", box == null ? null : box.getBoxId());
         dto.put("receivedDate", receipt.getReceivedDate() == null ? null : receipt.getReceivedDate().toString());
         dto.put("receivedTempC", receipt.getReceivedTempC());
         dto.put("integrityOk", receipt.getIntegrityOk());

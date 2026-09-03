@@ -140,4 +140,8 @@
        distributions (qa-072). Must follow qa/028: it re-declares the
        trigger-event CHECK that qa/024 and qa/028 extended. -->
   <include file="liquibase/qa/022-backfill-v1-distribution-cycles.xml" />
+
+  <!-- EQA V2.2 — OGC-610: the imported consignment a panel receipt took delivery
+       of (qa-077). Must follow the shipment changelog that creates shipping_box. -->
+  <include file="liquibase/qa/038-eqa-panel-receipt-shipping-box.xml" />
 </databaseChangeLog>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.2 (OGC-610, FR-V2.2-12): the inbound consignment a panel receipt was
+    taken from. A participant receives a provider's panel as an imported shipping
+    box; recording that box on the receipt lets the Add Order receipt take
+    delivery of the consignment itself — which is what completes the provider's
+    SupplyDelivery and turns its Receipt Monitor row DELIVERED — and gives the
+    receipt its shipment reference (the box code). Nullable: a panel received
+    outside the shipment module has no box.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-077-eqa-panel-receipt-shipping-box">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="eqa_panel_receipt" columnName="shipping_box_id" />
+            </not>
+        </preConditions>
+        <comment>FR-V2.2-12: the imported consignment a panel receipt took delivery of</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_panel_receipt">
+            <column name="shipping_box_id" type="INTEGER" />
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="eqa_panel_receipt"
+            baseColumnNames="shipping_box_id" constraintName="fk_eqa_panel_receipt_shipping_box"
+            referencedTableSchemaName="clinlims" referencedTableName="shipping_box" referencedColumnNames="id" />
+        <createIndex schemaName="clinlims" tableName="eqa_panel_receipt" indexName="idx_eqa_panel_receipt_shipping_box">
+            <column name="shipping_box_id" />
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="eqa_panel_receipt" indexName="idx_eqa_panel_receipt_shipping_box" />
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="eqa_panel_receipt"
+                constraintName="fk_eqa_panel_receipt_shipping_box" />
+            <dropColumn schemaName="clinlims" tableName="eqa_panel_receipt" columnName="shipping_box_id" />
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -8534,5 +8534,11 @@
   "eqa.cycle.new.create": "Create cycle",
   "eqa.cycle.new.created": "Cycle created. It is listed as Planned; use \"Receive panel\" when the panel arrives.",
   "eqa.cycle.new.error": "Could not create the cycle",
-  "eqa.cycle.new.noPrograms": "Enroll in a programme under My Programs first."
+  "eqa.cycle.new.noPrograms": "Enroll in a programme under My Programs first.",
+  "eqa.order.receipt.consignment": "Inbound consignment",
+  "eqa.order.receipt.consignment.none": "None — received outside the shipment module",
+  "eqa.order.receipt.consignment.thisCycle": "this cycle",
+  "eqa.order.receipt.consignment.help": "Choosing the consignment takes delivery of it and tells the provider the panel arrived.",
+  "eqa.order.receipt.reference": "Shipment reference",
+  "eqa.order.receipt.referenceRecorded": "Consignment {code} received."
 }
