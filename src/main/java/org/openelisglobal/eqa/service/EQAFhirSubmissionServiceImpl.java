@@ -251,13 +251,9 @@ public class EQAFhirSubmissionServiceImpl implements EQAFhirSubmissionService {
     }
 
     private String analyteNameForTest(Long testId) {
-        try {
-            Long analyteId = testId == null ? null
-                    : SpringContext.getBean(EQAPanelService.class).analyteIdForTest(String.valueOf(testId));
-            return analyteNameFor(analyteId);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
+        Long analyteId = testId == null ? null
+                : SpringContext.getBean(EQAPanelService.class).findAnalyteIdForTest(String.valueOf(testId));
+        return analyteNameFor(analyteId);
     }
 
     /**

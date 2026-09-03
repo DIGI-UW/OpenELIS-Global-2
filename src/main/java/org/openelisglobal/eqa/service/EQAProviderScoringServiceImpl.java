@@ -381,11 +381,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     }
 
     private Long analyteIdOrNull(Long testId) {
-        try {
-            return testId == null ? null : eqaPanelService.analyteIdForTest(String.valueOf(testId));
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
+        return testId == null ? null : eqaPanelService.findAnalyteIdForTest(String.valueOf(testId));
     }
 
     private String analyteName(Long analyteId) {

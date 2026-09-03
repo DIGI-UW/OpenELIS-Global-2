@@ -212,7 +212,7 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
         if (GenericValidator.isBlankOrNull(testId)) {
             return null;
         }
-        Test test = SpringContext.getBean(TestService.class).get(testId);
+        Test test = loadTest(testId);
         if (test == null) {
             throw new IllegalArgumentException("Unknown test " + testId);
         }
@@ -222,6 +222,33 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
                     "Test " + test.getName() + " has no analyte, so it cannot carry a panel target");
         }
         return Long.valueOf(analytes.get(0).getAnalyte().getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Long findAnalyteIdForTest(String testId) {
+        if (GenericValidator.isBlankOrNull(testId)) {
+            return null;
+        }
+        Test test = loadTest(testId);
+        if (test == null) {
+            return null;
+        }
+        List<TestAnalyte> analytes = testAnalyteService.getAllTestAnalytesPerTest(test);
+        return analytes.isEmpty() ? null : Long.valueOf(analytes.get(0).getAnalyte().getId());
+    }
+
+    /**
+     * Returns null for a test id with no row behind it. Deliberately
+     * {@code getTestById}, which runs a query, rather than {@code get}, which hands
+     * back a lazy proxy and throws ObjectNotFoundException on the first dereference
+     * of an id that is not there. That throw crosses TestService's own transaction
+     * proxy, which marks the shared transaction rollback-only before either caller
+     * below can catch it, and the caller's commit then fails with
+     * UnexpectedRollback even though it handled the miss.
+     */
+    private Test loadTest(String testId) {
+        return SpringContext.getBean(TestService.class).getTestById(testId);
     }
 
     @Override
