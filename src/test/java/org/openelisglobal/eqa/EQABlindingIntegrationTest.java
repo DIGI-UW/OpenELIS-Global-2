@@ -27,6 +27,7 @@ import org.openelisglobal.eqa.scheduler.EQADeadlineAlertScheduler;
 import org.openelisglobal.eqa.service.EQABlindingService;
 import org.openelisglobal.eqa.service.EQABlindingService.BlindOrderSpec;
 import org.openelisglobal.eqa.service.EQALabelPDFService;
+import org.openelisglobal.eqa.service.EQAPanelService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelSample;
@@ -63,6 +64,8 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
     private EQAPanelSampleDAO panelSampleDAO;
     @Autowired
     private IStatusService statusService;
+    @Autowired
+    private EQAPanelService panelService;
 
     /**
      * The eqa.scheduler package is deliberately excluded from the test component
@@ -141,6 +144,33 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
     }
 
     // ---- fixture builders ----
+
+    /**
+     * The unblind endpoint maps its response after the scoring transaction has
+     * committed, so the panel it holds is detached. The DTO must still resolve the
+     * lazily loaded cycle, or the call answers 500 with the work already done. GET
+     * /panels/{id} reads and maps in two transactions the same way.
+     */
+    @Test
+    public void unblind_returnsAPanelTheEndpointCanRenderAfterTheTransactionEnds() {
+        EQAProgram scheme = inHouseScheme("IH Detached Scheme");
+        EQACycle cycle = readBack(insertCycle(scheme, 1));
+        EQAPanel panel = panelWith(scheme, cycle, EQAPanelStatus.DISTRIBUTED, LocalDate.now().minusDays(1));
+        insertPanelSample(panel, "IH-01", "IHBLIND-D1", NUMERIC_ANALYTE, "100", "95", "105");
+
+        Map<String, Object> dto = panelService
+                .toPanelDto(blindingService.unblindAndScore(panel.getId(), USER, EQAUnblindMethod.MANUAL));
+
+        assertEquals("SCORED", dto.get("status"));
+        assertEquals("MANUAL", dto.get("unblindMethod"));
+        assertEquals(cycle.getId(), dto.get("cycleId"));
+        assertEquals(cycle.getCycleNumber(), dto.get("cycleNumber"));
+        assertEquals(cycle.getCycleName(), dto.get("cycleName"));
+
+        Map<String, Object> read = panelService.toPanelDto(panelService.get(panel.getId()));
+        assertEquals("SCORED", read.get("status"));
+        assertEquals(cycle.getCycleNumber(), read.get("cycleNumber"));
+    }
 
     private EQAProgram inHouseScheme(String name) {
         return insertScheme(name, EQASchemeType.IN_HOUSE, null);
