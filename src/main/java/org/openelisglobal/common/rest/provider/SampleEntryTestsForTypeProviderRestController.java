@@ -247,7 +247,12 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         return samplePanelService.getTypeOfSamplePanelsForSampleType(sampleType);
     }
 
-    private List<PanelTestMap> linkTestsToPanels(List<TypeOfSamplePanel> panelList, List<Test> tests) {
+    /**
+     * Package-private (not {@code private}) so the same-package test can exercise
+     * the sample-type panel-member filter without a full {@code /rest} session
+     * (OGC-1189).
+     */
+    List<PanelTestMap> linkTestsToPanels(List<TypeOfSamplePanel> panelList, List<Test> tests) {
         List<PanelTestMap> selected = new ArrayList<>();
 
         Map<String, Integer> testNameOrderMap = new HashMap<>();
@@ -280,7 +285,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         for (PanelItem item : items) {
             String derivedNameFromPanel = getDerivedNameFromPanel(item);
-            if (derivedNameFromPanel != null) {
+            if (derivedNameFromPanel != null && testIdOrderMap.get(derivedNameFromPanel) != null) {
                 String ItemId = item.getTest().getId();
 
                 if (ItemId != null) {

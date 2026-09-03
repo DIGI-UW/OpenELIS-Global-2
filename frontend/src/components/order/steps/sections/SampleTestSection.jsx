@@ -310,10 +310,14 @@ const SampleTestSection = ({
         { id: panel.id, name: panel.name, testIds: panel.testIds },
       ];
       const testsToAdd = panelTestIds
-        .filter((testId) => !currentTests.some((t) => t.id === testId))
+        .filter(
+          (testId) =>
+            availableTests.some((t) => t.id === testId) &&
+            !currentTests.some((t) => t.id === testId),
+        )
         .map((testId) => {
           const test = availableTests.find((t) => t.id === testId);
-          return { id: testId, name: test?.name || testId };
+          return { id: testId, name: test.name };
         });
       updated[sampleIndex].tests = [...currentTests, ...testsToAdd];
     } else {
