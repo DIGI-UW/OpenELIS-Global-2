@@ -40,6 +40,7 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -93,6 +94,22 @@ public class ShipmentFhirImportService {
      */
     @Value("${org.openelisglobal.shipment.import.maxAgeDays:30}")
     private int importMaxAgeDays;
+
+    /**
+     * Off by default: the consignment import stays a button on the Reception screen
+     * unless the deployment turns the poll on. It then runs on the same cadence as
+     * the delivery reconcile below.
+     */
+    @Value("${org.openelisglobal.shipment.import.scheduled:false}")
+    private boolean importScheduled;
+
+    /**
+     * The scheduled poll goes through the proxy so pollAndImportShipments keeps
+     * its @Async and @Transactional behaviour; a plain self-call would bypass both.
+     */
+    @Autowired
+    @Lazy
+    private ShipmentFhirImportService self;
 
     private boolean statusBackflowEnabled() {
         return remoteStoreUpdateStatus.isPresent() && remoteStoreUpdateStatus.get();
@@ -434,6 +451,20 @@ public class ShipmentFhirImportService {
      * transaction, so a fault mid-loop keeps every box already applied and the next
      * run picks up the rest.
      */
+    /**
+     * Scheduled counterpart of the Reception screen's Import from FHIR button,
+     * enabled by {@code org.openelisglobal.shipment.import.scheduled=true}. A
+     * participant laboratory then sees a dispatched consignment within one poll
+     * with nobody clicking; with the property unset nothing changes.
+     */
+    @Scheduled(initialDelay = 45 * 1000, fixedRateString = "${org.openelisglobal.remote.poll.frequency:120000}")
+    public void importShipmentsOnSchedule() {
+        if (!importScheduled) {
+            return;
+        }
+        self.pollAndImportShipments();
+    }
+
     @Scheduled(initialDelay = 30 * 1000, fixedRateString = "${org.openelisglobal.remote.poll.frequency:120000}")
     public void reconcileDeliveredShipments() {
         if (!statusBackflowEnabled()) {
