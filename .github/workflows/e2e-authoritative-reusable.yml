@@ -31,8 +31,8 @@ on:
         required: false
         type: string
         default: "base"
-      include_plugin_jars:
-        description: "Whether harness should consume plugin jars"
+      include_analyzer_harness:
+        description: "Whether to run analyzer harness UI stories"
         required: false
         type: string
         default: "true"
@@ -88,7 +88,7 @@ jobs:
   # Runs harness-foundational and harness-demo projects on the analyzer harness.
   playwright-harness:
     name: Playwright Harness
-    if: inputs.include_plugin_jars == 'true'
+    if: inputs.include_analyzer_harness == 'true'
     uses: ./.github/workflows/e2e-playwright-reusable.yml
     permissions:
       contents: read
