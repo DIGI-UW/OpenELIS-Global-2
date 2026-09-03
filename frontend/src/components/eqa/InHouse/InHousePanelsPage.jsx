@@ -183,7 +183,7 @@ const InHousePanelsPage = () => {
             <Tile>
               {label(
                 "eqa.inhouse.noSchemes",
-                "No in-house scheme exists yet. Create one under EQA scheme management first.",
+                "No in-house scheme exists yet. Create one under EQA Program Management, choosing the In-house scheme type.",
               )}
             </Tile>
           ) : (

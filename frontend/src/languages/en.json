@@ -8562,5 +8562,7 @@
   "eqa.cycle.importScores.import": "Import scores",
   "eqa.cycle.importScores.imported": "{count} scores recorded.",
   "eqa.cycle.importScores.unmapped": "Not recognised here: {names}",
-  "eqa.cycle.importScores.failed": "Could not import the scores"
+  "eqa.cycle.importScores.failed": "Could not import the scores",
+  "eqa.program.schemeType": "Scheme type",
+  "eqa.program.schemeType.helper": "In-house schemes are run by this laboratory and need no provider; every other type does."
 }

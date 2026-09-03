@@ -12,6 +12,7 @@ import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
 import org.openelisglobal.eqa.valueholder.EQASchemeAnalyst;
+import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,14 +33,21 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize(EQAGuards.READ)
 public class EQAProgramRestController extends ControllerUtills {
 
-    @Autowired
-    private EQAProgramService programService;
+    private final EQAProgramService programService;
 
-    @Autowired
-    private EQAProgramEnrollmentService enrollmentService;
+    private final EQAProgramEnrollmentService enrollmentService;
 
+    private final SystemUserService systemUserService;
+
+    // Constructor injection so the integration suite can drive this controller
+    // with the real services, the way EQACycleRestController is exercised.
     @Autowired
-    private SystemUserService systemUserService;
+    public EQAProgramRestController(EQAProgramService programService, EQAProgramEnrollmentService enrollmentService,
+            SystemUserService systemUserService) {
+        this.programService = programService;
+        this.enrollmentService = enrollmentService;
+        this.systemUserService = systemUserService;
+    }
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.PROVIDER)
@@ -52,12 +60,16 @@ public class EQAProgramRestController extends ControllerUtills {
                 return ResponseEntity.badRequest().body(Map.of("error", "Program name is required"));
             }
 
-            String provider = (String) body.get("provider");
+            String schemeType = body.get("schemeType") == null ? "" : String.valueOf(body.get("schemeType")).trim();
+            if (schemeType.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Scheme type is required"));
+            }
 
             EQAProgram program = new EQAProgram();
             program.setName(name);
             program.setDescription(description);
-            program.setProvider(provider);
+            program.setSchemeType(schemeTypeOf(schemeType));
+            program.setProvider(blankToNull((String) body.get("provider")));
             program.setPerAnalyst(Boolean.TRUE.equals(body.get("perAnalyst")));
             program.setIsActive(true);
             program.setSysUserId(getSysUserId(request));
@@ -115,7 +127,15 @@ public class EQAProgramRestController extends ControllerUtills {
             }
 
             if (body.containsKey("provider")) {
-                program.setProvider((String) body.get("provider"));
+                program.setProvider(blankToNull((String) body.get("provider")));
+            }
+
+            if (body.containsKey("schemeType")) {
+                String schemeType = body.get("schemeType") == null ? "" : String.valueOf(body.get("schemeType")).trim();
+                if (schemeType.isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Scheme type cannot be empty"));
+                }
+                program.setSchemeType(schemeTypeOf(schemeType));
             }
 
             if (body.containsKey("isActive")) {
@@ -233,6 +253,28 @@ public class EQAProgramRestController extends ControllerUtills {
         dto.put("displayName", user == null ? String.valueOf(analyst.getSystemUserId())
                 : (user.getFirstName() == null ? "" : user.getFirstName() + " ") + user.getLastName());
         return dto;
+    }
+
+    /**
+     * The arrangement type is a user decision, not a default: an in-house scheme is
+     * unreachable from the UI while the endpoint ignores it, and a regional or
+     * split-sample scheme created without it is silently filed as international. An
+     * unknown value is refused by name rather than falling back.
+     */
+    private EQASchemeType schemeTypeOf(String value) {
+        try {
+            return EQASchemeType.valueOf(value.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown scheme type: " + value);
+        }
+    }
+
+    /**
+     * A blank provider is stored as NULL, so the BR-004 check and every reader see
+     * "no provider" as one value instead of two.
+     */
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private Map<String, Object> toProgramDto(EQAProgram program) {
