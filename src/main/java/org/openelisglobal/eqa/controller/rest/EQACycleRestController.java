@@ -3,9 +3,11 @@ package org.openelisglobal.eqa.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -16,6 +18,7 @@ import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQACycleService.PanelSampleRequest;
 import org.openelisglobal.eqa.service.EQACycleService.ProviderCycleRequest;
 import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
+import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
 import org.openelisglobal.eqa.service.EQAReportCommentService;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -23,7 +26,10 @@ import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
+import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
+import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
@@ -72,11 +78,12 @@ public class EQACycleRestController extends BaseRestController {
     private final EQAPerformanceReportPDFService performanceReportService;
     private final EQAReportCommentService reportCommentService;
     private final SystemUserService systemUserService;
+    private final EQALabProgramEnrollmentService enrollmentService;
 
     public EQACycleRestController(EQACycleService cycleService, SampleEQAService sampleEQAService,
             SampleService sampleService, AnalysisService analysisService, ResultService resultService,
             EQAPerformanceReportPDFService performanceReportService, EQAReportCommentService reportCommentService,
-            SystemUserService systemUserService) {
+            SystemUserService systemUserService, EQALabProgramEnrollmentService enrollmentService) {
         this.cycleService = cycleService;
         this.sampleEQAService = sampleEQAService;
         this.sampleService = sampleService;
@@ -85,6 +92,7 @@ public class EQACycleRestController extends BaseRestController {
         this.performanceReportService = performanceReportService;
         this.reportCommentService = reportCommentService;
         this.systemUserService = systemUserService;
+        this.enrollmentService = enrollmentService;
     }
 
     /**
@@ -182,16 +190,68 @@ public class EQACycleRestController extends BaseRestController {
      */
     @GetMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Map<String, Object>> myCycles(@RequestParam(required = false) Long labEnrollmentId) {
+        // FR-V2.2-09: the cycles this laboratory takes part in — programmes it has
+        // enrolled in (My Programs), its own in-house cycles, and any cycle that
+        // already carries one of its EQA orders. A provider's outbound cycles have
+        // their own board and are not "mine".
+        Set<String> enrolledNames = new HashSet<>();
+        for (EQALabProgramEnrollment enrollment : enrollmentService.findActiveEnrollments()) {
+            if (enrollment.getProgramName() != null) {
+                enrolledNames.add(enrollment.getProgramName().trim().toLowerCase());
+            }
+        }
         List<Map<String, Object>> rows = new ArrayList<>();
         for (EQACycle cycle : cycleService.getAll()) {
             Map<String, Object> dto = toCycleDto(cycle);
             addSampleProgress(dto, cycle.getId());
+            if (!participatesIn(cycle, enrolledNames, dto)) {
+                continue;
+            }
             if (labEnrollmentId != null) {
                 dto.put("participantState", cycleService.deriveParticipantState(cycle, labEnrollmentId).name());
             }
             rows.add(dto);
         }
         return rows;
+    }
+
+    private static boolean participatesIn(EQACycle cycle, Set<String> enrolledNames, Map<String, Object> dto) {
+        EQAProgram scheme = cycle.getScheme();
+        if (scheme != null && scheme.getSchemeType() == EQASchemeType.IN_HOUSE) {
+            return true;
+        }
+        if (scheme != null && scheme.getName() != null
+                && enrolledNames.contains(scheme.getName().trim().toLowerCase())) {
+            return true;
+        }
+        Object samples = dto.get("samples");
+        return samples instanceof List<?> linked && !linked.isEmpty();
+    }
+
+    /**
+     * FR-V2.2-09, the participant's own way in: a cycle for a programme this lab
+     * has enrolled in, for a provider that does not send consignments to an
+     * OpenELIS. The programme is named, not numbered, because that is all an
+     * enrollment carries; it must exist locally under the same name.
+     */
+    @PostMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PARTICIPANT)
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createMyCycle(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        String schemeName = stringField(body, "schemeName");
+        if (schemeName == null) {
+            throw new IllegalArgumentException("A cycle needs a programme");
+        }
+        boolean enrolled = enrollmentService.findActiveEnrollments().stream()
+                .anyMatch(e -> e.getProgramName() != null && e.getProgramName().trim().equalsIgnoreCase(schemeName));
+        if (!enrolled) {
+            throw new IllegalArgumentException("This laboratory is not enrolled in " + schemeName);
+        }
+        EQACycle cycle = cycleService.ensureParticipantCycle(schemeName, null, stringField(body, "cycleName"),
+                dateField(body, "distributionDate"), dateField(body, "submissionDeadline"), getSysUserId(request))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No programme named '" + schemeName + "' exists on this instance; add it under EQA Programs"));
+        return toCycleDto(cycle);
     }
 
     /**

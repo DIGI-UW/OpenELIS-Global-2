@@ -23,6 +23,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
@@ -177,6 +178,42 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         cycle.setSysUserId(sysUserId);
         cycle.setId(eqaCycleDAO.insert(cycle));
         return cycle;
+    }
+
+    @Override
+    @Transactional
+    public Optional<EQACycle> ensureParticipantCycle(String schemeName, Integer cycleNumber, String cycleName,
+            Date distributionDate, Date submissionDeadline, String sysUserId) {
+        if (GenericValidator.isBlankOrNull(schemeName)) {
+            return Optional.empty();
+        }
+        EQAProgram scheme = eqaProgramService.getAllMatching("name", schemeName.trim()).stream().findFirst()
+                .orElse(null);
+        if (scheme == null) {
+            return Optional.empty();
+        }
+        if (cycleNumber != null) {
+            for (EQACycle existing : eqaCycleDAO.getAllMatching("scheme.id", scheme.getId())) {
+                if (cycleNumber.equals(existing.getCycleNumber())) {
+                    return Optional.of(existing);
+                }
+            }
+        }
+        EQACycle cycle = create(scheme.getId(), cycleNumber, cycleName, distributionDate, submissionDeadline, null,
+                sysUserId);
+        if (submissionDeadline != null) {
+            EQARound round = new EQARound();
+            round.setFhirUuid(UUID.randomUUID());
+            round.setCycle(cycle);
+            round.setRoundNumber(1);
+            if (distributionDate != null) {
+                round.setDistributionDate(new Timestamp(distributionDate.getTime()));
+            }
+            round.setSubmissionDeadline(new Timestamp(submissionDeadline.getTime()));
+            round.setSysUserId(sysUserId);
+            eqaRoundDAO.insert(round);
+        }
+        return Optional.of(cycle);
     }
 
     private static Set<EQACycleStatus> legalNextStates(EQACycleStatus from, EQAStateMachine machine) {

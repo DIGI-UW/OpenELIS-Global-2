@@ -7,6 +7,7 @@
 import {
   getFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
+  postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 
 const toViewModel = (dto) => ({
@@ -42,5 +43,40 @@ export const submitCycle = (cycleId, callback) => {
       reason: "Participant review & submit from My Cycles",
     }),
     (response) => callback(response ? toViewModel(response) : null),
+  );
+};
+
+// Programmes this lab has enrolled in (My Programs); the "New cycle" form
+// offers exactly these, by name, because the participant-created cycle is
+// matched to a local programme of the same name on the server.
+export const fetchMyPrograms = (callback) => {
+  getFromOpenElisServer("/rest/eqa/my-programs", (data) =>
+    callback(Array.isArray(data) ? data : []),
+  );
+};
+
+// Participant-created cycle for a provider that is not an OpenELIS instance
+// (FR-V2.2-09). The server answers 4xx with an {error} body when the lab is
+// not enrolled or no local programme carries the name, so the raw response
+// is inspected rather than trusting any JSON as success.
+export const createMyCycle = (body, callback) => {
+  postToOpenElisServerFullResponse(
+    "/rest/eqa/cycles/mine",
+    JSON.stringify(body),
+    (response) => {
+      response
+        .json()
+        .catch(() => ({}))
+        .then((payload) => {
+          if (response.ok) {
+            callback({ ok: true, cycle: toViewModel(payload) });
+          } else {
+            callback({
+              ok: false,
+              error: payload?.error || payload?.message || response.statusText,
+            });
+          }
+        });
+    },
   );
 };

@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
+import org.hl7.fhir.r4.model.BaseDateTimeType;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.IntegerType;
@@ -23,7 +24,9 @@ import org.hl7.fhir.r4.model.SupplyDelivery.SupplyDeliveryStatus;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQAShipmentService;
+import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
@@ -330,6 +333,8 @@ public class ShipmentFhirImportService {
                 return false;
             }
 
+            linkParticipantCycle(box, delivery);
+
             shippingBoxDAO.insert(box);
             LogEvent.logInfo(this.getClass().getSimpleName(), "importSupplyDelivery",
                     "Imported shipment box: " + boxId + " with state IN_TRANSIT");
@@ -584,6 +589,58 @@ public class ShipmentFhirImportService {
                     "Could not serialise imported contents: " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * A consignment from an OpenELIS provider names the EQA cycle it belongs to.
+     * Open (or find) the local cycle of the same scheme name and number and link
+     * the box to it, so My Cycles offers "Receive panel" and the Add Order receipt
+     * can point at this consignment. A lab that has no programme of that name gets
+     * the box without a cycle, and a failure here never blocks the import.
+     */
+    private void linkParticipantCycle(ShippingBox box, SupplyDelivery delivery) {
+        Extension ext = delivery.getExtensionByUrl(ShippingBoxFhirTransform.EXT_EQA_CYCLE);
+        if (ext == null) {
+            return;
+        }
+        try {
+            String schemeName = subExtensionString(ext, "scheme");
+            Integer number = subExtensionInteger(ext, "number");
+            java.sql.Date distribution = subExtensionDate(ext, "distributionDate");
+            java.sql.Date deadline = subExtensionDate(ext, "submissionDeadline");
+            Optional<EQACycle> cycle = SpringContext.getBean(EQACycleService.class).ensureParticipantCycle(schemeName,
+                    number, subExtensionString(ext, "name"), distribution, deadline,
+                    String.valueOf(getAutomatedImportUserId()));
+            if (cycle.isPresent()) {
+                box.setEqaCycleId(cycle.get().getId());
+                LogEvent.logInfo(this.getClass().getSimpleName(), "linkParticipantCycle", "Consignment "
+                        + box.getBoxId() + " belongs to EQA cycle " + cycle.get().getId() + " (" + schemeName + ")");
+            } else {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "linkParticipantCycle",
+                        "Consignment " + box.getBoxId() + " names EQA programme '" + schemeName
+                                + "' but this laboratory has no programme of that name — imported without a cycle");
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "linkParticipantCycle",
+                    "Consignment " + box.getBoxId() + " imported without its EQA cycle: " + e.getMessage());
+        }
+    }
+
+    private static String subExtensionString(Extension parent, String url) {
+        Extension ext = parent.getExtensionByUrl(url);
+        return ext != null && ext.getValue() instanceof StringType st ? st.getValue() : null;
+    }
+
+    private static Integer subExtensionInteger(Extension parent, String url) {
+        Extension ext = parent.getExtensionByUrl(url);
+        return ext != null && ext.getValue() instanceof IntegerType it ? it.getValue() : null;
+    }
+
+    private static java.sql.Date subExtensionDate(Extension parent, String url) {
+        Extension ext = parent.getExtensionByUrl(url);
+        return ext != null && ext.getValue() instanceof BaseDateTimeType dt && dt.getValue() != null
+                ? new java.sql.Date(dt.getValue().getTime())
+                : null;
     }
 
     private String extractExtensionString(SupplyDelivery delivery, String url) {

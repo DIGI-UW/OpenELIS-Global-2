@@ -3,6 +3,7 @@ package org.openelisglobal.eqa.service;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.List;
+import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
@@ -94,6 +95,18 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
      *                                  repeats
      */
     EQACycle createProviderCycle(ProviderCycleRequest request, String sysUserId);
+
+    /**
+     * Participant side of a cycle: the local cycle that a consignment from an
+     * OpenELIS provider, or a lab user filling the My Cycles form, names by scheme
+     * name. Matched to a local programme of that exact name; when
+     * {@code cycleNumber} is given and that cycle already exists it is returned
+     * unchanged, so an import poll can run repeatedly. A new cycle is PLANNED and,
+     * when a deadline is known, carries round 1 with it so the 7/3/1-day digest and
+     * the reports see it. Empty when no local programme carries the name.
+     */
+    Optional<EQACycle> ensureParticipantCycle(String schemeName, Integer cycleNumber, String cycleName,
+            Date distributionDate, Date submissionDeadline, String sysUserId);
 
     /**
      * What the wizard collects, in step order: 1 cycle details, 2 panel samples +

@@ -14,6 +14,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.eqa.controller.rest.EQACycleRestController;
 import org.openelisglobal.eqa.service.EQACycleService;
+import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
 import org.openelisglobal.eqa.service.EQAReportCommentService;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -62,6 +63,8 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
 
     @Autowired
     private EQAReportCommentService reportCommentService;
+    @Autowired
+    private EQALabProgramEnrollmentService enrollmentService;
 
     // eqa.controller.* is excluded from the test component scan — construct it
     private EQACycleRestController controller;
@@ -71,7 +74,7 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
     public void setUp() throws Exception {
         super.setUp();
         controller = new EQACycleRestController(cycleService, sampleEQAService, sampleService, analysisService,
-                resultService, performanceReportService, reportCommentService, systemUserService);
+                resultService, performanceReportService, reportCommentService, systemUserService, enrollmentService);
         ensureStatusRows();
         cleanupSeed();
     }
@@ -110,6 +113,8 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
     @Test
     public void myCyclesCarriesSchemeDisplayFieldsAndEmptyProgress() {
         EQAProgram scheme = insertScheme("Enrichment scheme " + System.nanoTime(), EQASchemeType.REGIONAL_PT, "NHRL");
+        // An external cycle is "mine" only for a programme this lab has enrolled in.
+        seedEnrollment(9951, scheme.getName());
         Long cycleId = insertCycle(scheme, 3);
 
         Map<String, Object> row = findCycleRow(cycleId);
@@ -131,6 +136,8 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
     @Test
     public void reviewGatedSchemeCarriesReportedValueAndValidationTime() {
         EQAProgram scheme = insertScheme("Gated scheme " + System.nanoTime(), EQASchemeType.REGIONAL_PT, "NHRL");
+        // An external cycle is "mine" only for a programme this lab has enrolled in.
+        seedEnrollment(9952, scheme.getName());
         scheme.setRequiresCycleReview(true);
         scheme.setSysUserId(USER);
         eqaProgramService.update(scheme);

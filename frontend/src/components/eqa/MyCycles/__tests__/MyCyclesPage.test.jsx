@@ -10,11 +10,13 @@ import { MOCK_CYCLES } from "../mockCycles";
 import {
   getFromOpenElisServer,
   patchToOpenElisServerJsonResponse,
+  postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   patchToOpenElisServerJsonResponse: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
 }));
 
 vi.mock("../../../common/PageBreadCrumb", () => ({
@@ -37,6 +39,8 @@ const renderPage = (orders = UNCYCLED_ORDERS, cycles = MOCK_CYCLES) => {
   getFromOpenElisServer.mockImplementation((url, cb) => {
     if (url.startsWith("/rest/eqa/cycles/mine")) cb(cycles);
     if (url.startsWith("/rest/eqa/orders")) cb(orders);
+    if (url.startsWith("/rest/eqa/my-programs"))
+      cb([{ id: 7, programName: "CPHL National HIV Viral Load EQA" }]);
   });
   return render(
     <IntlProvider locale="en" messages={messages}>
@@ -101,6 +105,65 @@ describe("MyCyclesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Receive panel/i }));
     expect(history.location.pathname).toBe("/SamplePatientEntry");
     expect(history.location.search).toBe("?isEQA=true&cycleId=9");
+  });
+
+  test("New cycle posts the enrolled programme, name and deadline, then confirms", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
+    fireEvent.change(screen.getByLabelText("Programme (from My Programs)"), {
+      target: { value: "CPHL National HIV Viral Load EQA" },
+    });
+    fireEvent.change(screen.getByLabelText("Cycle name"), {
+      target: { value: "Round 9" },
+    });
+    fireEvent.change(screen.getByLabelText("Submission deadline"), {
+      target: { value: "2026-09-30" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create cycle" }));
+
+    expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+    const [url, body, callback] =
+      postToOpenElisServerFullResponse.mock.calls[0];
+    expect(url).toBe("/rest/eqa/cycles/mine");
+    expect(JSON.parse(body)).toEqual({
+      schemeName: "CPHL National HIV Viral Load EQA",
+      cycleName: "Round 9",
+      distributionDate: "",
+      submissionDeadline: "2026-09-30",
+    });
+
+    callback({
+      ok: true,
+      json: () =>
+        Promise.resolve({ id: 99, cycleName: "Round 9", status: "PLANNED" }),
+    });
+    expect(await screen.findByText(/Cycle created/)).toBeInTheDocument();
+  });
+
+  test("New cycle shows the server's refusal instead of a false success", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
+    fireEvent.change(screen.getByLabelText("Programme (from My Programs)"), {
+      target: { value: "CPHL National HIV Viral Load EQA" },
+    });
+    fireEvent.change(screen.getByLabelText("Cycle name"), {
+      target: { value: "Round 9" },
+    });
+    fireEvent.change(screen.getByLabelText("Submission deadline"), {
+      target: { value: "2026-09-30" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create cycle" }));
+    const callback = postToOpenElisServerFullResponse.mock.calls[0][2];
+    callback({
+      ok: false,
+      statusText: "Unprocessable Entity",
+      json: () =>
+        Promise.resolve({ error: "This laboratory is not enrolled in X" }),
+    });
+    expect(
+      await screen.findByText("This laboratory is not enrolled in X"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Cycle created/)).toBeNull();
   });
 
   test("row expansion reveals sample progress with result-entry deep links", () => {
