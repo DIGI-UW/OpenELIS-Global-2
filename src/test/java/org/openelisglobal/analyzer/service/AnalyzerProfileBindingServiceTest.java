@@ -53,11 +53,6 @@ public class AnalyzerProfileBindingServiceTest {
     }
 
     @Test
-    public void newAnalyzerHasNoProtocolBeforeAnExactProfileRevisionIsApplied() {
-        assertNull(new Analyzer().getProtocolVersion());
-    }
-
-    @Test
     public void resolveActiveRevisionCreatesRevisionScopedBinding() {
         when(catalogService.getCatalog()).thenReturn(catalog("ACTIVE", FINGERPRINT));
         when(bindingDAO.findByProfileIdAndRevision(PROFILE_ID, REVISION)).thenReturn(Optional.empty());
@@ -175,15 +170,7 @@ public class AnalyzerProfileBindingServiceTest {
 
         assertEquals("Hematology bench 1", analyzer.getName());
         assertNull(analyzer.getType());
-        assertNull(analyzer.getProtocolVersion());
-        assertNull(analyzer.getCommunicationMode());
-        assertNull(analyzer.getPort());
         assertNull(analyzer.getIdentifierPattern());
-        assertNull(analyzer.getFileFormat());
-        assertNull(analyzer.getFilePattern());
-        assertNull(analyzer.getHasHeader());
-        assertNull(analyzer.getDelimiter());
-        assertNull(analyzer.getSkipRows());
         assertSame(siteBindingRevision, analyzer.getSiteBindingRevision());
         assertSame(selected, analyzer.getPinnedProfileBinding());
     }

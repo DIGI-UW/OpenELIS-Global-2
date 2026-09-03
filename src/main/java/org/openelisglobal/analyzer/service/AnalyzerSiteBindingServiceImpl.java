@@ -92,6 +92,13 @@ public class AnalyzerSiteBindingServiceImpl implements AnalyzerSiteBindingServic
         return bindingDAO.findByProfileBindingId(bindingId).map(this::loadLatest);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AnalyzerSiteBindingSnapshot> findByRevisionId(String revisionId) {
+        String id = requireText(revisionId, "site binding revision ID");
+        return revisionDAO.get(id).map(revision -> loadRevision(revision.getSiteBinding(), revision));
+    }
+
     private AnalyzerSiteBindingSnapshot createInitial(AnalyzerProfileBinding profileBinding,
             BridgeAnalyzerProfile profile, String actor) {
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
