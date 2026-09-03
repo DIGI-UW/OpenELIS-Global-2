@@ -84,15 +84,22 @@ const ShipmentSettings = () => {
     );
   };
 
+  // Every organization that carries a FHIR UUID, which is exactly what the save
+  // below will accept. The referral list this used to read cannot contain the row
+  // representing this laboratory — a lab is not a referral destination to itself —
+  // so the one organization an operator most needs to pick was never on offer.
   const fetchOrganizations = () => {
-    getFromOpenElisServer(
-      "/rest/displayList/REFERRAL_ORGANIZATIONS",
-      (response) => {
-        if (response && Array.isArray(response)) {
-          setOrganizations(response);
-        }
-      },
-    );
+    getFromOpenElisServer("/rest/organization-list", (response) => {
+      if (!Array.isArray(response)) {
+        return;
+      }
+      setOrganizations(
+        response
+          .filter((org) => org.fhirUuid && org.organizationName)
+          .map((org) => ({ id: String(org.id), value: org.organizationName }))
+          .sort((a, b) => a.value.localeCompare(b.value)),
+      );
+    });
   };
 
   const handleSaveSiteOrgUuid = () => {
@@ -375,6 +382,24 @@ const ShipmentSettings = () => {
                   })}
                   subtitle={intl.formatMessage({
                     id: "shipment.settings.siteOrgUnsetSubtitle",
+                  })}
+                  style={{ marginBottom: "1rem" }}
+                />
+              )}
+              {siteOrgFhirUuid !== "" && siteOrgId === "" && (
+                // A partner laboratory addresses this site by the UUID it holds for
+                // it, which need not be any local organization's own. Without this
+                // the control renders its placeholder and a configured site reads as
+                // unconfigured.
+                <InlineNotification
+                  kind="info"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "shipment.settings.siteOrgUnmatchedTitle",
+                  })}
+                  subtitle={intl.formatMessage({
+                    id: "shipment.settings.siteOrgUnmatchedSubtitle",
                   })}
                   style={{ marginBottom: "1rem" }}
                 />

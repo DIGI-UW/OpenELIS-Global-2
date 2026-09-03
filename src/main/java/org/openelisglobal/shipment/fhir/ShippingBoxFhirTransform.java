@@ -266,20 +266,13 @@ public class ShippingBoxFhirTransform {
                 supplyDelivery.addExtension(contentExt);
             }
 
-            if (sampleItem == null || sampleItem.getFhirUuid() == null) {
-                String typeKey = typeDescription != null ? typeDescription : "Unknown";
-                specimenTypeCounts.put(typeKey, specimenTypeCounts.getOrDefault(typeKey, 0) + 1);
-                continue;
-            }
-
-            Reference specimenRef = new Reference("Specimen/" + sampleItem.getFhirUuidAsString());
-            if (typeDescription != null) {
-                specimenRef.setDisplay(typeDescription);
-            }
-
-            supplyDelivery.addExtension(new Extension(EXT_SPECIMEN, specimenRef));
-
-            // Non-conformity extension with SNOMED CT codes (Rule 6)
+            // Non-conformity codes (Rule 6). Every contents row can carry one: EQA
+            // panel material has no SampleItem, so keying this off the Specimen
+            // reference below meant material recorded as damaged left no trace on the
+            // wire — the one fact a sending laboratory most needs back.
+            // ponytail: the extension names a code but not which item it belongs to,
+            // as it always has. Naming the item means nesting {item, code}, which is a
+            // wire-format change and a separate decision.
             if (bsi.getReceptionStatus() != null && bsi.getReceptionStatus() != ReceptionStatus.PENDING
                     && bsi.getReceptionStatus() != ReceptionStatus.RECEIVED_GOOD) {
                 if (nonConformityOverrides == null) {
@@ -293,6 +286,17 @@ public class ShippingBoxFhirTransform {
 
             String typeKey = typeDescription != null ? typeDescription : "Unknown";
             specimenTypeCounts.put(typeKey, specimenTypeCounts.getOrDefault(typeKey, 0) + 1);
+
+            if (sampleItem == null || sampleItem.getFhirUuid() == null) {
+                continue;
+            }
+
+            Reference specimenRef = new Reference("Specimen/" + sampleItem.getFhirUuidAsString());
+            if (typeDescription != null) {
+                specimenRef.setDisplay(typeDescription);
+            }
+
+            supplyDelivery.addExtension(new Extension(EXT_SPECIMEN, specimenRef));
         }
 
         for (Map.Entry<String, Integer> entry : specimenTypeCounts.entrySet()) {
