@@ -142,7 +142,8 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
     @Test
     public void providerWrite_providerTierReturns200() throws Exception {
         mockMvc.perform(post("/rest/eqa/programs").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"HIV VL PT\"}").sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())
+                .content("{\"name\":\"HIV VL PT\",\"schemeType\":\"INTERNATIONAL_PT\",\"provider\":\"NHLS\"}")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())
                 .with(user("provider").authorities(new SimpleGrantedAuthority("qa.eqa.provider"))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("HIV VL PT"));
     }
@@ -240,11 +241,8 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
 
         @Bean
         EQAProgramRestController programRestController(EQAProgramService programService,
-                EQAProgramEnrollmentService programEnrollmentService) {
-            EQAProgramRestController controller = new EQAProgramRestController();
-            ReflectionTestUtils.setField(controller, "programService", programService);
-            ReflectionTestUtils.setField(controller, "enrollmentService", programEnrollmentService);
-            return controller;
+                EQAProgramEnrollmentService programEnrollmentService, SystemUserService systemUserService) {
+            return new EQAProgramRestController(programService, programEnrollmentService, systemUserService);
         }
 
         @Bean
