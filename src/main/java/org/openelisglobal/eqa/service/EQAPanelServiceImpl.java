@@ -239,16 +239,27 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
         if (!analytes.isEmpty()) {
             return Long.valueOf(analytes.get(0).getAnalyte().getId());
         }
-        return Long.valueOf(createAnalyteFor(test).getId());
+        return Long.valueOf(analyteFor(test).getId());
     }
 
-    /** analyte.name is 60 characters, and a test name can be longer. */
-    private Analyte createAnalyteFor(Test test) {
+    /**
+     * An analyte already named after the test is the one meant, so it is adopted
+     * rather than duplicated — analyte names are unique, and a catalog commonly
+     * carries the analyte while leaving the link to the test unmade. Only the link
+     * is new in that case. analyte.name is 60 characters, and a test name can be
+     * longer.
+     */
+    private Analyte analyteFor(Test test) {
         String name = test.getName() == null ? "Test " + test.getId() : test.getName().trim();
-        Analyte analyte = new Analyte();
-        analyte.setAnalyteName(name.length() > 60 ? name.substring(0, 60) : name);
-        analyte.setIsActive(IActionConstants.YES);
-        analyte = analyteService.save(analyte);
+        String analyteName = name.length() > 60 ? name.substring(0, 60) : name;
+
+        Analyte probe = new Analyte();
+        probe.setAnalyteName(analyteName);
+        Analyte analyte = analyteService.getAnalyteByName(probe, true);
+        if (analyte == null) {
+            probe.setIsActive(IActionConstants.YES);
+            analyte = analyteService.save(probe);
+        }
 
         TestAnalyte link = new TestAnalyte();
         link.setTest(test);
