@@ -1,12 +1,19 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+// This project's @testing-library/react is v9, which predates waitFor; the dom
+// package is where the rest of the suite takes it from.
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import ProgramManagement from "../ProgramManagement";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import ProgramForm from "../ProgramForm";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+  putToOpenElisServerFullResponse,
+} from "../../../utils/Utils";
 
 vi.mock("../../../../components/common/PageBreadCrumb", () => {
   return {
@@ -211,5 +218,106 @@ describe("ProgramForm", () => {
     renderWithIntl(<ProgramForm program={null} onClose={onClose} />);
     fireEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("ProgramForm test assignments", () => {
+  const catalog = [
+    { id: 41, value: "CD4 count" },
+    { id: 57, value: "Determine(Serum)" },
+    { id: 45, value: "Genie III(Serum)" },
+  ];
+
+  // Answers each read by URL, so the form's two fetches cannot be confused for
+  // one another.
+  const serveCatalogAnd = (assignments) =>
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/displayList/ALL_TESTS") return callback(catalog);
+      if (/\/rest\/eqa\/programs\/\d+\/tests$/.test(url))
+        return callback(assignments);
+      return callback([]);
+    });
+
+  const ok = (body) => ({ ok: true, json: () => Promise.resolve(body) });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb(ok({ id: 3 })),
+    );
+    postToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb(ok({ id: 7 })),
+    );
+  });
+
+  const editableProgram = {
+    id: 3,
+    name: "HIV Serology",
+    provider: "CPHL",
+    description: "",
+    isActive: true,
+  };
+
+  test("offers the catalog when editing a program", async () => {
+    serveCatalogAnd([]);
+    const { container } = renderWithIntl(
+      <ProgramForm program={editableProgram} onClose={vi.fn()} />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector("#program-tests")).toBeTruthy(),
+    );
+    expect(screen.getByText("Assigned Tests")).toBeTruthy();
+  });
+
+  test("saving an untouched form leaves the existing assignments alone", async () => {
+    // The write is a delete-and-recreate, so a rename must not reach it. If the
+    // assigned tests failed to preselect, the guard would see an empty selection
+    // and clear the program's tests here.
+    serveCatalogAnd([
+      { id: 11, testId: 57, isActive: true },
+      { id: 12, testId: 45, isActive: true },
+    ]);
+    const onClose = vi.fn();
+    const { container } = renderWithIntl(
+      <ProgramForm program={editableProgram} onClose={onClose} />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector("#program-tests")).toBeTruthy(),
+    );
+
+    fireEvent.click(screen.getByText("Save Program"));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const urls = putToOpenElisServerFullResponse.mock.calls.map((c) => c[0]);
+    expect(urls).toEqual(["/rest/eqa/programs/3"]);
+  });
+
+  test("a new program's tests are written against the id the server assigned", async () => {
+    serveCatalogAnd([]);
+    const onClose = vi.fn();
+    const { container } = renderWithIntl(
+      <ProgramForm program={null} onClose={onClose} />,
+    );
+    await waitFor(() =>
+      expect(container.querySelector("#program-tests")).toBeTruthy(),
+    );
+
+    fireEvent.change(screen.getByLabelText("Program Name"), {
+      target: { value: "HIV Viral Load" },
+    });
+    fireEvent.change(screen.getByLabelText("Provider"), {
+      target: { value: "CPHL" },
+    });
+    // The menu opens off the combobox input, not the wrapper the id sits on.
+    fireEvent.click(screen.getByPlaceholderText("Select tests to assign"));
+    fireEvent.click(await screen.findByText("Determine(Serum)"));
+    fireEvent.click(screen.getByText("Add Program"));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(putToOpenElisServerFullResponse).toHaveBeenCalledWith(
+      "/rest/eqa/programs/7/tests",
+      JSON.stringify({ testIds: [57] }),
+      expect.any(Function),
+    );
   });
 });
