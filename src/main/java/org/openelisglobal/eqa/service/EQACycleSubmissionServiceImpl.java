@@ -244,7 +244,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
                         analysis.getId(), analysis.getTest() == null ? "?" : analysis.getTest().getId());
                 continue;
             }
-            String value = resultService.getResultValue(pipelineResult, ",", true, false);
+            String value = EqaReportedValue.of(resultService, pipelineResult);
             recorded |= recordAnalyst(cycle, roundId, enrollmentId, analysis, analyteId, value, analystId, sysUserId);
         }
         return recorded;
@@ -335,7 +335,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             Map<Long, Long> schemeAnalytes, String sysUserId, Tally tally) {
         boolean answered = false;
         for (Result pipelineResult : resultService.getResultsByAnalysis(analysis)) {
-            String value = resultService.getResultValue(pipelineResult, ",", true, false);
+            String value = EqaReportedValue.of(resultService, pipelineResult);
             if (GenericValidator.isBlankOrNull(value)) {
                 continue;
             }

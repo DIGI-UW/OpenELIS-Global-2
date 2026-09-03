@@ -450,7 +450,7 @@ public class EQABlindingServiceImpl implements EQABlindingService {
             return null;
         }
         for (Result pipelineResult : resultService.getResultsByAnalysis(analysis)) {
-            String value = resultService.getResultValue(pipelineResult, ",", true, false);
+            String value = EqaReportedValue.of(resultService, pipelineResult);
             if (!GenericValidator.isBlankOrNull(value)) {
                 return value.trim();
             }
