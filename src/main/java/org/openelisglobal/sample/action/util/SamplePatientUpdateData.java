@@ -16,14 +16,19 @@
 
 package org.openelisglobal.sample.action.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService;
@@ -64,6 +69,8 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.vector.service.VectorSamplingSiteService;
+import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.validation.Errors;
 
 /** */
@@ -82,11 +89,21 @@ public class SamplePatientUpdateData {
     private SampleRequester requesterSite;
     private SampleRequester requesterSiteDepartment;
     private List<SampleTestCollection> sampleItemsTests;
+    // Collection-site id resolved (or created) from the order's collection-site
+    // fields at intake. Inline-created sites have no id at submit, so the sample
+    // XML carries a blank collectionLocationId; this holds the resolved id so it
+    // can be stamped onto each SampleItem's collectionLocationId — the per-item
+    // key the surveillance density query and deconvolution group by.
+    private String resolvedCollectionSiteId;
     private SampleAddService sampleAddService;
     private Errors patientErrors;
     private Organization newOrganization;
     private Organization currentOrganization;
     private ElectronicOrder electronicOrder = null;
+
+    // Env/Vector Requestor contact — independent of provider/org above
+    private Person requestorPerson;
+    private SampleRequester requesterContact;
 
     private boolean useReceiveDateForCollectionDate = !FormFields.getInstance().useField(Field.CollectionDate);
     private String collectionDateFromReceiveDate = null;
@@ -102,6 +119,8 @@ public class SamplePatientUpdateData {
     private ProgramSample programSample;
     private QuestionnaireResponse programQuestionnaireResponse;
 
+    private List<String> pendingComplianceStandardIds = Collections.emptyList();
+
     private boolean eqaSample;
     private String eqaProgramId;
     private String eqaProviderOrganizationId;
@@ -115,6 +134,12 @@ public class SamplePatientUpdateData {
     private List<String> patientSMSNotificationTestIds;
     private List<String> providerEmailNotificationTestIds;
     private List<String> providerSMSNotificationTestIds;
+
+    // Set when the env/vector Refer Out flow has already written the referral
+    // rows inside SamplePatientEntryServiceImpl.persistData (sync). Read by
+    // FhirTransformServiceImpl.transformPersistOrderEntryFhirObjects so the
+    // async leg does not run the legacy save-and-FHIR-push a second time.
+    private boolean referralsPersistedSynchronously;
 
     public SamplePatientUpdateData(String currentUserId) {
         this.currentUserId = currentUserId;
@@ -142,6 +167,22 @@ public class SamplePatientUpdateData {
 
     public void setProvider(Provider provider) {
         this.provider = provider;
+    }
+
+    public Person getRequestorPerson() {
+        return requestorPerson;
+    }
+
+    public void setRequestorPerson(Person requestorPerson) {
+        this.requestorPerson = requestorPerson;
+    }
+
+    public SampleRequester getRequesterContact() {
+        return requesterContact;
+    }
+
+    public void setRequesterContact(SampleRequester requesterContact) {
+        this.requesterContact = requesterContact;
     }
 
     public String getPatientId() {
@@ -251,6 +292,14 @@ public class SamplePatientUpdateData {
         return observations;
     }
 
+    public List<String> getPendingComplianceStandardIds() {
+        return pendingComplianceStandardIds;
+    }
+
+    public void setPendingComplianceStandardIds(List<String> ids) {
+        this.pendingComplianceStandardIds = ids != null ? ids : Collections.emptyList();
+    }
+
     public List<OrganizationAddress> getOrgAddressExtra() {
         return orgAddressExtra;
     }
@@ -287,6 +336,16 @@ public class SamplePatientUpdateData {
     }
 
     public void validateSample(Errors errors, boolean requireSampleItems) {
+        validateSample(errors, requireSampleItems, null, null);
+    }
+
+    /**
+     * Env/vector orders require at least one of Requesting Organization or
+     * Requestor contact. sampleOrder/workflowType are optional (null skips this
+     * check) so the other four callers of the 2-arg overload are unaffected.
+     */
+    public void validateSample(Errors errors, boolean requireSampleItems, SampleOrderItem sampleOrder,
+            String workflowType) {
         // OGC-743: surface every validation failure as a field-tagged
         // rejectValue so the frontend's fieldErrors[] (built by
         // SamplePatientEntryRestController.buildErrorBody from
@@ -316,10 +375,39 @@ public class SamplePatientUpdateData {
             errors.rejectValue("sampleOrderItems", "errors.samples.with.no.tests", "errors.samples.with.no.tests");
         }
 
+        if (sampleOrder != null && ("environmental".equals(workflowType) || "vector".equals(workflowType))) {
+            boolean hasOrg = hasRequestingOrganization(sampleOrder);
+            boolean hasRequestor = hasRequestorContact(sampleOrder);
+            LogEvent.logDebug(this.getClass().getName(), "validateSample",
+                    "org-or-requestor check: workflowType=" + workflowType + " hasOrganization=" + hasOrg
+                            + " (referringSiteId=" + sampleOrder.getReferringSiteId() + " referringSiteName="
+                            + sampleOrder.getReferringSiteName() + " newRequesterName="
+                            + sampleOrder.getNewRequesterName() + ") hasRequestor=" + hasRequestor
+                            + " (requestorPersonId=" + sampleOrder.getRequestorPersonId() + " requestorFirstName="
+                            + sampleOrder.getRequestorFirstName() + " requestorLastName="
+                            + sampleOrder.getRequestorLastName() + ")");
+            if (!hasOrg && !hasRequestor) {
+                errors.rejectValue("sampleOrderItems", "errors.requester.org.or.requestor.required",
+                        "errors.requester.org.or.requestor.required");
+            }
+        }
+
         // check patient errors
         if (patientErrors.hasErrors()) {
             errors.addAllErrors(patientErrors);
         }
+    }
+
+    private boolean hasRequestingOrganization(SampleOrderItem sampleOrder) {
+        return !GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteId())
+                || !GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteName())
+                || !GenericValidator.isBlankOrNull(sampleOrder.getNewRequesterName());
+    }
+
+    private boolean hasRequestorContact(SampleOrderItem sampleOrder) {
+        return !GenericValidator.isBlankOrNull(sampleOrder.getRequestorPersonId())
+                || !GenericValidator.isBlankOrNull(sampleOrder.getRequestorFirstName())
+                || !GenericValidator.isBlankOrNull(sampleOrder.getRequestorLastName());
     }
 
     private boolean allSamplesHaveTests() {
@@ -343,6 +431,12 @@ public class SamplePatientUpdateData {
                 // Update fields that can change during edit
                 sample.setReceivedTimestamp(DateUtil.convertStringDateToTimestamp(receivedDate));
                 sample.setReferringId(sampleOrder.getRequesterSampleID());
+                if (!GenericValidator.isBlankOrNull(sampleOrder.getRequiredBy())) {
+                    sample.setRequiredBy(DateUtil.convertStringDateToTimestampWithPatternNoLocale(
+                            sampleOrder.getRequiredBy(), "yyyy-MM-dd"));
+                } else {
+                    sample.setRequiredBy(null);
+                }
                 if (useReceiveDateForCollectionDate) {
                     sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
                 }
@@ -363,16 +457,21 @@ public class SamplePatientUpdateData {
 
         sample.setReceivedTimestamp(DateUtil.convertStringDateToTimestamp(receivedDate));
         sample.setReferringId(sampleOrder.getRequesterSampleID());
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getRequiredBy())) {
+            sample.setRequiredBy(DateUtil.convertStringDateToTimestampWithPatternNoLocale(sampleOrder.getRequiredBy(),
+                    "yyyy-MM-dd"));
+        }
 
         if (useReceiveDateForCollectionDate) {
             sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
         }
 
         // Set domain based on workflow type (OGC-356)
-        // Environmental samples use "E" domain, clinical/human samples use "H" domain
         String workflowType = sampleOrder.getEnvironmentalFieldAsString("workflowType");
         if ("environmental".equals(workflowType)) {
             sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.environmental"));
+        } else if ("vector".equals(workflowType)) {
+            sample.setDomain("V");
         } else {
             sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
         }
@@ -401,6 +500,22 @@ public class SamplePatientUpdateData {
         }
     }
 
+    /**
+     * Builds the ordering Provider for this order.
+     *
+     * <p>
+     * When an existing master Provider is reused (providerPersonId supplied),
+     * edited values from the order form are merged onto its shared {@link Person}
+     * row so that correcting a loaded Provider's name/phone/fax/email actually
+     * persists. The merge is PATCH-style: a blank or absent incoming value means
+     * "not supplied" and leaves the stored value alone. Blanket assignment would
+     * let any caller that doesn't populate these fields — including the frontend's
+     * own save window, where {@code providerPersonId} is set synchronously but the
+     * practitioner name/contact details only arrive in a later async callback —
+     * wipe the master Provider's details for every other order that references it.
+     * Clearing a stored provider detail is therefore done through Provider
+     * management, not through order entry.
+     */
     public void initProvider(SampleOrderItem sampleOrder) {
 
         providerPerson = null;
@@ -410,6 +525,11 @@ public class SamplePatientUpdateData {
             provider = SpringContext.getBean(ProviderService.class).getProviderByPerson(
                     SpringContext.getBean(PersonService.class).get(sampleOrder.getProviderPersonId()));
             providerPerson = provider.getPerson();
+            setIfSupplied(sampleOrder.getProviderFirstName(), providerPerson::setFirstName);
+            setIfSupplied(sampleOrder.getProviderLastName(), providerPerson::setLastName);
+            setIfSupplied(sampleOrder.getProviderWorkPhone(), providerPerson::setWorkPhone);
+            setIfSupplied(sampleOrder.getProviderFax(), providerPerson::setFax);
+            setIfSupplied(sampleOrder.getProviderEmail(), providerPerson::setEmail);
             providerPerson.setSysUserId(currentUserId);
         } else {
             providerPerson = new Person();
@@ -426,6 +546,19 @@ public class SamplePatientUpdateData {
         }
 
         provider.setSysUserId(currentUserId);
+    }
+
+    /**
+     * Applies {@code value} through {@code setter} only when it was actually
+     * supplied (non-blank). Used for PATCH-style merges onto rows shared across
+     * orders (master Provider/Requestor {@link Person}s, referring
+     * {@link Organization}s), where an absent field in the request must never be
+     * read as "clear the stored value".
+     */
+    private void setIfSupplied(String value, Consumer<String> setter) {
+        if (!GenericValidator.isBlankOrNull(value)) {
+            setter.accept(value);
+        }
     }
 
     private boolean noRequesterInformation(SampleOrderItem sampleOrder) {
@@ -455,6 +588,9 @@ public class SamplePatientUpdateData {
 
         newOrganization.setIsActive("Y");
         newOrganization.setOrganizationName(orderItem.getNewRequesterName());
+        newOrganization.setPhone(orderItem.getReferringSitePhone());
+        newOrganization.setFax(orderItem.getReferringSiteFax());
+        newOrganization.setEmail(orderItem.getReferringSiteEmail());
 
         // this was left as a warning for copy and paste -- it causes a null
         // pointer exception in session.flush()
@@ -473,6 +609,40 @@ public class SamplePatientUpdateData {
         }
     }
 
+    /**
+     * Requesting Organization's own phone/fax/email are updated whenever a supplied
+     * value differs from what's stored, independent of the referring-code change
+     * check in {@link #updateCurrentOrgIfNeeded}, so contact info stays fresh even
+     * when the code is unchanged.
+     *
+     * <p>
+     * The merge is PATCH-style: a blank or absent incoming value means "not
+     * supplied" and leaves the stored value alone. The referring Organization row
+     * is shared by every order that references it, and several callers post only
+     * {@code referringSiteId} without any contact fields (batch entry and the
+     * legacy sample-entry controller), so treating absent fields as an instruction
+     * to clear would silently wipe the site's contact details for all other orders.
+     * Clearing a stored value is therefore done through Organization management,
+     * not through order entry.
+     */
+    public void updateOrganizationContactInfoIfNeeded(SampleOrderItem orderItem, String orgId) {
+        Organization org = currentOrganization != null ? currentOrganization : orgService.getOrganizationById(orgId);
+        boolean changed = isSuppliedAndDifferent(orderItem.getReferringSitePhone(), org.getPhone())
+                || isSuppliedAndDifferent(orderItem.getReferringSiteFax(), org.getFax())
+                || isSuppliedAndDifferent(orderItem.getReferringSiteEmail(), org.getEmail());
+        if (changed) {
+            setIfSupplied(orderItem.getReferringSitePhone(), org::setPhone);
+            setIfSupplied(orderItem.getReferringSiteFax(), org::setFax);
+            setIfSupplied(orderItem.getReferringSiteEmail(), org::setEmail);
+            org.setSysUserId(currentUserId);
+            currentOrganization = org;
+        }
+    }
+
+    private boolean isSuppliedAndDifferent(String incoming, String stored) {
+        return !GenericValidator.isBlankOrNull(incoming) && StringUtil.compareWithNulls(incoming, stored) != 0;
+    }
+
     public void initializeRequester(SampleOrderItem sampleOrder) {
         if (FormFields.getInstance().useField(Field.RequesterSiteList)) {
             setRequesterSite(initSampleRequester(sampleOrder));
@@ -480,6 +650,91 @@ public class SamplePatientUpdateData {
         if (FormFields.getInstance().useField(Field.SITE_DEPARTMENT)) {
             setRequesterSiteDepartment(initSampleRequesterDepartment(sampleOrder));
         }
+    }
+
+    private boolean noRequestorContactInformation(SampleOrderItem sampleOrder) {
+        return GenericValidator.isBlankOrNull(sampleOrder.getRequestorPersonId())
+                && GenericValidator.isBlankOrNull(sampleOrder.getRequestorFirstName())
+                && GenericValidator.isBlankOrNull(sampleOrder.getRequestorLastName())
+                && GenericValidator.isBlankOrNull(sampleOrder.getRequestorPhone())
+                && GenericValidator.isBlankOrNull(sampleOrder.getRequestorFax())
+                && GenericValidator.isBlankOrNull(sampleOrder.getRequestorEmail());
+    }
+
+    /**
+     * Builds the standalone Requestor contact Person for Environmental/Vector
+     * orders. Mirrors {@link #initProvider} but does NOT wrap the person in a
+     * Provider — Requestor is a distinct domain concept (customer/company contact),
+     * not a clinical ordering provider.
+     *
+     * <p>
+     * Dedup mirrors {@link #confirmNewRequesterName} for Organization: a
+     * typed-in-new Requestor (no requestorPersonId) is checked by exact first+last
+     * name against Persons already used as a requestor_contact before creating a
+     * fresh Person, so re-typing an existing Requestor's name reuses that Person
+     * instead of creating a duplicate.
+     *
+     * <p>
+     * Where an existing Person is reused, edited values are merged PATCH-style for
+     * the same reason as {@link #initProvider}: the Person row is shared by every
+     * order that references that Requestor, so a blank or absent incoming field
+     * means "not supplied", never "clear the stored value".
+     */
+    public void initRequestorContact(SampleOrderItem sampleOrder) {
+        requestorPerson = null;
+        requesterContact = null;
+
+        if (noRequestorContactInformation(sampleOrder)) {
+            return;
+        }
+
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getRequestorPersonId())) {
+            requestorPerson = SpringContext.getBean(PersonService.class).get(sampleOrder.getRequestorPersonId());
+            setIfSupplied(sampleOrder.getRequestorFirstName(), requestorPerson::setFirstName);
+            setIfSupplied(sampleOrder.getRequestorLastName(), requestorPerson::setLastName);
+            setIfSupplied(sampleOrder.getRequestorPhone(), requestorPerson::setWorkPhone);
+            setIfSupplied(sampleOrder.getRequestorFax(), requestorPerson::setFax);
+            setIfSupplied(sampleOrder.getRequestorEmail(), requestorPerson::setEmail);
+            setIfSupplied(sampleOrder.getRequestorDepartment(), requestorPerson::setDepartment);
+            requestorPerson.setSysUserId(currentUserId);
+        } else {
+            Person existingRequestor = findExistingRequestorContactByName(sampleOrder);
+            if (existingRequestor != null) {
+                requestorPerson = existingRequestor;
+                setIfSupplied(sampleOrder.getRequestorPhone(), requestorPerson::setWorkPhone);
+                setIfSupplied(sampleOrder.getRequestorFax(), requestorPerson::setFax);
+                setIfSupplied(sampleOrder.getRequestorEmail(), requestorPerson::setEmail);
+                setIfSupplied(sampleOrder.getRequestorDepartment(), requestorPerson::setDepartment);
+                requestorPerson.setSysUserId(currentUserId);
+            } else {
+                requestorPerson = new Person();
+                requestorPerson.setFirstName(sampleOrder.getRequestorFirstName());
+                requestorPerson.setLastName(sampleOrder.getRequestorLastName());
+                requestorPerson.setWorkPhone(sampleOrder.getRequestorPhone());
+                requestorPerson.setFax(sampleOrder.getRequestorFax());
+                requestorPerson.setEmail(sampleOrder.getRequestorEmail());
+                requestorPerson.setDepartment(sampleOrder.getRequestorDepartment());
+                requestorPerson.setSysUserId(currentUserId);
+            }
+        }
+
+        requesterContact = new SampleRequester();
+        requesterContact.setRequesterTypeId(TableIdService.getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID);
+        requesterContact.setSysUserId(currentUserId);
+    }
+
+    /**
+     * @return the existing requestor_contact Person with this exact first+last
+     *         name, or null if either name is blank or no exact match is found
+     *         (i.e. this is genuinely a new Requestor).
+     */
+    private Person findExistingRequestorContactByName(SampleOrderItem sampleOrder) {
+        if (GenericValidator.isBlankOrNull(sampleOrder.getRequestorFirstName())
+                || GenericValidator.isBlankOrNull(sampleOrder.getRequestorLastName())) {
+            return null;
+        }
+        return SpringContext.getBean(PersonService.class).getRequestorContactByName(sampleOrder.getRequestorFirstName(),
+                sampleOrder.getRequestorLastName(), TableIdService.getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID);
     }
 
     private SampleRequester initSampleRequesterDepartment(SampleOrderItem orderItem) {
@@ -506,6 +761,7 @@ public class SamplePatientUpdateData {
             if (FormFields.getInstance().useField(Field.SampleEntryReferralSiteCode)) {
                 updateCurrentOrgIfNeeded(orderItem.getReferringSiteCode(), orgId);
             }
+            updateOrganizationContactInfoIfNeeded(orderItem, orgId);
 
         } else if (!GenericValidator.isBlankOrNull(orderItem.getNewRequesterName())) {
 
@@ -578,7 +834,28 @@ public class SamplePatientUpdateData {
         SampleAddService sampleAddService = new SampleAddService(sampleXML, currentUserId, getSample(), receivedDate);
         List<SampleTestCollection> sampleItems = sampleAddService.createSampleTestCollection();
         setSampleItemsTests(sampleItems);
+        stampResolvedCollectionSiteOnItems(sampleItems);
         setSampleAddService(sampleAddService);
+    }
+
+    /**
+     * Stamp the resolved collection-site id onto sample items whose
+     * collectionLocationId is blank. An inline-created site has no id at submit, so
+     * the sample XML carries a blank collectionLocationId even though the site is
+     * created server-side during {@code addObservations}; without this, the
+     * collection would be absent from the site-grouped surveillance dashboard. An
+     * explicitly supplied id (existing site) is left untouched, so deconvolution
+     * can still override it per aliquot afterward.
+     */
+    private void stampResolvedCollectionSiteOnItems(List<SampleTestCollection> sampleItems) {
+        if (GenericValidator.isBlankOrNull(resolvedCollectionSiteId) || sampleItems == null) {
+            return;
+        }
+        for (SampleTestCollection sampleItem : sampleItems) {
+            if (sampleItem.item != null && GenericValidator.isBlankOrNull(sampleItem.item.getCollectionLocationId())) {
+                sampleItem.item.setCollectionLocationId(resolvedCollectionSiteId);
+            }
+        }
     }
 
     public void initProgramQuestions(String programId, QuestionnaireResponse additionalQuestions) {
@@ -658,6 +935,9 @@ public class SamplePatientUpdateData {
 
         // Add environmental workflow observations (OGC-356)
         addEnvironmentalObservations(sampleOrder, observationHistoryService);
+
+        // Add vector surveillance observations
+        addVectorObservations(sampleOrder, observationHistoryService);
     }
 
     /**
@@ -707,28 +987,45 @@ public class SamplePatientUpdateData {
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WORKFLOW_TYPE),
                 ValueType.LITERAL);
 
-        // Sampling site fields
-        createObservation(getStringValue(envFields, "samplingSiteId"),
+        String samplingSiteId = resolveOrCreateSamplingSiteId(getStringValue(envFields, "samplingSiteId"),
+                getStringValue(envFields, "samplingSiteName"), getStringValue(envFields, "samplingSiteCode"),
+                getStringValue(envFields, "siteType"));
+        if (!GenericValidator.isBlankOrNull(samplingSiteId)) {
+            resolvedCollectionSiteId = samplingSiteId;
+        }
+        createObservation(samplingSiteId,
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_ID),
                 ValueType.LITERAL);
         createObservation(getStringValue(envFields, "samplingSiteName"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_NAME),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "siteType"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_TYPE),
-                ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "siteSubtype"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_SUBTYPE),
-                ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "environmentalZone"),
-                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_ENVIRONMENTAL_ZONE),
-                ValueType.LITERAL);
+        // siteType, siteSubtype, environmentalZone are not snapshotted — they are
+        // resolved at read time from vector_sampling_site via ENV_SAMPLING_SITE_ID.
         createObservation(getStringValue(envFields, "regulatoryReference"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REGULATORY_REFERENCE),
                 ValueType.LITERAL);
         createObservation(getStringValue(envFields, "collectionMethod"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COLLECTION_METHOD),
                 ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "waterTemp"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WATER_TEMP),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "ambientTemp"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_AMBIENT_TEMP),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "weather"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WEATHER), ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "preservationMethod"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_PRESERVATION_METHOD),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "fieldNotes"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_FIELD_NOTES),
+                ValueType.LITERAL);
+        String complianceStandardsRaw = getStringValue(envFields, "complianceStandards");
+        createObservation(complianceStandardsRaw,
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COMPLIANCE_STANDARDS),
+                ValueType.LITERAL);
+        setPendingComplianceStandardIds(parseJsonStringArray(complianceStandardsRaw));
         createObservation(getStringValue(envFields, "contactPerson"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_CONTACT_PERSON),
                 ValueType.LITERAL);
@@ -737,9 +1034,155 @@ public class SamplePatientUpdateData {
                 ValueType.LITERAL);
     }
 
+    private void addVectorObservations(SampleOrderItem sampleOrder,
+            ObservationHistoryService observationHistoryService) {
+        if (sampleOrder.getEnvironmentalFields() == null || sampleOrder.getEnvironmentalFields().isEmpty()) {
+            return;
+        }
+        String wfType = sampleOrder.getEnvironmentalFieldAsString("workflowType");
+        if (!"vector".equals(wfType) && !"environmental".equals(wfType)) {
+            return;
+        }
+
+        java.util.Map<String, Object> envFields = sampleOrder.getEnvironmentalFields();
+
+        createObservation(getStringValue(envFields, "workflowType"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_WORKFLOW_TYPE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecSampleTypeId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_SAMPLE_TYPE_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecSpeciesId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_SPECIES_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecLifecycleStage"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_LIFECYCLE_STAGE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecTrapTypeId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TRAP_TYPE_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecTrapCount"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TRAP_COUNT),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecTrapNights"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TRAP_NIGHTS),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecPoolingMethod"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_POOLING_METHOD),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecPoolCount"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_POOL_COUNT),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecSamplesPerPool"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_SAMPLES_PER_POOL),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecPathogensOfInterest"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_PATHOGENS_OF_INTEREST),
+                ValueType.LITERAL);
+        String vecCollectionSiteId = resolveOrCreateSamplingSiteId(getStringValue(envFields, "vecCollectionSiteId"),
+                getStringValue(envFields, "vecCollectionSiteName"), getStringValue(envFields, "vecCollectionSiteCode"),
+                getStringValue(envFields, "vecCollectionSiteType"));
+        if (!GenericValidator.isBlankOrNull(vecCollectionSiteId)) {
+            resolvedCollectionSiteId = vecCollectionSiteId;
+        }
+        createObservation(vecCollectionSiteId,
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_SITE_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecCollectionSiteName"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_SITE_NAME),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecGpsLatitude"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_GPS_LATITUDE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecGpsLongitude"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_GPS_LONGITUDE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecTimeOfDay"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TIME_OF_DAY),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecRestingContext"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_RESTING_CONTEXT),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecHumanBitingCatch"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_HUMAN_BITING_CATCH),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecCollectionNotes"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_NOTES),
+                ValueType.LITERAL);
+    }
+
+    /**
+     * Resolves an existing sampling site by id (applying any edited name/code/type
+     * in place), or resolves-or-creates one by code when {@code siteId} is blank
+     * (deferred "+ Add new site" creation).
+     */
+    private String resolveOrCreateSamplingSiteId(String siteId, String siteName, String siteCode, String siteType) {
+        VectorSamplingSiteService samplingSiteService = SpringContext.getBean(VectorSamplingSiteService.class);
+
+        if (!GenericValidator.isBlankOrNull(siteId)) {
+            try {
+                VectorSamplingSite existingSite = samplingSiteService.get(Integer.valueOf(siteId));
+                boolean changed = false;
+                if (!GenericValidator.isBlankOrNull(siteName) && !siteName.equals(existingSite.getName())) {
+                    existingSite.setName(siteName);
+                    changed = true;
+                }
+                if (!GenericValidator.isBlankOrNull(siteCode) && !siteCode.equals(existingSite.getCode())) {
+                    existingSite.setCode(siteCode);
+                    changed = true;
+                }
+                if (!GenericValidator.isBlankOrNull(siteType) && !siteType.equals(existingSite.getType())) {
+                    existingSite.setType(siteType);
+                    changed = true;
+                }
+                if (changed) {
+                    existingSite.setSysUserId(currentUserId);
+                    samplingSiteService.update(existingSite);
+                }
+            } catch (NumberFormatException | org.hibernate.ObjectNotFoundException e) {
+                LogEvent.logError(this.getClass().getName(), "resolveOrCreateSamplingSiteId",
+                        "Could not update sampling site id=" + siteId + ": " + e.getMessage());
+            }
+            return siteId;
+        }
+        if (GenericValidator.isBlankOrNull(siteName) || GenericValidator.isBlankOrNull(siteCode)) {
+            return siteId;
+        }
+
+        VectorSamplingSite existing = samplingSiteService.getByCode(siteCode);
+        if (existing != null) {
+            return String.valueOf(existing.getId());
+        }
+
+        VectorSamplingSite newSite = new VectorSamplingSite();
+        newSite.setName(siteName);
+        newSite.setCode(siteCode);
+        newSite.setType(siteType);
+        newSite.setActive(true);
+        newSite.setSource("LOCAL");
+        Integer newId = samplingSiteService.insert(newSite);
+        return String.valueOf(newId);
+    }
+
     /**
      * Safely get a String value from a Map that may contain Object values.
      */
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    private List<String> parseJsonStringArray(String json) {
+        if (GenericValidator.isBlankOrNull(json)) {
+            return Collections.emptyList();
+        }
+        try {
+            return JSON_MAPPER.readValue(json, new TypeReference<List<String>>() {
+            });
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "parseJsonStringArray",
+                    "Could not parse compliance standard IDs: " + json);
+            return Collections.emptyList();
+        }
+    }
+
     private String getStringValue(java.util.Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value == null) {
@@ -802,6 +1245,14 @@ public class SamplePatientUpdateData {
 
     public void setCustomNotificationLogic(boolean customNotificationLogic) {
         this.customNotificationLogic = customNotificationLogic;
+    }
+
+    public boolean isReferralsPersistedSynchronously() {
+        return referralsPersistedSynchronously;
+    }
+
+    public void setReferralsPersistedSynchronously(boolean referralsPersistedSynchronously) {
+        this.referralsPersistedSynchronously = referralsPersistedSynchronously;
     }
 
     public List<String> getPatientEmailNotificationTestIds() {

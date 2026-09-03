@@ -125,7 +125,8 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             "paging.currentPage", //
             "testResult*.refer", "testResult*.referralItem.referralReasonId",
             "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
-            "testResult*.referralItem.referredSendDate" };
+            "testResult*.referralItem.referredSendDate", "testResult*.expandedUncertainty",
+            "testResult*.coverageFactor" };
 
     @Autowired
     private DictionaryService dictionaryService;
@@ -594,6 +595,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
             Analysis analysis, ResultsUpdateDataSet actionDataSet) {
         // List<Referral> referrals = new ArrayList<>();

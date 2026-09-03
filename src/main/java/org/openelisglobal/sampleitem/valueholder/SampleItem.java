@@ -56,11 +56,19 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private String collectionMethod;
     private String sampleTemperature;
     private String specimenOrigin;
+    private String container;
+    private String locationDetails;
+    private String gpsLatitude;
+    private String gpsLongitude;
     private Timestamp receivedDate;
     private boolean rejected = false;
     private String rejectReasonId;
     private boolean voided = false;
+    private boolean labPerformedSampling = false;
     private String voidReason;
+
+    private String collectionLocationId;
+    private String collectionNotes;
 
     // ========== Aliquoting Support Fields (Feature 001-sample-management)
     // ==========
@@ -271,6 +279,38 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
         this.specimenOrigin = specimenOrigin;
     }
 
+    public String getContainer() {
+        return container;
+    }
+
+    public void setContainer(String container) {
+        this.container = container;
+    }
+
+    public String getLocationDetails() {
+        return locationDetails;
+    }
+
+    public void setLocationDetails(String locationDetails) {
+        this.locationDetails = locationDetails;
+    }
+
+    public String getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(String gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public String getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(String gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
+    }
+
     public Timestamp getReceivedDate() {
         return receivedDate;
     }
@@ -336,6 +376,30 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setVoidReason(String voidReason) {
         this.voidReason = voidReason;
+    }
+
+    public boolean isLabPerformedSampling() {
+        return labPerformedSampling;
+    }
+
+    public void setLabPerformedSampling(boolean labPerformedSampling) {
+        this.labPerformedSampling = labPerformedSampling;
+    }
+
+    public String getCollectionLocationId() {
+        return collectionLocationId;
+    }
+
+    public void setCollectionLocationId(String collectionLocationId) {
+        this.collectionLocationId = collectionLocationId;
+    }
+
+    public String getCollectionNotes() {
+        return collectionNotes;
+    }
+
+    public void setCollectionNotes(String collectionNotes) {
+        this.collectionNotes = collectionNotes;
     }
 
     // ========== Aliquoting Getters/Setters (Feature 001-sample-management)

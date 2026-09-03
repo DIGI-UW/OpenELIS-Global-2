@@ -128,6 +128,37 @@ jobs:
         env:
           CI: true
 
+      - name: Scan frontend dependencies for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: frontend
+          format: table
+          output: trivy-results.txt
+          exit-code: 0
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          scanners: vuln,secret
+          trivyignores: .trivyignore
+
+      - name: Generate frontend SBOM
+        if: always()
+        uses: anchore/sbom-action@v0
+        with:
+          path: frontend
+          output-file: sbom.spdx.json
+          artifact-name: openelis-frontend-sbom.spdx.json
+          dependency-snapshot: ${{ github.event_name == 'push' }}
+
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-security-reports
+          path: |
+            trivy-results.txt
+            sbom.spdx.json
+
   frontend-gate:
     name: 02 Checkpoint - Frontend
     if: always()

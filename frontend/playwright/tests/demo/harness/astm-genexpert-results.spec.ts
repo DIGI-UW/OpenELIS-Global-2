@@ -97,7 +97,19 @@ async function pushAstmMessage(
     },
   );
   const body = await response.json();
-  const sampleId = body?.results?.[0]?.sample_id;
+  const result = body?.results?.[0];
+  // The simulator reports a sample_id even when the transport rejected the
+  // message, so the push flag has to be checked separately. Without this a
+  // NAKed frame surfaced as a 90s timeout waiting for results that were never
+  // sent, hiding the actual transport error the simulator had already reported.
+  if (!result?.pushed) {
+    throw new Error(
+      `ASTM push was not accepted over ${BRIDGE_DESTINATION}: ${
+        result?.error ?? "no error reported"
+      }`,
+    );
+  }
+  const sampleId = result.sample_id;
   if (!sampleId) throw new Error("Push returned no sample_id");
   await presentation.pause(1_000);
   return sampleId;

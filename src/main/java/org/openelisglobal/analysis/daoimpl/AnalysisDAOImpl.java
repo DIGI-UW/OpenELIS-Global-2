@@ -53,6 +53,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements AnalysisDAO {
 
+    // HQL fragment used by the *ExcludingQc variants. analysis.sampitem_id is int4
+    // in the DB, but SampleItem.id is mapped as String at the entity level (via
+    // BaseObject<String>). Cast the LEFT side to integer so the generated SQL
+    // compares int4 against the int4 subquery — casting the subquery to string
+    // instead yields a Postgres "numeric = character varying" mismatch.
+    private static final String QC_SAMPLE_ITEM_NOT_IN_PROFILE = "CAST(a.sampleItem.id AS integer) NOT IN"
+            + " (SELECT q.sampleItemId FROM SampleItemQcProfile q)";
+
+    // Pool-anchored counterpart to the "collected" test on a.sampleItem: a vector
+    // pool analysis (a.vectorPoolId set, a.sampleItem NULL per
+    // ck_analysis_pool_or_item) is "collected" when the pool's sample has any
+    // sample_item carrying a collectionDate.
+    private static final String COLLECTED_POOL_HAS_SAMPLE_ITEM = "EXISTS (SELECT 1 FROM VectorPool vp, Sample ps,"
+            + " SampleItem psi WHERE vp.id = cast(a.vectorPoolId as integer) AND vp.sampleId = ps.id"
+            + " AND psi.sample = ps AND psi.collectionDate IS NOT NULL)";
+
     public AnalysisDAOImpl() {
         super(Analysis.class);
     }
@@ -220,6 +236,25 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> statusIdList, boolean sortedByDateAndAccession) throws LIMSRuntimeException {
+        try {
+            String sql = "from Analysis a where a.testSection.id = :testSectionId AND a.statusId IN (:statusIdList) AND "
+                    + QC_SAMPLE_ITEM_NOT_IN_PROFILE + " order by a.sampleItem.sample.accessionNumber";
+
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("testSectionId", testSectionId);
+            query.setParameterList("statusIdList", statusIdList);
+
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getPageAnalysisByTestSectionAndStatusExcludingQc()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getPageAnalysisAtAccessionNumberAndStatus(String accessionNumber, List<String> statusIdList,
             boolean sortedByDateAndAccession) throws LIMSRuntimeException {
 
@@ -240,6 +275,42 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Analysis getPageAnalysisAtAccessionNumberAndStatus()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getPageAnalysisAtAccessionNumberAndStatusExcludingQc(String accessionNumber,
+            List<String> statusIdList, boolean sortedByDateAndAccession) throws LIMSRuntimeException {
+        // Use LEFT JOIN so pool-anchored analyses (sampleItem IS NULL, vectorPoolId
+        // set)
+        // are not dropped before the OR branch can match them. The
+        // ck_analysis_pool_or_item
+        // CHECK constraint guarantees no double-counting.
+        // QC profile exclusion applies only to item-level analyses (si IS NULL means it
+        // cannot be a QC sample).
+        String hql = "SELECT a FROM Analysis a" + " LEFT JOIN a.sampleItem si" + " LEFT JOIN si.sample s"
+                + " WHERE a.statusId IN (:statusIdList)" + " AND (" + "   (si IS NOT NULL"
+                + "    AND s.accessionNumber >= :accessionNumber"
+                + "    AND length(s.accessionNumber) = length(:accessionNumber)"
+                + "    AND CAST(si.id AS integer) NOT IN (SELECT q.sampleItemId FROM SampleItemQcProfile q))" + "  OR"
+                + "  (si IS NULL AND a.vectorPoolId IS NOT NULL"
+                + "   AND EXISTS (SELECT 1 FROM VectorPool vp, Sample ps"
+                + "               WHERE vp.id = cast(a.vectorPoolId as integer)"
+                + "                 AND vp.sampleId = ps.id"
+                + "                 AND ps.accessionNumber >= :accessionNumber"
+                + "                 AND length(ps.accessionNumber) = length(:accessionNumber)))" + " )"
+                + " ORDER BY a.id";
+        try {
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
+            query.setParameter("accessionNumber", accessionNumber);
+            query.setParameterList("statusIdList", statusIdList);
+
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getPageAnalysisAtAccessionNumberAndStatusExcludingQc()",
+                    e);
         }
     }
 
@@ -280,6 +351,32 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         }
 
         return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId) throws LIMSRuntimeException {
+        if (vectorPoolId == null || vectorPoolId.isBlank()) {
+            return new ArrayList<>();
+        }
+        try {
+            int poolIdInt = Integer.parseInt(vectorPoolId);
+            // Use cast(a.vectorPoolId as integer) = :poolId so the comparison is
+            // integer vs integer — same pattern used in
+            // getPageAnalysisByStatusFromAccession.
+            // Binding the LIMSStringNumberUserType field directly as a String parameter
+            // can cause a NUMERIC = VARCHAR type mismatch in PostgreSQL prepared
+            // statements.
+            String sql = "from Analysis a where cast(a.vectorPoolId as integer) = :poolId";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("poolId", poolIdInt);
+            return query.list();
+        } catch (NumberFormatException e) {
+            return new ArrayList<>();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getAnalysesByVectorPoolId()", e);
+        }
     }
 
     @Override
@@ -1015,6 +1112,61 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException {
+
+        try {
+            String sql = "from Analysis a where a.statusId = :statusId AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("statusId", statusId);
+
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getAnalysesForStatusIdExcludingQc");
+        }
+
+        return null;
+    }
+
+    // Variant of getAnalysesForStatusIdExcludingQc that additionally excludes
+    // analyses whose sample item has not been collected (collection_date is null).
+    @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getCollectedAnalysesForStatusIdExcludingQc(String statusId) throws LIMSRuntimeException {
+
+        try {
+            // Spans both anchor kinds (ck_analysis_pool_or_item):
+            // 1. a.sampleItem — clinical/environmental/post-deconvolution analyses,
+            // gated only by the QC-profile exclusion (which keys on sampleItem.id).
+            // Deliberately NOT gated on collectionDate: SampleAddService sets it only
+            // when the user supplies one, so requiring it emptied the tile for every
+            // deployment that leaves collection date blank.
+            // 2. a.vectorPoolId — pool-anchored vector analyses with a NULL
+            // sampleItem; in play once the pool's sample has a collected sample_item,
+            // and excluded when the pool is a QC pool (any member sample_item flagged
+            // BLANK/CONTROL/DUPLICATE), mirroring the vector surveillance report's
+            // QC_EXCLUDE_POOL. The sample-item QC-profile clause is scoped to branch 1
+            // only: for a pool row a.sampleItem.id is NULL, and "NULL NOT IN
+            // (non-empty)" is NULL (not true), which would silently drop every pool row
+            // the moment any QC profile exists. LEFT JOIN (not dotted navigation) keeps
+            // pool rows in play so the OR EXISTS branch can admit them.
+            String sql = "SELECT a FROM Analysis a" //
+                    + " LEFT JOIN a.sampleItem si" //
+                    + " WHERE a.statusId = :statusId" //
+                    + " AND ((si.id IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
+                    + "  OR " + COLLECTED_POOL_HAS_SAMPLE_ITEM + ")";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("statusId", statusId);
+
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getCollectedAnalysesForStatusIdExcludingQc");
+        }
+
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<String> statusIds)
             throws LIMSRuntimeException {
         if (statusIds == null || statusIds.isEmpty()) {
@@ -1308,6 +1460,29 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Analysis> getAllAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList, List<String> sampleStatusList) throws LIMSRuntimeException {
+
+        String sql = "From Analysis a WHERE a.testSection.id = :testSectionId AND a.statusId IN"
+                + " (:analysisStatusList) AND a.sampleItem.sample.statusId IN (:sampleStatusList) AND "
+                + QC_SAMPLE_ITEM_NOT_IN_PROFILE + " ORDER BY a.sampleItem.sample.accessionNumber";
+        try {
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("testSectionId", testSectionId);
+            query.setParameterList("analysisStatusList", analysisStatusList);
+            query.setParameterList("sampleStatusList", sampleStatusList);
+
+            return query.list();
+
+        } catch (HibernateException e) {
+            handleException(e, "getAllAnalysisByTestSectionAndStatusExcludingQc");
+        }
+
+        return null;
+    }
+
+    @Override
     public List<Analysis> getPageAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList,
             List<String> sampleStatusList) {
 
@@ -1574,6 +1749,29 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     }
 
     @Override
+    public int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId, List<String> analysisStatusList,
+            List<String> sampleStatusList) {
+
+        String hql = "SELECT COUNT(*) From Analysis a WHERE a.testSection.id = :testSectionId AND a.statusId IN"
+                + " (:analysisStatusList) AND a.sampleItem.sample.statusId IN (:sampleStatusList) AND "
+                + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameter("testSectionId", testSectionId);
+            query.setParameterList("analysisStatusList", analysisStatusList);
+            query.setParameterList("sampleStatusList", sampleStatusList);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+
+        } catch (HibernateException e) {
+            handleException(e, "getCountAnalysisByTestSectionAndStatusExcludingQc");
+        }
+
+        return 0;
+    }
+
+    @Override
     public int getCountAnalysisByTestSectionAndStatus(String testSectionId, List<String> analysisStatusList) {
 
         String hql = "SELECT COUNT(*) From Analysis a WHERE a.testSection.id = :testSectionId AND a.statusId IN"
@@ -1595,35 +1793,63 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     }
 
     @Override
+    public int getCountAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
+            List<String> analysisStatusList) {
+        String hql = "SELECT COUNT(*) From Analysis a WHERE a.testSection.id = :testSectionId AND a.statusId IN"
+                + " (:analysisStatusList) AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameter("testSectionId", testSectionId);
+            query.setParameterList("analysisStatusList", analysisStatusList);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (HibernateException e) {
+            handleException(e, "getCountAnalysisByTestSectionAndStatusExcludingQc");
+        }
+
+        return 0;
+    }
+
+    @Override
     public List<Analysis> getPageAnalysisByStatusFromAccession(List<String> analysisStatusList,
             List<String> sampleStatusList, String accessionNumber) {
 
         // Strict equality: only return analyses for the exact requested accession.
         // The 4-arg overload handles range searches separately.
-        String sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber = :accessionNumber" //
-                + " AND length(a.sampleItem.sample.accessionNumber) = length(:accessionNumber)" //
-                + " AND a.statusId IN (:analysisStatusList)" //
-                + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
-                + " ORDER BY a.sampleItem.sample.accessionNumber"; //
+        //
+        // Two paths to an Analysis from an accession:
+        // 1. a.sampleItem.sample.accessionNumber — clinical/environmental and
+        // post-deconvolution vector analyses attached to a sample_item.
+        // 2. a.vectorPoolId — vector pool-level analyses with a NULL sampleItem,
+        // reachable via the vector_pool's sample_id.
+        // ck_analysis_pool_or_item guarantees exactly one of those is set, so an
+        // OR over both branches gives the full set without double-counting.
+        // LEFT JOIN explicitly: dotted-path navigation like a.sampleItem.sample
+        // generates an INNER JOIN, which would drop every pool-anchored analysis
+        // (sampitem_id IS NULL per ck_analysis_pool_or_item) before the OR branch
+        // can match them.
+        String sql = "SELECT a FROM Analysis a" //
+                + " LEFT JOIN a.sampleItem si" //
+                + " LEFT JOIN si.sample s" //
+                + " WHERE a.statusId IN (:analysisStatusList)" //
+                + " AND ((s.accessionNumber = :accessionNumber" //
+                + "       AND length(s.accessionNumber) = length(:accessionNumber)" //
+                + "       AND s.statusId IN (:sampleStatusList))" //
+                + "  OR EXISTS (SELECT 1 FROM VectorPool vp, Sample ps" //
+                + "             WHERE vp.id = cast(a.vectorPoolId as integer)" //
+                + "               AND vp.sampleId = ps.id" //
+                + "               AND ps.accessionNumber = :accessionNumber" //
+                + "               AND length(ps.accessionNumber) = length(:accessionNumber)" //
+                + "               AND ps.statusId IN (:sampleStatusList)))" //
+                + " ORDER BY a.id"; //
         try {
-            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                    "getPageAnalysisByStatusFromAccession",
-                    "Executing query with accessionNumber: " + accessionNumber + " (length: "
-                            + (accessionNumber != null ? accessionNumber.length() : 0) + "), " + "analysisStatusList: "
-                            + (analysisStatusList != null ? analysisStatusList.toString() : "null") + ", "
-                            + "sampleStatusList: " + (sampleStatusList != null ? sampleStatusList.toString() : "null"));
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("accessionNumber", accessionNumber);
             query.setParameterList("analysisStatusList", analysisStatusList);
             query.setParameterList("sampleStatusList", sampleStatusList);
-            // query.setMaxResults(SpringContext.getBean(PagingProperties.class).getResultsPageSize());
 
-            List<Analysis> analysisList = query.list();
-            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                    "getPageAnalysisByStatusFromAccession",
-                    "Query returned " + (analysisList != null ? analysisList.size() : 0) + " analyses");
-
-            return analysisList;
+            return query.list();
 
         } catch (HibernateException e) {
             handleException(e, "getPageAnalysisByStatusFromAccession");
@@ -1650,20 +1876,39 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             sampleStatusList.add(statusService.getStatusID(OrderStatus.Finished));
         }
 
+        // See the 3-arg overload above for why both sampleItem-anchored and
+        // vector_pool-anchored analyses need to be included.
         String sql = "";
         if (doRange && StringUtils.isNotBlank(upperRangeAccessionNumber))
-            sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber between :accessionNumber and"
-                    + " :upperRangeAccessionNumber" //
-                    + " AND length(a.sampleItem.sample.accessionNumber) = length(:accessionNumber)" //
-                    + " AND a.statusId IN (:analysisStatusList)" //
-                    + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
-                    + " ORDER BY a.sampleItem.sample.accessionNumber"; //
+            sql = "SELECT a FROM Analysis a" //
+                    + " LEFT JOIN a.sampleItem si" //
+                    + " LEFT JOIN si.sample s" //
+                    + " WHERE a.statusId IN (:analysisStatusList)" //
+                    + " AND ((s.accessionNumber between :accessionNumber and :upperRangeAccessionNumber" //
+                    + "       AND length(s.accessionNumber) = length(:accessionNumber)" //
+                    + "       AND s.statusId IN (:sampleStatusList))" //
+                    + "  OR EXISTS (SELECT 1 FROM VectorPool vp, Sample ps" //
+                    + "             WHERE vp.id = cast(a.vectorPoolId as integer)" //
+                    + "               AND vp.sampleId = ps.id" //
+                    + "               AND ps.accessionNumber between :accessionNumber and :upperRangeAccessionNumber" //
+                    + "               AND length(ps.accessionNumber) = length(:accessionNumber)" //
+                    + "               AND ps.statusId IN (:sampleStatusList)))" //
+                    + " ORDER BY a.id"; //
         else
-            sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber = :accessionNumber" //
-                    + " AND length(a.sampleItem.sample.accessionNumber) = length(:accessionNumber)" //
-                    + " AND a.statusId IN (:analysisStatusList)" //
-                    + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
-                    + " ORDER BY a.sampleItem.sample.accessionNumber"; //
+            sql = "SELECT a FROM Analysis a" //
+                    + " LEFT JOIN a.sampleItem si" //
+                    + " LEFT JOIN si.sample s" //
+                    + " WHERE a.statusId IN (:analysisStatusList)" //
+                    + " AND ((s.accessionNumber = :accessionNumber" //
+                    + "       AND length(s.accessionNumber) = length(:accessionNumber)" //
+                    + "       AND s.statusId IN (:sampleStatusList))" //
+                    + "  OR EXISTS (SELECT 1 FROM VectorPool vp, Sample ps" //
+                    + "             WHERE vp.id = cast(a.vectorPoolId as integer)" //
+                    + "               AND vp.sampleId = ps.id" //
+                    + "               AND ps.accessionNumber = :accessionNumber" //
+                    + "               AND length(ps.accessionNumber) = length(:accessionNumber)" //
+                    + "               AND ps.statusId IN (:sampleStatusList)))" //
+                    + " ORDER BY a.id"; //
 
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
@@ -1763,6 +2008,51 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     }
 
     @Override
+    public int getCountOfAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
+        String hql = "SELECT COUNT(*) From Analysis a WHERE a.statusId IN (:analysisStatusList) AND "
+                + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameterList("analysisStatusList", statusIdList);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfAnalysesForStatusIdsExcludingQc");
+        }
+
+        return 0;
+    }
+
+    // Count corresponding to getCollectedAnalysesForStatusIdExcludingQc.
+    @Override
+    public int getCountOfCollectedAnalysesForStatusIdsExcludingQc(List<String> statusIdList) {
+        // Mirrors getCollectedAnalysesForStatusIdExcludingQc exactly so the tile
+        // count matches the list — including scoping the QC-profile exclusion to the
+        // sampleItem branch only, and not gating that branch on collectionDate. See
+        // that method for why the OR EXISTS branch and the branch-scoped QC clause
+        // are needed.
+        String hql = "SELECT COUNT(*) From Analysis a" //
+                + " LEFT JOIN a.sampleItem si" //
+                + " WHERE a.statusId IN (:analysisStatusList)" //
+                + " AND ((si.id IS NOT NULL AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE + ")" //
+                + "  OR " + COLLECTED_POOL_HAS_SAMPLE_ITEM + ")";
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameterList("analysisStatusList", statusIdList);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfCollectedAnalysesForStatusIdsExcludingQc");
+        }
+
+        return 0;
+    }
+
+    @Override
     public int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<String> statusIds) {
         String sql = "SELECT COUNT(*) From Analysis a where DATE(a.releasedDate) = DATE(:releasedDate) and a.statusId in ("
                 + " :statusList )";
@@ -1815,6 +2105,116 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             return count.intValue();
         } catch (HibernateException e) {
             handleException(e, "getCountOfAnalysisStartedOnByStatusId");
+        }
+
+        return 0;
+    }
+
+    /**
+     * Same predicate as {@link #getCountOfAnalysesForStatusIdsExcludingQc(List)},
+     * narrowed to a set of test sections, so a section-scoped dashboard tile counts
+     * exactly what the unscoped tile counts within the user's sections.
+     */
+    @Override
+    public int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String hql = "SELECT COUNT(*) From Analysis a WHERE a.statusId IN (:analysisStatusList) AND a.testSection.id IN"
+                + " (:testSectionIds) AND " + QC_SAMPLE_ITEM_NOT_IN_PROFILE;
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameterList("analysisStatusList", statusIdList);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc");
+        }
+
+        return 0;
+    }
+
+    /**
+     * Same predicate as
+     * {@link #getCountOfAnalysisCompletedOnByStatusId(Date, List)}, narrowed to a
+     * set of test sections.
+     */
+    @Override
+    public int getCountOfAnalysisCompletedOnByStatusIdAndTestSections(Date completedDate, List<String> statusIds,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String sql = "SELECT COUNT(*) From Analysis a where DATE(a.releasedDate) = DATE(:releasedDate) and a.statusId in"
+                + " ( :statusList ) and a.testSection.id in ( :testSectionIds )";
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            query.setParameter("releasedDate", completedDate);
+            query.setParameterList("statusList", statusIds);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfAnalysisCompletedOnByStatusIdAndTestSections");
+        }
+
+        return 0;
+    }
+
+    /**
+     * Same predicate as
+     * {@link #getCountOfAnalysisStartedOnExcludedByStatusId(Date, Set)}, narrowed
+     * to a set of test sections.
+     */
+    @Override
+    public int getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections(Date startedDate, Set<String> statusIds,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String sql = "SELECT COUNT(*) from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId not"
+                + " in ( :statusList ) and a.testSection.id in ( :testSectionIds )";
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            query.setParameter("startedDate", startedDate);
+            query.setParameterList("statusList", statusIds);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfAnalysisStartedOnExcludedByStatusIdAndTestSections");
+        }
+
+        return 0;
+    }
+
+    /**
+     * Same predicate as {@link #getCountOfAnalysisStartedOnByStatusId(Date, List)},
+     * narrowed to a set of test sections.
+     */
+    @Override
+    public int getCountOfAnalysisStartedOnByStatusIdAndTestSections(Date startedDate, List<String> statusIds,
+            List<String> testSectionIds) {
+        if (testSectionIds == null || testSectionIds.isEmpty()) {
+            return 0;
+        }
+        String sql = "SELECT COUNT(*) from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId in ("
+                + " :statusList ) and a.testSection.id in ( :testSectionIds )";
+        try {
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            query.setParameter("startedDate", startedDate);
+            query.setParameterList("statusList", statusIds);
+            query.setParameterList("testSectionIds", testSectionIds);
+
+            Long count = query.uniqueResult();
+            return count == null ? 0 : count.intValue();
+        } catch (HibernateException e) {
+            handleException(e, "getCountOfAnalysisStartedOnByStatusIdAndTestSections");
         }
 
         return 0;

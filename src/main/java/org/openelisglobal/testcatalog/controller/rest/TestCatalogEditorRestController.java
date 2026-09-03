@@ -382,6 +382,10 @@ public class TestCatalogEditorRestController {
 
     public static class CreatedTest {
         public String testId;
+        // Set only on a 409 body: "description" when the derived description (the
+        // name, unless an explicit description was sent) is already another
+        // test's. The code-in-use 409 stays bodyless, as released clients expect.
+        public String conflict;
     }
 
     @PostMapping(value = "/tests", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -406,6 +410,15 @@ public class TestCatalogEditorRestController {
         // Code uniqueness (FR-4) → 409 so the UI can flag the field.
         if (testCatalogCreationService.codeInUse(body.code)) {
             return ResponseEntity.status(409).build();
+        }
+        // TEST.description is unique (test_desc_uk) and the create derives it from
+        // the name when no description is sent, so a duplicate name used to reach
+        // the constraint and come back as a bare 500 (OGC-1180).
+        String effectiveDescription = isBlank(body.description) ? body.name : body.description;
+        if (descriptionInUse(effectiveDescription, null)) {
+            CreatedTest conflictBody = new CreatedTest();
+            conflictBody.conflict = "description";
+            return ResponseEntity.status(409).body(conflictBody);
         }
         TestCatalogCreationService.CreateTestParams params = new TestCatalogCreationService.CreateTestParams();
         params.name = body.name;
@@ -596,6 +609,10 @@ public class TestCatalogEditorRestController {
         public Boolean antimicrobialResistance;
         public Boolean active;
         public Boolean orderable;
+        // Set only on a 409 body, naming what conflicted ("description" or
+        // "activation") — this endpoint answers 409 for two unrelated reasons and
+        // the client needs to tell them apart (OGC-1180).
+        public String conflict;
     }
 
     @GetMapping(value = "/tests/{testId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -642,6 +659,14 @@ public class TestCatalogEditorRestController {
         if (changesImmutableField(body.name, test.getName())) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        // TEST.description is unique across tests (test_desc_uk). Without this
+        // guard a duplicate reached the constraint and surfaced as a bare 500 with
+        // an empty body — on exactly the create-then-edit flow the editor steers
+        // users into (OGC-1180). Same-test no-op saves stay 200.
+        if (body.description != null && !body.description.equals(test.getDescription())
+                && descriptionInUse(body.description, testId)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(descriptionConflict());
+        }
         if (body.code != null && !body.code.isBlank()) {
             test.setLocalCode(body.code);
         }
@@ -680,13 +705,25 @@ public class TestCatalogEditorRestController {
         // told the caller the activation had been saved when it had not. Sending
         // active=true for an already-active test is not a change, so it still passes.
         if (Boolean.TRUE.equals(body.active) && !test.isActive()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            BasicInfo conflictBody = new BasicInfo();
+            conflictBody.conflict = "activation";
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(conflictBody);
         }
         if (body.active != null && !body.active) {
             test.setIsActive("N");
         }
         test.setSysUserId(ControllerUtills.getSysUserId(request));
-        Test updated = testService.update(test);
+        Test updated;
+        try {
+            updated = testService.update(test);
+        } catch (RuntimeException e) {
+            // The in-use check above races with concurrent writes; when the unique
+            // index still fires, answer the same 409 rather than a bare 500.
+            if (isDescriptionConstraintViolation(e)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(descriptionConflict());
+            }
+            throw e;
+        }
         // OGC-1145 FR-2: reconcile the type_of_sample_test junction to the desired
         // set — delete removed links, insert added ones, and drop duplicate rows
         // for the same type (validated above, so this cannot fail mid-write).
@@ -716,6 +753,40 @@ public class TestCatalogEditorRestController {
         }
         invalidateHealth();
         return ResponseEntity.ok(toBasicInfo(updated));
+    }
+
+    /**
+     * True when another test (any status) already holds this exact description.
+     * TEST.description carries a case-sensitive unique index (test_desc_uk), so the
+     * comparison is exact-match — mirroring what the database will enforce — and
+     * {@code excludeTestId} lets a test keep its own description on save.
+     */
+    private boolean descriptionInUse(String description, String excludeTestId) {
+        if (isBlank(description)) {
+            return false;
+        }
+        for (Test other : testService.getAllTests(false)) {
+            if (description.equals(other.getDescription()) && !other.getId().equals(excludeTestId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static BasicInfo descriptionConflict() {
+        BasicInfo body = new BasicInfo();
+        body.conflict = "description";
+        return body;
+    }
+
+    /** Walks the cause chain for the description unique index by name. */
+    private static boolean isDescriptionConstraintViolation(Throwable e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause.getMessage() != null && cause.getMessage().contains("test_desc_uk")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1931,6 +2002,31 @@ public class TestCatalogEditorRestController {
             resp.mappings.add(PanelTerminologyMappingDto.of(m));
         }
         return resp;
+    }
+
+    /**
+     * The localization records behind a panel's name, for the editor's Localization
+     * section.
+     *
+     * <p>
+     * Same bridge as a test's: a panel already FK-links to a row in the generic
+     * localization tables, so this hands back the backing id and the UI reads and
+     * writes per-locale values through /rest/localizations/{id}. A panel carries
+     * one localized field — its name — where a test carries two.
+     */
+    @GetMapping(value = "/panels/{panelId}/localization", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LocalizationRefs> getPanelLocalizationRefs(@PathVariable String panelId) {
+        Panel panel = findPanel(panelId);
+        if (panel == null) {
+            return ResponseEntity.notFound().build();
+        }
+        LocalizationRefs refs = new LocalizationRefs();
+        refs.testId = panelId;
+        Localization localization = panel.getLocalization();
+        if (localization != null && localization.getId() != null) {
+            refs.fields.add(new LocalizationFieldRef("name", localization.getId()));
+        }
+        return ResponseEntity.ok(refs);
     }
 
     @GetMapping(value = "/panels/{panelId}", produces = MediaType.APPLICATION_JSON_VALUE)

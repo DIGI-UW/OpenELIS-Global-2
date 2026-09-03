@@ -33,6 +33,9 @@ public class PatientDashBoardProviderIntegrationTest extends BaseWebContextSensi
     private SampleHumanService sampleHumanService;
 
     @Autowired
+    private org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
+
+    @Autowired
     private javax.sql.DataSource dataSource;
 
     private PatientDashBoardProvider provider;
@@ -48,6 +51,7 @@ public class PatientDashBoardProviderIntegrationTest extends BaseWebContextSensi
         provider.analysisService = analysisService;
         provider.iStatusService = statusService;
         provider.sampleHumanService = sampleHumanService;
+        provider.analysisAnchorService = analysisAnchorService;
         // result.xml carries only the Finalized ANALYSIS status; the tile query
         // resolves NotStarted by name (StatusService.addToAnalysisMap).
         Long notTested = jdbc.queryForObject("SELECT count(*) FROM clinlims.status_of_sample WHERE name = 'Not Tested'",

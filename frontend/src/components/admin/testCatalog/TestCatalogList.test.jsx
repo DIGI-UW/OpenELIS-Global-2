@@ -141,7 +141,61 @@ describe("TestCatalogList", () => {
     );
     renderList();
     const cell = await screen.findByText("Glucose");
-    fireEvent.click(cell.closest("tr"));
+    fireEvent.click(cell.closest("td"));
+    expect(mockHistory.push).toHaveBeenCalledWith(
+      "/MasterListsPage/TestCatalogEditor/7/basic-info",
+    );
+  });
+
+  /**
+   * The checkbox selects a row for the "Edit related" batch action, which needs
+   * two or more tests. Opening the editor on the same click made it unusable:
+   * the box did toggle, then the navigation took the list away before a second
+   * row could be picked.
+   *
+   * It cannot be fixed by stopping propagation on TableSelectRow. Carbon
+   * destructures a fixed set of props there and onClick is not among them, so a
+   * handler passed to it never reaches the DOM. The row-opening click therefore
+   * lives on the data cells, leaving the checkbox cell outside it.
+   */
+  it("selects a row without opening the editor when the checkbox is clicked", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(
+        pageOf([
+          { testId: "7", name: "Glucose", domain: "CLINICAL", active: true },
+          { testId: "8", name: "Sodium", domain: "CLINICAL", active: true },
+        ]),
+      ),
+    );
+    renderList();
+    await screen.findByText("Glucose");
+
+    const boxes = document
+      .querySelector("tbody")
+      .querySelectorAll('input[type="checkbox"]');
+    fireEvent.click(boxes[0]);
+
+    expect(
+      mockHistory.push,
+      "selecting a row must not navigate away from the list",
+    ).not.toHaveBeenCalled();
+    expect(boxes[0].checked).toBe(true);
+  });
+
+  it("still opens the editor from a data cell once a row is selected", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(
+        pageOf([
+          { testId: "7", name: "Glucose", domain: "CLINICAL", active: true },
+        ]),
+      ),
+    );
+    renderList();
+    const cell = await screen.findByText("Glucose");
+
+    fireEvent.click(document.querySelector('tbody input[type="checkbox"]'));
+    fireEvent.click(cell.closest("td"));
+
     expect(mockHistory.push).toHaveBeenCalledWith(
       "/MasterListsPage/TestCatalogEditor/7/basic-info",
     );
@@ -164,6 +218,44 @@ describe("TestCatalogList", () => {
       expect(getFromOpenElisServer.mock.calls.at(-1)[0]).toContain(
         "search=glu",
       );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * Typing must not be interrupted: a search refresh leaves the toolbar Search
+   * mounted (focus/cursor kept) and keeps the previous rows on screen instead of
+   * swapping the whole table — search included — for a full-table spinner.
+   * Reverting the fix unmounts both, so this fails.
+   */
+  it("keeps the search box and current rows mounted during a search refresh", () => {
+    vi.useFakeTimers();
+    try {
+      let refreshPending = false;
+      getFromOpenElisServer.mockImplementation((url, cb) => {
+        if (!url.includes("/tests")) return cb([]); // sample-types reference fetch
+        if (refreshPending) return; // hold the refresh in-flight -> loading stays true
+        cb(
+          pageOf([
+            { testId: "7", name: "Glucose", domain: "CLINICAL", active: true },
+          ]),
+        );
+      });
+      renderList();
+      expect(screen.getByText("Glucose")).toBeInTheDocument();
+
+      refreshPending = true;
+      const search = screen.getByPlaceholderText(
+        messages["label.testCatalog.list.search"],
+      );
+      fireEvent.change(search, { target: { value: "glu" } });
+      act(() => vi.advanceTimersByTime(300)); // debounce fires -> refresh now loading
+
+      expect(
+        screen.getByPlaceholderText(messages["label.testCatalog.list.search"]),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Glucose")).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }

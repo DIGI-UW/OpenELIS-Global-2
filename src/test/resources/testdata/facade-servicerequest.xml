@@ -126,11 +126,11 @@
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
         lastupdated="2025-03-20 12:00:00.0" sort_order="2147483647"
-        name_localization_id="1" display_key="TestKey1" />
+        name_localization_id="1" display_key="TestKey1" domain="CLINICAL" />
     <test_section id="2" name="TestSection2"
         description="SectionDescription2" org_id="4" is_external="N"
         lastupdated="2025-03-21 13:00:00.0" sort_order="2147483646"
-        name_localization_id="2" display_key="TestKey2" />
+        name_localization_id="2" display_key="TestKey2" domain="CLINICAL" />
 
     <test_formats id="1" lastupdated="2025-03-21 12:00:00" />
     <test_formats id="2" lastupdated="2025-03-21 12:00:00" />
@@ -301,15 +301,18 @@
         fhir_uuid="550e8400-e29b-41d4-a716-446655441004"
         lastupdated="2023-11-01 12:00:00" />
 
-    <requester_type id="1" requester_type="provider" />
-    <requester_type id="2" requester_type="organization" />
+    <!-- requester_type is a protected static seed (Liquibase-populated: 1=organization,
+        2=provider, 4=requestor_contact — see BaseWebContextSensitiveTest#PROTECTED_SEED_TABLES);
+        rows declared here are silently filtered out at load time and must NOT be
+        relied on. requester_type_id below matches the real Liquibase-seeded ids,
+        not a locally-declared override. -->
 
     <sample_requester id="1" sample_id="1"
-        requester_id="3" requester_type_id="1"
+        requester_id="3" requester_type_id="2"
         lastupdated="2023-11-01 12:00:00" />
 
     <sample_requester id="10" sample_id="1"
-        requester_id="3" requester_type_id="2"
+        requester_id="3" requester_type_id="1"
         lastupdated="2023-11-01 12:00:00" />
 
     <sample_human id="1" provider_id="1" samp_id="1"

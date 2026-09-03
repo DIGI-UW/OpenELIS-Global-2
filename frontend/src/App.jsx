@@ -1,7 +1,12 @@
 import React, { Suspense, useEffect, useState } from "react";
 import { confirmAlert } from "react-confirm-alert";
 import { IntlProvider } from "react-intl";
-import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
+import {
+  Route,
+  Redirect,
+  BrowserRouter as Router,
+  Switch,
+} from "react-router-dom";
 import RedirectOldUI from "./RedirectOldUI";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { Admin } from "./components";
@@ -33,6 +38,7 @@ import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
 import BoxDetails from "./components/shipment/BoxDetails";
 import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
+import ReferenceLabResults from "./components/referenceLabResults";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 
@@ -111,7 +117,7 @@ import {
 } from "./components/resultPage/unified/routeGates";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
-import { languages, languageMessages } from "./languages";
+import { resolveMessagesForLocale } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -126,6 +132,7 @@ import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
 import TATReport from "./components/reports/tat";
+import VectorSurveillanceReport from "./components/reports/vectorSurveillance/Index";
 import StudyValidation from "./components/validation/Index";
 const AnalyserResultIndex = lazyWithRetry(
   () => import("./components/analyserResults/Index"),
@@ -138,6 +145,7 @@ import CytologyCaseView from "./components/cytology/CytologyCaseView";
 import PathologyCaseView from "./components/pathology/PathologyCaseView";
 import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
 import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
+import EnvironmentalDashboard from "./components/compliance/EnvironmentalDashboard";
 const RoutedResultsViewer = lazyWithRetry(
   () => import("./components/patient/resultsViewer/results-viewer.tsx"),
 );
@@ -149,7 +157,8 @@ import PrintBarcode from "./components/printBarcode/Index";
 import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
-import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests";
+import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
+import ManualEntryHelper from "./components/reports/vectorSurveillance/ManualEntryHelper";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder";
@@ -181,20 +190,30 @@ import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
 import {
   OrderProvider,
   OrderDashboard,
-  OrderEnter,
+  ClinicalOrderEnter,
+  EnvironmentalOrderEnter,
+  VectorOrderEnter,
   OrderCollect,
   OrderLabel,
   OrderQA,
+  VectorOrderComplete,
 } from "./components/order";
+import {
+  VectorIdentificationWorklist,
+  VectorDeconvolutionWorklist,
+} from "./components/vectorIdentification";
 
 export default function App() {
-  const defaultLocale =
-    localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
+  // The stored preference, or the browser's full tag (region kept: fr-MG
+  // resolves to its own bundle, not just fr). The resolver accepts either
+  // spelling (fr_MG / fr-MG) and always returns usable messages, so a stale
+  // stored value can never break startup.
+  const initial = resolveMessagesForLocale(
+    localStorage.getItem("locale") || navigator.language,
+  );
 
-  const initialLocale = languages[defaultLocale] ? defaultLocale : "en";
-
-  const [locale, setLocale] = useState(initialLocale);
-  const [messages, setMessages] = useState(languages[initialLocale].messages);
+  const [locale, setLocale] = useState(initial.code);
+  const [messages, setMessages] = useState(initial.messages);
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
@@ -327,14 +346,14 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    // Check if we have messages for this language
-    const messages = languageMessages[lang] || languages[lang]?.messages;
-    if (!messages) {
-      lang = "en";
-    }
-    setLocale(lang);
-    setMessages(languageMessages[lang] || languages["en"].messages);
-    localStorage.setItem("locale", lang);
+    // The selector hands over whatever code the locales config declared —
+    // underscore or hyphen, any casing. Resolve it to the canonical code and
+    // the best bundle (exact, then base language, then English) so a
+    // configured locale like fr_MG lands on its own translations.
+    const resolved = resolveMessagesForLocale(lang);
+    setLocale(resolved.code);
+    setMessages(resolved.messages);
+    localStorage.setItem("locale", resolved.code);
   };
 
   const changeLanguageBackend = async (lang) => {
@@ -501,6 +520,12 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
+                  path="/EnvironmentalDashboard"
+                  exact
+                  component={() => <EnvironmentalDashboard />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookEntryForm />}
@@ -593,12 +618,11 @@ export default function App() {
                   )}
                   role={Roles.RECEPTION}
                 />
-                {/* Decoupled Sample Collection Workflow - NAV-2 */}
-                {/* Use Route with render to wrap all /order/* paths in shared OrderProvider */}
+                {/* Clinical Order Workflow */}
                 <Route
-                  path="/order"
+                  path="/order/clinical"
                   render={({ match }) => (
-                    <OrderProvider>
+                    <OrderProvider workflowType="clinical">
                       <Switch>
                         <SecureRoute
                           path={`${match.path}`}
@@ -609,7 +633,7 @@ export default function App() {
                         <SecureRoute
                           path={`${match.path}/enter`}
                           exact
-                          component={() => <OrderEnter />}
+                          component={() => <ClinicalOrderEnter />}
                           role={Roles.RECEPTION}
                         />
                         <SecureRoute
@@ -633,6 +657,103 @@ export default function App() {
                       </Switch>
                     </OrderProvider>
                   )}
+                />
+                {/* Environmental Order Workflow */}
+                <Route
+                  path="/order/environmental"
+                  render={({ match }) => (
+                    <OrderProvider workflowType="environmental">
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          component={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          component={() => <EnvironmentalOrderEnter />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          component={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
+                {/* Vector Surveillance Order Workflow (no Collect step) */}
+                <Route
+                  path="/order/vector"
+                  render={({ match }) => (
+                    <OrderProvider workflowType="vector">
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          component={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          component={() => <VectorOrderEnter />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          component={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/complete`}
+                          exact
+                          component={() => <VectorOrderComplete />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
+                {/* Redirect legacy /order and /order/enter to clinical workflow */}
+                <Route
+                  path="/order/enter"
+                  exact
+                  render={() => <Redirect to="/order/clinical/enter" />}
+                />
+                <Route
+                  path="/order"
+                  exact
+                  render={() => <Redirect to="/order/clinical" />}
+                />
+                <SecureRoute
+                  path="/vector/identification"
+                  exact
+                  component={() => <VectorIdentificationWorklist />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/vector/deconvolution"
+                  exact
+                  component={() => <VectorDeconvolutionWorklist />}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/ModifyOrder"
@@ -978,6 +1099,12 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
+                  path="/SampleShipment/reference-lab-results"
+                  exact
+                  component={() => <ReferenceLabResults />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/SampleShipment/:tab"
                   component={() => <ShipmentDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
@@ -1277,12 +1404,6 @@ export default function App() {
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
-                  path="/ReferredOutTests"
-                  exact
-                  component={() => <ReferredOutTests />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
                   path="/RoutineReports"
                   exact
                   component={() => <RoutineReports />}
@@ -1322,6 +1443,24 @@ export default function App() {
                   path="/TATReport"
                   exact
                   component={() => <TATReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/VectorSurveillanceReport"
+                  exact
+                  component={() => <VectorSurveillanceReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/LaporanHasil"
+                  exact
+                  component={() => <LaporanHasilReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/VectorManualEntry"
+                  exact
+                  component={() => <ManualEntryHelper />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute

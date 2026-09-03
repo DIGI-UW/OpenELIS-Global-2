@@ -37,7 +37,7 @@ const SampleType = (props) => {
   const componentMounted = useRef(false);
   const sampleTypesRef = useRef(null);
 
-  const { index, rejectSampleReasons, removeSample, sample } = props;
+  const { index, rejectSampleReasons, removeSample, sample, domain } = props;
 
   const [sampleTypes, setSampleTypes] = useState([]);
   const [selectedSampleType, setSelectedSampleType] = useState({
@@ -539,11 +539,35 @@ const SampleType = (props) => {
       displayReferralOrgOptions,
     );
     repopulateUI();
-    getFromOpenElisServer("/rest/user-sample-types", fetchSamplesTypes);
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    getFromOpenElisServer(sampleTypesEndpoint, fetchSamplesTypes);
     return () => {
       componentMounted.current = false;
     };
   }, []);
+
+  const domainFetchRef = useRef(0);
+  useEffect(() => {
+    const fetchId = ++domainFetchRef.current;
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    setLoading(true);
+    getFromOpenElisServer(sampleTypesEndpoint, (res) => {
+      if (componentMounted.current && fetchId === domainFetchRef.current) {
+        setSampleTypes(res);
+        setLoading(false);
+      }
+    });
+  }, [domain]);
 
   return (
     <>

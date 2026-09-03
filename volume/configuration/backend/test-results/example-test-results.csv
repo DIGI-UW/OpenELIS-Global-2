@@ -1,4 +1,4 @@
-testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,significance
 # ============================================================================
 # DICTIONARY TYPE (D) - HIV and Hepatitis Tests
 # Note: Test names use base names (e.g., "HIV Rapid Test") and are automatically
@@ -216,3 +216,55 @@ Urine Appearance,C,Dark Yellow,Urine Color,2,N,Y,N,,
 Urine Appearance,C,Amber,Urine Color,3,N,Y,N,,
 Urine Appearance,C,Red,Urine Color,4,N,Y,N,,
 Urine Appearance,C,Brown,Urine Color,5,N,Y,N,,
+# ============================================================================
+# NUMERIC TYPE (N) - Water Quality
+# ============================================================================
+pH,N,,,1,Y,Y,N,1,
+Total Dissolved Solids,N,,,1,Y,Y,N,0,
+Dissolved Oxygen,N,,,1,Y,Y,N,1,
+Biological Oxygen Demand,N,,,1,Y,Y,N,1,
+Lead,N,,,1,Y,Y,N,3,
+Mercury,N,,,1,Y,Y,N,3,
+Total Coliform,N,,,1,Y,Y,N,0,
+# ============================================================================
+# VECTOR SURVEILLANCE TEST RESULTS
+# ============================================================================
+# Detection tests - Detected/Not Detected
+Malaria Parasite Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Malaria Parasite Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Malaria Parasite Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+Dengue Virus Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Dengue Virus Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Dengue Virus Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+Chikungunya Virus Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Chikungunya Virus Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Chikungunya Virus Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+Zika Virus Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Zika Virus Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Zika Virus Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+West Nile Virus Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+West Nile Virus Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+West Nile Virus Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+Trypanosoma Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Trypanosoma Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Trypanosoma Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+Leishmaniasis Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Leishmaniasis Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Leishmaniasis Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+Yersinia pestis Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Yersinia pestis Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Yersinia pestis Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+Rickettsia Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Rickettsia Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Rickettsia Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+Leptospira Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Leptospira Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Leptospira Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+Hantavirus Detection,D,Detected,Test Results,1,N,Y,N,,,POSITIVE
+Hantavirus Detection,D,Not Detected,Test Results,2,N,Y,Y,,,NEGATIVE
+Hantavirus Detection,D,Inconclusive,Test Results,3,N,Y,N,,,INDETERMINATE
+# Species Identification tests - free text
+Mosquito Species Identification,A,,,1,N,Y,Y,,
+Fly Species Identification,A,,,1,N,Y,Y,,
+Flea Species Identification,A,,,1,N,Y,Y,,
+Rodent Species Identification,A,,,1,N,Y,Y,,

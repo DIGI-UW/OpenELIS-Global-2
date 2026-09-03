@@ -28,6 +28,7 @@ import { IntlProvider } from "react-intl";
 import AdminSideNav from "./AdminSideNav";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
+import { LAB_UNIT_SECTIONS } from "./labUnitManagement/sectionConfig";
 import messages from "../../languages/en.json";
 
 const renderNav = () =>
@@ -61,12 +62,12 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
       '[data-cy="testCatalogSectionsContext"]',
     );
     expect(help).not.toBeNull();
-    expect(help.textContent).toBe("Select a test to edit its sections");
+    expect(help.textContent).toBe("Click a test to edit its sections");
 
     // the list item is present and labelled as the entry (not "back")
     const list = container.querySelector('[data-cy="testCatalogList"]');
     expect(list).not.toBeNull();
-    expect(list.textContent).toBe("Test Catalog Editor");
+    expect(list.textContent).toBe("Test Catalogue Editor");
   });
 
   it("makes the 9 sections live routed links when editing a test", () => {
@@ -145,7 +146,7 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
 
   it("shows entity links first, then only the sample-type sections, when editing a sample type", () => {
     mockLocation = {
-      pathname: "/MasterListsPage/SampleTypeManagement/38/basic-info",
+      pathname: "/MasterListsPage/SampleTypeEditor/38/basic-info",
       search: "",
     };
     const { container } = renderNav();
@@ -155,7 +156,7 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
     );
     const testsLink = container.querySelector('[data-cy="testCatalogList"]');
     expect(sampleTypesLink.textContent).toBe("← All Sample Types");
-    expect(testsLink.textContent).toBe("Test Catalog Editor");
+    expect(testsLink.textContent).toBe("Test Catalogue Editor");
 
     // both entity links precede the editing caption and its sections
     const caption = container.querySelector(
@@ -178,7 +179,7 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
       );
       expect(item).not.toBeNull();
       expect(item.getAttribute("href")).toBe(
-        `/MasterListsPage/SampleTypeManagement/38/${key}`,
+        `/MasterListsPage/SampleTypeEditor/38/${key}`,
       );
     });
 
@@ -190,19 +191,19 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
 
   it("stays expanded on the list routes so leaving an editor doesn't collapse it", () => {
     mockLocation = {
-      pathname: "/MasterListsPage/SampleTypeManagement",
+      pathname: "/MasterListsPage/SampleTypeEditor",
       search: "",
     };
     const first = renderNav();
     expect(
-      screen.getByRole("button", { name: "Test Catalog Management" }),
+      screen.getByRole("button", { name: "Test Catalogue Management" }),
     ).toHaveAttribute("aria-expanded", "true");
     first.unmount();
 
     mockLocation = { pathname: "/MasterListsPage/TestCatalogList", search: "" };
     const second = renderNav();
     expect(
-      screen.getByRole("button", { name: "Test Catalog Management" }),
+      screen.getByRole("button", { name: "Test Catalogue Management" }),
     ).toHaveAttribute("aria-expanded", "true");
     second.unmount();
 
@@ -210,7 +211,7 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
     mockLocation = { pathname: "/MasterListsPage/reflex", search: "" };
     renderNav();
     expect(
-      screen.getByRole("button", { name: "Test Catalog Management" }),
+      screen.getByRole("button", { name: "Test Catalogue Management" }),
     ).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -225,5 +226,117 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
         .querySelector('[data-cy="section-storage"]')
         .getAttribute("href"),
     ).toBe("/admin/TestCatalogEditor/7/storage");
+  });
+
+  /**
+   * With nothing selected, the panels and sample types contexts used to fall
+   * through to the tests branch: the reader stood on the Panels list and was
+   * shown the nine test sections, greyed, under "Click a test to edit its
+   * sections". Each entity now greys out its own sections and says so.
+   */
+  describe("sections with nothing selected", () => {
+    it("greys the panel sections and names panels, on the panels list", () => {
+      mockLocation = {
+        pathname: "/MasterListsPage/TestCatalogList",
+        search: "?entity=panels",
+      };
+      const { container } = renderNav();
+
+      const caption = container.querySelector(
+        '[data-cy="panelSectionsContext"]',
+      );
+      expect(caption).not.toBeNull();
+      expect(caption.textContent).toBe("Click a panel to edit its sections");
+
+      const sections = container.querySelectorAll(
+        '[data-cy^="panel-section-"]',
+      );
+      expect(sections.length).toBeGreaterThan(0);
+      sections.forEach((s) => {
+        expect(s.getAttribute("aria-disabled")).toBe("true");
+        expect(s.getAttribute("aria-describedby")).toBe("panelSectionsHelp");
+      });
+      expect(
+        container.querySelector('[data-cy^="section-"]'),
+        "the test sections must not be borrowed here",
+      ).toBeNull();
+    });
+
+    it("greys the sample type sections and names sample types, on their list", () => {
+      mockLocation = {
+        pathname: "/MasterListsPage/SampleTypeEditor",
+        search: "",
+      };
+      const { container } = renderNav();
+
+      const caption = container.querySelector(
+        '[data-cy="sampleTypeSectionsContext"]',
+      );
+      expect(caption).not.toBeNull();
+      expect(caption.textContent).toBe(
+        "Click a sample type to edit its sections",
+      );
+
+      const sections = container.querySelectorAll(
+        '[data-cy^="sampleType-section-"]',
+      );
+      expect(sections.length).toBeGreaterThan(0);
+      sections.forEach((s) =>
+        expect(s.getAttribute("aria-disabled")).toBe("true"),
+      );
+    });
+
+    it("greys the lab unit sections and names lab units, on the lab units list", () => {
+      mockLocation = {
+        pathname: "/MasterListsPage/LabUnitManagement",
+        search: "",
+      };
+      const { container } = renderNav();
+
+      const caption = container.querySelector(
+        '[data-cy="labUnitSectionsContext"]',
+      );
+      expect(caption).not.toBeNull();
+      expect(caption.textContent).toBe("Click a lab unit to edit its sections");
+
+      const sections = container.querySelectorAll(
+        '[data-cy^="labUnit-section-"]',
+      );
+      expect(sections.length).toBe(LAB_UNIT_SECTIONS.length);
+      sections.forEach((s) => {
+        expect(s.getAttribute("aria-disabled")).toBe("true");
+        expect(s.getAttribute("aria-describedby")).toBe("labUnitSectionsHelp");
+      });
+
+      // the test sections must not be borrowed here
+      expect(container.querySelector('[data-cy^="section-"]')).toBeNull();
+    });
+  });
+
+  it("makes the lab unit sections live routed links when editing a lab unit", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/LabUnitManagement/5/basic-info",
+      search: "",
+    };
+    const { container } = renderNav();
+
+    LAB_UNIT_SECTIONS.forEach((key) => {
+      const item = container.querySelector(
+        `[data-cy="labUnit-section-${key}"]`,
+      );
+      expect(item).not.toBeNull();
+      expect(item.getAttribute("aria-disabled")).toBeNull();
+      expect(item.getAttribute("href")).toBe(
+        `/MasterListsPage/LabUnitManagement/5/${key}`,
+      );
+    });
+  });
+
+  it("labels the Lab Units entry as 'Lab Units Editor' off an editor route", () => {
+    mockLocation = { pathname: "/MasterListsPage/TestCatalogList", search: "" };
+    const { container } = renderNav();
+    expect(
+      container.querySelector('[data-cy="labUnitManagement"]').textContent,
+    ).toBe("Lab Units Editor");
   });
 });

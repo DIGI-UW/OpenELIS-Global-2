@@ -1,6 +1,7 @@
 package org.openelisglobal.resultlimit.service;
 
 import jakarta.annotation.PostConstruct;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -13,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -20,12 +22,18 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.compliance.service.ComplianceThresholdService;
+import org.openelisglobal.compliance.valueholder.ComplianceThreshold;
+import org.openelisglobal.compliance.valueholder.ThresholdType;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.resultlimits.dao.ResultLimitDAO;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.sample.service.SampleComplianceStandardService;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
@@ -35,6 +43,7 @@ import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,6 +68,20 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     private TypeOfTestResultService typeOfTestResultService;
     @Autowired
     private SampleHumanService sampleHumanService;
+    @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
+    @Autowired
+    private ComplianceThresholdService complianceThresholdService;
+    // Lazy breaks a constructor-time cycle: ResultServiceImpl still resolves
+    // this service through a SpringContext.getBean field initializer, and the
+    // anchor service reaches back to ResultService through Sample and Analysis
+    // (resultService -> resultLimitService -> analysisAnchorService ->
+    // sampleService -> analysisService -> resultService). Which bean enters the
+    // loop first depends on context build order, so an eager reference here
+    // boots or dies by luck.
+    @Lazy
+    @Autowired
+    private org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
     @Autowired
     private TestResultComponentService testResultComponentService;
 
@@ -638,10 +661,87 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForAnalysis(Analysis analysis) {
+        // Pool-anchored analyses have no direct sample item; resolve the
+        // representative sample so the patient lookup still works.
+        org.openelisglobal.sample.valueholder.Sample sample = analysisAnchorService.resolveSample(analysis);
         // OGC-1145 Phase 2: the analysis's sample item pins the specimen, so a
         // limit scoped to that sample type wins over the shared set.
         String sampleTypeId = analysis.getSampleItem() != null ? analysis.getSampleItem().getTypeOfSampleId() : null;
         return getResultLimitForTestAndPatient(analysis.getTest().getId(),
-                sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample()), sampleTypeId);
+                sample != null ? sampleHumanService.getPatientForSample(sample) : null, sampleTypeId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis) {
+        return getComplianceResultsForAnalysis(analysis, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis, String resultValue) {
+        if (GenericValidator.isBlankOrNull(resultValue)) {
+            return List.of();
+        }
+
+        org.openelisglobal.sample.valueholder.Sample resolvedSample = analysisAnchorService.resolveSample(analysis);
+        if (resolvedSample == null) {
+            return List.of();
+        }
+        String sampleId = resolvedSample.getId();
+        List<SampleComplianceStandard> links = sampleComplianceStandardService.getAllForSample(sampleId);
+
+        if (links.isEmpty()) {
+            return List.of();
+        }
+
+        String testId = analysis.getTest().getId();
+        List<ComplianceEvaluation> evaluations = new ArrayList<>();
+
+        for (SampleComplianceStandard link : links) {
+            String standardId = link.getComplianceStandard().getId();
+            List<ComplianceThreshold> thresholds = complianceThresholdService
+                    .getThresholdsByTestAndStandard(testId, standardId).stream()
+                    .filter(t -> Boolean.TRUE.equals(t.getIsActive())).collect(Collectors.toList());
+
+            if (thresholds.isEmpty()) {
+                continue;
+            }
+
+            String standardName = buildStandardLabel(link);
+            boolean pass = evaluatePassAgainstThresholds(resultValue, thresholds);
+            evaluations.add(new ComplianceEvaluation(standardId, standardName, pass));
+        }
+
+        return evaluations;
+    }
+
+    private boolean evaluatePassAgainstThresholds(String rawValue, List<ComplianceThreshold> thresholds) {
+        String cleaned = rawValue.replace("<", "").replace(">", "").trim();
+        BigDecimal value;
+        try {
+            value = new BigDecimal(cleaned);
+        } catch (NumberFormatException e) {
+            return true;
+        }
+        for (ComplianceThreshold threshold : thresholds) {
+            ThresholdType type = threshold.getThresholdType();
+            if (type == null || type.requiresManualReview() || type.usesValueMapping()) {
+                continue;
+            }
+            if (!type.evaluate(value, threshold.getMinValue(), threshold.getMaxValue(), threshold.getTargetValue())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String buildStandardLabel(SampleComplianceStandard link) {
+        String regulationNumber = link.getComplianceStandard().getRegulationNumber();
+        String name = link.getComplianceStandard().getName();
+        if (!GenericValidator.isBlankOrNull(regulationNumber)) {
+            return regulationNumber;
+        }
+        return name;
     }
 }

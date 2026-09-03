@@ -36,9 +36,15 @@ public class AnalysisItem implements Serializable {
     @ValidAccessionNumber(groups = { ResultValidationForm.ResultValidation.class })
     private String accessionNumber;
 
+    /** Set for pool-level analyses so the validation UI can render the pool tag. */
+    private String vectorPoolId;
+    private int vectorPoolMemberCount;
+    private String sampleType;
+
     private String patientName;
 
     private String patientInfo;
+    private String expandedUncertainty;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String result;
@@ -196,6 +202,12 @@ public class AnalysisItem implements Serializable {
 
     private boolean isNormal;
 
+    private String collectionDate;
+
+    private String timeHolding;
+
+    private String resultDate;
+
     public String getRejectReasonId() {
         return rejectReasonId;
     }
@@ -237,6 +249,30 @@ public class AnalysisItem implements Serializable {
 
     public String getAccessionNumber() {
         return accessionNumber;
+    }
+
+    public String getVectorPoolId() {
+        return vectorPoolId;
+    }
+
+    public void setVectorPoolId(String vectorPoolId) {
+        this.vectorPoolId = vectorPoolId;
+    }
+
+    public int getVectorPoolMemberCount() {
+        return vectorPoolMemberCount;
+    }
+
+    public void setVectorPoolMemberCount(int vectorPoolMemberCount) {
+        this.vectorPoolMemberCount = vectorPoolMemberCount;
+    }
+
+    public String getSampleType() {
+        return sampleType;
+    }
+
+    public void setSampleType(String sampleType) {
+        this.sampleType = sampleType;
     }
 
     public void setResult(String result) {
@@ -829,5 +865,37 @@ public class AnalysisItem implements Serializable {
 
     public void setPatientInfo(String patientInfo) {
         this.patientInfo = patientInfo;
+    }
+
+    public String getCollectionDate() {
+        return collectionDate;
+    }
+
+    public void setCollectionDate(String collectionDate) {
+        this.collectionDate = collectionDate;
+    }
+
+    public String getTimeHolding() {
+        return timeHolding;
+    }
+
+    public void setTimeHolding(String timeHolding) {
+        this.timeHolding = timeHolding;
+    }
+
+    public String getResultDate() {
+        return resultDate;
+    }
+
+    public void setResultDate(String resultDate) {
+        this.resultDate = resultDate;
+    }
+
+    public String getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(String expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
     }
 }

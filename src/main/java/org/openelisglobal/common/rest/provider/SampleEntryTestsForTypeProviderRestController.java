@@ -13,6 +13,7 @@ import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
@@ -21,10 +22,12 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.qc.dao.TestQcThresholdDAO;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
@@ -55,6 +58,10 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
     private UserService userService = SpringContext.getBean(UserService.class);
 
     private RoleService roleService = SpringContext.getBean(RoleService.class);
+
+    private TestQcThresholdDAO testQcThresholdDAO = SpringContext.getBean(TestQcThresholdDAO.class);
+
+    private TestService testService = SpringContext.getBean(TestService.class);
 
     ArrayList<PanelTestMap> panelsMapList = new ArrayList<>();
 
@@ -92,11 +99,49 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         return sampleEntryTests;
     }
 
+    /**
+     * Sample types offerable in clinical order entry: those explicitly in the
+     * CLINICAL domain plus those with no domain at all. A blank/unrecognised
+     * {@code type_of_sample.domain} means "offerable everywhere" (see
+     * {@link Domain#fromRaw(String)} and the contract stated by liquibase
+     * 066-sample-type-domain-enum-migration.xml, whose backfill only touched rows
+     * {@code WHERE domain IS NOT NULL}), so domainless types must not be filtered
+     * out here — doing so makes their tests unorderable. Environmental and vector
+     * types are excluded because they have their own endpoints.
+     */
     @GetMapping(value = "user-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getUserSampleTests(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        return userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
+        List<IdValuePair> all = userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION);
+        java.util.Set<String> clinicalOfferableIds = typeOfSampleService.getAllTypeOfSamples().stream()
+                .filter(t -> isOfferableInClinical(t.getDomain())).map(t -> t.getId())
+                .collect(java.util.stream.Collectors.toSet());
+        return all.stream().filter(p -> clinicalOfferableIds.contains(p.getId()))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    private boolean isOfferableInClinical(String rawDomain) {
+        Domain domain = Domain.fromRaw(rawDomain);
+        return domain == null || domain == Domain.CLINICAL;
+    }
+
+    @GetMapping(value = "environmental-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getEnvironmentalSampleTypes() {
+        return typeOfSampleService
+                .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.ENVIRONMENTAL)
+                .stream().filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @GetMapping(value = "vector-sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getVectorSampleTypes() {
+        return typeOfSampleService
+                .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.VECTOR).stream()
+                .filter(t -> t.getIsActive()).map(t -> new IdValuePair(t.getId(), t.getLocalizedName()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @GetMapping(value = "user-programs", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -151,9 +196,26 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
     private void addTests(List<Test> tests) {
         testsMapList.clear();
+        java.util.Set<Integer> testsWithQcThreshold;
+        try {
+            testsWithQcThreshold = testQcThresholdDAO.findAllConfiguredTestIds();
+        } catch (RuntimeException e) {
+            testsWithQcThreshold = java.util.Collections.emptySet();
+        }
         for (Test test : tests) {
+            Integer testIdNum = null;
+            try {
+                testIdNum = Integer.valueOf(test.getId());
+            } catch (NumberFormatException ignored) {
+            }
+            boolean hasQc = testIdNum != null && testsWithQcThreshold.contains(testIdNum);
+            // test.default_test_result_id is null for most tests in practice
+            // (~178/185 in the seed DB), so we resolve the result type via the
+            // test_result rows instead of test.getDefaultTestResult().
+            String resultType = testService.getResultType(test);
             testsMapList.add(new TestMap(test.getId(), TestServiceImpl.getUserLocalizedTestName(test),
-                    USER_TEST_SECTION_ID.equals(test.getTestSection().getId())));
+                    USER_TEST_SECTION_ID.equals(test.getTestSection().getId()), hasQc, resultType,
+                    test.getTimeHolding()));
         }
         sampleEntryTests.setTests(testsMapList);
     }
@@ -185,7 +247,12 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         return samplePanelService.getTypeOfSamplePanelsForSampleType(sampleType);
     }
 
-    private List<PanelTestMap> linkTestsToPanels(List<TypeOfSamplePanel> panelList, List<Test> tests) {
+    /**
+     * Package-private (not {@code private}) so the same-package test can exercise
+     * the sample-type panel-member filter without a full {@code /rest} session
+     * (OGC-1189).
+     */
+    List<PanelTestMap> linkTestsToPanels(List<TypeOfSamplePanel> panelList, List<Test> tests) {
         List<PanelTestMap> selected = new ArrayList<>();
 
         Map<String, Integer> testNameOrderMap = new HashMap<>();
@@ -218,7 +285,7 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         for (PanelItem item : items) {
             String derivedNameFromPanel = getDerivedNameFromPanel(item);
-            if (derivedNameFromPanel != null) {
+            if (derivedNameFromPanel != null && testIdOrderMap.get(derivedNameFromPanel) != null) {
                 String ItemId = item.getTest().getId();
 
                 if (ItemId != null) {
@@ -322,10 +389,32 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         boolean userBenchChoice;
 
+        boolean hasQcThreshold;
+
+        String resultType;
+
+        String timeHolding;
+
         public TestMap(String id, String name, boolean userBenchChoice) {
+            this(id, name, userBenchChoice, false, null, null);
+        }
+
+        public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold) {
+            this(id, name, userBenchChoice, hasQcThreshold, null, null);
+        }
+
+        public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType) {
+            this(id, name, userBenchChoice, hasQcThreshold, resultType, null);
+        }
+
+        public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
+                String timeHolding) {
             this.id = id;
             this.name = name;
             this.userBenchChoice = userBenchChoice;
+            this.hasQcThreshold = hasQcThreshold;
+            this.resultType = resultType;
+            this.timeHolding = timeHolding;
         }
 
         public String getId() {
@@ -350,6 +439,30 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         public void setUserBenchChoice(boolean userBenchChoice) {
             this.userBenchChoice = userBenchChoice;
+        }
+
+        public boolean isHasQcThreshold() {
+            return hasQcThreshold;
+        }
+
+        public void setHasQcThreshold(boolean hasQcThreshold) {
+            this.hasQcThreshold = hasQcThreshold;
+        }
+
+        public String getResultType() {
+            return resultType;
+        }
+
+        public void setResultType(String resultType) {
+            this.resultType = resultType;
+        }
+
+        public String getTimeHolding() {
+            return timeHolding;
+        }
+
+        public void setTimeHolding(String timeHolding) {
+            this.timeHolding = timeHolding;
         }
     }
 }
