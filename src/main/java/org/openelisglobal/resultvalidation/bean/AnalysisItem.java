@@ -208,6 +208,16 @@ public class AnalysisItem implements Serializable {
 
     private String resultDate;
 
+    private boolean modified = false;
+
+    private boolean nceOpen = false;
+
+    private boolean ackPending = false;
+
+    private boolean critical = false;
+
+    private String qcStatus;
+
     public String getRejectReasonId() {
         return rejectReasonId;
     }
@@ -817,6 +827,46 @@ public class AnalysisItem implements Serializable {
 
     public void setNormal(boolean isNormal) {
         this.isNormal = isNormal;
+    }
+
+    public boolean isModified() {
+        return modified;
+    }
+
+    public void setModified(boolean modified) {
+        this.modified = modified;
+    }
+
+    public boolean isNceOpen() {
+        return nceOpen;
+    }
+
+    public void setNceOpen(boolean nceOpen) {
+        this.nceOpen = nceOpen;
+    }
+
+    public boolean isAckPending() {
+        return ackPending;
+    }
+
+    public void setAckPending(boolean ackPending) {
+        this.ackPending = ackPending;
+    }
+
+    public boolean isCritical() {
+        return critical;
+    }
+
+    public void setCritical(boolean critical) {
+        this.critical = critical;
+    }
+
+    public String getQcStatus() {
+        return qcStatus;
+    }
+
+    public void setQcStatus(String qcStatus) {
+        this.qcStatus = qcStatus;
     }
 
     public double getLowerCritical() {

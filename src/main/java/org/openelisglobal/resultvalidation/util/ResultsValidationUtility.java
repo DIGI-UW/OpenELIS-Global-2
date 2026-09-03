@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.alert.service.AlertService;
+import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
@@ -60,6 +62,10 @@ import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
+import org.openelisglobal.qaevent.service.NCEventService;
+import org.openelisglobal.qaevent.service.NceSpecimenService;
+import org.openelisglobal.qaevent.valueholder.NcEvent;
+import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
@@ -555,6 +561,7 @@ public class ResultsValidationUtility {
         testItem.setTestName(displayTestName);
         testItem.setTestId(test.getId());
         setResultLimitDependencies(resultLimit, testItem, testResults);
+        testItem.setCritical(ValidationSignals.isCritical(resultLimit, result));
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
         testItem.setDictionaryResults(getAnyDictonaryValues(testResults));
@@ -753,6 +760,86 @@ public class ResultsValidationUtility {
         return SpringContext.getBean(IStatusService.class).getRecordStatusForID(ohList.get(0).getValue());
     }
 
+    /**
+     * OGC-1027 — the "Check before release" inputs for one queue row, loaded once
+     * per rendered row. The rules live in {@link ValidationSignals}; this only
+     * fetches what they need. Services are resolved lazily so no new
+     * construction-time edge is added to this bean.
+     */
+    private void populateReleaseSignals(AnalysisItem analysisResultItem, ResultValidationItem testResultItem) {
+        analysisResultItem.setCritical(testResultItem.isCritical());
+        Analysis analysis = testResultItem.getAnalysis();
+        if (analysis == null) {
+            analysisResultItem.setQcStatus(ValidationSignals.QC_UNKNOWN);
+            return;
+        }
+        analysisResultItem.setModified(ValidationSignals.isModified(analysis.getRevision()));
+        analysisResultItem.setNceOpen(hasOpenNonConformity(analysis));
+        analysisResultItem.setAckPending(hasOpenCriticalAlert(analysis));
+        analysisResultItem.setQcStatus(qcStatusFor(analysis));
+    }
+
+    private boolean hasOpenNonConformity(Analysis analysis) {
+        if (analysis.getSampleItem() == null || GenericValidator.isBlankOrNull(analysis.getSampleItem().getId())) {
+            return false;
+        }
+        Integer sampleItemId;
+        try {
+            sampleItemId = Integer.valueOf(analysis.getSampleItem().getId());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        List<NceSpecimen> specimens = SpringContext.getBean(NceSpecimenService.class)
+                .getSpecimenBySampleItemId(sampleItemId);
+        if (specimens == null || specimens.isEmpty()) {
+            return false;
+        }
+        NCEventService ncEventService = SpringContext.getBean(NCEventService.class);
+        for (NceSpecimen specimen : specimens) {
+            if (specimen == null || specimen.getNceId() == null) {
+                continue;
+            }
+            NcEvent event = ncEventService.get(specimen.getNceId());
+            if (event != null && ValidationSignals.isNceOpen(event.getStatus())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasOpenCriticalAlert(Analysis analysis) {
+        Long analysisId;
+        try {
+            analysisId = Long.valueOf(analysis.getId());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        List<Alert> alerts = SpringContext.getBean(AlertService.class).getAlertsByEntity("ANALYSIS", analysisId);
+        return ValidationSignals.hasOpenCriticalAlert(alerts);
+    }
+
+    /**
+     * PASS only when every result of the analysis was evaluated and passed; FAIL as
+     * soon as any failed; otherwise UNKNOWN — never read as passed (FR-A2).
+     */
+    private String qcStatusFor(Analysis analysis) {
+        List<Result> results = resultService.getResultsByAnalysis(analysis);
+        if (results == null || results.isEmpty()) {
+            return ValidationSignals.QC_UNKNOWN;
+        }
+        boolean allPass = true;
+        for (Result result : results) {
+            QcEvaluation evaluation = result == null ? null : result.getQcEvaluation();
+            if (evaluation == QcEvaluation.FAIL) {
+                return ValidationSignals.QC_FAIL;
+            }
+            if (evaluation != QcEvaluation.PASS) {
+                allPass = false;
+            }
+        }
+        return allPass ? ValidationSignals.QC_PASS : ValidationSignals.QC_UNKNOWN;
+    }
+
     public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem) {
         AnalysisItem analysisResultItem = new AnalysisItem();
         String testUnits = getUnitsByTestId(testResultItem.getTestId());
@@ -816,6 +903,7 @@ public class ResultsValidationUtility {
         analysisResultItem
                 .setNonconforming(testResultItem.isNonconforming() || SpringContext.getBean(IStatusService.class)
                         .matches(testResultItem.getAnalysis().getStatusId(), AnalysisStatus.TechnicalRejected));
+        populateReleaseSignals(analysisResultItem, testResultItem);
         analysisResultItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
         analysisResultItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
         analysisResultItem.setQualifiedResultId(testResultItem.getQualificationResultId());
