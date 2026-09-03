@@ -105,6 +105,11 @@ test.describe("OGC-1054 assembled analyzer MVP", () => {
     ]);
     expect(breadcrumbBox).not.toBeNull();
     expect(headingBox).not.toBeNull();
+    if (!breadcrumbBox || !headingBox) {
+      throw new Error(
+        "Analyzer results breadcrumb and heading must have layout boxes",
+      );
+    }
     expect(
       headingBox.y - (breadcrumbBox.y + breadcrumbBox.height),
     ).toBeGreaterThanOrEqual(16);
