@@ -137,11 +137,16 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         EQADistribution distribution = findOrOpenDistribution(cycle, sysUserId);
         long reported = eqaResultDAO.findByDistributionId(distribution.getId()).stream()
                 .filter(result -> result.getResultValue() != null || result.getResultText() != null).count();
-        // Refused rather than silently half-scored: below this the peer mean and SD
-        // describe nothing, and the statistics service would leave every verdict null.
-        if (reported < EQAStatisticsService.MIN_PARTICIPANTS_FOR_STATS) {
-            throw new IllegalStateException("Scoring needs at least " + EQAStatisticsService.MIN_PARTICIPANTS_FOR_STATS
-                    + " reported results; this cycle has " + reported);
+        if (reported == 0) {
+            throw new IllegalStateException("This cycle has no reported results to score");
+        }
+        // The floor protects the peer statistic, which is all an untargeted cycle
+        // has: below it the mean and SD describe nothing. A cycle whose panel sealed
+        // a target needs no crowd, so it scores at whatever roster size it ran.
+        if (reported < EQAStatisticsService.MIN_PARTICIPANTS_FOR_STATS && !hasSealedTarget(cycle)) {
+            throw new IllegalStateException("Scoring against peers needs at least "
+                    + EQAStatisticsService.MIN_PARTICIPANTS_FOR_STATS + " reported results; this cycle has " + reported
+                    + " and its panel carries no target to judge them against");
         }
 
         // The peer statistics run first and stay on the row as the reported z. They
@@ -362,7 +367,10 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
      * statistics decided — a scheme that reports without a target has nothing else
      * to be judged against.
      */
-    private void judgeAgainstPanelTargets(EQACycle cycle, Long distributionId) {
+    /**
+     * The targets this cycle's panel material sealed, by the analyte each answers.
+     */
+    private Map<Long, EQAPanelSample> sealedTargetsByAnalyte(EQACycle cycle) {
         Map<Long, EQAPanelSample> targetByAnalyte = new HashMap<>();
         for (EQAPanel panel : eqaPanelDAO.getAllMatching("cycle.id", cycle.getId())) {
             for (EQAPanelSample sample : eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId())) {
@@ -371,6 +379,15 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
                 }
             }
         }
+        return targetByAnalyte;
+    }
+
+    private boolean hasSealedTarget(EQACycle cycle) {
+        return !sealedTargetsByAnalyte(cycle).isEmpty();
+    }
+
+    private void judgeAgainstPanelTargets(EQACycle cycle, Long distributionId) {
+        Map<Long, EQAPanelSample> targetByAnalyte = sealedTargetsByAnalyte(cycle);
         for (EQAResult result : eqaResultDAO.findByDistributionId(distributionId)) {
             Long analyteId = analyteIdOrNull(result.getTestId());
             EQAPanelSample target = analyteId == null ? null : targetByAnalyte.get(analyteId);
@@ -389,6 +406,14 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
                 // The report and the scores CSV show what a number was judged against;
                 // a target that is a word has no column here and needs none.
                 result.setTargetValue(EqaPanelVerdict.numericTargetOf(target));
+                if (!EqaPanelVerdict.hasRange(target)) {
+                    // A bare target compares for equality, and a laboratory reporting
+                    // 39.5 against a target of 40 has not failed a proficiency test.
+                    // Without a sealed tolerance the peer verdict is the only honest
+                    // one; the target is still recorded above, for the report.
+                    eqaResultDAO.update(result);
+                    continue;
+                }
             }
             result.setPerformanceStatus(EqaPanelVerdict.of(target, reported));
             eqaResultDAO.update(result);

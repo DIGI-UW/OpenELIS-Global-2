@@ -28,10 +28,20 @@ final class EqaPanelVerdict {
     private EqaPanelVerdict() {
     }
 
+    /**
+     * Whether the sample seals an acceptance range. Without one there is no
+     * tolerance to judge a measurement by, only equality, which is the right rule
+     * for a supervisor's in-house target and the wrong one for a number reported
+     * from another laboratory's instrument.
+     */
+    static boolean hasRange(EQAPanelSample sample) {
+        return sample != null && (sample.getAcceptanceRangeLow() != null || sample.getAcceptanceRangeHigh() != null);
+    }
+
     /** The verdict for one reported value against one sealed panel sample. */
     static EQAPerformanceStatus of(EQAPanelSample target, String reported) {
         String value = reported == null ? "" : reported.trim();
-        if (target.getAcceptanceRangeLow() != null || target.getAcceptanceRangeHigh() != null) {
+        if (hasRange(target)) {
             BigDecimal numeric = parseOrNull(value);
             if (numeric == null) {
                 return EQAPerformanceStatus.UNACCEPTABLE;
