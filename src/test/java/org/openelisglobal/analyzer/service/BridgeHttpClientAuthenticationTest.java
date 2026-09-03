@@ -51,11 +51,14 @@ public class BridgeHttpClientAuthenticationTest {
     }
 
     @Test
-    public void constructorRejectsMissingBridgeCredentials() {
+    public void requestRejectsMissingBridgeCredentials() {
+        BridgeHttpClient missingUsernameClient = new BridgeHttpClient(" ", "bridge-secret");
+        BridgeHttpClient missingPasswordClient = new BridgeHttpClient("bridge-user", " ");
+
         IllegalArgumentException missingUsername = assertThrows(IllegalArgumentException.class,
-                () -> new BridgeHttpClient(" ", "bridge-secret"));
+                () -> missingUsernameClient.get(endpoint, Duration.ofSeconds(2)));
         IllegalArgumentException missingPassword = assertThrows(IllegalArgumentException.class,
-                () -> new BridgeHttpClient("bridge-user", " "));
+                () -> missingPasswordClient.get(endpoint, Duration.ofSeconds(2)));
 
         assertEquals("Analyzer Bridge username must be configured", missingUsername.getMessage());
         assertEquals("Analyzer Bridge password must be configured", missingPassword.getMessage());
