@@ -274,26 +274,6 @@ jobs:
           path: /tmp/e2e-image-handoff/
           retention-days: 1
 
-      # workflow_run resolves reusable workflows from the default branch. Until
-      # the plugin-free consumer reaches develop, its old definition still asks
-      # for this artifact. The archive is intentionally empty: it carries no
-      # plugin code, and the current compose stack does not mount volume/plugins.
-      - name: Stage workflow-run cutover artifact
-        if: steps.transfer-mode.outputs.mode == 'ghcr' || steps.transfer-mode.outputs.mode == 'fork-handoff'
-        run: |
-          mkdir -p /tmp/e2e-plugin-jars/empty
-          jar --create --file /tmp/e2e-plugin-jars/workflow-run-cutover.jar \
-            -C /tmp/e2e-plugin-jars/empty .
-
-      - name: Upload workflow-run cutover artifact
-        if: steps.transfer-mode.outputs.mode == 'ghcr' || steps.transfer-mode.outputs.mode == 'fork-handoff'
-        uses: actions/upload-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars/workflow-run-cutover.jar
-          if-no-files-found: error
-          retention-days: 1
-
       - name: Upload Docker image map artifact
         if: steps.transfer-mode.outputs.mode == 'ghcr'
         uses: actions/upload-artifact@v6

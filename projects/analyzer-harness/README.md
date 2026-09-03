@@ -163,7 +163,6 @@ Login (local-dev defaults only):
 This harness uses a local `./volume/` directory for:
 
 - `./volume/analyzer-imports` → mounted at `/data/analyzer-imports`
-- `./volume/plugins` → mounted at `/var/lib/openelis-global/plugins`
 - logs under `./volume/logs/*`
 
 ## Notes
