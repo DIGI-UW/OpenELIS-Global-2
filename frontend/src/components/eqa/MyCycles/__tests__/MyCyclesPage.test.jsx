@@ -2,7 +2,8 @@ import React from "react";
 import { render, screen, within, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Router } from "react-router-dom";
+import { createMemoryHistory } from "history";
 import messages from "../../../../languages/en.json";
 import MyCyclesPage from "../MyCyclesPage";
 import { MOCK_CYCLES } from "../mockCycles";
@@ -74,6 +75,32 @@ describe("MyCyclesPage", () => {
     // submitted / scored / closed stay out of the Active bucket
     expect(screen.queryByTestId("cycle-row-3")).not.toBeInTheDocument();
     expect(screen.queryByTestId("cycle-row-4")).not.toBeInTheDocument();
+  });
+
+  test("Receive panel deep-links to Add Order with the cycle in the query string", () => {
+    const planned = {
+      ...MOCK_CYCLES[0],
+      id: 9,
+      status: "PLANNED",
+      participantState: "PLANNED",
+      samples: [],
+    };
+    const history = createMemoryHistory();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.startsWith("/rest/eqa/cycles/mine")) cb([planned]);
+      if (url.startsWith("/rest/eqa/orders")) cb([]);
+    });
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <Router history={history}>
+          <MyCyclesPage />
+        </Router>
+      </IntlProvider>,
+    );
+    fireEvent.click(screen.getByTestId("cycle-row-9"));
+    fireEvent.click(screen.getByRole("button", { name: /Receive panel/i }));
+    expect(history.location.pathname).toBe("/SamplePatientEntry");
+    expect(history.location.search).toBe("?isEQA=true&cycleId=9");
   });
 
   test("row expansion reveals sample progress with result-entry deep links", () => {

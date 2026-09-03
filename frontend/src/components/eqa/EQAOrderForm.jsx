@@ -18,6 +18,8 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
   const [myPrograms, setMyPrograms] = useState([]);
   const [cycles, setCycles] = useState([]);
   const [existingReceipt, setExistingReceipt] = useState(null);
+  // Both lists have answered; the deep link below waits for that.
+  const [listsLoaded, setListsLoaded] = useState(0);
 
   const sampleOrder = orderFormValues?.sampleOrderItems || {};
   const cycleId = sampleOrder.eqaCycleId || "";
@@ -31,18 +33,54 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
       if (componentMounted.current && Array.isArray(response)) {
         setMyPrograms(response);
       }
+      if (componentMounted.current) setListsLoaded((n) => n + 1);
     });
 
     getFromOpenElisServer("/rest/eqa/cycles/mine", (response) => {
       if (componentMounted.current && Array.isArray(response)) {
         setCycles(response);
       }
+      if (componentMounted.current) setListsLoaded((n) => n + 1);
     });
 
     return () => {
       componentMounted.current = false;
     };
   }, []);
+
+  // "Receive panel" on My Cycles deep-links here with the cycle in the query
+  // string. Once both lists have answered, preselect that cycle and the
+  // enrollment whose programme name matches the cycle's scheme; an explicit
+  // enrollmentId in the link wins over the name match. Fields the user has
+  // already filled are left alone.
+  useEffect(() => {
+    if (listsLoaded < 2) {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const linkedCycleId = params.get("cycleId");
+    if (!linkedCycleId) {
+      return;
+    }
+    const cycle = cycles.find((c) => String(c.id) === linkedCycleId);
+    if (!cycle) {
+      return;
+    }
+    const linkedEnrollmentId = params.get("enrollmentId");
+    const enrollment = linkedEnrollmentId
+      ? myPrograms.find((prog) => String(prog.id) === linkedEnrollmentId)
+      : myPrograms.find((prog) => prog.programName === cycle.schemeName);
+    setOrderFormValues((prev) => ({
+      ...prev,
+      sampleOrderItems: {
+        ...prev?.sampleOrderItems,
+        eqaCycleId: prev?.sampleOrderItems?.eqaCycleId || String(cycle.id),
+        eqaProgramId:
+          prev?.sampleOrderItems?.eqaProgramId ||
+          (enrollment ? String(enrollment.id) : ""),
+      },
+    }));
+  }, [listsLoaded]);
 
   // A receipt already on file makes this a read-only view: saving again is a
   // no-op server-side, so re-offering the fields would only mislead.
