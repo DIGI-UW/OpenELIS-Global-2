@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -197,5 +197,105 @@ describe("ReceiptMonitor", () => {
         expect.any(Function),
       ),
     );
+  });
+
+  test("Enter results keys a participant's reported values and posts them per test", async () => {
+    renderTab();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/results?organizationId=550")) {
+        cb({
+          cycleId: 9,
+          organizationId: 550,
+          tests: [
+            {
+              testId: 7,
+              testName: "HIV viral load",
+              analyteName: "HIV VL",
+              reported: null,
+            },
+            {
+              testId: 8,
+              testName: "HIV serology",
+              analyteName: "HIV Ab",
+              reported: "Reactive",
+            },
+          ],
+        });
+      } else if (url.includes("/receipts")) cb(RECEIPTS);
+      else if (url.includes("/scores")) cb(SCORES);
+    });
+
+    const mbeya = (await screen.findByText("Mbeya Regional Lab")).closest("tr");
+    fireEvent.click(
+      within(mbeya).getByRole("button", { name: "Enter results" }),
+    );
+
+    expect(
+      await screen.findByText("Results from Mbeya Regional Lab"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("HIV serology")).toHaveValue("Reactive");
+    fireEvent.change(screen.getByLabelText("HIV viral load"), {
+      target: { value: "250" },
+    });
+    postToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb(jsonResponse(true, { tests: [] })),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+
+    const [url, body] = postToOpenElisServerFullResponse.mock.calls.at(-1);
+    expect(url).toBe("/rest/eqa/cycles/9/results");
+    expect(JSON.parse(body)).toEqual({
+      organizationId: 550,
+      results: [
+        { testId: 7, value: "250" },
+        { testId: 8, value: "Reactive" },
+      ],
+    });
+  });
+
+  test("Import CSV posts the pasted export bundle and reports what did not map", async () => {
+    renderTab();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/results?organizationId=550")) {
+        cb({
+          tests: [{ testId: 7, testName: "HIV viral load", reported: null }],
+        });
+      } else if (url.includes("/receipts")) cb(RECEIPTS);
+      else if (url.includes("/scores")) cb(SCORES);
+    });
+    const mbeya = (await screen.findByText("Mbeya Regional Lab")).closest("tr");
+    fireEvent.click(
+      within(mbeya).getByRole("button", { name: "Enter results" }),
+    );
+    await screen.findByText("Results from Mbeya Regional Lab");
+
+    fireEvent.change(
+      screen.getByLabelText("Or paste the participant's export bundle (CSV)"),
+      {
+        target: { value: "analyte_name,result_value\nHIV VL,250\nGhost,1" },
+      },
+    );
+    postToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb(
+        jsonResponse(true, {
+          imported: 1,
+          errors: ["Row 3: no test in this scheme reports 'Ghost'"],
+          tests: [{ testId: 7, testName: "HIV viral load", reported: 250 }],
+        }),
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Import CSV" }));
+
+    const [url, body] = postToOpenElisServerFullResponse.mock.calls.at(-1);
+    expect(url).toBe("/rest/eqa/cycles/9/results/import");
+    expect(JSON.parse(body)).toEqual({
+      organizationId: 550,
+      csv: "analyte_name,result_value\nHIV VL,250\nGhost,1",
+    });
+    expect(await screen.findByText("1 values imported.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Row 3: no test in this scheme reports 'Ghost'"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("HIV viral load")).toHaveValue("250");
   });
 });

@@ -144,4 +144,6 @@
   <!-- EQA V2.2 — OGC-610: the imported consignment a panel receipt took delivery
        of (qa-077). Must follow the shipment changelog that creates shipping_box. -->
   <include file="liquibase/qa/038-eqa-panel-receipt-shipping-box.xml" />
+  <!-- EQA V2.5 — OGC-613: qualitative participant results on the provider side (qa-078) -->
+  <include file="liquibase/qa/039-eqa-result-text.xml" />
 </databaseChangeLog>

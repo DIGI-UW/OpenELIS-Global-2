@@ -8540,5 +8540,17 @@
   "eqa.order.receipt.consignment.thisCycle": "this cycle",
   "eqa.order.receipt.consignment.help": "Choosing the consignment takes delivery of it and tells the provider the panel arrived.",
   "eqa.order.receipt.reference": "Shipment reference",
-  "eqa.order.receipt.referenceRecorded": "Consignment {code} received."
+  "eqa.order.receipt.referenceRecorded": "Consignment {code} received.",
+  "eqa.intake.enterResults": "Enter results",
+  "eqa.intake.heading": "Results from {lab}",
+  "eqa.intake.help": "Key the values as the participant reported them — numbers, or words such as Reactive. Saving overwrites what is on file for that test.",
+  "eqa.intake.test": "Test",
+  "eqa.intake.value": "Reported value",
+  "eqa.intake.save": "Save results",
+  "eqa.intake.saved": "Results recorded for {lab}.",
+  "eqa.intake.failed": "Could not record the results",
+  "eqa.intake.csv": "Or paste the participant's export bundle (CSV)",
+  "eqa.intake.import": "Import CSV",
+  "eqa.intake.imported": "{count} values imported.",
+  "eqa.intake.noTests": "This scheme has no tests assigned yet."
 }

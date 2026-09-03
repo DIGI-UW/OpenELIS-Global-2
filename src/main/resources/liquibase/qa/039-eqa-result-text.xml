@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.5 (OGC-613, FR-V2.5-03): a participant's reported value that is not a
+    number. Four of the six CPHL domains are qualitative (HIV serology, EID, TB
+    microscopy, recency), and the V1 result row only had DECIMAL(15,5) for the
+    value, so a provider could not take those results in at all. Exactly one of
+    result_value / result_text is filled per row; a textual result is judged by
+    exact match against the panel's sealed target and carries no Z.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-078-eqa-result-text">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="eqa_result" columnName="result_text" />
+            </not>
+        </preConditions>
+        <comment>FR-V2.5-03: qualitative participant results on the provider side</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_result">
+            <column name="result_text" type="VARCHAR(255)" />
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="eqa_result" columnName="result_text" />
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

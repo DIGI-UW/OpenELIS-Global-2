@@ -26,6 +26,7 @@ import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -52,6 +53,7 @@ import org.openelisglobal.eqa.valueholder.EQATriggerType;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.slf4j.Logger;
@@ -593,8 +595,10 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
     @Override
     @Transactional(readOnly = true)
     public String exportBundleCsv(Long cycleId, Long labEnrollmentId) {
-        StringBuilder csv = new StringBuilder(
-                "cycle_id,cycle_name,round_number,analyte_id,result_value,result_unit,submission_status,entered_at\n");
+        // analyte_name travels with the id: the provider that imports this bundle is
+        // another instance whose analyte ids differ, so the name is what it matches on.
+        StringBuilder csv = new StringBuilder("cycle_id,cycle_name,round_number,analyte_id,analyte_name,"
+                + "result_value,result_unit,submission_status,entered_at\n");
         for (EQAParticipantResult result : results(cycleId, labEnrollmentId)) {
             if (!SUBMITTABLE.contains(result.getSubmissionStatus())) {
                 continue;
@@ -603,11 +607,20 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             EQARound round = result.getRound();
             csv.append(cycleId).append(',').append(csvField(cycle == null ? null : cycle.getCycleName())).append(',')
                     .append(round == null || round.getRoundNumber() == null ? "" : round.getRoundNumber()).append(',')
-                    .append(result.getAnalyteId()).append(',').append(csvField(result.getResultValue())).append(',')
+                    .append(result.getAnalyteId()).append(',').append(csvField(analyteName(result.getAnalyteId())))
+                    .append(',').append(csvField(result.getResultValue())).append(',')
                     .append(csvField(result.getResultUnit())).append(',').append(result.getSubmissionStatus().name())
                     .append(',').append(result.getEnteredAt() == null ? "" : result.getEnteredAt()).append('\n');
         }
         return csv.toString();
+    }
+
+    private String analyteName(Long analyteId) {
+        if (analyteId == null) {
+            return null;
+        }
+        Analyte analyte = SpringContext.getBean(AnalyteService.class).get(String.valueOf(analyteId));
+        return analyte == null ? null : analyte.getAnalyteName();
     }
 
     /** RFC 4180 quoting: a value carrying a comma, quote or newline is quoted. */

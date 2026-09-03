@@ -605,8 +605,8 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
 
         String[] lines = csv.split("\n");
         assertEquals("header plus one row", 2, lines.length);
-        assertEquals("cycle_id,cycle_name,round_number,analyte_id,result_value,result_unit,submission_status,"
-                + "entered_at", lines[0]);
+        assertEquals("cycle_id,cycle_name,round_number,analyte_id,analyte_name,result_value,result_unit,"
+                + "submission_status,entered_at", lines[0]);
         assertTrue("a value with a comma must be quoted, or the column count shifts: " + lines[1],
                 lines[1].contains("\"Positive, weak\""));
         assertTrue(lines[1].startsWith(cycle.getId() + ",,1," + VL_ANALYTE + ","));
