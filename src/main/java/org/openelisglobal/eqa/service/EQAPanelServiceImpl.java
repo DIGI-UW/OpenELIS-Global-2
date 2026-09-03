@@ -241,6 +241,14 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> toPanelDto(EQAPanel panel) {
+        // Callers such as the unblind endpoint and GET /panels/{id} map the DTO
+        // after the transaction that produced the panel has ended, so the lazy
+        // cycle on the instance they hold cannot load. Re-read by id: inside a
+        // transaction this is a first-level-cache hit, outside it is the one query
+        // that keeps the mapping from failing with the work already committed.
+        if (panel.getId() != null) {
+            panel = eqaPanelDAO.get(panel.getId()).orElse(panel);
+        }
         Map<String, Object> dto = new LinkedHashMap<>();
         dto.put("id", panel.getId());
         dto.put("panelName", panel.getPanelName());
