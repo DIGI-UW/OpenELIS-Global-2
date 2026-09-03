@@ -5,21 +5,23 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
+    <property name="analyzer.schema" value="clinlims"/>
+
     <changeSet id="OGC-1054-remove-analyzer-qc-rule" author="OGC">
         <preConditions onFail="MARK_RAN">
-            <tableExists tableName="analyzer_qc_rule"/>
+            <tableExists schemaName="${analyzer.schema}" tableName="analyzer_qc_rule"/>
         </preConditions>
         <comment>Remove superseded OpenELIS analyzer classifier rules; control recognition belongs to Bridge profiles</comment>
-        <dropTable tableName="analyzer_qc_rule"/>
+        <dropTable schemaName="${analyzer.schema}" tableName="analyzer_qc_rule"/>
         <rollback>
-            <createTable tableName="analyzer_qc_rule">
+            <createTable schemaName="${analyzer.schema}" tableName="analyzer_qc_rule">
                 <column name="id" type="VARCHAR(36)">
                     <constraints primaryKey="true" nullable="false"/>
                 </column>
                 <column name="analyzer_id" type="NUMERIC(10,0)">
                     <constraints nullable="false"
                         foreignKeyName="fk_analyzer_qc_rule_analyzer"
-                        references="analyzer(id)"
+                        references="${analyzer.schema}.analyzer(id)"
                         deleteCascade="true"/>
                 </column>
                 <column name="rule_type" type="VARCHAR(30)">
@@ -42,10 +44,12 @@
                     <constraints nullable="false"/>
                 </column>
             </createTable>
-            <createIndex tableName="analyzer_qc_rule" indexName="idx_analyzer_qc_rule_analyzer_id">
+            <createIndex schemaName="${analyzer.schema}" tableName="analyzer_qc_rule"
+                indexName="idx_analyzer_qc_rule_analyzer_id">
                 <column name="analyzer_id"/>
             </createIndex>
-            <createIndex tableName="analyzer_qc_rule" indexName="idx_analyzer_qc_rule_active">
+            <createIndex schemaName="${analyzer.schema}" tableName="analyzer_qc_rule"
+                indexName="idx_analyzer_qc_rule_active">
                 <column name="analyzer_id"/>
                 <column name="is_active"/>
             </createIndex>

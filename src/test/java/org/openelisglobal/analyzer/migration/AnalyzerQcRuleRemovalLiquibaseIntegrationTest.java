@@ -37,13 +37,23 @@ public class AnalyzerQcRuleRemovalLiquibaseIntegrationTest extends BaseWebContex
             try (Connection connection = dataSource.getConnection()) {
                 Database database = DatabaseFactory.getInstance()
                         .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-                database.setDefaultSchemaName(TEST_SCHEMA);
+                database.setDefaultSchemaName("public");
                 database.setLiquibaseSchemaName(TEST_SCHEMA);
-                try (Liquibase liquibase = new Liquibase("liquibase/3.5.x.x/088-remove-analyzer-qc-rule.xml",
-                        new ClassLoaderResourceAccessor(), database)) {
-                    liquibase.update(new Contexts("test"));
-                    assertEquals(0, tableCount(TEST_SCHEMA, "analyzer_qc_rule"));
-                    liquibase.rollback(1, "test");
+                String priorSchema = System.getProperty("analyzer.schema");
+                System.setProperty("analyzer.schema", TEST_SCHEMA);
+                try {
+                    try (Liquibase liquibase = new Liquibase("liquibase/3.5.x.x/088-remove-analyzer-qc-rule.xml",
+                            new ClassLoaderResourceAccessor(), database)) {
+                        liquibase.update(new Contexts("test"));
+                        assertEquals(0, tableCount(TEST_SCHEMA, "analyzer_qc_rule"));
+                        liquibase.rollback(1, "test");
+                    }
+                } finally {
+                    if (priorSchema == null) {
+                        System.clearProperty("analyzer.schema");
+                    } else {
+                        System.setProperty("analyzer.schema", priorSchema);
+                    }
                 }
             }
 

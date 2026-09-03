@@ -1,8 +1,8 @@
 export const includesComboBoxText = ({ item, itemToString, inputValue }) => {
-  const query = (inputValue || "").trim().toLocaleLowerCase();
+  const query = (inputValue || "").trim().toLowerCase();
   if (!query) {
     return true;
   }
 
-  return (itemToString?.(item) || "").toLocaleLowerCase().includes(query);
+  return (itemToString?.(item) || "").toLowerCase().includes(query);
 };
