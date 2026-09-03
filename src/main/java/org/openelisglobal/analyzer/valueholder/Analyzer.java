@@ -86,6 +86,10 @@ public class Analyzer extends BaseObject<String> {
     @JoinColumn(name = "analyzer_type_id")
     private AnalyzerType analyzerType;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "site_binding_revision_id")
+    private AnalyzerSiteBindingRevision siteBindingRevision;
+
     // --- Configuration fields (merged from analyzer_configuration) ---
 
     @Column(name = "ip_address", length = 15)
@@ -233,6 +237,21 @@ public class Analyzer extends BaseObject<String> {
 
     public void setAnalyzerType(AnalyzerType analyzerType) {
         this.analyzerType = analyzerType;
+    }
+
+    public AnalyzerSiteBindingRevision getSiteBindingRevision() {
+        return siteBindingRevision;
+    }
+
+    public void setSiteBindingRevision(AnalyzerSiteBindingRevision siteBindingRevision) {
+        this.siteBindingRevision = siteBindingRevision;
+    }
+
+    public AnalyzerProfileBinding getPinnedProfileBinding() {
+        if (siteBindingRevision == null || siteBindingRevision.getSiteBinding() == null) {
+            return null;
+        }
+        return siteBindingRevision.getSiteBinding().getProfileBinding();
     }
 
     // --- Configuration field accessors (merged from analyzer_configuration) ---

@@ -90,9 +90,7 @@ services:
       # Bridge owns FILE polling (FileAlterationMonitor); OE polling is disabled.
       - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
     volumes:
-      - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
       - ./projects/analyzer-harness/config-templates:/var/lib/openelis-global/configuration/backend:ro
-      - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     networks:
       - default
       - analyzer-net

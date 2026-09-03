@@ -11,8 +11,6 @@ import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
-import org.openelisglobal.analyzer.valueholder.CommunicationMode;
-import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,9 +91,10 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         String readiness = readiness(status, testMappings, resultMappings);
         return new AnalyzerTypeCatalogView.TypeSummary(profile.profileId(), profile.revision(),
                 profile.revisionFingerprint(), profile.displayName(), profile.manufacturer(), profile.model(),
-                profile.source(), status, profile.protocol(), instanceDefaults(profile), profile.parentProfileId(),
-                profile.parentRevision(), siteBinding == null ? null : siteBinding.binding().getId(), testMappings,
-                resultMappings, affectedAnalyzers.size(), readiness, nullableText(revision.publication(), "action"),
+                profile.source(), status, profile.protocol(), profile.protocolVersion(), profile.communicationMode(),
+                profile.parentProfileId(), profile.parentRevision(),
+                siteBinding == null ? null : siteBinding.binding().getId(), testMappings, resultMappings,
+                affectedAnalyzers.size(), readiness, nullableText(revision.publication(), "action"),
                 nullableText(revision.publication(), "actor"), nullableText(revision.publication(), "markedAt"),
                 affectedAnalyzers);
     }
@@ -114,21 +113,6 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
                 && pinnedMappingRevision < currentSiteBinding.revision().getRevisionNumber();
         return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive(),
                 pinnedProfileRevision, pinnedMappingRevision, newerProfileRevision || newerMappingRevision);
-    }
-
-    private static AnalyzerTypeCatalogView.InstanceDefaults instanceDefaults(BridgeAnalyzerProfile profile) {
-        ProtocolVersion protocolVersion = profile.resolvedProtocolVersion();
-        if (!"FILE".equals(profile.protocol()) && protocolVersion == null) {
-            throw new IllegalArgumentException(
-                    "Bridge profile " + profile.profileId() + " has an unsupported protocol version");
-        }
-        CommunicationMode communicationMode = profile.resolvedCommunicationMode();
-        if (!"FILE".equals(profile.protocol()) && communicationMode == null) {
-            throw new IllegalArgumentException(
-                    "Bridge profile " + profile.profileId() + " has an unsupported communication mode");
-        }
-        return new AnalyzerTypeCatalogView.InstanceDefaults(protocolVersion == null ? null : protocolVersion.name(),
-                communicationMode == null ? null : communicationMode.name(), profile.instanceDefaults().port());
     }
 
     private static AnalyzerTypeCatalogView.MappingSummary testMappingSummary(BridgeAnalyzerProfile profile,

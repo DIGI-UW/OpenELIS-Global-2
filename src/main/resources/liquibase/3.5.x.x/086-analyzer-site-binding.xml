@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-1054-analyzer-site-binding-tables" author="OGC">
+        <comment>
+            Store revisioned, site-owned Test and Result Option decisions for an
+            immutable Bridge profile reference. Portable profile content remains
+            authoritative in Bridge and is intentionally not copied here.
+        </comment>
+
+        <createSequence schemaName="clinlims" sequenceName="analyzer_site_binding_seq"
+            startValue="1" incrementBy="1"/>
+        <createSequence schemaName="clinlims" sequenceName="analyzer_site_binding_revision_seq"
+            startValue="1" incrementBy="1"/>
+
+        <createTable schemaName="clinlims" tableName="analyzer_site_binding">
+            <column name="id" type="numeric(10)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_analyzer_site_binding"/>
+            </column>
+            <column name="profile_binding_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_site_binding"
+            columnNames="profile_binding_id" constraintName="uq_analyzer_site_binding_profile"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_profile"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding"
+            baseColumnNames="profile_binding_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_profile_binding" referencedColumnNames="id"/>
+
+        <createTable schemaName="clinlims" tableName="analyzer_site_binding_revision">
+            <column name="id" type="numeric(10)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_analyzer_site_binding_revision"/>
+            </column>
+            <column name="site_binding_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revision_number" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="binding_fingerprint" type="VARCHAR(71)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="supersedes_revision_id" type="numeric(10)"/>
+            <column name="created_by" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_site_binding_revision"
+            columnNames="site_binding_id, revision_number"
+            constraintName="uq_analyzer_site_binding_revision_number"/>
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_site_binding_revision"
+            columnNames="site_binding_id, binding_fingerprint"
+            constraintName="uq_analyzer_site_binding_revision_fingerprint"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_revision_binding"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_revision"
+            baseColumnNames="site_binding_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_site_binding" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_revision_supersedes"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_revision"
+            baseColumnNames="supersedes_revision_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_site_binding_revision" referencedColumnNames="id"/>
+
+        <createTable schemaName="clinlims" tableName="analyzer_site_binding_test">
+            <column name="site_binding_revision_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_row_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mapping_state" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="numeric(10)"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addPrimaryKey schemaName="clinlims" tableName="analyzer_site_binding_test"
+            columnNames="site_binding_revision_id, source_row_key"
+            constraintName="pk_analyzer_site_binding_test"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_test_revision"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_test"
+            baseColumnNames="site_binding_revision_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_site_binding_revision" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_test_test"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_test"
+            baseColumnNames="test_id" referencedTableSchemaName="clinlims"
+            referencedTableName="test" referencedColumnNames="id"/>
+
+        <createTable schemaName="clinlims" tableName="analyzer_site_binding_result">
+            <column name="site_binding_revision_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_row_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="raw_value" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mapping_state" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_result_id" type="numeric(10)"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addPrimaryKey schemaName="clinlims" tableName="analyzer_site_binding_result"
+            columnNames="site_binding_revision_id, source_row_key, raw_value"
+            constraintName="pk_analyzer_site_binding_result"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_result_revision"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_result"
+            baseColumnNames="site_binding_revision_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_site_binding_revision" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_result_test"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_result"
+            baseColumnNames="site_binding_revision_id, source_row_key" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_site_binding_test"
+            referencedColumnNames="site_binding_revision_id, source_row_key"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_result_option"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_result"
+            baseColumnNames="test_result_id" referencedTableSchemaName="clinlims"
+            referencedTableName="test_result" referencedColumnNames="id"/>
+
+        <sql>
+            ALTER TABLE clinlims.analyzer_site_binding_revision
+            ADD CONSTRAINT chk_analyzer_site_binding_revision_number
+            CHECK (revision_number &gt;= 1);
+            ALTER TABLE clinlims.analyzer_site_binding_test
+            ADD CONSTRAINT chk_analyzer_site_binding_test_state
+            CHECK (mapping_state IN ('BOUND', 'EXCLUDED', 'UNRESOLVED'));
+            ALTER TABLE clinlims.analyzer_site_binding_result
+            ADD CONSTRAINT chk_analyzer_site_binding_result_state
+            CHECK (mapping_state IN ('BOUND', 'EXCLUDED', 'UNRESOLVED'));
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="analyzer_site_binding_result"/>
+            <dropTable schemaName="clinlims" tableName="analyzer_site_binding_test"/>
+            <dropTable schemaName="clinlims" tableName="analyzer_site_binding_revision"/>
+            <dropTable schemaName="clinlims" tableName="analyzer_site_binding"/>
+            <dropSequence schemaName="clinlims" sequenceName="analyzer_site_binding_revision_seq"/>
+            <dropSequence schemaName="clinlims" sequenceName="analyzer_site_binding_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-1054-analyzer-site-binding-reference" author="OGC">
+        <addColumn schemaName="clinlims" tableName="analyzer">
+            <column name="site_binding_revision_id" type="numeric(10)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_analyzer_site_binding_analyzer_revision"
+            baseTableSchemaName="clinlims" baseTableName="analyzer"
+            baseColumnNames="site_binding_revision_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_site_binding_revision" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="analyzer"
+            indexName="idx_analyzer_site_binding_revision">
+            <column name="site_binding_revision_id"/>
+        </createIndex>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="analyzer"
+                constraintName="fk_analyzer_site_binding_analyzer_revision"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer"
+                columnName="site_binding_revision_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-1054-remove-direct-analyzer-profile-reference" author="OGC">
+        <comment>
+            An analyzer pins one site-binding revision. The site binding owns the
+            exact Bridge profile reference, so a second direct analyzer reference
+            would create an alternate and potentially conflicting authority path.
+        </comment>
+        <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="analyzer"
+            constraintName="fk_analyzer_profile_binding"/>
+        <dropIndex schemaName="clinlims" tableName="analyzer"
+            indexName="idx_analyzer_profile_binding"/>
+        <dropColumn schemaName="clinlims" tableName="analyzer"
+            columnName="profile_binding_id"/>
+        <rollback>
+            <addColumn schemaName="clinlims" tableName="analyzer">
+                <column name="profile_binding_id" type="numeric(10)"/>
+            </addColumn>
+            <addForeignKeyConstraint constraintName="fk_analyzer_profile_binding"
+                baseTableSchemaName="clinlims" baseTableName="analyzer"
+                baseColumnNames="profile_binding_id" referencedTableSchemaName="clinlims"
+                referencedTableName="analyzer_profile_binding" referencedColumnNames="id"/>
+            <createIndex schemaName="clinlims" tableName="analyzer"
+                indexName="idx_analyzer_profile_binding">
+                <column name="profile_binding_id"/>
+            </createIndex>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-1054-analyzer-site-binding-audit-reference" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(name) = 'analyzer_site_binding_revision'
+            </sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="analyzer_site_binding_revision"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

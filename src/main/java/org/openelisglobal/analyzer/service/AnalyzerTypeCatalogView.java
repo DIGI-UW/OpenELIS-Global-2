@@ -15,16 +15,13 @@ public record AnalyzerTypeCatalogView(String schemaVersion, String catalogFinger
     public record MappingSummary(int mapped, int excluded, int total, String state) {
     }
 
-    public record InstanceDefaults(String protocolVersion, String communicationMode, Integer port) {
-    }
-
     public record AffectedAnalyzer(String id, String name, boolean active, int pinnedProfileRevision,
             int pinnedMappingRevision, boolean updateAvailable) {
     }
 
     public record TypeSummary(String profileId, int revision, String revisionFingerprint, String displayName,
-            String manufacturer, String model, String source, String status, String protocol,
-            InstanceDefaults instanceDefaults, String parentProfileId, Integer parentRevision, String siteBindingId,
+            String manufacturer, String model, String source, String status, String protocol, String protocolVersion,
+            String communicationMode, String parentProfileId, Integer parentRevision, String siteBindingId,
             MappingSummary testMappings, MappingSummary resultMappings, long usedBy, String readiness,
             String publicationAction, String publicationActor, String publicationTime,
             List<AffectedAnalyzer> affectedAnalyzers) {
@@ -35,12 +32,12 @@ public record AnalyzerTypeCatalogView(String schemaVersion, String catalogFinger
 
         public TypeSummary(String profileId, int revision, String revisionFingerprint, String displayName,
                 String manufacturer, String model, String source, String status, String protocol,
-                InstanceDefaults instanceDefaults, String parentProfileId, Integer parentRevision, String siteBindingId,
-                MappingSummary testMappings, MappingSummary resultMappings, long usedBy, String readiness,
-                String publicationAction, String publicationActor, String publicationTime) {
+                String protocolVersion, String communicationMode, String parentProfileId, Integer parentRevision,
+                String siteBindingId, MappingSummary testMappings, MappingSummary resultMappings, long usedBy,
+                String readiness, String publicationAction, String publicationActor, String publicationTime) {
             this(profileId, revision, revisionFingerprint, displayName, manufacturer, model, source, status, protocol,
-                    instanceDefaults, parentProfileId, parentRevision, siteBindingId, testMappings, resultMappings,
-                    usedBy, readiness, publicationAction, publicationActor, publicationTime, List.of());
+                    protocolVersion, communicationMode, parentProfileId, parentRevision, siteBindingId, testMappings,
+                    resultMappings, usedBy, readiness, publicationAction, publicationActor, publicationTime, List.of());
         }
     }
 }
