@@ -8501,6 +8501,8 @@
   "eqa.result.analyst.tooltip": "Shown because this run includes an EQA sample whose scheme records who ran each sample. Non-EQA rows take no input.",
   "shipment.settings.siteOrgUnsetTitle": "Site organization not set",
   "shipment.settings.siteOrgUnsetSubtitle": "Incoming consignments are not filtered to this site and outgoing boxes carry no sender. Select the organization that represents this laboratory.",
+  "shipment.settings.siteOrgUnmatchedTitle": "Set to an organization this instance does not hold",
+  "shipment.settings.siteOrgUnmatchedSubtitle": "The UUID below is the one a partner addresses this laboratory by, and it matches no organization here. Filtering works; leave it unless the partner changes it.",
   "eqa.receipt.openSubmissions": "Open submissions",
   "eqa.receipt.openSubmissionsHeading": "Open submissions with undelivered panels",
   "eqa.receipt.openSubmissionsHelp": "Participants that have not received their panel stay on the roster as late. This is a recorded manual override — give the reason.",
