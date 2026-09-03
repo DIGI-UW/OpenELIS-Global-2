@@ -1,6 +1,5 @@
 package org.openelisglobal.eqa.service;
 
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -477,46 +476,11 @@ public class EQABlindingServiceImpl implements EQABlindingService {
     }
 
     /**
-     * FR-V2.4-07 / AC-V2.4-07/-08: numeric when an acceptance range is sealed
-     * (inside the closed range = acceptable), categorical exact match otherwise. A
-     * non-numeric report against a numeric target is a mismatch, not an error.
+     * The comparison lives in one place for both lanes: inside a sealed acceptance
+     * range, or an exact match against the target, is acceptable.
      */
     private EQAPerformanceStatus verdictFor(EQAPanelSample target, String reported) {
-        String value = reported == null ? "" : reported.trim();
-        if (target.getAcceptanceRangeLow() != null || target.getAcceptanceRangeHigh() != null) {
-            BigDecimal numeric;
-            try {
-                numeric = new BigDecimal(value);
-            } catch (NumberFormatException e) {
-                return EQAPerformanceStatus.UNACCEPTABLE;
-            }
-            if (target.getAcceptanceRangeLow() != null && numeric.compareTo(target.getAcceptanceRangeLow()) < 0) {
-                return EQAPerformanceStatus.UNACCEPTABLE;
-            }
-            if (target.getAcceptanceRangeHigh() != null && numeric.compareTo(target.getAcceptanceRangeHigh()) > 0) {
-                return EQAPerformanceStatus.UNACCEPTABLE;
-            }
-            return EQAPerformanceStatus.ACCEPTABLE;
-        }
-        String targetValue = target.getTargetValue() == null ? "" : target.getTargetValue().trim();
-        // A quantitative target sealed without a range still has to compare as a
-        // number, or "100.0" fails against a target of "100".
-        BigDecimal targetNumber = parseOrNull(targetValue);
-        BigDecimal reportedNumber = parseOrNull(value);
-        if (targetNumber != null && reportedNumber != null) {
-            return targetNumber.compareTo(reportedNumber) == 0 ? EQAPerformanceStatus.ACCEPTABLE
-                    : EQAPerformanceStatus.UNACCEPTABLE;
-        }
-        return targetValue.equalsIgnoreCase(value) ? EQAPerformanceStatus.ACCEPTABLE
-                : EQAPerformanceStatus.UNACCEPTABLE;
-    }
-
-    private static BigDecimal parseOrNull(String value) {
-        try {
-            return new BigDecimal(value);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return EqaTargetVerdict.of(target, reported);
     }
 
 }

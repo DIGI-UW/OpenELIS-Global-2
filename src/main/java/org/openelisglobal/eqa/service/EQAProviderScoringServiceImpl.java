@@ -137,15 +137,21 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         EQADistribution distribution = findOrOpenDistribution(cycle, sysUserId);
         long reported = eqaResultDAO.findByDistributionId(distribution.getId()).stream()
                 .filter(result -> result.getResultValue() != null || result.getResultText() != null).count();
-        // Refused rather than silently half-scored: below this the peer mean and SD
-        // describe nothing, and the statistics service would leave every verdict null.
-        if (reported < EQAStatisticsService.MIN_PARTICIPANTS_FOR_STATS) {
-            throw new IllegalStateException("Scoring needs at least " + EQAStatisticsService.MIN_PARTICIPANTS_FOR_STATS
-                    + " reported results; this cycle has " + reported);
+        if (reported == 0) {
+            throw new IllegalStateException("This cycle has no reported results to score");
+        }
+        Map<Long, EQAPanelSample> targetByAnalyte = panelTargets(cycle);
+        // The peer statistic is the only judge for a test whose panel material
+        // carries no target, and below this floor its mean and SD describe nothing.
+        // A targeted cycle needs no crowd, so it scores whatever its roster size.
+        if (reported < EQAStatisticsService.MIN_PARTICIPANTS_FOR_STATS && targetByAnalyte.isEmpty()) {
+            throw new IllegalStateException("Scoring against peers needs at least "
+                    + EQAStatisticsService.MIN_PARTICIPANTS_FOR_STATS + " reported results; this cycle has " + reported
+                    + " and its panel carries no target to judge them against");
         }
 
         eqaStatisticsService.calculateAndUpdateStatistics(distribution.getId());
-        judgeReportedText(cycle, distribution.getId());
+        int judgedAgainstTarget = judgeAgainstPanelTargets(targetByAnalyte, distribution.getId());
         advanceToScored(cycle, sysUserId);
 
         int followups = 0;
@@ -162,6 +168,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         summary.put("cycleId", cycleId);
         summary.put("distributionId", distribution.getId());
         summary.put("scoredCount", (int) reported);
+        summary.put("judgedAgainstTargetCount", judgedAgainstTarget);
         summary.put("followupCount", followups);
         summary.put("cycleStatus",
                 eqaCycleDAO.get(cycleId).map(EQACycle::getStatus).map(EQACycleStatus::name).orElse(null));
@@ -345,35 +352,72 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     }
 
     /**
-     * Qualitative results have no peer mean: the verdict is an exact,
-     * case-insensitive match against the panel's sealed target for the test's
-     * analyte (the same rule in-house scoring applies). A test with no sealed
-     * target leaves the verdict blank rather than guessing.
+     * The panel material this cycle shipped, by the analyte each sample answers.
      */
-    private void judgeReportedText(EQACycle cycle, Long distributionId) {
-        Map<Long, String> targetByAnalyte = new HashMap<>();
+    private Map<Long, EQAPanelSample> panelTargets(EQACycle cycle) {
+        Map<Long, EQAPanelSample> targetByAnalyte = new HashMap<>();
         for (EQAPanel panel : eqaPanelDAO.getAllMatching("cycle.id", cycle.getId())) {
             for (EQAPanelSample sample : eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId())) {
-                if (sample.getAnalyteId() != null && sample.getTargetValue() != null) {
-                    targetByAnalyte.put(sample.getAnalyteId(), sample.getTargetValue().trim());
+                if (sample.getAnalyteId() != null
+                        && (sample.getTargetValue() != null || EqaTargetVerdict.hasRange(sample))) {
+                    targetByAnalyte.put(sample.getAnalyteId(), sample);
                 }
             }
         }
+        return targetByAnalyte;
+    }
+
+    /**
+     * What the panel says the answer is decides the verdict, and the peer Z stays
+     * beside it as reporting. A quantitative result is judged when its sample seals
+     * an acceptance range; a word is judged by an exact, case-insensitive match
+     * against the target. Everything else keeps the peer verdict the statistics
+     * service left, which is all a cycle with untargeted material has.
+     *
+     * <p>
+     * Judging against the target is what makes a wrong answer reachable at all: the
+     * largest |Z| a classical peer score can attain over n values is (n−1)/√n,
+     * which at the five participants a peer statistic already requires is 1.79 —
+     * under its own questionable threshold, so a laboratory reporting double the
+     * target came out acceptable.
+     *
+     * @return how many results the target judged
+     */
+    private int judgeAgainstPanelTargets(Map<Long, EQAPanelSample> targetByAnalyte, Long distributionId) {
+        if (targetByAnalyte.isEmpty()) {
+            return 0;
+        }
+        int judged = 0;
         for (EQAResult result : eqaResultDAO.findByDistributionId(distributionId)) {
-            if (result.getResultText() == null || result.getResultValue() != null) {
-                continue;
-            }
             Long analyteId = analyteIdOrNull(result.getTestId());
-            String target = analyteId == null ? null : targetByAnalyte.get(analyteId);
+            EQAPanelSample target = analyteId == null ? null : targetByAnalyte.get(analyteId);
             if (target == null) {
                 continue;
             }
-            result.setZScore(null);
-            result.setPerformanceStatus(
-                    target.equalsIgnoreCase(result.getResultText().trim()) ? EQAPerformanceStatus.ACCEPTABLE
-                            : EQAPerformanceStatus.UNACCEPTABLE);
+            // Carried onto the result so the report, the scores CSV and the exchange
+            // can show what the verdict was measured against.
+            if (result.getTargetValue() == null) {
+                result.setTargetValue(EqaTargetVerdict.numericTarget(target));
+            }
+            boolean quantitative = result.getResultValue() != null;
+            if (quantitative && !EqaTargetVerdict.hasRange(target)) {
+                // A target with no range would compare for equality, and a lab is not
+                // wrong for answering 39.5 to a target of 40. The peer verdict stands.
+                eqaResultDAO.update(result);
+                continue;
+            }
+            String reported = quantitative ? result.getResultValue().toPlainString() : result.getResultText();
+            if (reported == null) {
+                continue;
+            }
+            if (!quantitative) {
+                result.setZScore(null);
+            }
+            result.setPerformanceStatus(EqaTargetVerdict.of(target, reported));
             eqaResultDAO.update(result);
+            judged++;
         }
+        return judged;
     }
 
     private static Object reportedOf(EQAResult result) {
