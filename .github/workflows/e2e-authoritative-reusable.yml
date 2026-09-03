@@ -85,7 +85,7 @@ jobs:
       test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
 
   # ─── Playwright Harness ─────────────────────────────────────────────────────
-  # Runs harness-foundational and harness-demo projects on the analyzer harness.
+  # Runs the UI-only checkpoint stories on the analyzer harness.
   playwright-harness:
     name: Playwright Harness
     if: inputs.include_analyzer_harness == 'true'
@@ -95,7 +95,7 @@ jobs:
       packages: read
       actions: read
     with:
-      projects: "harness-foundational,harness-demo"
+      projects: "harness-demo"
       artifact_prefix: "harness"
       compose_files: "build.docker-compose.yml,projects/analyzer-harness/docker-compose.base.yml,.github/ci/ci.analyzer-harness.yml"
       fixture_mode: "harness"
