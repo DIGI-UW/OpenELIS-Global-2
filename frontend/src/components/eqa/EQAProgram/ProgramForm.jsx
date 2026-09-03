@@ -4,6 +4,8 @@ import {
   TextInput,
   TextArea,
   Toggle,
+  Select,
+  SelectItem,
   FilterableMultiSelect,
   InlineNotification,
 } from "@carbon/react";
@@ -15,6 +17,15 @@ import {
   resolveApiErrorMessage,
 } from "../../utils/Utils";
 
+// The four arrangement types a scheme can have. IN_HOUSE is the only one that
+// may omit a provider, which is why the form branches on it.
+const SCHEME_TYPES = [
+  "INTERNATIONAL_PT",
+  "REGIONAL_PT",
+  "INTER_LAB_SPLIT",
+  "IN_HOUSE",
+];
+
 const ProgramForm = ({ program, onClose }) => {
   const intl = useIntl();
   const isEditing = !!program;
@@ -24,9 +35,16 @@ const ProgramForm = ({ program, onClose }) => {
   const [description, setDescription] = useState(program?.description || "");
   const [isActive, setIsActive] = useState(program?.isActive !== false);
   const [perAnalyst, setPerAnalyst] = useState(program?.perAnalyst === true);
+  const [schemeType, setSchemeType] = useState(
+    program?.schemeType || "INTERNATIONAL_PT",
+  );
   const [nameError, setNameError] = useState("");
   const [providerError, setProviderError] = useState("");
   const [saveError, setSaveError] = useState("");
+
+  // An in-house scheme is run by this laboratory, so it has no external provider
+  // to name; every other type must have one.
+  const providerRequired = schemeType !== "IN_HOUSE";
 
   // The tests this programme collects. Provider intake reads exactly this map —
   // the results grid and its CSV import both iterate it — so a programme with
@@ -126,7 +144,7 @@ const ProgramForm = ({ program, onClose }) => {
       setNameError(intl.formatMessage({ id: "eqa.program.name.required" }));
       valid = false;
     }
-    if (!provider.trim()) {
+    if (providerRequired && !provider.trim()) {
       setProviderError(
         intl.formatMessage({ id: "eqa.program.provider.required" }),
       );
@@ -137,9 +155,10 @@ const ProgramForm = ({ program, onClose }) => {
 
     const payload = {
       name,
-      provider,
+      provider: providerRequired ? provider : "",
       description,
       perAnalyst,
+      schemeType,
     };
 
     setSaveError("");
@@ -197,20 +216,50 @@ const ProgramForm = ({ program, onClose }) => {
           invalid={!!nameError}
           invalidText={nameError}
         />
-        <TextInput
-          id="program-provider"
-          labelText={intl.formatMessage({ id: "eqa.admin.col.provider" })}
-          placeholder={intl.formatMessage({
-            id: "eqa.admin.form.provider.placeholder",
+        <Select
+          id="program-scheme-type"
+          labelText={intl.formatMessage({
+            id: "eqa.program.schemeType",
+            defaultMessage: "Scheme type",
           })}
-          value={provider}
+          helperText={intl.formatMessage({
+            id: "eqa.program.schemeType.helper",
+            defaultMessage:
+              "In-house schemes are run by this laboratory and need no provider; every other type does.",
+          })}
+          value={schemeType}
           onChange={(e) => {
-            setProvider(e.target.value);
+            setSchemeType(e.target.value);
             if (providerError) setProviderError("");
           }}
-          invalid={!!providerError}
-          invalidText={providerError}
-        />
+        >
+          {SCHEME_TYPES.map((type) => (
+            <SelectItem
+              key={type}
+              value={type}
+              text={intl.formatMessage({
+                id: `eqa.scheme.type.${type.toLowerCase()}`,
+                defaultMessage: type.replace(/_/g, " "),
+              })}
+            />
+          ))}
+        </Select>
+        {providerRequired && (
+          <TextInput
+            id="program-provider"
+            labelText={intl.formatMessage({ id: "eqa.admin.col.provider" })}
+            placeholder={intl.formatMessage({
+              id: "eqa.admin.form.provider.placeholder",
+            })}
+            value={provider}
+            onChange={(e) => {
+              setProvider(e.target.value);
+              if (providerError) setProviderError("");
+            }}
+            invalid={!!providerError}
+            invalidText={providerError}
+          />
+        )}
         <TextArea
           id="program-description"
           labelText={intl.formatMessage({ id: "eqa.program.description" })}

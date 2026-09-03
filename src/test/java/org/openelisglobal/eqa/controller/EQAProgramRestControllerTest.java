@@ -25,6 +25,7 @@ import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -36,6 +37,9 @@ public class EQAProgramRestControllerTest {
 
     @Mock
     private EQAProgramEnrollmentService enrollmentService;
+
+    @Mock
+    private SystemUserService systemUserService;
 
     @Mock
     private HttpServletRequest request;
@@ -76,7 +80,8 @@ public class EQAProgramRestControllerTest {
         when(programService.insert(any(EQAProgram.class))).thenReturn(1L);
         when(programService.get(1L)).thenReturn(program1);
 
-        Map<String, Object> body = Map.of("name", "Chemistry PT", "description", "Chemistry proficiency testing");
+        Map<String, Object> body = Map.of("name", "Chemistry PT", "description", "Chemistry proficiency testing",
+                "schemeType", "INTERNATIONAL_PT", "provider", "NHLS");
         ResponseEntity<?> response = controller.createProgram(request, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());

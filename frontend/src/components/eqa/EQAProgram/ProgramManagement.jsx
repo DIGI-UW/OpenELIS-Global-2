@@ -100,6 +100,10 @@ const ProgramManagement = () => {
       header: intl.formatMessage({ id: "eqa.admin.col.provider" }),
     },
     {
+      key: "schemeType",
+      header: intl.formatMessage({ id: "eqa.filter.schemeType" }),
+    },
+    {
       key: "participantCount",
       header: intl.formatMessage({ id: "eqa.admin.col.participants" }),
     },
@@ -116,7 +120,13 @@ const ProgramManagement = () => {
   const rows = programs.map((p) => ({
     id: String(p.id),
     name: p.name,
-    provider: p.provider || "",
+    provider: p.provider || "—",
+    schemeType: p.schemeType
+      ? intl.formatMessage({
+          id: `eqa.scheme.type.${p.schemeType.toLowerCase()}`,
+          defaultMessage: p.schemeType.replace(/_/g, " "),
+        })
+      : "—",
     participantCount: p.participantCount != null ? p.participantCount : 0,
     status: p.isActive
       ? intl.formatMessage({ id: "eqa.program.active" })

@@ -167,6 +167,55 @@ describe("ProgramManagement", () => {
 });
 
 describe("ProgramForm", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getFromOpenElisServer.mockImplementation((url, callback) => callback([]));
+  });
+
+  test("an in-house scheme needs no provider and says so on the way out", () => {
+    const { container } = renderWithIntl(
+      <ProgramForm program={null} onClose={vi.fn()} />,
+    );
+
+    fireEvent.change(container.querySelector("#program-scheme-type"), {
+      target: { value: "IN_HOUSE" },
+    });
+    expect(container.querySelector("#program-provider")).toBeNull();
+
+    fireEvent.change(container.querySelector("#program-name"), {
+      target: { value: "In-house blinded PT" },
+    });
+    fireEvent.click(screen.getByText("Add Program"));
+
+    expect(screen.queryByText("Provider is required")).toBeNull();
+    const [, payload] = postToOpenElisServerFullResponse.mock.calls[0];
+    expect(JSON.parse(payload)).toMatchObject({
+      name: "In-house blinded PT",
+      schemeType: "IN_HOUSE",
+      provider: "",
+    });
+  });
+
+  test("an external scheme carries the type the user picked", () => {
+    const { container } = renderWithIntl(
+      <ProgramForm program={null} onClose={vi.fn()} />,
+    );
+
+    fireEvent.change(container.querySelector("#program-name"), {
+      target: { value: "Regional serology" },
+    });
+    fireEvent.change(container.querySelector("#program-scheme-type"), {
+      target: { value: "REGIONAL_PT" },
+    });
+    fireEvent.change(container.querySelector("#program-provider"), {
+      target: { value: "CPHL" },
+    });
+    fireEvent.click(screen.getByText("Add Program"));
+
+    const [, payload] = postToOpenElisServerFullResponse.mock.calls[0];
+    expect(JSON.parse(payload).schemeType).toBe("REGIONAL_PT");
+  });
+
   test("renders create mode with correct heading", () => {
     renderWithIntl(<ProgramForm program={null} onClose={vi.fn()} />);
     expect(screen.getByText("Add New EQA Program")).toBeTruthy();
