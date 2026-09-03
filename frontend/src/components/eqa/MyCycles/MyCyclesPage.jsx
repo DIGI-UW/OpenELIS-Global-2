@@ -407,7 +407,11 @@ const MyCyclesPage = () => {
               <Button
                 size="sm"
                 kind="tertiary"
-                onClick={() => history.push("/SamplePatientEntry?isEQA=true")}
+                onClick={() =>
+                  history.push(
+                    `/SamplePatientEntry?isEQA=true&cycleId=${cycle.id}`,
+                  )
+                }
               >
                 {t("eqa.btn.receivePanel", "Receive panel — open Add Order")}
               </Button>
