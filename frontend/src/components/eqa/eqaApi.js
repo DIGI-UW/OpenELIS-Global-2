@@ -20,13 +20,15 @@ export const asList = (data) => (Array.isArray(data) ? data : []);
 export const failed = (response) =>
   !response || response.error || (response.status && response.status >= 400);
 
-// The standard test list, narrowed to the tests that carry an analyte: a panel
-// target is stored against an analyte, so offering the rest is a dead end the
-// wizard would only discover at write time.
+// The tests a panel can be built from: those a participating laboratory could
+// raise an order for, named from the whole catalog rather than from the
+// lab-unit-scoped list. Panel material is not lab-unit scoped, and the scoped
+// list is empty for a QA officer, who holds no bench role — which left both
+// wizards with an empty Test column for the very persona they are written for.
 export const fetchTests = (callback) => {
   getFromOpenElisServer("/rest/eqa/testable-tests", (testable) => {
     const usable = new Set(asList(testable).map(String));
-    getFromOpenElisServer("/rest/test-list", (tests) =>
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (tests) =>
       callback(asList(tests).filter((test) => usable.has(String(test.id)))),
     );
   });
