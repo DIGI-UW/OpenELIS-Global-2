@@ -48,6 +48,19 @@ public interface EQAPanelService extends BaseObjectService<EQAPanel, Long> {
     Long analyteIdForTest(String testId);
 
     /**
+     * The same resolution as {@link #analyteIdForTest(String)}, returning null
+     * instead of throwing when the test is unknown or carries no analyte.
+     *
+     * <p>
+     * Callers that resolve an analyte only to label an export row or a FHIR
+     * observation must use this one. A throw would join the caller's transaction
+     * and mark it rollback-only, so catching it around the call is not enough — the
+     * caller's own commit then fails with UnexpectedRollback even though it handled
+     * the miss.
+     */
+    Long findAnalyteIdForTest(String testId);
+
+    /**
      * PREPARING → SEALED (FR-V2.1-11). Refuses a panel with no samples, any sample
      * with a blank target (the encryption converter passes blanks through
      * unencrypted, so blanks must never reach the column), and an in-house panel

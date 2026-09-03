@@ -190,7 +190,7 @@ public class EQACycleRestController extends BaseRestController {
      */
     @GetMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Map<String, Object>> myCycles(@RequestParam(required = false) Long labEnrollmentId) {
-        // FR-V2.2-09: the cycles this laboratory takes part in — programmes it has
+        // The cycles this laboratory takes part in — programmes it has
         // enrolled in (My Programs), its own in-house cycles, and any cycle that
         // already carries one of its EQA orders. A provider's outbound cycles have
         // their own board and are not "mine".
@@ -229,10 +229,10 @@ public class EQACycleRestController extends BaseRestController {
     }
 
     /**
-     * FR-V2.2-09, the participant's own way in: a cycle for a programme this lab
-     * has enrolled in, for a provider that does not send consignments to an
-     * OpenELIS. The programme is named, not numbered, because that is all an
-     * enrollment carries; it must exist locally under the same name.
+     * The participant's own way in: a cycle for a programme this lab has enrolled
+     * in, for a provider that does not send consignments to an OpenELIS. The
+     * programme is named, not numbered, because that is all an enrollment carries;
+     * it must exist locally under the same name.
      */
     @PostMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.PARTICIPANT)

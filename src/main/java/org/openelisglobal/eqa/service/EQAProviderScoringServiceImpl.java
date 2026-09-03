@@ -3,25 +3,37 @@ package org.openelisglobal.eqa.service;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.analyte.service.AnalyteService;
+import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQADistributionDAO;
+import org.openelisglobal.eqa.dao.EQAPanelDAO;
+import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.dao.EQAResultDAO;
 import org.openelisglobal.eqa.dao.EQARoundDAO;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQADistribution;
 import org.openelisglobal.eqa.valueholder.EQADistributionStatus;
+import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPerformanceStatus;
+import org.openelisglobal.eqa.valueholder.EQAProgramTest;
 import org.openelisglobal.eqa.valueholder.EQAResult;
 import org.openelisglobal.eqa.valueholder.EQARound;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
+import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
 import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
 import org.openelisglobal.eqa.valueholder.EQATriggerType;
 import org.openelisglobal.organization.service.OrganizationService;
@@ -79,6 +91,16 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
 
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private EQAResultService eqaResultService;
+    @Autowired
+    private EQAProgramService eqaProgramService;
+    @Autowired
+    private EQAPanelDAO eqaPanelDAO;
+    @Autowired
+    private EQAPanelSampleDAO eqaPanelSampleDAO;
+    @Autowired
+    private EQAPanelService eqaPanelService;
 
     @Override
     @Transactional(readOnly = true)
@@ -114,7 +136,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
 
         EQADistribution distribution = findOrOpenDistribution(cycle, sysUserId);
         long reported = eqaResultDAO.findByDistributionId(distribution.getId()).stream()
-                .filter(result -> result.getResultValue() != null).count();
+                .filter(result -> result.getResultValue() != null || result.getResultText() != null).count();
         // Refused rather than silently half-scored: below this the peer mean and SD
         // describe nothing, and the statistics service would leave every verdict null.
         if (reported < EQAStatisticsService.MIN_PARTICIPANTS_FOR_STATS) {
@@ -123,6 +145,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         }
 
         eqaStatisticsService.calculateAndUpdateStatistics(distribution.getId());
+        judgeReportedText(cycle, distribution.getId());
         advanceToScored(cycle, sysUserId);
 
         int followups = 0;
@@ -148,14 +171,21 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     @Override
     @Transactional(readOnly = true)
     public String buildScoreCsv(Long cycleId, Long organizationId) {
-        StringBuilder csv = new StringBuilder("test,result_value,target_value,z_score,performance_status,scored_on\n");
+        // analyte_name is what a participant on another instance matches on when it
+        // imports these scores: test ids and names are the provider's own.
+        StringBuilder csv = new StringBuilder(
+                "test,analyte_name,result_value,target_value,z_score,performance_status,scored_on\n");
         for (EQAResult result : resultsFor(cycleId, organizationId)) {
-            // Only the test name is escaped: it is the one free-text cell. Running a
-            // decimal through csvEscape would quote a negative Z as a formula and
-            // print it as '-0.28 (found driving the download, 2026-08-24).
+            // Only the free-text cells are escaped. Running a decimal through csvEscape
+            // would quote a negative Z as a formula and print it as '-0.28 (found
+            // driving the download, 2026-08-24).
+            String analyte = analyteName(analyteIdOrNull(result.getTestId()));
             csv.append(StringUtil.csvEscape(testName(result.getTestId()))).append(',')
-                    .append(number(result.getResultValue())).append(',').append(number(result.getTargetValue()))
-                    .append(',').append(number(result.getZScore())).append(',')
+                    .append(analyte == null ? "" : StringUtil.csvEscape(analyte)).append(',')
+                    .append(result.getResultText() != null ? StringUtil.csvEscape(result.getResultText())
+                            : number(result.getResultValue()))
+                    .append(',').append(number(result.getTargetValue())).append(',').append(number(result.getZScore()))
+                    .append(',')
                     .append(result.getPerformanceStatus() == null ? "" : result.getPerformanceStatus().name())
                     .append(',').append(result.getSubmissionDate() == null ? "" : result.getSubmissionDate())
                     .append('\n');
@@ -170,6 +200,196 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             throw new IllegalArgumentException("This cycle has no distribution, so there are no scores to return");
         }
         return eqaFhirSubmissionService.submitResultsViaFhir(distribution.getId(), organizationId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> intakeGrid(Long cycleId, Long organizationId) {
+        EQACycle cycle = cycle(cycleId);
+        EQADistribution distribution = distributionOf(cycle);
+        Map<Long, EQAResult> onFile = new HashMap<>();
+        if (distribution != null) {
+            for (EQAResult result : eqaResultDAO.findByDistributionId(distribution.getId())) {
+                if (organizationId.equals(result.getParticipantOrganizationId())) {
+                    onFile.put(result.getTestId(), result);
+                }
+            }
+        }
+        List<Map<String, Object>> tests = new ArrayList<>();
+        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
+            if (!Boolean.TRUE.equals(assignment.getIsActive())) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("testId", assignment.getTestId());
+            row.put("testName", testName(assignment.getTestId()));
+            Long analyteId = analyteIdOrNull(assignment.getTestId());
+            row.put("analyteId", analyteId);
+            row.put("analyteName", analyteName(analyteId));
+            EQAResult result = onFile.get(assignment.getTestId());
+            row.put("reported", result == null ? null : reportedOf(result));
+            row.put("performanceStatus", result == null || result.getPerformanceStatus() == null ? null
+                    : result.getPerformanceStatus().name());
+            tests.add(row);
+        }
+        Map<String, Object> grid = new LinkedHashMap<>();
+        grid.put("cycleId", cycleId);
+        grid.put("organizationId", organizationId);
+        grid.put("distributionId", distribution == null ? null : distribution.getId());
+        grid.put("tests", tests);
+        return grid;
+    }
+
+    private static final Set<EQACycleStatus> INTAKE_STATES = EnumSet.of(EQACycleStatus.SHIPPED,
+            EQACycleStatus.DELIVERED, EQACycleStatus.SUBMISSIONS_OPEN, EQACycleStatus.SUBMISSIONS_CLOSED,
+            EQACycleStatus.SCORING);
+
+    @Override
+    public Map<String, Object> takeIn(Long cycleId, Long organizationId, Map<Long, String> reportedByTest,
+            EQASubmissionMethod method, String sysUserId) {
+        EQACycle cycle = cycle(cycleId);
+        if (!INTAKE_STATES.contains(cycle.getStatus())) {
+            throw new IllegalStateException(
+                    "Results are taken in between shipping and scoring; this cycle is " + cycle.getStatus());
+        }
+        Set<Long> assigned = new HashSet<>();
+        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
+            if (Boolean.TRUE.equals(assignment.getIsActive())) {
+                assigned.add(assignment.getTestId());
+            }
+        }
+        for (Long testId : reportedByTest.keySet()) {
+            if (!assigned.contains(testId)) {
+                // Named by id: the test may not exist at all, and resolving its name would
+                // turn a clean refusal into a not-found error.
+                throw new IllegalArgumentException(
+                        "Test " + testId + " is not part of scheme " + cycle.getScheme().getName());
+            }
+        }
+        EQADistribution distribution = findOrOpenDistribution(cycle, sysUserId);
+        for (Map.Entry<Long, String> entry : reportedByTest.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().isBlank()) {
+                continue;
+            }
+            eqaResultService.submitReportedValue(distribution.getId(), organizationId, entry.getKey(), entry.getValue(),
+                    method, sysUserId);
+        }
+        return intakeGrid(cycleId, organizationId);
+    }
+
+    @Override
+    public Map<String, Object> importReportedCsv(Long cycleId, Long organizationId, String csv, String sysUserId) {
+        if (csv == null || csv.isBlank()) {
+            throw new IllegalArgumentException("The CSV is empty");
+        }
+        String[] lines = EqaCsv.lines(csv);
+        List<String> header = EqaCsv.split(lines[0]);
+        int nameColumn = EqaCsv.indexOf(header, "analyte_name");
+        int valueColumn = EqaCsv.indexOf(header, "result_value");
+        if (nameColumn < 0 || valueColumn < 0) {
+            throw new IllegalArgumentException(
+                    "The CSV needs analyte_name and result_value columns (the participant's export bundle)");
+        }
+        Map<String, String> byAnalyteName = new LinkedHashMap<>();
+        Map<String, Integer> rowOf = new HashMap<>();
+        for (int i = 1; i < lines.length; i++) {
+            if (lines[i].isBlank()) {
+                continue;
+            }
+            List<String> cells = EqaCsv.split(lines[i]);
+            String name = EqaCsv.cell(cells, nameColumn);
+            String value = EqaCsv.cell(cells, valueColumn);
+            if (value.isEmpty()) {
+                continue;
+            }
+            byAnalyteName.put(name, value);
+            rowOf.put(name, i + 1);
+        }
+        Map<String, Object> grid = takeInByAnalyteName(cycleId, organizationId, byAnalyteName,
+                EQASubmissionMethod.FILE_UPLOAD, sysUserId);
+        List<String> errors = new ArrayList<>();
+        for (Object unmapped : (List<?>) grid.get("unmapped")) {
+            errors.add("Row " + rowOf.get(String.valueOf(unmapped)) + ": no test in this scheme reports '" + unmapped
+                    + "'");
+        }
+        grid.put("imported", byAnalyteName.size() - errors.size());
+        grid.put("errors", errors);
+        return grid;
+    }
+
+    @Override
+    public Map<String, Object> takeInByAnalyteName(Long cycleId, Long organizationId,
+            Map<String, String> reportedByAnalyteName, EQASubmissionMethod method, String sysUserId) {
+        EQACycle cycle = cycle(cycleId);
+        Map<String, Long> testByAnalyteName = new HashMap<>();
+        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
+            String name = analyteName(analyteIdOrNull(assignment.getTestId()));
+            if (Boolean.TRUE.equals(assignment.getIsActive()) && name != null) {
+                testByAnalyteName.put(name.trim().toLowerCase(), assignment.getTestId());
+            }
+        }
+        Map<Long, String> reported = new LinkedHashMap<>();
+        List<String> unmapped = new ArrayList<>();
+        for (Map.Entry<String, String> entry : reportedByAnalyteName.entrySet()) {
+            String name = entry.getKey() == null ? "" : entry.getKey().trim();
+            Long testId = testByAnalyteName.get(name.toLowerCase());
+            if (testId == null) {
+                unmapped.add(name);
+                continue;
+            }
+            reported.put(testId, entry.getValue());
+        }
+        Map<String, Object> grid = takeIn(cycleId, organizationId, reported, method, sysUserId);
+        grid.put("unmapped", unmapped);
+        return grid;
+    }
+
+    /**
+     * Qualitative results have no peer mean: the verdict is an exact,
+     * case-insensitive match against the panel's sealed target for the test's
+     * analyte (the same rule in-house scoring applies). A test with no sealed
+     * target leaves the verdict blank rather than guessing.
+     */
+    private void judgeReportedText(EQACycle cycle, Long distributionId) {
+        Map<Long, String> targetByAnalyte = new HashMap<>();
+        for (EQAPanel panel : eqaPanelDAO.getAllMatching("cycle.id", cycle.getId())) {
+            for (EQAPanelSample sample : eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId())) {
+                if (sample.getAnalyteId() != null && sample.getTargetValue() != null) {
+                    targetByAnalyte.put(sample.getAnalyteId(), sample.getTargetValue().trim());
+                }
+            }
+        }
+        for (EQAResult result : eqaResultDAO.findByDistributionId(distributionId)) {
+            if (result.getResultText() == null || result.getResultValue() != null) {
+                continue;
+            }
+            Long analyteId = analyteIdOrNull(result.getTestId());
+            String target = analyteId == null ? null : targetByAnalyte.get(analyteId);
+            if (target == null) {
+                continue;
+            }
+            result.setZScore(null);
+            result.setPerformanceStatus(
+                    target.equalsIgnoreCase(result.getResultText().trim()) ? EQAPerformanceStatus.ACCEPTABLE
+                            : EQAPerformanceStatus.UNACCEPTABLE);
+            eqaResultDAO.update(result);
+        }
+    }
+
+    private static Object reportedOf(EQAResult result) {
+        return result.getResultText() != null ? result.getResultText() : result.getResultValue();
+    }
+
+    private Long analyteIdOrNull(Long testId) {
+        return testId == null ? null : eqaPanelService.findAnalyteIdForTest(String.valueOf(testId));
+    }
+
+    private String analyteName(Long analyteId) {
+        if (analyteId == null) {
+            return null;
+        }
+        Analyte analyte = SpringContext.getBean(AnalyteService.class).get(String.valueOf(analyteId));
+        return analyte == null ? null : analyte.getAnalyteName();
     }
 
     // ---- helpers ----
@@ -286,7 +506,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("testId", result.getTestId());
             row.put("testName", testName(result.getTestId()));
-            row.put("reported", result.getResultValue());
+            row.put("reported", reportedOf(result));
             row.put("target", result.getTargetValue());
             row.put("zScore", result.getZScore());
             row.put("performanceStatus", result.getPerformanceStatus().name());

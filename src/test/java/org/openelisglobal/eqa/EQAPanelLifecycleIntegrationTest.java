@@ -2,6 +2,8 @@ package org.openelisglobal.eqa;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
@@ -188,5 +190,39 @@ public class EQAPanelLifecycleIntegrationTest extends EQASpineTestBase {
 
         assertEquals("4.52", dto.get("targetValue"));
         assertEquals(Boolean.TRUE, dto.get("targetsRevealed"));
+    }
+
+    /**
+     * Exports and FHIR observations label a row with its analyte name, and the row
+     * may name a test that no longer exists. The strict lookup throws for that, and
+     * a throw joins the caller's transaction and marks it rollback-only, so the
+     * caller's own commit fails even when it catches. The lenient lookup must
+     * answer null and leave the transaction usable.
+     */
+    @Test
+    public void findAnalyteIdForTest_answersNullForATestThatDoesNotExist() {
+        assertNull("an id with no test row behind it resolves to no analyte",
+                panelService.findAnalyteIdForTest("99999999"));
+        assertNull("a blank test id resolves to no analyte", panelService.findAnalyteIdForTest(null));
+
+        // The transaction still works: a read after the miss must succeed rather
+        // than fail with UnexpectedRollback.
+        EQAProgram scheme = insertScheme("Lenient analyte lookup", EQASchemeType.IN_HOUSE, null);
+        EQAPanel panel = insertPanel(scheme, p -> {
+            p.setPanelName("Lenient");
+            p.setUnblindDate(Date.valueOf("2026-12-01"));
+        });
+        insertSample(panel, "A01", "1.00");
+
+        assertEquals(EQAPanelStatus.SEALED, panelService.seal(panel.getId(), USER).getStatus());
+    }
+
+    @Test
+    public void analyteIdForTest_stillRefusesATestThatDoesNotExist() {
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> panelService.analyteIdForTest("99999999"));
+
+        assertTrue("the refusal must name the test it could not resolve: " + thrown.getMessage(),
+                thrown.getMessage().contains("99999999"));
     }
 }

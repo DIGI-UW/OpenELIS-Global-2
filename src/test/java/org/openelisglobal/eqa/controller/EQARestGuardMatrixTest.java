@@ -89,6 +89,9 @@ public class EQARestGuardMatrixTest {
         WRITE_GUARDS.put("EQAProgramRestController#updateAnalysts", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQASubmissionRestController#approveLateSubmission", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQACycleRestController#createProviderCycle", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQAResultRestController#takeInCycleResults", EQAGuards.PROVIDER);
+        WRITE_GUARDS.put("EQASubmissionRestController#intakeScoresCsv", EQAGuards.MANAGE);
+        WRITE_GUARDS.put("EQAResultRestController#importCycleResultsCsv", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#savePrep", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#saveShipment", EQAGuards.PROVIDER);
         WRITE_GUARDS.put("EQAShipmentRestController#ship", EQAGuards.PROVIDER);

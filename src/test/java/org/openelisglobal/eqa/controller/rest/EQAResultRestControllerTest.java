@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -20,13 +21,16 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.eqa.service.EQAResultService;
 import org.openelisglobal.eqa.service.EQAStatisticsService;
 import org.openelisglobal.eqa.valueholder.EQAPerformanceStatus;
 import org.openelisglobal.eqa.valueholder.EQAResult;
 import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 @RunWith(MockitoJUnitRunner.class)
 public class EQAResultRestControllerTest {
@@ -43,15 +47,15 @@ public class EQAResultRestControllerTest {
     @Test
     public void testSubmitResult_ValidData_ReturnsOk() {
         EQAResult result = createResult(1L, 10L, 20L, new BigDecimal("5.5"));
-        when(resultService.submitResult(eq(1L), eq(10L), eq(20L), any(BigDecimal.class),
-                eq(EQASubmissionMethod.MANUAL))).thenReturn(result);
+        when(resultService.submitResult(eq(1L), eq(10L), eq(20L), any(BigDecimal.class), eq(EQASubmissionMethod.MANUAL),
+                anyString())).thenReturn(result);
 
         Map<String, Object> body = new HashMap<>();
         body.put("organizationId", 10);
         body.put("testId", 20);
         body.put("resultValue", 5.5);
 
-        ResponseEntity<?> response = controller.submitResult(1L, body);
+        ResponseEntity<?> response = controller.submitResult(request(), 1L, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         Map<?, ?> responseBody = (Map<?, ?>) response.getBody();
@@ -64,7 +68,7 @@ public class EQAResultRestControllerTest {
         Map<String, Object> body = new HashMap<>();
         body.put("organizationId", 10);
 
-        ResponseEntity<?> response = controller.submitResult(1L, body);
+        ResponseEntity<?> response = controller.submitResult(request(), 1L, body);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
@@ -73,11 +77,11 @@ public class EQAResultRestControllerTest {
     public void testBatchImport_AllValid_ReturnsSuccessCount() {
         EQAResult result = createResult(1L, 10L, 20L, new BigDecimal("5.5"));
         when(resultService.submitResult(anyLong(), anyLong(), anyLong(), any(BigDecimal.class),
-                eq(EQASubmissionMethod.FILE_UPLOAD))).thenReturn(result);
+                eq(EQASubmissionMethod.FILE_UPLOAD), anyString())).thenReturn(result);
 
         List<Map<String, Object>> rows = Arrays.asList(createRow(10, 20, 5.5), createRow(11, 20, 6.0));
 
-        ResponseEntity<?> response = controller.batchImportResults(1L, rows);
+        ResponseEntity<?> response = controller.batchImportResults(request(), 1L, rows);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         Map<?, ?> body = (Map<?, ?>) response.getBody();
@@ -90,7 +94,7 @@ public class EQAResultRestControllerTest {
     public void testBatchImport_SomeInvalid_ReportsErrors() {
         EQAResult result = createResult(1L, 10L, 20L, new BigDecimal("5.5"));
         when(resultService.submitResult(anyLong(), anyLong(), anyLong(), any(BigDecimal.class),
-                eq(EQASubmissionMethod.FILE_UPLOAD))).thenReturn(result);
+                eq(EQASubmissionMethod.FILE_UPLOAD), anyString())).thenReturn(result);
 
         Map<String, Object> invalidRow = new HashMap<>();
         invalidRow.put("organizationId", 10);
@@ -98,7 +102,7 @@ public class EQAResultRestControllerTest {
 
         List<Map<String, Object>> rows = Arrays.asList(createRow(10, 20, 5.5), invalidRow);
 
-        ResponseEntity<?> response = controller.batchImportResults(1L, rows);
+        ResponseEntity<?> response = controller.batchImportResults(request(), 1L, rows);
 
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         assertNotNull(body);
@@ -186,5 +190,13 @@ public class EQAResultRestControllerTest {
         row.put("testId", testId);
         row.put("resultValue", value);
         return row;
+    }
+
+    private static MockHttpServletRequest request() {
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(1);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true).setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
+        return request;
     }
 }

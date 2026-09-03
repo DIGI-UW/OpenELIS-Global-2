@@ -115,7 +115,7 @@ public class EQAPanelReceiptServiceImpl extends BaseObjectServiceImpl<EQAPanelRe
             shipmentService.updateShipment(shipment);
         }
 
-        // FR-V2.2-12: taking the panel in IS receiving the consignment. Walking the
+        // Taking the panel in IS receiving the consignment. Walking the
         // imported box to RECEIVED here is what completes the provider's
         // SupplyDelivery (the delivery backflow), so the sender's monitor turns
         // DELIVERED without a second act on the Reception screen. A box someone

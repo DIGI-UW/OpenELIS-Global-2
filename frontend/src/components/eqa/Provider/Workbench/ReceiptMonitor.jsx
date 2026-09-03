@@ -11,6 +11,7 @@ import {
   TableRow,
   Tag,
   TextArea,
+  TextInput,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { Link as RouterLink } from "react-router-dom";
@@ -18,10 +19,13 @@ import { formatDateOnly, resolveApiErrorMessage } from "../../../utils/Utils";
 import { hintStyle } from "../../eqaCommon";
 import {
   distributeScores,
+  fetchIntake,
   fetchReceiptRows,
   fetchScoreRows,
+  importIntakeCsv,
   markDelivered,
   openSubmissions,
+  saveIntake,
   scoreCycle,
   scoresCsvUrl,
   sendRepeat,
@@ -149,6 +153,109 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
     });
   };
 
+  // The provider keys what a participant phoned or emailed, or
+  // pastes the participant's export bundle. Values are kept as reported —
+  // numbers or words such as "Reactive" — and saving overwrites what is on file.
+  const [intake, setIntake] = useState(null);
+
+  const openIntake = (row) => {
+    setBusy(row.organizationId);
+    fetchIntake(cycleId, row.organizationId, (grid) => {
+      setBusy(null);
+      const tests = grid?.tests || [];
+      setIntake({
+        row,
+        tests,
+        values: Object.fromEntries(
+          tests.map((test) => [
+            test.testId,
+            test.reported === null || test.reported === undefined
+              ? ""
+              : String(test.reported),
+          ]),
+        ),
+        csv: "",
+        error: null,
+        imported: null,
+      });
+    });
+  };
+
+  const reportedRows = () =>
+    intake.tests
+      .map((test) => ({
+        testId: test.testId,
+        value: intake.values[test.testId] ?? "",
+      }))
+      .filter((entry) => String(entry.value).trim() !== "");
+
+  const handleSaveIntake = () => {
+    setBusy("intake");
+    saveIntake(
+      cycleId,
+      intake.row.organizationId,
+      reportedRows(),
+      ({ ok, body }) => {
+        setBusy(null);
+        if (!ok) {
+          setIntake({
+            ...intake,
+            error:
+              body?.error ||
+              t("eqa.intake.failed", "Could not record the results"),
+          });
+          return;
+        }
+        setIntake(null);
+        refresh();
+        onNotice({
+          kind: "success",
+          text: t("eqa.intake.saved", "Results recorded for {lab}.", {
+            lab: intake.row.organizationName,
+          }),
+        });
+      },
+    );
+  };
+
+  const handleImportCsv = () => {
+    setBusy("intake");
+    importIntakeCsv(
+      cycleId,
+      intake.row.organizationId,
+      intake.csv,
+      ({ ok, body }) => {
+        setBusy(null);
+        if (!ok) {
+          setIntake({
+            ...intake,
+            error:
+              body?.error ||
+              t("eqa.intake.failed", "Could not record the results"),
+          });
+          return;
+        }
+        const tests = body?.tests || intake.tests;
+        setIntake({
+          ...intake,
+          tests,
+          values: Object.fromEntries(
+            tests.map((test) => [
+              test.testId,
+              test.reported === null || test.reported === undefined
+                ? ""
+                : String(test.reported),
+            ]),
+          ),
+          csv: "",
+          error: (body?.errors || []).length ? body.errors.join(" ") : null,
+          imported: body?.imported ?? 0,
+        });
+        refresh();
+      },
+    );
+  };
+
   const handleScore = () => {
     setBusy("score");
     scoreCycle(cycleId, (response) =>
@@ -167,7 +274,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
       report(
         response,
         "eqa.score.distributed",
-        "Scores returned over FHIR.",
+        "Scores placed in the FHIR store for the participant to collect.",
         "eqa.score.distributeFailed",
       ),
     );
@@ -335,6 +442,14 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
                           {t("eqa.receipt.sendRepeat", "Send repeat")}
                         </Button>
                       )}
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        disabled={busy !== null}
+                        onClick={() => openIntake(row)}
+                      >
+                        {t("eqa.intake.enterResults", "Enter results")}
+                      </Button>
                       {score && score.resultCount > 0 && (
                         <>
                           <Button
@@ -361,6 +476,120 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
             </TableBody>
           </Table>
         </>
+      )}
+
+      {intake && (
+        <Modal
+          open
+          size="md"
+          modalHeading={t("eqa.intake.heading", "Results from {lab}", {
+            lab: intake.row.organizationName,
+          })}
+          primaryButtonText={t("eqa.intake.save", "Save results")}
+          secondaryButtonText={t("eqa.queue.cancel", "Cancel")}
+          primaryButtonDisabled={busy !== null || reportedRows().length === 0}
+          onRequestClose={() => setIntake(null)}
+          onSecondarySubmit={() => setIntake(null)}
+          onRequestSubmit={handleSaveIntake}
+        >
+          <p style={{ ...hintStyle, marginBottom: "1rem" }}>
+            {t(
+              "eqa.intake.help",
+              "Key the values as the participant reported them — numbers, or words such as Reactive. Saving overwrites what is on file for that test.",
+            )}
+          </p>
+          {intake.error && (
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={intake.error}
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+          {intake.imported !== null && (
+            <InlineNotification
+              kind="success"
+              lowContrast
+              hideCloseButton
+              title={t("eqa.intake.imported", "{count} values imported.", {
+                count: intake.imported,
+              })}
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+          {intake.tests.length === 0 ? (
+            <p style={hintStyle}>
+              {t(
+                "eqa.intake.noTests",
+                "This scheme has no tests assigned yet.",
+              )}
+            </p>
+          ) : (
+            <Table size="sm" data-testid="intake-grid">
+              <TableHead>
+                <TableRow>
+                  <TableHeader>{t("eqa.intake.test", "Test")}</TableHeader>
+                  <TableHeader>
+                    {t("eqa.intake.value", "Reported value")}
+                  </TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {intake.tests.map((test) => (
+                  <TableRow key={test.testId}>
+                    <TableCell>
+                      {test.testName}
+                      {test.analyteName && (
+                        <div style={hintStyle}>{test.analyteName}</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <TextInput
+                        id={`intake-${test.testId}`}
+                        labelText={test.testName}
+                        hideLabel
+                        size="sm"
+                        value={intake.values[test.testId] ?? ""}
+                        onChange={(event) =>
+                          setIntake({
+                            ...intake,
+                            values: {
+                              ...intake.values,
+                              [test.testId]: event.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          <TextArea
+            id="intake-csv"
+            labelText={t(
+              "eqa.intake.csv",
+              "Or paste the participant's export bundle (CSV)",
+            )}
+            value={intake.csv}
+            onChange={(event) =>
+              setIntake({ ...intake, csv: event.target.value })
+            }
+            rows={3}
+            style={{ marginTop: "1rem" }}
+          />
+          <Button
+            kind="tertiary"
+            size="sm"
+            disabled={busy !== null || !intake.csv.trim()}
+            onClick={handleImportCsv}
+            style={{ marginTop: "0.5rem" }}
+          >
+            {t("eqa.intake.import", "Import CSV")}
+          </Button>
+        </Modal>
       )}
 
       {openingSubmissions && (

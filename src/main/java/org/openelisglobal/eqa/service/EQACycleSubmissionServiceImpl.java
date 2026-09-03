@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -52,6 +54,7 @@ import org.openelisglobal.eqa.valueholder.EQATriggerType;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.slf4j.Logger;
@@ -593,8 +596,10 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
     @Override
     @Transactional(readOnly = true)
     public String exportBundleCsv(Long cycleId, Long labEnrollmentId) {
-        StringBuilder csv = new StringBuilder(
-                "cycle_id,cycle_name,round_number,analyte_id,result_value,result_unit,submission_status,entered_at\n");
+        // analyte_name travels with the id: the provider that imports this bundle is
+        // another instance whose analyte ids differ, so the name is what it matches on.
+        StringBuilder csv = new StringBuilder("cycle_id,cycle_name,round_number,analyte_id,analyte_name,"
+                + "result_value,result_unit,submission_status,entered_at\n");
         for (EQAParticipantResult result : results(cycleId, labEnrollmentId)) {
             if (!SUBMITTABLE.contains(result.getSubmissionStatus())) {
                 continue;
@@ -603,11 +608,20 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             EQARound round = result.getRound();
             csv.append(cycleId).append(',').append(csvField(cycle == null ? null : cycle.getCycleName())).append(',')
                     .append(round == null || round.getRoundNumber() == null ? "" : round.getRoundNumber()).append(',')
-                    .append(result.getAnalyteId()).append(',').append(csvField(result.getResultValue())).append(',')
+                    .append(result.getAnalyteId()).append(',').append(csvField(analyteName(result.getAnalyteId())))
+                    .append(',').append(csvField(result.getResultValue())).append(',')
                     .append(csvField(result.getResultUnit())).append(',').append(result.getSubmissionStatus().name())
                     .append(',').append(result.getEnteredAt() == null ? "" : result.getEnteredAt()).append('\n');
         }
         return csv.toString();
+    }
+
+    private String analyteName(Long analyteId) {
+        if (analyteId == null) {
+            return null;
+        }
+        Analyte analyte = SpringContext.getBean(AnalyteService.class).get(String.valueOf(analyteId));
+        return analyte == null ? null : analyte.getAnalyteName();
     }
 
     /** RFC 4180 quoting: a value carrying a comma, quote or newline is quoted. */
@@ -646,6 +660,61 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             advanceTo(cycle, SCORED, EQATriggerType.AUTO, EQATriggerEvent.SCORE_INTAKE, null, null, sysUserId);
         }
         return scored;
+    }
+
+    @Override
+    public Map<String, Object> intakeScoresCsv(Long cycleId, Long labEnrollmentId, String csv, String sysUserId) {
+        if (csv == null || csv.isBlank()) {
+            throw new IllegalArgumentException("The CSV is empty");
+        }
+        String[] lines = EqaCsv.lines(csv);
+        List<String> header = EqaCsv.split(lines[0]);
+        int nameColumn = EqaCsv.indexOf(header, "analyte_name");
+        int verdictColumn = EqaCsv.indexOf(header, "performance_status");
+        int zColumn = EqaCsv.indexOf(header, "z_score");
+        if (nameColumn < 0 || verdictColumn < 0) {
+            throw new IllegalArgumentException(
+                    "The CSV needs analyte_name and performance_status columns (the provider's scores CSV)");
+        }
+        AnalyteService analyteService = SpringContext.getBean(AnalyteService.class);
+        List<Map<String, Object>> scores = new ArrayList<>();
+        List<String> unmapped = new ArrayList<>();
+        for (int i = 1; i < lines.length; i++) {
+            if (lines[i].isBlank()) {
+                continue;
+            }
+            List<String> cells = EqaCsv.split(lines[i]);
+            String name = EqaCsv.cell(cells, nameColumn);
+            String verdict = EqaCsv.cell(cells, verdictColumn);
+            if (name.isEmpty() || verdict.isEmpty()) {
+                continue;
+            }
+            Analyte probe = new Analyte();
+            probe.setAnalyteName(name);
+            Analyte analyte = analyteService.getAnalyteByName(probe, true);
+            if (analyte == null) {
+                unmapped.add(name);
+                continue;
+            }
+            Map<String, Object> score = new LinkedHashMap<>();
+            score.put("analyteId", Long.valueOf(analyte.getId()));
+            score.put("performance", verdict);
+            String z = EqaCsv.cell(cells, zColumn);
+            if (!z.isEmpty()) {
+                score.put("zScore", z);
+            }
+            scores.add(score);
+        }
+        if (scores.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No row names an analyte this laboratory knows" + (unmapped.isEmpty() ? "" : ": " + unmapped));
+        }
+        int scored = intakeScores(cycleId, labEnrollmentId, scores, sysUserId);
+        Map<String, Object> outcome = new LinkedHashMap<>();
+        outcome.put("cycleId", cycleId);
+        outcome.put("scored", scored);
+        outcome.put("unmapped", unmapped);
+        return outcome;
     }
 
     private EQAParticipantResult resolveScoredRow(Long cycleId, Long labEnrollmentId, Map<String, Object> entry) {

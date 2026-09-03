@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    EQA V2.2 (OGC-610, FR-V2.2-12): the inbound consignment a panel receipt was
+    EQA V2.2 (OGC-610): the inbound consignment a panel receipt was
     taken from. A participant receives a provider's panel as an imported shipping
     box; recording that box on the receipt lets the Add Order receipt take
     delivery of the consignment itself — which is what completes the provider's
@@ -19,7 +19,7 @@
                 <columnExists schemaName="clinlims" tableName="eqa_panel_receipt" columnName="shipping_box_id" />
             </not>
         </preConditions>
-        <comment>FR-V2.2-12: the imported consignment a panel receipt took delivery of</comment>
+        <comment>The imported consignment a panel receipt took delivery of</comment>
         <addColumn schemaName="clinlims" tableName="eqa_panel_receipt">
             <column name="shipping_box_id" type="INTEGER" />
         </addColumn>

@@ -98,8 +98,7 @@ public class SamplePatientEntryEQAReceiptIntegrationTest extends EQASpineTestBas
     }
 
     /**
-     * FR-V2.2-12: the receipt on Add Order takes delivery of the imported
-     * consignment it names.
+     * The receipt on Add Order takes delivery of the imported consignment it names.
      */
     @Test
     public void orderSaveWithAConsignment_receivesTheBoxAndRecordsItOnTheReceipt() {

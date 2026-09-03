@@ -55,10 +55,10 @@ export const fetchMyPrograms = (callback) => {
   );
 };
 
-// Participant-created cycle for a provider that is not an OpenELIS instance
-// (FR-V2.2-09). The server answers 4xx with an {error} body when the lab is
-// not enrolled or no local programme carries the name, so the raw response
-// is inspected rather than trusting any JSON as success.
+// Participant-created cycle for a provider that is not an OpenELIS instance.
+// The server answers 4xx with an {error} body when the lab is not enrolled or
+// no local programme carries the name, so the raw response is inspected rather
+// than trusting any JSON as success.
 export const createMyCycle = (body, callback) => {
   postToOpenElisServerFullResponse(
     "/rest/eqa/cycles/mine",
@@ -77,6 +77,29 @@ export const createMyCycle = (body, callback) => {
             });
           }
         });
+    },
+  );
+};
+
+// The provider's scores as a file, for a provider that is not an OpenELIS
+// instance. 400 means the file is unusable and 409 means nothing is left to
+// score, so the raw response is read and neither is mistaken for success.
+export const importScoresCsv = (cycleId, csv, callback) => {
+  postToOpenElisServerFullResponse(
+    `/rest/eqa/cycles/${cycleId}/score-intake/csv`,
+    JSON.stringify({ csv }),
+    (response) => {
+      response
+        .json()
+        .catch(() => ({}))
+        .then((payload) =>
+          callback({
+            ok: response.ok,
+            scored: payload?.scored,
+            unmapped: payload?.unmapped || [],
+            error: payload?.error || (response.ok ? null : response.statusText),
+          }),
+        );
     },
   );
 };
