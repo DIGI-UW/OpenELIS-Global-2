@@ -458,9 +458,10 @@ const CycleWizard = () => {
                               "Select a test",
                             )}
                           />
-                          {/* /rest/test-list carries the display name in `value`
-                              on some rows and `name` on others — same fallback
-                              T-21's wizard uses, or the option renders blank. */}
+                          {/* The catalog list carries the display name in
+                              `value` on some rows and `name` on others — the
+                              same fallback the blinding wizard uses, or the
+                              option renders blank. */}
                           {tests.map((test) => (
                             <SelectItem
                               key={test.id}

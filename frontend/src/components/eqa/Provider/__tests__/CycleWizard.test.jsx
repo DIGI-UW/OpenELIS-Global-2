@@ -36,9 +36,10 @@ const renderWizard = () => {
     if (url === "/rest/eqa/programs/3")
       cb({ id: 3, name: "National HIV VL PT" });
     else if (url === "/rest/eqa/programs/3/enrollments") cb(ENROLLMENTS);
-    // T-21's fetchTests: testable-tests narrows the standard catalog.
+    // fetchTests: testable-tests narrows the whole catalog to the tests a
+    // participant could order.
     else if (url === "/rest/eqa/testable-tests") cb(["55", "56"]);
-    else if (url === "/rest/test-list")
+    else if (url === "/rest/displayList/ALL_TESTS")
       cb([
         { id: "55", name: "HIV Viral Load" },
         { id: "56", name: "HIV EID" },

@@ -72,6 +72,9 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
         if (jdbc != null) {
             jdbc.update("DELETE FROM clinlims.eqa_program_enrollment WHERE organization_id IN (9970, 9971, 9972)");
             jdbc.update("DELETE FROM clinlims.test_analyte WHERE id IN (99801, 99802)");
+            // The link a panel write resolves takes a sequence id, so it is cleaned
+            // by the test it belongs to, not by id.
+            jdbc.update("DELETE FROM clinlims.test_analyte WHERE test_id = ?", Long.valueOf(TEST_NO_ANALYTE));
         }
         super.cleanEqaTables();
         if (jdbc != null) {
@@ -203,18 +206,30 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
                 Integer.class, created.getId()));
     }
 
+    /**
+     * The catalog leaves most tests without an analyte and no screen writes one, so
+     * a panel sample resolves it on write instead of refusing: an analyte already
+     * named after the test is adopted, and one is created only when the name is
+     * new. This fixture's test 9704 and analyte 9804 are both "HIV recency", which
+     * is the adoption case.
+     */
     @Test
-    public void aTestWithNoAnalyteBehindItIsRefused() {
+    public void aTestWithNoAnalyteLinkResolvesOneOnWrite() {
         List<PanelSampleRequest> samples = List
                 .of(new PanelSampleRequest("PS-1", TEST_NO_ANALYTE, null, null, null, null));
 
-        try {
-            cycleService.createProviderCycle(with(samples, List.of(ORG_A)), USER);
-            fail("a panel target has nowhere to live without an analyte");
-        } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage(), expected.getMessage().contains("no analyte"));
-        }
-        assertNothingWasCreated();
+        EQACycle created = cycleService.createProviderCycle(with(samples, List.of(ORG_A)), USER);
+
+        assertEquals("the sample carries the analyte the test's name names", Long.valueOf(9804L),
+                jdbc.queryForObject(
+                        "SELECT s.analyte_id FROM clinlims.eqa_panel_sample s"
+                                + " JOIN clinlims.eqa_panel p ON p.id = s.panel_id WHERE p.cycle_id = ?",
+                        Long.class, created.getId()));
+        assertEquals("adopted, not duplicated", Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.analyte WHERE name = 'HIV recency'", Integer.class));
+        assertEquals("and the missing link is the only row written", Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.test_analyte WHERE test_id = ?", Integer.class,
+                        Long.valueOf(TEST_NO_ANALYTE)));
     }
 
     @Test

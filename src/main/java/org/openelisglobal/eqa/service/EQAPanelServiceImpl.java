@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analyte.service.AnalyteService;
+import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
@@ -24,6 +26,8 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +64,9 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
 
     @Autowired
     private TestAnalyteService testAnalyteService;
+
+    @Autowired
+    private TypeOfSampleTestService typeOfSampleTestService;
 
     public EQAPanelServiceImpl() {
         super(EQAPanel.class);
@@ -206,8 +213,20 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
      * still pass. Same reason EQAPanelRestController field-injects it rather than
      * taking it in its constructor.
      */
+    /**
+     * The analyte is the grain a panel target is stored against and the name a
+     * score is matched by across instances, so a panel sample needs one. Most of
+     * the catalog has none: no administration screen writes a test analyte, and on
+     * a fresh database the great majority of active tests carry none, which used to
+     * make them unusable as panel material however orderable they were.
+     *
+     * <p>
+     * So the analyte is resolved on write and created from the test's own name when
+     * it is missing, which is what the reflex-rule editor already does with the
+     * analytes it needs. Existing analytes are reused, and creating one is
+     * idempotent for a given test.
+     */
     @Override
-    @Transactional(readOnly = true)
     public Long analyteIdForTest(String testId) {
         if (GenericValidator.isBlankOrNull(testId)) {
             return null;
@@ -217,11 +236,36 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
             throw new IllegalArgumentException("Unknown test " + testId);
         }
         List<TestAnalyte> analytes = testAnalyteService.getAllTestAnalytesPerTest(test);
-        if (analytes.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Test " + test.getName() + " has no analyte, so it cannot carry a panel target");
+        if (!analytes.isEmpty()) {
+            return Long.valueOf(analytes.get(0).getAnalyte().getId());
         }
-        return Long.valueOf(analytes.get(0).getAnalyte().getId());
+        return Long.valueOf(analyteFor(test).getId());
+    }
+
+    /**
+     * An analyte already named after the test is the one meant, so it is adopted
+     * rather than duplicated — analyte names are unique, and a catalog commonly
+     * carries the analyte while leaving the link to the test unmade. Only the link
+     * is new in that case. analyte.name is 60 characters, and a test name can be
+     * longer.
+     */
+    private Analyte analyteFor(Test test) {
+        String name = test.getName() == null ? "Test " + test.getId() : test.getName().trim();
+        String analyteName = name.length() > 60 ? name.substring(0, 60) : name;
+
+        Analyte probe = new Analyte();
+        probe.setAnalyteName(analyteName);
+        Analyte analyte = analyteService.getAnalyteByName(probe, true);
+        if (analyte == null) {
+            probe.setIsActive(IActionConstants.YES);
+            analyte = analyteService.save(probe);
+        }
+
+        TestAnalyte link = new TestAnalyte();
+        link.setTest(test);
+        link.setAnalyte(analyte);
+        testAnalyteService.save(link);
+        return analyte;
     }
 
     @Override
@@ -254,12 +298,20 @@ public class EQAPanelServiceImpl extends BaseObjectServiceImpl<EQAPanel, Long> i
     @Override
     @Transactional(readOnly = true)
     public List<String> getTestableTestIds() {
+        // What disqualifies a test as panel material is that no participant could
+        // answer it: a panel sample the receiving laboratory cannot raise an order
+        // for is a dead end. Its analyte, by contrast, is created on write when the
+        // catalog has none, so it is not a precondition. Filtering on the analyte
+        // instead — as this did — left 17 of 210 active tests offerable on a fresh
+        // database and no numeric test that was also orderable, so a numeric cycle
+        // could be built but never answered.
+        //
         // Resolved here rather than in the controller: test is held in a legacy
         // ValueHolder, which needs the session open to answer.
         Set<String> ids = new LinkedHashSet<>();
-        for (TestAnalyte testAnalyte : testAnalyteService.getAllTestAnalytes()) {
-            if (testAnalyte.getTest() != null) {
-                ids.add(testAnalyte.getTest().getId());
+        for (TypeOfSampleTest sampleTypeTest : typeOfSampleTestService.getAllTypeOfSampleTests()) {
+            if (sampleTypeTest.getTestId() != null) {
+                ids.add(sampleTypeTest.getTestId());
             }
         }
         return new ArrayList<>(ids);
