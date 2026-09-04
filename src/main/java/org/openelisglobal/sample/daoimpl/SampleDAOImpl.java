@@ -34,6 +34,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.sample.dao.SampleDAO;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -277,13 +278,14 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
     @Transactional(readOnly = true)
     public Sample getUnassignedSampleByAccessionNumber(String accessionNumber) throws LIMSRuntimeException {
         try {
-            String sql = "SELECT DISTINCT s FROM Sample s " + "JOIN Analysis a ON a.sampleItem.sample.id = s.id "
-                    + "JOIN Referral r ON r.analysis.id = a.id " + "WHERE s.accessionNumber = :accessionNumber "
-                    + "AND r.canceled = false " + "AND (r.lostStatus IS NULL OR r.lostStatus = false) "
-                    + "AND r.assignedBox IS NULL";
+            String sql = "SELECT DISTINCT s FROM Referral r " + "JOIN r.analysis a " + "JOIN a.sampleItem si "
+                    + "JOIN si.sample s " + "WHERE s.accessionNumber = :accessionNumber "
+                    + "AND r.status NOT IN (:cancelledStatuses) "
+                    + "AND (r.lostStatus IS NULL OR r.lostStatus = false) " + "AND r.assignedBox IS NULL";
 
             Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
             query.setParameter("accessionNumber", accessionNumber);
+            query.setParameterList("cancelledStatuses", List.of(ReferralStatus.CANCELLED, ReferralStatus.CANCELED));
 
             List<Sample> list = query.list();
             if ((list != null) && !list.isEmpty()) {
