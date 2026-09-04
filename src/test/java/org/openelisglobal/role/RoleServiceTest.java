@@ -63,4 +63,25 @@ public class RoleServiceTest extends BaseWebContextSensitiveTest {
         Role role = roleService.getRoleById("4");
         Assert.assertEquals("enter and review results.", role.getDescription());
     }
+
+    @Test
+    public void getRoleByName_shouldReturnNullForNonExistentName() {
+        Role role = roleService.getRoleByName("NonExistentRole");
+        Assert.assertNull(role);
+    }
+    
+    @Test
+    public void getRoleById_shouldReturnNullForNonExistentId() {
+        Role role = roleService.getRoleById("9999");
+        Assert.assertNull(role);
+    }
+    
+    @Test
+    public void getReferencingRoles_shouldReturnEmptyListForRoleWithNoReferences() {
+        Role role = new Role();
+        role.setId("1");
+        List<Role> referencingRoles = roleService.getReferencingRoles(role);
+        Assert.assertNotNull(referencingRoles);
+        Assert.assertTrue(referencingRoles.isEmpty());
+    }
 }
