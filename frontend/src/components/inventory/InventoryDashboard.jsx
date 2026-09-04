@@ -613,18 +613,16 @@ const InventoryDashboard = () => {
         )}
       </DataTable>
 
-      {/* Lot Entry Modal */}
-      {lotModalOpen && (
-        <LotEntryModal
-          open={lotModalOpen}
-          onClose={() => {
-            setLotModalOpen(false);
-            setSelectedLot(null);
-          }}
-          onSave={handleLotSaved}
-          lot={selectedLot}
-        />
-      )}
+      <LotEntryModal
+        open={lotModalOpen}
+        onClose={() => {
+          setLotModalOpen(false);
+          setSelectedLot(null);
+        }}
+        onReopen={() => setLotModalOpen(true)}
+        onSave={handleLotSaved}
+        lot={selectedLot}
+      />
 
       {/* Record Usage Modal */}
       {usageModalOpen && (
