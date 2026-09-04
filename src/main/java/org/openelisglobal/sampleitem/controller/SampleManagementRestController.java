@@ -53,9 +53,12 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * @see SampleManagementService
  */
+import org.springframework.security.access.prepost.PreAuthorize;
+
 @RestController
 @RequestMapping("/rest/sample-management")
 @Validated
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
 public class SampleManagementRestController extends BaseRestController {
 
     @Autowired

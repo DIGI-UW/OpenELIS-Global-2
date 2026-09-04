@@ -12,6 +12,7 @@ import org.openelisglobal.coldstorage.valueholder.FreezerReading;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/coldstorage/reports")
+@PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
 public class FreezerReportDataController extends BaseRestController {
 
     @Autowired

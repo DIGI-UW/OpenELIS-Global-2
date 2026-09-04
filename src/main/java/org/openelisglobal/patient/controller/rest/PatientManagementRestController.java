@@ -43,6 +43,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @RequestMapping(value = "/rest/")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
 public class PatientManagementRestController extends BaseRestController {
     @Autowired
     SearchResultsService searchService;

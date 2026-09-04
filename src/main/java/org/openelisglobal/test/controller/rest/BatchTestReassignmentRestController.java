@@ -27,6 +27,7 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.validator.BatchTestReassignmentFormValidator;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasAnyRole('RESULTS', 'ADMIN')")
 public class BatchTestReassignmentRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "jsonWad" };
