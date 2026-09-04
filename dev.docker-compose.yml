@@ -137,11 +137,7 @@ services:
         tty: true
 
     proxy:
-        # nginx 1.15 (2018) predates arm64 alpine builds that run on Apple Silicon:
-        # its worker dies with SIGILL (illegal instruction) on every request, so the
-        # whole app is unreachable through the proxy on an arm64 host. 1.27-alpine is
-        # already used by projects/analyzer-harness/docker-compose.dev.yml.
-        image: nginx:1.27-alpine
+        image: nginx:1.30.4-alpine
         # build:
         #     context: ./nginx-proxy
         #     dockerfile: Dockerfile
