@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-069-add-freezer-offline-alert-type" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="alert"/>
+    </preConditions>
+    <comment>Add FREEZER_OFFLINE to alert_type CHECK constraint so an unresponsive device can raise its own alert.</comment>
+    <sql>
+      ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+      ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+      CHECK (alert_type IN (
+        'FREEZER_TEMPERATURE', 'FREEZER_OFFLINE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+        'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED'
+      ));
+    </sql>
+  </changeSet>
+
+  <changeSet id="3.5.0-070-add-freezer-deleted-column" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="freezer" columnName="deleted" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Add a dedicated deleted flag so removed devices can't reappear via the active/inactive toggle (issue #3743).</comment>
+    <addColumn tableName="freezer" schemaName="clinlims">
+      <column name="deleted" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-071-freezer-register-and-rs485-config" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="freezer" columnName="register_count" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Add per-freezer register_count/word_order and RS-485 driver-timing config for devices with non-default Modbus decoding (issue #3743).</comment>
+    <addColumn tableName="freezer" schemaName="clinlims">
+      <column name="register_count" type="INTEGER" defaultValueNumeric="1">
+        <constraints nullable="false"/>
+      </column>
+      <column name="word_order" type="VARCHAR(16)" defaultValue="BIG_ENDIAN">
+        <constraints nullable="false"/>
+      </column>
+      <column name="rs485_mode" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="rs485_rts_active_high" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="rs485_termination" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="rs485_rx_during_tx" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="rs485_delay_before_ms" type="INTEGER" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+      <column name="rs485_delay_after_ms" type="INTEGER" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+    <sql>
+      ALTER TABLE clinlims.freezer ADD CONSTRAINT chk_freezer_register_count
+      CHECK (register_count IN (1, 2));
+      ALTER TABLE clinlims.freezer ADD CONSTRAINT chk_freezer_word_order
+      CHECK (word_order IN ('BIG_ENDIAN', 'LITTLE_ENDIAN'));
+    </sql>
+  </changeSet>
+
+  <changeSet id="3.5.0-072-freezer-reading-unique-constraint" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM information_schema.table_constraints
+        WHERE constraint_name = 'uk_freezer_reading_freezer_recorded_at'
+        AND table_name = 'freezer_reading'
+      </sqlCheck>
+    </preConditions>
+    <comment>Deduplicate existing rows and add a unique constraint on (freezer_id, recorded_at) so a retried poll can't insert a duplicate reading.</comment>
+    <sql>
+      DELETE FROM clinlims.freezer_reading fr
+      USING clinlims.freezer_reading fr2
+      WHERE fr.freezer_id = fr2.freezer_id
+        AND fr.recorded_at = fr2.recorded_at
+        AND fr.id > fr2.id;
+    </sql>
+    <addUniqueConstraint
+        constraintName="uk_freezer_reading_freezer_recorded_at"
+        schemaName="clinlims"
+        tableName="freezer_reading"
+        columnNames="freezer_id, recorded_at"/>
+  </changeSet>
+
+  <changeSet id="3.5.0-073-freezer-decimal-precision" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM information_schema.columns
+        WHERE table_schema = 'clinlims' AND table_name = 'freezer_reading'
+        AND column_name = 'temperature_celsius' AND numeric_precision IS NULL
+      </sqlCheck>
+    </preConditions>
+    <comment>Give temperature/humidity DECIMAL columns explicit precision/scale instead of bare DECIMAL, matching the app's existing 2dp rounding.</comment>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="temperature_scale" newDataType="DECIMAL(10,4)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="temperature_offset" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="humidity_scale" newDataType="DECIMAL(10,4)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="humidity_offset" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="target_temperature" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="warning_threshold" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer" columnName="critical_threshold" newDataType="DECIMAL(6,2)"/>
+
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="warning_min" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="warning_max" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="critical_min" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="critical_max" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="humidity_warning_min" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="humidity_warning_max" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="humidity_critical_min" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="threshold_profile" columnName="humidity_critical_max" newDataType="DECIMAL(6,2)"/>
+
+    <modifyDataType schemaName="clinlims" tableName="freezer_reading" columnName="temperature_celsius" newDataType="DECIMAL(6,2)"/>
+    <modifyDataType schemaName="clinlims" tableName="freezer_reading" columnName="humidity_percentage" newDataType="DECIMAL(6,2)"/>
+  </changeSet>
+
+  <changeSet id="3.5.0-074-freezer-name-unique-partial-index" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="freezer" columnName="deleted" schemaName="clinlims"/>
+    </preConditions>
+    <comment>Replace freezer.name's unconditional unique constraint with a partial index scoped to deleted=false so a soft-deleted name can be reused (issue #3904).</comment>
+    <!-- freezer.name's unique constraint had no explicit name, so Postgres auto-named it freezer_name_key (see 024-freezer-monitoring-schema.xml). -->
+    <sql>ALTER TABLE clinlims.freezer DROP CONSTRAINT IF EXISTS freezer_name_key;</sql>
+    <sql>DROP INDEX IF EXISTS clinlims.idx_freezer_name;</sql>
+    <sql>CREATE UNIQUE INDEX idx_freezer_name_active ON clinlims.freezer (name) WHERE deleted = false;</sql>
+    <rollback>
+      <sql>
+        DROP INDEX IF EXISTS clinlims.idx_freezer_name_active;
+        CREATE UNIQUE INDEX idx_freezer_name ON clinlims.freezer (name);
+      </sql>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="3.5.0-075-freezer-second-temperature-probe" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="freezer" columnName="temperature_register_2" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Add an optional second temperature probe register/scale/offset per device, like the existing humidity register (issue #3904).</comment>
+    <addColumn tableName="freezer" schemaName="clinlims">
+      <column name="temperature_register_2" type="INTEGER"/>
+      <column name="temperature_scale_2" type="DECIMAL(10,4)" defaultValueNumeric="1.0"/>
+      <column name="temperature_offset_2" type="DECIMAL(6,2)" defaultValueNumeric="0.0"/>
+    </addColumn>
+    <addColumn tableName="freezer_reading" schemaName="clinlims">
+      <column name="temperature_celsius_2" type="DECIMAL(6,2)"/>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-076-freezer-monitoring-config-site-information" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        select count(*) from clinlims.site_information where name = 'freezer.monitoring.enabled';
+      </sqlCheck>
+    </preConditions>
+    <comment>Move the monitoring-enabled flag and Modbus timeout into SiteInformation so they're admin-editable without a restart (issue #3904).</comment>
+
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="freezer.monitoring.enabled" />
+      <column name="lastupdated" valueComputed="${now}" />
+      <column name="description" value="Enable/disable freezer Modbus polling (default: true)" />
+      <column name="encrypted" value="false" />
+      <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="value_type" value="text" />
+      <column name="value" value="true" />
+      <column name="group" value="0" />
+    </insert>
+
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="freezer.modbus.timeout.ms" />
+      <column name="lastupdated" valueComputed="${now}" />
+      <column name="description" value="Modbus connect/request timeout in milliseconds (default: 2000)" />
+      <column name="encrypted" value="false" />
+      <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="value_type" value="text" />
+      <column name="value" value="2000" />
+      <column name="group" value="0" />
+    </insert>
+
+    <rollback>
+      <delete schemaName="clinlims" tableName="site_information">
+        <where>name IN ('freezer.monitoring.enabled', 'freezer.modbus.timeout.ms')</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

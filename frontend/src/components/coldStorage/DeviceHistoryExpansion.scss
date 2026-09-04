@@ -1,0 +1,144 @@
+.oe-deviceHistory {
+  padding: 1.5rem;
+  background: var(--cds-layer-01);
+}
+
+.oe-deviceHistory-inlineTagRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.oe-deviceHistory-title {
+  margin-bottom: 1.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.oe-deviceHistory-summaryGrid {
+  margin-bottom: 2rem;
+}
+
+.oe-deviceHistory-summaryColumn {
+  &--left {
+    padding-right: 1rem;
+  }
+
+  &--middle {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  &--right {
+    padding-left: 1rem;
+  }
+}
+
+.oe-deviceHistory-summaryCard {
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  color: var(--cds-text-on-color);
+
+  &--events {
+    background: var(--cds-link-primary, #0066cc);
+  }
+
+  &--alerts {
+    background: var(--cds-support-error, #da1e28);
+  }
+
+  &--actions {
+    background: var(--cds-support-success, #24a148);
+  }
+}
+
+.oe-deviceHistory-summaryLabel {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.oe-deviceHistory-summaryValue {
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.oe-deviceHistory-filterGrid {
+  margin-bottom: 1rem;
+}
+
+.oe-deviceHistory-filterColumn {
+  margin-top: 1rem;
+}
+
+.oe-deviceHistory-tableCell {
+  text-align: left;
+  padding-left: 1rem;
+}
+
+.oe-deviceHistory-controlsGrid {
+  margin-bottom: 2rem;
+}
+
+.oe-deviceHistory-timeRangeControl {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.oe-deviceHistory-timeRangeLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.oe-deviceHistory-exportColumn {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.oe-deviceHistory-metricsGrid {
+  margin-bottom: 2rem;
+}
+
+.oe-deviceHistory-metricCard {
+  background: var(--cds-layer-02);
+  padding: 1.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.oe-deviceHistory-metricLabel {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.oe-deviceHistory-metricValue {
+  font-size: 1.75rem;
+  font-weight: 600;
+
+  &--min {
+    color: var(--cds-support-info, #0f62fe);
+  }
+
+  &--max {
+    color: var(--cds-support-error, #da1e28);
+  }
+}
+
+.oe-deviceHistory-chartCard {
+  background: var(--cds-layer-02);
+  padding: 1.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.oe-deviceHistory-chartMessage {
+  text-align: center;
+  padding: 2rem;
+  color: var(--cds-text-secondary);
+
+  &--error {
+    color: var(--cds-text-error, #da1e28);
+  }
+}

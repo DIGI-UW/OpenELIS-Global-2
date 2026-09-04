@@ -11,11 +11,12 @@ import com.digitalpetri.modbus.pdu.ReadHoldingRegistersResponse;
 import com.digitalpetri.modbus.serial.client.SerialPortClientTransport;
 import com.digitalpetri.modbus.tcp.client.NettyTcpClientTransport;
 import com.fazecast.jSerialComm.SerialPort;
+import io.netty.channel.ChannelOption;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Optional;
-import org.openelisglobal.coldstorage.config.FreezerMonitoringProperties;
 import org.openelisglobal.coldstorage.service.ModbusClientService;
+import org.openelisglobal.coldstorage.service.SystemConfigService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.util.NetworkValidationUtil;
 import org.slf4j.Logger;
@@ -28,15 +29,35 @@ public class ModbusClientServiceImpl implements ModbusClientService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ModbusClientServiceImpl.class);
 
-    private final FreezerMonitoringProperties config;
+    /**
+     * Not admin-configurable: retrying more than once, or waiting longer between
+     * retries, is a rare enough tuning need that a code change is a reasonable bar,
+     * keeping the day-to-day configuration surface small.
+     */
+    private static final int RETRIES = 1;
+    private static final long RETRY_BACKOFF_MILLIS = 300;
 
-    public ModbusClientServiceImpl(FreezerMonitoringProperties config) {
-        this.config = config;
+    /**
+     * Floor for the TCP connect phase specifically, applied on top of the
+     * admin-configured timeout
+     * ({@link SystemConfigService#getModbusTimeoutMillis()}). Establishing a
+     * connection across a routed subnet or VPN tunnel - including TCP SYN
+     * retransmission on packet loss - routinely takes longer than the
+     * request/response exchange once connected, so a short admin-configured timeout
+     * tuned for a LAN device would otherwise abort the connection attempt itself,
+     * surfacing as a "disconnection" that isn't one (GitHub issue #3904).
+     */
+    private static final int MIN_CONNECT_TIMEOUT_MILLIS = 5000;
+
+    private final SystemConfigService systemConfigService;
+
+    public ModbusClientServiceImpl(SystemConfigService systemConfigService) {
+        this.systemConfigService = systemConfigService;
     }
 
     @Override
     public Optional<ReadingResult> readCurrentValues(Freezer freezer) {
-        int attempts = Math.max(1, config.getRetries() + 1);
+        int attempts = Math.max(1, RETRIES + 1);
         for (int attempt = 1; attempt <= attempts; attempt++) {
             try {
                 return Optional.of(readOnce(freezer));
@@ -45,8 +66,31 @@ public class ModbusClientServiceImpl implements ModbusClientService {
                         ex.getMessage());
                 LOGGER.debug("Modbus read failure for '{}'", freezer.getName(), ex);
             }
+
+            if (attempt < attempts) {
+                backoffBeforeRetry(freezer, attempt);
+            }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Waits a short, configurable delay between retry attempts. Retrying
+     * back-to-back with zero delay is hard on an overwhelmed device and worse on a
+     * shared RS-485 bus where other slaves may also be waiting for a turn. This
+     * method runs on the per-device polling thread (see
+     * {@link org.openelisglobal.coldstorage.service.impl.ModbusPollingService}),
+     * never on the shared scheduler thread, so blocking here does not delay polling
+     * of other devices.
+     */
+    private void backoffBeforeRetry(Freezer freezer, int attempt) {
+        long backoffMillis = RETRY_BACKOFF_MILLIS * attempt;
+        try {
+            Thread.sleep(backoffMillis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            LOGGER.debug("Interrupted while backing off before Modbus retry for '{}'", freezer.getName());
+        }
     }
 
     private ReadingResult readOnce(Freezer freezer) throws Exception {
@@ -64,17 +108,27 @@ public class ModbusClientServiceImpl implements ModbusClientService {
             throw new IllegalArgumentException("Connection to this address is not permitted: " + freezer.getHost());
         }
 
+        int timeoutMillis = systemConfigService.getModbusTimeoutMillis();
         NettyTcpClientTransport transport = NettyTcpClientTransport.create(cfg -> {
             cfg.setHostname(freezer.getHost());
             cfg.setPort(freezer.getPort());
-            cfg.setConnectTimeout(Duration.ofMillis(config.getTimeoutMillis()));
+            cfg.setConnectTimeout(Duration.ofMillis(Math.max(timeoutMillis, MIN_CONNECT_TIMEOUT_MILLIS)));
+            // SO_KEEPALIVE so a routed/VPN path that silently drops idle connections
+            // (NAT/firewall connection-tracking expiry) is detected and torn down by the
+            // OS instead of leaving a half-open socket that fails opaquely on next use
+            // (GitHub issue #3904 cross-subnet disconnection reports).
+            cfg.setBootstrapCustomizer(bootstrap -> bootstrap.option(ChannelOption.SO_KEEPALIVE, true));
         });
 
         ModbusTcpClient client = ModbusTcpClient.create(transport,
-                builder -> builder.setRequestTimeout(Duration.ofMillis(config.getTimeoutMillis())));
+                builder -> builder.setRequestTimeout(Duration.ofMillis(timeoutMillis)));
 
         try {
-            client.connect();
+            try {
+                client.connect();
+            } catch (Exception ex) {
+                throw new ModbusConnectException(freezer.getHost(), freezer.getPort(), ex);
+            }
             double temperature = readRegister(client, freezer, freezer.getTemperatureRegister(),
                     freezer.getTemperatureScale(), freezer.getTemperatureOffset());
             Double humidity = null;
@@ -82,7 +136,12 @@ public class ModbusClientServiceImpl implements ModbusClientService {
                 humidity = readRegister(client, freezer, freezer.getHumidityRegister(), freezer.getHumidityScale(),
                         freezer.getHumidityOffset());
             }
-            return new ReadingResult(temperature, humidity);
+            Double temperature2 = null;
+            if (freezer.getTemperatureRegister2() != null) {
+                temperature2 = readRegister(client, freezer, freezer.getTemperatureRegister2(),
+                        freezer.getTemperatureScale2(), freezer.getTemperatureOffset2());
+            }
+            return new ReadingResult(temperature, humidity, temperature2);
         } finally {
             safeDisconnect(client);
         }
@@ -99,10 +158,24 @@ public class ModbusClientServiceImpl implements ModbusClientService {
             cfg.setDataBits(defaultInteger(freezer.getDataBits(), 8));
             cfg.setStopBits(toStopBits(defaultInteger(freezer.getStopBits(), 1)));
             cfg.setParity(toParity(freezer.getParity()));
+
+            // RS-485 half-duplex driver-enable (DE) timing. Off by default (rs485Mode =
+            // false) so existing RS-232/point-to-point serial devices are unaffected.
+            // digitalpetri modbus-serial 2.1.5 added these fields to
+            // SerialPortTransportConfig for the Modbus-over-Serial-Line spec's RS-485
+            // turnaround timing requirements (issue #3743).
+            if (Boolean.TRUE.equals(freezer.getRs485Mode())) {
+                cfg.setRs485Mode(true);
+                cfg.setRs485RtsActiveHigh(Boolean.TRUE.equals(freezer.getRs485RtsActiveHigh()));
+                cfg.setRs485Termination(Boolean.TRUE.equals(freezer.getRs485Termination()));
+                cfg.setRs485RxDuringTx(Boolean.TRUE.equals(freezer.getRs485RxDuringTx()));
+                cfg.setRs485DelayBefore(defaultInteger(freezer.getRs485DelayBeforeMs(), 0));
+                cfg.setRs485DelayAfter(defaultInteger(freezer.getRs485DelayAfterMs(), 0));
+            }
         });
 
         ModbusRtuClient client = ModbusRtuClient.create(transport,
-                builder -> builder.setRequestTimeout(Duration.ofMillis(config.getTimeoutMillis())));
+                builder -> builder.setRequestTimeout(Duration.ofMillis(systemConfigService.getModbusTimeoutMillis())));
 
         try {
             client.connect();
@@ -113,7 +186,12 @@ public class ModbusClientServiceImpl implements ModbusClientService {
                 humidity = readRegister(client, freezer, freezer.getHumidityRegister(), freezer.getHumidityScale(),
                         freezer.getHumidityOffset());
             }
-            return new ReadingResult(temperature, humidity);
+            Double temperature2 = null;
+            if (freezer.getTemperatureRegister2() != null) {
+                temperature2 = readRegister(client, freezer, freezer.getTemperatureRegister2(),
+                        freezer.getTemperatureScale2(), freezer.getTemperatureOffset2());
+            }
+            return new ReadingResult(temperature, humidity, temperature2);
         } finally {
             safeDisconnect(client);
         }
@@ -121,18 +199,41 @@ public class ModbusClientServiceImpl implements ModbusClientService {
 
     private double readRegister(ModbusClient client, Freezer freezer, int register, BigDecimal scale, BigDecimal offset)
             throws ModbusExecutionException, ModbusResponseException, ModbusTimeoutException {
+        int registerCount = defaultInteger(freezer.getRegisterCount(), 1);
+        if (registerCount != 1 && registerCount != 2) {
+            LOGGER.warn("Freezer '{}' has unsupported registerCount {}, defaulting to 1", freezer.getName(),
+                    registerCount);
+            registerCount = 1;
+        }
         ReadHoldingRegistersResponse response = client.readHoldingRegisters(freezer.getSlaveId(),
-                new ReadHoldingRegistersRequest(register, 1));
-        return convertScaledValue(response, scale, offset);
+                new ReadHoldingRegistersRequest(register, registerCount));
+        Freezer.WordOrder wordOrder = freezer.getWordOrder() != null ? freezer.getWordOrder()
+                : Freezer.WordOrder.BIG_ENDIAN;
+        return convertScaledValue(response, registerCount, wordOrder, scale, offset);
     }
 
-    private double convertScaledValue(ReadHoldingRegistersResponse response, BigDecimal scale, BigDecimal offset)
-            throws ModbusResponseException {
+    /**
+     * Decodes 1 or 2 raw 16-bit Modbus holding registers into a signed value,
+     * according to the freezer's configured register width and word order, before
+     * applying scale/offset. Defaults (1 register, big-endian/signed short) match
+     * the original hardcoded behavior, so existing configured devices are
+     * unaffected.
+     */
+    private double convertScaledValue(ReadHoldingRegistersResponse response, int registerCount,
+            Freezer.WordOrder wordOrder, BigDecimal scale, BigDecimal offset) throws ModbusResponseException {
         byte[] registers = response != null ? response.registers() : null;
-        if (registers == null || registers.length < 2) {
+        int expectedBytes = registerCount * 2;
+        if (registers == null || registers.length < expectedBytes) {
             throw new IllegalStateException("No register data returned from Modbus device");
         }
-        int raw = toSignedShort(registers[0], registers[1]);
+
+        long raw;
+        if (registerCount == 1) {
+            raw = toSignedShort(registers[0], registers[1]);
+        } else {
+            raw = toSignedInt32(registers, wordOrder);
+        }
+
         double scaled = raw * (scale != null ? scale.doubleValue() : 1.0d);
         return scaled + (offset != null ? offset.doubleValue() : 0.0d);
     }
@@ -141,6 +242,31 @@ public class ModbusClientServiceImpl implements ModbusClientService {
         int value = ((high & 0xFF) << 8) | (low & 0xFF);
         if ((value & 0x8000) != 0) {
             value -= 0x10000;
+        }
+        return value;
+    }
+
+    /**
+     * Decodes two consecutive 16-bit registers (4 bytes) into a signed 32-bit
+     * value. {@code BIG_ENDIAN} treats the first register as the most significant
+     * word (each register itself is big-endian per the Modbus spec);
+     * {@code LITTLE_ENDIAN} treats the second register as the most significant word
+     * (a common "word-swapped" convention on non-compliant devices, e.g. DIY
+     * ESP32+DS18B20 slaves - see issue #3743).
+     */
+    private long toSignedInt32(byte[] registers, Freezer.WordOrder wordOrder) {
+        int highWord;
+        int lowWord;
+        if (wordOrder == Freezer.WordOrder.LITTLE_ENDIAN) {
+            lowWord = ((registers[0] & 0xFF) << 8) | (registers[1] & 0xFF);
+            highWord = ((registers[2] & 0xFF) << 8) | (registers[3] & 0xFF);
+        } else {
+            highWord = ((registers[0] & 0xFF) << 8) | (registers[1] & 0xFF);
+            lowWord = ((registers[2] & 0xFF) << 8) | (registers[3] & 0xFF);
+        }
+        long value = ((long) (highWord & 0xFFFF) << 16) | (lowWord & 0xFFFF);
+        if ((value & 0x80000000L) != 0) {
+            value -= 0x100000000L;
         }
         return value;
     }
@@ -178,5 +304,19 @@ public class ModbusClientServiceImpl implements ModbusClientService {
 
     private int defaultInteger(Integer value, int defaultValue) {
         return value != null ? value : defaultValue;
+    }
+
+    /**
+     * Wraps a TCP connect failure with the host/port and underlying cause type
+     * (e.g. connect timeout vs connection refused vs no route to host), so the
+     * retry-loop log line in {@link #readCurrentValues} tells an operator whether a
+     * cross-subnet/VPN link is timing out, actively refusing, or unreachable,
+     * instead of a bare Netty exception message (GitHub issue #3904).
+     */
+    private static final class ModbusConnectException extends Exception {
+        ModbusConnectException(String host, int port, Throwable cause) {
+            super("Failed to connect to " + host + ":" + port + " (" + cause.getClass().getSimpleName() + ": "
+                    + cause.getMessage() + ")", cause);
+        }
     }
 }

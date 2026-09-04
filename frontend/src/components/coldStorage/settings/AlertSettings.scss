@@ -1,0 +1,61 @@
+.oe-alertSettings {
+  padding: 1rem 0;
+}
+
+.oe-alertSettings-headerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.oe-alertSettings-subheading {
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+}
+
+.oe-alertSettings-infoNotification {
+  margin-bottom: 1.5rem;
+}
+
+.oe-alertSettings-description {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.oe-alertSettings-escalationSection {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.oe-alertSettings-escalationHeading {
+  margin-bottom: 1rem;
+}
+
+.oe-alertSettings-escalationToggle {
+  margin-bottom: 1rem;
+}
+
+.oe-alertSettings-escalationFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.oe-alertSettings-notesSection {
+  margin-top: 1.5rem;
+}
+
+.oe-alertSettings-notesList {
+  margin-top: 1rem;
+  margin-left: 1.5rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.oe-alertSettings-saveButton {
+  margin-top: 1.5rem;
+  width: 100%;
+  max-width: none;
+}

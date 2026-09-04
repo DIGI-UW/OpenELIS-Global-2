@@ -46,54 +46,139 @@ import {
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { useIntl } from "react-intl";
+import { useIntl, FormattedMessage } from "react-intl";
 import AddDeviceModal from "./shared/AddDeviceModal";
+import { toDate } from "./shared/dateUtils";
 
-const COLUMNS = [
-  { key: "id", header: "Action ID" },
-  { key: "status", header: "Status" },
-  { key: "device", header: "Device" },
-  { key: "summary", header: "Summary" },
-  { key: "performedBy", header: "Performed By" },
-  { key: "created", header: "Created" },
-  { key: "updated", header: "Last Updated By" },
+const getColumns = (intl) => [
+  {
+    key: "id",
+    header: intl.formatMessage({
+      id: "coldStorage.correctiveAction.column.actionId",
+      defaultMessage: "Action ID",
+    }),
+  },
+  {
+    key: "status",
+    header: intl.formatMessage({
+      id: "coldStorage.status",
+      defaultMessage: "Status",
+    }),
+  },
+  {
+    key: "device",
+    header: intl.formatMessage({
+      id: "coldStorage.dashboard.column.device",
+      defaultMessage: "Device",
+    }),
+  },
+  {
+    key: "summary",
+    header: intl.formatMessage({
+      id: "freezer.alert.detail.summary",
+      defaultMessage: "Summary",
+    }),
+  },
+  {
+    key: "performedBy",
+    header: intl.formatMessage({
+      id: "coldStorage.correctiveAction.column.performedBy",
+      defaultMessage: "Performed By",
+    }),
+  },
+  {
+    key: "created",
+    header: intl.formatMessage({
+      id: "coldStorage.correctiveAction.column.created",
+      defaultMessage: "Created",
+    }),
+  },
+  {
+    key: "updated",
+    header: intl.formatMessage({
+      id: "coldStorage.correctiveAction.column.lastUpdatedBy",
+      defaultMessage: "Last Updated By",
+    }),
+  },
 ];
 
-const ACTION_TYPES = [
+const getActionTypes = (intl) => [
   {
     id: "TEMPERATURE_ADJUSTMENT",
-    label: "Temperature Adjustment",
-    description: "Adjusting temperature settings",
+    label: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.temperatureAdjustment",
+      defaultMessage: "Temperature Adjustment",
+    }),
+    description: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.temperatureAdjustment.description",
+      defaultMessage: "Adjusting temperature settings",
+    }),
   },
   {
     id: "EQUIPMENT_REPAIR",
-    label: "Equipment Repair",
-    description: "Repairing or replacing equipment",
+    label: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.equipmentRepair",
+      defaultMessage: "Equipment Repair",
+    }),
+    description: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.equipmentRepair.description",
+      defaultMessage: "Repairing or replacing equipment",
+    }),
   },
   {
     id: "SAMPLE_RELOCATION",
-    label: "Sample Relocation",
-    description: "Moving samples to another location",
+    label: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.sampleRelocation",
+      defaultMessage: "Sample Relocation",
+    }),
+    description: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.sampleRelocation.description",
+      defaultMessage: "Moving samples to another location",
+    }),
   },
   {
     id: "CALIBRATION",
-    label: "Calibration",
-    description: "Calibrating equipment or sensors",
+    label: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.calibration",
+      defaultMessage: "Calibration",
+    }),
+    description: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.calibration.description",
+      defaultMessage: "Calibrating equipment or sensors",
+    }),
   },
   {
     id: "ITEM_REORDER",
-    label: "Item Reorder",
-    description: "Reordering inventory items",
+    label: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.itemReorder",
+      defaultMessage: "Item Reorder",
+    }),
+    description: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.itemReorder.description",
+      defaultMessage: "Reordering inventory items",
+    }),
   },
   {
     id: "MAINTENANCE",
-    label: "Maintenance",
-    description: "Performing maintenance tasks",
+    label: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.maintenance",
+      defaultMessage: "Maintenance",
+    }),
+    description: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.maintenance.description",
+      defaultMessage: "Performing maintenance tasks",
+    }),
   },
   {
     id: "OTHER",
-    label: "Other",
-    description: "Other or custom corrective actions",
+    label: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.other",
+      defaultMessage: "Other",
+    }),
+    description: intl.formatMessage({
+      id: "coldStorage.correctiveAction.type.other.description",
+      defaultMessage: "Other or custom corrective actions",
+    }),
   },
 ];
 
@@ -109,15 +194,50 @@ function statusTag(status, isEdited = false) {
   const tag = (() => {
     switch (status) {
       case "PENDING":
-        return <Tag type="red">Pending</Tag>;
+        return (
+          <Tag type="red">
+            <FormattedMessage
+              id="coldStorage.correctiveAction.status.pending"
+              defaultMessage="Pending"
+            />
+          </Tag>
+        );
       case "IN_PROGRESS":
-        return <Tag type="blue">In Progress</Tag>;
+        return (
+          <Tag type="blue">
+            <FormattedMessage
+              id="coldStorage.correctiveAction.status.inProgress"
+              defaultMessage="In Progress"
+            />
+          </Tag>
+        );
       case "COMPLETED":
-        return <Tag type="green">Completed</Tag>;
+        return (
+          <Tag type="green">
+            <FormattedMessage
+              id="coldStorage.correctiveAction.status.completed"
+              defaultMessage="Completed"
+            />
+          </Tag>
+        );
       case "CANCELLED":
-        return <Tag type="gray">Cancelled</Tag>;
+        return (
+          <Tag type="gray">
+            <FormattedMessage
+              id="coldStorage.correctiveAction.status.cancelled"
+              defaultMessage="Cancelled"
+            />
+          </Tag>
+        );
       case "RETRACTED":
-        return <Tag type="magenta">Retracted</Tag>;
+        return (
+          <Tag type="magenta">
+            <FormattedMessage
+              id="coldStorage.correctiveAction.status.retracted"
+              defaultMessage="Retracted"
+            />
+          </Tag>
+        );
       default:
         return <Tag>{status}</Tag>;
     }
@@ -128,7 +248,10 @@ function statusTag(status, isEdited = false) {
       {tag}
       {isEdited && (
         <Tag type="purple" size="sm">
-          Edited
+          <FormattedMessage
+            id="coldStorage.correctiveAction.edited"
+            defaultMessage="Edited"
+          />
         </Tag>
       )}
     </div>
@@ -337,23 +460,11 @@ export default function CorrectiveActions() {
   };
 
   const normalizeAction = (action) => {
-    const parseDate = (dateValue) => {
-      if (!dateValue) return new Date();
-
-      if (dateValue instanceof Date) return dateValue;
-      if (typeof dateValue === "number") {
-        return new Date(dateValue * 1000);
-      }
-
-      if (typeof dateValue === "string") {
-        const parsed = new Date(dateValue);
-        if (!isNaN(parsed.getTime())) {
-          return parsed;
-        }
-      }
-
-      return new Date();
-    };
+    // createdAt/updatedAt now arrive as unambiguous ISO-8601 strings from
+    // the backend - toDate() parses them directly, falling back to "now"
+    // only when the value is missing/invalid so the UI always has a date
+    // to render.
+    const parseDate = (dateValue) => toDate(dateValue) ?? new Date();
 
     const createdDate = parseDate(action.createdAt);
     const updatedDate = action.updatedAt
@@ -392,6 +503,9 @@ export default function CorrectiveActions() {
       rawAction: action,
     };
   };
+
+  const columns = useMemo(() => getColumns(intl), [intl]);
+  const actionTypes = useMemo(() => getActionTypes(intl), [intl]);
 
   const performerOptions = users.map(
     (user) => user.value || user.displayName || user.id,
@@ -473,19 +587,17 @@ export default function CorrectiveActions() {
   };
 
   const handleUpdateStatus = async () => {
-    if (!selectedAction || !editStatus) return;
+    if (!selectedAction || !editStatus || !userSessionDetails?.userId) return;
 
     setSubmitting(true);
     try {
       const actionId = selectedAction.rawId;
-      const userId = userSessionDetails?.userId || 1;
 
       if (editStatus.id === "COMPLETED") {
-        await completeCorrectiveAction(actionId, userId, completionNotes);
+        await completeCorrectiveAction(actionId, completionNotes);
       } else {
         await updateCorrectiveAction(
           actionId,
-          userId,
           selectedAction.summary,
           editStatus.id,
         );
@@ -524,13 +636,22 @@ export default function CorrectiveActions() {
       });
       return;
     }
+    if (!userSessionDetails?.userId) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.error.noCurrentUser",
+        }),
+      });
+      return;
+    }
 
     setSubmitting(true);
     try {
       const actionId = selectedAction.rawId;
-      const userId = userSessionDetails?.userId || 1;
 
-      await retractCorrectiveAction(actionId, userId, retractionReason);
+      await retractCorrectiveAction(actionId, retractionReason);
 
       handleCloseRetractModal();
 
@@ -587,6 +708,12 @@ export default function CorrectiveActions() {
         temperatureOffset: parseFloat(formData.temperatureOffset),
         humidityScale: parseFloat(formData.humidityScale),
         humidityOffset: parseFloat(formData.humidityOffset),
+        temperatureRegister2:
+          formData.temperatureRegister2 != null
+            ? parseInt(formData.temperatureRegister2)
+            : null,
+        temperatureScale2: parseFloat(formData.temperatureScale2),
+        temperatureOffset2: parseFloat(formData.temperatureOffset2),
         active: true,
       };
       delete deviceData.deviceType;
@@ -676,11 +803,16 @@ export default function CorrectiveActions() {
         );
       }
 
+      if (!userSessionDetails?.userId) {
+        throw new Error(
+          intl.formatMessage({ id: "coldStorage.error.noCurrentUser" }),
+        );
+      }
+
       await createCorrectiveAction(
         parseInt(freezerId),
         form.actionType.id,
         form.summary,
-        userSessionDetails?.userId || 1,
       );
 
       setIsAddModalOpen(false);
@@ -710,7 +842,8 @@ export default function CorrectiveActions() {
     form.device &&
     form.performedBy &&
     form.actionType &&
-    form.summary.trim().length > 0;
+    form.summary.trim().length > 0 &&
+    !!userSessionDetails?.userId;
 
   const rows = paginatedActions.map((action) => ({
     id: action.id,
@@ -729,7 +862,7 @@ export default function CorrectiveActions() {
       {loading ? (
         <div>Loading corrective actions...</div>
       ) : (
-        <DataTable rows={rows} headers={COLUMNS}>
+        <DataTable rows={rows} headers={columns}>
           {({
             rows,
             headers,
@@ -789,7 +922,7 @@ export default function CorrectiveActions() {
                   {rows.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={COLUMNS.length + 1}
+                        colSpan={columns.length + 1}
                         style={{
                           textAlign: "center",
                           padding: "2rem 0",
@@ -926,7 +1059,7 @@ export default function CorrectiveActions() {
               label={
                 form.actionType ? itemToString(form.actionType) : "Select type"
               }
-              items={ACTION_TYPES}
+              items={actionTypes}
               itemToString={itemToString}
               selectedItem={form.actionType}
               onChange={({ selectedItem }) =>
@@ -1010,7 +1143,9 @@ export default function CorrectiveActions() {
         modalHeading={`Corrective Action ${selectedAction?.id || ""}`}
         primaryButtonText="Update Status"
         secondaryButtonText="Close"
-        primaryButtonDisabled={!editStatus || submitting}
+        primaryButtonDisabled={
+          !editStatus || submitting || !userSessionDetails?.userId
+        }
         size="md"
       >
         {selectedAction && (
@@ -1020,7 +1155,7 @@ export default function CorrectiveActions() {
             </div>
             <div>
               <strong>Action Type:</strong>{" "}
-              {ACTION_TYPES.find((t) => t.id === selectedAction.actionType)
+              {actionTypes.find((t) => t.id === selectedAction.actionType)
                 ?.label || selectedAction.actionType}
             </div>
             <div>
@@ -1102,7 +1237,9 @@ export default function CorrectiveActions() {
         primaryButtonText="Retract Action"
         secondaryButtonText="Cancel"
         danger
-        primaryButtonDisabled={!retractionReason.trim() || submitting}
+        primaryButtonDisabled={
+          !retractionReason.trim() || submitting || !userSessionDetails?.userId
+        }
         size="sm"
       >
         <Stack gap={5}>

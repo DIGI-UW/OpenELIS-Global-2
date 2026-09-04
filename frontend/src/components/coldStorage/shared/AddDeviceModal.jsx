@@ -51,6 +51,9 @@ const INITIAL_FORM_DATA = {
   humidityRegister: 0,
   humidityScale: 1.0,
   humidityOffset: 0.0,
+  temperatureRegister2: null,
+  temperatureScale2: 1.0,
+  temperatureOffset2: 0.0,
 };
 
 export default function AddDeviceModal({
@@ -447,6 +450,64 @@ export default function AddDeviceModal({
                       value={formData.humidityOffset}
                       onChange={(e, { value }) =>
                         handleFormChange("humidityOffset", value)
+                      }
+                      step={0.1}
+                    />
+                  </Stack>
+                </div>
+
+                <div
+                  style={{
+                    backgroundColor: "#f4f4f4",
+                    padding: "1rem",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <FormLabel
+                    style={{
+                      marginBottom: "0.75rem",
+                      fontSize: "0.8125rem",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Second Temperature Probe (Optional)
+                  </FormLabel>
+                  <Stack gap={4}>
+                    <NumberInput
+                      id="temperatureRegister2"
+                      label="Temperature Register 2"
+                      helperText="Modbus register address for a second, independent temperature probe"
+                      value={formData.temperatureRegister2 ?? ""}
+                      onChange={(e, { value }) =>
+                        handleFormChange(
+                          "temperatureRegister2",
+                          value === "" ? null : value,
+                        )
+                      }
+                      min={0}
+                      max={65535}
+                      step={1}
+                    />
+
+                    <NumberInput
+                      id="temperatureScale2"
+                      label="Temperature Scale 2"
+                      helperText="Scaling factor (e.g., 0.1 to divide by 10)"
+                      value={formData.temperatureScale2}
+                      onChange={(e, { value }) =>
+                        handleFormChange("temperatureScale2", value)
+                      }
+                      step={0.1}
+                      min={0.01}
+                    />
+
+                    <NumberInput
+                      id="temperatureOffset2"
+                      label="Base Temperature 2 (°C)"
+                      helperText="Base offset for the second probe"
+                      value={formData.temperatureOffset2}
+                      onChange={(e, { value }) =>
+                        handleFormChange("temperatureOffset2", value)
                       }
                       step={0.1}
                     />

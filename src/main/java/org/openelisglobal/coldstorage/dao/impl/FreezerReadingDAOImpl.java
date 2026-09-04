@@ -47,4 +47,12 @@ public class FreezerReadingDAOImpl extends BaseDAOImpl<FreezerReading, Long> imp
         query.setParameter("end", end);
         return query.list();
     }
+
+    @Override
+    public int deleteOlderThan(OffsetDateTime cutoff) {
+        String hql = "DELETE FROM FreezerReading fr WHERE fr.recordedAt < :cutoff";
+        Query<?> query = entityManager.unwrap(Session.class).createQuery(hql);
+        query.setParameter("cutoff", cutoff);
+        return query.executeUpdate();
+    }
 }

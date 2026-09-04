@@ -134,10 +134,37 @@ public class FreezerServiceImpl implements FreezerService {
         existing.setHumidityRegister(updatedFreezer.getHumidityRegister());
         existing.setHumidityScale(updatedFreezer.getHumidityScale());
         existing.setHumidityOffset(updatedFreezer.getHumidityOffset());
+        existing.setTemperatureRegister2(updatedFreezer.getTemperatureRegister2());
+        existing.setTemperatureScale2(updatedFreezer.getTemperatureScale2());
+        existing.setTemperatureOffset2(updatedFreezer.getTemperatureOffset2());
         existing.setTargetTemperature(updatedFreezer.getTargetTemperature());
         existing.setWarningThreshold(updatedFreezer.getWarningThreshold());
         existing.setCriticalThreshold(updatedFreezer.getCriticalThreshold());
         existing.setPollingIntervalSeconds(updatedFreezer.getPollingIntervalSeconds());
+        if (updatedFreezer.getRegisterCount() != null) {
+            existing.setRegisterCount(updatedFreezer.getRegisterCount());
+        }
+        if (updatedFreezer.getWordOrder() != null) {
+            existing.setWordOrder(updatedFreezer.getWordOrder());
+        }
+        if (updatedFreezer.getRs485Mode() != null) {
+            existing.setRs485Mode(updatedFreezer.getRs485Mode());
+        }
+        if (updatedFreezer.getRs485RtsActiveHigh() != null) {
+            existing.setRs485RtsActiveHigh(updatedFreezer.getRs485RtsActiveHigh());
+        }
+        if (updatedFreezer.getRs485Termination() != null) {
+            existing.setRs485Termination(updatedFreezer.getRs485Termination());
+        }
+        if (updatedFreezer.getRs485RxDuringTx() != null) {
+            existing.setRs485RxDuringTx(updatedFreezer.getRs485RxDuringTx());
+        }
+        if (updatedFreezer.getRs485DelayBeforeMs() != null) {
+            existing.setRs485DelayBeforeMs(updatedFreezer.getRs485DelayBeforeMs());
+        }
+        if (updatedFreezer.getRs485DelayAfterMs() != null) {
+            existing.setRs485DelayAfterMs(updatedFreezer.getRs485DelayAfterMs());
+        }
 
         return freezerDAO.update(existing);
     }
@@ -168,6 +195,9 @@ public class FreezerServiceImpl implements FreezerService {
     @Transactional
     public void setDeviceStatus(Long id, Boolean active) {
         Freezer freezer = requireFreezer(id);
+        if (Boolean.TRUE.equals(freezer.getDeleted())) {
+            throw new IllegalArgumentException("Cannot change status of a deleted freezer: " + id);
+        }
         freezer.setActive(active);
         freezerDAO.update(freezer);
     }
@@ -176,8 +206,10 @@ public class FreezerServiceImpl implements FreezerService {
     @Transactional
     public void deleteFreezer(Long id) {
         Freezer freezer = requireFreezer(id);
-        // Soft delete by setting inactive
-        freezer.setActive(false);
+        // Soft delete via a dedicated flag, distinct from the active enable/disable
+        // toggle, so a deleted device stays out of every list query and its toggle
+        // can no longer resurrect it (issue #3743).
+        freezer.setDeleted(true);
         freezerDAO.update(freezer);
     }
 

@@ -50,6 +50,9 @@ public class FreezerReading extends BaseObject<Long> {
     @Column(name = "humidity_percentage")
     private BigDecimal humidityPercentage;
 
+    @Column(name = "temperature_celsius_2")
+    private BigDecimal temperatureCelsius2;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 16, nullable = false)
     private Status status = Status.NORMAL;

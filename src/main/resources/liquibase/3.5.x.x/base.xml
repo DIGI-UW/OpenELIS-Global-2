@@ -329,7 +329,7 @@
 
   <!-- Sample Entry Config: requesterRequired toggle for Search Requester + First/Last Name -->
   <include relativeToChangelogFile="true" file="069-requester-required-config.xml"/>
-
+  <include relativeToChangelogFile="true" file="070-cold-storage-monitoring-hardening.xml"/>
   <!-- OGC-1022 (R3): CRITICAL_RESULT alert type for critical-value acknowledgment -->
   <include relativeToChangelogFile="true" file="070-critical-result-alert-type.xml"/>
 

@@ -40,6 +40,7 @@ import {
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { toDate, formatDuration } from "./shared/timeUtils";
+import { FormattedMessage, useIntl } from "react-intl";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
 
@@ -51,23 +52,101 @@ const REPORT_TYPE_MAP = {
   "Monthly Log": "freezerDailyLogReport",
 };
 
-const EXCURSION_HEADERS = [
-  { key: "id", header: "Excursion ID" },
-  { key: "freezer", header: "Freezer" },
-  { key: "location", header: "Location" },
-  { key: "startTime", header: "Start Time" },
-  { key: "duration", header: "Duration" },
-  { key: "range", header: "Temperature Range" },
-  { key: "severity", header: "Severity" },
-  { key: "status", header: "Status" },
+const getExcursionHeaders = (intl) => [
+  {
+    key: "id",
+    header: intl.formatMessage({
+      id: "coldStorage.reports.column.excursionId",
+      defaultMessage: "Excursion ID",
+    }),
+  },
+  {
+    key: "freezer",
+    header: intl.formatMessage({
+      id: "coldStorage.reports.column.freezer",
+      defaultMessage: "Freezer",
+    }),
+  },
+  {
+    key: "location",
+    header: intl.formatMessage({
+      id: "coldStorage.dashboard.column.location",
+      defaultMessage: "Location",
+    }),
+  },
+  {
+    key: "startTime",
+    header: intl.formatMessage({
+      id: "coldStorage.reports.column.startTime",
+      defaultMessage: "Start Time",
+    }),
+  },
+  {
+    key: "duration",
+    header: intl.formatMessage({
+      id: "coldStorage.dashboard.column.duration",
+      defaultMessage: "Duration",
+    }),
+  },
+  {
+    key: "range",
+    header: intl.formatMessage({
+      id: "coldStorage.reports.column.temperatureRange",
+      defaultMessage: "Temperature Range",
+    }),
+  },
+  {
+    key: "severity",
+    header: intl.formatMessage({
+      id: "coldStorage.dashboard.column.severity",
+      defaultMessage: "Severity",
+    }),
+  },
+  {
+    key: "status",
+    header: intl.formatMessage({
+      id: "coldStorage.status",
+      defaultMessage: "Status",
+    }),
+  },
 ];
 
-const AUDIT_HEADERS = [
-  { key: "timestamp", header: "Timestamp" },
-  { key: "performedBy", header: "User" },
-  { key: "action", header: "Action" },
-  { key: "comment", header: "Details" },
-  { key: "freezer", header: "Freezer ID" },
+const getAuditHeaders = (intl) => [
+  {
+    key: "timestamp",
+    header: intl.formatMessage({
+      id: "coldStorage.reports.column.timestamp",
+      defaultMessage: "Timestamp",
+    }),
+  },
+  {
+    key: "performedBy",
+    header: intl.formatMessage({
+      id: "coldStorage.reports.column.user",
+      defaultMessage: "User",
+    }),
+  },
+  {
+    key: "action",
+    header: intl.formatMessage({
+      id: "coldStorage.reports.column.action",
+      defaultMessage: "Action",
+    }),
+  },
+  {
+    key: "comment",
+    header: intl.formatMessage({
+      id: "coldStorage.reports.column.details",
+      defaultMessage: "Details",
+    }),
+  },
+  {
+    key: "freezer",
+    header: intl.formatMessage({
+      id: "coldStorage.reports.column.freezerId",
+      defaultMessage: "Freezer ID",
+    }),
+  },
 ];
 
 const formatDateTime = (value) => {
@@ -163,14 +242,17 @@ const mapAuditEvent = (event) => ({
   freezerId: event.freezerId ?? "—",
   actionType: formatActionLabel(event.actionType),
   performedBy: event.performedBy ?? "System",
-  timestamp: event.performedAt || "—", // Backend already formats the date
+  timestamp: formatDateTime(event.performedAt),
   comment: event.comment || event.details || "—",
   details: event.details || "",
 });
 
 function Reports({ devices = [] }) {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const excursionHeaders = useMemo(() => getExcursionHeaders(intl), [intl]);
+  const auditHeaders = useMemo(() => getAuditHeaders(intl), [intl]);
 
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {
@@ -318,61 +400,100 @@ function Reports({ devices = [] }) {
     return { start: startIso, end: endIso };
   }, [dateRange]);
 
-  const loadExcursions = useCallback(async () => {
-    if (!rangeParams) {
-      return;
-    }
-    setExcursionsLoading(true);
-    try {
-      const data = await fetchReportExcursions({
-        freezerId: selectedFreezerId,
-        start: rangeParams.start,
-        end: rangeParams.end,
-      });
-      const items = normalizeArray(data);
-      setExcursions(items.map((alert) => mapAlertToExcursion(alert)));
-    } catch (error) {
-      notify({
-        kind: NotificationKinds.error,
-        title: "Unable to load excursion history",
-        subtitle: error.message || "Unexpected error while loading excursions.",
-      });
-    } finally {
-      setExcursionsLoading(false);
-    }
-  }, [rangeParams, selectedFreezerId, notify, normalizeArray]);
+  // The underlying fetch helper (getFromOpenElisServerV2) does not expose an
+  // AbortController signal, so a genuine in-flight network abort isn't
+  // possible here without changing shared Utils.js. Using an
+  // AbortController as a "was this call superseded" guard still prevents a
+  // slow older response from overwriting fresher state, which is the race
+  // condition this is meant to fix. The controller is created by the caller
+  // (the effect below) and passed in, matching the existing house pattern
+  // for load-on-mount effects in this codebase.
+  const loadExcursions = useCallback(
+    (controller) => {
+      if (!rangeParams) {
+        return;
+      }
+      setExcursionsLoading(true);
+      (async () => {
+        try {
+          const data = await fetchReportExcursions({
+            freezerId: selectedFreezerId,
+            start: rangeParams.start,
+            end: rangeParams.end,
+          });
+          if (controller.signal.aborted) {
+            return;
+          }
+          const items = normalizeArray(data);
+          setExcursions(items.map((alert) => mapAlertToExcursion(alert)));
+        } catch (error) {
+          if (controller.signal.aborted) {
+            return;
+          }
+          notify({
+            kind: NotificationKinds.error,
+            title: "Unable to load excursion history",
+            subtitle:
+              error.message || "Unexpected error while loading excursions.",
+          });
+        } finally {
+          if (!controller.signal.aborted) {
+            setExcursionsLoading(false);
+          }
+        }
+      })();
+    },
+    [rangeParams, selectedFreezerId, notify, normalizeArray],
+  );
 
-  const loadAuditTrail = useCallback(async () => {
-    setAuditLoading(true);
-    try {
-      // Fetch all audit trail data (no date filtering on backend)
-      const data = await fetchAuditTrail({
-        freezerId: selectedFreezerId,
-      });
-      const items = normalizeArray(data);
-      setAuditTrail(items.map((event) => mapAuditEvent(event)));
-    } catch (error) {
-      notify({
-        kind: NotificationKinds.error,
-        title: "Unable to load audit trail",
-        subtitle:
-          error.message || "Unexpected error while loading audit records.",
-      });
-    } finally {
-      setAuditLoading(false);
-    }
-  }, [selectedFreezerId, notify, normalizeArray]);
+  const loadAuditTrail = useCallback(
+    (controller) => {
+      setAuditLoading(true);
+      (async () => {
+        try {
+          // Fetch all audit trail data (no date filtering on backend)
+          const data = await fetchAuditTrail({
+            freezerId: selectedFreezerId,
+          });
+          if (controller.signal.aborted) {
+            return;
+          }
+          const items = normalizeArray(data);
+          setAuditTrail(items.map((event) => mapAuditEvent(event)));
+        } catch (error) {
+          if (controller.signal.aborted) {
+            return;
+          }
+          notify({
+            kind: NotificationKinds.error,
+            title: "Unable to load audit trail",
+            subtitle:
+              error.message || "Unexpected error while loading audit records.",
+          });
+        } finally {
+          if (!controller.signal.aborted) {
+            setAuditLoading(false);
+          }
+        }
+      })();
+    },
+    [selectedFreezerId, notify, normalizeArray],
+  );
 
   useEffect(() => {
     if (!rangeParams) {
-      return;
+      return undefined;
     }
-    loadExcursions();
+    const controller = new AbortController();
+    loadExcursions(controller);
+    return () => controller.abort();
   }, [rangeParams, loadExcursions]);
 
   // Load audit trail once when freezer changes (no date filtering)
   useEffect(() => {
-    loadAuditTrail();
+    const controller = new AbortController();
+    loadAuditTrail(controller);
+    return () => controller.abort();
   }, [loadAuditTrail]);
 
   const handleDateChange = (range) => {
@@ -495,7 +616,12 @@ function Reports({ devices = [] }) {
 
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
-          <h3 className="reports-title">Regulatory Reports</h3>
+          <h3 className="reports-title">
+            <FormattedMessage
+              id="coldStorage.reports.title"
+              defaultMessage="Regulatory Reports"
+            />
+          </h3>
         </Column>
       </Grid>
 
@@ -503,7 +629,10 @@ function Reports({ devices = [] }) {
         <Column lg={4} md={4} sm={4}>
           <Dropdown
             id="report-type"
-            titleText="Report Type"
+            titleText={intl.formatMessage({
+              id: "coldStorage.reports.reportType",
+              defaultMessage: "Report Type",
+            })}
             items={REPORT_TYPES}
             label={reportType}
             selectedItem={reportType}
@@ -513,7 +642,10 @@ function Reports({ devices = [] }) {
         <Column lg={4} md={4} sm={4}>
           <Dropdown
             id="freezer-select"
-            titleText="Freezer"
+            titleText={intl.formatMessage({
+              id: "coldStorage.reports.freezer",
+              defaultMessage: "Freezer",
+            })}
             items={freezerOptions}
             label={freezer}
             selectedItem={freezer}
@@ -523,7 +655,10 @@ function Reports({ devices = [] }) {
         <Column lg={4} md={4} sm={4}>
           <Dropdown
             id="export-format"
-            titleText="Export Format"
+            titleText={intl.formatMessage({
+              id: "coldStorage.reports.exportFormat",
+              defaultMessage: "Export Format",
+            })}
             items={EXPORT_FORMATS}
             label={format}
             selectedItem={format}
@@ -547,7 +682,10 @@ function Reports({ devices = [] }) {
             <DatePickerInput
               id="reports-start-date"
               placeholder="mm/dd/yyyy"
-              labelText="Start date"
+              labelText={intl.formatMessage({
+                id: "coldStorage.reports.startDate",
+                defaultMessage: "Start date",
+              })}
               size="md"
             />
           </DatePicker>
@@ -566,14 +704,20 @@ function Reports({ devices = [] }) {
             <DatePickerInput
               id="reports-end-date"
               placeholder="mm/dd/yyyy"
-              labelText="End date"
+              labelText={intl.formatMessage({
+                id: "coldStorage.reports.endDate",
+                defaultMessage: "End date",
+              })}
               size="md"
             />
           </DatePicker>
         </Column>
         <Column lg={16} md={8} sm={4} className="reports-generate">
           <Button size="sm" onClick={handleGenerate}>
-            Generate Report
+            <FormattedMessage
+              id="coldStorage.reports.generateReport"
+              defaultMessage="Generate Report"
+            />
           </Button>
           {pendingDownload && (
             <Button
@@ -585,21 +729,30 @@ function Reports({ devices = [] }) {
                   pendingDownload.format,
                 )
               }
-              style={{ marginLeft: "1rem" }}
+              className="reports-download-button"
             >
-              Download {pendingDownload.format} Report
+              <FormattedMessage
+                id="coldStorage.reports.downloadReport"
+                defaultMessage="Download {format} Report"
+                values={{ format: pendingDownload.format }}
+              />
             </Button>
           )}
         </Column>
         <Column lg={16} md={8} sm={4}>
           <div className="reports-compliance-box">
             <p>
-              <strong>Regulatory Compliance</strong>
+              <strong>
+                <FormattedMessage
+                  id="coldStorage.reports.regulatoryCompliance"
+                  defaultMessage="Regulatory Compliance"
+                />
+              </strong>
               <br />
-              Reports follow CAP (College of American Pathologists), CLIA
-              (Clinical Laboratory Improvement Amendments), FDA (Food and Drug
-              Administration), and WHO (World Health Organization) guidance for
-              temperature-controlled storage.
+              <FormattedMessage
+                id="coldStorage.reports.regulatoryComplianceDesc"
+                defaultMessage="Reports follow CAP (College of American Pathologists), CLIA (Clinical Laboratory Improvement Amendments), FDA (Food and Drug Administration), and WHO (World Health Organization) guidance for temperature-controlled storage."
+              />
             </p>
           </div>
         </Column>
@@ -609,13 +762,28 @@ function Reports({ devices = [] }) {
         <Column lg={16} md={8} sm={4}>
           <Tabs>
             <TabList aria-label="Reports tabs" contained>
-              <Tab>Temperature Excursions</Tab>
-              <Tab>Audit Trail</Tab>
+              <Tab>
+                <FormattedMessage
+                  id="coldStorage.reports.tab.excursions"
+                  defaultMessage="Temperature Excursions"
+                />
+              </Tab>
+              <Tab>
+                <FormattedMessage
+                  id="coldStorage.reports.tab.auditTrail"
+                  defaultMessage="Audit Trail"
+                />
+              </Tab>
             </TabList>
             <TabPanels>
               <TabPanel>
-                <h4 className="exc-title">Temperature Excursion History</h4>
-                <DataTable rows={excursionRows} headers={EXCURSION_HEADERS}>
+                <h4 className="exc-title">
+                  <FormattedMessage
+                    id="coldStorage.reports.excursionHistory"
+                    defaultMessage="Temperature Excursion History"
+                  />
+                </h4>
+                <DataTable rows={excursionRows} headers={excursionHeaders}>
                   {({
                     rows,
                     headers,
@@ -641,12 +809,19 @@ function Reports({ devices = [] }) {
                           {rows.length === 0 && (
                             <TableRow>
                               <TableCell
-                                colSpan={EXCURSION_HEADERS.length}
+                                colSpan={excursionHeaders.length}
                                 className="empty-state"
                               >
                                 {excursionsLoading
-                                  ? "Loading excursions…"
-                                  : "No excursions available for the selected filters."}
+                                  ? intl.formatMessage({
+                                      id: "coldStorage.reports.loadingExcursions",
+                                      defaultMessage: "Loading excursions…",
+                                    })
+                                  : intl.formatMessage({
+                                      id: "coldStorage.reports.noExcursions",
+                                      defaultMessage:
+                                        "No excursions available for the selected filters.",
+                                    })}
                               </TableCell>
                             </TableRow>
                           )}
@@ -687,8 +862,13 @@ function Reports({ devices = [] }) {
                 </DataTable>
               </TabPanel>
               <TabPanel>
-                <h4 className="exc-title">Audit Trail</h4>
-                <DataTable rows={paginatedAuditRows} headers={AUDIT_HEADERS}>
+                <h4 className="exc-title">
+                  <FormattedMessage
+                    id="coldStorage.reports.tab.auditTrail"
+                    defaultMessage="Audit Trail"
+                  />
+                </h4>
+                <DataTable rows={paginatedAuditRows} headers={auditHeaders}>
                   {({
                     rows,
                     headers,
@@ -702,7 +882,10 @@ function Reports({ devices = [] }) {
                         <TableToolbarContent>
                           <TableToolbarSearch
                             persistent
-                            placeholder="Search audit trail..."
+                            placeholder={intl.formatMessage({
+                              id: "coldStorage.reports.searchAuditTrail",
+                              defaultMessage: "Search audit trail...",
+                            })}
                             value={auditSearchTerm}
                             onChange={(e) => {
                               setAuditSearchTerm(e.target.value);
@@ -728,14 +911,25 @@ function Reports({ devices = [] }) {
                           {rows.length === 0 && (
                             <TableRow>
                               <TableCell
-                                colSpan={AUDIT_HEADERS.length}
+                                colSpan={auditHeaders.length}
                                 className="empty-state"
                               >
                                 {auditLoading
-                                  ? "Loading audit entries…"
+                                  ? intl.formatMessage({
+                                      id: "coldStorage.reports.loadingAudit",
+                                      defaultMessage: "Loading audit entries…",
+                                    })
                                   : auditSearchTerm
-                                    ? "No audit entries match your search."
-                                    : "No audit activity for the selected filters."}
+                                    ? intl.formatMessage({
+                                        id: "coldStorage.reports.noAuditMatch",
+                                        defaultMessage:
+                                          "No audit entries match your search.",
+                                      })
+                                    : intl.formatMessage({
+                                        id: "coldStorage.reports.noAuditActivity",
+                                        defaultMessage:
+                                          "No audit activity for the selected filters.",
+                                      })}
                               </TableCell>
                             </TableRow>
                           )}
@@ -755,9 +949,18 @@ function Reports({ devices = [] }) {
                 </DataTable>
                 {filteredAuditRows.length > 0 && (
                   <Pagination
-                    backwardText="Previous page"
-                    forwardText="Next page"
-                    itemsPerPageText="Items per page:"
+                    backwardText={intl.formatMessage({
+                      id: "pagination.previousPage",
+                      defaultMessage: "Previous page",
+                    })}
+                    forwardText={intl.formatMessage({
+                      id: "pagination.nextPage",
+                      defaultMessage: "Next page",
+                    })}
+                    itemsPerPageText={intl.formatMessage({
+                      id: "pagination.itemsPerPage",
+                      defaultMessage: "Items per page:",
+                    })}
                     page={auditPage}
                     pageSize={auditPageSize}
                     pageSizes={[5, 10, 20, 50]}
@@ -777,8 +980,11 @@ function Reports({ devices = [] }) {
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <p className="reports-footer">
-            Cold Storage Monitoring v2.1.0 | CAP, CLIA, FDA & WHO compliant |
-            HIPAA-ready data handling
+            {intl.formatMessage({
+              id: "coldStorage.reports.footer",
+              defaultMessage:
+                "Cold Storage Monitoring v2.1.0 | CAP, CLIA, FDA & WHO compliant | HIPAA-ready data handling",
+            })}
           </p>
         </Column>
       </Grid>

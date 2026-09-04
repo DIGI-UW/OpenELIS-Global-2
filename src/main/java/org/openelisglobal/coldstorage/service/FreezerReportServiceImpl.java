@@ -52,24 +52,50 @@ public class FreezerReportServiceImpl implements FreezerReportService {
     private static final DateTimeFormatter MONTH_YEAR_FORMATTER = DateTimeFormatter.ofPattern("MMMM yyyy",
             Locale.ENGLISH);
     private static final DateTimeFormatter MONTH_DAY_FORMATTER = DateTimeFormatter.ofPattern("MMM dd", Locale.ENGLISH);
-    private static final WeekFields WEEK_FIELDS = WeekFields.of(Locale.getDefault());
+    // Single locale source for all week-number/label math and display, so
+    // boundary calculations (weekOfMonth) and rendered labels never disagree.
+    // TODO: this uses Locale.ENGLISH for both, same as the display formatters
+    // above. If OpenELIS grows an app-wide "lab timezone/locale" configuration
+    // concept in the future (none currently exists - see ZoneId.systemDefault()
+    // usage below), this should be revisited to source both together from it.
+    private static final Locale REPORT_LOCALE = Locale.ENGLISH;
+    private static final WeekFields WEEK_FIELDS = WeekFields.of(REPORT_LOCALE);
 
     @Override
     public List<FreezerDailyLogData> generateDailyLogData(Long freezerId, LocalDate startDate, LocalDate endDate) {
-        OffsetDateTime startDateTime = startDate.atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
-        OffsetDateTime endDateTime = endDate.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toOffsetDateTime();
+        // TODO: uses the server's system default timezone. OpenELIS has no existing
+        // app-wide "lab timezone" configuration concept (checked SystemConfiguration
+        // and siteinformation for one) so this is left as the pre-existing behavior
+        // rather than inventing a new global config mechanism as a side effect of
+        // this fix. If/when one is added, report boundaries should switch to it.
+        ZoneId zone = ZoneId.systemDefault();
+        OffsetDateTime startDateTime = startDate.atStartOfDay(zone).toOffsetDateTime();
+        // Exclusive next-midnight boundary (minus 1ns so the underlying inclusive
+        // BETWEEN query still captures the very last instant of endDate) instead of
+        // inclusive 23:59:59, which left a sub-second gap
+        // (23:59:59.001-23:59:59.999999999) unreported.
+        OffsetDateTime endDateTime = endDate.plusDays(1).atStartOfDay(zone).toOffsetDateTime().minusNanos(1);
 
-        List<FreezerReading> readings = new ArrayList<>();
-        if (freezerId != null) {
-            readings = freezerReadingService.getReadingsBetween(freezerId, startDateTime, endDateTime);
-        } else {
-            List<Freezer> allFreezers = freezerService.getAllFreezers("");
-            for (Freezer freezer : allFreezers) {
-                readings.addAll(freezerReadingService.getReadingsBetween(freezer.getId(), startDateTime, endDateTime));
+        List<Freezer> freezersToCheck = freezerId != null
+                ? freezerService.findById(freezerId).map(List::of).orElse(List.of())
+                : freezerService.getAllFreezers("");
+
+        List<FreezerDailyLogData> result = new ArrayList<>();
+        for (Freezer freezer : freezersToCheck) {
+            List<FreezerReading> readings = freezerReadingService.getReadingsBetween(freezer.getId(), startDateTime,
+                    endDateTime);
+            if (readings.isEmpty()) {
+                continue;
+            }
+            // Batch-fetch alerts for this freezer once instead of once per reading
+            // (previously an N+1: checkIfAlertExistsAtTime queried alerts per reading).
+            List<Alert> freezerAlerts = alertService.getAlertsByEntity("Freezer", freezer.getId());
+            for (FreezerReading reading : readings) {
+                result.add(mapToDailyLogData(reading, freezerAlerts));
             }
         }
 
-        return readings.stream().map(this::mapToDailyLogData).collect(Collectors.toList());
+        return result;
     }
 
     @Override
@@ -378,7 +404,7 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         };
     }
 
-    private FreezerDailyLogData mapToDailyLogData(FreezerReading reading) {
+    private FreezerDailyLogData mapToDailyLogData(FreezerReading reading, List<Alert> freezerAlerts) {
         FreezerDailyLogData data = new FreezerDailyLogData();
 
         OffsetDateTime recordedAt = reading.getRecordedAt();
@@ -402,7 +428,7 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         data.setTemperature(reading.getTemperatureCelsius());
         data.setHumidity(reading.getHumidityPercentage());
         data.setStatus(reading.getStatus() != null ? reading.getStatus().name() : "NORMAL");
-        data.setAlertTriggered(checkIfAlertExistsAtTime(reading));
+        data.setAlertTriggered(checkIfAlertExistsAtTime(reading, freezerAlerts));
 
         return data;
     }
@@ -422,16 +448,22 @@ public class FreezerReportServiceImpl implements FreezerReportService {
                 weekEnd.format(MONTH_DAY_FORMATTER), date.getYear());
     }
 
-    private boolean checkIfAlertExistsAtTime(FreezerReading reading) {
-        if (reading.getFreezer() == null || reading.getRecordedAt() == null) {
+    /**
+     * Checks whether any alert in the (already batch-fetched, per-freezer)
+     * {@code freezerAlerts} list started within +/-5 minutes of this reading.
+     * {@code freezerAlerts} is fetched once per freezer per report (see
+     * {@link #generateDailyLogData}) rather than once per reading, to avoid an N+1
+     * query pattern when a report spans many readings.
+     */
+    private boolean checkIfAlertExistsAtTime(FreezerReading reading, List<Alert> freezerAlerts) {
+        if (reading.getRecordedAt() == null || freezerAlerts == null || freezerAlerts.isEmpty()) {
             return false;
         }
         OffsetDateTime readingTime = reading.getRecordedAt();
         OffsetDateTime startWindow = readingTime.minusMinutes(5);
         OffsetDateTime endWindow = readingTime.plusMinutes(5);
 
-        List<Alert> alerts = alertService.getAlertsByEntity("Freezer", reading.getFreezer().getId());
-        return alerts.stream().filter(alert -> alert.getStartTime() != null).anyMatch(
+        return freezerAlerts.stream().filter(alert -> alert.getStartTime() != null).anyMatch(
                 alert -> !alert.getStartTime().isBefore(startWindow) && !alert.getStartTime().isAfter(endWindow));
     }
 

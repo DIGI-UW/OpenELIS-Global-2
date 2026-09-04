@@ -31,11 +31,14 @@ import {
 } from "@carbon/icons-react";
 import { LineChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
+import "./DeviceHistoryExpansion.scss";
 import {
   fetchCorrectiveActions,
   fetchFilteredAlerts,
   fetchHistoricalReadings,
 } from "./api";
+import { toDate } from "./shared/dateUtils";
+import { FormattedMessage, useIntl } from "react-intl";
 
 const EVENT_TYPE_OPTIONS = [
   { id: "all", label: "All Events" },
@@ -50,6 +53,22 @@ const TIME_RANGE_OPTIONS = [
   { id: "all", label: "All Time" },
 ];
 
+const METRIC_OPTIONS = [
+  {
+    id: "temperature",
+    label: "Temperature",
+    field: "temperatureCelsius",
+    unit: "°C",
+  },
+  { id: "humidity", label: "Humidity", field: "humidityPercentage", unit: "%" },
+  {
+    id: "temperature2",
+    label: "Temperature (Probe 2)",
+    field: "temperatureCelsius2",
+    unit: "°C",
+  },
+];
+
 const RANGE_TO_DURATION = {
   "24h": 24 * 60 * 60 * 1000,
   "7d": 7 * 24 * 60 * 60 * 1000,
@@ -58,6 +77,7 @@ const RANGE_TO_DURATION = {
 };
 
 function DeviceHistoryExpansion({ device }) {
+  const intl = useIntl();
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [correctiveActions, setCorrectiveActions] = useState([]);
@@ -68,121 +88,160 @@ function DeviceHistoryExpansion({ device }) {
   const [pageSize, setPageSize] = useState(5);
 
   const [timeRange, setTimeRange] = useState("24h");
+  const [selectedMetric, setSelectedMetric] = useState("temperature");
   const [chartData, setChartData] = useState([]);
   const [trendsLoading, setTrendsLoading] = useState(false);
   const [trendsError, setTrendsError] = useState(null);
 
-  const loadDeviceHistory = useCallback(async () => {
-    if (!device) return;
+  // fetchCorrectiveActions/fetchFilteredAlerts (via getFromOpenElisServerV2)
+  // don't expose an AbortController signal, so this guard can't cancel the
+  // in-flight network call itself - it drops a stale response instead,
+  // which is what actually prevents a fast device-row expand/collapse from
+  // showing another device's history. The controller is created by the
+  // caller (the effect below) and passed in, matching the existing house
+  // pattern for load-on-mount effects in this codebase.
+  const loadDeviceHistory = useCallback(
+    (controller) => {
+      if (!device) return;
 
-    const deviceId = device.id || device.freezerId;
-    if (!deviceId) return;
+      const deviceId = device.id || device.freezerId;
+      if (!deviceId) return;
 
-    setLoading(true);
-    try {
-      const freezerId =
-        typeof deviceId === "string" ? parseInt(deviceId, 10) : deviceId;
-      const [actionsData, alertsData] = await Promise.all([
-        fetchCorrectiveActions({ freezerId: freezerId }),
-        fetchFilteredAlerts({
-          entityType: "FREEZER",
-          entityId: freezerId,
-          page: 0,
-          size: 100,
-        }),
-      ]);
+      setLoading(true);
+      (async () => {
+        try {
+          const freezerId =
+            typeof deviceId === "string" ? parseInt(deviceId, 10) : deviceId;
+          const [actionsData, alertsData] = await Promise.all([
+            fetchCorrectiveActions({ freezerId: freezerId }),
+            fetchFilteredAlerts({
+              entityType: "Freezer",
+              entityId: freezerId,
+              page: 0,
+              size: 100,
+            }),
+          ]);
+          if (controller.signal.aborted) {
+            return;
+          }
 
-      const normalizeArray = (payload) => {
-        if (Array.isArray(payload)) return payload;
-        if (payload && typeof payload === "object") {
-          return (
-            payload.items ||
-            payload.data ||
-            payload.results ||
-            payload.content ||
-            payload.list ||
-            payload.rows ||
-            []
-          );
+          const normalizeArray = (payload) => {
+            if (Array.isArray(payload)) return payload;
+            if (payload && typeof payload === "object") {
+              return (
+                payload.items ||
+                payload.data ||
+                payload.results ||
+                payload.content ||
+                payload.list ||
+                payload.rows ||
+                []
+              );
+            }
+            return [];
+          };
+
+          const actions = normalizeArray(actionsData);
+          const alertsResult = normalizeArray(alertsData);
+          const alertsList = Array.isArray(alertsResult)
+            ? alertsResult
+            : alertsResult?.content || [];
+
+          setCorrectiveActions(actions || []);
+          setAlerts(alertsList || []);
+        } catch (error) {
+          if (controller.signal.aborted) {
+            return;
+          }
+          console.error("Error loading device history:", error);
+        } finally {
+          if (!controller.signal.aborted) {
+            setLoading(false);
+          }
         }
-        return [];
-      };
-
-      const actions = normalizeArray(actionsData);
-      const alertsResult = normalizeArray(alertsData);
-      const alertsList = Array.isArray(alertsResult)
-        ? alertsResult
-        : alertsResult?.content || [];
-
-      setCorrectiveActions(actions || []);
-      setAlerts(alertsList || []);
-    } catch (error) {
-      console.error("Error loading device history:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [device]);
+      })();
+    },
+    [device],
+  );
 
   useEffect(() => {
-    if (device) {
-      loadDeviceHistory();
+    if (!device) {
+      return undefined;
     }
+    const controller = new AbortController();
+    loadDeviceHistory(controller);
+    return () => controller.abort();
   }, [device, loadDeviceHistory]);
 
-  const loadTemperatureReadings = useCallback(async () => {
-    if (!device) return;
+  const loadTemperatureReadings = useCallback(
+    (controller) => {
+      if (!device) return;
 
-    const deviceId = device.id || device.freezerId;
-    if (!deviceId) return;
+      const deviceId = device.id || device.freezerId;
+      if (!deviceId) return;
 
-    setTrendsLoading(true);
-    setTrendsError(null);
+      setTrendsLoading(true);
+      setTrendsError(null);
 
-    try {
-      const duration = RANGE_TO_DURATION[timeRange] || RANGE_TO_DURATION["24h"];
-      const end = new Date();
-      const start = new Date(end.getTime() - duration);
+      (async () => {
+        try {
+          const duration =
+            RANGE_TO_DURATION[timeRange] || RANGE_TO_DURATION["24h"];
+          const end = new Date();
+          const start = new Date(end.getTime() - duration);
 
-      const freezerId =
-        typeof deviceId === "string" ? parseInt(deviceId, 10) : deviceId;
-      const readings = await fetchHistoricalReadings(
-        freezerId,
-        start.toISOString(),
-        end.toISOString(),
-      );
+          const freezerId =
+            typeof deviceId === "string" ? parseInt(deviceId, 10) : deviceId;
+          const readings = await fetchHistoricalReadings(
+            freezerId,
+            start.toISOString(),
+            end.toISOString(),
+          );
+          if (controller.signal.aborted) {
+            return;
+          }
 
-      const normalizedReadings = (readings || [])
-        .filter((reading) => reading.temperatureCelsius != null)
-        .map((reading) => ({
-          group: "Temperature",
-          date: new Date(reading.recordedAt),
-          value: reading.temperatureCelsius,
-        }))
-        .sort((a, b) => a.date - b.date);
+          const metric = METRIC_OPTIONS.find((m) => m.id === selectedMetric);
+          const normalizedReadings = (readings || [])
+            .filter((reading) => reading[metric.field] != null)
+            .map((reading) => ({
+              group: metric.label,
+              date: toDate(reading.recordedAt),
+              value: reading[metric.field],
+            }))
+            .filter((reading) => reading.date !== null)
+            .sort((a, b) => a.date - b.date);
 
-      setChartData(normalizedReadings);
-    } catch (error) {
-      console.error("Error loading temperature readings:", error);
-      setTrendsError(error.message || "Unable to load temperature data.");
-      setChartData([]);
-    } finally {
-      setTrendsLoading(false);
-    }
-  }, [device, timeRange]);
+          setChartData(normalizedReadings);
+        } catch (error) {
+          if (controller.signal.aborted) {
+            return;
+          }
+          console.error("Error loading readings:", error);
+          setTrendsError(error.message || "Unable to load reading data.");
+          setChartData([]);
+        } finally {
+          if (!controller.signal.aborted) {
+            setTrendsLoading(false);
+          }
+        }
+      })();
+    },
+    [device, timeRange, selectedMetric],
+  );
 
   useEffect(() => {
-    if (activeTab === 1 && device) {
-      loadTemperatureReadings();
+    if (activeTab !== 1 || !device) {
+      return undefined;
     }
+    const controller = new AbortController();
+    loadTemperatureReadings(controller);
+    return () => controller.abort();
   }, [activeTab, device, loadTemperatureReadings]);
 
   const formatDate = (dateValue) => {
-    if (!dateValue) return "—";
-    const date =
-      typeof dateValue === "number"
-        ? new Date(dateValue * 1000)
-        : new Date(dateValue);
-    if (isNaN(date.getTime())) return "—";
+    const date = toDate(dateValue);
+    if (!date) return "—";
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -191,12 +250,8 @@ function DeviceHistoryExpansion({ device }) {
   };
 
   const formatTime = (dateValue) => {
-    if (!dateValue) return "—";
-    const date =
-      typeof dateValue === "number"
-        ? new Date(dateValue * 1000)
-        : new Date(dateValue);
-    if (isNaN(date.getTime())) return "—";
+    const date = toDate(dateValue);
+    if (!date) return "—";
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
@@ -248,10 +303,8 @@ function DeviceHistoryExpansion({ device }) {
     });
 
     return events.sort((a, b) => {
-      const dateA =
-        typeof a.date === "number" ? new Date(a.date * 1000) : new Date(a.date);
-      const dateB =
-        typeof b.date === "number" ? new Date(b.date * 1000) : new Date(b.date);
+      const dateA = toDate(a.date) ?? new Date(0);
+      const dateB = toDate(b.date) ?? new Date(0);
       return dateB - dateA;
     });
   }, [alerts, correctiveActions]);
@@ -305,6 +358,11 @@ function DeviceHistoryExpansion({ device }) {
     };
   }, [chartData]);
 
+  const selectedMetricOption = useMemo(
+    () => METRIC_OPTIONS.find((m) => m.id === selectedMetric),
+    [selectedMetric],
+  );
+
   const formattedChartData = useMemo(() => {
     return chartData.map((point) => ({
       group: point.group,
@@ -326,6 +384,7 @@ function DeviceHistoryExpansion({ device }) {
 
   const chartOptions = useMemo(() => {
     const { minTemp, maxTemp } = deviceThresholds;
+    const metric = METRIC_OPTIONS.find((m) => m.id === selectedMetric);
 
     return {
       title: "",
@@ -336,7 +395,7 @@ function DeviceHistoryExpansion({ device }) {
           scaleType: "labels",
         },
         left: {
-          title: "Temperature",
+          title: `${metric.label} (${metric.unit})`,
           mapsTo: "value",
           scaleType: "linear",
         },
@@ -348,25 +407,30 @@ function DeviceHistoryExpansion({ device }) {
       tooltip: {
         showTotal: false,
       },
-      thresholds: [
-        {
-          value: maxTemp,
-          label: "Warning",
-          fillColor: "#FF832B",
-        },
-        {
-          value: minTemp,
-          label: "Alert",
-          fillColor: "#DA1E28",
-        },
-      ],
+      // Threshold lines are temperature-specific (device min/max in °C) - only
+      // meaningful when that's the metric being charted.
+      ...(selectedMetric === "temperature" && {
+        thresholds: [
+          {
+            value: maxTemp,
+            label: "Warning",
+            fillColor: "#FF832B",
+          },
+          {
+            value: minTemp,
+            label: "Alert",
+            fillColor: "#DA1E28",
+          },
+        ],
+      }),
     };
-  }, [deviceThresholds]);
+  }, [deviceThresholds, selectedMetric]);
 
   const handleExportCsv = () => {
     if (!chartData.length) return;
 
-    const csvHeader = "Timestamp,Temperature (°C)\n";
+    const metric = METRIC_OPTIONS.find((m) => m.id === selectedMetric);
+    const csvHeader = `Timestamp,${metric.label} (${metric.unit})\n`;
     const csvRows = chartData
       .map((point) => `${point.date.toISOString()},${point.value}`)
       .join("\n");
@@ -417,7 +481,7 @@ function DeviceHistoryExpansion({ device }) {
     })();
 
     return (
-      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+      <div className="oe-deviceHistory-inlineTagRow">
         {tag}
         {isEdited && (
           <Tag type="purple" size="sm">
@@ -429,13 +493,55 @@ function DeviceHistoryExpansion({ device }) {
   };
 
   const eventColumns = [
-    { key: "eventType", header: "Event Type" },
-    { key: "eventId", header: "Event ID" },
-    { key: "summary", header: "Summary / Title" },
-    { key: "severity", header: "Severity" },
-    { key: "date", header: "Date" },
-    { key: "time", header: "Time" },
-    { key: "performedBy", header: "Acknowledged / Performed By" },
+    {
+      key: "eventType",
+      header: intl.formatMessage({
+        id: "coldStorage.deviceHistory.column.eventType",
+        defaultMessage: "Event Type",
+      }),
+    },
+    {
+      key: "eventId",
+      header: intl.formatMessage({
+        id: "coldStorage.deviceHistory.column.eventId",
+        defaultMessage: "Event ID",
+      }),
+    },
+    {
+      key: "summary",
+      header: intl.formatMessage({
+        id: "coldStorage.deviceHistory.column.summaryTitle",
+        defaultMessage: "Summary / Title",
+      }),
+    },
+    {
+      key: "severity",
+      header: intl.formatMessage({
+        id: "coldStorage.dashboard.column.severity",
+        defaultMessage: "Severity",
+      }),
+    },
+    {
+      key: "date",
+      header: intl.formatMessage({
+        id: "coldStorage.deviceHistory.column.date",
+        defaultMessage: "Date",
+      }),
+    },
+    {
+      key: "time",
+      header: intl.formatMessage({
+        id: "coldStorage.deviceHistory.column.time",
+        defaultMessage: "Time",
+      }),
+    },
+    {
+      key: "performedBy",
+      header: intl.formatMessage({
+        id: "coldStorage.deviceHistory.column.acknowledgedPerformedBy",
+        defaultMessage: "Acknowledged / Performed By",
+      }),
+    },
   ];
 
   const eventRows = paginatedEvents.map((event) => {
@@ -444,7 +550,7 @@ function DeviceHistoryExpansion({ device }) {
     return {
       id: event.id,
       eventType: (
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div className="oe-deviceHistory-inlineTagRow">
           {isAlert ? <Warning size={16} /> : <Document size={16} />}
           <Tag type={isAlert ? "red" : "blue"} size="sm">
             {isAlert ? "Alert" : "Corrective Action"}
@@ -470,67 +576,63 @@ function DeviceHistoryExpansion({ device }) {
   const deviceId = device?.id || device?.freezerId;
 
   return (
-    <div style={{ padding: "1.5rem", background: "var(--cds-layer-01)" }}>
-      <h3
-        style={{ marginBottom: "1.5rem", fontSize: "1.25rem", fontWeight: 600 }}
-      >
-        Device History - {deviceDisplayName} ({deviceId})
+    <div className="oe-deviceHistory">
+      <h3 className="oe-deviceHistory-title">
+        <FormattedMessage
+          id="coldStorage.deviceHistory.title"
+          defaultMessage="Device History - {name} ({id})"
+          values={{ name: deviceDisplayName, id: deviceId }}
+        />
       </h3>
 
       {/* Summary Cards */}
-      <Grid condensed style={{ marginBottom: "2rem" }}>
-        <Column lg={4} md={4} sm={4} style={{ paddingRight: "1rem" }}>
-          <div
-            style={{
-              background: "rgba(0, 102, 204, 0.7)",
-              color: "white",
-              padding: "1.5rem",
-              borderRadius: "0.5rem",
-            }}
-          >
-            <div style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>
-              Total Events
+      <Grid condensed className="oe-deviceHistory-summaryGrid">
+        <Column
+          lg={4}
+          md={4}
+          sm={4}
+          className="oe-deviceHistory-summaryColumn--left"
+        >
+          <div className="oe-deviceHistory-summaryCard oe-deviceHistory-summaryCard--events">
+            <div className="oe-deviceHistory-summaryLabel">
+              <FormattedMessage
+                id="coldStorage.deviceHistory.totalEvents"
+                defaultMessage="Total Events"
+              />
             </div>
-            <div style={{ fontSize: "2rem", fontWeight: 600 }}>
-              {totalEvents}
-            </div>
+            <div className="oe-deviceHistory-summaryValue">{totalEvents}</div>
           </div>
         </Column>
         <Column
           lg={4}
           md={4}
           sm={4}
-          style={{ paddingRight: "1rem", paddingLeft: "1rem" }}
+          className="oe-deviceHistory-summaryColumn--middle"
         >
-          <div
-            style={{
-              background: "rgba(219, 48, 32, 0.7)",
-              color: "white",
-              padding: "1.5rem",
-              borderRadius: "0.5rem",
-            }}
-          >
-            <div style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>
-              Total Alerts
+          <div className="oe-deviceHistory-summaryCard oe-deviceHistory-summaryCard--alerts">
+            <div className="oe-deviceHistory-summaryLabel">
+              <FormattedMessage
+                id="coldStorage.deviceHistory.totalAlerts"
+                defaultMessage="Total Alerts"
+              />
             </div>
-            <div style={{ fontSize: "2rem", fontWeight: 600 }}>
-              {totalAlerts}
-            </div>
+            <div className="oe-deviceHistory-summaryValue">{totalAlerts}</div>
           </div>
         </Column>
-        <Column lg={4} md={4} sm={4} style={{ paddingLeft: "1rem" }}>
-          <div
-            style={{
-              background: "rgba(24, 161, 50, 0.7)",
-              color: "white",
-              padding: "1.5rem",
-              borderRadius: "0.5rem",
-            }}
-          >
-            <div style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>
-              Corrective Actions
+        <Column
+          lg={4}
+          md={4}
+          sm={4}
+          className="oe-deviceHistory-summaryColumn--right"
+        >
+          <div className="oe-deviceHistory-summaryCard oe-deviceHistory-summaryCard--actions">
+            <div className="oe-deviceHistory-summaryLabel">
+              <FormattedMessage
+                id="coldStorage.deviceHistory.correctiveActions"
+                defaultMessage="Corrective Actions"
+              />
             </div>
-            <div style={{ fontSize: "2rem", fontWeight: 600 }}>
+            <div className="oe-deviceHistory-summaryValue">
               {totalCorrectiveActions}
             </div>
           </div>
@@ -543,23 +645,45 @@ function DeviceHistoryExpansion({ device }) {
         onChange={({ selectedIndex }) => setActiveTab(selectedIndex)}
       >
         <TabList aria-label="Device history sections" contained>
-          <Tab renderIcon={Calendar}>Event History</Tab>
-          <Tab renderIcon={Time}>Temperature Trends</Tab>
+          <Tab renderIcon={Calendar}>
+            <FormattedMessage
+              id="coldStorage.deviceHistory.tab.eventHistory"
+              defaultMessage="Event History"
+            />
+          </Tab>
+          <Tab renderIcon={Time}>
+            <FormattedMessage
+              id="coldStorage.deviceHistory.tab.temperatureTrends"
+              defaultMessage="Temperature Trends"
+            />
+          </Tab>
         </TabList>
         <TabPanels>
           {/* Event History Tab */}
           <TabPanel>
             {loading ? (
-              <Loading description="Loading event history..." />
+              <Loading
+                description={intl.formatMessage({
+                  id: "coldStorage.deviceHistory.loadingEvents",
+                  defaultMessage: "Loading event history...",
+                })}
+              />
             ) : (
               <>
                 {/* Search and Filters Section */}
-                <Grid fullWidth style={{ marginBottom: "1rem" }}>
+                <Grid fullWidth className="oe-deviceHistory-filterGrid">
                   {/* Search - full width */}
                   <Column lg={16} md={8} sm={4}>
                     <Search
-                      labelText="Search events"
-                      placeholder="Search by event ID, summary, or user..."
+                      labelText={intl.formatMessage({
+                        id: "coldStorage.deviceHistory.searchEvents",
+                        defaultMessage: "Search events",
+                      })}
+                      placeholder={intl.formatMessage({
+                        id: "coldStorage.deviceHistory.searchPlaceholder",
+                        defaultMessage:
+                          "Search by event ID, summary, or user...",
+                      })}
                       value={searchTerm}
                       onChange={(e) => {
                         setSearchTerm(e.target.value);
@@ -569,7 +693,12 @@ function DeviceHistoryExpansion({ device }) {
                     />
                   </Column>
                   {/* Filter Dropdown */}
-                  <Column lg={6} md={4} sm={4} style={{ marginTop: "1rem" }}>
+                  <Column
+                    lg={6}
+                    md={4}
+                    sm={4}
+                    className="oe-deviceHistory-filterColumn"
+                  >
                     <Dropdown
                       id="event-filter"
                       titleText="Event Type"
@@ -601,7 +730,10 @@ function DeviceHistoryExpansion({ device }) {
                     getTableContainerProps,
                   }) => (
                     <TableContainer
-                      title="Event History"
+                      title={intl.formatMessage({
+                        id: "coldStorage.deviceHistory.tab.eventHistory",
+                        defaultMessage: "Event History",
+                      })}
                       {...getTableContainerProps()}
                     >
                       <Table {...getTableProps()} size="md">
@@ -621,7 +753,10 @@ function DeviceHistoryExpansion({ device }) {
                           {rows.length === 0 && (
                             <TableRow>
                               <TableCell colSpan={eventColumns.length}>
-                                No events found.
+                                <FormattedMessage
+                                  id="coldStorage.deviceHistory.noEventsFound"
+                                  defaultMessage="No events found."
+                                />
                               </TableCell>
                             </TableRow>
                           )}
@@ -630,10 +765,7 @@ function DeviceHistoryExpansion({ device }) {
                               {row.cells.map((cell) => (
                                 <TableCell
                                   key={cell.id}
-                                  style={{
-                                    textAlign: "left",
-                                    paddingLeft: "1rem",
-                                  }}
+                                  className="oe-deviceHistory-tableCell"
                                 >
                                   {cell.value}
                                 </TableCell>
@@ -643,9 +775,18 @@ function DeviceHistoryExpansion({ device }) {
                         </TableBody>
                       </Table>
                       <Pagination
-                        backwardText="Previous page"
-                        forwardText="Next page"
-                        itemsPerPageText="Items per page:"
+                        backwardText={intl.formatMessage({
+                          id: "pagination.previousPage",
+                          defaultMessage: "Previous page",
+                        })}
+                        forwardText={intl.formatMessage({
+                          id: "pagination.nextPage",
+                          defaultMessage: "Next page",
+                        })}
+                        itemsPerPageText={intl.formatMessage({
+                          id: "pagination.itemsPerPage",
+                          defaultMessage: "Items per page:",
+                        })}
                         page={currentPage}
                         pageSize={pageSize}
                         pageSizes={[5, 10, 20, 50]}
@@ -666,17 +807,14 @@ function DeviceHistoryExpansion({ device }) {
           <TabPanel>
             <div>
               {/* Time Range and Export Controls */}
-              <Grid style={{ marginBottom: "2rem" }}>
-                <Column lg={6} md={4} sm={4}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>
-                      Time Range:
+              <Grid className="oe-deviceHistory-controlsGrid">
+                <Column lg={5} md={4} sm={4}>
+                  <div className="oe-deviceHistory-timeRangeControl">
+                    <span className="oe-deviceHistory-timeRangeLabel">
+                      <FormattedMessage
+                        id="coldStorage.deviceHistory.timeRange"
+                        defaultMessage="Time Range:"
+                      />
                     </span>
                     <Dropdown
                       id="time-range-dropdown"
@@ -697,15 +835,38 @@ function DeviceHistoryExpansion({ device }) {
                     />
                   </div>
                 </Column>
+                <Column lg={5} md={4} sm={4}>
+                  <div className="oe-deviceHistory-timeRangeControl">
+                    <span className="oe-deviceHistory-timeRangeLabel">
+                      <FormattedMessage
+                        id="coldStorage.deviceHistory.metric"
+                        defaultMessage="Metric:"
+                      />
+                    </span>
+                    <Dropdown
+                      id="metric-dropdown"
+                      titleText=""
+                      label={
+                        METRIC_OPTIONS.find((opt) => opt.id === selectedMetric)
+                          ?.label || "Temperature"
+                      }
+                      items={METRIC_OPTIONS}
+                      itemToString={(item) => (item ? item.label : "")}
+                      selectedItem={METRIC_OPTIONS.find(
+                        (opt) => opt.id === selectedMetric,
+                      )}
+                      onChange={({ selectedItem }) =>
+                        setSelectedMetric(selectedItem?.id || "temperature")
+                      }
+                      size="md"
+                    />
+                  </div>
+                </Column>
                 <Column
-                  lg={10}
+                  lg={6}
                   md={4}
                   sm={4}
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    alignItems: "center",
-                  }}
+                  className="oe-deviceHistory-exportColumn"
                 >
                   <Button
                     kind="tertiary"
@@ -714,119 +875,73 @@ function DeviceHistoryExpansion({ device }) {
                     onClick={handleExportCsv}
                     disabled={!chartData.length}
                   >
-                    Export CSV
+                    <FormattedMessage
+                      id="coldStorage.deviceHistory.exportCsv"
+                      defaultMessage="Export CSV"
+                    />
                   </Button>
                 </Column>
               </Grid>
 
               {/* Metrics Cards */}
-              <Grid style={{ marginBottom: "2rem" }}>
+              <Grid className="oe-deviceHistory-metricsGrid">
                 <Column lg={4} md={4} sm={4}>
-                  <div
-                    style={{
-                      background: "var(--cds-layer-02)",
-                      padding: "1.5rem",
-                      borderRadius: "0.25rem",
-                      border: "1px solid var(--cds-border-subtle)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "0.875rem",
-                        color: "var(--cds-text-secondary)",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
-                      Average Temp
+                  <div className="oe-deviceHistory-metricCard">
+                    <div className="oe-deviceHistory-metricLabel">
+                      <FormattedMessage
+                        id="coldStorage.deviceHistory.averageMetric"
+                        defaultMessage="Average {metric}"
+                        values={{ metric: selectedMetricOption.label }}
+                      />
                     </div>
-                    <div style={{ fontSize: "1.75rem", fontWeight: 600 }}>
+                    <div className="oe-deviceHistory-metricValue">
                       {temperatureStats.avg === "—"
                         ? "—"
-                        : `${temperatureStats.avg}°C`}
+                        : `${temperatureStats.avg}${selectedMetricOption.unit}`}
                     </div>
                   </div>
                 </Column>
                 <Column lg={4} md={4} sm={4}>
-                  <div
-                    style={{
-                      background: "var(--cds-layer-02)",
-                      padding: "1.5rem",
-                      borderRadius: "0.25rem",
-                      border: "1px solid var(--cds-border-subtle)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "0.875rem",
-                        color: "var(--cds-text-secondary)",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
-                      Min Temp
+                  <div className="oe-deviceHistory-metricCard">
+                    <div className="oe-deviceHistory-metricLabel">
+                      <FormattedMessage
+                        id="coldStorage.deviceHistory.minMetric"
+                        defaultMessage="Min {metric}"
+                        values={{ metric: selectedMetricOption.label }}
+                      />
                     </div>
-                    <div
-                      style={{
-                        fontSize: "1.75rem",
-                        fontWeight: 600,
-                        color: "#0F62FE",
-                      }}
-                    >
+                    <div className="oe-deviceHistory-metricValue oe-deviceHistory-metricValue--min">
                       {temperatureStats.min === "—"
                         ? "—"
-                        : `${temperatureStats.min}°C`}
+                        : `${temperatureStats.min}${selectedMetricOption.unit}`}
                     </div>
                   </div>
                 </Column>
                 <Column lg={4} md={4} sm={4}>
-                  <div
-                    style={{
-                      background: "var(--cds-layer-02)",
-                      padding: "1.5rem",
-                      borderRadius: "0.25rem",
-                      border: "1px solid var(--cds-border-subtle)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "0.875rem",
-                        color: "var(--cds-text-secondary)",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
-                      Max Temp
+                  <div className="oe-deviceHistory-metricCard">
+                    <div className="oe-deviceHistory-metricLabel">
+                      <FormattedMessage
+                        id="coldStorage.deviceHistory.maxMetric"
+                        defaultMessage="Max {metric}"
+                        values={{ metric: selectedMetricOption.label }}
+                      />
                     </div>
-                    <div
-                      style={{
-                        fontSize: "1.75rem",
-                        fontWeight: 600,
-                        color: "#DA1E28",
-                      }}
-                    >
+                    <div className="oe-deviceHistory-metricValue oe-deviceHistory-metricValue--max">
                       {temperatureStats.max === "—"
                         ? "—"
-                        : `${temperatureStats.max}°C`}
+                        : `${temperatureStats.max}${selectedMetricOption.unit}`}
                     </div>
                   </div>
                 </Column>
                 <Column lg={4} md={4} sm={4}>
-                  <div
-                    style={{
-                      background: "var(--cds-layer-02)",
-                      padding: "1.5rem",
-                      borderRadius: "0.25rem",
-                      border: "1px solid var(--cds-border-subtle)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "0.875rem",
-                        color: "var(--cds-text-secondary)",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
-                      Data Points
+                  <div className="oe-deviceHistory-metricCard">
+                    <div className="oe-deviceHistory-metricLabel">
+                      <FormattedMessage
+                        id="coldStorage.deviceHistory.dataPoints"
+                        defaultMessage="Data Points"
+                      />
                     </div>
-                    <div style={{ fontSize: "1.75rem", fontWeight: 600 }}>
+                    <div className="oe-deviceHistory-metricValue">
                       {temperatureStats.count.toLocaleString()}
                     </div>
                   </div>
@@ -834,35 +949,24 @@ function DeviceHistoryExpansion({ device }) {
               </Grid>
 
               {/* Temperature Chart */}
-              <div
-                style={{
-                  background: "var(--cds-layer-02)",
-                  padding: "1.5rem",
-                  borderRadius: "0.25rem",
-                  border: "1px solid var(--cds-border-subtle)",
-                }}
-              >
+              <div className="oe-deviceHistory-chartCard">
                 {trendsLoading ? (
-                  <Loading description="Loading temperature data..." />
+                  <Loading
+                    description={intl.formatMessage({
+                      id: "coldStorage.deviceHistory.loadingTemperature",
+                      defaultMessage: "Loading temperature data...",
+                    })}
+                  />
                 ) : trendsError ? (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "2rem",
-                      color: "var(--cds-text-error)",
-                    }}
-                  >
+                  <div className="oe-deviceHistory-chartMessage oe-deviceHistory-chartMessage--error">
                     {trendsError}
                   </div>
                 ) : formattedChartData.length === 0 ? (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "2rem",
-                      color: "var(--cds-text-secondary)",
-                    }}
-                  >
-                    No temperature data available for the selected time range.
+                  <div className="oe-deviceHistory-chartMessage">
+                    <FormattedMessage
+                      id="coldStorage.deviceHistory.noTemperatureData"
+                      defaultMessage="No temperature data available for the selected time range."
+                    />
                   </div>
                 ) : (
                   <LineChart data={formattedChartData} options={chartOptions} />

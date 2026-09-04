@@ -366,6 +366,12 @@ function DeviceManagement() {
         temperatureOffset: parseFloat(formData.temperatureOffset),
         humidityScale: parseFloat(formData.humidityScale),
         humidityOffset: parseFloat(formData.humidityOffset),
+        temperatureRegister2:
+          formData.temperatureRegister2 != null
+            ? parseInt(formData.temperatureRegister2)
+            : null,
+        temperatureScale2: parseFloat(formData.temperatureScale2),
+        temperatureOffset2: parseFloat(formData.temperatureOffset2),
       };
       // Remove deviceType from top level (it's in storageDevice object)
       delete deviceData.deviceType;
