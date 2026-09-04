@@ -1,6 +1,7 @@
 package org.openelisglobal.referral;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,16 +11,23 @@ import static org.mockito.Mockito.verify;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.referral.dao.ReferralStatusHistoryDAO;
@@ -30,14 +38,17 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
+import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralStatusHistory;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -67,6 +78,15 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
     private FhirReferralService fhirReferralServiceMock;
     private Object originalFhirReferralServiceOnSetService;
 
+    @Autowired
+    private NoteService noteService;
+    @Autowired
+    private SampleService sampleService;
+    @Autowired
+    private IStatusService statusService;
+    @Autowired
+    private SystemUserService systemUserService;
+
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/referral-set.xml");
@@ -74,6 +94,7 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
         originalFhirReferralServiceOnSetService = ReflectionTestUtils.getField(referralSetService,
                 "fhirReferralService");
         ReflectionTestUtils.setField(referralSetService, "fhirReferralService", fhirReferralServiceMock);
+        statusService.refreshCache();
     }
 
     @After
@@ -427,4 +448,235 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
         return sampleAddService.new SampleTestCollection(new SampleItem(), tests, "2024-06-04", initialConditionList,
                 testIdToUserSectionMap, testIdToUserSampleTypeMap, new ObservationHistory());
     }
+
+    @Test
+    public void updateReferralSets_shouldPersistNewReferralResultWithValue() {
+        Result newResult = new Result();
+        newResult.setValue("New Value");
+        newResult.setResultType("N");
+
+        ReferralResult newReferralResult = new ReferralResult();
+        newReferralResult.setResult(newResult);
+        newReferralResult.setReferralId("101");
+        newReferralResult.setTestId("201");
+
+        Referral referral = referralService.get("101");
+        ReferralSet referralSet = new ReferralSet();
+        referralSet.setReferral(referral);
+        referralSet.getUpdatableReferralResults().addAll(Arrays.asList(newReferralResult));
+
+        List<ReferralResult> initialResults = referralResultService.getReferralResultsForReferral("101");
+        int initialSize = initialResults != null ? initialResults.size() : 0;
+
+        referralSetService.updateReferralSets(Arrays.asList(referralSet), new ArrayList<>(), new HashSet<>(),
+                new ArrayList<>(), "1");
+
+        List<ReferralResult> afterResults = referralResultService.getReferralResultsForReferral("101");
+        assertEquals(initialSize + 1, afterResults.size());
+
+        ReferralResult savedReferralResult = null;
+        for (ReferralResult rr : afterResults) {
+            if (rr.getTestId() != null && rr.getTestId().equals("201")) {
+                savedReferralResult = rr;
+                break;
+            }
+        }
+
+        assertEquals("201", savedReferralResult.getTestId());
+        assertEquals("New Value", savedReferralResult.getResult().getValue());
+    }
+
+    @Test
+    public void updateReferralSets_shouldUpdateExistingReferralResultAndResult() {
+        ReferralResult existingRR = referralResultService.getReferralResultById("903");
+        assertEquals("14.5", existingRR.getResult().getValue());
+
+        existingRR.getResult().setValue("20.0");
+
+        Referral referral = referralService.get(existingRR.getReferralId());
+        ReferralSet referralSet = new ReferralSet();
+        referralSet.setReferral(referral);
+        referralSet.getUpdatableReferralResults().addAll(Arrays.asList(existingRR));
+
+        referralSetService.updateReferralSets(Arrays.asList(referralSet), new ArrayList<>(), new HashSet<>(),
+                new ArrayList<>(), "1");
+
+        ReferralResult updatedRR = referralResultService.getReferralResultById("903");
+        assertEquals("20.0", updatedRR.getResult().getValue());
+
+        Result updatedResult = resultService.getResultById(updatedRR.getResult().getId());
+        assertEquals("20.0", updatedResult.getValue());
+    }
+
+    @Test
+    public void updateReferralSets_shouldDeleteRemovableReferralResults() {
+        ReferralResult existingRR = referralResultService.getReferralResultById("903");
+        String resultId = existingRR.getResult().getId();
+
+        Referral referral = referralService.get(existingRR.getReferralId());
+        ReferralSet referralSet = new ReferralSet();
+        referralSet.setReferral(referral);
+
+        List<ReferralResult> removableList = new ArrayList<>();
+        removableList.add(existingRR);
+
+        referralSetService.updateReferralSets(Arrays.asList(referralSet), new ArrayList<>(), new HashSet<>(),
+                removableList, "1");
+
+        List<ReferralResult> remainingResults = referralResultService.getAll();
+        assertFalse(remainingResults.stream().anyMatch(rr -> "903".equals(rr.getId())));
+
+        List<Result> remainingBaseResults = resultService.getAllResults();
+        assertFalse(remainingBaseResults.stream().anyMatch(r -> resultId.equals(r.getId())));
+    }
+
+    @Test
+    public void updateReferralSets_shouldInsertNoteWhenNoteHasNoId() {
+        Note newNote = new Note();
+        newNote.setReferenceId("101");
+        newNote.setReferenceTableId("24");
+        newNote.setNoteType(Note.INTERNAL);
+        newNote.setSubject("Test Note");
+        newNote.setText("This is a test note.");
+
+        Referral referral = referralService.get("101");
+        ReferralSet referralSet = new ReferralSet();
+        referralSet.setReferral(referral);
+        referralSet.setNote(newNote);
+
+        List<Note> initialNotes = noteService.getNotesChronologicallyByRefIdAndRefTable("101", "24");
+        int initialSize = initialNotes != null ? initialNotes.size() : 0;
+
+        referralSetService.updateReferralSets(Arrays.asList(referralSet), new ArrayList<>(), new HashSet<>(),
+                new ArrayList<>(), "1");
+
+        List<Note> afterNotes = noteService.getNotesChronologicallyByRefIdAndRefTable("101", "24");
+        assertEquals(initialSize + 1, afterNotes.size());
+
+        Note savedNote = null;
+        for (Note n : afterNotes) {
+            if ("Test Note".equals(n.getSubject())) {
+                savedNote = n;
+                break;
+            }
+        }
+        assertEquals("This is a test note.", savedNote.getText());
+    }
+
+    @Test
+    public void updateReferralSets_shouldUpdateNoteWhenNoteHasId() {
+        Note newNote = new Note();
+        newNote.setReferenceId("101");
+        newNote.setReferenceTableId("24");
+        newNote.setNoteType(Note.INTERNAL);
+        newNote.setSubject("Test Note");
+        newNote.setText("This is a test note.");
+        newNote.setSysUserId("1");
+        noteService.insert(newNote);
+        String noteId = newNote.getId();
+
+        Note existingNote = noteService.get(noteId);
+        existingNote.setText("Updated test note text.");
+
+        Referral referral = referralService.get("101");
+        ReferralSet referralSet = new ReferralSet();
+        referralSet.setReferral(referral);
+        referralSet.setNote(existingNote);
+
+        referralSetService.updateReferralSets(Arrays.asList(referralSet), new ArrayList<>(), new HashSet<>(),
+                new ArrayList<>(), "1");
+
+        Note updatedNote = noteService.get(noteId);
+        assertEquals("Updated test note text.", updatedNote.getText());
+    }
+
+    @Test
+    public void updateReferralSets_shouldPromoteSampleToFinishedWhenAllAnalysesFinalized() {
+        Sample sample = sampleService.get("1");
+        assertEquals("1", sample.getStatusId());
+
+        org.openelisglobal.analysis.valueholder.Analysis analysis = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.analysis.service.AnalysisService.class).get("701");
+        analysis.setStatusId("2");
+        org.openelisglobal.spring.util.SpringContext.getBean(org.openelisglobal.analysis.service.AnalysisService.class)
+                .update(analysis);
+
+        ReferralResult existingRR = referralResultService.getReferralResultById("901");
+        Result newResult = new Result();
+        newResult.setValue("Reported Value");
+        newResult.setResultType("T");
+        existingRR.setResult(newResult);
+
+        Referral referral = referralService.get("101");
+        ReferralSet referralSet = new ReferralSet();
+        referralSet.setReferral(referral);
+        referralSet.getUpdatableReferralResults().addAll(Arrays.asList(existingRR));
+
+        List<Sample> modifiedSamples = new ArrayList<>();
+        Set<Sample> parentSamples = new HashSet<>();
+        parentSamples.add(sample);
+
+        referralSetService.updateReferralSets(Arrays.asList(referralSet), modifiedSamples, parentSamples,
+                new ArrayList<>(), "1");
+
+        Sample updatedSample = sampleService.get("1");
+        String finishedStatusId = statusService.getStatusID(OrderStatus.Finished);
+        assertEquals(finishedStatusId, updatedSample.getStatusId());
+    }
+
+    @Test
+    public void updateReferralSets_shouldNotPromoteSampleWhenReferralResultValueIsBlank() {
+        Sample sample = sampleService.get("1");
+        assertEquals("1", sample.getStatusId());
+
+        ReferralResult existingRR = referralResultService.getReferralResultById("901");
+        Result newResult = new Result();
+        newResult.setValue("");
+        newResult.setResultType("T");
+        existingRR.setResult(newResult);
+
+        Referral referral = referralService.get("101");
+        ReferralSet referralSet = new ReferralSet();
+        referralSet.setReferral(referral);
+        referralSet.getUpdatableReferralResults().addAll(Arrays.asList(existingRR));
+
+        List<Sample> modifiedSamples = new ArrayList<>();
+        Set<Sample> parentSamples = new HashSet<>();
+        parentSamples.add(sample);
+
+        referralSetService.updateReferralSets(Arrays.asList(referralSet), modifiedSamples, parentSamples,
+                new ArrayList<>(), "1");
+
+        Sample updatedSample = sampleService.get("1");
+        assertEquals("1", updatedSample.getStatusId());
+    }
+
+    @Test
+    public void updateReferralSets_shouldNotPromoteSampleWhenAnalysisIsNotFinalized() {
+
+        Sample sample = sampleService.get("1");
+        assertEquals("1", sample.getStatusId());
+
+        ReferralResult existingRR = referralResultService.getReferralResultById("901");
+        Result newResult = new Result();
+        newResult.setValue("Reported Value");
+        newResult.setResultType("T");
+        existingRR.setResult(newResult);
+
+        Referral referral = referralService.get("101");
+        ReferralSet referralSet = new ReferralSet();
+        referralSet.setReferral(referral);
+        referralSet.getUpdatableReferralResults().addAll(Arrays.asList(existingRR));
+
+        List<Sample> modifiedSamples = new ArrayList<>();
+        Set<Sample> parentSamples = new HashSet<>();
+        parentSamples.add(sample);
+
+        referralSetService.updateReferralSets(Arrays.asList(referralSet), modifiedSamples, parentSamples,
+                new ArrayList<>(), "1");
+
+        Sample updatedSample = sampleService.get("1");
+        assertEquals("1", updatedSample.getStatusId());
+    }
+
 }
