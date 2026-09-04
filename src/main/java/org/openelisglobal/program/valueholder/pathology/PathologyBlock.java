@@ -7,8 +7,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "pathology_block")
 public class PathologyBlock extends BaseObject<Integer> {
@@ -31,21 +35,5 @@ public class PathologyBlock extends BaseObject<Integer> {
     @Override
     public void setId(Integer id) {
         this.id = id;
-    }
-
-    public Integer getBlockNumber() {
-        return blockNumber;
-    }
-
-    public void setBlockNumber(Integer blockNumber) {
-        this.blockNumber = blockNumber;
-    }
-
-    public String getLocation() {
-        return location;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
     }
 }

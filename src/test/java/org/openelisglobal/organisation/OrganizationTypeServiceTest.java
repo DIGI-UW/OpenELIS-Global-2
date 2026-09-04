@@ -53,4 +53,13 @@ public class OrganizationTypeServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Healthcare", organizationType2.getName());
         assertEquals("Healthcare Organization", organizationType2.getDescription());
     }
+
+    @Test
+    public void testLoadTestSectionPopulatesNameKey() {
+        OrganizationType orgType = organizationTypeService.get("1");
+
+        assertNotNull("TestSection should be found", orgType);
+        assertNotNull("nameKey / display_key must be loaded from the database", orgType.getNameKey());
+        assertEquals("Healthcare", orgType.getNameKey());
+    }
 }

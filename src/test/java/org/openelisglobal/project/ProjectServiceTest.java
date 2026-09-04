@@ -1,5 +1,8 @@
 package org.openelisglobal.project;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
@@ -106,4 +109,12 @@ public class ProjectServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("Integration Test Project", projects.get(0).getProjectName());
     }
 
+    @Test
+    public void testLoadTestSectionPopulatesNameKey() {
+        Project project = pService.get("101");
+
+        assertNotNull("TestSection should be found", project);
+        assertNotNull("nameKey / display_key must be loaded from the database", project.getNameKey());
+        assertEquals("project.integration.test", project.getNameKey());
+    }
 }

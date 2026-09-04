@@ -15,65 +15,112 @@
  */
 package org.openelisglobal.project.valueholder;
 
+import jakarta.persistence.*;
 import java.sql.Date;
 import java.util.Set;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.scriptlet.valueholder.Scriptlet;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
+@Setter
+@Getter
+@Entity
+@Table(name = "PROJECT")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class Project extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(generator = "project_seq_gen")
+    @GenericGenerator(name = "project_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "project_seq"))
+    @Column(name = "ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
+    @Column(name = "NAME", length = 20, nullable = false)
     private String projectName;
 
+    @Column(name = "DESCRIPTION", length = 60)
     private String description;
 
+    @Transient
     private String stickerReqFlag;
 
+    @Transient
     private String rptResultsFlag;
 
+    @Transient
     private String printOnMailerFlag;
 
+    @Column(name = "STARTED_DATE", length = 7)
     private Date startedDate = null;
 
+    @Transient
     private String startedDateForDisplay = null;
 
+    @Column(name = "COMPLETED_DATE", length = 7)
     private Date completedDate = null;
 
+    @Transient
     private String completedDateForDisplay = null;
 
+    @Column(name = "IS_ACTIVE", length = 1)
     private String isActive;
 
+    @Column(name = "REFERENCE_TO", length = 20)
     private String referenceTo;
 
+    @Column(name = "PROGRAM_CODE", length = 10)
     private String programCode;
 
-    private String sysUserId;
-
+    @Transient
     private String opOpId;
 
-    private ValueHolderInterface systemUser;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "SYS_USER_ID", nullable = false)
+    private SystemUser systemUser;
 
-    private ValueHolderInterface scriptlet;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "SCRIPTLET_ID")
+    private Scriptlet scriptlet;
 
+    @Transient
     private String scriptletName;
+
     // AIS - bugzilla 1851
+    @Transient
     private String concatProjNameDesc;
 
     // bugzilla 2438
+    @Column(name = "LOCAL_ABBREV", length = 10, unique = true)
     private String localAbbreviation;
 
     /** All organization defined as associated with this project. */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "project_organization", joinColumns = @JoinColumn(name = "project_id"), inverseJoinColumns = @JoinColumn(name = "org_id"))
     private Set<Organization> organizations;
+
+    @Column(name = "display_key", length = 60)
+    private String nameKey;
+
+    @Override
+    public String getNameKey() {
+        return nameKey;
+    }
+
+    @Override
+    public void setNameKey(String nameKey) {
+        this.nameKey = nameKey;
+    }
 
     public String getConcatProjNameDesc() {
         if (null == this.description) {
@@ -83,62 +130,8 @@ public class Project extends BaseObject<String> {
         }
     }
 
-    public void setConcatProjNameDesc(String concatProjNameDesc) {
-        this.concatProjNameDesc = concatProjNameDesc;
-    }
-
     public Project() {
         super();
-        this.systemUser = new ValueHolder();
-        this.scriptlet = new ValueHolder();
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setProjectName(String projectName) {
-        this.projectName = projectName;
-    }
-
-    public String getProjectName() {
-        return projectName;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setStickerReqFlag(String stickerReqFlag) {
-        this.stickerReqFlag = stickerReqFlag;
-    }
-
-    public String getStickerReqFlag() {
-        return stickerReqFlag;
-    }
-
-    public void setRptResultsFlag(String rptResultsFlag) {
-        this.rptResultsFlag = rptResultsFlag;
-    }
-
-    public String getRptResultsFlag() {
-        return rptResultsFlag;
-    }
-
-    public void setPrintOnMailerFlag(String printOnMailerFlag) {
-        this.printOnMailerFlag = printOnMailerFlag;
-    }
-
-    public String getPrintOnMailerFlag() {
-        return printOnMailerFlag;
     }
 
     public void setStartedDate(Date startedDate) {
@@ -146,73 +139,17 @@ public class Project extends BaseObject<String> {
         this.startedDateForDisplay = DateUtil.convertSqlDateToStringDate(startedDate);
     }
 
-    public Date getStartedDate() {
-        return startedDate;
-    }
-
     public void setCompletedDate(Date completedDate) {
         this.completedDate = completedDate;
         this.completedDateForDisplay = DateUtil.convertSqlDateToStringDate(completedDate);
     }
 
-    public Date getCompletedDate() {
-        return completedDate;
-    }
-
-    public void setIsActive(String isActive) {
-        this.isActive = isActive;
-    }
-
-    public String getIsActive() {
-        return isActive;
-    }
-
-    public void setReferenceTo(String referenceTo) {
-        this.referenceTo = referenceTo;
-    }
-
-    public String getReferenceTo() {
-        return referenceTo;
-    }
-
-    public void setProgramCode(String programCode) {
-        this.programCode = programCode;
-    }
-
-    public String getProgramCode() {
-        return programCode;
-    }
-
-    public void setSysUserId(String sysUserId) {
-        this.sysUserId = sysUserId;
-    }
-
-    public String getSysUserId() {
-        return sysUserId;
-    }
-
-    public SystemUser getSystemUser() {
-        return (SystemUser) this.systemUser.getValue();
-    }
-
-    protected ValueHolderInterface getSystemUserHolder() {
+    protected SystemUser getSystemUserHolder() {
         return this.systemUser;
     }
 
-    public void setSystemUser(SystemUser systemUser) {
-        this.systemUser.setValue(systemUser);
-    }
-
-    protected void setSystemUserHolder(ValueHolderInterface systemUser) {
+    protected void setSystemUserHolder(SystemUser systemUser) {
         this.systemUser = systemUser;
-    }
-
-    public void setOpOpId(String opOpId) {
-        this.opOpId = opOpId;
-    }
-
-    public String getOpOpId() {
-        return opOpId;
     }
 
     public void setStartedDateForDisplay(String startedDateForDisplay) {
@@ -222,10 +159,6 @@ public class Project extends BaseObject<String> {
         this.startedDate = DateUtil.convertStringDateToSqlDate(this.startedDateForDisplay, locale);
     }
 
-    public String getStartedDateForDisplay() {
-        return startedDateForDisplay;
-    }
-
     public void setCompletedDateForDisplay(String completedDateForDisplay) {
         this.completedDateForDisplay = completedDateForDisplay;
         // also update the java.sql.Date
@@ -233,40 +166,12 @@ public class Project extends BaseObject<String> {
         this.completedDate = DateUtil.convertStringDateToSqlDate(completedDateForDisplay, locale);
     }
 
-    public String getCompletedDateForDisplay() {
-        return completedDateForDisplay;
-    }
-
-    public Scriptlet getScriptlet() {
-        return (Scriptlet) this.scriptlet.getValue();
-    }
-
-    protected ValueHolderInterface getScriptletHolder() {
+    protected Scriptlet getScriptletHolder() {
         return this.scriptlet;
     }
 
-    public void setScriptlet(Scriptlet scriptlet) {
-        this.scriptlet.setValue(scriptlet);
-    }
-
-    protected void setScriptletHolder(ValueHolderInterface scriptlet) {
+    protected void setScriptletHolder(Scriptlet scriptlet) {
         this.scriptlet = scriptlet;
-    }
-
-    public String getScriptletName() {
-        return scriptletName;
-    }
-
-    public void setScriptletName(String scriptletName) {
-        this.scriptletName = scriptletName;
-    }
-
-    public String getLocalAbbreviation() {
-        return localAbbreviation;
-    }
-
-    public void setLocalAbbreviation(String localAbbreviation) {
-        this.localAbbreviation = localAbbreviation;
     }
 
     @Override
@@ -274,11 +179,4 @@ public class Project extends BaseObject<String> {
         return projectName;
     }
 
-    public void setOrganizations(Set<Organization> organizations) {
-        this.organizations = organizations;
-    }
-
-    public Set<Organization> getOrganizations() {
-        return organizations;
-    }
 }

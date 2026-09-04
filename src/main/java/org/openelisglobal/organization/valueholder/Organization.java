@@ -15,126 +15,135 @@ package org.openelisglobal.organization.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.hibernate.validator.constraints.URL;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
 import org.openelisglobal.common.valueholder.SimpleBaseEntity;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
+@Setter
+@Getter
+@Entity
+@DynamicUpdate
+@Table(name = "ORGANIZATION")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<String> {
     private static final long serialVersionUID = 1L;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "CITY", length = 30)
     private String city;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "CLIA_NUM", length = 12)
     private String cliaNum;
 
     @Pattern(regexp = ValidationHelper.PHONE_REGEX)
+    @Column(name = "phone", length = 20)
     private String phone;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "fax", length = 20)
     private String fax;
 
     @Email
+    @Column(name = "email", length = 255)
     private String email;
 
+    @Id
     @Pattern(regexp = ValidationHelper.ID_REGEX)
+    @GeneratedValue(generator = "organization_seq_gen")
+    @GenericGenerator(name = "organization_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "organization_seq"))
+    @Column(name = "ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
     @URL
+    @Column(name = "INTERNET_ADDRESS", length = 40)
     private String internetAddress;
 
     @Pattern(regexp = ValidationHelper.YES_NO_REGEX)
+    @Column(name = "IS_ACTIVE", length = 1)
     private String isActive;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "MLS_LAB_FLAG", length = 1)
     private String mlsLabFlag;
 
     @Pattern(regexp = ValidationHelper.YES_NO_REGEX)
+    @Column(name = "MLS_SENTINEL_LAB_FLAG", length = 1, nullable = false)
     private String mlsSentinelLabFlag;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "MULTIPLE_UNIT", length = 30)
     private String multipleUnit;
 
     @JsonIgnoreProperties({ "organization" })
-    private ValueHolderInterface organization;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ORG_ID")
+    private Organization organization;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "NAME", length = 40, nullable = false)
     private String organizationName;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "ORG_MLT_ORG_MLT_ID", length = 10)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String orgMltOrgMltId;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX)
+    @Column(name = "PWS_ID", length = 15)
     private String pwsId;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "SHORT_NAME", length = 15)
     private String shortName;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "STATE", length = 2)
     private String state;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "STREET_ADDRESS", length = 30)
     private String streetAddress;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "ZIP_CODE", length = 10)
     private String zipCode;
 
+    @Transient
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String selectedOrgId;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "LOCAL_ABBREV", length = 10)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String organizationLocalAbbreviation;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Column(name = "code", length = 20)
     private String code;
 
+    @ManyToMany(mappedBy = "organizations", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<OrganizationType> organizationTypes;
+
+    @Column(name = "fhir_uuid")
     private UUID fhirUuid;
 
     public Organization() {
         super();
-        organization = new ValueHolder();
-    }
-
-    public String getCity() {
-        return city;
-    }
-
-    public String getCliaNum() {
-        return cliaNum;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getFax() {
-        return fax;
-    }
-
-    public void setFax(String fax) {
-        this.fax = fax;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
     }
 
     @Override
@@ -147,65 +156,9 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
         return organizationLocalAbbreviation + "-" + organizationName;
     }
 
-    public String getInternetAddress() {
-        return internetAddress;
-    }
-
     @Override
     public String getIsActive() {
         return isActive;
-    }
-
-    public String getMlsLabFlag() {
-        return mlsLabFlag;
-    }
-
-    public String getMlsSentinelLabFlag() {
-        return mlsSentinelLabFlag;
-    }
-
-    public String getMultipleUnit() {
-        return multipleUnit;
-    }
-
-    public String getOrgMltOrgMltId() {
-        return orgMltOrgMltId;
-    }
-
-    public Organization getOrganization() {
-        return (Organization) organization.getValue();
-    }
-
-    public String getOrganizationName() {
-        return organizationName;
-    }
-
-    public String getPwsId() {
-        return pwsId;
-    }
-
-    public String getShortName() {
-        return shortName;
-    }
-
-    public String getState() {
-        return state;
-    }
-
-    public String getStreetAddress() {
-        return streetAddress;
-    }
-
-    public String getZipCode() {
-        return zipCode;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public void setCliaNum(String cliaNum) {
-        this.cliaNum = cliaNum;
     }
 
     @Override
@@ -213,84 +166,13 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
         this.id = id;
     }
 
-    public void setInternetAddress(String internetAddress) {
-        this.internetAddress = internetAddress;
-    }
-
     @Override
     public void setIsActive(String isActive) {
         this.isActive = isActive;
     }
 
-    public void setMlsLabFlag(String mlsLabFlag) {
-        this.mlsLabFlag = mlsLabFlag;
-    }
-
-    public void setMlsSentinelLabFlag(String mlsSentinelLabFlag) {
-        this.mlsSentinelLabFlag = mlsSentinelLabFlag;
-    }
-
-    public void setMultipleUnit(String multipleUnit) {
-        this.multipleUnit = multipleUnit;
-    }
-
-    public void setOrgMltOrgMltId(String orgMltOrgMltId) {
-        this.orgMltOrgMltId = orgMltOrgMltId;
-    }
-
-    public void setOrganization(Organization organization) {
-        this.organization.setValue(organization);
-    }
-
-    public void setOrganizationName(String organizationName) {
-        this.organizationName = organizationName;
-    }
-
-    public void setPwsId(String pwsId) {
-        this.pwsId = pwsId;
-    }
-
-    public void setShortName(String shortName) {
-        this.shortName = shortName;
-    }
-
-    public void setState(String state) {
-        this.state = state;
-    }
-
-    public void setStreetAddress(String streetAddress) {
-        this.streetAddress = streetAddress;
-    }
-
-    public void setZipCode(String zipCode) {
-        this.zipCode = zipCode;
-    }
-
-    public void setSelectedOrgId(String selectedOrgId) {
-        this.selectedOrgId = selectedOrgId;
-    }
-
-    public String getSelectedOrgId() {
-        return selectedOrgId;
-    }
-
+    @Transient
     private Set testSections = new HashSet(0);
-
-    public Set getTestSections() {
-        return testSections;
-    }
-
-    public void setTestSections(Set testSections) {
-        this.testSections = testSections;
-    }
-
-    public String getOrganizationLocalAbbreviation() {
-        return organizationLocalAbbreviation;
-    }
-
-    public void setOrganizationLocalAbbreviation(String organizationLocalAbbreviation) {
-        this.organizationLocalAbbreviation = organizationLocalAbbreviation;
-    }
 
     @JsonIgnore
     public String getDoubleName() {
@@ -301,30 +183,6 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
     public String toString() {
         return "Organization [id=" + id + ", isActive=" + isActive + ", organizationName=" + organizationName
                 + ", organizationLocalAbbreviation=" + organizationLocalAbbreviation + ", shortName=" + shortName + "]";
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public Set<OrganizationType> getOrganizationTypes() {
-        return organizationTypes;
-    }
-
-    public void setOrganizationTypes(Set<OrganizationType> organizationTypes) {
-        this.organizationTypes = organizationTypes;
-    }
-
-    public UUID getFhirUuid() {
-        return fhirUuid;
-    }
-
-    public void setFhirUuid(UUID fhirUuid) {
-        this.fhirUuid = fhirUuid;
     }
 
     @JsonIgnore

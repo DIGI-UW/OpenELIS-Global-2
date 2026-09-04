@@ -40,14 +40,11 @@
         <mapping resource="hibernate/hbm/Label.hbm.xml" />
         <mapping resource="hibernate/hbm/Method.hbm.xml" />
         <mapping resource="hibernate/hbm/Note.hbm.xml" />
-        <mapping resource="hibernate/hbm/Organization.hbm.xml" />
         <mapping resource="hibernate/hbm/Panel.hbm.xml" />
         <mapping resource="hibernate/hbm/PanelItem.hbm.xml" />
         <mapping resource="hibernate/hbm/Patient.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientType.hbm.xml" />
         <mapping resource="hibernate/hbm/Person.hbm.xml" />
-        <mapping resource="hibernate/hbm/Program.hbm.xml" />
-        <mapping resource="hibernate/hbm/Project.hbm.xml" />
         <mapping resource="hibernate/hbm/ProjectOrganization.hbm.xml" />
         <mapping resource="hibernate/hbm/Provider.hbm.xml" />
         <mapping resource="hibernate/hbm/QaEvent.hbm.xml" />
@@ -98,7 +95,6 @@
         <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
-        <mapping resource="hibernate/hbm/OrganizationType.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleRequester.hbm.xml" />
         <mapping resource="hibernate/hbm/DatabaseChangeLog.hbm.xml" />
         <mapping resource="hibernate/hbm/SiteInformation.hbm.xml" />

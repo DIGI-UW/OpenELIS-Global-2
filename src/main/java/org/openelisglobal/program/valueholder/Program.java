@@ -16,41 +16,66 @@ package org.openelisglobal.program.valueholder;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.test.valueholder.TestSection;
 
+@Setter
+@Getter
+@Entity
+@Table(name = "PROGRAM")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 @JsonAutoDetect(fieldVisibility = Visibility.NONE, setterVisibility = Visibility.NONE, getterVisibility = Visibility.NONE, isGetterVisibility = Visibility.NONE, creatorVisibility = Visibility.NONE)
 public class Program extends BaseObject<String> {
 
     @JsonProperty("code")
     @Pattern(regexp = "(?i)^[a-z0-9_ ]*$")
+    @Column(name = "CODE", precision = 10, nullable = false)
     private String code;
 
+    @Id
     @JsonProperty("id")
     @Pattern(regexp = ValidationHelper.ID_REGEX)
+    @GeneratedValue(generator = "program_seq_gen")
+    @GenericGenerator(name = "program_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "program_seq"))
+    @Column(name = "ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
     @JsonProperty("programName")
     @Pattern(regexp = "(?i)^[a-z0-9-_ ]*$")
+    @Column(name = "NAME", length = 50, nullable = false)
     private String programName;
 
     @JsonProperty("questionnaireUUID")
+    @Column(name = "questionnaire_fhir_uuid")
     private UUID questionnaireUUID;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "test_section_id")
     private TestSection testSection;
 
     @JsonProperty("manuallyChanged")
+    @Column(name = "manually_changed", length = 1, nullable = false)
     private Boolean manuallyChanged;
 
     public Program() {
         super();
-    }
-
-    public String getCode() {
-        return this.code;
     }
 
     @Override
@@ -58,44 +83,8 @@ public class Program extends BaseObject<String> {
         return this.id;
     }
 
-    public String getProgramName() {
-        return this.programName;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
     @Override
     public void setId(String id) {
         this.id = id;
-    }
-
-    public void setProgramName(String programName) {
-        this.programName = programName;
-    }
-
-    public UUID getQuestionnaireUUID() {
-        return questionnaireUUID;
-    }
-
-    public void setQuestionnaireUUID(UUID questionnaireUUID) {
-        this.questionnaireUUID = questionnaireUUID;
-    }
-
-    public TestSection getTestSection() {
-        return testSection;
-    }
-
-    public void setTestSection(TestSection testSection) {
-        this.testSection = testSection;
-    }
-
-    public Boolean getManuallyChanged() {
-        return manuallyChanged;
-    }
-
-    public void setManuallyChanged(Boolean manuallyChanged) {
-        this.manuallyChanged = manuallyChanged;
     }
 }

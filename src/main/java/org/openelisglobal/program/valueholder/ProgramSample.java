@@ -14,9 +14,13 @@ import jakarta.persistence.Table;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sample.valueholder.Sample;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "program_sample")
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
@@ -54,27 +58,4 @@ public class ProgramSample extends BaseObject<Integer> {
         this.id = id;
     }
 
-    public Program getProgram() {
-        return program;
-    }
-
-    public void setProgram(Program program) {
-        this.program = program;
-    }
-
-    public Sample getSample() {
-        return sample;
-    }
-
-    public void setSample(Sample sample) {
-        this.sample = sample;
-    }
-
-    public UUID getQuestionnaireResponseUuid() {
-        return questionnaireResponseUuid;
-    }
-
-    public void setQuestionnaireResponseUuid(UUID questionnaireResponseUuid) {
-        this.questionnaireResponseUuid = questionnaireResponseUuid;
-    }
 }
