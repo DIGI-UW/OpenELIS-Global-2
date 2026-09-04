@@ -19,6 +19,7 @@
         <class>org.openelisglobal.localization.valueholder.Localization</class>
         <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
         <class>org.openelisglobal.localization.valueholder.SupportedLocale</class>
+        <class>org.openelisglobal.action.valueholder.Action</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
