@@ -5,6 +5,7 @@ import "../Style.css";
 import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
 import CalendarManagement from "./calendarManagement";
 import ProgramManagement from "./program/ProgramManagement";
+import ProgramManagementV2 from "./program/ProgramManagementV2";
 import LabNumberManagement from "./labNumber/LabNumberManagement";
 import {
   GlobalMenuManagement,
@@ -116,6 +117,7 @@ function Admin() {
       <Route path={`${path}/AnalyzerTestName`} component={AnalyzerTestName} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
+      <Route path={`${path}/programV2`} component={ProgramManagementV2} />
       <Route path={`${path}/program`} component={ProgramManagement} />
       <Route path={`${path}/providerMenu`} component={ProviderMenu} />
       <Route path={`${path}/dataExportStatus`} component={DataExportStatus} />
