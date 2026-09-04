@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <system_user id="1" external_id="EXT003" login_name="admin"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <questionnaire id="1"
+        questionnaire_name="Maternal Health Intake"
+        description="Initial maternal health screening" has_item="true"
+        code="14576" fhir_uuid="11111111-1111-1111-1111-111111111111"
+        status="ACTIVE" purpose="Maternal intake screening" sys_user_id="1"
+        last_updated="2026-05-01 10:00:00" />
+
+    <questionnaire id="2"
+        questionnaire_name="HIV Testing Intake"
+        description="HIV screening intake form" has_item="true" code="14476"
+        fhir_uuid="22222222-2222-2222-2222-222222222222" status="ACTIVE"
+        purpose="HIV screening" sys_user_id="1"
+        last_updated="2026-05-01 11:00:00" />
+
+    <questionnaire id="3"
+        questionnaire_name="Laboratory Request Form"
+        description="Standard lab test request form" has_item="true"
+        code="14776" fhir_uuid="33333333-3333-3333-3333-333333333333"
+        status="ACTIVE" purpose="Lab test ordering" sys_user_id="1"
+        last_updated="2026-05-01 12:00:00" />
+
+    <questionnaire id="4"
+        questionnaire_name="General Patient Intake"
+        description="General hospital intake form" has_item="true"
+        code="16576" fhir_uuid="44444444-4444-4444-4444-444444444444"
+        status="DRAFT" purpose="General patient registration" sys_user_id="1"
+        last_updated="2026-05-01 13:00:00" />
+
+    <questionnaire_item id="1" questionnaire_id="1"
+        link_id="1" text="General Health Section" item_type="GROUP"
+        required="false" repeats="false" item_order="1" sys_user_id="1"
+        last_updated="2026-05-01 10:01:00" />
+
+    <questionnaire_item id="2" questionnaire_id="1"
+        parent_item_id="1" link_id="1.1" text="Do you have hypertension?"
+        item_type="BOOLEAN" required="true" repeats="false" item_order="1"
+        sys_user_id="1" last_updated="2026-05-01 10:02:00" />
+
+    <!-- HIV -->
+    <questionnaire_item id="3" questionnaire_id="2"
+        link_id="1" text="HIV Risk Assessment" item_type="GROUP"
+        required="false" repeats="false" item_order="1" sys_user_id="1"
+        last_updated="2026-05-01 11:01:00" />
+
+    <questionnaire_item id="4" questionnaire_id="2"
+        parent_item_id="3" link_id="1.1"
+        text="Have you had unprotected sex recently?" item_type="CHOICE"
+        required="true" repeats="false" item_order="1" sys_user_id="1"
+        last_updated="2026-05-01 11:02:00" />
+
+    <questionnaire_item id="5" questionnaire_id="3"
+        link_id="1" text="Test Type" item_type="GROUP" required="false"
+        repeats="false" item_order="1" sys_user_id="1"
+        last_updated="2026-05-01 12:01:00" />
+
+    <questionnaire_item id="6" questionnaire_id="3"
+        parent_item_id="5" link_id="1.1" text="Select test category"
+        item_type="CHOICE" required="true" repeats="false" item_order="1"
+        sys_user_id="1" last_updated="2026-05-01 12:02:00" />
+
+    <!-- General -->
+    <questionnaire_item id="7" questionnaire_id="4"
+        link_id="1" text="Patient Details" item_type="GROUP" required="false"
+        repeats="false" item_order="1" sys_user_id="1"
+        last_updated="2026-05-01 13:01:00" />
+
+    <questionnaire_item id="8" questionnaire_id="4"
+        parent_item_id="7" link_id="1.1" text="Age" item_type="INTEGER"
+        required="true" repeats="false" item_order="1" sys_user_id="1"
+        last_updated="2026-05-01 13:02:00" />
+
+    <!-- ===================== -->
+    <!-- ANSWER OPTIONS -->
+    <!-- ===================== -->
+
+    <questionnaire_answer_option id="1"
+        questionnaire_item_id="4" value_code="YES" display_name="Yes"
+        initial_selected="false" sys_user_id="1"
+        last_updated="2026-05-01 11:02:10" />
+
+    <questionnaire_answer_option id="2"
+        questionnaire_item_id="4" value_code="NO" display_name="No"
+        initial_selected="true" sys_user_id="1"
+        last_updated="2026-05-01 11:02:10" />
+
+    <questionnaire_answer_option id="3"
+        questionnaire_item_id="6" value_code="BLOOD" display_name="Blood Test"
+        initial_selected="true" sys_user_id="1"
+        last_updated="2026-05-01 12:02:10" />
+
+    <questionnaire_answer_option id="4"
+        questionnaire_item_id="6" value_code="URINE" display_name="Urine Test"
+        initial_selected="false" sys_user_id="1"
+        last_updated="2026-05-01 12:02:10" />
+
+    <!-- ===================== -->
+    <!-- INITIAL VALUES -->
+    <!-- ===================== -->
+
+    <questionnaire_item_initial id="1"
+        questionnaire_item_id="2" value_boolean="false" sys_user_id="1"
+        last_updated="2026-05-01 10:02:10" />
+
+    <questionnaire_item_initial id="2"
+        questionnaire_item_id="4" value_string="NO" sys_user_id="1"
+        last_updated="2026-05-01 11:02:15" />
+
+    <questionnaire_item_initial id="3"
+        questionnaire_item_id="6" value_string="BLOOD" sys_user_id="1"
+        last_updated="2026-05-01 12:02:15" />
+
+    <questionnaire_item_initial id="4"
+        questionnaire_item_id="8" value_integer="25" sys_user_id="1"
+        last_updated="2026-05-01 13:02:10" />
+
+</dataset>

@@ -190,6 +190,13 @@
         <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
         <class>org.openelisglobal.barcode.valueholder.SampleBarcodeInfo</class>
         <class>org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo</class>
+        <class>org.openelisglobal.questionnaire.valueholder.Questionnaire</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireItem</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireAnswerOption</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireItemInitial</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseItem</class>
+        <class>org.openelisglobal.questionnaire.valueholder.QuestionnaireResponseAnswer</class>
 
         <class>org.openelisglobal.compliance.valueholder.ComplianceStandard</class>
         <class>org.openelisglobal.compliance.valueholder.ParameterGroup</class>

@@ -19,6 +19,7 @@
   <include file="liquibase/3.4.x.x/base.xml" />
   <include file="liquibase/3.4.14.x/base.xml" />
   <include file="liquibase/3.5.x.x/base.xml" />
+   <include file="liquibase/3.6.x.x/base.xml" />
   <!-- Analyzer QC Rule Migrations -->
   <include file="liquibase/analyzer/base.xml" />
   <!-- QC (Quality Control) Westgard Rules Feature -->
@@ -36,4 +37,5 @@
   <include file="liquibase/qc/012-add-result-qc-evaluation.xml" />
   <include file="liquibase/qc/013-create-validation-qc-acknowledgment.xml" />
   <include file="liquibase/qc/014-register-validation-qc-ack-reference-table.xml" />
+
 </databaseChangeLog>
