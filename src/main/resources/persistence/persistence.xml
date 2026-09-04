@@ -173,6 +173,19 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
+        <!-- Label entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.label.valueholder.Label</class>
+
+        <!-- County entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.county.valueholder.County</class>
+
+        <!-- Address entities (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.address.valueholder.AddressPart</class>
+        <class>org.openelisglobal.address.valueholder.OrganizationAddress</class>
+
+        <!-- Barcode entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.barcode.valueholder.BarcodeLabelInfo</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
