@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.NonNull;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
+import org.hl7.fhir.r4.model.Questionnaire;
+import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.itech.fhir.dataexport.api.service.DataExportService;
 import org.itech.fhir.dataexport.core.dao.DataExportTaskDAO;
 import org.itech.fhir.dataexport.core.service.DataExportTaskService;
@@ -19,6 +22,8 @@ import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
+import org.openelisglobal.common.service.AccessionService;
+import org.openelisglobal.common.service.AccessionServiceImpl;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.RequesterService;
@@ -26,6 +31,10 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.fhir.springserialization.QuestionnaireDeserializer;
+import org.openelisglobal.fhir.springserialization.QuestionnaireResponseDeserializer;
+import org.openelisglobal.fhir.springserialization.QuestionnaireResponseSerializer;
+import org.openelisglobal.fhir.springserialization.QuestionnaireSerializer;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
@@ -42,6 +51,7 @@ import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
 import org.openelisglobal.result.controller.rest.AccessionResultsRestController;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.sample.controller.rest.SamplePatientEntryRestController;
 import org.openelisglobal.security.certs.service.TruststoreService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
@@ -61,6 +71,8 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.validation.Validator;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -318,6 +330,10 @@ public class AppTestConfig implements WebMvcConfigurer {
         // test mapper is exactly how an un-PUT-able GET representation shipped
         // in the alert-rule endpoints (OGC-949).
         builder.failOnUnknownProperties(true);
+        builder.serializerByType(Questionnaire.class, new QuestionnaireSerializer());
+        builder.deserializerByType(Questionnaire.class, new QuestionnaireDeserializer());
+        builder.serializerByType(QuestionnaireResponse.class, new QuestionnaireResponseSerializer());
+        builder.deserializerByType(QuestionnaireResponse.class, new QuestionnaireResponseDeserializer());
 
         MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter(builder.build());
         jsonConverter.setSupportedMediaTypes(supportedMediaTypes);
@@ -474,5 +490,45 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public DataExportTaskDAO dataExportTaskDAO() {
         return mock(DataExportTaskDAO.class);
+    }
+
+    /**
+     * Explicit bean because the component scan excludes
+     * {@code org.openelisglobal.sample.controller.*} (a sibling controller in that
+     * package breaks the test context). Registering just this one lets MockMvc
+     * exercise /rest/SamplePatientEntry end to end — real Jackson binding, real
+     * Bean-Validation groups, real BindingResult-to-400 mapping — which direct
+     * controller invocation cannot reach. Same rationale as
+     * {@link #resultEntryRestController()}.
+     */
+    @Bean
+    public SamplePatientEntryRestController samplePatientEntryRestController() {
+        return new SamplePatientEntryRestController();
+    }
+
+    /**
+     * {@code org.openelisglobal.common.service} (singular) is not in the component
+     * scan, so this service — which every accession-number generator resolves at
+     * runtime via {@code SpringContext.getBean(AccessionService.class)} — has no
+     * bean and the lookup throws. Register it explicitly so accession generation
+     * and the "lab number already used" check behave as they do in production. Its
+     * own dependency, {@code AccessionDAO}, lives in the scanned
+     * {@code common.dao}.
+     */
+    @Bean
+    public AccessionService accessionService() {
+        return new AccessionServiceImpl();
+    }
+
+    @Bean
+    public LocalValidatorFactoryBean mvcValidator() {
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.setMessageInterpolator(new ParameterMessageInterpolator());
+        return validator;
+    }
+
+    @Override
+    public Validator getValidator() {
+        return mvcValidator();
     }
 }

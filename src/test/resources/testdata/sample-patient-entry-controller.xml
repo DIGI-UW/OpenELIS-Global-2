@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Localization Entries -->
+    <localization id="1" description="test section name" />
+    <localization id="2" description="test name" />
+    <localization id="3" description="status" />
+    <localization id="4" description="sample type" />
+    <localization id="5" description="organization" />
+
+    <!-- Localization Values -->
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Immunology" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Immunologie" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="HIV Test" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Test VIH" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="Not Started" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Pas commencé" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="7" localization_id="4"
+        locale="en" value="Serum" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="8" localization_id="4"
+        locale="fr" value="Sérum" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="9" localization_id="5"
+        locale="en" value="Test Hospital" last_updated="2025-01-01 00:00:00" />
+    <localization_value id="10" localization_id="5"
+        locale="fr" value="Hôpital Test" last_updated="2025-01-01 00:00:00" />
+
+    <!-- Supported Locales -->
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <!-- Unit of Measure -->
+    <unit_of_measure id="1" name="mL"
+        description="Millilitres" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Type of Sample -->
+    <type_of_sample id="1" name_localization_id="4"
+        description="Serum" is_active="true" lastupdated="2024-01-01 00:00:00"
+        local_abbrev="serum" domain="H" />
+
+    <!-- Test Section -->
+    <test_section id="1" name="Immunology"
+        description="Immunology Section" name_localization_id="1"
+        lastupdated="2023-11-01 12:00:00" is_active="Y" sort_order="1"
+        is_external="N" />
+
+    <!-- Test -->
+    <test id="1" guid="550e8400-e29b-41d4-a716-446655440000"
+        name="HIV Test" description="HIV Test" is_reportable="Y"
+        loinc="12345-6" lastupdated="2023-11-01 12:00:00" is_active="Y"
+        local_code="HIV-1" sort_order="1" test_section_id="1" orderable="true"
+        notify_results="true" name_localization_id="2"
+        reporting_description="HIV" />
+
+    <!-- Serum → HIV Test mapping -->
+    <sampletype_test id="1" sample_type_id="1" test_id="1"
+        is_panel="false" />
+
+    <!-- StatusService resolves: OrderStatus.Entered → "Test Entered" SampleStatus.Entered
+        → "SampleEntered" Both rows MUST be present so IStatusService.getStatusID()
+        returns a valid FK. -->
+    <status_of_sample id="1" code="1" status_type="ORDER"
+        name="Test Entered" description="Order entered"
+        lastupdated="2024-01-01 00:00:00" display_key="status.order.entered"
+        is_active="Y" />
+    <status_of_sample id="2" code="1" status_type="SAMPLE"
+        name="SampleEntered" description="Sample entered"
+        lastupdated="2024-01-01 00:00:00" display_key="status.sample.entered"
+        is_active="Y" />
+
+    <!-- Organization (for referring-site lookup) -->
+    <organization id="1" name="Test Hospital" short_name="TH"
+        lastupdated="2023-11-01 12:00:00" is_active="Y" />
+
+    <!-- Pre-existing patient (id=1, person_id=4) used by tests that POST an
+        update/edit to an existing order. The national_id is intentionally unique
+        so de-dup logic doesn't interfere. -->
+    <person id="4" last_name="Nakamura" first_name="Kenji"
+        street_address="10 Lab Street" city="Kampala"
+        email="kenji.nakamura@example.com" lastupdated="2023-11-01 12:00:00"
+        primary_phone="256-700-123456" />
+
+    <patient id="1" person_id="4" lastupdated="2023-11-01 12:00:00"
+        national_id="SPE-CTRL-EXISTING-001"
+        fhir_uuid="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" />
+</dataset>

@@ -16,6 +16,7 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.common.valueholder.AccessionNumberInfo</class>
         <class>org.openelisglobal.localization.valueholder.Localization</class>
         <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
         <class>org.openelisglobal.localization.valueholder.SupportedLocale</class>
