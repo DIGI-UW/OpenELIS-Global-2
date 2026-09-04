@@ -1,0 +1,91 @@
+name: Bug report
+description: Create a report to help us improve
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! 😊
+        
+        Please search existing issues before opening a new one to avoid duplicates.
+        For general questions, please use our [Talk Forum](https://talk.openelis-global.org/).
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Component / Area
+      description: Select which part of OpenELIS Global 2 is affected by this issue.
+      options:
+        - "Frontend (React / Carbon UI)"
+        - "Backend (Java / Spring)"
+        - "Testing (JUnit / Playwright / Cypress)"
+        - "Database (PostgreSQL / Liquibase)"
+        - "Configuration (System / Localization)"
+        - "Other / Multiple"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the Bug
+      description: A clear and concise description of what the bug is.
+      placeholder: Explain what is happening.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Describe in detail the steps followed to encounter the issue.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: URL
+      description: Include the URL where you encountered the bug, if applicable.
+      placeholder: "e.g., https://localhost/PatientManagement"
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity Rating
+      description: Indicate the severity of the issue using the following ratings.
+      options:
+        - "Level 1: Improvement request / cosmetic (does not significantly affect our work)"
+        - "Level 2: Minor / medium (difficult or confusing, but workaround exists)"
+        - "Level 3: Critical (prevents us from using OpenELIS Global 2 / blocker)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Info
+      description: OS version, Browser version, Java version, Docker version, etc., if known.
+      placeholder: "e.g., Chrome 120, Ubuntu 22.04, OpenJDK 21"
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Checklist
+      options:
+        - label: I have verified this bug exists on the latest develop branch.
+          required: true
+        - label: I have searched for existing issues to avoid duplicates.
+          required: true

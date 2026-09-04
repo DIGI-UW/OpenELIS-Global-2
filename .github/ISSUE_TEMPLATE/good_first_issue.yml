@@ -1,0 +1,122 @@
+name: Good First Issue Template
+description: Create a Good First Issue for new contributors (React/Java/Testing)
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing! 😊
+        We truly appreciate your time and effort. If this is your first open-source contribution, welcome!
+        
+        This template is designed to help you create a **Good First Issue (GFI)** — a small, well-scoped task that helps new contributors learn the OpenELIS Global 2 codebase and workflow.
+
+        ### 🆕🐥 First-Time Friendly
+        **Who is this issue for?**
+        This issue is especially welcoming for people who are new to contributing to **OpenELIS Global 2**.
+        We know that opening your first pull request can feel like a big step. Issues labeled **Good First Issue** are designed to make that experience easier, clearer, and more comfortable.
+        No prior knowledge of laboratory info systems is required. Just a basic familiarity with the tech stack (React or Java) and Git is more than enough to get started.
+
+        ### 📋 About Good First Issues
+        Good First Issues are designed to make getting started as smooth and stress-free as possible. They usually focus on:
+        * Small, clearly scoped and guided changes
+        * Straightforward updates to existing code or docs
+        * Simple refactors or clarity improvements
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Component / Area
+      description: Select the main technical area of this issue.
+      options:
+        - "Frontend (React / Carbon UI)"
+        - "Backend (Java / Spring)"
+        - "Testing (JUnit / Playwright / Cypress)"
+        - "Database (PostgreSQL / Liquibase)"
+        - "Configuration (System / Localization)"
+        - "Other / Multiple"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 👾 Description of the Issue
+      description: Describe the issue in a way that’s easy for new contributors to understand. Aim to keep the explanation clear and accessible. Links to relevant files are always helpful.
+      placeholder: |
+        Edit here. Example:
+        The file README.md contains a typo on line 42.
+        Current text: "See the contibution guide for more details."
+        Should be: "See the contribution guide for more details."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: 💡 Proposed Solution
+      description: Describe the solution at a high level. Focus on what should be done, keeping the solution clear and straightforward.
+      placeholder: |
+        Edit here. Example:
+        Fix the typo in README.md by changing "contibution" to "contribution".
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_steps
+    attributes:
+      label: 👩‍💻 Implementation Steps (End-to-End)
+      description: Please write out the end-to-end process for completing this issue from start to finish. Clear, connected instructions help make the contribution experience smoother and more enjoyable.
+      placeholder: |
+        Edit here. Example:
+        1. Open README.md
+        2. Go to line 42
+        3. Change contibution to contribution
+        4. Save the file and verify
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: acceptance_criteria
+    attributes:
+      label: ✅ Acceptance Criteria
+      description: To merge a pull request for this issue
+      options:
+        - label: "**Scope:** Changes are limited to this issue"
+          required: false
+        - label: "**Behavior:** No other behavior or public API changes"
+          required: false
+        - label: "**Tests:** Existing and any new tests pass"
+          required: false
+        - label: "**Review:** All code review feedback addressed"
+          required: false
+
+  - type: checkboxes
+    id: contribution_guide
+    attributes:
+      label: 📋 Step-by-Step Contribution Guide
+      description: |
+        To help your first contribution go as smoothly as possible, we recommend following these steps:
+
+        *Read [CONTRIBUTING.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/CONTRIBUTING.md) for contribution guidance.*
+        *Read [README.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/README.md) for setup instructions.*
+      options:
+        - label: Comment on the issue to indicate interest, and a maintainer will help with assignment
+          required: false
+        - label: Fork the repository and create a branch from `develop`
+          required: false
+        - label: Set up the project by following the instructions in `README.md`
+          required: false
+        - label: Make the requested changes
+          required: false
+        - label: "Formatter verification: run `mvn spotless:apply` for Java or `npm run format` for React"
+          required: false
+        - label: Follow the repository contribution guidance and prepare a clean pull request for review
+          required: false
+        - label: Push your branch and open a pull request
+          required: false
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: 🤔 Additional Information
+      description: Extra context, resources, or screenshots for contributors.
+      placeholder: "e.g., You can also join our community on our forum: https://talk.openelis-global.org/"
