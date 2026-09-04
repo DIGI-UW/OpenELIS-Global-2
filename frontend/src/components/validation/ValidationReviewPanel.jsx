@@ -117,7 +117,10 @@ const ValidationReviewPanel = ({
 
   const [layout, setLayout] = useState(() => loadSectionLayout());
   const [noteText, setNoteText] = useState("");
-  const [noteVisibility, setNoteVisibility] = useState(NOTE_INTERNAL);
+  // Release notes print on the patient report unless the validator opts out
+  // (legacy parity); a modification reason stays internal unless opted in.
+  const [noteVisibility, setNoteVisibility] = useState(NOTE_EXTERNAL);
+  const [visibilityChosen, setVisibilityChosen] = useState(false);
   const [modifying, setModifying] = useState(false);
   const [newValue, setNewValue] = useState(row.result ?? "");
   const [busy, setBusy] = useState(false);
@@ -421,7 +424,10 @@ const ValidationReviewPanel = ({
               id: "label.validation.review.notes.visibility",
             })}
             valueSelected={noteVisibility}
-            onChange={(value) => setNoteVisibility(value)}
+            onChange={(value) => {
+              setNoteVisibility(value);
+              setVisibilityChosen(true);
+            }}
             data-testid="review-note-visibility"
           >
             <RadioButton
@@ -495,7 +501,12 @@ const ValidationReviewPanel = ({
               kind="tertiary"
               size="sm"
               disabled={busy}
-              onClick={() => setModifying(true)}
+              onClick={() => {
+                setModifying(true);
+                if (!visibilityChosen) {
+                  setNoteVisibility(NOTE_INTERNAL);
+                }
+              }}
               data-testid="review-modify"
             >
               <FormattedMessage id="label.validation.review.action.modify" />
@@ -520,6 +531,9 @@ const ValidationReviewPanel = ({
                 setModifying(false);
                 setNewValue(row.result ?? "");
                 setErrorKey("");
+                if (!visibilityChosen) {
+                  setNoteVisibility(NOTE_EXTERNAL);
+                }
               }}
               data-testid="review-cancel-modification"
             >

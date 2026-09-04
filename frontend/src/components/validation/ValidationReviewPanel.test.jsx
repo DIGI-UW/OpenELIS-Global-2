@@ -155,25 +155,41 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(screen.queryByTestId("review-components")).toBeNull();
   });
 
-  it("the note defaults to internal; choosing 'Send with result' warns about the report", () => {
+  it("a release note defaults to 'Send with result' so it prints on the patient report; Internal is an opt-out", () => {
     renderPanel(row());
-    expect(screen.queryByTestId("review-note-external-warning")).toBeNull();
-
-    fireEvent.click(screen.getByLabelText("Send with result"));
-
+    expect(screen.getByLabelText("Send with result")).toBeChecked();
     expect(
       screen.getByTestId("review-note-external-warning"),
     ).toHaveTextContent("This note will appear on the patient report.");
+
+    fireEvent.click(screen.getByLabelText("Internal"));
+
+    expect(screen.getByLabelText("Internal")).toBeChecked();
+    expect(screen.queryByTestId("review-note-external-warning")).toBeNull();
   });
 
-  it("Validate & release posts the row with the Validation note context and chosen visibility", () => {
+  it("a modification reason defaults to Internal unless the validator chose a visibility", () => {
+    renderPanel(row());
+    fireEvent.click(screen.getByTestId("review-modify"));
+    expect(screen.getByLabelText("Internal")).toBeChecked();
+
+    fireEvent.click(screen.getByTestId("review-cancel-modification"));
+    expect(screen.getByLabelText("Send with result")).toBeChecked();
+
+    fireEvent.click(screen.getByLabelText("Internal"));
+    fireEvent.click(screen.getByTestId("review-modify"));
+    expect(screen.getByLabelText("Internal")).toBeChecked();
+    fireEvent.click(screen.getByTestId("review-cancel-modification"));
+    expect(screen.getByLabelText("Internal")).toBeChecked();
+  });
+
+  it("Validate & release posts the row with the Validation note context; the note is external by default", () => {
     const onActionDone = vi.fn();
     renderPanel(row(), { onActionDone });
 
     fireEvent.change(screen.getByLabelText("Validation note"), {
       target: { value: "Reviewed against previous" },
     });
-    fireEvent.click(screen.getByLabelText("Send with result"));
     fireEvent.click(screen.getByText("Validate & release"));
 
     const [url, body, callback] = lastPost();
@@ -186,6 +202,22 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
 
     callback({ outcome: "released", analysisId: "100" });
     expect(onActionDone).toHaveBeenCalledWith("released", expect.anything());
+  });
+
+  it("a note typed in the queue's Notes column is kept when releasing from the panel", () => {
+    renderPanel(row({ note: "Typed in the row" }));
+
+    fireEvent.click(screen.getByText("Validate & release"));
+    expect(JSON.parse(lastPost()[1]).note).toBe("Typed in the row");
+    lastPost()[2]({ error: "generic" });
+
+    fireEvent.change(screen.getByLabelText("Validation note"), {
+      target: { value: "And in the panel" },
+    });
+    fireEvent.click(screen.getByText("Validate & release"));
+    expect(JSON.parse(lastPost()[1]).note).toBe(
+      "Typed in the row\nAnd in the panel",
+    );
   });
 
   it("a stale row surfaces the server's 409 as a reload hint", () => {

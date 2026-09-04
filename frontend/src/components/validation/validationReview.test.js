@@ -14,6 +14,7 @@ import {
   errorMessageKey,
   flagFor,
   isEditableHere,
+  mergeNotes,
   unitsOnly,
 } from "./validationReview";
 
@@ -91,18 +92,48 @@ describe("displayResult / unitsOnly / isEditableHere", () => {
   });
 });
 
+describe("mergeNotes", () => {
+  it("keeps the queue-column note and the panel note, in that order", () => {
+    expect(mergeNotes("From the row", "From the panel")).toBe(
+      "From the row\nFrom the panel",
+    );
+  });
+
+  it("uses whichever one exists and never repeats identical text", () => {
+    expect(mergeNotes("Only row", "")).toBe("Only row");
+    expect(mergeNotes(undefined, "  Only panel ")).toBe("Only panel");
+    expect(mergeNotes("Same", "Same")).toBe("Same");
+    expect(mergeNotes(null, undefined)).toBe("");
+  });
+});
+
 describe("actionPayload", () => {
-  it("carries the row plus the dual-axis note, defaulting to internal", () => {
+  it("carries the row plus the dual-axis note; no explicit visibility leaves the server's legacy rule", () => {
     const payload = actionPayload(row(), {
       note: "ok",
       noteContext: NOTE_CONTEXT_VALIDATION,
     });
     expect(payload.analysisId).toBe("100");
     expect(payload.note).toBe("ok");
-    expect(payload.noteVisibility).toBe(NOTE_INTERNAL);
+    expect(payload.noteVisibility).toBe("");
     expect(payload.noteContext).toBe("VALIDATION");
     expect(payload).not.toHaveProperty("result", undefined);
     expect(payload.result).toBe("15");
+  });
+
+  it("a note typed in the row's Notes column survives a release from the panel", () => {
+    const payload = actionPayload(row({ note: "Typed in the queue" }), {
+      note: "",
+      noteVisibility: NOTE_EXTERNAL,
+      noteContext: NOTE_CONTEXT_VALIDATION,
+    });
+    expect(payload.note).toBe("Typed in the queue");
+    const both = actionPayload(row({ note: "Typed in the queue" }), {
+      note: "And in the panel",
+      noteVisibility: NOTE_EXTERNAL,
+      noteContext: NOTE_CONTEXT_VALIDATION,
+    });
+    expect(both.note).toBe("Typed in the queue\nAnd in the panel");
   });
 
   it("a modification replaces the value and keeps the chosen visibility", () => {

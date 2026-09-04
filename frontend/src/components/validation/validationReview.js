@@ -87,8 +87,24 @@ export function isEditableHere(resultType) {
 }
 
 /**
+ * A note typed in the queue's Notes column and one typed in the panel are both
+ * kept: releasing from the panel must never drop what the validator wrote in
+ * the row. Identical text is not repeated.
+ */
+export function mergeNotes(rowNote, panelNote) {
+  const parts = [rowNote, panelNote]
+    .map((text) => (typeof text === "string" ? text.trim() : ""))
+    .filter(Boolean);
+  return parts
+    .filter((part, index) => parts.indexOf(part) === index)
+    .join("\n");
+}
+
+/**
  * The body of a per-row action: the row as served, plus the dual-axis note and
  * (for a modification) the new value. The server re-derives the identifiers.
+ * Without an explicit visibility the server applies its legacy rule (external
+ * when the row is accepted), which is what the patient report prints.
  */
 export function actionPayload(
   row,
@@ -96,8 +112,8 @@ export function actionPayload(
 ) {
   const payload = {
     ...row,
-    note: note || "",
-    noteVisibility: noteVisibility || NOTE_INTERNAL,
+    note: mergeNotes(row && row.note, note),
+    noteVisibility: noteVisibility || "",
     noteContext,
   };
   if (result !== undefined) {
