@@ -26,16 +26,47 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { createField } from "../../../services/analyzerService";
+import type { AnalyzerApiResponse, AnalyzerNotification } from "../types";
 import "./InlineFieldCreationModal.css";
+
+interface InlineFieldCreationModalProps {
+  open: boolean;
+  onClose: () => void;
+  onFieldCreated?: (fieldData: OpenELISField, fieldId?: string) => void;
+  fieldType?: string;
+}
+
+interface SelectOption {
+  id: string;
+  text: string;
+}
+
+interface OpenELISField {
+  id?: string;
+  fieldName?: string;
+  fieldType?: string;
+  [key: string]: unknown;
+}
+
+interface InlineFieldFormData {
+  fieldName: string;
+  entityType: string;
+  loincCode: string;
+  description: string;
+  fieldType: string;
+  acceptedUnits: string[];
+}
+
+type InlineFieldFormErrors = Partial<Record<keyof InlineFieldFormData, string>>;
 
 const InlineFieldCreationModal = ({
   open,
   onClose,
   onFieldCreated,
   fieldType, // Required field type for type compatibility
-}) => {
+}: InlineFieldCreationModalProps) => {
   const intl = useIntl();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<InlineFieldFormData>({
     fieldName: "",
     entityType: "",
     loincCode: "",
@@ -43,12 +74,14 @@ const InlineFieldCreationModal = ({
     fieldType: fieldType || "NUMERIC",
     acceptedUnits: [],
   });
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<InlineFieldFormErrors>({});
   const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState<AnalyzerNotification | null>(
+    null,
+  );
 
   // Entity type options
-  const entityTypeOptions = [
+  const entityTypeOptions: SelectOption[] = [
     { id: "TEST", text: "Test" },
     { id: "PANEL", text: "Panel" },
     { id: "RESULT", text: "Result" },
@@ -60,14 +93,14 @@ const InlineFieldCreationModal = ({
   ];
 
   // Field type options
-  const fieldTypeOptions = [
+  const fieldTypeOptions: SelectOption[] = [
     { id: "NUMERIC", text: "Numeric" },
     { id: "QUALITATIVE", text: "Qualitative" },
     { id: "TEXT", text: "Text" },
   ];
 
   // Unit options (mock - should be loaded from API)
-  const unitOptions = [
+  const unitOptions: SelectOption[] = [
     { id: "mg/dL", text: "mg/dL" },
     { id: "g/dL", text: "g/dL" },
     { id: "mmol/L", text: "mmol/L" },
@@ -93,7 +126,7 @@ const InlineFieldCreationModal = ({
 
   // Validate form
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: InlineFieldFormErrors = {};
 
     if (!formData.fieldName || formData.fieldName.trim() === "") {
       newErrors.fieldName = intl.formatMessage({
@@ -125,7 +158,10 @@ const InlineFieldCreationModal = ({
   };
 
   // Handle form field changes
-  const handleFieldChange = (fieldName, value) => {
+  const handleFieldChange = (
+    fieldName: keyof InlineFieldFormData,
+    value: InlineFieldFormData[keyof InlineFieldFormData],
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [fieldName]: value,
@@ -162,7 +198,13 @@ const InlineFieldCreationModal = ({
 
     createField(
       payload,
-      (response, error) => {
+      (
+        response: AnalyzerApiResponse & {
+          field?: OpenELISField;
+          id?: string;
+        },
+        error?: unknown,
+      ) => {
         setLoading(false);
 
         if (error || response?.error) {

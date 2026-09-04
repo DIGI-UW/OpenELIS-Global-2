@@ -23,10 +23,37 @@ import ValidationDashboard from "./ValidationDashboard";
 import PendingCodesPanel from "./PendingCodesPanel";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import type {
+  Analyzer,
+  AnalyzerApiResponse,
+  AnalyzerField,
+  AnalyzerMapping,
+  AnalyzerNotification,
+  PendingCode,
+} from "../types";
 import "./FieldMapping.css";
 
+interface FieldMappingRouteParams {
+  id?: string;
+}
+
+interface MappingResponse {
+  data?:
+    | {
+        content?: AnalyzerMapping[];
+      }
+    | AnalyzerMapping[];
+}
+
+interface QueryStatusResult extends AnalyzerApiResponse {
+  state?: string;
+  fields?: AnalyzerField[];
+}
+
 // Helper function to extract mappings from API response
-const extractMappings = (mappingsData) => {
+const extractMappings = (
+  mappingsData?: MappingResponse | AnalyzerMapping[],
+): AnalyzerMapping[] => {
   if (!mappingsData) return [];
   if (Array.isArray(mappingsData)) return mappingsData;
   if (mappingsData.data) {
@@ -41,20 +68,26 @@ const FieldMapping = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
-  const { id: analyzerId } = useParams();
+  const { id: analyzerId = "" } = useParams<FieldMappingRouteParams>();
 
-  const [analyzer, setAnalyzer] = useState(null);
-  const [fields, setFields] = useState([]);
-  const [mappings, setMappings] = useState([]);
-  const [selectedField, setSelectedField] = useState(null);
+  const [analyzer, setAnalyzer] = useState<Analyzer | null>(null);
+  const [fields, setFields] = useState<AnalyzerField[]>([]);
+  const [mappings, setMappings] = useState<AnalyzerMapping[]>([]);
+  const [selectedField, setSelectedField] = useState<AnalyzerField | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [queryModalOpen, setQueryModalOpen] = useState(false);
-  const [queryJobId, setQueryJobId] = useState(null);
+  const [queryJobId, setQueryJobId] = useState<string | null>(null);
   const [testMappingModalOpen, setTestMappingModalOpen] = useState(false);
-  const [errorNotification, setErrorNotification] = useState(null);
-  const [pendingCodes, setPendingCodes] = useState([]);
-  const [pluginConfig, setPluginConfig] = useState(null);
+  const [errorNotification, setErrorNotification] =
+    useState<AnalyzerNotification | null>(null);
+  const [pendingCodes, setPendingCodes] = useState<PendingCode[]>([]);
+  const [pluginConfig, setPluginConfig] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
 
   useEffect(() => {
     if (!analyzerId) {
@@ -69,7 +102,7 @@ const FieldMapping = () => {
 
     const storageKey = `fieldMapping.${analyzerId}.scrollY`;
     const storedScrollY = sessionStorage.getItem(storageKey);
-    let scrollRestoreTimer = null;
+    let scrollRestoreTimer: ReturnType<typeof setTimeout> | null = null;
     if (storedScrollY) {
       try {
         scrollRestoreTimer = setTimeout(() => {
@@ -77,7 +110,7 @@ const FieldMapping = () => {
             window.scrollTo(0, parseInt(storedScrollY, 10));
           }
         }, 100);
-      } catch (_) {
+      } catch {
         // ignore
       }
     }
@@ -91,17 +124,19 @@ const FieldMapping = () => {
 
     analyzerService.getAnalyzer(analyzerId, (analyzerData) => {
       if (analyzerData) {
-        setAnalyzer(analyzerData);
+        setAnalyzer(analyzerData as Analyzer);
       }
     });
 
     analyzerService.getFields(analyzerId, (fieldsData) => {
       if (fieldsData && Array.isArray(fieldsData)) {
-        setFields(fieldsData);
+        setFields(fieldsData as AnalyzerField[]);
 
         const fieldId = fieldIdToRestore;
         if (fieldId) {
-          const fieldToSelect = fieldsData.find((f) => f.id === fieldId);
+          const fieldToSelect = (fieldsData as AnalyzerField[]).find(
+            (f) => f.id === fieldId,
+          );
           if (fieldToSelect) {
             setSelectedField(fieldToSelect);
           }
@@ -110,20 +145,20 @@ const FieldMapping = () => {
     });
 
     analyzerService.getMappings(analyzerId, (mappingsData) => {
-      const mappings = extractMappings(mappingsData);
+      const mappings = extractMappings(mappingsData as MappingResponse);
       setMappings(mappings);
       setLoading(false);
     });
     analyzerService.getPendingCodes(analyzerId, (pendingCodesData) => {
       if (Array.isArray(pendingCodesData)) {
-        setPendingCodes(pendingCodesData);
+        setPendingCodes(pendingCodesData as PendingCode[]);
       } else {
         setPendingCodes([]);
       }
     });
     analyzerService.getPluginConfig(analyzerId, (pluginConfigData) => {
       if (pluginConfigData && typeof pluginConfigData === "object") {
-        setPluginConfig(pluginConfigData);
+        setPluginConfig(pluginConfigData as Record<string, unknown>);
       } else {
         setPluginConfig(null);
       }
@@ -151,7 +186,7 @@ const FieldMapping = () => {
     };
   }, [analyzerId, location.search]);
 
-  const handleFieldSelect = (field) => {
+  const handleFieldSelect = (field: AnalyzerField | null) => {
     setSelectedField(field);
 
     const params = new URLSearchParams(location.search);
@@ -171,14 +206,14 @@ const FieldMapping = () => {
     });
   };
 
-  const handleCreateMapping = (mappingData) => {
+  const handleCreateMapping = (mappingData: AnalyzerMapping) => {
     analyzerService.createMapping(
       analyzerId,
       mappingData,
       (response, error) => {
         if (!error && !(response && response.error)) {
           analyzerService.getMappings(analyzerId, (mappingsData) => {
-            const mappings = extractMappings(mappingsData);
+            const mappings = extractMappings(mappingsData as MappingResponse);
             setMappings(mappings);
           });
         }
@@ -216,13 +251,17 @@ const FieldMapping = () => {
   const refreshPendingCodes = () => {
     analyzerService.getPendingCodes(analyzerId, (pendingCodesData) => {
       if (Array.isArray(pendingCodesData)) {
-        setPendingCodes(pendingCodesData);
+        setPendingCodes(pendingCodesData as PendingCode[]);
       }
     });
   };
 
   return (
-    <div className="field-mapping" data-testid="field-mapping">
+    <div
+      className="field-mapping"
+      data-testid="field-mapping"
+      aria-busy={loading}
+    >
       {/* Hierarchical Page Title with Back Arrow */}
       <div className="field-mapping-header">
         <div className="field-mapping-header-title">
@@ -397,7 +436,7 @@ const FieldMapping = () => {
                 Array.isArray(resp.fields) &&
                 resp.fields.length > 0
               ) {
-                setFields(resp.fields);
+                setFields(resp.fields as AnalyzerField[]);
                 setQueryModalOpen(true);
               } else {
                 setQueryModalOpen(true);
@@ -460,7 +499,9 @@ const FieldMapping = () => {
                       analyzerService.getMappings(
                         analyzerId,
                         (mappingsData) => {
-                          const mappings = extractMappings(mappingsData);
+                          const mappings = extractMappings(
+                            mappingsData as MappingResponse,
+                          );
                           setMappings(mappings);
                         },
                       );
@@ -494,7 +535,7 @@ const FieldMapping = () => {
         }}
         analyzerId={analyzerId}
         jobId={queryJobId}
-        onCompleted={(data) => {
+        onCompleted={(data: QueryStatusResult) => {
           if (data && data.state === "completed") {
             if (data.error) {
               setErrorNotification({
@@ -519,7 +560,7 @@ const FieldMapping = () => {
                 } else {
                   analyzerService.getFields(analyzerId, (fieldsData) => {
                     if (fieldsData && Array.isArray(fieldsData)) {
-                      setFields(fieldsData);
+                      setFields(fieldsData as AnalyzerField[]);
                       setErrorNotification(null);
                     } else {
                       setErrorNotification({
@@ -542,7 +583,7 @@ const FieldMapping = () => {
                           "The query completed but no fields were saved. Check backend logs for errors.",
                       });
                     } else {
-                      setFields(fieldsData);
+                      setFields(fieldsData as AnalyzerField[]);
                       setErrorNotification(null);
                     }
                   } else {

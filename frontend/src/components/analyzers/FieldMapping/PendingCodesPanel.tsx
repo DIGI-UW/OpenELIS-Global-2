@@ -2,19 +2,30 @@ import React, { useState } from "react";
 import { Button, InlineNotification, Tag } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
+import type { AnalyzerApiResponse, PendingCode } from "../types";
 
-const PendingCodesPanel = ({ analyzerId, pendingCodes = [], onUpdated }) => {
-  const [busyId, setBusyId] = useState(null);
-  const [error, setError] = useState(null);
+interface PendingCodesPanelProps {
+  analyzerId: string;
+  pendingCodes?: PendingCode[];
+  onUpdated?: () => void;
+}
 
-  const handleStatusUpdate = (pendingCodeId, status) => {
+const PendingCodesPanel = ({
+  analyzerId,
+  pendingCodes = [],
+  onUpdated,
+}: PendingCodesPanelProps) => {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleStatusUpdate = (pendingCodeId: string, status: string) => {
     setBusyId(pendingCodeId);
     setError(null);
     analyzerService.updatePendingCodeStatus(
       analyzerId,
       pendingCodeId,
       status,
-      (response) => {
+      (response: AnalyzerApiResponse) => {
         setBusyId(null);
         if (response?.error || response?.statusCode >= 400) {
           setError(
@@ -24,12 +35,14 @@ const PendingCodesPanel = ({ analyzerId, pendingCodes = [], onUpdated }) => {
           );
           return;
         }
-        onUpdated && onUpdated();
+        if (onUpdated) {
+          onUpdated();
+        }
       },
     );
   };
 
-  const renderStatusTag = (status) => {
+  const renderStatusTag = (status?: string) => {
     if (status === "PENDING") {
       return (
         <Tag type="warm-gray" size="sm">

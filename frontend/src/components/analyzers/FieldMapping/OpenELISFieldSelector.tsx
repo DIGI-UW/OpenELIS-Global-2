@@ -16,18 +16,42 @@ import { FormattedMessage, useIntl } from "react-intl";
 import InlineFieldCreationModal from "./InlineFieldCreationModal";
 import "./OpenELISFieldSelector.css";
 
+interface OpenELISField {
+  id: string;
+  name: string;
+  entityType: string;
+  fieldType: string;
+  loincCode?: string;
+}
+
+interface OpenELISFieldItem {
+  id: string;
+  text: string;
+  field: OpenELISField;
+}
+
+interface OpenELISFieldSelectorProps {
+  fieldType?: string;
+  selectedFieldId?: string;
+  onFieldSelect: (fieldId: string, fieldType?: string) => void;
+  onFieldCreated?: (
+    fieldData: Record<string, unknown>,
+    fieldId?: string,
+  ) => void;
+}
+
 const OpenELISFieldSelector = ({
   fieldType,
   selectedFieldId,
   onFieldSelect,
   onFieldCreated, // Callback when a new field is created
-}) => {
+}: OpenELISFieldSelectorProps) => {
   const intl = useIntl();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Mock OpenELIS fields (TODO: Load from API)
-  const mockFields = [
+  const mockFields: OpenELISField[] = [
     {
       id: "field-1",
       name: "Glucose",
@@ -72,21 +96,24 @@ const OpenELISFieldSelector = ({
   });
 
   // Format items for ComboBox
-  const items = filteredFields.map((field) => ({
+  const items: OpenELISFieldItem[] = filteredFields.map((field) => ({
     id: field.id,
     text: `${field.name} (${field.entityType})`,
     field: field,
   }));
 
   // Handle selection
-  const handleSelection = (selectedItem) => {
+  const handleSelection = (selectedItem?: OpenELISFieldItem | null) => {
     if (selectedItem && selectedItem.field) {
       onFieldSelect(selectedItem.field.id, selectedItem.field.fieldType);
     }
   };
 
   // Handle field creation
-  const handleFieldCreated = (fieldData, fieldId) => {
+  const handleFieldCreated = (
+    fieldData: Record<string, unknown> & { fieldType?: string },
+    fieldId?: string,
+  ) => {
     // Call parent callback if provided
     if (onFieldCreated) {
       onFieldCreated(fieldData, fieldId);

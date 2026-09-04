@@ -34,9 +34,39 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
+import type { AnalyzerApiResponse } from "../types";
 import "./TestMappingModal.css";
 
 const MAX_MESSAGE_SIZE = 10240; // 10KB
+
+interface TestMappingModalProps {
+  open: boolean;
+  onClose?: () => void;
+  analyzerId: string;
+  analyzerName?: string;
+  analyzerType?: string;
+  activeMappingsCount?: number;
+}
+
+interface PreviewMappingResult extends AnalyzerApiResponse {
+  parsedFields?: Array<{
+    fieldName?: string;
+    astmRef?: string;
+    rawValue?: string;
+    mappedTo?: string;
+    interpretation?: string;
+  }>;
+  appliedMappings?: Array<{
+    analyzerFieldName?: string;
+    openelisFieldType?: string;
+    openelisFieldId?: string;
+    mappedValue?: string;
+  }>;
+  entityPreview?: Record<string, unknown>;
+  pluginConfigSnapshot?: Record<string, unknown>;
+  warnings?: string[];
+  errors?: string[];
+}
 
 const TestMappingModal = ({
   open,
@@ -45,14 +75,15 @@ const TestMappingModal = ({
   analyzerName,
   analyzerType,
   activeMappingsCount = 0,
-}) => {
+}: TestMappingModalProps) => {
   const intl = useIntl();
   const [astmMessage, setAstmMessage] = useState("");
   const [includeDetailedParsing, setIncludeDetailedParsing] = useState(false);
   const [validateAllMappings, setValidateAllMappings] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [previewResult, setPreviewResult] = useState(null);
-  const [error, setError] = useState(null);
+  const [previewResult, setPreviewResult] =
+    useState<PreviewMappingResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -68,10 +99,12 @@ const TestMappingModal = ({
 
   const handleClose = () => {
     // Remove focus from any button before closing to prevent aria-hidden warning
-    if (document.activeElement && document.activeElement.blur) {
+    if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    onClose && onClose();
+    if (onClose) {
+      onClose();
+    }
   };
 
   const handlePreview = () => {
@@ -107,7 +140,7 @@ const TestMappingModal = ({
     analyzerService.previewMapping(
       analyzerId,
       previewData,
-      (response, extraParams) => {
+      (response: PreviewMappingResult) => {
         setLoading(false);
         if (response.error) {
           setError(

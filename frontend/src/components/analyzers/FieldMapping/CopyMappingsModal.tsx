@@ -27,7 +27,28 @@ import {
 import { Copy } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import * as analyzerService from "../../../services/analyzerService";
+import type { Analyzer, AnalyzerApiResponse, AnalyzerMapping } from "../types";
 import "./CopyMappingsModal.css";
+
+interface CopyMappingsModalProps {
+  open: boolean;
+  onClose?: () => void;
+  sourceAnalyzerId: string;
+  sourceAnalyzerName?: string;
+  sourceAnalyzerType?: string;
+  onSuccess?: (response: CopyMappingsResult, targetAnalyzerId: string) => void;
+}
+
+interface CopyMappingsResult extends AnalyzerApiResponse {
+  copiedCount?: number;
+  warnings?: string[];
+}
+
+interface AnalyzerDropdownItem {
+  id: string;
+  text: string;
+  analyzer: Analyzer;
+}
 
 const CopyMappingsModal = ({
   open,
@@ -36,16 +57,16 @@ const CopyMappingsModal = ({
   sourceAnalyzerName,
   sourceAnalyzerType,
   onSuccess,
-}) => {
+}: CopyMappingsModalProps) => {
   const intl = useIntl();
   const [targetAnalyzerId, setTargetAnalyzerId] = useState("");
-  const [availableAnalyzers, setAvailableAnalyzers] = useState([]);
+  const [availableAnalyzers, setAvailableAnalyzers] = useState<Analyzer[]>([]);
   const [loading, setLoading] = useState(false);
   const [copying, setCopying] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [mappingCount, setMappingCount] = useState(0);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [copyResult, setCopyResult] = useState(null);
+  const [copyResult, setCopyResult] = useState<CopyMappingsResult | null>(null);
 
   // Load available analyzers (excluding source) when modal opens
   useEffect(() => {
@@ -62,7 +83,9 @@ const CopyMappingsModal = ({
         const list =
           data && Array.isArray(data.analyzers) ? data.analyzers : [];
         // Filter out source analyzer
-        const filtered = list.filter((a) => a.id !== sourceAnalyzerId);
+        const filtered = (list as Analyzer[]).filter(
+          (a) => a.id !== sourceAnalyzerId,
+        );
         setAvailableAnalyzers(filtered);
         setLoading(false);
       });
@@ -75,7 +98,9 @@ const CopyMappingsModal = ({
       // Get mappings count from source analyzer
       analyzerService.getMappings(sourceAnalyzerId, (mappings) => {
         if (Array.isArray(mappings)) {
-          const activeMappings = mappings.filter((m) => m.isActive !== false);
+          const activeMappings = (mappings as AnalyzerMapping[]).filter(
+            (m) => m.isActive !== false,
+          );
           setMappingCount(activeMappings.length);
         } else {
           setMappingCount(0);
@@ -86,10 +111,12 @@ const CopyMappingsModal = ({
 
   const handleClose = () => {
     // Remove focus from any button before closing to prevent aria-hidden warning
-    if (document.activeElement && document.activeElement.blur) {
+    if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    onClose && onClose();
+    if (onClose) {
+      onClose();
+    }
   };
 
   const handleCopy = () => {
@@ -127,7 +154,7 @@ const CopyMappingsModal = ({
     analyzerService.copyMappings(
       targetAnalyzerId,
       copyData,
-      (response, extraParams) => {
+      (response: CopyMappingsResult) => {
         setCopying(false);
         if (response.error) {
           setError(
@@ -157,11 +184,13 @@ const CopyMappingsModal = ({
   };
 
   // Prepare analyzer dropdown items
-  const analyzerItems = availableAnalyzers.map((analyzer) => ({
-    id: analyzer.id,
-    text: analyzer.name || analyzer.id,
-    analyzer: analyzer,
-  }));
+  const analyzerItems: AnalyzerDropdownItem[] = availableAnalyzers.map(
+    (analyzer) => ({
+      id: analyzer.id || "",
+      text: analyzer.name || analyzer.id,
+      analyzer: analyzer,
+    }),
+  );
 
   const selectedAnalyzer = analyzerItems.find(
     (item) => item.id === targetAnalyzerId,

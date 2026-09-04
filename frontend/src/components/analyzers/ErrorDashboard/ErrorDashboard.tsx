@@ -40,33 +40,65 @@ import {
 import ErrorDetailsModal from "./ErrorDetailsModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import type { AnalyzerErrorRecord } from "../types";
 import "./ErrorDashboard.css";
+
+interface ErrorDashboardFilters {
+  errorType: string;
+  severity: string;
+  analyzer: string;
+  search?: string;
+}
+
+interface ErrorDashboardStats {
+  total: number;
+  unacknowledged: number;
+  critical: number;
+  last24Hours: number;
+}
+
+interface ErrorDashboardResponse {
+  data?:
+    | {
+        content?: AnalyzerErrorRecord[];
+        statistics?: {
+          totalErrors?: number;
+          unacknowledged?: number;
+          critical?: number;
+          last24Hours?: number;
+        };
+      }
+    | AnalyzerErrorRecord[];
+}
 
 const ErrorDashboard = () => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
-  const searchTimeoutRef = useRef(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [errors, setErrors] = useState([]);
-  const [filteredErrors, setFilteredErrors] = useState([]);
+  const [, setErrors] = useState<AnalyzerErrorRecord[]>([]);
+  const [filteredErrors, setFilteredErrors] = useState<AnalyzerErrorRecord[]>(
+    [],
+  );
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<ErrorDashboardFilters>({
     errorType: "",
     severity: "",
     analyzer: "",
   });
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<ErrorDashboardStats>({
     total: 0,
     unacknowledged: 0,
     critical: 0,
     last24Hours: 0,
   });
-  const [selectedError, setSelectedError] = useState(null);
+  const [selectedError, setSelectedError] =
+    useState<AnalyzerErrorRecord | null>(null);
   const [errorDetailsOpen, setErrorDetailsOpen] = useState(false);
 
-  const loadErrors = useCallback((searchFilters = {}) => {
+  const loadErrors = useCallback((searchFilters: ErrorDashboardFilters) => {
     setLoading(true);
     // TODO: Replace with actual API endpoint when AnalyzerErrorRestController is implemented
     // Endpoint will be: GET /rest/analyzer/errors?errorType=...&severity=...&analyzer=...
@@ -90,61 +122,74 @@ const ErrorDashboard = () => {
       ? `${endpoint}?${params.toString()}`
       : endpoint;
 
-    getFromOpenElisServer(url, (data) => {
-      // API returns { data: { content: [...], statistics: {...} }, status: "success" }
-      let errors = [];
-      let statistics = null;
+    getFromOpenElisServer(
+      url,
+      (data: ErrorDashboardResponse | AnalyzerErrorRecord[] | undefined) => {
+        // API returns { data: { content: [...], statistics: {...} }, status: "success" }
+        let errors: AnalyzerErrorRecord[] = [];
+        let statistics: {
+          totalErrors?: number;
+          unacknowledged?: number;
+          critical?: number;
+          last24Hours?: number;
+        } | null = null;
 
-      if (data && data.data) {
-        // Response wrapped in data object
-        if (Array.isArray(data.data.content)) {
-          errors = data.data.content;
-        } else if (Array.isArray(data.data)) {
-          // Fallback: data.data might be the array directly
-          errors = data.data;
+        if (data && data.data) {
+          const responseData = data.data;
+          // Response wrapped in data object
+          if (
+            !Array.isArray(responseData) &&
+            Array.isArray(responseData.content)
+          ) {
+            errors = responseData.content;
+          } else if (Array.isArray(responseData)) {
+            // Fallback: data.data might be the array directly
+            errors = responseData;
+          }
+          if (!Array.isArray(responseData) && responseData.statistics) {
+            statistics = responseData.statistics;
+          }
+        } else if (Array.isArray(data)) {
+          // Direct array response (fallback)
+          errors = data;
         }
-        if (data.data.statistics) {
-          statistics = data.data.statistics;
+
+        setErrors(errors);
+        setFilteredErrors(errors);
+
+        // Use statistics from API if available, otherwise calculate from errors
+        if (statistics) {
+          setStats({
+            total: statistics.totalErrors || errors.length,
+            unacknowledged: statistics.unacknowledged || 0,
+            critical: statistics.critical || 0,
+            last24Hours: statistics.last24Hours || 0,
+          });
+        } else {
+          const now = new Date();
+          const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          const unacknowledgedCount = errors.filter(
+            (e) =>
+              e.status === "UNACKNOWLEDGED" || e.status === "unacknowledged",
+          ).length;
+          const criticalCount = errors.filter(
+            (e) => e.severity === "CRITICAL" || e.severity === "critical",
+          ).length;
+          const last24HoursCount = errors.filter((e) => {
+            const errorDate = new Date(e.timestamp || e.createdDate);
+            return errorDate >= last24Hours;
+          }).length;
+
+          setStats({
+            total: errors.length,
+            unacknowledged: unacknowledgedCount,
+            critical: criticalCount,
+            last24Hours: last24HoursCount,
+          });
         }
-      } else if (Array.isArray(data)) {
-        // Direct array response (fallback)
-        errors = data;
-      }
-
-      setErrors(errors);
-      setFilteredErrors(errors);
-
-      // Use statistics from API if available, otherwise calculate from errors
-      if (statistics) {
-        setStats({
-          total: statistics.totalErrors || errors.length,
-          unacknowledged: statistics.unacknowledged || 0,
-          critical: statistics.critical || 0,
-          last24Hours: statistics.last24Hours || 0,
-        });
-      } else {
-        const now = new Date();
-        const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const unacknowledgedCount = errors.filter(
-          (e) => e.status === "UNACKNOWLEDGED" || e.status === "unacknowledged",
-        ).length;
-        const criticalCount = errors.filter(
-          (e) => e.severity === "CRITICAL" || e.severity === "critical",
-        ).length;
-        const last24HoursCount = errors.filter((e) => {
-          const errorDate = new Date(e.timestamp || e.createdDate);
-          return errorDate >= last24Hours;
-        }).length;
-
-        setStats({
-          total: errors.length,
-          unacknowledged: unacknowledgedCount,
-          critical: criticalCount,
-          last24Hours: last24HoursCount,
-        });
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      },
+    );
   }, []);
 
   // Initial load + restore state from URL/sessionStorage
@@ -196,7 +241,7 @@ const ErrorDashboard = () => {
     };
   }, [loadErrors, location.search]);
 
-  const handleSearch = (value) => {
+  const handleSearch = (value: string) => {
     setSearchTerm(value);
 
     const params = new URLSearchParams(location.search);
@@ -223,7 +268,10 @@ const ErrorDashboard = () => {
     }, 300);
   };
 
-  const handleFilterChange = (filterName, value) => {
+  const handleFilterChange = (
+    filterName: keyof ErrorDashboardFilters,
+    value: string,
+  ) => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
 
@@ -273,13 +321,16 @@ const ErrorDashboard = () => {
   };
 
   // Handle view error details
-  const handleViewDetails = (error) => {
+  const handleViewDetails = (error: AnalyzerErrorRecord) => {
     setSelectedError(error);
     setErrorDetailsOpen(true);
   };
 
   // Handle acknowledge error
-  const handleAcknowledge = (errorId) => {
+  const handleAcknowledge = (errorId?: string) => {
+    if (!errorId) {
+      return;
+    }
     // Call acknowledge endpoint
     const endpoint = `/rest/analyzer/errors/${errorId}/acknowledge`;
     const payload = JSON.stringify({});
@@ -301,7 +352,7 @@ const ErrorDashboard = () => {
   };
 
   // Format timestamp
-  const formatTimestamp = (timestamp) => {
+  const formatTimestamp = (timestamp?: string) => {
     if (!timestamp) return "-";
     const date = new Date(timestamp);
     return intl.formatDate(date, {
@@ -381,7 +432,11 @@ const ErrorDashboard = () => {
   });
 
   return (
-    <div className="error-dashboard" data-testid="error-dashboard">
+    <div
+      className="error-dashboard"
+      data-testid="error-dashboard"
+      aria-busy={loading}
+    >
       {/* Header */}
       <div
         className="error-dashboard-header"
@@ -681,7 +736,7 @@ const ErrorDashboard = () => {
                           {row.cells.map((cell) => {
                             const headerKey = cell.info.header;
                             let cellContent = cell.value;
-                            let testId = null;
+                            let testId: string | undefined;
 
                             if (headerKey === "type") {
                               testId = `error-type-${row.id}`;

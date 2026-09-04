@@ -34,13 +34,30 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../components/utils/Utils";
+import type { AnalyzerApiResponse } from "../types";
 import "./ValidationDashboard.css";
 
-const ValidationDashboard = ({ analyzerId, status }) => {
+interface ValidationDashboardProps {
+  analyzerId: string;
+  status?: string;
+}
+
+interface ValidationMetrics {
+  accuracy: number;
+  unmappedCount?: number;
+  warnings?: string[];
+  unmappedFields?: string[];
+  coverageByTestUnit?: Record<string, number>;
+}
+
+const ValidationDashboard = ({
+  analyzerId,
+  status,
+}: ValidationDashboardProps) => {
   const intl = useIntl();
-  const [metrics, setMetrics] = useState(null);
+  const [metrics, setMetrics] = useState<ValidationMetrics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
 
   // Load validation metrics when component mounts (only if in VALIDATION status)
@@ -61,16 +78,19 @@ const ValidationDashboard = ({ analyzerId, status }) => {
 
     const endpoint = `/rest/analyzer/analyzers/${analyzerId}/validation-metrics`;
 
-    getFromOpenElisServer(endpoint, (data) => {
-      if (data && !data.error) {
-        setMetrics(data);
-      } else {
-        setError(
-          data?.error || intl.formatMessage({ id: "error.loading.metrics" }),
-        );
-      }
-      setLoading(false);
-    });
+    getFromOpenElisServer(
+      endpoint,
+      (data: AnalyzerApiResponse | ValidationMetrics) => {
+        if (data && !data.error) {
+          setMetrics(data as ValidationMetrics);
+        } else {
+          setError(
+            data?.error || intl.formatMessage({ id: "error.loading.metrics" }),
+          );
+        }
+        setLoading(false);
+      },
+    );
   };
 
   const handleValidateAllMappings = () => {
@@ -81,19 +101,24 @@ const ValidationDashboard = ({ analyzerId, status }) => {
     // This would call a validation endpoint that tests all configured mappings
     const endpoint = `/rest/analyzer/analyzers/${analyzerId}/validate-all-mappings`;
 
-    postToOpenElisServerJsonResponse(endpoint, JSON.stringify({}), (data) => {
-      if (data && !data.error) {
-        // Reload metrics after validation
-        loadValidationMetrics();
-        // Show success notification
-        setError(null);
-      } else {
-        setError(
-          data?.error || intl.formatMessage({ id: "error.validation.failed" }),
-        );
-      }
-      setValidating(false);
-    });
+    postToOpenElisServerJsonResponse(
+      endpoint,
+      JSON.stringify({}),
+      (data: AnalyzerApiResponse) => {
+        if (data && !data.error) {
+          // Reload metrics after validation
+          loadValidationMetrics();
+          // Show success notification
+          setError(null);
+        } else {
+          setError(
+            data?.error ||
+              intl.formatMessage({ id: "error.validation.failed" }),
+          );
+        }
+        setValidating(false);
+      },
+    );
   };
 
   const handleViewTestHistory = () => {
