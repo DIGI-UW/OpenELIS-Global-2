@@ -1,4 +1,9 @@
 import { LEVEL_ORDER } from "./useLocationPicker";
+import type {
+  LocationLevel,
+  ReplaceSelectionAction,
+  StorageLocationOption,
+} from "./types";
 
 /**
  * Map a flat search result into a REPLACE_SELECTION action.
@@ -14,12 +19,15 @@ import { LEVEL_ORDER } from "./useLocationPicker";
  * LocationPickerModal. Centralising the mapping prevents drift between
  * the three shells as the search payload evolves.
  */
-export function searchResultToReplaceAction(result) {
+export function searchResultToReplaceAction(
+  result: StorageLocationOption | null | undefined,
+): ReplaceSelectionAction | null {
   if (!result || typeof result !== "object") return null;
   const { type, id, name } = result;
-  if (!type || !LEVEL_ORDER.includes(type)) return null;
+  if (!type || !LEVEL_ORDER.includes(type as LocationLevel)) return null;
+  const level = type as LocationLevel;
   return {
     type: "REPLACE_SELECTION",
-    selection: { [type]: { id, name } },
+    selection: { [level]: { id, name } },
   };
 }

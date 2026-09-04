@@ -394,7 +394,7 @@ describe("SearchField", () => {
     // Two results with no id → without a trailing-index key fragment,
     // both would render with the same React key. Regression guard for
     // comment 3096884902 (key collision).
-    const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "error").mockImplementation(() => undefined);
     render(
       <SearchField
         query="Lab"
