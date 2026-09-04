@@ -1,7 +1,6 @@
-import { expect, Page, test } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
-import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import type { DemoPresentation } from "../../../helpers/demo-presentation";
 import {
   findAnalyzerRow,
   goToAnalyzerDashboard,
@@ -40,8 +39,6 @@ type FileImportHarnessScenario = {
   readonly importDirSafeName: string;
   /** Mock server template name (maps to templates/{name}.json). */
   readonly mockTemplate: string;
-  readonly demoTitle: string;
-  readonly demoSubtitle: string;
   /**
    * Admin-declared test code for upload path (production parity). Set for
    * analyzers whose fixture files have no per-row test-code column —
@@ -56,22 +53,18 @@ type FileImportHarnessScenario = {
 // seed-analyzers.sh. The harness baseline trimmed to 4 representative
 // analyzers (one per transport class); FILE coverage is QS5 + QS7 here.
 // Coverage for FluoroCycler / Wondfo / Tecan / Multiskan lives in
-// analyzer-demo-flow.spec.ts, which creates analyzers from scratch via the
+// analyzer-protocol-flows.spec.ts, which creates analyzers from scratch via the
 // dashboard UI rather than relying on the harness seed.
 const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
   {
     analyzerName: "QuantStudio 7",
     importDirSafeName: "quantstudio-7",
     mockTemplate: "quantstudio7",
-    demoTitle: "QuantStudio 7 File Import",
-    demoSubtitle: "Drop a result file, review staged results, and accept them.",
   },
   {
     analyzerName: "QuantStudio 5",
     importDirSafeName: "quantstudio-5",
     mockTemplate: "quantstudio5",
-    demoTitle: "QuantStudio 5 File Import",
-    demoSubtitle: "Drop a result file, review staged results, and accept them.",
   },
 ];
 
@@ -94,7 +87,6 @@ function fileImportTimeoutMs(): number {
 
 async function verifyImportedResults(
   page: Page,
-  presentation: DemoPresentation,
   scenario: FileImportHarnessScenario,
   expectedResults: ReadonlyArray<MockFileResult>,
 ) {
@@ -122,8 +114,6 @@ async function verifyImportedResults(
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     await expectResultVisible(resultsRegion, expected.result);
   }
-
-  await presentation.pause(2_000);
 }
 
 for (const scenario of FILE_IMPORT_SCENARIOS) {
@@ -133,22 +123,10 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
     test("import and accept results from a watched folder", async ({
       page,
     }, testInfo) => {
-      const presentation = createDemoPresentation(page, testInfo);
-
-      await presentation.title(scenario.demoTitle, scenario.demoSubtitle);
-
       await goToAnalyzerDashboard(page, testInfo);
 
-      await presentation.step(
-        1,
-        "Find the pre-configured analyzer for this lane",
-      );
       await findAnalyzerRow(page, scenario.analyzerName, testInfo);
 
-      await presentation.step(
-        2,
-        "Mock server drops a fixture file into the watched folder",
-      );
       const mockResponse = await dropFixtureViaMock(page, {
         mockTemplate: scenario.mockTemplate,
         analyzerName: scenario.analyzerName,
@@ -158,27 +136,9 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
       });
       const expectedResults = mockResponse.metadata.results;
 
-      await presentation.pause(1_000);
+      await verifyImportedResults(page, scenario, expectedResults);
 
-      await presentation.step(3, "Review the imported results");
-      await verifyImportedResults(
-        page,
-        presentation,
-        scenario,
-        expectedResults,
-      );
-
-      await acceptAndVerifyResults(
-        page,
-        presentation,
-        3,
-        expectedResults[0].sampleId,
-      );
-
-      await presentation.title(
-        "Story Complete",
-        "The file import flow relies on visible UI evidence only.",
-      );
+      await acceptAndVerifyResults(page, expectedResults[0].sampleId);
     });
   });
 }

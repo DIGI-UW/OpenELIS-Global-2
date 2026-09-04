@@ -10,8 +10,8 @@ import { Page } from "@playwright/test";
  *      POSTs the fixture to bridge /admin/upload with the admin-declared
  *      test code, matching the real lab-tech workflow.
  *
- * Lives in helpers/ (not a spec) so the analyzer-id lookup via
- * page.request can't trip the demo-ui-only guard.
+ * This is foundational transport support. UI-only demo stories cannot import
+ * it because it resolves analyzer state and triggers mock delivery directly.
  */
 
 export type MockFileResult = {
