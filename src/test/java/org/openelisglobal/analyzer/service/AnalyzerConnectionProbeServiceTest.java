@@ -50,7 +50,7 @@ public class AnalyzerConnectionProbeServiceTest {
     public void probesTheExactSavedBridgeConnectionRevision() throws Exception {
         ObjectNode connection = fixture("analyzer-connection.json");
         ObjectNode evidence = fixture("connection-probe-result.json");
-        when(analyzerService.getWithType(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(bridgeClient.getConnection(CONNECTION_ID)).thenReturn(connection);
         when(bridgeClient.probe(CONNECTION_ID, 4, "probe-fixture-004")).thenReturn(evidence);
 
@@ -70,7 +70,7 @@ public class AnalyzerConnectionProbeServiceTest {
     public void rejectsAConnectionOwnedByAnotherOpenElisAnalyzer() throws Exception {
         ObjectNode connection = fixture("analyzer-connection.json");
         connection.put("clientAnalyzerId", "another-analyzer");
-        when(analyzerService.getWithType(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(bridgeClient.getConnection(CONNECTION_ID)).thenReturn(connection);
 
         AnalyzerConnectionProbeException exception = assertThrows(AnalyzerConnectionProbeException.class,
@@ -84,7 +84,7 @@ public class AnalyzerConnectionProbeServiceTest {
     public void rejectsEvidenceForAStaleSavedRevision() throws Exception {
         ObjectNode evidence = fixture("connection-probe-result.json");
         evidence.put("configRevision", 3);
-        when(analyzerService.getWithType(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(bridgeClient.getConnection(CONNECTION_ID)).thenReturn(fixture("analyzer-connection.json"));
         when(bridgeClient.probe(CONNECTION_ID, 4, "probe-fixture-004")).thenReturn(evidence);
 
@@ -96,7 +96,7 @@ public class AnalyzerConnectionProbeServiceTest {
 
     @Test
     public void doesNotProbeAnUnknownAnalyzer() {
-        when(analyzerService.getWithType(ANALYZER_ID)).thenReturn(Optional.empty());
+        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.empty());
 
         AnalyzerConnectionProbeException exception = assertThrows(AnalyzerConnectionProbeException.class,
                 () -> service.probe(ANALYZER_ID));

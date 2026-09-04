@@ -250,7 +250,8 @@ GOOD:
 
 When reviewing, explicitly look for unintended impacts on:
 
-- **Analyzer flows**: mappings, reprocessing, plugins, instrument integrations.
+- **Analyzer flows**: Bridge profiles and connections, local catalog mappings,
+  result review, and operational quality control.
 - **Result entry/validation/reporting**: workflow-critical paths.
 - **Security**: auth, session handling, permission checks, config changes.
 - **Database compatibility**: migrations, constraints, nullable/unique changes,

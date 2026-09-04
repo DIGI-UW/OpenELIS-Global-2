@@ -50,7 +50,7 @@ const InstrumentDetailPage = () => {
 
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [instrumentId]);
+  }, [instrumentId, loading]);
 
   const selectSubTab = ({ selectedIndex }) => {
     const params = new URLSearchParams(location.search);
@@ -211,17 +211,19 @@ const InstrumentDetailPage = () => {
         {/* Analyte cards */}
         {analyteDetails.length > 0 && (
           <div
-            className="analyte-detail-grid"
+            className="instrument-detail-analytes"
             data-testid="analyte-detail-grid"
           >
             {analyteDetails.map((analyte) => (
               <Tile
                 key={analyte.testId}
-                className="analyte-detail-card"
+                className="instrument-detail-analyte-card"
                 data-testid={`analyte-card-${analyte.testId}`}
               >
-                <div className="analyte-name">{analyte.testName}</div>
-                <div className="analyte-zscore">
+                <div className="instrument-detail-analyte-card__name">
+                  {analyte.testName}
+                </div>
+                <div className="instrument-detail-analyte-card__meta">
                   <Tag
                     type={getZScoreBadgeType(analyte.latestZScore)}
                     size="sm"
@@ -229,7 +231,7 @@ const InstrumentDetailPage = () => {
                     z = {analyte.latestZScore?.toFixed(2) ?? "—"}
                   </Tag>
                 </div>
-                <div className="analyte-last-run">
+                <div className="instrument-detail-analyte-card__time">
                   {formatTimestamp(analyte.lastRunTime, intl)}
                 </div>
               </Tile>
@@ -266,9 +268,9 @@ const InstrumentDetailPage = () => {
       </div>
 
       <Button
+        className="instrument-detail-back-button"
         kind="secondary"
         onClick={() => history.push("/analyzers/qc/db")}
-        style={{ marginTop: "1rem" }}
       >
         {intl.formatMessage({ id: "qc.dashboard.title" })}
       </Button>

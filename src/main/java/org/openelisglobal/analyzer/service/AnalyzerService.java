@@ -6,17 +6,15 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.service.BaseObjectService;
 
 public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
-    List<Analyzer> getAllWithTypes();
+    List<Analyzer> getAllWithBindings();
 
-    Optional<Analyzer> getWithType(String id);
+    Optional<Analyzer> getWithBinding(String id);
 
     Analyzer getAnalyzerByName(String name);
 
     Optional<Analyzer> getByName(String name);
 
-    Optional<Analyzer> findByIdentifierPatternMatch(String analyzerIdentifier);
+    Optional<Analyzer> findByBridgeConnectionId(String bridgeConnectionId);
 
-    Optional<Analyzer> findByIdentifierPatternMatch(List<String> analyzerIdentifiers);
-
-    Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId);
+    List<AnalyzerTestCapability> getCapabilitiesForTest(String testId);
 }

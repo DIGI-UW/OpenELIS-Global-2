@@ -11,18 +11,18 @@ resolve_harness_playwright_project() {
   if [[ "$mode" == "video" ]]; then
     echo "harness-demo-video"
   else
-    echo "harness-foundational"
+    echo "harness-demo"
   fi
 }
 
 validate_harness_playwright_project() {
   local project="$1"
   case "$project" in
-    harness-foundational|harness-demo|harness-demo-video)
+    harness-demo|harness-mvp|harness-demo-video)
       echo "$project"
       ;;
     *)
-      echo "ERROR: unsupported project '$project' (expected harness-foundational, harness-demo, or harness-demo-video)" >&2
+      echo "ERROR: unsupported project '$project' (expected harness-demo, harness-mvp, or harness-demo-video)" >&2
       return 2
       ;;
   esac
@@ -33,7 +33,7 @@ assert_harness_project_has_specs() {
   local project="$2"
   local spec_dir
 
-  if [[ "$project" == "harness-demo-video" ]]; then
+  if [[ "$project" == "harness-mvp" || "$project" == "harness-demo-video" ]]; then
     local final_mvp_spec="$repo_root/frontend/playwright/tests/demo/harness/ogc-1054-analyzer-mvp.spec.ts"
     if [[ ! -f "$final_mvp_spec" ]]; then
       echo "ERROR: project '$project' has no final analyzer MVP demo spec" >&2
@@ -43,9 +43,6 @@ assert_harness_project_has_specs() {
   fi
 
   case "$project" in
-    harness-foundational)
-      spec_dir="$repo_root/frontend/playwright/tests/foundational/harness"
-      ;;
     harness-demo)
       spec_dir="$repo_root/frontend/playwright/tests/demo/harness"
       ;;
@@ -56,11 +53,7 @@ assert_harness_project_has_specs() {
   esac
 
   if ! find "$spec_dir" -type f -name '*.spec.ts' -print -quit 2>/dev/null | grep -q .; then
-    if [[ "$project" == "harness-foundational" ]]; then
-      echo "ERROR: project '$project' has no analyzer foundational specs" >&2
-    else
-      echo "ERROR: project '$project' has no analyzer demo specs" >&2
-    fi
+    echo "ERROR: project '$project' has no analyzer demo specs" >&2
     return 2
   fi
 }

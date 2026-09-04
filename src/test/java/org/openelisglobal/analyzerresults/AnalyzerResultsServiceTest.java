@@ -183,7 +183,7 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
     public void getAll_ShouldReturnAllAnalyzerResults() {
         analyzerResultsList = analyzerResultsService.getAll();
         assertNotNull(analyzerResultsList);
-        assertEquals(3, analyzerResultsList.size());
+        assertEquals(4, analyzerResultsList.size());
         assertEquals("1003", analyzerResultsList.get(2).getId());
     }
 
@@ -191,8 +191,9 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
     public void getAllMatching_ShouldReturnAllMatchingAnalyzerResults_UsingPropertyNameAndValue() {
         analyzerResultsList = analyzerResultsService.getAllMatching("analyzerId", "2001");
         assertNotNull(analyzerResultsList);
-        assertEquals(1, analyzerResultsList.size());
+        assertEquals(2, analyzerResultsList.size());
         assertEquals("1001", analyzerResultsList.get(0).getId());
+        assertEquals("1004", analyzerResultsList.get(1).getId());
     }
 
     @Test
@@ -207,15 +208,15 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
     public void getAllOrdered_ShouldReturnAllOrderedAnalyzerResults_UsingAnOrderProperty() {
         analyzerResultsList = analyzerResultsService.getAllOrdered("accessionNumber", false);
         assertNotNull(analyzerResultsList);
-        assertEquals(3, analyzerResultsList.size());
-        assertEquals("1002", analyzerResultsList.get(2).getId());
+        assertEquals(4, analyzerResultsList.size());
+        assertEquals("1002", analyzerResultsList.get(3).getId());
     }
 
     @Test
     public void getAllOrdered_ShouldReturnAllOrdered_UsingAList() {
         analyzerResultsList = analyzerResultsService.getAllOrdered(orderProperties, true);
         assertNotNull(analyzerResultsList);
-        assertEquals(3, analyzerResultsList.size());
+        assertEquals(4, analyzerResultsList.size());
         assertEquals("1002", analyzerResultsList.get(0).getId());
     }
 
@@ -328,17 +329,17 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void delete_ShouldDeleteAnAnalyzerResult() {
         analyzerResultsList = analyzerResultsService.getAll();
-        assertEquals(3, analyzerResultsList.size());
+        assertEquals(4, analyzerResultsList.size());
         AnalyzerResults analyzerResults = analyzerResultsService.get("1002");
         analyzerResultsService.delete(analyzerResults);
         List<AnalyzerResults> newAnalyzerResultsList = analyzerResultsService.getAll();
-        assertEquals(2, newAnalyzerResultsList.size());
+        assertEquals(3, newAnalyzerResultsList.size());
     }
 
     @Test
     public void deleteAll_ShouldDeleteAllAnalyzerResults() {
         analyzerResultsList = analyzerResultsService.getAll();
-        assertEquals(3, analyzerResultsList.size());
+        assertEquals(4, analyzerResultsList.size());
         analyzerResultsService.deleteAll(analyzerResultsList);
         List<AnalyzerResults> updatedAnalyzerResultsList = analyzerResultsService.getAll();
         assertTrue(updatedAnalyzerResultsList.isEmpty());

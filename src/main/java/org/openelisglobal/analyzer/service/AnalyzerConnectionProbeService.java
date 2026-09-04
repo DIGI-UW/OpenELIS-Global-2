@@ -37,7 +37,7 @@ public class AnalyzerConnectionProbeService {
 
     public AnalyzerConnectionProbeView probe(String analyzerId) {
         String exactAnalyzerId = requireText(analyzerId, "analyzer.testConnection.analyzerIdMissing");
-        Analyzer analyzer = analyzerService.getWithType(exactAnalyzerId)
+        Analyzer analyzer = analyzerService.getWithBinding(exactAnalyzerId)
                 .orElseThrow(() -> new AnalyzerConnectionProbeException("analyzer.testConnection.analyzerNotFound"));
         String connectionId = requireText(analyzer.getBridgeConnectionId(),
                 "analyzer.testConnection.bridge.connectionMissing");

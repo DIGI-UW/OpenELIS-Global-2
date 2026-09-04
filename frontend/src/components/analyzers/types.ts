@@ -4,8 +4,7 @@ export type AnalyzerStatus =
   | "VALIDATION"
   | "ACTIVE"
   | "ERROR_PENDING"
-  | "OFFLINE"
-  | "PENDING_REGISTRATION";
+  | "OFFLINE";
 
 export type AnalyzerProtocol = "ASTM" | "HL7" | "FILE" | string;
 
@@ -72,13 +71,12 @@ export interface Analyzer {
   status?: AnalyzerStatus;
   lifecycleStage?: AnalyzerStatus;
   lastModified?: string;
-  pluginLoaded?: boolean;
   protocol?: AnalyzerProtocol;
   profileId?: string | null;
   profileRevision?: number | null;
   profileFingerprint?: string | null;
-  profileBindingStatus?: "PINNED" | "UNBOUND" | string;
   bridgeConnectionId?: string | null;
+  heldResultCount?: number;
   connected?: boolean;
   connection?: AnalyzerConnection;
   connectionErrorKey?: string;

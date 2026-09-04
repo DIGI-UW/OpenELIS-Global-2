@@ -66,7 +66,6 @@ services:
     volumes:
         -  key_trust-store-volume:/etc/openelis-global
         - ./volume/lucene:/var/lib/lucene_index
-        - ./volume/plugins/:/var/lib/openelis-global/plugins
         - ./volume/programs/:/var/lib/openelis-global/programs
         - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
         - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
@@ -79,7 +78,6 @@ services:
         # checksum files. The container manages its own /var/lib/.../configuration.
         - ./volume/branding:/var/lib/openelis-global/branding
         - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
-        - ./volume/analyzer-imports:/data/analyzer-imports
     secrets:
         - source: common.properties
     healthcheck:

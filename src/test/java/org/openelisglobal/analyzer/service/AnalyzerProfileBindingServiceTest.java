@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -169,8 +168,6 @@ public class AnalyzerProfileBindingServiceTest {
         service.assignProfile(analyzer, PROFILE_ID, REVISION, "oe-user-17");
 
         assertEquals("Hematology bench 1", analyzer.getName());
-        assertNull(analyzer.getType());
-        assertNull(analyzer.getIdentifierPattern());
         assertSame(siteBindingRevision, analyzer.getSiteBindingRevision());
         assertSame(selected, analyzer.getPinnedProfileBinding());
     }

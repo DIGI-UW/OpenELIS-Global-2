@@ -85,7 +85,8 @@ jobs:
       test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
 
   # ─── Playwright Harness ─────────────────────────────────────────────────────
-  # Runs the UI-only checkpoint stories on the analyzer harness.
+  # Runs the UI-only checkpoint stories on the analyzer harness. The final MVP
+  # story is run against its deterministic traffic precondition before video/UAT.
   playwright-harness:
     name: Playwright Harness
     if: inputs.include_analyzer_harness == 'true'

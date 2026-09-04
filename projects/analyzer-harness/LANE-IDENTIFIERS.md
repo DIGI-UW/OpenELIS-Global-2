@@ -4,13 +4,12 @@ Canonical accession strings for the ten analyzer lanes. All use valid
 SiteYearNum format: `DEV0126{LANE}{SEQ:011d}` (prefix `DEV01`, year `26`,
 2-digit lane code, 11-digit sequence). Total: exactly 20 characters.
 
-Pre-seeded accessions (for file-import-results tests) use sequence range
+Pre-seeded accessions for analyzer traffic use sequence range
 0000000001–0000000099. Demo flow accessions (auto-created on accept) use
 sequence range 0000000100–0000000199.
 
-Loaded by `src/test/resources/fixtures/analyzer-harness-lane-data.sql` and reset
-by `src/test/resources/fixtures/file-import-e2e.sql` before each
-`--profile=harness` fixture load.
+Loaded by `src/test/resources/fixtures/analyzer-harness-lane-data.sql`. A full
+harness reset recreates the isolated database before loading the fixture.
 
 | Lane                | Analyzer (seed name)          | Lane Code | Example Accession    | Notes                                                |
 | ------------------- | ----------------------------- | --------- | -------------------- | ---------------------------------------------------- |

@@ -86,6 +86,7 @@ const createMockAnalyzer = (overrides = {}) => ({
   active: true,
   lastModified: "2025-01-27T10:00:00Z",
   lifecycleStage: "SETUP",
+  heldResultCount: 0,
   ...overrides,
 });
 
@@ -302,6 +303,7 @@ describe("AnalyzersList", () => {
     expect(
       screen.getByText(/configuration and history will be retained/i),
     ).toBeVisible();
+    expect(screen.getByText(/Deactivate GeneXpert Lab 1\?/)).toBeVisible();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Deactivate analyzer$/ }),
@@ -448,7 +450,6 @@ describe("AnalyzersList", () => {
               id: "42",
               profileId: "shipped.genexpert-astm",
               profileRevision: 3,
-              profileBindingStatus: "PINNED",
             }),
           ],
         });
@@ -482,7 +483,6 @@ describe("AnalyzersList", () => {
               id: "42",
               profileId: "shipped.genexpert-astm",
               profileRevision: 3,
-              profileBindingStatus: "PINNED",
             }),
           ],
         });
@@ -531,6 +531,26 @@ describe("AnalyzersList", () => {
     expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
   });
 
+  test("opens the canonical analyzer result review from the analyzer dashboard", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer({ id: "42" })] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "View results" }),
+    );
+
+    expect(window.location.pathname).toBe("/AnalyzerResults");
+    expect(new URLSearchParams(window.location.search).get("id")).toBe("42");
+  });
+
   test("renders assigned lab-unit labels from the shared catalog", async () => {
     getAnalyzers.mockImplementation((_filters, callback) => {
       act(() => {
@@ -551,12 +571,17 @@ describe("AnalyzersList", () => {
     );
   });
 
-  test("summarizes analyzers still in setup separately from inactive analyzers", async () => {
+  test("surfaces held result attention and opens the affected analyzer results", async () => {
     getAnalyzers.mockImplementation((_filters, callback) => {
       act(() => {
         callback({
           analyzers: [
-            createMockAnalyzer({ id: "1", status: "SETUP" }),
+            createMockAnalyzer({
+              id: "1",
+              name: "GeneXpert bench 1",
+              status: "SETUP",
+              heldResultCount: 2,
+            }),
             createMockAnalyzer({ id: "2", status: "VALIDATION" }),
             createMockAnalyzer({ id: "3", status: "ACTIVE" }),
             createMockAnalyzer({ id: "4", status: "INACTIVE" }),
@@ -570,7 +595,21 @@ describe("AnalyzersList", () => {
     expect(await screen.findByTestId("stat-total")).toHaveTextContent("4");
     expect(screen.getByTestId("stat-active")).toHaveTextContent("1");
     expect(screen.getByTestId("stat-setup")).toHaveTextContent("2");
-    expect(screen.getByTestId("stat-inactive")).toHaveTextContent("1");
+    expect(screen.getByTestId("stat-needs-attention")).toHaveTextContent("1");
+    expect(screen.getByTestId("held-results-attention")).toHaveTextContent(
+      "GeneXpert bench 1",
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("held-results-tag-1")).toHaveTextContent(
+      "Needs attention",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review held results" }),
+    );
+
+    expect(window.location.pathname).toBe("/AnalyzerResults");
+    expect(new URLSearchParams(window.location.search).get("id")).toBe("1");
   });
 
   test("uses the concise lab-facing analyzer columns in their review order", async () => {

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,6 +22,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerInstanceLocalStateServiceTest {
@@ -36,6 +38,9 @@ public class AnalyzerInstanceLocalStateServiceTest {
     @Mock
     private AnalyzerSiteBindingService siteBindingService;
 
+    @Mock
+    private AnalyzerResultsService analyzerResultsService;
+
     private AnalyzerInstanceLocalStateService service;
     private AnalyzerInstanceRequest request;
 
@@ -46,7 +51,8 @@ public class AnalyzerInstanceLocalStateServiceTest {
         request.setProfileId("fixture.synthetic-connection");
         request.setProfileRevision(3);
         request.setTestUnitIds(List.of("7", " 8 "));
-        service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, profileBindingService, siteBindingService);
+        service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, profileBindingService, siteBindingService,
+                analyzerResultsService);
     }
 
     @Test
@@ -85,7 +91,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
     public void attachesTheBridgeReferenceWithoutCopyingTheConnectionDocument() {
         Analyzer analyzer = analyzer("42");
         bind(analyzer);
-        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
 
         AnalyzerInstanceState result = service.attachBridgeConnection("42", "bridge-connection-42", "17");
 
@@ -99,7 +105,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         Analyzer analyzer = analyzer("42");
         bind(analyzer);
         analyzer.setBridgeConnectionId("bridge-connection-original");
-        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
 
         assertThrows(IllegalStateException.class,
                 () -> service.attachBridgeConnection("42", "bridge-connection-different", "17"));
@@ -114,7 +120,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         profile.setId("11");
         AnalyzerSiteBindingRevision reviewedRevision = siteBindingRevision(profile, "12", "13", 2,
                 "sha256:" + "2".repeat(64));
-        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
         when(siteBindingService.findCurrentByProfileBindingId("11"))
                 .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(reviewedRevision.getSiteBinding(),
                         reviewedRevision, List.of(), List.of())));
@@ -134,7 +140,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         profile.setId("11");
         AnalyzerSiteBindingRevision currentRevision = siteBindingRevision(profile, "12", "13", 3,
                 "sha256:" + "3".repeat(64));
-        when(analyzerService.getWithType("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
         when(siteBindingService.findCurrentByProfileBindingId("11"))
                 .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(currentRevision.getSiteBinding(),
                         currentRevision, List.of(), List.of())));
@@ -143,6 +149,21 @@ public class AnalyzerInstanceLocalStateServiceTest {
                 () -> service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "2".repeat(64), "17"));
 
         verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
+    @Test
+    public void listsHeldResultAttentionWithEachAnalyzer() {
+        Analyzer first = analyzer("42");
+        Analyzer second = analyzer("43");
+        bind(first);
+        bind(second);
+        when(analyzerService.getAllWithBindings()).thenReturn(List.of(first, second));
+        when(analyzerResultsService.countHeldResultsByAnalyzerIds(List.of("42", "43"))).thenReturn(Map.of("42", 2L));
+
+        List<AnalyzerInstanceState> states = service.list();
+
+        assertEquals(2L, states.get(0).heldResultCount());
+        assertEquals(0L, states.get(1).heldResultCount());
     }
 
     private static AnalyzerProfileBinding bind(Analyzer analyzer) {

@@ -9,6 +9,7 @@ import {
   Form,
   Grid,
   InlineNotification,
+  Link as CarbonLink,
   Pagination,
   Select,
   SelectItem,
@@ -19,6 +20,7 @@ import {
 import { Copy } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
+import { Link as RouterLink } from "react-router-dom";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServerFullResponse } from "../utils/Utils";
@@ -28,14 +30,33 @@ import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
 
-export const buildAnalyzerResultsRedirectUrl = (queryMode, queryValue) => {
-  if (!queryValue) {
+export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
+  if (!analyzerId) {
     return "/AnalyzerResults";
   }
 
-  return queryMode === "id"
-    ? `/AnalyzerResults?id=${queryValue}`
-    : `/AnalyzerResults?type=${queryValue}`;
+  return `/AnalyzerResults?id=${encodeURIComponent(analyzerId)}`;
+};
+
+export const buildHeldResultResolutionUrl = (row, analyzerId) => {
+  if (
+    row.importIssueReason !== "unknown_analyzer_result_value" ||
+    !row.sourceProfileId ||
+    !row.sourceProfileRevision ||
+    !row.rawTestCode ||
+    !row.rawResultValue ||
+    !analyzerId
+  ) {
+    return null;
+  }
+
+  const query = new URLSearchParams({
+    revision: String(row.sourceProfileRevision),
+    returnTo: buildAnalyzerResultsRedirectUrl(analyzerId),
+    focusTest: row.rawTestCode,
+    focusValue: row.rawResultValue,
+  });
+  return `/analyzers/types/${encodeURIComponent(row.sourceProfileId)}/mapping?${query.toString()}`;
 };
 
 const AnalyserResults = (props) => {
@@ -58,10 +79,14 @@ const AnalyserResults = (props) => {
     };
   }, []);
 
-  // Split results into patient rows and QC control rows. The bridge tags
-  // QC rows with meta.tag[QC] → OE sets isControl=true on import.
   const allResults = props.results?.resultList ?? [];
   const patientResults = allResults.filter((r) => !r.isControl);
+  const heldPatientResults = patientResults.filter(
+    (result) => result.importIssueReason,
+  );
+  const actionablePatientResults = patientResults.filter(
+    (result) => !result.importIssueReason,
+  );
   const qcResults = allResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
     (r) =>
@@ -156,10 +181,7 @@ const AnalyserResults = (props) => {
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = buildAnalyzerResultsRedirectUrl(
-        props.queryMode,
-        props.queryValue || props.type,
-      );
+      window.location.href = buildAnalyzerResultsRedirectUrl(props.analyzerId);
     } else {
       const detail = await response.text().catch(() => "");
       if (detail) {
@@ -195,10 +217,13 @@ const AnalyserResults = (props) => {
     var form = props.results;
     jpSet(form, "resultList[" + rowId + "].sentDate_", d);
   };
-  const handleCheckBox = (e, rowId) => {
-    const { name, id, checked } = e.target;
-    let form = props.results;
-    jpSet(form, name, checked);
+  const handleCheckBox = (e, rowId, fieldName) => {
+    const row = (props.results.resultList || []).find(
+      (result) => String(result.id) === String(rowId),
+    );
+    if (row) {
+      row[fieldName] = e.target.checked;
+    }
   };
 
   // OGC-1145 FR-8 — set the choice directly on the row: the field is absent
@@ -211,9 +236,13 @@ const AnalyserResults = (props) => {
     }
   };
 
-  const handleAutomatedCheck = (checked, name) => {
-    let form = props.results;
-    jpSet(form, name, checked);
+  const handleAutomatedCheck = (checked, rowId, fieldName) => {
+    const row = (props.results.resultList || []).find(
+      (result) => String(result.id) === String(rowId),
+    );
+    if (row) {
+      row[fieldName] = checked;
+    }
   };
   const validateResults = (e, rowId) => {
     handleChange(e, rowId);
@@ -225,6 +254,7 @@ const AnalyserResults = (props) => {
 
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
+    const held = Boolean(row.importIssueReason);
     switch (column.id) {
       case "sampleInfo":
         return (
@@ -308,6 +338,9 @@ const AnalyserResults = (props) => {
         );
 
       case "save":
+        if (held) {
+          return null;
+        }
         return (
           <>
             <div>
@@ -319,7 +352,7 @@ const AnalyserResults = (props) => {
                       name={"resultList[?(@.id == " + row.id + ")].isAccepted"}
                       labelText=""
                       value={true}
-                      onChange={(e) => handleCheckBox(e, row.id)}
+                      onChange={(e) => handleCheckBox(e, row.id, "isAccepted")}
                     />
                   )}
                 </Field>
@@ -329,6 +362,9 @@ const AnalyserResults = (props) => {
         );
 
       case "retest":
+        if (held) {
+          return null;
+        }
         return (
           <>
             {sampleGroupHasId(row.id) && (
@@ -339,7 +375,7 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isRejected"}
                     labelText=""
                     value={true}
-                    onChange={(e) => handleCheckBox(e, row.id)}
+                    onChange={(e) => handleCheckBox(e, row.id, "isRejected")}
                   />
                 )}
               </Field>
@@ -348,6 +384,9 @@ const AnalyserResults = (props) => {
         );
 
       case "ignore":
+        if (held) {
+          return null;
+        }
         return (
           <>
             {sampleGroupHasId(row.id) && (
@@ -358,7 +397,7 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isDeleted"}
                     labelText=""
                     value={true}
-                    onChange={(e) => handleCheckBox(e, row.id)}
+                    onChange={(e) => handleCheckBox(e, row.id, "isDeleted")}
                   />
                 )}
               </Field>
@@ -367,6 +406,9 @@ const AnalyserResults = (props) => {
         );
 
       case "notes":
+        if (held) {
+          return null;
+        }
         return (
           <>
             <div className="note">
@@ -384,16 +426,43 @@ const AnalyserResults = (props) => {
         );
 
       case "result":
-        switch (row.resultType) {
+        if (held) {
+          const resolutionUrl = buildHeldResultResolutionUrl(
+            row,
+            props.analyzerId,
+          );
+          return (
+            <div data-testid={`held-analyzer-result-${row.id}`}>
+              <Tag type="warm-gray" size="sm">
+                <FormattedMessage id="analyzer.results.held.tag" />
+              </Tag>
+              <div>
+                <strong>{row.rawResultValue || row.result}</strong>
+              </div>
+              <div>
+                <FormattedMessage
+                  id="analyzer.results.held.code"
+                  values={{ code: row.rawTestCode || row.testName }}
+                />
+              </div>
+              {resolutionUrl && (
+                <CarbonLink as={RouterLink} to={resolutionUrl}>
+                  <FormattedMessage id="analyzer.results.held.reviewMapping" />
+                </CarbonLink>
+              )}
+            </div>
+          );
+        }
+        switch (row.testResultType) {
           case "M":
           case "C":
           case "D":
             return (
               <>
                 {
-                  row.dictionaryResults.find(
+                  row.dictionaryResultList.find(
                     (result) => result.id == row.result,
-                  )?.value
+                  )?.displayValue
                 }
               </>
             );
@@ -436,6 +505,21 @@ const AnalyserResults = (props) => {
           <FormattedMessage id="validation.no.records.display" />
         </div>
       )}
+      {heldPatientResults.length > 0 && (
+        <InlineNotification
+          kind="warning"
+          title={intl.formatMessage(
+            { id: "analyzer.results.held.title" },
+            { count: heldPatientResults.length },
+          )}
+          subtitle={intl.formatMessage({
+            id: "analyzer.results.held.subtitle",
+          })}
+          lowContrast
+          hideCloseButton
+          style={{ marginTop: "16px", marginBottom: "8px" }}
+        />
+      )}
       {hasQcFailures && (
         <InlineNotification
           kind="warning"
@@ -462,7 +546,7 @@ const AnalyserResults = (props) => {
           })}
         </Tag>
       )}
-      {patientResults.length > 0 && (
+      {actionablePatientResults.length > 0 && (
         <Grid style={{ marginTop: "20px" }} className="gridBoundary">
           <Column lg={7} md={8} sm={2}>
             <picture>
@@ -484,14 +568,17 @@ const AnalyserResults = (props) => {
               name={"autochecks"}
               labelText={intl.formatMessage({ id: "validation.accept.all" })}
               onChange={(e) => {
-                const nomalResults = patientResults;
-                nomalResults.forEach((result) => {
+                actionablePatientResults.forEach((result) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isAccepted",
                   );
                   if (!checkbox) return;
                   checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
+                  handleAutomatedCheck(
+                    e.target.checked,
+                    result.id,
+                    "isAccepted",
+                  );
                 });
               }}
             />
@@ -502,14 +589,17 @@ const AnalyserResults = (props) => {
               name={"autochecks"}
               labelText={intl.formatMessage({ id: "validation.reject.all" })}
               onChange={(e) => {
-                const nomalResults = patientResults;
-                nomalResults.forEach((result) => {
+                actionablePatientResults.forEach((result) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isRejected",
                   );
                   if (!checkbox) return;
                   checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
+                  handleAutomatedCheck(
+                    e.target.checked,
+                    result.id,
+                    "isRejected",
+                  );
                 });
               }}
             />
@@ -520,14 +610,17 @@ const AnalyserResults = (props) => {
               name={"autochecks"}
               labelText={intl.formatMessage({ id: "validation.ignore.all" })}
               onChange={(e) => {
-                const nomalResults = patientResults;
-                nomalResults.forEach((result) => {
+                actionablePatientResults.forEach((result) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isDeleted",
                   );
                   if (!checkbox) return;
                   checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
+                  handleAutomatedCheck(
+                    e.target.checked,
+                    result.id,
+                    "isDeleted",
+                  );
                 });
               }}
             />
@@ -590,16 +683,18 @@ const AnalyserResults = (props) => {
               }
             />
 
-            <Button
-              type="button"
-              onClick={() => handleSave(values)}
-              id="submit"
-              style={{ marginTop: "16px" }}
-              data-testid="Save-btn"
-              disabled={isSubmitting}
-            >
-              <FormattedMessage id="label.button.save" />
-            </Button>
+            {actionablePatientResults.length > 0 && (
+              <Button
+                type="button"
+                onClick={() => handleSave(values)}
+                id="submit"
+                style={{ marginTop: "16px" }}
+                data-testid="Save-btn"
+                disabled={isSubmitting}
+              >
+                <FormattedMessage id="label.button.save" />
+              </Button>
+            )}
             {isSubmitting && (
               <span data-testid="analyzer-results-save-in-progress" />
             )}

@@ -91,7 +91,7 @@ public class AnalyzerActivationServiceTest {
         retained = new AnalyzerActivationRecord();
         retained.setVerificationConfirmation(confirmation);
 
-        when(analyzerService.getWithType(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION)).thenReturn(profileRevision());
         when(siteBindingService.findByRevisionId(snapshot.revision().getId())).thenReturn(Optional.of(snapshot));
         when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))

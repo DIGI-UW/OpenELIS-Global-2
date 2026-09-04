@@ -32,8 +32,7 @@ services:
       --simulate-api-port 8080
       --verbose
     networks:
-      analyzer-net:
-        ipv4_address: 172.21.1.100
+      - analyzer-net
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',9600)); s.close()\""]
       interval: 15s
@@ -59,6 +58,8 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO
+      - BRIDGE_SECURITY_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - BRIDGE_SECURITY_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
       - BRIDGE_FILE_ENABLED=true
       # Fast polling for CI — files are written atomically by Playwright tests.
       # Production keeps FileConfig.java defaults (5000ms poll, 3000ms stability).
@@ -86,6 +87,8 @@ services:
   oe.openelis.org:
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
+      - ANALYZER_BRIDGE_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
+      - ANALYZER_BRIDGE_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
       # Full CATALINA_OPTS required here so compose merge replaces (not drops) base JVM flags.
       # Bridge owns FILE polling (FileAlterationMonitor); OE polling is disabled.
       - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
@@ -103,6 +106,3 @@ services:
 networks:
   analyzer-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.21.1.0/24

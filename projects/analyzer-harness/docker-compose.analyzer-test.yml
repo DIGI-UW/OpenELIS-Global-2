@@ -38,8 +38,7 @@ services:
       --simulate-api-port 8080
       --verbose
     networks:
-      analyzer-net:
-        ipv4_address: 172.21.1.100
+      - analyzer-net
     restart: unless-stopped
     healthcheck:
       test:
@@ -139,7 +138,6 @@ services:
           - oe.openelis.org
     volumes:
       - serial-vol:/dev/serial
-      - ./volume/analyzer-imports:/data/analyzer-imports
 
   # Proxy needs both networks to reach OE.
   proxy:
@@ -153,9 +151,6 @@ services:
 networks:
   analyzer-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.21.1.0/24
 
 volumes:
   serial-vol:

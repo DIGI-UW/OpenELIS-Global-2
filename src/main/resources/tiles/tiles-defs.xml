@@ -1465,20 +1465,6 @@
             value="/pages/common/emptyPlaceHolder.jsp" />
     </definition>
 
-    <definition name="quantStudioSetupDefinition"
-        extends="baseDefinition">
-        <put-attribute name="bodyFragment"
-            value="quantStudioSetupBodyDefinition" />
-        <put-attribute name="footerFragment"
-            value="/pages/common/emptyPlaceHolder.jsp" />
-    </definition>
-
-    <definition name="quantStudioSetupBodyDefinition"
-        template="/pages/analyzer/quaintstudio/setupExperiment.jsp">
-        <put-attribute name="patientEnhancedSearchFragment"
-            value="/pages/patient/patientEnhancedSearch.jsp" />
-    </definition>
-
     <!-- Sample Management React Application -->
     <definition name="sampleManagementDefinition"
         extends="baseDefinition">

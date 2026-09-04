@@ -112,9 +112,6 @@ jobs:
             trivy-results.txt
             sbom.spdx.json
 
-      # - name: Build plugins (compile-only until analyzer stubs are replaced)
-      #   run: cd plugins && mvn clean verify -DskipTests -Dmaven.test.skip=true
-
       - name: Generate JaCoCo Badge
         if: github.event_name == 'push'
         uses: cicirello/jacoco-badge-generator@v2

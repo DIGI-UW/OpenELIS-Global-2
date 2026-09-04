@@ -11,19 +11,14 @@ import {
   Link,
   Button,
   Loading,
+  Stack,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useLocation } from "react-router-dom";
+import { Redirect, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
-
-let breadcrumbs = [
-  { label: "home.label", link: "/" },
-  { label: "banner.menu.results", link: "" },
-  { label: "banner.menu.results.analyzer", link: "/AnalyzerResults" },
-];
 
 /**
  * The page title for an analyzer worklist. The URL carries the analyzer's id;
@@ -37,10 +32,8 @@ const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const [results, setResults] = useState({ resultList: [] });
-  const [type, setType] = useState("");
   // The analyzer's display name, resolved server-side from the id in the URL.
   const [analyzerName, setAnalyzerName] = useState("");
-  const [queryMode, setQueryMode] = useState("type");
   const [queryValue, setQueryValue] = useState("");
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
@@ -50,32 +43,23 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [sampleGroup, setSampleGroup] = useState([]);
-  const [searchTermToPage, setSearchTermToPage] = useState({});
+  const [searchTermToPage, setSearchTermToPage] = useState([]);
   const [labNumber, setLabNumber] = useState("");
   const intl = useIntl();
 
   const location = useLocation();
+  const selectedAnalyzerId = new URLSearchParams(location.search).get("id");
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
-    const analyzerId = params.get("id");
-    const analyserType = params.get("type");
-    if (analyzerId) {
-      setQueryMode("id");
-      setQueryValue(analyzerId);
-      setType(analyzerId);
-      setUrl("/rest/AnalyzerResults?id=" + analyzerId);
-    } else if (analyserType) {
-      setQueryMode("type");
-      setQueryValue(analyserType);
-      setType(analyserType);
-      setUrl("/rest/AnalyzerResults?type=" + analyserType);
+    if (!selectedAnalyzerId) {
+      return;
     }
+    setQueryValue(selectedAnalyzerId);
+    setUrl("/rest/AnalyzerResults?id=" + selectedAnalyzerId);
     // drop the previous analyzer's name so a stale title never shows while the
     // new one is in flight
     setAnalyzerName("");
-  }, [location.search]);
+  }, [selectedAnalyzerId]);
 
   useEffect(() => {
     if (url) {
@@ -116,11 +100,13 @@ const Index = () => {
       }
       if (data.paging) {
         var { totalPages, currentPage, searchTermToPage } = data.paging;
+        setSearchTermToPage(
+          Array.isArray(searchTermToPage) ? searchTermToPage : [],
+        );
         if (totalPages > 1) {
           setPagination(true);
           setCurrentApiPage(currentPage);
           setTotalApiPages(totalPages);
-          setSearchTermToPage(searchTermToPage);
           if (parseInt(currentPage) < parseInt(totalPages)) {
             setNextPage(parseInt(currentPage) + 1);
           } else {
@@ -148,23 +134,36 @@ const Index = () => {
       }
     }
   };
+
+  if (!selectedAnalyzerId) {
+    return <Redirect to="/analyzers" />;
+  }
+
+  const pageTitle = analyzerPageTitle(
+    intl.formatMessage({ id: "banner.menu.results.analyzer" }),
+    analyzerName,
+  );
+  const breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "analyzer.navigation.analyzers", link: "/analyzers" },
+    {
+      label: analyzerName || "banner.menu.results.analyzer",
+      isCurrentPage: true,
+    },
+  ];
+
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
-          <Section>
-            <Section>
-              <Heading>
-                {analyzerPageTitle(
-                  intl.formatMessage({ id: "banner.menu.results.analyzer" }),
-                  analyzerName,
-                )}
-              </Heading>
+      <Stack gap={5}>
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section level={1}>
+              <Heading>{pageTitle}</Heading>
             </Section>
-          </Section>
-        </Column>
-      </Grid>
+          </Column>
+        </Grid>
+      </Stack>
       <div className="orderLegendBody">
         {notificationVisible === true ? <AlertDialog /> : ""}
         {isLoading && <Loading></Loading>}
@@ -188,11 +187,17 @@ const Index = () => {
               <Button
                 style={{ marginTop: "20px" }}
                 onClick={() => {
-                  const page = searchTermToPage.find(
+                  const pageMapping = searchTermToPage.find(
                     (item) => item.id === labNumber,
-                  ).value;
+                  );
+                  if (!pageMapping) {
+                    return;
+                  }
                   setIsLoading(true);
-                  getFromOpenElisServer(url + "&page=" + page, handleResults);
+                  getFromOpenElisServer(
+                    url + "&page=" + pageMapping.value,
+                    handleResults,
+                  );
                 }}
               >
                 <FormattedMessage id="referral.search" />{" "}
@@ -238,9 +243,7 @@ const Index = () => {
           </Grid>
         </>
         <AnalyserResults
-          type={type}
-          queryMode={queryMode}
-          queryValue={queryValue}
+          analyzerId={queryValue}
           results={results}
           sampleGroup={sampleGroup}
         />

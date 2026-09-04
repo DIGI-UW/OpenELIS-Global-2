@@ -195,6 +195,12 @@
   }
 }
 
+.analyzer-type-mapping__result-source {
+  align-items: start;
+  display: grid;
+  gap: spacing.$spacing-02;
+}
+
 .analyzer-type-mapping__recognition {
   border-top: 1px solid var(--cds-border-subtle-01);
   margin-top: spacing.$spacing-07;

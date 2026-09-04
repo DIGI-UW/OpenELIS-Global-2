@@ -2,10 +2,12 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,13 +18,16 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
     private final AnalyzerService analyzerService;
     private final AnalyzerProfileBindingService profileBindingService;
     private final AnalyzerSiteBindingService siteBindingService;
+    private final AnalyzerResultsService analyzerResultsService;
 
     @Autowired
     public AnalyzerInstanceLocalStateServiceImpl(AnalyzerService analyzerService,
-            AnalyzerProfileBindingService profileBindingService, AnalyzerSiteBindingService siteBindingService) {
+            AnalyzerProfileBindingService profileBindingService, AnalyzerSiteBindingService siteBindingService,
+            AnalyzerResultsService analyzerResultsService) {
         this.analyzerService = analyzerService;
         this.profileBindingService = profileBindingService;
         this.siteBindingService = siteBindingService;
+        this.analyzerResultsService = analyzerResultsService;
     }
 
     @Override
@@ -52,13 +57,17 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
         if (analyzer.getId() == null) {
             analyzer.setId(analyzerId);
         }
-        return state(analyzer);
+        return state(analyzer, 0L);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerInstanceState> list() {
-        return analyzerService.getAllWithTypes().stream().map(AnalyzerInstanceLocalStateServiceImpl::state).toList();
+        List<Analyzer> analyzers = analyzerService.getAllWithBindings();
+        List<String> analyzerIds = analyzers.stream().map(Analyzer::getId).filter(Objects::nonNull).toList();
+        Map<String, Long> heldCounts = analyzerResultsService.countHeldResultsByAnalyzerIds(analyzerIds);
+        return analyzers.stream().map(analyzer -> state(analyzer, heldCounts.getOrDefault(analyzer.getId(), 0L)))
+                .toList();
     }
 
     @Override
@@ -134,18 +143,25 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
 
     private Analyzer find(String analyzerId) {
         String exactId = requireText(analyzerId, "Analyzer ID");
-        return analyzerService.getWithType(exactId)
+        return analyzerService.getWithBinding(exactId)
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + exactId));
     }
 
-    private static AnalyzerInstanceState state(Analyzer analyzer) {
+    private AnalyzerInstanceState state(Analyzer analyzer) {
+        long heldResultCount = analyzer.getId() == null ? 0L
+                : analyzerResultsService.countHeldResultsByAnalyzerIds(List.of(analyzer.getId()))
+                        .getOrDefault(analyzer.getId(), 0L);
+        return state(analyzer, heldResultCount);
+    }
+
+    private static AnalyzerInstanceState state(Analyzer analyzer, long heldResultCount) {
         AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
         if (profile == null) {
             throw new IllegalStateException("Analyzer profile binding is missing");
         }
         return new AnalyzerInstanceState(analyzer.getId(), analyzer.getName(), analyzer.getTestUnitIds(),
                 profile.getProfileId(), profile.getProfileRevision(), profile.getProfileFingerprint(),
-                analyzer.getBridgeConnectionId(), analyzer.getStatus());
+                analyzer.getBridgeConnectionId(), analyzer.getStatus(), heldResultCount);
     }
 
     private static List<String> normalizeLabUnits(List<String> ids) {

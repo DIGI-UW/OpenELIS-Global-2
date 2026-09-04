@@ -2188,15 +2188,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         device.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analyzer_uuid", fhirUuid));
 
-        if (!GenericValidator.isBlankOrNull(analyzer.getMachineId())) {
-            device.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analyzer_machineId",
-                    analyzer.getMachineId()));
-            device.setSerialNumber(analyzer.getMachineId());
-        }
-
-        if (!GenericValidator.isBlankOrNull(analyzer.getDiscoveredSourceId())) {
-            device.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analyzer_sourceId",
-                    analyzer.getDiscoveredSourceId()));
+        if (!GenericValidator.isBlankOrNull(analyzer.getBridgeConnectionId())) {
+            device.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analyzer_bridge_connection",
+                    analyzer.getBridgeConnectionId()));
         }
 
         if (!GenericValidator.isBlankOrNull(analyzer.getName())) {
@@ -2204,8 +2198,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                     .setType(DeviceNameType.USERFRIENDLYNAME));
         }
 
-        if (!GenericValidator.isBlankOrNull(analyzer.getType())) {
-            device.setType(new CodeableConcept().setText(analyzer.getType()));
+        if (analyzer.getPinnedProfileBinding() != null
+                && !GenericValidator.isBlankOrNull(analyzer.getPinnedProfileBinding().getProfileId())) {
+            device.setType(new CodeableConcept().setText(analyzer.getPinnedProfileBinding().getProfileId()));
         }
 
         Identifier facilityId = createFacilityIdentifier();

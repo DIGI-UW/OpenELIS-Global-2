@@ -60,8 +60,6 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
@@ -84,8 +82,7 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
         seedSampleType(SERUM_LIKE, "OvSerum 1145");
         seedSampleType(CSF_LIKE, "OvCsf 1145");

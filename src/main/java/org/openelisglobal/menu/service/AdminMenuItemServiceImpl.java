@@ -160,11 +160,6 @@ public class AdminMenuItemServiceImpl implements AdminMenuItemService, Configura
         curItem.setMessageKey("externalConnections.browse.title");
         adminMenuItems.add(curItem);
 
-        curItem = new AdminMenuItem();
-        curItem.setPath("/ListPlugins");
-        curItem.setMessageKey("plugin.menu.list.plugins");
-        adminMenuItems.add(curItem);
-
         if (permissionBase.equalsIgnoreCase("ROLE")) {
             curItem = new AdminMenuItem();
             curItem.setPath("/UnifiedSystemUserMenu");

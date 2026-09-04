@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.junit.Before;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -103,9 +102,8 @@ public class TestCatalogNumericIdGuardTest {
                 mock(TestResultComponentService.class), mock(TestResultInterpretationService.class),
                 mock(TestResultService.class), mock(ResultLimitService.class),
                 mock(RangeCoverageValidationService.class), handlingService, mock(AnalyzerService.class),
-                mock(AnalyzerTestMappingService.class), mock(TypeOfSampleService.class),
-                mock(TypeOfSampleTestService.class), mock(TestTerminologyMappingService.class),
-                mock(PanelService.class), mock(PanelItemService.class));
+                mock(TypeOfSampleService.class), mock(TypeOfSampleTestService.class),
+                mock(TestTerminologyMappingService.class), mock(PanelService.class), mock(PanelItemService.class));
         TestCatalogActivationRestController activation = new TestCatalogActivationRestController(testService,
                 mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
                 mock(TestActivationAcknowledgmentService.class), mock(TestResultComponentService.class),

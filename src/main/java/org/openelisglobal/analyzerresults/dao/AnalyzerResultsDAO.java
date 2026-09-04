@@ -16,6 +16,7 @@
 package org.openelisglobal.analyzerresults.dao;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.dao.BaseDAO;
 
@@ -36,18 +37,9 @@ public interface AnalyzerResultsDAO extends BaseDAO<AnalyzerResults, String> {
 
     public List<AnalyzerResults> getDuplicateResultByAccessionAndTest(AnalyzerResults result);
 
-    /**
-     * Staging rows the accept pipeline flagged as un-actionable: a Host Test Code
-     * arrived that no {@code analyzer_test_map} row resolves, a cartridge code
-     * slipped through as a result code, or a dict value didn't match any
-     * {@code dict_entry}. These are the rows the Import Issues admin panel surfaces
-     * so operators can add a mapping or alias instead of the row silently draining
-     * out of the screen.
-     * <p>
-     * Capped to prevent unbounded result sets if a misconfiguration floods the
-     * staging table overnight. Ordered newest first.
-     */
-    public List<AnalyzerResults> findWithImportIssues(int limit);
+    List<AnalyzerResults> findHeldResultValuesByProfile(String profileId, int profileRevision);
+
+    Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds);
 
     // public void deleteAll(List<AnalyzerResults> deletableAnalyzerResults) throws
     // LIMSRuntimeException;

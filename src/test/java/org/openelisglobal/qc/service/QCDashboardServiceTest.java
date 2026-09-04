@@ -20,6 +20,7 @@ import org.openelisglobal.qc.dto.AnalyteDetail;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.dto.TriggeredRuleDetail;
+import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -29,10 +30,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * <p>
  * Test data loaded via DBUnit from testdata/qc-dashboard.xml:
  * <ul>
- * <li>Instrument 100: Chemistry Analyzer A (type=Clinical Chemistry,
- * location=Core Lab - Room 101), 1 REJECTION + 1 WARNING violation</li>
- * <li>Instrument 200: Standalone Hematology (no analyzer type,
- * location=Hematology Wing), 1 WARNING violation</li>
+ * <li>Instrument 100: Chemistry Analyzer A (profile=Clinical Chemistry, lab
+ * unit=Core Lab - Room 101), 1 REJECTION + 1 WARNING violation</li>
+ * <li>Instrument 200: Standalone Hematology (profile=Hematology, lab
+ * unit=Hematology Wing), 1 WARNING violation</li>
  * <li>Instrument 300: Resolved Only Analyzer, only RESOLVED violations (should
  * not appear)</li>
  * <li>Instrument 400: Clean Immunoassay Analyzer, has QC results but NO
@@ -60,10 +61,14 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private TestSectionService testSectionService;
+
     @Before
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/qc-dashboard.xml");
+        testSectionService.refreshNames();
         rebaseTimestampsToNow();
     }
 
@@ -140,7 +145,7 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     // ==================== Instrument Metadata ====================
 
     @Test
-    public void getInstrumentComplianceStatus_withAnalyzerType_setsNameTypeLocation() {
+    public void getInstrumentComplianceStatus_setsNameProfileAndLabUnit() {
         InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus("100");
 
         assertEquals("Chemistry Analyzer A", instrument100.getInstrumentName());
@@ -149,14 +154,12 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getInstrumentComplianceStatus_withoutAnalyzerType_setsNameAndLocation() {
+    public void getInstrumentComplianceStatus_usesPinnedProfileAndAssignedLabUnit() {
         InstrumentQCStatus instrument200 = dashboardService.getInstrumentComplianceStatus("200");
 
         assertEquals("Standalone Hematology", instrument200.getInstrumentName());
         assertEquals("Hematology Wing", instrument200.getInstrumentLocation());
-        // Analyzer 200 has no analyzer_type_id and no analyzer_type column — type
-        // should be null
-        assertNull(instrument200.getInstrumentType());
+        assertEquals("Hematology", instrument200.getInstrumentType());
     }
 
     // ==================== Triggered Rule Details ====================

@@ -15,7 +15,6 @@ import {
   CicsSystemGroup,
   QrCode,
   ContainerSoftware,
-  BootVolumeAlt,
   Report,
   Bullhorn,
   User,
@@ -613,13 +612,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         {...navProps(`${path}/labelPresets`)}
       >
         <FormattedMessage id="sidenav.label.admin.labelPresets" />
-      </SideNavLink>
-      <SideNavLink
-        data-cy="pluginFile"
-        renderIcon={BootVolumeAlt}
-        {...navProps(`${path}/PluginFile`)}
-      >
-        <FormattedMessage id="sidenav.label.admin.Listplugin" />
       </SideNavLink>
       <SideNavMenu
         data-cy="vectorSurveillance"

@@ -112,7 +112,7 @@ Follow
 [Playwright best practices](../../.specify/guides/playwright-best-practices.md).
 Use
 `/plan-record-playwright` for planning, `/write-playwright-test` for authoring.
-Register in `harness-foundational` project.
+Register in the `harness-demo` project.
 
 - [ ] T008 [M1] Plan the Playwright QC smoke test via `/plan-record-playwright`.
       Test outline:
@@ -129,8 +129,8 @@ Register in `harness-foundational` project.
      `{ force: true }` on Carbon inputs.
 
 - [ ] T009 [M1] Author the Playwright test via `/write-playwright-test` in
-      `frontend/src/tests/e2e/harness-foundational/qc-dashboard-smoke.spec.ts`.
-      Register in the harness-foundational Playwright project config.
+      `frontend/playwright/tests/demo/harness/ogc-41-qc-dashboard.spec.ts`.
+      Register it in `HARNESS_DEMO_TESTS`.
 
 - [ ] T010 [M1] Run `/audit-playwright` on the new test. Fix any anti-patterns
       flagged. Run `/debug-playwright` if the test fails on first execution.

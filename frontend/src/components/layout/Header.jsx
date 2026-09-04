@@ -325,7 +325,7 @@ function OEHeader({
    * Returns true if ANY child/grandchild matches currentPath.
    *
    * Important: Do NOT match the item itself here. Otherwise a parent item like
-   * /analyzers would be considered an "active child" for /analyzers/errors.
+   * /analyzers would be considered an "active child" for /analyzers/types.
    */
   const hasActiveDescendant = (item, currentPath) => {
     const normalizePath = (url) => {
@@ -356,7 +356,7 @@ function OEHeader({
 
   /**
    * Check if a menu item has siblings with paths that start with its own path.
-   * This helps avoid prefix matching conflicts (e.g., /analyzers matching /analyzers/errors).
+   * This helps avoid prefix matching conflicts (e.g., /analyzers matching /analyzers/types).
    */
   const hasSiblingWithLongerPath = (menuItem, parentMenuItems) => {
     if (!parentMenuItems || !menuItem.menu.actionURL) return false;
@@ -442,7 +442,7 @@ function OEHeader({
     const hasChildren = menuItem.childMenus.length > 0;
 
     // Check if this menu item has siblings with paths that start with its own path.
-    // If so, only use exact matching to avoid conflicts (e.g., /analyzers vs /analyzers/errors).
+    // If so, only use exact matching to avoid conflicts (e.g., /analyzers vs /analyzers/types).
     const hasSiblingConflict = hasChildren
       ? false // Parent items don't need this check
       : hasSiblingWithLongerPath(menuItem, parentMenuItems);

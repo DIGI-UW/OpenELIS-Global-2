@@ -1,15 +1,9 @@
 package org.openelisglobal.analyzer.service;
 
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -33,14 +27,14 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Override
     @Transactional(readOnly = true)
-    public List<Analyzer> getAllWithTypes() {
-        return baseObjectDAO.findAllWithTypes();
+    public List<Analyzer> getAllWithBindings() {
+        return baseObjectDAO.findAllWithBindings();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Analyzer> getWithType(String id) {
-        return baseObjectDAO.findByIdWithType(id);
+    public Optional<Analyzer> getWithBinding(String id) {
+        return baseObjectDAO.findByIdWithBinding(id);
     }
 
     @Override
@@ -63,100 +57,6 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional(readOnly = true)
     public Optional<Analyzer> getByName(String name) {
         return baseObjectDAO.findByName(name);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> findByIdentifierPatternMatch(String analyzerIdentifier) {
-        return findByIdentifierPatternMatch(analyzerIdentifier == null ? List.of() : List.of(analyzerIdentifier));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> findByIdentifierPatternMatch(List<String> analyzerIdentifiers) {
-        List<String> normalizedIdentifiers = normalizeAnalyzerIdentifiers(analyzerIdentifiers);
-        if (normalizedIdentifiers.isEmpty()) {
-            LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                    "Empty analyzer identifiers");
-            return Optional.empty();
-        }
-
-        List<Analyzer> candidates = baseObjectDAO.findGenericAnalyzersWithPatterns();
-        LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                "Looking for match: identifiers=" + normalizedIdentifiers + ", candidates="
-                        + (candidates != null ? candidates.size() : 0));
-        if (candidates == null || candidates.isEmpty()) {
-            return Optional.empty();
-        }
-
-        Analyzer bestAnalyzer = null;
-        String bestIdentifier = null;
-        String bestPattern = null;
-        int bestScore = -1;
-
-        for (Analyzer analyzer : candidates) {
-            if (analyzer.getIdentifierPattern() == null || analyzer.getIdentifierPattern().trim().isEmpty()) {
-                continue;
-            }
-            try {
-                String pattern = analyzer.getIdentifierPattern();
-                Pattern p = Pattern.compile(pattern);
-                for (String identifier : normalizedIdentifiers) {
-                    Matcher m = p.matcher(identifier);
-                    if (m.find()) {
-                        int score = m.group().length();
-                        if (score > bestScore) {
-                            bestAnalyzer = analyzer;
-                            bestIdentifier = identifier;
-                            bestPattern = pattern;
-                            bestScore = score;
-                        }
-                    }
-                }
-            } catch (PatternSyntaxException e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                        "Invalid identifier_pattern regex for analyzer id=" + analyzer.getId());
-            }
-        }
-
-        if (bestAnalyzer != null) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                    "MATCHED: '" + bestIdentifier + "' matched pattern '" + bestPattern + "' for analyzer "
-                            + bestAnalyzer.getName());
-            return Optional.of(bestAnalyzer);
-        }
-
-        LogEvent.logWarn(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                "No match found for identifiers " + normalizedIdentifiers + " among " + candidates.size()
-                        + " candidates");
-        return Optional.empty();
-    }
-
-    private List<String> normalizeAnalyzerIdentifiers(List<String> analyzerIdentifiers) {
-        if (analyzerIdentifiers == null || analyzerIdentifiers.isEmpty()) {
-            return List.of();
-        }
-
-        Set<String> normalized = new LinkedHashSet<>();
-        for (String identifier : analyzerIdentifiers) {
-            if (identifier == null) {
-                continue;
-            }
-
-            String trimmed = identifier.trim();
-            if (trimmed.isEmpty()) {
-                continue;
-            }
-
-            normalized.add(trimmed);
-
-            String upperCased = trimmed.toUpperCase();
-            if (!upperCased.equals(trimmed)) {
-                normalized.add(upperCased);
-            }
-        }
-
-        return List.copyOf(normalized);
     }
 
     @Override
@@ -185,7 +85,13 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId) {
-        return baseObjectDAO.findByDiscoveredSourceId(discoveredSourceId);
+    public Optional<Analyzer> findByBridgeConnectionId(String bridgeConnectionId) {
+        return baseObjectDAO.findByBridgeConnectionId(bridgeConnectionId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerTestCapability> getCapabilitiesForTest(String testId) {
+        return baseObjectDAO.findCapabilitiesByTestId(testId);
     }
 }

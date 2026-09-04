@@ -22,7 +22,6 @@ import ProviderMenu from "./ProviderMenu/ProviderMenu";
 import DataExportStatus from "./DataExportStatus/DataExportStatus";
 import LabelPresetList from "./labelPresets/LabelPresetList";
 import { Redirect } from "react-router-dom";
-import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
 import TestCatalog from "./testManagement/ViewTestCatalog";
 import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
@@ -350,7 +349,6 @@ function Admin() {
         component={NotificationTriggerConfig}
       />
       <Route path={`${path}/DictionaryMenu`} component={DictionaryManagement} />
-      <Route path={`${path}/PluginFile`} component={PluginList} />
       <Route
         path={`${path}/SearchIndexManagement`}
         component={SearchIndexManagement}

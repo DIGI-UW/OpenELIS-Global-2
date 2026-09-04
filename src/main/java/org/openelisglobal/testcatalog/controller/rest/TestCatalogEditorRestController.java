@@ -11,9 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
-import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
+import org.openelisglobal.analyzer.service.AnalyzerTestCapability;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ControllerUtills;
@@ -106,8 +104,6 @@ public class TestCatalogEditorRestController {
 
     private final AnalyzerService analyzerService;
 
-    private final AnalyzerTestMappingService analyzerTestMappingService;
-
     private final TypeOfSampleService typeOfSampleService;
 
     private final TypeOfSampleTestService typeOfSampleTestService;
@@ -154,9 +150,9 @@ public class TestCatalogEditorRestController {
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
             TestSampleHandlingService handlingService, AnalyzerService analyzerService,
-            AnalyzerTestMappingService analyzerTestMappingService, TypeOfSampleService typeOfSampleService,
-            TypeOfSampleTestService typeOfSampleTestService, TestTerminologyMappingService terminologyService,
-            PanelService panelService, PanelItemService panelItemService) {
+            TypeOfSampleService typeOfSampleService, TypeOfSampleTestService typeOfSampleTestService,
+            TestTerminologyMappingService terminologyService, PanelService panelService,
+            PanelItemService panelItemService) {
         this.testService = testService;
         this.componentService = componentService;
         this.interpretationService = interpretationService;
@@ -165,7 +161,6 @@ public class TestCatalogEditorRestController {
         this.coverageService = coverageService;
         this.handlingService = handlingService;
         this.analyzerService = analyzerService;
-        this.analyzerTestMappingService = analyzerTestMappingService;
         this.typeOfSampleService = typeOfSampleService;
         this.typeOfSampleTestService = typeOfSampleTestService;
         this.terminologyService = terminologyService;
@@ -1517,18 +1512,13 @@ public class TestCatalogEditorRestController {
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
-        // Resolve analyzer display names in one pass (avoid an N+1 per mapping).
-        Map<String, String> idToName = new HashMap<>();
-        for (Analyzer a : analyzerService.getAll()) {
-            idToName.put(a.getId(), a.getName());
-        }
         AnalyzersResponse resp = new AnalyzersResponse();
         resp.testId = testId;
-        for (AnalyzerTestMapping mapping : analyzerTestMappingService.getAllForTest(testId)) {
+        for (AnalyzerTestCapability capability : analyzerService.getCapabilitiesForTest(testId)) {
             AnalyzerRow row = new AnalyzerRow();
-            row.analyzerId = mapping.getAnalyzerId();
-            row.analyzerName = idToName.get(mapping.getAnalyzerId());
-            row.analyzerTestName = mapping.getAnalyzerTestName();
+            row.analyzerId = capability.analyzerId();
+            row.analyzerName = capability.analyzerName();
+            row.analyzerTestName = capability.analyzerTestCode();
             resp.analyzers.add(row);
         }
         // Stable order so the read-only table renders deterministically.
