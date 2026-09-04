@@ -147,7 +147,9 @@ public class BMPSMSNotificationSender {
         try (CloseableHttpResponse response = httpClient.execute(getRequest)) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "sendViaLegacyBMP",
                     "response status code from BMP SMS: " + response.getStatusLine().getStatusCode());
+
             statusReturned = EntityUtils.toString(response.getEntity(), "UTF-8");
+
             LogEvent.logDebug(this.getClass().getSimpleName(), "sendViaLegacyBMP",
                     "response status from BMP SMS: " + statusReturned);
         } catch (IOException e) {

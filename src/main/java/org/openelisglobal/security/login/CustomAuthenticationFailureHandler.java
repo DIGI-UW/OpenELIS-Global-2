@@ -52,7 +52,7 @@ public class CustomAuthenticationFailureHandler implements AuthenticationFailure
             } else if (exception instanceof LockedException) {
                 errors.reject("login.error.account.lock");
             } else {
-                exception.printStackTrace();
+                LogEvent.logError(exception.getMessage(), exception);
                 errors.reject("login.error.generic");
             }
 
