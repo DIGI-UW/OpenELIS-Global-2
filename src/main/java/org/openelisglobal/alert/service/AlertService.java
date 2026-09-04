@@ -84,7 +84,11 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param resolutionNotes Notes describing how the alert was resolved
      * @return Updated alert
      */
-    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
+    // Resolving an alert is a state-changing write (status -> RESOLVED, plus
+    // resolution notes), same class of operation as createAlert/acknowledgeAlert
+    // above — so it takes ALERT_MANAGE, not the read privilege. It was gated on
+    // ALERT_VIEW, which let anyone who could merely see an alert close it.
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert resolveAlert(Long alertId, Integer userId, String resolutionNotes);
 
     /**
