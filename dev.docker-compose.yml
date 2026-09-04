@@ -57,6 +57,7 @@ services:
             - DEFAULT_PW=adminADMIN! 
             - TZ=${TZ:-UTC}
             - SPRING_LIQUIBASE_CONTEXTS=test
+            - OPENELIS_FORMFIELDS_DIR=/var/lib/openelis-global/formfields
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
             - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
         volumes:
@@ -72,6 +73,7 @@ services:
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
             - ./volume/configuration:/var/lib/openelis-global/configuration
+            - ./volume/formfields:/var/lib/openelis-global/formfields
             - ./volume/branding:/var/lib/openelis-global/branding
             - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
             - ./volume/analyzer-imports:/data/analyzer-imports  # FILE-based analyzer import directories

@@ -1,0 +1,217 @@
+{
+    "StNumber": {
+        "inUse": true
+    },
+    "AKA": {
+        "inUse": true
+    },
+    "MothersName": {
+        "inUse": true
+    },
+    "PatientType": {
+        "inUse": true
+    },
+    "InsuranceNumber": {
+        "inUse": true
+    },
+    "CollectionDate": {
+        "inUse": true
+    },
+    "OrgLocalAbrev": {
+        "inUse": true
+    },
+    "ProviderInfo": {
+        "inUse": true
+    },
+    "NationalID": {
+        "inUse": true
+    },
+    "Occupation": {
+        "inUse": true
+    },
+    "OrganizationAddressInfo": {
+        "inUse": true
+    },
+    "OrganizationShortName": {
+        "inUse": true
+    },
+    "OrganizationMultiUnit": {
+        "inUse": true
+    },
+    "OrganizationOrgId": {
+        "inUse": true
+    },
+    "ADDRESS_CITY": {
+        "inUse": true
+    },
+    "PatientRequired": {
+        "inUse": true
+    },
+    "QA_FULL_PROVIDER_INFO": {
+        "inUse": true
+    },
+    "PatientNameRequired": {
+        "inUse": true
+    },
+    "SampleEntryRequestingSiteSampleId": {
+        "inUse": true
+    },
+    "ADDRESS_COMMUNE": {
+        "inUse": true
+    },
+    "ADDRESS_VILLAGE": {
+        "inUse": true
+    },
+    "SITE_DEPARTMENT": {
+        "inUse": true
+    },
+    "OrgState": {
+        "inUse": false
+    },
+    "ZipCode": {
+        "inUse": false
+    },
+    "MLS": {
+        "inUse": false
+    },
+    "CollectionTime": {
+        "inUse": false
+    },
+    "RequesterSiteList": {
+        "inUse": false
+    },
+    "InlineOrganizationTypes": {
+        "inUse": false
+    },
+    "SubjectNumber": {
+        "inUse": false
+    },
+    "ADDRESS_DEPARTMENT": {
+        "inUse": false
+    },
+    "MotherInitial": {
+        "inUse": false
+    },
+    "SearchSampleStatus": {
+        "inUse": false
+    },
+    "DepersonalizedResults": {
+        "inUse": false
+    },
+    "SEARCH_PATIENT_WITH_LAB_NO": {
+        "inUse": false
+    },
+    "ResultsReferral": {
+        "inUse": false
+    },
+    "ValueHozSpaceOnResults": {
+        "inUse": false
+    },
+    "InitialSampleCondition": {
+        "inUse": false
+    },
+    "OrganizationCLIA": {
+        "inUse": false
+    },
+    "OrganizationParent": {
+        "inUse": false
+    },
+    "PatientRequired_SampleConfirmation": {
+        "inUse": false
+    },
+    "SampleCondition": {
+        "inUse": false
+    },
+    "Project": {
+        "inUse": false
+    },
+    "NON_CONFORMITY_SITE_LIST": {
+        "inUse": false
+    },
+    "NON_CONFORMITY_SITE_LIST_USER_ADDABLE": {
+        "inUse": false
+    },
+    "QaEventsBySection": {
+        "inUse": false
+    },
+    "PatientIDRequired_SampleConfirmation": {
+        "inUse": false
+    },
+    "SampleEntryUseReceptionHour": {
+        "inUse": false
+    },
+    "SampleEntryUseRequestDate": {
+        "inUse": false
+    },
+    "SampleEntryNextVisitDate": {
+        "inUse": false
+    },
+    "SampleEntryReferralSiteNameRequired": {
+        "inUse": false
+    },
+    "SampleEntryReferralSiteNameCapitialized": {
+        "inUse": false
+    },
+    "SampleEntryReferralSiteCode": {
+        "inUse": false
+    },
+    "SampleEntryProviderFax": {
+        "inUse": false
+    },
+    "SampleEntryProviderEmail": {
+        "inUse": false
+    },
+    "SampleEntryHealthFacilityAddress": {
+        "inUse": false
+    },
+    "SampleEntrySampleCollector": {
+        "inUse": false
+    },
+    "PatientPhone": {
+        "inUse": false
+    },
+    "PatientHealthRegion": {
+        "inUse": false,
+        "labelKey": "person.health.region"
+    },
+    "PatientHealthDistrict": {
+        "inUse": false,
+        "labelKey": "person.health.district"
+    },
+    "PatientMarriageStatus": {
+        "inUse": false
+    },
+    "PatientEducation": {
+        "inUse": false
+    },
+    "SampleEntryPatientClinical": {
+        "inUse": false
+    },
+    "SampleEntryRequesterPersonRequired": {
+        "inUse": false
+    },
+    "QA_DOCUMENT_NUMBER": {
+        "inUse": false
+    },
+    "QASubjectNumber": {
+        "inUse": false
+    },
+    "QATimeWithDate": {
+        "inUse": false
+    },
+    "SAMPLE_ENTRY_USE_REFFERING_PATIENT_NUMBER": {
+        "inUse": false
+    },
+    "NON_CONFORMITY_PROVIDER_ADDRESS": {
+        "inUse": false
+    },
+    "TEST_LOCATION_CODE": {
+        "inUse": false
+    },
+    "SampleNature": {
+        "inUse": false
+    },
+    "PatientEmail": {
+        "inUse": false
+    }
+}

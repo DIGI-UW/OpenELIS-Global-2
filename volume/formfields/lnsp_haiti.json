@@ -1,0 +1,83 @@
+{
+    "StNumber": {
+        "inUse": false
+    },
+    "AKA": {
+        "inUse": false
+    },
+    "MothersName": {
+        "inUse": false
+    },
+    "PatientType": {
+        "inUse": false
+    },
+    "InsuranceNumber": {
+        "inUse": false
+    },
+    "OrgLocalAbrev": {
+        "inUse": false
+    },
+    "InlineOrganizationTypes": {
+        "inUse": true
+    },
+    "Occupation": {
+        "inUse": false
+    },
+    "ADDRESS_DEPARTMENT": {
+        "inUse": true
+    },
+    "MotherInitial": {
+        "inUse": true
+    },
+    "ResultsReferral": {
+        "inUse": true
+    },
+    "ValueHozSpaceOnResults": {
+        "inUse": true
+    },
+    "InitialSampleCondition": {
+        "inUse": true
+    },
+    "OrganizationMultiUnit": {
+        "inUse": false
+    },
+    "OrganizationOrgId": {
+        "inUse": false
+    },
+    "RequesterSiteList": {
+        "inUse": true
+    },
+    "ADDRESS_CITY": {
+        "inUse": false
+    },
+    "PatientRequired": {
+        "inUse": true
+    },
+    "SampleCondition": {
+        "inUse": false
+    },
+    "NON_CONFORMITY_SITE_LIST": {
+        "inUse": true
+    },
+    "PatientNameRequired": {
+        "inUse": false
+    },
+    "SampleEntryUseReceptionHour": {
+        "inUse": true
+    },
+    "CollectionDate": {
+        "inUse": true
+    },
+    "CollectionTime": {
+        "inUse": true
+    },
+    "SAMPLE_ENTRY_USE_REFFERING_PATIENT_NUMBER": {
+        "inUse": true
+    },
+    "SampleEntryRequestingSiteSampleId": {
+        "inUse": false
+    },
+    "PatientIDRequired_SampleConfirmation": {
+        "inUse": false
+    }
+}
