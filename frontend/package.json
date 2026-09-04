@@ -40,6 +40,8 @@
     "yup": "^0.29.2"
   },
   "scripts": {
+    "i18n:find": "node scripts/i18n-find.js",
+    "i18n:check": "node scripts/i18n-check.js",
     "start": "vite",
     "build": "vite build",
     "preview": "vite preview",
