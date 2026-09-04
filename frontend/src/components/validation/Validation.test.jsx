@@ -35,7 +35,10 @@ vi.mock("../esignature/ESignatureButton", () => ({
   SignatureMeaning: { VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED" },
 }));
 
-import { postToOpenElisServerJsonResponse } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 
 const row = (id, overrides = {}) => ({
   id,
@@ -229,6 +232,49 @@ describe("Validation — Check before release (OGC-1027)", () => {
     fireEvent.click(screen.getByTestId("review-row-1"));
 
     expect(screen.getByTestId("validation-review-panel-1")).toBeInTheDocument();
+  });
+
+  it("the legacy per-row Validate/Retest checkboxes and batch button are gone (OGC-1030)", () => {
+    renderValidation([row(0)], BULK_ON);
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(screen.queryByText(/^Validate$/)).toBeNull();
+  });
+
+  it("'Include auto-validated' fetches the accession's auto-validated rows into a read-only list (OGC-1030)", () => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/AccessionValidation/auto-validated")) {
+        callback([
+          {
+            analysisId: "900",
+            accessionNumber: "ACC0",
+            testName: "Auto Test(Serum)",
+            result: "7",
+            normalRange: "5 - 9",
+            resultDate: "01/09/2026",
+            autoValidated: true,
+          },
+        ]);
+      }
+    });
+    renderValidation([row(0)], BULK_ON, "?type=order&accessionNumber=ACC0");
+    expect(screen.queryByTestId("auto-validated-section")).toBeNull();
+    const toggle = screen.getByTestId("auto-validated-toggle");
+    expect(toggle).toHaveTextContent("Include auto-validated");
+
+    fireEvent.click(toggle.querySelector('[role="switch"], button, input'));
+
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/AccessionValidation/auto-validated?accessionNumber=ACC0",
+      expect.any(Function),
+    );
+    expect(screen.getByTestId("auto-validated-row-900")).toHaveTextContent(
+      "Auto Test(Serum)",
+    );
+    expect(screen.getByTestId("auto-validated-row-900")).toHaveTextContent(
+      "Auto-validated",
+    );
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
   it("fail-safe: QC not evaluated keeps a chip-less row out of the Clear lane", () => {

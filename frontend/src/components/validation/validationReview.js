@@ -21,7 +21,17 @@ const KNOWN_ERRORS = [
   "modifyRoleRequired",
   "resultRequired",
   "invalidResult",
+  "stale",
+  "retestNoteRequired",
+  "rejectionDisabled",
 ];
+
+export const NOTE_CONTEXT_RETEST = "VALIDATION";
+
+/** OGC-1030 (FR-J1) — a 409 "stale" means another validator acted on the row since the page loaded. */
+export function isStaleResponse(response) {
+  return Boolean(response && response.error === "stale");
+}
 
 /**
  * The flag the summary styles the value with. Critical wins (authored critical

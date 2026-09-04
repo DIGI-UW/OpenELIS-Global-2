@@ -22,6 +22,11 @@
     <status_of_sample id="6" description="Finalized"
         code="6" status_type="ANALYSIS" name="Finalized"
         lastupdated="2025-01-01 12:00:00" />
+    <!-- id=9 "Biologist Rejection": where retest / reject (OGC-1030) send an
+        analysis. -->
+    <status_of_sample id="9"
+        description="Biologist Rejection" code="9" status_type="ANALYSIS"
+        name="Biologist Rejection" lastupdated="2025-01-01 12:00:00" />
 
     <localization id="1" description="Test Name" />
     <localization_value id="1" localization_id="1"

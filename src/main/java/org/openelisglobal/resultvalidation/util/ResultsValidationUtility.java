@@ -880,6 +880,12 @@ public class ResultsValidationUtility {
                 analysisResultItem.setComponentDisplayOrder(component.getDisplayOrder());
             }
         }
+        if (analysis != null && analysis.getLastupdated() != null) {
+            analysisResultItem.setAnalysisLastupdated(String.valueOf(analysis.getLastupdated().getTime()));
+        }
+        if (analysis != null && analysis.getSampleItem() != null) {
+            analysisResultItem.setSampleItemId(analysis.getSampleItem().getId());
+        }
         analysisResultItem.setMethodName(methodNameFor(analysis));
         analysisResultItem.setAnalyzerName(analyzerNameFor(analysis));
         analysisResultItem.setAnalysisNotes(
@@ -1078,6 +1084,41 @@ public class ResultsValidationUtility {
         setGroupingNumbers(resultList);
 
         return resultList;
+    }
+
+    /**
+     * OGC-1030 (FR-A4) — the sample's analyses that were released at result entry
+     * without a validator: Finalized, yet with no validator e-signature on record.
+     * Served read-only behind the queue's "Include auto-validated" toggle; never
+     * part of the queue itself, never releasable.
+     */
+    public List<AnalysisItem> getAutoValidatedAnalysisBySample(Sample sample) {
+        String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+        List<Analysis> finalized = new ArrayList<>(
+                analysisService.getAnalysesBySampleIdAndStatusId(sample.getId(), Set.of(finalizedId)));
+        org.openelisglobal.esig.service.ElectronicSignatureService signatures = SpringContext
+                .getBean(org.openelisglobal.esig.service.ElectronicSignatureService.class);
+        List<Analysis> autoValidated = new ArrayList<>();
+        for (Analysis analysis : excludeQcAnalyses(finalized)) {
+            boolean signedByValidator;
+            try {
+                signedByValidator = !signatures
+                        .getSignaturesForRecord("VALIDATION_BATCH", Long.parseLong(analysis.getId())).isEmpty();
+            } catch (RuntimeException e) {
+                signedByValidator = false;
+            }
+            if (!signedByValidator) {
+                autoValidated.add(analysis);
+            }
+        }
+        List<AnalysisItem> rows = testResultListToAnalysisItemList(
+                getGroupedTestsForAnalysisList(autoValidated, !StatusRules.useRecordStatusForValidation()));
+        for (AnalysisItem row : rows) {
+            row.setAutoValidated(true);
+            row.setReadOnly(true);
+        }
+        sortByAccessionNumberAndOrder(rows);
+        return rows;
     }
 
     public List<ResultValidationItem> getGroupedTestsForSample(Sample sample) {

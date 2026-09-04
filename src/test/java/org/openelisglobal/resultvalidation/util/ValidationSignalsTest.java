@@ -248,6 +248,29 @@ public class ValidationSignalsTest {
         assertFalse(ValidationSignals.allClear(null));
     }
 
+    // ---- stale-page guard (OGC-1030, FR-J1) ----------------------------------
+
+    @Test
+    public void isStale_whenTheAnalysisMovedSinceTheRowWasServed() {
+        java.sql.Timestamp now = new java.sql.Timestamp(1_700_000_000_000L);
+        assertTrue(ValidationSignals.isStale("1699999999000", now));
+        assertFalse(ValidationSignals.isStale("1700000000000", now));
+        assertFalse(ValidationSignals.isStale(" 1700000000000 ", now));
+    }
+
+    @Test
+    public void isStale_legacyRowsWithoutATokenAreNotChecked() {
+        java.sql.Timestamp now = new java.sql.Timestamp(1_700_000_000_000L);
+        assertFalse(ValidationSignals.isStale(null, now));
+        assertFalse(ValidationSignals.isStale("", now));
+        assertFalse(ValidationSignals.isStale("1700000000000", null));
+    }
+
+    @Test
+    public void isStale_anUnreadableTokenIsTreatedAsStale() {
+        assertTrue(ValidationSignals.isStale("not-a-number", new java.sql.Timestamp(1_700_000_000_000L)));
+    }
+
     // ---- next revision after a validator's modification (OGC-1028, FR-D4) ----
 
     @Test

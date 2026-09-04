@@ -179,6 +179,10 @@ export function bulkOutcomeKey(response) {
     Array.isArray(response.released) &&
     response.released.length === 0
   ) {
+    const skipped = Array.isArray(response.skipped) ? response.skipped : [];
+    if (skipped.length > 0 && skipped.every((s) => s && s.reason === "stale")) {
+      return "label.validation.bulk.error.stale";
+    }
     return "label.validation.bulk.error.nothingReleased";
   }
   return "label.validation.bulk.error.generic";

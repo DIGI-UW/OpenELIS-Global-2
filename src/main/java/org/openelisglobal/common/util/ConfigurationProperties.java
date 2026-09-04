@@ -324,7 +324,9 @@ public abstract class ConfigurationProperties {
         REQUESTER_REQUIRED("requesterRequired", "text"),
         // OGC-1029 (Validation v4 V3, FR-B4): gates "Release all clear" — the only
         // bulk release; per-row release in the review panel is always available.
-        ALLOW_BULK_RELEASE_CLEAR("allowBulkReleaseClear", "text");
+        ALLOW_BULK_RELEASE_CLEAR("allowBulkReleaseClear", "text"),
+        // OGC-1030 (Validation v4 V4, FR-D3): "Send for retest" must carry a note.
+        RETEST_NOTE_REQUIRED("retestNoteRequired", "text");
 
         // visible on
         // the ui

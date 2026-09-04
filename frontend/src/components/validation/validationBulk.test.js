@@ -94,6 +94,21 @@ describe("bulkOutcomeKey", () => {
     expect(bulkOutcomeKey({ error: "persistFailed" })).toBe(
       "label.validation.bulk.error.generic",
     );
+    expect(
+      bulkOutcomeKey({
+        released: [],
+        skipped: [{ analysisId: "1", reason: "stale" }],
+      }),
+    ).toBe("label.validation.bulk.error.stale");
+    expect(
+      bulkOutcomeKey({
+        released: [],
+        skipped: [
+          { analysisId: "1", reason: "stale" },
+          { analysisId: "2", reason: "notClear" },
+        ],
+      }),
+    ).toBe("label.validation.bulk.error.nothingReleased");
     expect(bulkOutcomeKey(undefined)).toBe(
       "label.validation.bulk.error.generic",
     );

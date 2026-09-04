@@ -372,5 +372,8 @@
   <!-- OGC-1029 (Validation v4 V3): site flag gating the guarded "Release all clear" bulk release. -->
   <include relativeToChangelogFile="true" file="087-validation-bulk-release-flag.xml"/>
 
+  <!-- OGC-1030 (Validation v4 V4): site flag requiring a note when sending a result for retest. -->
+  <include relativeToChangelogFile="true" file="088-validation-retest-note-flag.xml"/>
+
 
 </databaseChangeLog>

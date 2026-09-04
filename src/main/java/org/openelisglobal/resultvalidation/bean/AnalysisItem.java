@@ -239,6 +239,27 @@ public class AnalysisItem implements Serializable {
 
     private List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> analysisNotes;
 
+    /**
+     * OGC-1030 (FR-J1) — analysis.lastupdated as epoch millis when the row was
+     * served; round-tripped to detect stale pages.
+     */
+    private String analysisLastupdated;
+
+    /** OGC-1030 (FR-D2) — the specimen the inline NCE form files against. */
+    private String sampleItemId;
+
+    /**
+     * OGC-1030 (FR-A4) — released at result entry without a validator; read-only in
+     * the queue.
+     */
+    private boolean autoValidated = false;
+
+    /**
+     * OGC-1030 (FR-D2) — the NCE number filed when rejecting, recorded in the
+     * rejection note.
+     */
+    private String nceNumber;
+
     public String getRejectReasonId() {
         return rejectReasonId;
     }
@@ -976,6 +997,38 @@ public class AnalysisItem implements Serializable {
 
     public void setAnalysisNotes(List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> analysisNotes) {
         this.analysisNotes = analysisNotes;
+    }
+
+    public String getAnalysisLastupdated() {
+        return analysisLastupdated;
+    }
+
+    public void setAnalysisLastupdated(String analysisLastupdated) {
+        this.analysisLastupdated = analysisLastupdated;
+    }
+
+    public String getSampleItemId() {
+        return sampleItemId;
+    }
+
+    public void setSampleItemId(String sampleItemId) {
+        this.sampleItemId = sampleItemId;
+    }
+
+    public boolean isAutoValidated() {
+        return autoValidated;
+    }
+
+    public void setAutoValidated(boolean autoValidated) {
+        this.autoValidated = autoValidated;
+    }
+
+    public String getNceNumber() {
+        return nceNumber;
+    }
+
+    public void setNceNumber(String nceNumber) {
+        this.nceNumber = nceNumber;
     }
 
     public double getLowerCritical() {

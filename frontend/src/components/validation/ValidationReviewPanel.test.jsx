@@ -33,6 +33,24 @@ vi.mock("../esignature/ESignatureButton", () => ({
   SignatureMeaning: { VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED" },
 }));
 
+vi.mock("../nonconform/common/InlineNceForm", () => ({
+  default: ({ onSubmitSuccess, onClose, resultRow }) => (
+    <div data-testid="mock-nce-form">
+      <span data-testid="mock-nce-specimen">{resultRow?.sampleItemId}</span>
+      <button
+        type="button"
+        data-testid="mock-nce-submit"
+        onClick={() => {
+          onSubmitSuccess && onSubmitSuccess("NCE-2026-0007");
+          onClose && onClose();
+        }}
+      >
+        file nce
+      </button>
+    </div>
+  ),
+}));
+
 import { postToOpenElisServerJsonResponse } from "../utils/Utils";
 
 const row = (overrides = {}) => ({
@@ -69,6 +87,7 @@ const renderPanel = (data, props = {}) =>
         configurationProperties={props.configurationProperties || {}}
         qcAck={props.qcAck || { required: false, satisfied: true }}
         onActionDone={props.onActionDone || vi.fn()}
+        onStale={props.onStale}
       />
     </IntlProvider>,
   );
@@ -318,6 +337,71 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
       "href",
       "/result?type=order&doRange=false&accessionNumber=ACC0",
     );
+  });
+
+  it("Send for retest needs a note when the lab requires one, then posts the retest with an internal note (OGC-1030)", () => {
+    renderPanel(row(), {
+      configurationProperties: { RETEST_NOTE_REQUIRED: "true" },
+    });
+
+    fireEvent.click(screen.getByTestId("review-retest"));
+    const confirm = screen.getByTestId("review-confirm-retest");
+    expect(confirm).toBeDisabled();
+    expect(screen.getByTestId("review-retest-hint")).toBeInTheDocument();
+    expect(screen.getByLabelText("Internal")).toBeChecked();
+
+    fireEvent.change(screen.getByLabelText("Note for the bench"), {
+      target: { value: "Repeat with a fresh dilution" },
+    });
+    expect(confirm).not.toBeDisabled();
+    fireEvent.click(confirm);
+
+    const [url, body] = lastPost();
+    expect(url).toBe("/rest/AccessionValidation/analysis/100/retest");
+    const payload = JSON.parse(body);
+    expect(payload.note).toBe("Repeat with a fresh dilution");
+    expect(payload.noteVisibility).toBe("I");
+    expect(payload.noteContext).toBe("VALIDATION");
+  });
+
+  it("Reject is hidden when rejection is turned off, and files the NCE first when it is on (OGC-1030)", () => {
+    renderPanel(row());
+    expect(screen.queryByTestId("review-reject")).toBeNull();
+    expect(screen.getByTestId("review-reject-disabled")).toBeInTheDocument();
+  });
+
+  it("Reject opens the inline NCE form and posts the rejection with the NCE number (OGC-1030)", () => {
+    renderPanel(row({ sampleItemId: "77" }), {
+      configurationProperties: { allowResultRejection: "true" },
+    });
+
+    fireEvent.click(screen.getByTestId("review-reject"));
+    expect(screen.getByTestId("mock-nce-form")).toBeInTheDocument();
+    expect(screen.getByTestId("mock-nce-specimen")).toHaveTextContent("77");
+    expect(screen.queryByText("Validate & release")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("mock-nce-submit"));
+
+    const [url, body] = lastPost();
+    expect(url).toBe("/rest/AccessionValidation/analysis/100/reject");
+    const payload = JSON.parse(body);
+    expect(payload.nceNumber).toBe("NCE-2026-0007");
+    expect(payload.noteContext).toBe("VALIDATION");
+  });
+
+  it("a stale 409 is handed to the page instead of shown inline (OGC-1030)", () => {
+    const onStale = vi.fn();
+    renderPanel(row({ analysisLastupdated: "1700000000000" }), { onStale });
+
+    fireEvent.click(screen.getByText("Validate & release"));
+    expect(JSON.parse(lastPost()[1]).analysisLastupdated).toBe("1700000000000");
+    lastPost()[2]({ error: "stale", modifiedBy: "Val Two", modifiedAt: "x" });
+
+    expect(onStale).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "stale", modifiedBy: "Val Two" }),
+      expect.anything(),
+    );
+    expect(screen.queryByTestId("review-error")).toBeNull();
   });
 
   it("existing notes show their context and visibility tags", () => {

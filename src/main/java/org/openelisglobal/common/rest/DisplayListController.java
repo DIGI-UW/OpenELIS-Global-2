@@ -356,6 +356,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.roleRequiredForModifyResults));
         configs.put(Property.ALLOW_BULK_RELEASE_CLEAR.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR));
+        configs.put(Property.RETEST_NOTE_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.RETEST_NOTE_REQUIRED));
         return configs;
     }
 

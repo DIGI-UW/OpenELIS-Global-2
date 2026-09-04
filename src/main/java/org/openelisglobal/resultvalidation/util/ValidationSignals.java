@@ -156,6 +156,26 @@ public final class ValidationSignals {
     }
 
     /**
+     * The stale-page guard (OGC-1030, FR-J1): the row round-trips the analysis's
+     * {@code lastupdated} (epoch millis) as it was when the queue was served; any
+     * later save by another validator moves that timestamp, so a mismatch means the
+     * page is stale and the action must not proceed. A row served without a token
+     * (legacy client) is not checked; a token that cannot be read is treated as
+     * stale — the fail-safe direction, since a reload costs nothing and a silent
+     * overwrite is exactly what the guard exists to stop.
+     */
+    public static boolean isStale(String clientToken, java.sql.Timestamp currentLastupdated) {
+        if (GenericValidator.isBlankOrNull(clientToken) || currentLastupdated == null) {
+            return false;
+        }
+        try {
+            return Long.parseLong(clientToken.trim()) != currentLastupdated.getTime();
+        } catch (NumberFormatException e) {
+            return true;
+        }
+    }
+
+    /**
      * The analysis revision after a validator modifies its result (OGC-1028,
      * FR-D4). Results Entry stamps "1" on first save and increments on later saves
      * ({@code ResultUtil}); a validation-side change must likewise read as

@@ -82,6 +82,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     SearchResultsService searchService;
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private org.openelisglobal.audittrail.dao.HistoryDAO historyDAO;
 
     private static final String[] ALLOWED_FIELDS = new String[] { "testSectionId", "paging.currentPage", "testSection",
             "testName", "resultList*.accessionNumber", "resultList*.analysisId", "resultList*.testId",
@@ -593,6 +595,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         if (!isAwaitingValidation(analysis)) {
             return errorResponse(409, "notAwaitingValidation");
         }
+        org.springframework.http.ResponseEntity<Map<String, Object>> stale = rejectIfStale(item, analysis);
+        if (stale != null) {
+            return stale;
+        }
         bindRowToAnalysis(item, analysis);
         item.setIsAccepted(true);
         item.setIsRejected(false);
@@ -637,6 +643,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         }
         if (!isAwaitingValidation(analysis)) {
             return errorResponse(409, "notAwaitingValidation");
+        }
+        org.springframework.http.ResponseEntity<Map<String, Object>> stale = rejectIfStale(item, analysis);
+        if (stale != null) {
+            return stale;
         }
         if (org.openelisglobal.result.action.util.ResultUtil.modifyResultsRoleBased()
                 && org.openelisglobal.result.action.util.ResultUtil.userNotInRole(request)) {
@@ -839,6 +849,13 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 continue;
             }
             AnalysisItem clientRow = entry.getValue();
+            String servedToken = group.get(0).getAnalysisLastupdated();
+            if (!isBlankOrNull(clientRow.getAnalysisLastupdated()) && !isBlankOrNull(servedToken)
+                    && !clientRow.getAnalysisLastupdated().trim().equals(servedToken.trim())) {
+                auditStaleConflict(findAnalysis(entry.getKey()), clientRow.getAnalysisLastupdated());
+                skipped.add(skipReason(entry.getKey(), "stale"));
+                continue;
+            }
             for (int i = 0; i < group.size(); i++) {
                 AnalysisItem row = group.get(i);
                 row.setIsAccepted(true);
@@ -891,6 +908,205 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         skip.put("analysisId", analysisId);
         skip.put("reason", reason);
         return skip;
+    }
+
+    private static final String STALE_PAGE_CONFLICT_VALIDATION = "STALE_PAGE_CONFLICT_VALIDATION";
+
+    /**
+     * OGC-1030 (FR-J1) — the stale-page conflict guard. The row carries the
+     * analysis's {@code lastupdated} as it was when the queue was served; if
+     * another validator has acted since, the action is refused with 409 naming who
+     * changed it and when, and the conflict is written to the audit trail.
+     * {@code null} means the row is fresh.
+     */
+    private org.springframework.http.ResponseEntity<Map<String, Object>> rejectIfStale(AnalysisItem item,
+            Analysis analysis) {
+        if (!org.openelisglobal.resultvalidation.util.ValidationSignals.isStale(item.getAnalysisLastupdated(),
+                analysis.getLastupdated())) {
+            return null;
+        }
+        auditStaleConflict(analysis, item.getAnalysisLastupdated());
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "stale");
+        body.put("analysisId", analysis.getId());
+        if (analysis.getLastupdated() != null) {
+            body.put("modifiedAt", analysis.getLastupdated().toString());
+            body.put("analysisLastupdated", String.valueOf(analysis.getLastupdated().getTime()));
+        }
+        body.put("modifiedBy", resolveLastModifier(analysis));
+        return org.springframework.http.ResponseEntity.status(409).body(body);
+    }
+
+    private void auditStaleConflict(Analysis analysis, String clientToken) {
+        if (analysis == null) {
+            return;
+        }
+        try {
+            // history.activity is a one-character code (I/U/D); the event name and the
+            // two tokens go in the changes payload, where the audit viewer shows them.
+            org.openelisglobal.audittrail.valueholder.History history = new org.openelisglobal.audittrail.valueholder.History();
+            history.setReferenceId(analysis.getId());
+            history.setReferenceTable(org.openelisglobal.analysis.service.AnalysisServiceImpl.getTableReferenceId());
+            history.setActivity(IActionConstants.AUDIT_TRAIL_UPDATE);
+            history.setTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
+            history.setSysUserId(getSysUserId(request));
+            String current = analysis.getLastupdated() == null ? ""
+                    : String.valueOf(analysis.getLastupdated().getTime());
+            history.setChanges(
+                    (STALE_PAGE_CONFLICT_VALIDATION + ": page token " + clientToken + " != current " + current)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            historyDAO.insert(history);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+    }
+
+    /**
+     * Who last touched the analysis, from the audit history; a generic label when
+     * unknown.
+     */
+    private String resolveLastModifier(Analysis analysis) {
+        try {
+            org.openelisglobal.audittrail.valueholder.History latest = null;
+            for (org.openelisglobal.audittrail.valueholder.History row : historyDAO.getHistoryByRefIdAndRefTableId(
+                    analysis.getId(), org.openelisglobal.analysis.service.AnalysisServiceImpl.getTableReferenceId())) {
+                if (latest == null || (row.getTimestamp() != null && latest.getTimestamp() != null
+                        && row.getTimestamp().after(latest.getTimestamp()))) {
+                    latest = row;
+                }
+            }
+            if (latest != null && !isBlankOrNull(latest.getSysUserId())) {
+                SystemUser user = systemUserService.getUserById(latest.getSysUserId());
+                if (user != null) {
+                    return user.getDisplayName();
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+        return MessageUtil.getMessage("label.results.anotherUser");
+    }
+
+    /**
+     * OGC-1030 (FR-D3) — send one result back to the bench for retest: the analysis
+     * returns to BiologistRejected (the pipeline restarts at level 1), the legacy
+     * "Redo test" note is written and the validator's own note — required when the
+     * "retest note required" flag is on — goes with it, internal by default.
+     */
+    @PostMapping(value = "AccessionValidation/analysis/{analysisId}/retest", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<Map<String, Object>> sendForRetest(@PathVariable String analysisId,
+            @RequestBody AnalysisItem item) {
+        Analysis analysis = findAnalysis(analysisId);
+        if (analysis == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        if (!isAwaitingValidation(analysis)) {
+            return errorResponse(409, "notAwaitingValidation");
+        }
+        org.springframework.http.ResponseEntity<Map<String, Object>> stale = rejectIfStale(item, analysis);
+        if (stale != null) {
+            return stale;
+        }
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(
+                ConfigurationProperties.Property.RETEST_NOTE_REQUIRED, "true") && isBlankOrNull(item.getNote())) {
+            return errorResponse(400, "retestNoteRequired");
+        }
+        bindRowToAnalysis(item, analysis);
+        item.setIsAccepted(false);
+        item.setIsRejected(true);
+        if (isBlankOrNull(item.getNoteContext())) {
+            item.setNoteContext(NOTE_CONTEXT_VALIDATION);
+        }
+        if (isBlankOrNull(item.getNoteVisibility())) {
+            item.setNoteVisibility(Note.INTERNAL);
+        }
+
+        List<IResultUpdate> updaters = ValidationUpdateRegister.getRegisteredUpdaters();
+        IResultSaveService resultSaveService = new ResultValidationSaveService();
+        List<Analysis> analysisUpdateList = new ArrayList<>();
+        ArrayList<Result> resultUpdateList = new ArrayList<>();
+        ArrayList<Note> noteUpdateList = new ArrayList<>();
+        List<Result> deletableList = new ArrayList<>();
+        List<AnalysisItem> items = new ArrayList<>();
+        items.add(item);
+        createUpdateList(items, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList, resultSaveService,
+                !updaters.isEmpty());
+        return persistSingleAnalysis(analysisId, items, analysisUpdateList, resultUpdateList, noteUpdateList,
+                deletableList, resultSaveService, updaters, "retest");
+    }
+
+    /**
+     * OGC-1030 (FR-D2) — reject a result as a quality event: the client files the
+     * non-conformity through the same inline NCE form Results Entry uses, then
+     * calls this to send the analysis back (BiologistRejected) with a rejection
+     * note that cites the NCE number. Gated by {@code allowResultRejection} (403
+     * when off).
+     */
+    @PostMapping(value = "AccessionValidation/analysis/{analysisId}/reject", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<Map<String, Object>> rejectWithNonConformity(
+            @PathVariable String analysisId, @RequestBody AnalysisItem item) {
+        if (!ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(ConfigurationProperties.Property.allowResultRejection, "true")) {
+            return errorResponse(403, "rejectionDisabled");
+        }
+        Analysis analysis = findAnalysis(analysisId);
+        if (analysis == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        if (!isAwaitingValidation(analysis)) {
+            return errorResponse(409, "notAwaitingValidation");
+        }
+        org.springframework.http.ResponseEntity<Map<String, Object>> stale = rejectIfStale(item, analysis);
+        if (stale != null) {
+            return stale;
+        }
+        bindRowToAnalysis(item, analysis);
+        item.setIsAccepted(false);
+        item.setIsRejected(true);
+        item.setNoteContext(NOTE_CONTEXT_VALIDATION);
+        if (isBlankOrNull(item.getNoteVisibility())) {
+            item.setNoteVisibility(Note.INTERNAL);
+        }
+
+        analysis.setSysUserId(getSysUserId(request));
+        analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+        List<Analysis> analysisUpdateList = new ArrayList<>();
+        analysisUpdateList.add(analysis);
+        ArrayList<Note> noteUpdateList = new ArrayList<>();
+        String rejectionText = isBlankOrNull(item.getNceNumber())
+                ? MessageUtil.getMessage("validation.note.rejected.noNce")
+                : MessageUtil.getMessage("validation.note.rejected", item.getNceNumber());
+        noteUpdateList.add(noteService.createSavableNote(analysis, NoteType.INTERNAL, rejectionText,
+                VALIDATION_NOTE_SUBJECT, getSysUserId(request)));
+        if (!isBlankOrNull(item.getNote())) {
+            noteUpdateList.add(noteService.createSavableNote(analysis, noteTypeFor(item), item.getNote(),
+                    VALIDATION_NOTE_SUBJECT, getSysUserId(request)));
+        }
+        List<AnalysisItem> items = new ArrayList<>();
+        items.add(item);
+        return persistSingleAnalysis(analysisId, items, analysisUpdateList, new ArrayList<>(), noteUpdateList,
+                new ArrayList<>(), new ResultValidationSaveService(), ValidationUpdateRegister.getRegisteredUpdaters(),
+                "rejected");
+    }
+
+    /**
+     * OGC-1030 (FR-A4) — the accession's auto-validated results: released at result
+     * entry with no validator signature. Read-only, never part of the queue.
+     */
+    @GetMapping(value = "AccessionValidation/auto-validated", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<List<AnalysisItem>> autoValidatedForAccession(
+            @RequestParam String accessionNumber) {
+        Sample sample = isBlankOrNull(accessionNumber) ? null : getSample(accessionNumber);
+        if (sample == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        List<AnalysisItem> rows = SpringContext.getBean(ResultsValidationUtility.class)
+                .getAutoValidatedAnalysisBySample(sample);
+        return org.springframework.http.ResponseEntity.ok(userService
+                .filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows, Constants.ROLE_VALIDATION));
     }
 
     /**

@@ -34,6 +34,7 @@ import {
   rememberSectionChoice,
 } from "../resultPage/unified/sectionLayout";
 import "../resultPage/unified/unified-results.scss";
+import InlineNceForm from "../nonconform/common/InlineNceForm";
 import { triageRows } from "./validationTriage";
 import {
   NOTE_CONTEXT_MODIFICATION,
@@ -46,6 +47,7 @@ import {
   errorMessageKey,
   flagFor,
   isEditableHere,
+  isStaleResponse,
   unitsOnly,
 } from "./validationReview";
 
@@ -90,6 +92,7 @@ const ValidationReviewPanel = ({
   qcAck,
   onActionDone,
   onNoteChange,
+  onStale,
 }) => {
   const intl = useIntl();
   const triage =
@@ -108,6 +111,11 @@ const ValidationReviewPanel = ({
       : row.accessionNumber;
   const notesRequired =
     configurationProperties?.notesRequiredForModifyResults === "true";
+  // OGC-1030: retest may demand a note for the bench; rejection is an admin switch.
+  const retestNoteRequired =
+    configurationProperties?.RETEST_NOTE_REQUIRED === "true";
+  const rejectionAllowed =
+    configurationProperties?.allowResultRejection === "true";
   const editableHere = isEditableHere(row.resultType);
   const notes = row.analysisNotes || [];
   const components = useMemo(
@@ -146,6 +154,8 @@ const ValidationReviewPanel = ({
     publishNote(noteText, visibility);
   };
   const [modifying, setModifying] = useState(false);
+  const [retesting, setRetesting] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [newValue, setNewValue] = useState(row.result ?? "");
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState("");
@@ -169,10 +179,34 @@ const ValidationReviewPanel = ({
           }
           return;
         }
+        if (isStaleResponse(response) && onStale) {
+          onStale(response, row);
+          return;
+        }
         setErrorKey(errorMessageKey(response));
       },
     );
   };
+
+  const sendForRetest = () =>
+    submit(
+      "retest",
+      actionPayload(row, {
+        note: noteText,
+        noteVisibility,
+        noteContext: NOTE_CONTEXT_VALIDATION,
+      }),
+    );
+
+  const rejectWithNce = (nceNumber) =>
+    submit("reject", {
+      ...actionPayload(row, {
+        note: noteText,
+        noteVisibility,
+        noteContext: NOTE_CONTEXT_VALIDATION,
+      }),
+      nceNumber: nceNumber || "",
+    });
 
   const release = () =>
     submit(
@@ -200,6 +234,9 @@ const ValidationReviewPanel = ({
   const reasonMissing = notesRequired && !noteText.trim();
   const modificationBlocked =
     busy || !editableHere || !String(newValue ?? "").trim() || reasonMissing;
+  const retestNoteMissing = retestNoteRequired && !noteText.trim();
+  const retestBlocked = busy || retestNoteMissing;
+  const inSideMode = modifying || retesting || rejecting;
 
   const signContext = intl.formatMessage(
     {
@@ -423,13 +460,33 @@ const ValidationReviewPanel = ({
           </div>
         )}
 
+        {rejecting && (
+          <div data-testid="review-reject-form">
+            <span className="unifiedFieldHint">
+              <FormattedMessage id="label.validation.review.reject.hint" />
+            </span>
+            <InlineNceForm
+              resultRow={{
+                ...row,
+                resultValue: displayResult(row),
+                sampleItemId: row.sampleItemId,
+              }}
+              accessionNumber={row.accessionNumber}
+              onClose={() => setRejecting(false)}
+              onSubmitSuccess={(nceNumber) => rejectWithNce(nceNumber)}
+            />
+          </div>
+        )}
+
         <div className="unifiedNoteComposer" data-testid="review-note-composer">
           <TextArea
             id={`review-note-${row.id}`}
             labelText={intl.formatMessage({
               id: modifying
                 ? "label.validation.review.modify.reason"
-                : "label.validation.review.notes.add",
+                : retesting
+                  ? "label.validation.review.retest.note"
+                  : "label.validation.review.notes.add",
             })}
             placeholder={intl.formatMessage({
               id: "label.validation.review.notes.placeholder",
@@ -437,9 +494,13 @@ const ValidationReviewPanel = ({
             rows={2}
             value={noteText}
             onChange={(event) => changeNoteText(event.target.value)}
-            invalid={modifying && reasonMissing}
+            invalid={
+              (modifying && reasonMissing) || (retesting && retestNoteMissing)
+            }
             invalidText={intl.formatMessage({
-              id: "label.validation.review.modify.reasonRequired",
+              id: retesting
+                ? "label.validation.review.retest.noteRequired"
+                : "label.validation.review.modify.reasonRequired",
             })}
           />
           <RadioButtonGroup
@@ -501,7 +562,7 @@ const ValidationReviewPanel = ({
             marginTop: "0.5rem",
           }}
         >
-          {!modifying && (
+          {!inSideMode && (
             <span data-testid="review-release">
               <ESignatureButton
                 meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
@@ -517,7 +578,7 @@ const ValidationReviewPanel = ({
               </ESignatureButton>
             </span>
           )}
-          {!modifying && (
+          {!inSideMode && (
             <Button
               kind="tertiary"
               size="sm"
@@ -532,6 +593,80 @@ const ValidationReviewPanel = ({
             >
               <FormattedMessage id="label.validation.review.action.modify" />
             </Button>
+          )}
+          {!inSideMode && (
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setRetesting(true);
+                if (!visibilityChosen) {
+                  changeNoteVisibility(NOTE_INTERNAL, false);
+                }
+              }}
+              data-testid="review-retest"
+            >
+              <FormattedMessage id="label.validation.review.action.retest" />
+            </Button>
+          )}
+          {!inSideMode && rejectionAllowed && (
+            <Button
+              kind="danger--ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setRejecting(true);
+                if (!visibilityChosen) {
+                  changeNoteVisibility(NOTE_INTERNAL, false);
+                }
+              }}
+              data-testid="review-reject"
+            >
+              <FormattedMessage id="label.validation.review.action.reject" />
+            </Button>
+          )}
+          {!inSideMode && !rejectionAllowed && (
+            <span
+              className="unifiedFieldHint"
+              data-testid="review-reject-disabled"
+            >
+              <FormattedMessage id="label.validation.review.reject.disabled" />
+            </span>
+          )}
+          {retesting && (
+            <>
+              <Button
+                kind="danger"
+                size="sm"
+                disabled={retestBlocked}
+                onClick={sendForRetest}
+                data-testid="review-confirm-retest"
+              >
+                <FormattedMessage id="label.validation.review.action.retest" />
+              </Button>
+              <Button
+                kind="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  setRetesting(false);
+                  setErrorKey("");
+                  if (!visibilityChosen) {
+                    changeNoteVisibility(NOTE_EXTERNAL, false);
+                  }
+                }}
+                data-testid="review-cancel-retest"
+              >
+                <FormattedMessage id="label.validation.review.action.cancel" />
+              </Button>
+              <span
+                className="unifiedFieldHint"
+                data-testid="review-retest-hint"
+              >
+                <FormattedMessage id="label.validation.review.retest.hint" />
+              </span>
+            </>
           )}
           {modifying && (
             <Button

@@ -14,6 +14,7 @@ import {
   errorMessageKey,
   flagFor,
   isEditableHere,
+  isStaleResponse,
   mergeNotes,
   unitsOnly,
 } from "./validationReview";
@@ -146,6 +147,26 @@ describe("actionPayload", () => {
     expect(payload.result).toBe("16");
     expect(payload.noteVisibility).toBe("E");
     expect(payload.noteContext).toBe("MODIFICATION");
+  });
+});
+
+describe("isStaleResponse (OGC-1030)", () => {
+  it("recognises the server's stale-page 409 and nothing else", () => {
+    expect(isStaleResponse({ error: "stale", modifiedBy: "Val Two" })).toBe(
+      true,
+    );
+    expect(isStaleResponse({ error: "notAwaitingValidation" })).toBe(false);
+    expect(isStaleResponse({ outcome: "released" })).toBe(false);
+    expect(isStaleResponse(undefined)).toBe(false);
+    expect(errorMessageKey({ error: "stale" })).toBe(
+      "label.validation.review.error.stale",
+    );
+    expect(errorMessageKey({ error: "retestNoteRequired" })).toBe(
+      "label.validation.review.error.retestNoteRequired",
+    );
+    expect(errorMessageKey({ error: "rejectionDisabled" })).toBe(
+      "label.validation.review.error.rejectionDisabled",
+    );
   });
 });
 
