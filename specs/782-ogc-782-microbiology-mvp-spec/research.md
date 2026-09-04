@@ -11,6 +11,10 @@
   `https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1370554369`
 - Public M-* design bundle:
   `https://github.com/DIGI-UW/openelis-work/tree/main/designs/microbiology`
+- Follow-up GLASS and WHONET replacement research:
+  `specs/782-ogc-782-microbiology-mvp-spec/research/glass-reporting-without-whonet.md`
+- Interactive GLASS reporting architecture:
+  `specs/782-ogc-782-microbiology-mvp-spec/research/glass-reporting-architecture.html`
 - Repo verification:
   - `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`
   - `src/main/java/org/openelisglobal/test/valueholder/Test.java`
@@ -107,19 +111,21 @@ and links/surfaces it through generic Alerts for operational visibility.
 - Reuse `OTHER` alert type silently: rejected because microbiology critical
   alerts should be filterable and validated explicitly.
 
-### Decision: Extend existing WHONET services for readiness/export
+### Superseded decision: Extend existing WHONET services for readiness/export
 
-**Rationale**: Repo state includes `WHONetReportServiceImpl`, WHONET report
-actions, the Reports -> WHONET route, `whonet_antibiotic_codes`, and
-`test_amr_config`. The plan extends these paths for finalized microbiology data
-instead of building a parallel exporter.
+**Status**: Superseded by
+`research/glass-reporting-without-whonet.md`. The earlier decision treated the
+existing WHONET export path as the target for later surveillance work. Review of
+the official GLASS output definitions, BacLink conversion workflow, current
+OpenELIS implementation, and OpenELIS Work design shows that this would retain
+WHONET-specific concepts and aggregate at the wrong system boundary.
 
-**Alternatives considered**:
-
-- New exporter module: rejected because it duplicates existing report/export
-  infrastructure.
-- Full WHONET export in MVP-1A: deferred because the product spec only requires
-  readiness and flags full export automation as a later slice.
+Existing WHONET services remain useful as transitional compatibility code. They
+must not define the canonical terminology, line-level data representation, or
+national GLASS compiler. The target is a separate national reporting
+application that accepts structured OpenELIS data and openly mapped file
+imports, then produces both required GLASS datasets without a WHONET runtime
+dependency.
 
 ### Decision: Use Playwright-first E2E planning for new microbiology flows
 
@@ -143,5 +149,7 @@ The plan keeps Cypress from expanding and routes E2E authoring through
   rules are later slices.
 - TB/mycobacteriology is represented as a sibling workflow concept now, but its
   full profile is a later cycle.
-- FHIR/GLASS external surveillance is deferred until a later feature; MVP keeps
-  WHONET readiness/export in existing report paths.
+- FHIR/GLASS external surveillance is deferred until a later feature. The MVP
+  may retain its current compatibility surface, but the later feature must
+  follow `research/glass-reporting-without-whonet.md` rather than extending
+  WHONET as the target architecture.
