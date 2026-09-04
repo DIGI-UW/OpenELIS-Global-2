@@ -740,6 +740,183 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         return org.springframework.http.ResponseEntity.status(status).body(body);
     }
 
+    /**
+     * Request body for {@link #releaseAllClear}: the page's search key (so the
+     * server reloads the very same queue) plus the rows the client holds as Clear
+     * (for their identifiers and the validator's note).
+     */
+    public static class BulkReleaseRequest {
+        private String accessionNumber;
+        private String testSectionId;
+        private String testDate;
+        private Boolean doRange;
+        private List<AnalysisItem> rows;
+
+        public String getAccessionNumber() {
+            return accessionNumber;
+        }
+
+        public void setAccessionNumber(String accessionNumber) {
+            this.accessionNumber = accessionNumber;
+        }
+
+        public String getTestSectionId() {
+            return testSectionId;
+        }
+
+        public void setTestSectionId(String testSectionId) {
+            this.testSectionId = testSectionId;
+        }
+
+        public String getTestDate() {
+            return testDate;
+        }
+
+        public void setTestDate(String testDate) {
+            this.testDate = testDate;
+        }
+
+        public Boolean getDoRange() {
+            return doRange;
+        }
+
+        public void setDoRange(Boolean doRange) {
+            this.doRange = doRange;
+        }
+
+        public List<AnalysisItem> getRows() {
+            return rows;
+        }
+
+        public void setRows(List<AnalysisItem> rows) {
+            this.rows = rows;
+        }
+    }
+
+    /**
+     * OGC-1029 (Validation v4 slice V3, FR-B2/B4) — the guarded bulk release. The
+     * only bulk action on the page: it releases the requested analyses that the
+     * SERVER finds in the Clear lane right now (re-derived from a fresh load of the
+     * same queue, never from the client's list), under one e-signature. Anything
+     * abnormal, critical, flagged or no longer awaiting validation is skipped and
+     * reported back by reason. Gated by the "allow bulk release of clear results"
+     * site flag (403 when off).
+     */
+    @PostMapping(value = "AccessionValidation/release-clear", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<Map<String, Object>> releaseAllClear(
+            @RequestBody BulkReleaseRequest body) {
+        if (!ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(ConfigurationProperties.Property.ALLOW_BULK_RELEASE_CLEAR, "true")) {
+            return errorResponse(403, "bulkReleaseDisabled");
+        }
+        if (body == null || body.getRows() == null || body.getRows().isEmpty()) {
+            return errorResponse(400, "noRows");
+        }
+
+        List<AnalysisItem> serverRows = loadValidationRows(body);
+        Map<String, List<AnalysisItem>> serverRowsByAnalysis = new LinkedHashMap<>();
+        for (AnalysisItem row : serverRows) {
+            serverRowsByAnalysis.computeIfAbsent(row.getAnalysisId(), key -> new ArrayList<>()).add(row);
+        }
+        Map<String, AnalysisItem> requested = new LinkedHashMap<>();
+        for (AnalysisItem clientRow : body.getRows()) {
+            if (clientRow != null && !isBlankOrNull(clientRow.getAnalysisId())) {
+                requested.putIfAbsent(clientRow.getAnalysisId(), clientRow);
+            }
+        }
+
+        List<String> released = new ArrayList<>();
+        List<Map<String, Object>> skipped = new ArrayList<>();
+        for (Map.Entry<String, AnalysisItem> entry : requested.entrySet()) {
+            List<AnalysisItem> group = serverRowsByAnalysis.get(entry.getKey());
+            if (group == null) {
+                skipped.add(skipReason(entry.getKey(), "notFound"));
+                continue;
+            }
+            if (!org.openelisglobal.resultvalidation.util.ValidationSignals.allClear(group)) {
+                skipped.add(skipReason(entry.getKey(), "notClear"));
+                continue;
+            }
+            AnalysisItem clientRow = entry.getValue();
+            for (int i = 0; i < group.size(); i++) {
+                AnalysisItem row = group.get(i);
+                row.setIsAccepted(true);
+                row.setIsRejected(false);
+                row.setReadOnly(false);
+                row.setNote(i == 0 ? clientRow.getNote() : null);
+                row.setNoteVisibility(clientRow.getNoteVisibility());
+                row.setNoteContext(isBlankOrNull(clientRow.getNoteContext()) ? NOTE_CONTEXT_VALIDATION
+                        : clientRow.getNoteContext());
+            }
+            released.add(entry.getKey());
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("released", released);
+        result.put("skipped", skipped);
+        if (released.isEmpty()) {
+            return org.springframework.http.ResponseEntity.ok(result);
+        }
+
+        List<IResultUpdate> updaters = ValidationUpdateRegister.getRegisteredUpdaters();
+        IResultSaveService resultSaveService = new ResultValidationSaveService();
+        List<Analysis> analysisUpdateList = new ArrayList<>();
+        ArrayList<Result> resultUpdateList = new ArrayList<>();
+        ArrayList<Note> noteUpdateList = new ArrayList<>();
+        List<Result> deletableList = new ArrayList<>();
+        createUpdateList(serverRows, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
+                resultSaveService, !updaters.isEmpty());
+        ArrayList<Sample> sampleUpdateList = new ArrayList<>();
+        try {
+            resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, serverRows,
+                    sampleUpdateList, noteUpdateList, resultSaveService, updaters, getSysUserId(request));
+        } catch (org.openelisglobal.resultvalidation.exception.QcAcknowledgmentRequiredException e) {
+            return errorResponse(409, "qcAcknowledgmentRequired");
+        } catch (LIMSRuntimeException e) {
+            LogEvent.logError(e);
+            return errorResponse(500, "persistFailed");
+        }
+        try {
+            fhirTransformService.transformPersistResultValidationFhirObjects(deletableList, analysisUpdateList,
+                    resultUpdateList, serverRows, sampleUpdateList, noteUpdateList);
+        } catch (FhirLocalPersistingException e) {
+            LogEvent.logError(e);
+        }
+        return org.springframework.http.ResponseEntity.ok(result);
+    }
+
+    private Map<String, Object> skipReason(String analysisId, String reason) {
+        Map<String, Object> skip = new HashMap<>();
+        skip.put("analysisId", analysisId);
+        skip.put("reason", reason);
+        return skip;
+    }
+
+    /**
+     * The same three ways the page loads its queue (lab unit / accession / test
+     * date, ranged or not), filtered by the validator's lab-unit roles exactly as
+     * the GET is.
+     */
+    private List<AnalysisItem> loadValidationRows(BulkReleaseRequest body) {
+        ResultsValidationUtility resultsValidationUtility = SpringContext.getBean(ResultsValidationUtility.class);
+        List<AnalysisItem> rows = new ArrayList<>();
+        boolean doRange = body.getDoRange() == null || body.getDoRange();
+        if (doRange) {
+            if (!(isBlankOrNull(body.getTestSectionId()) && isBlankOrNull(body.getAccessionNumber())
+                    && isBlankOrNull(body.getTestDate()))) {
+                rows = resultsValidationUtility.getResultValidationList(getValidationStatus(), body.getTestSectionId(),
+                        body.getAccessionNumber(), body.getTestDate());
+            }
+        } else if (!isBlankOrNull(body.getAccessionNumber())) {
+            Sample sample = getSample(body.getAccessionNumber());
+            if (sample != null) {
+                rows = resultsValidationUtility.getValidationAnalysisBySample(sample);
+            }
+        }
+        return userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows, Constants.ROLE_VALIDATION);
+    }
+
     private void addResultSets(Analysis analysis, Result result, IResultSaveService resultValidationSave) {
         // Pool-level analyses (vectorPoolId set) have no sampleItem; skip FHIR result
         // set population for them — vector pool results are not dispatched

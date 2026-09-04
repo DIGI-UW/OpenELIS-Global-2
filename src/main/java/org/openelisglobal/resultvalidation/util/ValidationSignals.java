@@ -1,5 +1,6 @@
 package org.openelisglobal.resultvalidation.util;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
@@ -9,6 +10,7 @@ import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 
 /**
@@ -125,6 +127,32 @@ public final class ValidationSignals {
             }
         }
         return name;
+    }
+
+    /**
+     * The Clear lane rule (OGC-1029, FR-B1), evaluated server-side on the row the
+     * queue itself served so a bulk release never trusts the client's list: in
+     * range with a known reference range, QC evaluated and passed, no open
+     * non-conformity, not modified after first save, not critical, not
+     * nonconforming, no critical-value acknowledgment pending. Fail-safe: any
+     * missing or indeterminate input (no range, QC unknown) is not clear.
+     */
+    public static boolean isClear(AnalysisItem row) {
+        if (row == null) {
+            return false;
+        }
+        boolean rangeKnown = !GenericValidator.isBlankOrNull(row.getNormalRange());
+        return rangeKnown && row.isNormal() && QC_PASS.equals(row.getQcStatus()) && !row.isNceOpen()
+                && !row.isModified() && !row.isCritical() && !row.isNonconforming() && !row.isAckPending();
+    }
+
+    /**
+     * A multi-component analysis is clear only when every one of its rows is
+     * (FR-B1); an analysis with no rows at all is never clear.
+     */
+    public static boolean allClear(Collection<AnalysisItem> rowsOfOneAnalysis) {
+        return rowsOfOneAnalysis != null && !rowsOfOneAnalysis.isEmpty()
+                && rowsOfOneAnalysis.stream().allMatch(ValidationSignals::isClear);
     }
 
     /**

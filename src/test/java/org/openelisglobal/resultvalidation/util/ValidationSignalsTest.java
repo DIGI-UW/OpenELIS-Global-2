@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.function.Consumer;
 import org.junit.Test;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertStatus;
@@ -14,6 +15,7 @@ import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 
 /**
@@ -187,6 +189,63 @@ public class ValidationSignalsTest {
         assertEquals("", ValidationSignals.enteredBy(Collections.emptyList()));
         assertEquals("", ValidationSignals.enteredBy(Collections.singletonList(signature("Supervisor", true))));
         assertEquals("", ValidationSignals.enteredBy(Collections.singletonList(signature("", false))));
+    }
+
+    // ---- Clear lane, server-side (OGC-1029, FR-B1) ---------------------------
+
+    private static AnalysisItem clearRow() {
+        AnalysisItem row = new AnalysisItem();
+        row.setNormalRange("10 - 20");
+        row.setNormal(true);
+        row.setQcStatus(ValidationSignals.QC_PASS);
+        row.setNceOpen(false);
+        row.setModified(false);
+        row.setCritical(false);
+        row.setNonconforming(false);
+        row.setAckPending(false);
+        return row;
+    }
+
+    private static AnalysisItem rowWith(Consumer<AnalysisItem> change) {
+        AnalysisItem row = clearRow();
+        change.accept(row);
+        return row;
+    }
+
+    @Test
+    public void isClear_whenEveryClearanceInputIsAffirmativelyClean() {
+        assertTrue(ValidationSignals.isClear(clearRow()));
+    }
+
+    @Test
+    public void isClear_anySignalExcludesTheRow() {
+        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setNormal(false))));
+        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setNceOpen(true))));
+        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setModified(true))));
+        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setCritical(true))));
+        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setNonconforming(true))));
+        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setAckPending(true))));
+        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setQcStatus(ValidationSignals.QC_FAIL))));
+    }
+
+    @Test
+    public void isClear_failSafeOnIndeterminateInputs() {
+        assertFalse("no reference range means no in-range verdict",
+                ValidationSignals.isClear(rowWith(row -> row.setNormalRange(""))));
+        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setNormalRange(null))));
+        assertFalse("QC not evaluated is never read as QC passed",
+                ValidationSignals.isClear(rowWith(row -> row.setQcStatus(ValidationSignals.QC_UNKNOWN))));
+        assertFalse(ValidationSignals.isClear(rowWith(row -> row.setQcStatus(null))));
+        assertFalse(ValidationSignals.isClear(null));
+    }
+
+    @Test
+    public void allClear_requiresEveryComponentRowToBeClear() {
+        assertTrue(ValidationSignals.allClear(Arrays.asList(clearRow(), clearRow())));
+        assertFalse("one abnormal component pushes the whole analysis to Needs-review",
+                ValidationSignals.allClear(Arrays.asList(clearRow(), rowWith(row -> row.setNormal(false)))));
+        assertFalse(ValidationSignals.allClear(Collections.emptyList()));
+        assertFalse(ValidationSignals.allClear(null));
     }
 
     // ---- next revision after a validator's modification (OGC-1028, FR-D4) ----

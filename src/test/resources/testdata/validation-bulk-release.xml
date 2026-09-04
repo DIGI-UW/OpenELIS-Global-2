@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Fixture for the guarded bulk release (OGC-1029). One accession with
+        two analyses of the same numeric test awaiting validation (Technical Acceptance):
+        id=100 (value 10.5) sits inside the test's reference range 5.0 - 20.0 with
+        QC passed and no signals — the Clear lane; id=102 (value 25.0) is above the
+        range — Needs-review. The result limit has no gender and default ages so
+        it applies without a patient. -->
+
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" name="Entered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="2"
+        description="Technical Acceptance" code="2" status_type="ANALYSIS"
+        name="Technical Acceptance" lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" name="Finalized"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <localization id="1" description="Test Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Lead (Pb)" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <type_of_sample id="1" description="Water Sample"
+        domain="E" name_localization_id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- is_active="Y": the lab-unit filter only admits tests of ACTIVE sections. -->
+    <test_section id="1" name="Environmental"
+        description="Environmental Testing" is_external="N" is_active="Y"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="env" domain="ENVIRONMENTAL" />
+
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test id="1" description="Lead (Pb)" loinc="10368-9" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="1" name="Lead"
+        guid="test-lead-001" name_localization_id="1" />
+
+    <test_result id="1" test_id="1" result_group="1"
+        tst_rslt_type="N" significant_digits="2"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        is_quantifiable="false" is_active="true" is_normal="true" />
+
+    <!-- Default (no gender, all ages) reference range 5.0 - 20.0 for the test.
+        DBUnit cannot write the double literal Infinity, so max_age is seeded as
+        a placeholder here and set to 'Infinity' by SQL in the test's setUp — the
+        "all ages" sentinel ResultLimit.ageLimitsAreDefault() expects. The test_result_type_id
+        placeholder is likewise re-pointed in setUp at the database's own Numeric
+        type row, which the range formatter keys on. -->
+    <result_limits id="1" test_id="1" test_result_type_id="1"
+        min_age="0" max_age="120" low_normal="5.0" high_normal="20.0"
+        low_valid="0.0" high_valid="100.0" low_reporting_range="0.0"
+        high_reporting_range="100.0" lastupdated="2025-01-01 12:00:00"
+        always_validate="false" />
+
+    <sample id="100" accession_number="VAL-BR-001" status_id="1"
+        received_date="2025-06-01 00:00:00.0"
+        entered_date="2025-06-01 00:00:00.0"
+        collection_date="2025-06-01 00:00:00.0"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <sample_item id="100" sort_order="1" status_id="1"
+        samp_id="100" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <analysis id="100" sampitem_id="100" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+    <analysis id="102" sampitem_id="100" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+
+    <!-- Both results carry a passed QC evaluation so the only difference between
+        the two rows is the range verdict. -->
+    <result id="100" analysis_id="100" result_type="N" value="10.5"
+        is_reportable="Y" lastupdated="2025-06-01 12:00:00"
+        qc_evaluation="PASS" />
+    <result id="102" analysis_id="102" result_type="N" value="25.0"
+        is_reportable="Y" lastupdated="2025-06-01 12:00:00"
+        qc_evaluation="PASS" />
+</dataset>

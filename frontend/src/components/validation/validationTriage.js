@@ -131,3 +131,55 @@ export function filterTriaged(triaged, filter) {
     matchesFilter(item.signals, item.lane, filter),
   );
 }
+
+/** OGC-1029 (FR-B2) — the rows "Release all clear" may touch: the Clear lane only. */
+export function clearRows(triaged) {
+  return (triaged || [])
+    .filter((item) => item.lane === LANE_CLEAR)
+    .map((item) => item.row);
+}
+
+/**
+ * OGC-1029 — the bulk request: the page's own search key (so the server reloads
+ * the same queue and re-derives the lane itself) plus the candidate rows with
+ * the validator's note. `params` is the page's query string, e.g.
+ * "?type=order&accessionNumber=…"; only an accession ("order") search is unranged.
+ */
+export function bulkReleaseRequest(results, params, rows) {
+  const search = new URLSearchParams((params || "").replace(/^\?/, ""));
+  const type = search.get("type") || "";
+  return {
+    accessionNumber:
+      (results && results.accessionNumber) ||
+      search.get("accessionNumber") ||
+      "",
+    testSectionId:
+      (results && results.testSectionId) || search.get("testSectionId") || "",
+    testDate: (results && results.testDate) || search.get("date") || "",
+    doRange: type !== "order",
+    rows: (rows || []).map((row) => ({
+      analysisId: row.analysisId,
+      accessionNumber: row.accessionNumber,
+      note: row.note || "",
+      noteVisibility: row.noteVisibility || "",
+      noteContext: row.noteContext || "VALIDATION",
+    })),
+  };
+}
+
+/** i18n key describing why a bulk release did nothing (or failed). */
+export function bulkOutcomeKey(response) {
+  const code = response && response.error;
+  if (code === "bulkReleaseDisabled" || code === "qcAcknowledgmentRequired") {
+    return `label.validation.bulk.error.${code}`;
+  }
+  if (
+    !code &&
+    response &&
+    Array.isArray(response.released) &&
+    response.released.length === 0
+  ) {
+    return "label.validation.bulk.error.nothingReleased";
+  }
+  return "label.validation.bulk.error.generic";
+}

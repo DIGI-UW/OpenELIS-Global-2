@@ -7,6 +7,7 @@ import {
   Form,
   Grid,
   InlineNotification,
+  Modal,
   Pagination,
   Tag,
   TextArea,
@@ -16,7 +17,10 @@ import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
-import { postToOpenElisServer } from "../utils/Utils";
+import {
+  postToOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
@@ -28,6 +32,9 @@ import ESignatureButton, {
 import {
   FILTERS,
   LANE_CLEAR,
+  bulkOutcomeKey,
+  bulkReleaseRequest,
+  clearRows,
   countByFilter,
   filterTriaged,
   triageRows,
@@ -87,6 +94,9 @@ const Validation = (props) => {
   const [qcAckChecked, setQcAckChecked] = useState(false);
   const [qcJustification, setQcJustification] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [expandedRowIds, setExpandedRowIds] = useState([]);
 
   // S-08 FR-04: failed QC samples in the current batch, populated by the GET.
   // The acknowledgment is only required when there's a release pending — if the
@@ -112,6 +122,10 @@ const Validation = (props) => {
   const clearLaneCount = triaged.filter(
     (item) => item.lane === LANE_CLEAR,
   ).length;
+  const clearLaneRows = clearRows(triaged);
+  // OGC-1029 (FR-B4): the whole bulk capability is an admin switch.
+  const bulkAllowed =
+    configurationProperties?.ALLOW_BULK_RELEASE_CLEAR === "true";
 
   useEffect(() => {
     componentMounted.current = true;
@@ -368,6 +382,60 @@ const Validation = (props) => {
     jpSet(form, "resultList[" + rowId + "].noteVisibility", noteVisibility);
     jpSet(form, "resultList[" + rowId + "].noteContext", "VALIDATION");
   };
+
+  const toggleExpanded = (rowId) => {
+    setExpandedRowIds((ids) =>
+      ids.includes(rowId) ? ids.filter((id) => id !== rowId) : [...ids, rowId],
+    );
+  };
+
+  /**
+   * OGC-1029 (FR-B2) — the guarded bulk release: only the Clear lane is sent,
+   * and the server re-derives the lane before releasing anything. Skipped rows
+   * (no longer clear) are reported, never released.
+   */
+  const handleReleaseAllClear = () => {
+    if (bulkBusy) {
+      return;
+    }
+    setBulkBusy(true);
+    postToOpenElisServerJsonResponse(
+      "/rest/AccessionValidation/release-clear",
+      JSON.stringify(
+        bulkReleaseRequest(props.results, props.params, clearLaneRows),
+      ),
+      (response) => {
+        setBulkBusy(false);
+        const released = response?.released?.length || 0;
+        const skipped = response?.skipped?.length || 0;
+        if (response?.error || released === 0) {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({ id: bulkOutcomeKey(response) }),
+          });
+          setNotificationVisible(true);
+          return;
+        }
+        addNotification({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: skipped
+            ? intl.formatMessage(
+                { id: "label.validation.bulk.partial" },
+                { released, skipped },
+              )
+            : intl.formatMessage(
+                { id: "label.validation.bulk.success" },
+                { count: released },
+              ),
+        });
+        setNotificationVisible(true);
+        setBulkOpen(false);
+        window.location.assign("/validation" + props.params);
+      },
+    );
+  };
   const validateResults = (e, rowId) => {
     handleChange(e, rowId);
   };
@@ -487,28 +555,54 @@ const Validation = (props) => {
 
       case "checkBeforeRelease": {
         const triage = triageByRowId.get(row.id);
-        if (!triage || triage.chips.length === 0) {
+        if (!triage) {
+          return null;
+        }
+        const needsReview = triage.lane !== LANE_CLEAR;
+        if (triage.chips.length === 0 && !needsReview) {
           return null;
         }
         return (
           <div
-            data-testid={`check-before-release-${row.id}`}
-            style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: "0.25rem",
+            }}
           >
-            {triage.chips.map((chip) => (
-              <Tag
-                key={chip}
-                type="red"
-                size="sm"
-                renderIcon={WarningAltFilled}
+            {triage.chips.length > 0 && (
+              <div
+                data-testid={`check-before-release-${row.id}`}
+                style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}
               >
-                <strong>
-                  {intl.formatMessage({
-                    id: `label.validation.signal.${chip}`,
-                  })}
-                </strong>
-              </Tag>
-            ))}
+                {triage.chips.map((chip) => (
+                  <Tag
+                    key={chip}
+                    type="red"
+                    size="sm"
+                    renderIcon={WarningAltFilled}
+                  >
+                    <strong>
+                      {intl.formatMessage({
+                        id: `label.validation.signal.${chip}`,
+                      })}
+                    </strong>
+                  </Tag>
+                ))}
+              </div>
+            )}
+            {needsReview && (
+              <Button
+                kind="ghost"
+                size="sm"
+                data-testid={`review-row-${row.id}`}
+                aria-expanded={expandedRowIds.includes(row.id)}
+                onClick={() => toggleExpanded(row.id)}
+              >
+                <FormattedMessage id="label.validation.review.action.review" />
+              </Button>
+            )}
           </div>
         );
       }
@@ -651,60 +745,145 @@ const Validation = (props) => {
               <FormattedMessage id="validation.label.nonconform" />
             </b>
           </Column>
-          <Column lg={3} md={2} sm={4}>
-            <Checkbox
-              id={"saveallnormal"}
-              name={"autochecks"}
-              labelText={intl.formatMessage({ id: "validation.accept.normal" })}
-              onChange={(e) => {
-                const nomalResults = props.results.resultList?.filter(
-                  (result) => result.normal == true,
-                );
-                nomalResults.forEach((result) => {
-                  const checkbox = document.getElementById(
-                    "resultList" + result.id + ".isAccepted",
-                  );
-                  checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
-                });
-              }}
-            />
-          </Column>
-          <Column lg={3} md={2} sm={4}>
-            <Checkbox
-              id={"saveallresults"}
-              name={"autochecks"}
-              labelText={intl.formatMessage({ id: "validation.accept.all" })}
-              onChange={(e) => {
-                const nomalResults = props.results.resultList;
-                nomalResults.forEach((result) => {
-                  const checkbox = document.getElementById(
-                    "resultList" + result.id + ".isAccepted",
-                  );
-                  checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
-                });
-              }}
-            />
-          </Column>
-          <Column lg={3} md={2} sm={4}>
-            <Checkbox
-              id={"retestalltests"}
-              name={"autochecks"}
-              labelText={intl.formatMessage({ id: "validation.reject.all" })}
-              onChange={(e) => {
-                const nomalResults = props.results.resultList;
-                nomalResults.forEach((result) => {
-                  const checkbox = document.getElementById(
-                    "resultList" + result.id + ".isRejected",
-                  );
-                  checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
-                });
-              }}
-            />
+          <Column
+            lg={9}
+            md={8}
+            sm={4}
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            {bulkAllowed ? (
+              <Button
+                size="sm"
+                data-testid="release-all-clear"
+                disabled={clearLaneRows.length === 0 || bulkBusy}
+                onClick={() => setBulkOpen(true)}
+              >
+                {intl.formatMessage(
+                  { id: "label.validation.bulk.releaseAllClear" },
+                  { count: clearLaneRows.length },
+                )}
+              </Button>
+            ) : (
+              <span
+                className="cds--label"
+                data-testid="release-all-clear-disabled"
+              >
+                {intl.formatMessage({ id: "label.validation.bulk.disabled" })}
+              </span>
+            )}
           </Column>
         </Grid>
+      )}
+      {bulkOpen && (
+        <Modal
+          open
+          passiveModal
+          size="lg"
+          modalHeading={intl.formatMessage({
+            id: "label.validation.bulk.heading",
+          })}
+          onRequestClose={() => setBulkOpen(false)}
+        >
+          <div data-testid="release-all-clear-modal">
+            <p>
+              {intl.formatMessage(
+                { id: "label.validation.bulk.body" },
+                { count: clearLaneRows.length },
+              )}
+            </p>
+            <table
+              className="cds--data-table cds--data-table--sm"
+              style={{ width: "100%", margin: "1rem 0" }}
+              data-testid="release-all-clear-list"
+            >
+              <thead>
+                <tr>
+                  <th>
+                    <FormattedMessage id="label.validation.bulk.column.accession" />
+                  </th>
+                  <th>
+                    <FormattedMessage id="column.name.testName" />
+                  </th>
+                  <th>
+                    <FormattedMessage id="column.name.result" />
+                  </th>
+                  <th>
+                    <FormattedMessage id="column.name.normalRange" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {clearLaneRows.map((row) => (
+                  <tr
+                    key={row.id}
+                    data-testid={`release-all-clear-row-${row.id}`}
+                  >
+                    <td>
+                      {configurationProperties.AccessionFormat === "ALPHANUM"
+                        ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
+                        : row.accessionNumber}
+                    </td>
+                    <td>{row.testName}</td>
+                    <td>{row.result}</td>
+                    <td>{row.normalRange}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {qcAckRequired && !qcAckSatisfied && (
+              <p data-testid="release-all-clear-qc-hint">
+                <FormattedMessage id="label.validation.review.release.qcAckFirst" />
+              </p>
+            )}
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+              <span data-testid="release-all-clear-sign">
+                <ESignatureButton
+                  meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+                  context={intl.formatMessage(
+                    {
+                      id: "esig.context.releaseAllClear",
+                      defaultMessage:
+                        "Release {count} clear result(s) for {accession}",
+                    },
+                    {
+                      count: clearLaneRows.length,
+                      accession:
+                        props.results?.accessionNumber ||
+                        clearLaneRows[0]?.accessionNumber ||
+                        "",
+                    },
+                  )}
+                  recordType="VALIDATION_BATCH"
+                  recordId={Number(clearLaneRows[0]?.analysisId) || 0}
+                  onBeforeSign={handleBeforeSign}
+                  onSign={handleReleaseAllClear}
+                  disabled={
+                    bulkBusy || !qcAckSatisfied || clearLaneRows.length === 0
+                  }
+                  size="sm"
+                >
+                  {intl.formatMessage(
+                    { id: "label.validation.bulk.releaseAllClear" },
+                    { count: clearLaneRows.length },
+                  )}
+                </ESignatureButton>
+              </span>
+              <Button
+                kind="secondary"
+                size="sm"
+                onClick={() => setBulkOpen(false)}
+                data-testid="release-all-clear-cancel"
+              >
+                <FormattedMessage id="label.validation.review.action.cancel" />
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
       {triaged.length > 0 && (
         <div
@@ -765,6 +944,16 @@ const Validation = (props) => {
               columns={columns}
               isSortable
               expandableRows
+              expandableRowExpanded={(row) => expandedRowIds.includes(row.id)}
+              onRowExpandToggled={(expanded, row) =>
+                setExpandedRowIds((ids) =>
+                  expanded
+                    ? ids.includes(row.id)
+                      ? ids
+                      : [...ids, row.id]
+                    : ids.filter((id) => id !== row.id),
+                )
+              }
               expandableRowsComponent={ValidationReviewPanel}
               expandableRowsComponentProps={{
                 rows: props.results?.resultList || [],
