@@ -2,12 +2,21 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Dropdown, Checkbox, SkeletonText } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import type {
+  BuildTatQueryString,
+  CompareBy,
+  SelectOption,
+  TatFilters,
+  TatTrendPoint,
+  TatTrendResponse,
+  TrendInterval,
+} from "./types";
 
 const INTERVALS = [
   { id: "DAILY", labelKey: "reports.tat.daily" },
   { id: "WEEKLY", labelKey: "reports.tat.weekly" },
   { id: "MONTHLY", labelKey: "reports.tat.monthly" },
-];
+] as const;
 
 const COMPARE_OPTIONS = [
   { id: "", labelKey: "reports.tat.compareNone" },
@@ -15,14 +24,19 @@ const COMPARE_OPTIONS = [
   { id: "PRIORITY", labelKey: "reports.tat.comparePriority" },
   { id: "SAMPLE_TYPE", labelKey: "reports.tat.sampleType" },
   { id: "ORDERING_SITE", labelKey: "reports.tat.orderingSite" },
-];
+] as const;
 
-function TATTrendsTab({ filters, buildQueryString }) {
+interface TATTrendsTabProps {
+  filters: TatFilters | null;
+  buildQueryString: BuildTatQueryString;
+}
+
+function TATTrendsTab({ filters, buildQueryString }: TATTrendsTabProps) {
   const intl = useIntl();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<TatTrendResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [interval, setInterval] = useState("DAILY");
-  const [compareBy, setCompareBy] = useState("");
+  const [interval, setInterval] = useState<TrendInterval>("DAILY");
+  const [compareBy, setCompareBy] = useState<CompareBy>("");
   const [showMedian, setShowMedian] = useState(true);
   const [showMean, setShowMean] = useState(false);
   const [showP90, setShowP90] = useState(true);
@@ -34,7 +48,7 @@ function TATTrendsTab({ filters, buildQueryString }) {
     let extra = `&interval=${interval}`;
     if (compareBy) extra += `&compareBy=${compareBy}`;
     const qs = buildQueryString(filters, extra);
-    getFromOpenElisServer(`/rest/reports/tat/trend?${qs}`, (res) => {
+    getFromOpenElisServer(`/rest/reports/tat/trend?${qs}`, (res: TatTrendResponse | null) => {
       setData(res || null);
       setLoading(false);
     });
@@ -72,7 +86,9 @@ function TATTrendsTab({ filters, buildQueryString }) {
               id: INTERVALS.find((i) => i.id === interval)?.labelKey,
             }),
           }}
-          onChange={({ selectedItem }) => setInterval(selectedItem.id)}
+          onChange={({ selectedItem }) =>
+            setInterval((selectedItem as SelectOption).id as TrendInterval)
+          }
           size="sm"
         />
         <Dropdown
@@ -88,7 +104,9 @@ function TATTrendsTab({ filters, buildQueryString }) {
               id: COMPARE_OPTIONS.find((o) => o.id === compareBy)?.labelKey || "reports.tat.compareNone",
             }),
           }}
-          onChange={({ selectedItem }) => setCompareBy(selectedItem.id)}
+          onChange={({ selectedItem }) =>
+            setCompareBy((selectedItem as SelectOption).id as CompareBy)
+          }
           size="sm"
         />
         <div>
@@ -139,7 +157,7 @@ function TATTrendsTab({ filters, buildQueryString }) {
               <strong>{series.label}</strong>
               <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "150px" }}>
                 {(() => {
-                  const getMetricValue = (dp) =>
+                  const getMetricValue = (dp: TatTrendPoint) =>
                     showMedian ? (dp.median || 0) : showMean ? (dp.mean || 0) : showP90 ? (dp.percentile90 || 0) : 0;
                   const maxVal = Math.max(
                     ...series.dataPoints.map((d) => getMetricValue(d)),

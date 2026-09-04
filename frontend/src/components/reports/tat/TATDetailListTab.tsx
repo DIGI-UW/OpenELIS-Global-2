@@ -14,8 +14,14 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { formatTat } from "./tatUtils";
+import type { BuildTatQueryString, TatDetailResponse, TatFilters } from "./types";
 
-function formatTimestamp(ts) {
+interface TATDetailListTabProps {
+  filters: TatFilters | null;
+  buildQueryString: BuildTatQueryString;
+}
+
+function formatTimestamp(ts?: string | null): string {
   if (!ts) return "—";
   try {
     return new Date(ts).toLocaleString();
@@ -24,7 +30,7 @@ function formatTimestamp(ts) {
   }
 }
 
-function TATDetailListTab({ filters, buildQueryString }) {
+function TATDetailListTab({ filters, buildQueryString }: TATDetailListTabProps) {
   const intl = useIntl();
 
   const ALL_HEADERS = [
@@ -41,7 +47,7 @@ function TATDetailListTab({ filters, buildQueryString }) {
     { key: "selectedSegmentTat", header: intl.formatMessage({ id: "reports.tat.column.selectedTat" }), alwaysVisible: true },
     { key: "overallTat", header: intl.formatMessage({ id: "reports.tat.column.overallTat" }), alwaysVisible: true },
   ];
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<TatDetailResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
@@ -55,7 +61,7 @@ function TATDetailListTab({ filters, buildQueryString }) {
       filters,
       `&page=${page}&pageSize=${pageSize}&sortField=${sortField}&sortOrder=${sortOrder}`,
     );
-    getFromOpenElisServer(`/rest/reports/tat/detail?${qs}`, (res) => {
+    getFromOpenElisServer(`/rest/reports/tat/detail?${qs}`, (res: TatDetailResponse | null) => {
       setData(res || null);
       setLoading(false);
     });
@@ -137,7 +143,7 @@ function TATDetailListTab({ filters, buildQueryString }) {
               </TableHead>
               <TableBody>
                 {tableRows.map((row) => {
-                  const original = data.results[parseInt(row.id)];
+                  const original = data.results[parseInt(row.id, 10)];
                   const isStat = original?.priority === "STAT";
                   return (
                     <TableRow

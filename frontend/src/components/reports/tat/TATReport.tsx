@@ -8,15 +8,16 @@ import TATDetailListTab from "./TATDetailListTab";
 import TATTrendsTab from "./TATTrendsTab";
 import TATExport from "./TATExport";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import type { BuildTatQueryString, TatFilters, TatSummaryData } from "./types";
 
 function TATReport() {
   const intl = useIntl();
-  const [filters, setFilters] = useState(null);
-  const [summaryData, setSummaryData] = useState(null);
+  const [filters, setFilters] = useState<TatFilters | null>(null);
+  const [summaryData, setSummaryData] = useState<TatSummaryData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const buildQueryString = useCallback((f, extra = "") => {
+  const buildQueryString: BuildTatQueryString = useCallback((f, extra = "") => {
     if (!f) return "";
     let qs = `fromDate=${f.fromDate}&toDate=${f.toDate}&segment=${f.segment}&calculationMode=${f.calculationMode}`;
     if (f.priority) qs += `&priority=${f.priority}`;
@@ -29,13 +30,13 @@ function TATReport() {
   }, []);
 
   const handleGenerateReport = useCallback(
-    (newFilters) => {
+    (newFilters: TatFilters) => {
       setFilters(newFilters);
       setLoading(true);
       setError(null);
       setSummaryData(null);
       const qs = buildQueryString(newFilters);
-      getFromOpenElisServer(`/rest/reports/tat/summary?${qs}`, (res) => {
+      getFromOpenElisServer(`/rest/reports/tat/summary?${qs}`, (res: TatSummaryData | null) => {
         if (res) {
           setSummaryData(res);
         } else {
