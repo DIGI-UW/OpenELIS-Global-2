@@ -14,9 +14,62 @@ import {
   Section,
   TextArea,
 } from "@carbon/react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, IntlShape, injectIntl } from "react-intl";
 import PropTypes from "prop-types";
 import { fetchAlertDetails, acknowledgeAlert, resolveAlert } from "./api";
+
+type AlertStatus =
+  | "OPEN"
+  | "ACKNOWLEDGED"
+  | "ESCALATED"
+  | "RESOLVED"
+  | "CLOSED"
+  | string;
+
+type AlertSeverity = "CRITICAL" | "WARNING" | string;
+
+interface FreezerSummary {
+  name?: string;
+  code?: string;
+}
+
+interface AlertNotification {
+  recipient?: string;
+  method?: string;
+  sentAt?: string | number;
+  status?: string;
+}
+
+interface AlertAction {
+  summary?: string;
+  takenBy?: string;
+  takenAt?: string | number;
+}
+
+interface AlertDetails {
+  id?: string | number;
+  status: AlertStatus;
+  severity?: AlertSeverity;
+  freezer?: FreezerSummary;
+  startTime?: string | number;
+  acknowledgedAt?: string | number;
+  acknowledgedBy?: string;
+  resolvedAt?: string | number;
+  resolvedBy?: string;
+  message?: string;
+  resolutionNotes?: string;
+  correctiveAction?: string;
+  notifications?: AlertNotification[];
+  actions?: AlertAction[];
+}
+
+interface AlertDetailModalProps {
+  intl: IntlShape;
+  alertId?: string | number;
+  open: boolean;
+  onClose: () => void;
+  currentUserId?: number;
+}
 
 const AlertDetailModal = ({
   intl,
@@ -24,10 +77,10 @@ const AlertDetailModal = ({
   open,
   onClose,
   currentUserId = 1,
-}) => {
-  const [alert, setAlert] = useState(null);
+}: AlertDetailModalProps) => {
+  const [alert, setAlert] = useState<AlertDetails | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [notes, setNotes] = useState("");
 
@@ -50,7 +103,7 @@ const AlertDetailModal = ({
     }
   };
 
-  const formatDateTime = (dateTimeString) => {
+  const formatDateTime = (dateTimeString?: string | number) => {
     if (!dateTimeString) return "-";
     try {
       // Handle epoch timestamps (in seconds or milliseconds)
@@ -96,7 +149,7 @@ const AlertDetailModal = ({
     }
   };
 
-  const getSeverityTag = (severity) => {
+  const getSeverityTag = (severity?: AlertSeverity) => {
     switch (severity) {
       case "CRITICAL":
         return <Tag type="red">Critical</Tag>;
@@ -107,7 +160,7 @@ const AlertDetailModal = ({
     }
   };
 
-  const getStatusTag = (status) => {
+  const getStatusTag = (status: AlertStatus) => {
     switch (status) {
       case "OPEN":
         return <Tag type="red">Open</Tag>;
