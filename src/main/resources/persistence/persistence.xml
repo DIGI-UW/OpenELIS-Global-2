@@ -173,6 +173,21 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
+        <!-- Action entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.action.valueholder.Action</class>
+
+        <!-- SampleQaEventAction entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.sampleqaeventaction.valueholder.SampleQaEventAction</class>
+
+        <!-- AnalysisQaEventAction entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.analysisqaeventaction.valueholder.AnalysisQaEventAction</class>
+
+        <!-- AnalysisQaEvent entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.analysisqaevent.valueholder.AnalysisQaEvent</class>
+
+        <!-- CityStateZip entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.citystatezip.valueholder.CityStateZip</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
