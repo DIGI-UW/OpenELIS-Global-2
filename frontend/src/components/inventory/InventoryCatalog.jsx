@@ -70,6 +70,13 @@ const InventoryCatalog = () => {
 
   const headers = [
     {
+      key: "code",
+      header: intl.formatMessage({
+        id: "catalog.item.code",
+        defaultMessage: "Code",
+      }),
+    },
+    {
       key: "name",
       header: intl.formatMessage({ id: "catalog.item.name" }),
     },
@@ -159,8 +166,10 @@ const InventoryCatalog = () => {
 
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((item) =>
-        item.name?.toLowerCase().includes(searchLower),
+      filtered = filtered.filter(
+        (item) =>
+          item.name?.toLowerCase().includes(searchLower) ||
+          item.code?.toLowerCase().includes(searchLower),
       );
     }
 
@@ -188,6 +197,7 @@ const InventoryCatalog = () => {
 
   const rows = paginatedItems.map((item) => ({
     id: String(item.id),
+    code: item.code,
     name: item.name,
     itemType: item.itemType,
     units: item.units,
