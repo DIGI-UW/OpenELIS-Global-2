@@ -13,10 +13,8 @@
  */
 package org.openelisglobal.sampleitem;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -53,23 +51,6 @@ import org.openelisglobal.sampleitem.valueholder.SampleItemAliquotRelationship;
  *      ORM Validation Tests</a>
  */
 public class SampleItemAliquotRelationshipOrmValidationTest {
-
-    /**
-     * Test that SampleItemAliquotRelationship XML mapping file exists.
-     *
-     * <p>
-     * This test validates that the Hibernate XML mapping file is present in the
-     * classpath.
-     */
-    @Test
-    public void testSampleItemAliquotRelationshipHibernateXmlMappingExists() {
-        // Act: Try to load the XML mapping file from classpath
-        InputStream inputStream = getClass().getClassLoader()
-                .getResourceAsStream("hibernate/hbm/SampleItemAliquotRelationship.hbm.xml");
-
-        // Assert: File should exist
-        assertNotNull("SampleItemAliquotRelationship.hbm.xml should exist in hibernate/hbm/ directory", inputStream);
-    }
 
     /**
      * Test that SampleItemAliquotRelationship entity has all required fields.

@@ -13,12 +13,26 @@
  */
 package org.openelisglobal.sample.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -30,63 +44,176 @@ import org.openelisglobal.note.service.NoteServiceImpl.BoundTo;
 import org.openelisglobal.sample.service.SampleServiceImpl;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "SAMPLE")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class Sample extends EnumValueItemImpl implements NoteObject {
 
     private static final long serialVersionUID = 1407388492068629053L;
 
+    @Id
+    @GeneratedValue(generator = "sample_seq_gen")
+    @GenericGenerator(name = "sample_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "sample_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
+
+    @Column(name = "fhir_uuid")
     private UUID fhirUuid;
+
+    @Column(name = "ACCESSION_NUMBER", precision = 20, nullable = false, unique = true)
     private String accessionNumber;
+
+    @Column(name = "PACKAGE_ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String packageId;
+
+    @Column(name = "DOMAIN", length = 1)
     private String domain;
-    // S-09 (OGC-580) Resample linkage: original <-> replacement order
-    private String resampledFromSampleId;
-    private String resampledToSampleId;
-    // OGC-776 (S-15e) LHU report-level amendment
-    private String amendsLhuNumber;
-    private Integer amendmentNumber;
-    private String amendmentReason;
+
+    @Column(name = "NEXT_ITEM_SEQUENCE", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String nextItemSequence;
+
+    // S-09 (OGC-580) Resample linkage: original <-> replacement order
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "resampled_from_sample_id", precision = 10)
+    private String resampledFromSampleId;
+
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "resampled_to_sample_id", precision = 10)
+    private String resampledToSampleId;
+
+    // OGC-776 (S-15e) LHU report-level amendment
+
+    @Column(name = "amends_lhu_number")
+    private String amendsLhuNumber;
+
+    @Column(name = "amendment_number")
+    private Integer amendmentNumber;
+
+    @Column(name = "amendment_reason")
+    private String amendmentReason;
+
+    @Column(name = "REVISION", precision = 22, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String revision;
+
+    @Column(name = "ENTERED_DATE", length = 7, nullable = false)
     private Date enteredDate;
+
+    @Transient
     private String enteredDateForDisplay;
+
+    @Column(name = "RECEIVED_DATE", length = 7, nullable = false)
     private Timestamp receivedTimestamp;
+
+    @Transient
     private String receivedDateForDisplay;
+
+    @Transient
     private String receivedTimeForDisplay;
+
+    @Column(name = "SPEC_OR_ISOLATE", length = 1)
     private String referredCultureFlag;
+
+    @Column(name = "COLLECTION_DATE", length = 7)
     private Timestamp collectionDate;
+
+    @Transient
     private String collectionDateForDisplay;
+
+    @Transient
     private String collectionTimeForDisplay;
-    private Timestamp requiredBy;
+
+    @Column(name = "CLIENT_REFERENCE", length = 20)
     private String clientReference;
+
+    @Column(name = "required_by")
+    private Timestamp requiredBy;
+
+    @Column(name = "STATUS", length = 1)
     private String status;
+
+    @Column(name = "RELEASED_DATE", length = 7)
     private Date releasedDate;
+
+    @Transient
     private String releasedDateForDisplay;
+
+    @Column(name = "STICKER_RCVD_FLAG", length = 1)
     private String stickerReceivedFlag;
+
+    @Column(name = "SYS_USER_ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String sysUserId;
+
+    @Column(name = "BARCODE", length = 20)
     private String barCode;
+
+    @Column(name = "TRANSMISSION_DATE", length = 7)
     private Date transmissionDate;
+
+    @Transient
     private String transmissionDateForDisplay;
+
+    @Transient
     private ValueHolderInterface systemUser;
+
+    @Column(name = "referring_id")
     private String referringId;
+
+    @Column(name = "clinical_order_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String clinicalOrderId;
+
+    @Column(name = "is_confirmation")
     private Boolean isConfirmation = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ORDER_PRIORITY")
     private OrderPriority priority;
+
+    @Column(name = "gps_latitude")
     private Double gpsLatitude;
+
+    @Column(name = "gps_longitude")
     private Double gpsLongitude;
+
+    @Column(name = "gps_accuracy_meters")
     private Integer gpsAccuracyMeters;
+
+    @Column(name = "gps_capture_method", length = 10)
     private String gpsCaptureMethod;
+
+    @Column(name = "gps_capture_timestamp")
     private Timestamp gpsCaptureTimestamp;
+
+    @Column(name = "storage_skipped")
     private Boolean storageSkipped = false;
+
+    @Column(name = "consent_provided")
     private Boolean consentGiven = false;
+
+    @Column(name = "consent_reference_no", length = 100)
     private String consentFormReference;
+
+    @Column(name = "consent_recorded_at")
     private Timestamp consentRecordedAt;
+
+    @Column(name = "consent_recorded_by", length = 225)
     private String consentRecordedBy;
 
     // testing one-to-many
     // this is for HSE I and II - ability to enter up to two projects
+    @Transient
     private List sampleProjects;
 
+    @Column(name = "status_id", precision = 10)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String statusId;
 
     public Sample() {
