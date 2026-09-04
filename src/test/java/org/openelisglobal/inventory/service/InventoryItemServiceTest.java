@@ -87,4 +87,15 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull("Saved item should be retrievable", savedItem);
         assertEquals("Test Item Created", savedItem.getName());
     }
+
+    @Test
+    public void getByItemType_shouldReturnItemsOfSpecifiedType() {
+        List<InventoryItem> reagents = inventoryItemService.getByItemType(ItemType.REAGENT);
+
+        assertNotNull("Result should not be null", reagents);
+        assertFalse("Should return at least one REAGENT item from dataset", reagents.isEmpty());
+        for (InventoryItem item : reagents) {
+            assertEquals("All returned items should be of type REAGENT", ItemType.REAGENT, item.getItemType());
+        }
+    }
 }
