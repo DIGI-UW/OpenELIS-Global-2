@@ -231,6 +231,17 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
+
+        <!-- SourceOfSample entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.sourceofsample.valueholder.SourceOfSample</class>
+
+        <!-- StatusOfSample entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.statusofsample.valueholder.StatusOfSample</class>
+
+        <!-- SiteInformation entities (migrated from HBM to JPA annotations) -->
+        <!-- <class>org.openelisglobal.siteinformation.valueholder.SiteInformation</class> -->
+        <!-- <class>org.openelisglobal.siteinformation.valueholder.SiteInformationDomain</class> -->
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />

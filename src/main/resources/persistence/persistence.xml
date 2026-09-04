@@ -173,6 +173,13 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
+        <!-- SourceOfSample entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.sourceofsample.valueholder.SourceOfSample</class>
+
+        <!-- StatusOfSample entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.statusofsample.valueholder.StatusOfSample</class>
+
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
