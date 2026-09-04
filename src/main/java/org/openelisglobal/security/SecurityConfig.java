@@ -117,9 +117,9 @@ public class SecurityConfig {
     public static final String[] REST_CONTROLLERS = { "/Provider/**", "/rest/**" };
     // public static final String[] CLIENT_CERTIFICATE_PAGES = {};
 
-    private static final String CONTENT_SECURITY_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
+    private static final String CONTENT_SECURITY_POLICY = "default-src 'self'; script-src 'self';"
             + " connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline';"
-            + " frame-src *.openlmis.org 'self'; object-src 'self';";
+            + " frame-src *.openlmis.org 'self'; frame-ancestors 'self'; object-src 'none';";
 
     @Value("${encryption.general.password:dev}")
     private String encryptionPassword;
