@@ -94,7 +94,7 @@ const DeleteAnalyzerModal = ({
     <ComposedModal
       open={open}
       onClose={onClose}
-      preventCloseOnClickOutside={isDeleting}
+      preventCloseOnClickOutside
       danger
       data-testid="delete-analyzer-modal"
     >

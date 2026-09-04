@@ -2,26 +2,17 @@ import { APIRequestContext, expect } from "@playwright/test";
 
 export interface AnalyzerPayload {
   name: string;
-  analyzerType: string;
-  pluginTypeId: string;
-  ipAddress: string;
-  port: number;
-  protocolVersion: string;
-  identifierPattern: string;
-  status: string;
-  defaultConfigId: string;
+  profileId: string;
+  ipAddress?: string;
+  port?: number;
+  importDirectory?: string;
 }
 
 export const GENEXPERT_DEFAULT_ANALYZER: AnalyzerPayload = {
   name: "Cepheid GeneXpert (ASTM Mode)",
-  analyzerType: "MOLECULAR",
-  pluginTypeId: "generic-astm",
+  profileId: "genexpert-astm",
   ipAddress: "10.42.20.10",
   port: 9600,
-  protocolVersion: "ASTM_LIS2_A2",
-  identifierPattern: "GENEXPERT|CEPHEID",
-  status: "ACTIVE",
-  defaultConfigId: "astm/genexpert-astm",
 };
 
 interface AnalyzerSummary {
@@ -29,9 +20,35 @@ interface AnalyzerSummary {
   name?: string;
 }
 
+interface AnalyzerTypeSummary {
+  profileId: string;
+  revision: number;
+  status: string;
+}
+
+async function resolveActiveProfileRevision(
+  request: APIRequestContext,
+  profileId: string,
+): Promise<number> {
+  const response = await request.get(
+    "/api/OpenELIS-Global/rest/analyzer-types",
+  );
+  expect(response.ok()).toBeTruthy();
+  const catalog = await response.json();
+  const active = (catalog.types ?? []).filter(
+    (type: AnalyzerTypeSummary) =>
+      type.profileId === profileId && type.status === "ACTIVE",
+  );
+  expect(
+    active,
+    `Expected exactly one active revision for ${profileId}`,
+  ).toHaveLength(1);
+  return active[0].revision;
+}
+
 export async function ensureAnalyzerByName(
   request: APIRequestContext,
-  matches: (analyzer: AnalyzerSummary) => boolean,
+  matches: (analyzer: AnalyzerSummary) => boolean | undefined,
   payload: AnalyzerPayload,
 ): Promise<string> {
   const listResp = await request.get(
@@ -44,10 +61,14 @@ export async function ensureAnalyzerByName(
     return String(existing.id);
   }
 
+  const profileRevision = await resolveActiveProfileRevision(
+    request,
+    payload.profileId,
+  );
   const createResp = await request.post(
     "/api/OpenELIS-Global/rest/analyzer/analyzers",
     {
-      data: payload,
+      data: { ...payload, profileRevision },
     },
   );
   expect(createResp.ok()).toBeTruthy();

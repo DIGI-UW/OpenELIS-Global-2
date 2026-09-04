@@ -9,7 +9,7 @@ The analyzer harness CI gate runs from the repository root using:
 - `projects/analyzer-harness/docker-compose.base.yml`
 - `build.docker-compose.yml`
 - `.github/ci/ci.analyzer-harness.yml`
-- `.github/workflows/e2e-playwright-analyzer-harness-reusable.yml`
+- `.github/workflows/e2e-playwright-reusable.yml`
 
 Use `ci-parity-test.sh` for exact local reproduction of that CI path.
 

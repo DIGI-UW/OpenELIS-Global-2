@@ -29,7 +29,7 @@ source "$SCRIPT_DIR/playwright-project-policy.sh"
 CI_COMPOSE_FILES=($(compose_args_ci))
 FIXTURE_SCRIPT="$REPO_ROOT/src/test/resources/load-test-fixtures.sh"
 SEED_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-analyzers.sh"
-REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-analyzer-harness-reusable.yml"
+REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-reusable.yml"
 
 PRECHECK_ONLY=false
 SEED_ONLY=false
@@ -266,56 +266,6 @@ collect_failure_artifacts() {
   fi
 }
 
-required_analyzers=(
-  "Cepheid GeneXpert (ASTM Mode)"
-  "QuantStudio 5"
-  "QuantStudio 7"
-  "FluoroCycler XT"
-  "Mindray BC-5380"
-  "Mindray BS-200"
-  "Mindray BS-300"
-)
-
-mapping_count_for_analyzer() {
-  local analyzer_name="$1"
-  docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A \
-    -c "SELECT COUNT(*) FROM clinlims.analyzer_test_map m JOIN clinlims.analyzer a ON a.id = m.analyzer_id WHERE a.name = '${analyzer_name}';" \
-    2>/dev/null | tr -d '[:space:]' || echo 0
-}
-
-verify_required_mappings() {
-  local max_attempts=12
-  local sleep_seconds=5
-  local attempt=1
-  local missing=0
-  local mappings=0
-
-  while (( attempt <= max_attempts )); do
-    missing=0
-    echo "Verifying analyzer test mappings (attempt ${attempt}/${max_attempts})..." | tee -a "$RUN_LOG"
-    for analyzer in "${required_analyzers[@]}"; do
-      mappings="$(mapping_count_for_analyzer "$analyzer")"
-      mappings="${mappings:-0}"
-      echo "$analyzer: $mappings test mappings" | tee -a "$RUN_LOG"
-      if [[ "$mappings" == "0" ]]; then
-        missing=1
-      fi
-    done
-    if [[ "$missing" -eq 0 ]]; then
-      echo "Analyzer mapping gate passed." | tee -a "$RUN_LOG"
-      return 0
-    fi
-    if (( attempt < max_attempts )); then
-      echo "Mappings still missing; waiting ${sleep_seconds}s before retry..." | tee -a "$RUN_LOG"
-      sleep "$sleep_seconds"
-    fi
-    attempt=$((attempt + 1))
-  done
-
-  echo "ERROR: Analyzer mapping gate failed. At least one required analyzer has 0 test mappings." | tee -a "$RUN_LOG"
-  return 1
-}
-
 verify_bridge_registry() {
   local registry_file="$1"
   if [[ ! -s "$registry_file" ]]; then
@@ -346,9 +296,6 @@ required = {
     "QuantStudio 5",
     "QuantStudio 7",
     "FluoroCycler XT",
-    "Mindray BC-5380",
-    "Mindray BS-200",
-    "Mindray BS-300",
 }
 missing = sorted(required - names)
 print("\n".join(missing))
@@ -521,11 +468,6 @@ for dir in \
   with_timeout_wait 120 "incoming dir $dir" "[ -d \"$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports/$dir/incoming\" ]" 2>&1 | tee -a "$RUN_LOG"
 done
 chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" || true
-
-if ! verify_required_mappings; then
-  collect_failure_artifacts
-  exit 5
-fi
 
 bridge_registry="$ARTIFACT_DIR/bridge-registry.json"
 curl -k -s "https://localhost:8442/api/analyzers" > "$bridge_registry" || true

@@ -86,7 +86,23 @@ describe("analyzer harness Playwright project policy", () => {
     }
   });
 
-  test("video mode fails closed until a demo scenario exists", () => {
+  test("non-video demo mode accepts checkpoint user stories", () => {
+    const result = spawnSync(
+      "bash",
+      [
+        "-c",
+        'source "$1"; assert_harness_project_has_specs "$2" "harness-demo"',
+        "test",
+        policy,
+        repoRoot,
+      ],
+      { cwd: repoRoot, encoding: "utf8" },
+    );
+
+    expect(result.status).toBe(0);
+  });
+
+  test("video mode fails closed until the final MVP story exists", () => {
     const result = spawnSync(
       "bash",
       [
@@ -100,6 +116,6 @@ describe("analyzer harness Playwright project policy", () => {
     );
 
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("no analyzer demo specs");
+    expect(result.stderr).toContain("no final analyzer MVP demo spec");
   });
 });

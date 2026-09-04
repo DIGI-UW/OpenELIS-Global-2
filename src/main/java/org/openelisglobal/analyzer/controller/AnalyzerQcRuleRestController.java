@@ -4,15 +4,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
-import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.service.BridgeRegistrationService;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerQcRule;
 import org.openelisglobal.analyzer.valueholder.AnalyzerQcRule.RuleType;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
-import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,15 +31,6 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
     @Autowired
     private AnalyzerQcRuleService analyzerQcRuleService;
 
-    @Autowired
-    private AnalyzerService analyzerService;
-
-    @Autowired
-    private AnalyzerTestMappingService analyzerTestMappingService;
-
-    @Autowired(required = false)
-    private BridgeRegistrationService bridgeRegistrationService;
-
     @GetMapping("/analyzers/{analyzerId}/qc-rules")
     @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getQcRules(@PathVariable String analyzerId) {
@@ -66,7 +51,6 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
         try {
             AnalyzerQcRule rule = mapToRule(body);
             AnalyzerQcRule created = analyzerQcRuleService.createRule(analyzerId, rule, getSysUserId(request));
-            pushToBridge(analyzerId);
             return ResponseEntity.status(HttpStatus.CREATED).body(ruleToMap(created));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(AnalyzerControllerHelper.wrapError(e.getMessage()));
@@ -87,7 +71,6 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
             AnalyzerQcRule updates = mapToRule(body);
             AnalyzerQcRule updated = analyzerQcRuleService.updateRule(analyzerId, ruleId, updates,
                     getSysUserId(request));
-            pushToBridge(analyzerId);
             return ResponseEntity.ok(ruleToMap(updated));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(AnalyzerControllerHelper.wrapError(e.getMessage()));
@@ -103,39 +86,10 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
     public ResponseEntity<Void> deleteQcRule(@PathVariable String analyzerId, @PathVariable String ruleId) {
         try {
             analyzerQcRuleService.deleteRule(analyzerId, ruleId);
-            pushToBridge(analyzerId);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             LogEvent.logError(CLASS_NAME, "deleteQcRule", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    private void pushToBridge(String analyzerId) {
-        if (bridgeRegistrationService == null) {
-            return;
-        }
-        try {
-            Analyzer analyzer = analyzerService.get(analyzerId);
-            if (analyzer == null) {
-                return;
-            }
-            if (analyzer.getIpAddress() != null && !analyzer.getIpAddress().isBlank()) {
-                String protocol = analyzer.getProtocolVersion() != null && analyzer.getProtocolVersion().isHl7() ? "HL7"
-                        : "ASTM";
-                bridgeRegistrationService.registerTcp(analyzer.getId(), analyzer.getName(), analyzer.getIpAddress(),
-                        analyzer.getPort(), protocol, analyzer.getIdentifierPattern());
-            }
-            if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
-                List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(analyzer.getId()).stream()
-                        .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
-                bridgeRegistrationService.registerFile(analyzer.getId(), analyzer.getName(),
-                        analyzer.getImportDirectory(), analyzer.getFilePattern(), analyzer.getColumnMappings(),
-                        analyzer.getFileFormat(), analyzer.getDelimiter(), analyzer.getSkipRows(), testMappings);
-            }
-        } catch (Exception e) {
-            LogEvent.logWarn(CLASS_NAME, "pushToBridge",
-                    "Bridge push after QC rule change failed for analyzer " + analyzerId + ": " + e.getMessage());
         }
     }
 

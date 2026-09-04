@@ -24,6 +24,10 @@ export interface Analyzer {
   lastModified?: string;
   pluginLoaded?: boolean;
   protocol?: AnalyzerProtocol;
+  profileId?: string | null;
+  profileRevision?: number | null;
+  profileFingerprint?: string | null;
+  profileBindingStatus?: "PINNED" | "UNBOUND" | string;
 }
 
 export interface AnalyzerApiError {

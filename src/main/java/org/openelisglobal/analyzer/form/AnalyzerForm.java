@@ -33,7 +33,7 @@ public class AnalyzerForm {
 
     private Integer port; // Optional - validated in controller if provided (1-65535)
 
-    private String protocolVersion = "ASTM LIS2-A2";
+    private String protocolVersion;
 
     private List<String> testUnitIds;
 
@@ -42,9 +42,6 @@ public class AnalyzerForm {
     private String identifierPattern; // For generic plugin: regex to match message identifier
 
     private String pluginTypeId; // FK to analyzer_type table (the plugin that handles messages)
-
-    private String defaultConfigId; // Transient: e.g. "astm/genexpert-astm" — hints controller to auto-create test
-                                    // mappings
 
     private String communicationMode; // ANALYZER_INITIATED, LIS_INITIATED, BOTH (nullable = infer from protocol)
 
@@ -142,14 +139,6 @@ public class AnalyzerForm {
 
     public void setPluginTypeId(String pluginTypeId) {
         this.pluginTypeId = pluginTypeId;
-    }
-
-    public String getDefaultConfigId() {
-        return defaultConfigId;
-    }
-
-    public void setDefaultConfigId(String defaultConfigId) {
-        this.defaultConfigId = defaultConfigId;
     }
 
     public String getCommunicationMode() {

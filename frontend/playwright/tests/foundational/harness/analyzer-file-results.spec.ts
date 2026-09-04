@@ -39,14 +39,6 @@ type FileImportHarnessScenario = {
   readonly importDirSafeName: string;
   /** Mock server template name (maps to templates/{name}.json). */
   readonly mockTemplate: string;
-  /**
-   * Admin-declared test code for upload path (production parity). Set for
-   * analyzers whose fixture files have no per-row test-code column —
-   * matches the testCode field a lab tech fills in the bridge admin
-   * upload UI. When set, the test uses the bridge `/admin/upload` flow
-   * instead of a direct watched-dir drop.
-   */
-  readonly uploadTestCode?: string;
 };
 
 // Scenarios are limited to analyzers seeded by projects/analyzer-harness/
@@ -127,11 +119,9 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
 
       await findAnalyzerRow(page, scenario.analyzerName, testInfo);
 
-      const mockResponse = await dropFixtureViaMock(page, {
+      const mockResponse = await dropFixtureViaMock({
         mockTemplate: scenario.mockTemplate,
-        analyzerName: scenario.analyzerName,
         importDirSafeName: scenario.importDirSafeName,
-        uploadTestCode: scenario.uploadTestCode,
         mockApiUrl: MOCK_API_URL,
       });
       const expectedResults = mockResponse.metadata.results;

@@ -14,26 +14,9 @@
 
 vi.mock("../../../services/analyzerService", () => ({
   getAnalyzers: vi.fn(),
-  getAnalyzerTypes: vi.fn(),
-  getDefaultConfigs: vi.fn(),
-  getDefaultConfig: vi.fn(),
-  createAnalyzer: vi.fn(),
+  getAnalyzerTypeCatalog: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
-
-const mockHistory = {
-  push: vi.fn(),
-  replace: vi.fn(),
-};
-
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    useHistory: () => mockHistory,
-    useLocation: () => ({ pathname: "/analyzers" }),
-  };
-});
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 
@@ -47,6 +30,7 @@ import "@testing-library/jest-dom";
 
 // 3. userEvent (PREFERRED for user interactions)
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 
 // 5. IntlProvider (if component uses i18n)
 import { IntlProvider } from "react-intl";
@@ -60,10 +44,7 @@ import AnalyzersList from "./AnalyzersList";
 // 8. Utilities (import functions, not just for mocking)
 import {
   getAnalyzers,
-  getAnalyzerTypes,
-  getDefaultConfigs,
-  getDefaultConfig,
-  createAnalyzer,
+  getAnalyzerTypeCatalog,
 } from "../../../services/analyzerService";
 
 // 9. Messages/translations
@@ -72,10 +53,10 @@ import messages from "../../../languages/en.json";
 // ========== TEST SETUP ==========
 
 // Standard render helper with IntlProvider
-const renderWithIntl = (component) => {
+const renderWithIntl = (component, localeMessages = messages) => {
   return render(
     <BrowserRouter>
-      <IntlProvider locale="en" messages={messages}>
+      <IntlProvider locale="en" messages={localeMessages}>
         {component}
       </IntlProvider>
     </BrowserRouter>,
@@ -100,38 +81,20 @@ describe("AnalyzersList", () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
-    mockHistory.push.mockClear();
-    mockHistory.replace.mockClear();
-
-    // Default mock implementations for AnalyzerForm dependencies
-    getAnalyzerTypes.mockImplementation((filters, callback) => {
-      callback([
-        {
-          id: "1",
-          name: "Generic ASTM",
-          protocol: "ASTM",
-          isGenericPlugin: true,
+    window.history.replaceState({}, "", "/analyzers");
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        schemaVersion: "1.0",
+        catalogFingerprint: `sha256:${"a".repeat(64)}`,
+        summary: {
+          total: 0,
+          inUse: 0,
+          needsAttention: 0,
+          deactivated: 0,
         },
-        {
-          id: "2",
-          name: "Generic HL7",
-          protocol: "HL7",
-          isGenericPlugin: true,
-        },
-      ]);
-    });
-
-    getDefaultConfigs.mockImplementation((callback) => {
-      callback([]);
-    });
-
-    getDefaultConfig.mockImplementation((protocol, name, callback) => {
-      callback({ error: "Not found" });
-    });
-
-    createAnalyzer.mockImplementation((data, callback) => {
-      callback({ id: "new-id", ...data });
-    });
+        types: [],
+      }),
+    );
   });
 
   /**
@@ -186,6 +149,66 @@ describe("AnalyzersList", () => {
     expect(name2).not.toBeNull();
     expect(name1.textContent).toContain("Hematology Analyzer 1");
     expect(name2.textContent).toContain("Chemistry Analyzer 1");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Analyzers" }),
+    ).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
+  test("positions row actions inside the viewport", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
+
+    expect(
+      document.querySelector(".cds--overflow-menu--flip"),
+    ).toBeInTheDocument();
+  });
+
+  test("localizes the assigned test-unit count", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />, {
+      ...messages,
+      "analyzer.testUnits.count": "Localized {count} assigned",
+    });
+
+    expect(
+      await screen.findByTestId("analyzer-test-units-1"),
+    ).toHaveTextContent("Localized 2 assigned");
+  });
+
+  test("shows a visible loading state until the analyzer list resolves", async () => {
+    let resolveAnalyzers;
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      resolveAnalyzers = callback;
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(await screen.findByTestId("analyzers-loading")).toBeVisible();
+    expect(screen.queryByTestId("analyzers-table")).not.toBeInTheDocument();
+
+    act(() => {
+      resolveAnalyzers({ analyzers: [] });
+    });
+
+    expect(await screen.findByTestId("analyzers-table")).toBeVisible();
+    expect(screen.queryByTestId("analyzers-loading")).not.toBeInTheDocument();
   });
 
   /**
@@ -274,7 +297,7 @@ describe("AnalyzersList", () => {
     await userEvent.click(addButton);
 
     // Assert: navigation occurred to the new-analyzer route
-    expect(mockHistory.push).toHaveBeenCalledWith("/analyzers/new");
+    expect(window.location.pathname).toBe("/analyzers/new");
   });
 
   /**
@@ -369,13 +392,67 @@ describe("AnalyzersList", () => {
     // Wait for initial data load
     await screen.findByTestId("analyzer-name-1", {}, { timeout: 3000 });
 
-    // Find status filter dropdown
-    const statusFilter = screen.getByTestId("analyzer-status-filter");
-    expect(statusFilter).not.toBeNull();
+    const statusFilter = screen.getByRole("combobox", { name: "Status" });
+    await userEvent.click(statusFilter);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Validation" }),
+    );
 
-    // Act: Select VALIDATION filter
-    // Note: Carbon Dropdown interaction may require specific approach
-    // For now, verify the filter exists and can be interacted with
-    expect(statusFilter).not.toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByTestId("analyzer-name-1")).not.toBeInTheDocument();
+      expect(screen.getByTestId("analyzer-name-2")).toBeVisible();
+      expect(screen.queryByTestId("analyzer-name-3")).not.toBeInTheDocument();
+    });
+    expect(new URLSearchParams(window.location.search).get("status")).toBe(
+      "VALIDATION",
+    );
+  });
+
+  test("restores bookmarked controls and results when browser history changes", async () => {
+    const allAnalyzers = [
+      createMockAnalyzer({ id: "1", name: "Hematology Analyzer" }),
+      createMockAnalyzer({ id: "2", name: "Chemistry Analyzer" }),
+    ];
+    getAnalyzers.mockImplementation((filters, callback) => {
+      const search = filters?.search?.toLowerCase();
+      callback({
+        analyzers: search
+          ? allAnalyzers.filter((analyzer) =>
+              analyzer.name.toLowerCase().includes(search),
+            )
+          : allAnalyzers,
+      });
+    });
+    window.history.replaceState({}, "", "/analyzers?search=Hematology");
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(await screen.findByTestId("analyzer-name-1")).toBeVisible();
+    expect(screen.queryByTestId("analyzer-name-2")).not.toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-search-input")).toHaveValue(
+      "Hematology",
+    );
+
+    window.history.pushState({}, "", "/analyzers?search=Chemistry");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(await screen.findByTestId("analyzer-name-2")).toBeVisible();
+    expect(screen.queryByTestId("analyzer-name-1")).not.toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-search-input")).toHaveValue(
+      "Chemistry",
+    );
+  });
+
+  test("passes a cancellable signal to the type catalog read", () => {
+    let catalogSignal;
+    getAnalyzers.mockImplementation(() => undefined);
+    getAnalyzerTypeCatalog.mockImplementation((_callback, signal) => {
+      catalogSignal = signal;
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(catalogSignal).toBeInstanceOf(AbortSignal);
+    expect(catalogSignal?.aborted).toBe(false);
   });
 });
