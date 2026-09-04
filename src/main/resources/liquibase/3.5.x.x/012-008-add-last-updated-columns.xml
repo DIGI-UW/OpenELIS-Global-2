@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      The RBAC entities (Role, Privilege, RolePrivilege) extend BaseObject,
+      whose @Version field maps to a `last_updated` column - distinct from the
+      legacy DB-filled `lastupdated`. Same convention as test_alert_rule
+      (049-test-alert-rule.xml): both columns coexist; Hibernate manages
+      last_updated, the legacy default fills lastupdated.
+
+      Without these columns every Hibernate query on the entities fails at
+      startup with "column role0_.last_updated does not exist".
+    -->
+
+    <changeSet author="openelis" id="012-008-system-role-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_role" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the Role entity</comment>
+        <addColumn tableName="system_role" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-privilege-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_privilege" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the Privilege entity</comment>
+        <addColumn tableName="system_privilege" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-role-privilege-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_role_privilege" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the RolePrivilege entity</comment>
+        <addColumn tableName="system_role_privilege" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-module-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_module" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the SystemModule entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_module" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-module-url-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_module_url" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the SystemModuleUrl entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_module_url" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-module-param-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_module_param" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the SystemModuleParam entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_module_param" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-role-module-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_role_module" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the RoleModule entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_role_module" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-008-system-user-module-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="system_user_module" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>BaseObject @Version column for the SystemUserModule entity (HBM-to-JPA migration)</comment>
+        <addColumn tableName="system_user_module" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

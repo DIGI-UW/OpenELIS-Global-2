@@ -64,19 +64,19 @@ public class PanelCreateServiceTest extends BaseWebContextSensitiveTest {
         validationModule.setDescription("Validation module");
 
         RoleModule workPlanResultModule = new RoleModule();
-        workPlanResultModule.setRole(roleService.get("503"));
+        workPlanResultModule.setRole(roleService.get(503));
         workPlanResultModule.setSystemModule(workPlanModule);
         workPlanResultModule.setNameKey("panel_workplan");
         workPlanResultModule.setLastupdated(Timestamp.valueOf("2025-07-15 10:32:00"));
 
         RoleModule resultResultModule = new RoleModule();
-        resultResultModule.setRole(roleService.get("502"));
+        resultResultModule.setRole(roleService.get(502));
         resultResultModule.setSystemModule(resultModule);
         resultResultModule.setNameKey("panel resultEntry");
         resultResultModule.setLastupdated(Timestamp.valueOf("2025-07-15 10:32:00"));
 
         RoleModule validationValidationModule = new RoleModule();
-        validationValidationModule.setRole(roleService.get("501"));
+        validationValidationModule.setRole(roleService.get(501));
         validationValidationModule.setSystemModule(validationModule);
         validationValidationModule.setNameKey("panel_validation");
         validationValidationModule.setLastupdated(Timestamp.valueOf("2025-07-15 10:32:00"));

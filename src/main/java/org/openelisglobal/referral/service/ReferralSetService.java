@@ -7,12 +7,15 @@ import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReferralSetService {
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void updateReferralSets(List<ReferralSet> referralSetList, List<Sample> modifiedSamples, Set<Sample> parentSamples,
             List<ReferralResult> removableReferralResults, String sysUserId);
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void createSaveReferralSetsSamplePatientEntry(List<ReferralItem> referralItems, SamplePatientUpdateData updateData);
 
     /**
@@ -26,5 +29,6 @@ public interface ReferralSetService {
      * for env/vector workflows so referral persistence is atomic with the order
      * save (no silent async failure when the FHIR store is unreachable).
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     void createDraftReferralSetsForOrderEntry(List<ReferralItem> referralItems, SamplePatientUpdateData updateData);
 }

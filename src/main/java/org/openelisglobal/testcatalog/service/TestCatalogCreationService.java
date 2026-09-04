@@ -1,11 +1,14 @@
 package org.openelisglobal.testcatalog.service;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 /**
  * OGC-1112 (FR-2..4) — create-in-place backing service for the unified Test
  * Catalog editor. Creates a minimal test in Inactive status (name + reporting
  * name localizations, code, lab unit, domain, one sample type) so it can then
  * be configured through the editor's sections.
  */
+@PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
 public interface TestCatalogCreationService {
 
     class CreateTestParams {

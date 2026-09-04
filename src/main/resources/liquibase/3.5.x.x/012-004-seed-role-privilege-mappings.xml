@@ -1,0 +1,452 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Maps each base role to its complete, standalone privilege set.
+
+      BASE ROLES SHIP FLAT — no inheritance between them.
+      Each base role is self-contained: a user assigned only 'Validation'
+      gets exactly and only the privileges listed here for Validation.
+
+      Implementors extend the system by creating NEW roles that:
+        - set grouping_parent to a base role (e.g., parent = Reception)
+        - add additional privileges in system_role_privilege
+
+      Example implementor-defined extension:
+        "Receptionist with result view"
+          parent:     Reception
+          adds:       result:view
+          effective:  all Reception privileges + result:view
+
+      This keeps base roles minimal and deployments composable.
+
+      Global Administrator has no rows — it holds ALL privileges implicitly,
+      resolved in the privilege service via a Global Admin shortcut.
+    -->
+
+    <changeSet author="openelis" id="012-004-seed-role-privilege-mappings">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <!--
+          Seed complete standalone privilege sets for all base roles.
+
+          Each mapping is inserted idempotently (AND NOT EXISTS on the pair) rather
+          than guarding the whole batch on an empty-table precondition. A single
+          pre-existing row (a pilot, a partially-applied migration, a restored DB, a
+          site-specific seed) must NOT cause the batch to be marked-ran and skip the
+          remaining ~50 mappings — that would silently leave every non-admin role with
+          zero PRIV_* authorities and lock those users out post-upgrade. The
+          system_role_privilege_uq unique constraint (012-002) backs this.
+        -->
+        <comment>Seed complete standalone privilege sets for all base roles (idempotent per-row)</comment>
+
+        <!-- ==================== RECEPTION ==================== -->
+        <!--
+          Order intake, patient registration, NCE reporting, shipment handling.
+          No result privileges — a receptionist never touches results.
+          Includes provider:view and organization:view (needed to select
+          requesting clinician and referring organization during order entry),
+          and sample_requester:view (needed to look up existing requesters).
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'order:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'order:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'patient:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'patient:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'provider:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'organization:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'sample_requester:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'nce:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'nce:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'shipment:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reception' AND p.name = 'shipment:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== RESULTS ==================== -->
+        <!--
+          Result entry for lab technicians. Standalone — does not include
+          order or patient management. A lab may assign both Reception and
+          Results to a technician who does both; or Results alone to one
+          who only enters results from existing orders.
+          Includes referral:view (to see referred tests in workplan) and
+          storage:view (to track sample storage during result entry).
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'result:enter'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'result:modify'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'referral:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Results' AND p.name = 'storage:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== VALIDATION ==================== -->
+        <!--
+          Biologist/validator role. Standalone — validates results only.
+          Does NOT include result:enter or result:modify by default.
+          A deployment where validators also enter results should assign
+          both Results and Validation roles, or create an extension role.
+          Includes result:view and order:view to support the validation workflow.
+          Includes referral:view to see referred tests during validation.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'result:validate'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'referral:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'nce:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'nce:edit'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Validation' AND p.name = 'nce:assign'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== PATHOLOGIST ==================== -->
+        <!--
+          Standalone pathologist role. Includes result:view and result:validate
+          because a pathologist must be able to review and approve results,
+          plus the pathology-specific sign-off. Does not include result:enter
+          or result:modify — pathologists review, not enter.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'result:validate'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'result:pathology-sign-off'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Pathologist' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== CYTOPATHOLOGIST ==================== -->
+        <!--
+          Standalone cytopathologist role. Same pattern as Pathologist
+          but with cytopathology-specific sign-off privilege.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:validate'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'result:cytopathology-sign-off'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Cytopathologist' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== REPORTS ==================== -->
+        <!--
+          Standalone reporting role. Can view orders, results, and patient data
+          for reporting purposes but cannot modify anything.
+          Includes patient:view because most reports include patient demographics.
+        -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'report:run'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'report:export'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'order:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Reports' AND p.name = 'patient:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== EQA COORDINATOR ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:manage'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'eqa:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'report:run'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'EQA Coordinator' AND p.name = 'result:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== USER ACCOUNT ADMINISTRATOR ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'User Account Administrator' AND p.name = 'user:manage'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== AUDIT TRAIL ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Audit Trail' AND p.name = 'audit:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <!-- ==================== ANALYSER IMPORT ==================== -->
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:import'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name = 'Analyser Import' AND p.name = 'analyzer:configure'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+
+        <rollback>
+            <delete tableName="system_role_privilege" schemaName="clinlims">
+                <where>1=1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Grants organization:view to the roles that already hold referral:view.
+
+      Referring a sample out means picking a referral LAB, and that dropdown is
+      built by DisplayListService.createReferralOrganizationList() ->
+      OrganizationService.getOrganizationsByTypeName(..., "referralLab"), which is
+      gated PRIV_ORGANIZATION_VIEW. 012-004 gives organization:view to Reception
+      only, so Results and Validation — the roles that actually refer samples, and
+      the only ones granted referral:view — got AccessDeniedException from
+      GET /rest/displayList/REFERRAL_ORGANIZATIONS on the result-entry and
+      validation screens (observed as HTTP 500 in E2E run 33568673124).
+
+      Scope note: this is a read of the referral-lab picklist (id + name), not the
+      organization administration surface — organization:manage stays unset for
+      these roles, so they still cannot create or edit organizations.
+    -->
+    <changeSet author="openelis" id="012-004c-grant-organization-view-to-referring-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant organization:view to Results/Validation (referral-lab picklist)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Results', 'Validation')
+              AND p.name = 'organization:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE privilege_id = (SELECT id FROM clinlims.system_privilege WHERE name = 'organization:view')
+                  AND system_role_id IN (SELECT id FROM clinlims.system_role WHERE name IN ('Results', 'Validation'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+      Grants user_role:view to the operational base roles.
+
+      This is a SEPARATE changeset, not extra rows in 012-004 above, so it also
+      applies to databases where 012-004 has already run (a pilot, or anyone who
+      upgraded before this fix).
+
+      Why these roles need it: UserRoleService/UserService#getUserLabUnitRoles is a
+      SELF-scoping read — every one of these callers passes the CALLER'S OWN id:
+
+        MenuController#isGlobalScopeUser            -> GET /rest/menu   (every page load)
+        OrderSearchRestController#isGlobalScopeUser -> order search
+        PatientDashBoardProvider#isGlobalScopeUser  -> patient dashboard
+        LoginPageController                         -> GET /session
+
+      Without the grant those screens throw AccessDeniedException for every
+      non-admin (403 on /rest/menu = no navigation tree at all). The privilege only
+      ever reveals the caller's own lab-unit assignments on these paths; the
+      cross-user administrative surface is gated separately at PRIV_USER_MANAGE on
+      UnifiedSystemUserRestController, and user_role:manage (write) is still
+      Global-Admin-only.
+
+      SelfIdentityMethodsUngatedTest asserts this grant exists.
+    -->
+    <changeSet author="openelis" id="012-004b-grant-user-role-view-to-operational-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant user_role:view to operational base roles (self-scoping lab-unit read)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE r.name IN ('Reception', 'Results', 'Validation', 'Pathologist', 'Cytopathologist',
+                             'Reports', 'EQA Coordinator', 'User Account Administrator',
+                             'Audit Trail', 'Analyser Import')
+              AND p.name = 'user_role:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege
+                WHERE privilege_id = (SELECT id FROM clinlims.system_privilege WHERE name = 'user_role:view')
+                  AND system_role_id IN (
+                      SELECT id FROM clinlims.system_role
+                      WHERE name IN ('Reception', 'Results', 'Validation', 'Pathologist', 'Cytopathologist',
+                                     'Reports', 'EQA Coordinator', 'User Account Administrator',
+                                     'Audit Trail', 'Analyser Import'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

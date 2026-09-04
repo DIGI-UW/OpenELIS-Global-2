@@ -6413,6 +6413,7 @@
   "systemuserrole.newpermissions": "Add New Permission",
   "systemuserrole.rmpermissions": "Remove Permission",
   "systemuserrole.roles.global": "Global Roles",
+  "systemuserrole.privileges.effective": "Effective privileges for selected roles",
   "systemuserrole.roles.labunit": "Lab Unit Roles",
   "test.add.copy.name": "Copy from Test Name",
   "test.antimicrobialResistance": "Antimicrobial Resistance",

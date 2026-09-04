@@ -134,20 +134,20 @@ public class SystemModuleDAOImpl extends BaseDAOImpl<SystemModule, String> imple
     @Override
     public boolean duplicateSystemModuleExists(SystemModule systemModule) throws LIMSRuntimeException {
         try {
-
             List<SystemModule> list;
 
-            String sql = "from SystemModule s where trim(s.systemModuleName) = :moduleName and s.id != :moduleId";
-            Query<SystemModule> query = entityManager.unwrap(Session.class).createQuery(sql, SystemModule.class);
-            query.setParameter("moduleName", systemModule.getSystemModuleName().trim());
-
-            String systemModuleId = "0";
-            if (!StringUtil.isNullorNill(systemModule.getId())) {
-                systemModuleId = systemModule.getId();
+            if (StringUtil.isNullorNill(systemModule.getId())) {
+                String sql = "from SystemModule s where trim(s.systemModuleName) = :moduleName";
+                Query<SystemModule> query = entityManager.unwrap(Session.class).createQuery(sql, SystemModule.class);
+                query.setParameter("moduleName", systemModule.getSystemModuleName().trim());
+                list = query.list();
+            } else {
+                String sql = "from SystemModule s where trim(s.systemModuleName) = :moduleName and s.id != :moduleId";
+                Query<SystemModule> query = entityManager.unwrap(Session.class).createQuery(sql, SystemModule.class);
+                query.setParameter("moduleName", systemModule.getSystemModuleName().trim());
+                query.setParameter("moduleId", systemModule.getId());
+                list = query.list();
             }
-            query.setParameter("moduleId", systemModuleId);
-
-            list = query.list();
 
             return list.size() > 0;
         } catch (RuntimeException e) {

@@ -3,6 +3,7 @@ package org.openelisglobal.referral.service;
 import java.util.List;
 import org.openelisglobal.referral.dto.ReferenceLabMetricsDTO;
 import org.openelisglobal.referral.dto.ReferenceLabReferralDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReferenceLabResultsService {
 
@@ -10,8 +11,10 @@ public interface ReferenceLabResultsService {
         OUTSTANDING, RETURNED, HISTORY
     }
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_VIEW')")
     List<ReferenceLabReferralDTO> getDashboardReferrals(DashboardView view);
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_VIEW')")
     ReferenceLabMetricsDTO getDashboardMetrics();
 
     /**
@@ -20,5 +23,6 @@ public interface ReferenceLabResultsService {
      * reconciled. This is the reception gate — nothing reaches the patient record
      * until a user Accepts.
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void acceptReferral(String referralId, String actorUserId);
 }

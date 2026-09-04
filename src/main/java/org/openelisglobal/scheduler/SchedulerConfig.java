@@ -8,11 +8,9 @@ import java.text.ParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContextTaskDecorator;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -33,8 +31,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
-import org.springframework.security.concurrent.DelegatingSecurityContextScheduledExecutorService;
 
 @Configuration
 @EnableScheduling
@@ -76,16 +74,25 @@ public class SchedulerConfig implements SchedulingConfigurer {
     }
 
     @Bean(destroyMethod = "shutdown")
-    public Executor taskExecutor() {
-        ScheduledExecutorService raw = Executors.newScheduledThreadPool(10);
-        return new DelegatingSecurityContextScheduledExecutorService(raw,
-                daemonContextExecutor.createDaemonSecurityContext());
+    public ThreadPoolTaskScheduler taskExecutor() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(10);
+        scheduler.setThreadNamePrefix("oe-scheduled-");
+        // @Scheduled jobs are system-initiated: run them in system context so
+        // service-layer @PreAuthorize gates pass without a user Authentication.
+        // NOTE: preferred over develop's DelegatingSecurityContext + daemon token
+        // here because the DaemonAuthenticationToken carries only ROLE_SYSTEM, not
+        // the PRIV_* authorities the service gates check; SystemInitFlag is what
+        // SystemAwareSecurityExpressionRoot short-circuits on.
+        scheduler.setTaskDecorator(SystemContextTaskDecorator.systemContext());
+        scheduler.initialize();
+        return scheduler;
     }
 
     @Override
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         // for Spring @Scheduled tasks
-        taskRegistrar.setScheduler(taskExecutor());
+        taskRegistrar.setTaskScheduler(taskExecutor());
 
         // for reloadable tasks using quartz scheduler
         try {

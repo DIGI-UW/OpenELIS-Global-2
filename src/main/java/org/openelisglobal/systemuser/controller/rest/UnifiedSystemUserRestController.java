@@ -50,6 +50,7 @@ import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
@@ -108,10 +109,10 @@ public class UnifiedSystemUserRestController extends BaseController {
     private void initialize() {
         Role globalAdmin = roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN);
         if (globalAdmin == null) {
-            // Some DB seeds use "Admin" instead of "Global Administrator".
+            // Some DB seeds use "Admin" instead of the Constants.ROLE_GLOBAL_ADMIN name.
             LogEvent.logWarn(this.getClass().getSimpleName(), "initialize",
                     "Role '" + Constants.ROLE_GLOBAL_ADMIN + "' not found; falling back to 'Admin'");
-            globalAdmin = roleService.getRoleByName("Admin");
+            globalAdmin = roleService.getRoleByName(Constants.LEGACY_ROLE_ADMIN);
         }
 
         if (globalAdmin == null) {
@@ -121,7 +122,7 @@ public class UnifiedSystemUserRestController extends BaseController {
             return;
         }
 
-        GLOBAL_ADMIN_ID = globalAdmin.getId();
+        GLOBAL_ADMIN_ID = String.valueOf(globalAdmin.getId());
     }
 
     @InitBinder
@@ -146,6 +147,12 @@ public class UnifiedSystemUserRestController extends BaseController {
         return idValues;
     }
 
+    // User-administration screen: reads any user's identity, account state, and
+    // role/lab-unit assignments by caller-supplied id. Gated at the controller so
+    // access does not depend on whatever privilege the services it touches happen
+    // to require. (The /users and /users/{roleName} lookups above stay open — they
+    // feed technician/pathologist dropdowns on non-admin screens.)
+    @PreAuthorize("hasAuthority('PRIV_USER_MANAGE')")
     @GetMapping(value = "/UnifiedSystemUser")
     public ResponseEntity<UnifiedSystemUserForm> showUnifiedSystemUser(HttpServletRequest request,
             @RequestParam(name = "ID", defaultValue = "") String id)
@@ -187,8 +194,8 @@ public class UnifiedSystemUserRestController extends BaseController {
 
         List<DisplayRole> displayRoles = convertToDisplayRoles(roles);
         displayRoles = sortAndGroupRoles(displayRoles);
-        String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
-        String labUnitRoleId = roleService.getRoleByName(Constants.LAB_ROLES_GROUP).getId();
+        String globalParentRoleId = String.valueOf(roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId());
+        String labUnitRoleId = String.valueOf(roleService.getRoleByName(Constants.LAB_ROLES_GROUP).getId());
 
         List<DisplayRole> globalRoles = displayRoles.stream().filter(role -> role.getParentRole() != null)
                 .filter(role -> role.getParentRole().equals(globalParentRoleId)).collect(Collectors.toList());
@@ -216,9 +223,9 @@ public class UnifiedSystemUserRestController extends BaseController {
 
         displayRole.setRoleName(role.getLocalizedName());
         displayRole.setElementID(String.valueOf(count));
-        displayRole.setRoleId(role.getId());
+        displayRole.setRoleId(String.valueOf(role.getId()));
         displayRole.setGroupingRole(role.getGroupingRole());
-        displayRole.setParentRole(role.getGroupingParent());
+        displayRole.setParentRole(role.getGroupingParent() != null ? String.valueOf(role.getGroupingParent()) : null);
 
         return displayRole;
     }
@@ -331,13 +338,15 @@ public class UnifiedSystemUserRestController extends BaseController {
 
     private List<Role> doRoleFiltering(List<Role> roles, String loggedInUserId) {
 
-        List<String> rolesForLoggedInUser = userRoleService.getRoleIdsForUser(loggedInUserId);
+        List<Integer> rolesForLoggedInUser = userRoleService.getRoleIdsForUser(loggedInUserId);
+        List<String> rolesForLoggedInUserStrings = rolesForLoggedInUser.stream().map(String::valueOf)
+                .collect(Collectors.toList());
 
-        if (!rolesForLoggedInUser.contains(GLOBAL_ADMIN_ID)) {
+        if (!rolesForLoggedInUserStrings.contains(GLOBAL_ADMIN_ID)) {
             List<Role> tmpRoles = new ArrayList<>();
 
             for (Role role : roles) {
-                if (!GLOBAL_ADMIN_ID.equals(role.getId())) {
+                if (!GLOBAL_ADMIN_ID.equals(String.valueOf(role.getId()))) {
                     tmpRoles.add(role);
                 }
             }
@@ -381,12 +390,12 @@ public class UnifiedSystemUserRestController extends BaseController {
             form.setAccountActive(systemUser.getIsActive());
             form.setSystemUserLastupdated(systemUser.getLastupdated());
 
-            List<String> roleIds = userRoleService.getRoleIdsForUser(systemUser.getId());
-            String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
+            List<Integer> roleIds = userRoleService.getRoleIdsForUser(systemUser.getId());
+            String globalParentRoleId = String.valueOf(roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId());
             List<String> globalRoleIds = getAllRoles().stream().filter(role -> role.getGroupingParent() != null)
-                    .filter(role -> role.getGroupingParent().equals(globalParentRoleId)).map(role -> role.getId())
-                    .collect(Collectors.toList());
-            List<String> globalSelectedRoleIds = roleIds.stream().filter(role -> globalRoleIds.contains(role))
+                    .filter(role -> String.valueOf(role.getGroupingParent()).equals(globalParentRoleId))
+                    .map(role -> String.valueOf(role.getId())).collect(Collectors.toList());
+            List<String> globalSelectedRoleIds = roleIds.stream().map(String::valueOf).filter(globalRoleIds::contains)
                     .collect(Collectors.toList());
             setLabunitRolesForExistingUser(form);
             form.setSelectedRoles(globalSelectedRoleIds);
@@ -438,6 +447,7 @@ public class UnifiedSystemUserRestController extends BaseController {
         return roleService.getAllActiveRoles();
     }
 
+    @PreAuthorize("hasAuthority('PRIV_USER_MANAGE')")
     @PostMapping(value = "/UnifiedSystemUser")
     public Map<String, String> showUpdateUnifiedSystemUser(HttpServletRequest request,
             @RequestBody @Valid UnifiedSystemUserForm form, BindingResult result) {
@@ -513,13 +523,15 @@ public class UnifiedSystemUserRestController extends BaseController {
                 saveUserLabUnitRoles(systemUser, form, loggedOnUserId);
             } else if (form.getAllowCopyUserRoles().equals(YES)) {
                 if (StringUtils.isNotBlank(form.getSystemUserIdToCopy().trim())) {
-                    String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
+                    String globalParentRoleId = String
+                            .valueOf(roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId());
                     List<String> globaRolesIds = getAllRoles().stream().filter(role -> role.getGroupingParent() != null)
-                            .filter(role -> role.getGroupingParent().equals(globalParentRoleId))
-                            .map(role -> role.getId()).collect(Collectors.toList());
-                    List<String> copiedRoleIds = userRoleService.getRoleIdsForUser(form.getSystemUserIdToCopy().trim());
-                    List<String> globalCopiedRoleIds = copiedRoleIds.stream()
-                            .filter(role -> globaRolesIds.contains(role)).collect(Collectors.toList());
+                            .filter(role -> String.valueOf(role.getGroupingParent()).equals(globalParentRoleId))
+                            .map(role -> String.valueOf(role.getId())).collect(Collectors.toList());
+                    List<Integer> copiedRoleIds = userRoleService
+                            .getRoleIdsForUser(form.getSystemUserIdToCopy().trim());
+                    List<String> globalCopiedRoleIds = copiedRoleIds.stream().map(String::valueOf)
+                            .filter(globaRolesIds::contains).collect(Collectors.toList());
 
                     userService.updateLoginUser(loginUser, loginUserNew, systemUser, systemUserNew, globalCopiedRoleIds,
                             loggedOnUserId);
@@ -702,7 +714,8 @@ public class UnifiedSystemUserRestController extends BaseController {
             } else {
                 for (LabUnitRoleMap map : roleMaps) {
                     userTestSectionLabUnits.put(testSectionService.get(map.getLabUnit()).getId(),
-                            new HashSet<>(map.getRoles().stream().map(r -> roleService.getRoleById(r).getId().trim())
+                            new HashSet<>(map.getRoles().stream()
+                                    .map(r -> String.valueOf(roleService.getRoleById(Integer.parseInt(r)).getId()))
                                     .collect(Collectors.toList())));
                 }
             }

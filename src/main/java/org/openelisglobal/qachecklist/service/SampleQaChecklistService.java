@@ -5,6 +5,7 @@ import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.qachecklist.valueholder.SampleQaChecklist;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SampleQaChecklistService extends BaseObjectService<SampleQaChecklist, Integer> {
 
@@ -17,6 +18,7 @@ public interface SampleQaChecklistService extends BaseObjectService<SampleQaChec
      * @param sampleId the sample ID
      * @return the QA checklist or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     SampleQaChecklist findBySampleId(Integer sampleId);
 
     /**
@@ -25,6 +27,7 @@ public interface SampleQaChecklistService extends BaseObjectService<SampleQaChec
      * @param sampleId the sample ID as string
      * @return the QA checklist or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     SampleQaChecklist findBySampleId(String sampleId);
 
     /**
@@ -32,6 +35,7 @@ public interface SampleQaChecklistService extends BaseObjectService<SampleQaChec
      *
      * @return list of active dictionary entries for QA checklist items
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     List<Dictionary> getActiveChecklistItems();
 
     /**
@@ -44,6 +48,7 @@ public interface SampleQaChecklistService extends BaseObjectService<SampleQaChec
      * @param userId        the user ID performing the verification
      * @return the saved checklist
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_EDIT')")
     SampleQaChecklist saveOrUpdateChecklist(Integer sampleId, Map<String, Boolean> verifiedItems, Integer userId);
 
     /**
@@ -52,5 +57,6 @@ public interface SampleQaChecklistService extends BaseObjectService<SampleQaChec
      * @param sampleId the sample ID
      * @return true if all active items are verified
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     boolean areAllItemsVerified(Integer sampleId);
 }

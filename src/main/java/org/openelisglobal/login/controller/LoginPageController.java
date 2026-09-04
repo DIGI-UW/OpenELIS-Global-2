@@ -8,11 +8,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.constants.Privileges;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -20,7 +23,10 @@ import org.openelisglobal.login.bean.UserSession;
 import org.openelisglobal.login.bean.UserSession.LoginMethod;
 import org.openelisglobal.login.form.LoginForm;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.privilege.service.PrivilegeService;
+import org.openelisglobal.privilege.valueholder.Privilege;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -84,6 +90,8 @@ public class LoginPageController extends BaseController {
     private TestSectionService testSectionService;
     @Autowired
     LocalizationService localizationService;
+    @Autowired
+    PrivilegeService privilegeService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -141,25 +149,53 @@ public class LoginPageController extends BaseController {
         session.setAuthenticated(authenticated);
         session.setSessionId(request.getSession().getId());
         if (authenticated) {
-            SystemUser user = systemUserService.get(getSysUserId(request));
-            setLoginMethod(request, session);
-            session.setUserId(user.getId());
-            session.setLoginName(user.getLoginName());
-            session.setFirstName(user.getFirstName());
-            session.setLastName(user.getLastName());
-            if (token != null) {
-                session.setCSRF(token.getToken());
-            }
-            UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
-            if (usd.getLoginLabUnit() != 0) {
-                TestSection testSection = testSectionService.getTestSectionById(String.valueOf(usd.getLoginLabUnit()));
-                if (testSection != null) {
-                    session.setLoginLabUnit(testSection.getLocalizedName());
+            // Assembling the session view looks the current user up by id and
+            // reads their lab-unit/test-section context — session introspection
+            // infrastructure that must run in system context so a non-admin's
+            // own /session poll is not denied by SYSTEM_USER / test-section gates.
+            boolean wasSet = SystemInitFlag.enter();
+            try {
+                SystemUser user = systemUserService.get(getSysUserId(request));
+                setLoginMethod(request, session);
+                session.setUserId(user.getId());
+                session.setLoginName(user.getLoginName());
+                session.setFirstName(user.getFirstName());
+                session.setLastName(user.getLastName());
+                if (token != null) {
+                    session.setCSRF(token.getToken());
                 }
+                UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+                if (usd.getLoginLabUnit() != 0) {
+                    TestSection testSection = testSectionService
+                            .getTestSectionById(String.valueOf(usd.getLoginLabUnit()));
+                    if (testSection != null) {
+                        session.setLoginLabUnit(testSection.getLocalizedName());
+                    }
+                }
+                setLabunitRolesForExistingUser(request, session);
+                session.setPrivileges(resolveSessionPrivileges(session.getUserId()));
+            } finally {
+                SystemInitFlag.exit(wasSet);
             }
-            setLabunitRolesForExistingUser(request, session);
         }
         return session;
+    }
+
+    /**
+     * Resolved privilege names for the session payload (spec 012 T033) — the Global
+     * Administrator sentinel is expanded to the concrete catalog so the frontend's
+     * hasPrivilege() needs no special-casing.
+     */
+    private Set<String> resolveSessionPrivileges(String systemUserId) {
+        Set<String> resolved = privilegeService.getAllPrivilegesForUser(systemUserId);
+        if (resolved.contains(Privileges.GLOBAL_ADMIN_SENTINEL)) {
+            Set<String> all = new HashSet<>();
+            for (Privilege p : privilegeService.getAllPrivileges()) {
+                all.add(p.getName());
+            }
+            return all;
+        }
+        return resolved;
     }
 
     private void setLoginMethod(HttpServletRequest request, UserSession session) {
@@ -180,8 +216,16 @@ public class LoginPageController extends BaseController {
             if (principal instanceof UserDetails) {
                 setLabunitRolesForExistingUserFromDB(session);
                 Set<String> roles = new HashSet<>();
-                for (String roleId : userRoleService.getRoleIdsForUser(session.getUserId())) {
-                    roles.add(roleService.getRoleById(roleId).getName().trim());
+                for (Integer roleId : userRoleService.getRoleIdsForUser(session.getUserId())) {
+                    // getRoleById returns null for a missing row (no stub fallback,
+                    // unlike getRoleByName). A stale system_user_role pointing at a
+                    // deleted role id would otherwise NPE here — and this runs on
+                    // /session, the endpoint the UI polls to bootstrap, so an NPE
+                    // 500s the session call and locks the user out entirely.
+                    Role role = roleService.getRoleById(roleId);
+                    if (role != null && role.getName() != null) {
+                        roles.add(role.getName().trim());
+                    }
                 }
                 session.setRoles(roles);
             } else if (principal instanceof DefaultSaml2AuthenticatedPrincipal) {
@@ -237,17 +281,27 @@ public class LoginPageController extends BaseController {
             if (userLabUnits.contains(ALL_LAB_UNITS)) {
                 roleMaps.stream().filter(map -> map.getLabUnit().equals(ALL_LAB_UNITS))
                         .forEach(map -> userLabRolesMap.put(map.getLabUnit(), map.getRoles().stream()
-                                .map(r -> roleService.getRoleById(r).getName().trim()).collect(Collectors.toList())));
+                                .map(r -> resolveRoleName(r)).filter(Objects::nonNull).collect(Collectors.toList())));
             } else {
                 for (LabUnitRoleMap map : roleMaps) {
                     userLabRolesMap.put(testSectionService.get(map.getLabUnit()).getLocalizedName(),
-                            map.getRoles().stream().map(r -> roleService.getRoleById(r).getName().trim())
+                            map.getRoles().stream().map(r -> resolveRoleName(r)).filter(Objects::nonNull)
                                     .collect(Collectors.toList()));
                 }
             }
 
             session.setUserLabRolesMap(userLabRolesMap);
         }
+    }
+
+    /**
+     * Null-safe role-name lookup by id. getRoleById returns null for a missing row
+     * (a stale lab_unit_role_map entry pointing at a deleted role); callers filter
+     * these out rather than NPE on /session and lock the user out of the UI.
+     */
+    private String resolveRoleName(String roleId) {
+        Role role = roleService.getRoleById(Integer.valueOf(roleId.trim()));
+        return (role != null && role.getName() != null) ? role.getName().trim() : null;
     }
 
     @Override

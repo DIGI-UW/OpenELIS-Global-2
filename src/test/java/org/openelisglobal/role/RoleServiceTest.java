@@ -22,7 +22,7 @@ public class RoleServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getData_shouldReturncopiedPropertiesFromDatabase() {
         Role role = new Role();
-        role.setId("1");
+        role.setId(1);
         roleService.getData(role);
 
         Assert.assertEquals("Global Administrator", role.getName().trim());
@@ -60,7 +60,7 @@ public class RoleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getRoleById_shouldReturnRoleById() {
-        Role role = roleService.getRoleById("4");
+        Role role = roleService.getRoleById(4);
         Assert.assertEquals("enter and review results.", role.getDescription());
     }
 }

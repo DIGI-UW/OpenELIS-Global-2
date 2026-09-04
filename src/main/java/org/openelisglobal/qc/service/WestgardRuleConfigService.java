@@ -5,6 +5,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qc.dto.RuleConfigSummary;
 import org.openelisglobal.qc.dto.UnconfiguredMapping;
 import org.openelisglobal.qc.valueholder.WestgardRuleConfig;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for Westgard Rule Configuration management. Supports User
@@ -19,6 +20,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @param instrumentId The instrument ID
      * @return List of all 8 rule configurations
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<WestgardRuleConfig> findByTestAndInstrument(String testId, String instrumentId);
 
     /**
@@ -28,6 +30,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @param instrumentId The instrument ID
      * @return List of enabled rule configurations
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<WestgardRuleConfig> findEnabledByTestAndInstrument(String testId, String instrumentId);
 
     /**
@@ -36,6 +39,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @param config The updated rule configuration
      * @return The updated configuration
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     WestgardRuleConfig updateRuleConfig(WestgardRuleConfig config);
 
     /**
@@ -51,6 +55,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @return List of updated configurations
      * @throws IllegalArgumentException if preset name is invalid
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<WestgardRuleConfig> applyPreset(String testId, String instrumentId, String preset)
             throws IllegalArgumentException;
 
@@ -64,6 +69,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @param configs List of rule configurations to validate
      * @throws IllegalArgumentException if validation fails
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     void validateRuleConfig(List<WestgardRuleConfig> configs) throws IllegalArgumentException;
 
     /**
@@ -75,6 +81,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      * @param instrumentId The instrument ID
      * @return List of created configurations
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<WestgardRuleConfig> createDefaultConfig(String testId, String instrumentId);
 
     /**
@@ -82,6 +89,7 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      *
      * @return List of summaries with resolved names and rule details
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<RuleConfigSummary> getAllRuleConfigSummaries();
 
     /**
@@ -89,5 +97,6 @@ public interface WestgardRuleConfigService extends BaseObjectService<WestgardRul
      *
      * @return List of unconfigured mappings with resolved names
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<UnconfiguredMapping> getUnconfiguredMappings();
 }

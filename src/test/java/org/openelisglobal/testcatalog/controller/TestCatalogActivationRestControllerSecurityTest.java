@@ -21,6 +21,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
@@ -30,8 +31,9 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 /**
  * FR-004 / H-03: test activation is the most security-sensitive new endpoint —
  * it flips {@code is_active} and writes an acknowledgment audit row. It lives
- * on its own controller, so it needs its own auth-ordering coverage: ROLE_ADMIN
- * only, 401 for the unauthenticated, 403 for non-admins.
+ * on its own controller, so it needs its own auth-ordering coverage: gated at
+ * the service layer by PRIV_* privileges (S011c), 401 for the unauthenticated,
+ * 403 for users without the catalog privileges.
  */
 @WebAppConfiguration
 @ContextConfiguration(classes = { TestCatalogActivationRestControllerSecurityTest.TestConfig.class })
@@ -55,7 +57,9 @@ public class TestCatalogActivationRestControllerSecurityTest extends SecuritySli
     public void activate_adminUnknownTestReturns404() throws Exception {
         // Admin passes the gate; the mocked service returns null for an unknown test
         // → 404, proving the write-path reached the controller past auth.
-        mockMvc.perform(post("/rest/test-catalog/tests/999999/activate").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(post("/rest/test-catalog/tests/999999/activate")
+                .with(user("admin")
+                        .authorities(AuthorityUtils.createAuthorityList("PRIV_RESULT_VIEW", "PRIV_TEST_CONFIGURE")))
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
     }
 
@@ -73,15 +77,15 @@ public class TestCatalogActivationRestControllerSecurityTest extends SecuritySli
 
         @Bean
         TestService testService() {
-            return mock(TestService.class);
+            return nullStub(TestService.class);
         }
 
         @Bean
         TestCatalogActivationRestController testActivationRestController(TestService testService) {
             // Only the auth ordering is under test; the collaborators are unused here.
-            return new TestCatalogActivationRestController(testService, mock(ResultLimitService.class),
-                    mock(RangeCoverageValidationService.class), mock(TestActivationAcknowledgmentService.class),
-                    mock(TestResultComponentService.class), mock(TestResultService.class));
+            return new TestCatalogActivationRestController(testService, nullStub(ResultLimitService.class),
+                    mock(RangeCoverageValidationService.class), nullStub(TestActivationAcknowledgmentService.class),
+                    nullStub(TestResultComponentService.class), nullStub(TestResultService.class));
         }
     }
 }

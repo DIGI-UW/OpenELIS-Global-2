@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for applying field mappings to ASTM message segments
@@ -10,6 +11,7 @@ import java.util.List;
  * field mappings. Used by MappingAwareAnalyzerLineInserter wrapper to apply
  * mappings before delegating to plugin inserter.
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface MappingApplicationService {
 
     /**

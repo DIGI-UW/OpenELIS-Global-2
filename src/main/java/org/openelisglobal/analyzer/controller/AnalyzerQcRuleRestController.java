@@ -18,7 +18,6 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,7 +46,6 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
     private BridgeRegistrationService bridgeRegistrationService;
 
     @GetMapping("/analyzers/{analyzerId}/qc-rules")
-    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getQcRules(@PathVariable String analyzerId) {
         try {
             List<AnalyzerQcRule> rules = analyzerQcRuleService.getRulesForAnalyzer(analyzerId);
@@ -60,7 +58,6 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
     }
 
     @PostMapping("/analyzers/{analyzerId}/qc-rules")
-    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<Map<String, Object>> createQcRule(@PathVariable String analyzerId,
             @RequestBody Map<String, Object> body, HttpServletRequest request) {
         try {
@@ -80,7 +77,6 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
     }
 
     @PutMapping("/analyzers/{analyzerId}/qc-rules/{ruleId}")
-    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<Map<String, Object>> updateQcRule(@PathVariable String analyzerId,
             @PathVariable String ruleId, @RequestBody Map<String, Object> body, HttpServletRequest request) {
         try {
@@ -99,7 +95,6 @@ public class AnalyzerQcRuleRestController extends BaseRestController {
     }
 
     @DeleteMapping("/analyzers/{analyzerId}/qc-rules/{ruleId}")
-    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     public ResponseEntity<Void> deleteQcRule(@PathVariable String analyzerId, @PathVariable String ruleId) {
         try {
             analyzerQcRuleService.deleteRule(analyzerId, ruleId);

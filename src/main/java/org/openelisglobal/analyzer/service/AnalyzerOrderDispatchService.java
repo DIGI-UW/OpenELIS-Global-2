@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 /**
@@ -58,6 +59,7 @@ public class AnalyzerOrderDispatchService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     public DispatchResult dispatchOrder(String analyzerId, String accessionNumber) throws IOException {
         if (analyzerBridgeUrl == null || analyzerBridgeUrl.isBlank()) {
             throw new IllegalStateException("Bridge URL not configured (analyzer.bridge.url)");

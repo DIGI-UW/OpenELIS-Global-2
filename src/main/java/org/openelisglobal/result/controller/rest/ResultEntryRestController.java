@@ -58,7 +58,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
@@ -137,13 +136,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @GetMapping(value = "lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
     public List<Map<String, String>> getUserLabUnits(HttpServletRequest request) {
         Role resultsRole = roleService.getRoleByName(Constants.ROLE_RESULTS);
         if (resultsRole == null) {
             return Collections.emptyList();
         }
-        List<IdValuePair> sections = userService.getUserTestSections(getSysUserId(request), resultsRole.getId());
+        List<IdValuePair> sections = userService.getUserTestSections(getSysUserId(request),
+                String.valueOf(resultsRole.getId()));
         List<Map<String, String>> labUnits = new ArrayList<>();
         for (IdValuePair pair : sections) {
             Map<String, String> unit = new HashMap<>();
@@ -166,7 +165,6 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @GetMapping(value = "analysis/{analysisId}/history", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<Map<String, Object>> getAnalysisHistory(@PathVariable String analysisId,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize,
             @RequestParam(required = false) String componentId) {
@@ -211,7 +209,6 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @GetMapping(value = "test/{testId}/interpretations", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<List<Map<String, Object>>> getTestInterpretations(@PathVariable String testId) {
         List<Map<String, Object>> buckets = new ArrayList<>();
         for (TestResultComponent component : testResultComponentService.getActiveComponentsByTestId(testId)) {
@@ -238,7 +235,6 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @GetMapping(value = "test/{testId}/reagents", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<List<Map<String, Object>>> getTestReagentLinks(@PathVariable String testId) {
         List<Map<String, Object>> reagents = new ArrayList<>();
         for (TestReagentLink link : testReagentLinkService.getByTestId(testId)) {
@@ -267,7 +263,6 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      */
     @PostMapping(value = "analysis/{analysisId}/result", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<Map<String, Object>> saveSingleAnalysisResult(HttpServletRequest request,
             @PathVariable String analysisId,
             @Validated(LogbookResultsForm.LogbookResults.class) @RequestBody SingleResultEntryForm form) {
@@ -465,7 +460,6 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
 
     @PostMapping(value = "presence", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    @PreAuthorize("hasRole('RESULTS')")
     public Map<String, String> presenceHeartbeat(HttpServletRequest request, @RequestBody PresenceHeartbeatForm form) {
         String sessionId = request.getSession().getId();
         presenceService.heartbeat(sessionId, getUserDisplayName(getSysUserId(request)), form.getAnalysisId());

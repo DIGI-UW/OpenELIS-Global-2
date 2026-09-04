@@ -38,6 +38,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
@@ -204,14 +205,26 @@ public class ResultsLoadUtility {
 
     @PostConstruct
     public void initializeGlobalVariables() {
-        Analyte analyte = new Analyte();
-        analyte.setAnalyteName("Conclusion");
-        analyte = analyteService.getAnalyteByName(analyte, false);
-        ANALYTE_CONCLUSION_ID = analyte == null ? "" : analyte.getId();
-        analyte = new Analyte();
-        analyte.setAnalyteName("generated CD4 Count");
-        analyte = analyteService.getAnalyteByName(analyte, false);
-        ANALYTE_CD4_CNT_CONCLUSION_ID = analyte == null ? "" : analyte.getId();
+        // This bean is @Scope("prototype"): a new instance (and this @PostConstruct)
+        // is created on EVERY injection, including well after context refresh — so
+        // unlike a singleton's init it does not fall inside the startup window where
+        // SystemInitBeanPostProcessor keeps the system flag set. Reading the analyte
+        // catalog here calls PRIV_ANALYTE_VIEW-gated AnalyteService with no
+        // SecurityContext, so scope system context around it (restore, don't clear,
+        // in case an authenticated request triggered the injection).
+        boolean wasSet = SystemInitFlag.enter();
+        try {
+            Analyte analyte = new Analyte();
+            analyte.setAnalyteName("Conclusion");
+            analyte = analyteService.getAnalyteByName(analyte, false);
+            ANALYTE_CONCLUSION_ID = analyte == null ? "" : analyte.getId();
+            analyte = new Analyte();
+            analyte.setAnalyteName("generated CD4 Count");
+            analyte = analyteService.getAnalyteByName(analyte, false);
+            ANALYTE_CD4_CNT_CONCLUSION_ID = analyte == null ? "" : analyte.getId();
+        } finally {
+            SystemInitFlag.exit(wasSet);
+        }
     }
 
     public void setSysUser(String currentUserId) {

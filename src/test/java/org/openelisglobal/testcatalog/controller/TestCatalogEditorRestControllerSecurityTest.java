@@ -1,8 +1,6 @@
 package org.openelisglobal.testcatalog.controller;
 
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -33,6 +31,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
@@ -40,8 +39,13 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
- * FR-004: the unified Test Catalog editor surface is gated on ROLE_ADMIN — the
- * API returns 403 for non-admins and 401 for the unauthenticated.
+ * FR-004: the unified Test Catalog editor surface is privilege-gated at the
+ * service layer (S011c) — the API returns 401 for the unauthenticated and 403
+ * for authenticated users lacking the catalog privileges (PRIV_RESULT_VIEW /
+ * PRIV_TEST_CONFIGURE / PRIV_SAMPLE_TYPE_VIEW / PRIV_PANEL_*). Service
+ * collaborators are JDK-Proxy stubs (nullStub) not Mockito mocks, so
+ * withoutAnnotations() so the interface's @PreAuthorize is the single
+ * annotation source Spring Security evaluates.
  */
 @WebAppConfiguration
 @ContextConfiguration(classes = { TestCatalogEditorRestControllerSecurityTest.TestConfig.class })
@@ -63,7 +67,9 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
     public void getEnvelope_adminUnknownTestReturns404() throws Exception {
         // Admin passes the gate; the (mocked) service returns null → 404, proving
         // the request reached the controller rather than being blocked by auth.
-        mockMvc.perform(get("/rest/test-catalog/tests/999999").with(user("admin").roles("ADMIN")))
+        mockMvc.perform(get("/rest/test-catalog/tests/999999")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("PRIV_RESULT_VIEW",
+                        "PRIV_TEST_CONFIGURE", "PRIV_SAMPLE_TYPE_VIEW", "PRIV_PANEL_VIEW", "PRIV_PANEL_MANAGE"))))
                 .andExpect(status().isNotFound());
     }
 
@@ -111,7 +117,9 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
     public void saveBasicInfo_adminUnknownTestReturns404() throws Exception {
         // Admin passes the gate; the mocked service returns null for an unknown test
         // → 404, proving the write-path reached the controller past auth.
-        mockMvc.perform(put("/rest/test-catalog/tests/999999/basic-info").with(user("admin").roles("ADMIN"))
+        mockMvc.perform(put("/rest/test-catalog/tests/999999/basic-info")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("PRIV_RESULT_VIEW",
+                        "PRIV_TEST_CONFIGURE", "PRIV_SAMPLE_TYPE_VIEW", "PRIV_PANEL_VIEW", "PRIV_PANEL_MANAGE")))
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
     }
 
@@ -125,7 +133,9 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
     public void getAnalyzers_adminUnknownTestReturns404() throws Exception {
         // Admin passes the gate; the mocked TestService returns null → 404, proving
         // the read-path reached the controller past auth.
-        mockMvc.perform(get("/rest/test-catalog/tests/999999/analyzers").with(user("admin").roles("ADMIN")))
+        mockMvc.perform(get("/rest/test-catalog/tests/999999/analyzers")
+                .with(user("admin").authorities(AuthorityUtils.createAuthorityList("PRIV_RESULT_VIEW",
+                        "PRIV_TEST_CONFIGURE", "PRIV_SAMPLE_TYPE_VIEW", "PRIV_PANEL_VIEW", "PRIV_PANEL_MANAGE"))))
                 .andExpect(status().isNotFound());
     }
 
@@ -197,12 +207,21 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
          */
         @Bean
         TestService testService() {
-            TestService testService = mock(TestService.class);
-            when(testService.getTestById(anyString())).thenAnswer(invocation -> {
-                Integer.parseInt(invocation.getArgument(0));
-                return null;
-            });
-            return testService;
+            // JDK-Proxy stub, not a Mockito mock: a Mockito mock subclass re-declares
+            // the interface's @PreAuthorize, and Spring Security's unique-annotation
+            // scan then finds it twice and fails. getTestById mirrors the
+            // LIMSStringNumberUserType id binding — non-numeric ids blow up here — while
+            // every other method falls back to nullStub's null/default.
+            TestService delegate = nullStub(TestService.class);
+            return (TestService) java.lang.reflect.Proxy.newProxyInstance(TestService.class.getClassLoader(),
+                    new Class<?>[] { TestService.class }, (proxy, method, args) -> {
+                        if (method.getName().equals("getTestById") && args != null && args.length == 1
+                                && args[0] instanceof String) {
+                            Integer.parseInt((String) args[0]);
+                            return null;
+                        }
+                        return method.invoke(delegate, args);
+                    });
         }
 
         /**
@@ -214,16 +233,31 @@ public class TestCatalogEditorRestControllerSecurityTest extends SecuritySliceMo
             return new TestCatalogNumericIdGuard();
         }
 
+        // TypeOfSampleService and PanelService are gated by a CLASS-level
+        // @PreAuthorize on the interface. Gates only bind to Spring BEANS — the
+        // method-security advisor never sees stubs created inline in a factory
+        // method — so these two collaborators are registered as beans.
         @Bean
-        TestCatalogEditorRestController testCatalogEditorRestController(TestService testService) {
+        TypeOfSampleService typeOfSampleService() {
+            return nullStub(TypeOfSampleService.class);
+        }
+
+        @Bean
+        PanelService panelService() {
+            return nullStub(PanelService.class);
+        }
+
+        @Bean
+        TestCatalogEditorRestController testCatalogEditorRestController(TestService testService,
+                TypeOfSampleService typeOfSampleService, PanelService panelService) {
             // Only the auth ordering is under test; the section services are unused here.
-            return new TestCatalogEditorRestController(testService, mock(TestResultComponentService.class),
-                    mock(TestResultInterpretationService.class), mock(TestResultService.class),
-                    mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
-                    mock(TestSampleHandlingService.class), mock(AnalyzerService.class),
-                    mock(AnalyzerTestMappingService.class), mock(TypeOfSampleService.class),
-                    mock(TypeOfSampleTestService.class), mock(TestTerminologyMappingService.class),
-                    mock(PanelService.class), mock(PanelItemService.class));
+            return new TestCatalogEditorRestController(testService, nullStub(TestResultComponentService.class),
+                    nullStub(TestResultInterpretationService.class), nullStub(TestResultService.class),
+                    nullStub(ResultLimitService.class), mock(RangeCoverageValidationService.class),
+                    nullStub(TestSampleHandlingService.class), nullStub(AnalyzerService.class),
+                    nullStub(AnalyzerTestMappingService.class), typeOfSampleService,
+                    nullStub(TypeOfSampleTestService.class), nullStub(TestTerminologyMappingService.class),
+                    panelService, nullStub(PanelItemService.class));
         }
     }
 }

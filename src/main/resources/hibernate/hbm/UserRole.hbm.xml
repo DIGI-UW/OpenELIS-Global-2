@@ -8,7 +8,7 @@
         <composite-id name="compoundId"
             class="org.openelisglobal.userrole.valueholder.UserRolePK">
             <key-property name="roleId" column="role_id"
-                type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+                type="java.lang.Integer" />
             <key-property name="systemUserId"
                 column="system_user_id"
                 type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />

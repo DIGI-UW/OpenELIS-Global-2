@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_VIEW')")
 public interface TypeOfSampleTestService extends BaseObjectService<TypeOfSampleTest, String> {
     void getData(TypeOfSampleTest typeOfSampleTest);
 

@@ -2,6 +2,7 @@ package org.openelisglobal.compliance.service;
 
 import java.util.Optional;
 import org.openelisglobal.compliance.valueholder.ComplianceReportArchive;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ComplianceReportArchiveService {
 
@@ -20,7 +21,9 @@ public interface ComplianceReportArchiveService {
      * @param userId          the user performing the action (may be null)
      * @return the archived record (existing or newly created)
      */
+    @PreAuthorize("hasAuthority('PRIV_REPORT_EXPORT')")
     ComplianceReportArchive archiveIfAbsent(Long sampleId, Integer amendmentNumber, byte[] pdfBytes, String userId);
 
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     Optional<ComplianceReportArchive> findBySampleIdAndAmendmentNumber(Long sampleId, Integer amendmentNumber);
 }

@@ -28,8 +28,10 @@ import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
+  Roles,
 } from "../../utils/Utils";
 import CustomDatePicker from "../../common/CustomDatePicker";
+import RolePrivilegesPanel from "./RolePrivilegesPanel";
 import AutoComplete from "../../common/AutoComplete";
 
 const breadcrumbs = [
@@ -632,12 +634,12 @@ function UserAddModify() {
 
   function handleCheckboxChange(roleId) {
     const numberToUpdate = userDataShow.globalRoles
-      .filter((role) => role.roleName !== "Global Administrator")
+      .filter((role) => role.roleName !== Roles.GLOBAL_ADMIN)
       .map((role) => role.roleId);
     let updatedRoles = [...selectedGlobalLabUnitRoles];
 
     const globalAdminRoleId = userDataShow.globalRoles.find(
-      (role) => role.roleName === "Global Administrator",
+      (role) => role.roleName === Roles.GLOBAL_ADMIN,
     )?.roleId;
 
     if (globalAdminRoleId && roleId === globalAdminRoleId) {
@@ -1254,6 +1256,15 @@ function UserAddModify() {
                       )}
                     </FormGroup>
                     <br />
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <RolePrivilegesPanel
+                      selectedRoleIds={(userDataShow?.globalRoles || [])
+                        .map((role) => role.roleId)
+                        .filter((roleId) =>
+                          selectedGlobalLabUnitRoles.includes(roleId),
+                        )}
+                    />
                   </Column>
                 </Grid>
                 <Grid fullWidth={true}>

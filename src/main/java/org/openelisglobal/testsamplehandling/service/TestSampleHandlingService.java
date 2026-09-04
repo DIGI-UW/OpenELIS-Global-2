@@ -2,7 +2,9 @@ package org.openelisglobal.testsamplehandling.service;
 
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
 public interface TestSampleHandlingService extends BaseObjectService<TestSampleHandling, String> {
 
     /**

@@ -2,6 +2,7 @@ package org.openelisglobal.result.service;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Session-bound "in review by X" presence for the unified Results worklist
@@ -9,7 +10,12 @@ import java.util.Map;
  * Entries live in memory only (never persisted) and expire when the heartbeat
  * stops, so an abandoned panel or a dead session can never leave a ghost
  * indicator.
+ *
+ * <p>
+ * Reached only from the Results worklist, so gated at the same privilege as the
+ * rest of the result-viewing surface (see ResultService).
  */
+@PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
 public interface ResultEntryPresenceService {
 
     /**

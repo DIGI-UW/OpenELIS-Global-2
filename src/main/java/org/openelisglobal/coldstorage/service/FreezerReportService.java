@@ -5,6 +5,7 @@ import java.util.List;
 import org.openelisglobal.coldstorage.service.dto.FreezerDailyLogData;
 import org.openelisglobal.coldstorage.service.dto.FreezerMonthlyLogData;
 import org.openelisglobal.coldstorage.service.dto.FreezerWeeklyLogData;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface FreezerReportService {
 
@@ -16,6 +17,7 @@ public interface FreezerReportService {
      * @param endDate   End date for report
      * @return List of daily log data
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     List<FreezerDailyLogData> generateDailyLogData(Long freezerId, LocalDate startDate, LocalDate endDate);
 
     /**
@@ -26,6 +28,7 @@ public interface FreezerReportService {
      * @param endDate   End date for report
      * @return List of weekly log data
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     List<FreezerWeeklyLogData> generateWeeklyLogData(Long freezerId, LocalDate startDate, LocalDate endDate);
 
     /**
@@ -36,6 +39,7 @@ public interface FreezerReportService {
      * @param endDate   End date for report
      * @return List of monthly log data
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     List<FreezerMonthlyLogData> generateMonthlyLogData(Long freezerId, LocalDate startDate, LocalDate endDate);
 
     /**
@@ -48,5 +52,6 @@ public interface FreezerReportService {
      * @param endDate    End date
      * @return PDF bytes
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     byte[] generatePdfReport(String reportType, Long freezerId, LocalDate startDate, LocalDate endDate);
 }

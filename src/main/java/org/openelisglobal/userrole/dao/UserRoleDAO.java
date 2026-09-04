@@ -29,7 +29,7 @@ public interface UserRoleDAO extends BaseDAO<UserRole, UserRolePK> {
 
     public boolean userInRole(String userId, Collection<String> roleNames) throws LIMSRuntimeException;
 
-    List<String> getRoleIdsForUser(String userId) throws LIMSRuntimeException;
+    List<Integer> getRoleIdsForUser(String userId) throws LIMSRuntimeException;
 
     void deleteLabUnitRoleMap(LabUnitRoleMap roleMap);
 

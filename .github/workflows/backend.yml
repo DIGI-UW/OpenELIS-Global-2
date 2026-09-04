@@ -72,6 +72,86 @@ jobs:
       - name: check formatting
         run: mvn spotless:check
 
+      - name: Enforce no @PreAuthorize on controllers (S011c)
+        run: |
+          # Authorization must live on service interfaces, not controllers.
+          # Exceptions:
+          #  - LoggingController: mutates runtime log config directly, no service.
+          #  - SampleTypeManagementRestController: admin management surface.
+          #  - /api-mapped controllers (labelpreset): the ModuleAuthenticationInterceptor
+          #    auto-allows the /api prefix for any authenticated user, so a controller-level
+          #    @PreAuthorize is their only authorization (enforced by
+          #    AutoAllowedPathAuthorizationTest) and cannot move to the service layer.
+          #  - UnifiedSystemUserRestController: same auto-allow rationale as the /api
+          #    controllers above, for /rest. isRestFullPath() also auto-allows /rest, so
+          #    the user-administration GET/POST (which read and write ANY user's identity,
+          #    account state and role assignments by caller-supplied id) have no module
+          #    check standing behind them. Their service calls are gated, but the read
+          #    path aggregates several services whose individual privileges are weaker
+          #    than "administer users", so the boundary belongs at the controller.
+          #  - ImportController: /import has no system_module_url row, so the interceptor
+          #    denies it for non-admins; the class-level guard is defence-in-depth over
+          #    the already-gated OrganizationImportService/ProviderImportService calls.
+          # NOTE: the entries below this line are pre-existing debt inherited from
+          # develop (vector, compliance, referral, dictionary, sampleacceptance,
+          # requester, notification, testconfiguration, labunit modules). They predate
+          # this check being added and are excluded so the gate reflects NEW violations
+          # only. Removing them is tracked separately, not in the RBAC migration.
+          violations=$(grep -rn "^\s*@PreAuthorize" src/main/java \
+            --include="*Controller.java" \
+            -l | grep -v "LoggingController.java" \
+               | grep -v "SampleTypeManagementRestController.java" \
+               | grep -v "LabelPresetRestController.java" \
+               | grep -v "OrderEntryLabelRequestController.java" \
+               | grep -v "OrderLabelReprintController.java" \
+               | grep -v "SiteWideBarcodeSettingsRestController.java" \
+               | grep -v "UnifiedSystemUserRestController.java" \
+               | grep -v "ImportController.java" \
+               | grep -v "SampleAcceptanceRestController.java" \
+               | grep -v "VectorIdentificationRestController.java" \
+               | grep -v "VectorDeconvolutionRestController.java" \
+               | grep -v "VectorSpeciesRestController.java" \
+               | grep -v "VectorSamplingSiteRestController.java" \
+               | grep -v "VectorTrapTypeRestController.java" \
+               | grep -v "VectorSurveillanceRestController.java" \
+               | grep -v "ManualEntryFieldMapRestController.java" \
+               | grep -v "LabUnitManagementRestController.java" \
+               | grep -v "RequestorRestController.java" \
+               | grep -v "ComplianceThresholdRestController.java" \
+               | grep -v "ComplianceTestCatalogRestController.java" \
+               | grep -v "ComplianceDashboardRestController.java" \
+               | grep -v "ComplianceStandardRestController.java" \
+               | grep -v "ComplianceReportRestController.java" \
+               | grep -v "TestComplianceThresholdRestController.java" \
+               | grep -v "ReferenceLabResultsRestController.java" \
+               | grep -v "ReferralSubcontractDispatchRestController.java" \
+               | grep -v "DictionaryRestController.java" \
+               | grep -v "TestSectionEditRestController.java" \
+               | grep -v "NotificationTriggerConfigRestController.java" || true)
+          if [ -n "$violations" ]; then
+            echo "ERROR: @PreAuthorize found on controller(s) — move authorization to the service interface:"
+            echo "$violations"
+            exit 1
+          fi
+          echo "Controller @PreAuthorize check passed."
+
+      - name: Enforce no hardcoded role-name strings (T045)
+        run: |
+          # Role names live in Constants.java (and Liquibase seed XML) only.
+          # Two patterns: (a) role-lookup APIs called with a string literal,
+          # (b) the distinctive multi-word role names anywhere in main Java.
+          violations=$(grep -rnE 'getRoleByName\("|getSystemRole\("|addAuthoritiesForRole\("|ROLE_NAMES\.add\("' \
+            src/main/java --include="*.java" | grep -v "Constants.java" || true)
+          names=$(grep -rnE '"(Global Administrator|User Account Administrator|Analyser Import|EQA Coordinator|Audit Trail)"' \
+            src/main/java --include="*.java" | grep -v "Constants.java" || true)
+          if [ -n "$violations" ] || [ -n "$names" ]; then
+            echo "ERROR: hardcoded role name found — use Constants.ROLE_* instead:"
+            echo "$violations"
+            echo "$names"
+            exit 1
+          fi
+          echo "Role-name string check passed."
+
       - name: Initialize and build submodules
         run: |
           cd dataexport

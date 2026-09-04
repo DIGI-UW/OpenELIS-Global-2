@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for QualitativeResultMapping operations
@@ -12,6 +13,7 @@ import org.openelisglobal.common.service.BaseObjectService;
  * - Duplicate value validation (unique constraint on analyzer_field_id +
  * analyzer_value)
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface QualitativeResultMappingService extends BaseObjectService<QualitativeResultMapping, String> {
 
     /**

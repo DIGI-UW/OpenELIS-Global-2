@@ -1,10 +1,12 @@
 package org.openelisglobal.referral.fhir.service;
 
 import org.hl7.fhir.r4.model.Bundle;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirApiWorkFlowServiceImpl.ReferralResultsImportObjects;
 import org.openelisglobal.referral.valueholder.Referral;
 
+@CrossDomainService(callers = "ReferralSetService (PRIV_REFERRAL_MANAGE) — authorization enforced by the caller")
 public interface FhirReferralService {
 
     void setReferralResult(ReferralResultsImportObjects resultsImport);

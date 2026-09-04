@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Persists the technician's chosen label quantities at order-save time as
@@ -22,6 +23,7 @@ import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
  * order-save transaction so the rows commit/rollback atomically with the
  * sample.
  */
+@PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
 public interface OrderLabelRequestService {
 
     /**

@@ -77,6 +77,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
@@ -516,6 +517,23 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 "transformPersistOrderEntryFhirObjects called");
         LogEvent.logTrace(this.getClass().getSimpleName(), "createFhirFromSamplePatient",
                 "accessionNumber - " + updateData.getAccessionNumber());
+        // @Async: this runs on a task-executor thread. propagateSystemContext() does
+        // NOT copy the submitting request's Authentication across the hop, so the
+        // PRIV_REFERRAL_MANAGE-gated referralSetService call below would be denied.
+        // This is server-side FHIR-store persistence following an order entry, so
+        // scope system context around the whole body (restore, don't clear, since a
+        // system-initiated submitter may already hold it).
+        boolean wasSet = SystemInitFlag.enter();
+        try {
+            transformPersistOrderEntryFhirObjectsInternal(updateData, patientInfo, useReferral, referralItems);
+        } finally {
+            SystemInitFlag.exit(wasSet);
+        }
+    }
+
+    private void transformPersistOrderEntryFhirObjectsInternal(SamplePatientUpdateData updateData,
+            PatientManagementInfo patientInfo, boolean useReferral, List<ReferralItem> referralItems)
+            throws FhirLocalPersistingException {
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
         FhirOperations fhirOperations = new FhirOperations();
 

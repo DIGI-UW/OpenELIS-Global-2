@@ -215,7 +215,7 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
     private void dispatchHeader(TestAlertRule rule, String message, String sysUserId) {
         if (notBlank(rule.getNotifyRoleId())) {
             try {
-                Role role = roleService.get(rule.getNotifyRoleId());
+                Role role = roleService.get(Integer.valueOf(rule.getNotifyRoleId()));
                 if (role != null && role.getName() != null) {
                     headerNotificationService.notifyRole(role.getName(), message);
                 }

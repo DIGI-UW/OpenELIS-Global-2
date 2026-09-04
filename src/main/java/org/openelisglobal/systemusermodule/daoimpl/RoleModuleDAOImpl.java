@@ -27,6 +27,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemusermodule.dao.RoleModuleDAO;
 import org.openelisglobal.systemusermodule.valueholder.RoleModule;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -41,6 +42,15 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
 
     public RoleModuleDAOImpl() {
         super(RoleModule.class);
+    }
+
+    @Override
+    public String insert(RoleModule roleModule) {
+        Role role = roleModule.getRole();
+        if (role != null && !entityManager.contains(role)) {
+            roleModule.setRole(entityManager.merge(role));
+        }
+        return super.insert(roleModule);
     }
 
     @Override
@@ -83,7 +93,7 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
         try {
             String sql = "from RoleModule s where s.role.id = :param";
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            query.setParameter("param", String.valueOf(systemUserId));
+            query.setParameter("param", systemUserId);
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
@@ -137,7 +147,7 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
         try {
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
             query.setParameter("moduleId", moduleId);
-            query.setParameter("roleId", roleId);
+            query.setParameter("roleId", Integer.parseInt(roleId));
             List<RoleModule> modules = query.list();
             return modules.isEmpty() ? new RoleModule() : modules.get(0);
         } catch (HibernateException e) {
@@ -155,27 +165,16 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
 
     @Override
     public boolean duplicateRoleModuleExists(RoleModule roleModule) throws LIMSRuntimeException {
-
         try {
-
-            List<RoleModule> list;
-
-            String sql = "from RoleModule s where s.role.id = :param and s.systemModule.id = :param2 and s.id !="
-                    + " :param3";
+            String systemUserModuleId = StringUtil.isNullorNill(roleModule.getId()) ? "0" : roleModule.getId();
+            String sql = "from RoleModule s where s.role.id = :roleId and s.systemModule.id = :moduleId and s.id != :id";
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            query.setParameter("param", roleModule.getRole().getId());
-            query.setParameter("param2", roleModule.getSystemModule().getId());
-
-            String systemUserModuleId = "0";
-            if (!StringUtil.isNullorNill(roleModule.getId())) {
-                systemUserModuleId = roleModule.getId();
-            }
-            query.setParameter("param3", systemUserModuleId);
-
-            list = query.list();
+            query.setParameter("roleId", roleModule.getRole().getId());
+            query.setParameter("moduleId", roleModule.getSystemModule().getId());
+            query.setParameter("id", systemUserModuleId);
+            List<RoleModule> list = query.list();
 
             return list.size() > 0;
-
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in duplicateRoleModuleExists()", e);

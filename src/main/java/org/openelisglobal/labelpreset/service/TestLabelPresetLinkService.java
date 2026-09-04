@@ -3,11 +3,13 @@ package org.openelisglobal.labelpreset.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for TestLabelPresetLink (OGC-285 M4). Extends the standard base
  * service and adds validation logic for the per-sample-only enforcement rule.
  */
+@PreAuthorize("hasAuthority('PRIV_BARCODE_MANAGE')")
 public interface TestLabelPresetLinkService extends BaseObjectService<TestLabelPresetLink, Integer> {
 
     /**

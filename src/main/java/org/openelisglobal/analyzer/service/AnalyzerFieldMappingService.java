@@ -5,10 +5,11 @@ import java.util.Map;
 import org.openelisglobal.analyzer.form.AnalyzerFieldMappingForm;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for AnalyzerFieldMapping operations
- * 
+ *
  * Provides business logic for managing field mappings with: - Type
  * compatibility validation (numeric→numeric, qualitative→qualitative,
  * text→text) - Required mapping validation (Sample ID, Test Code, Result Value)
@@ -23,6 +24,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @return The ID of the created mapping
      * @throws LIMSRuntimeException if validation fails (type incompatibility)
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     String createMapping(AnalyzerFieldMapping mapping);
 
     /**
@@ -33,6 +35,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @param analyzerId The analyzer ID
      * @throws LIMSRuntimeException if required mappings are missing
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     void validateRequiredMappings(String analyzerId);
 
     /**
@@ -44,6 +47,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @return The activated mapping
      * @throws LIMSRuntimeException if confirmation required but not provided
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerFieldMapping activateMapping(String mappingId, boolean confirmed);
 
     /**
@@ -52,6 +56,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @param analyzerFieldId The analyzer field ID
      * @return List of field mappings
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<AnalyzerFieldMapping> getMappingsByAnalyzerFieldId(String analyzerFieldId);
 
     /**
@@ -62,6 +67,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @return List of maps containing complete mapping data (field name, type,
      *         etc.)
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<Map<String, Object>> getMappingsForAnalyzer(String analyzerId);
 
     /**
@@ -73,6 +79,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @param includeRetired Whether to include retired (inactive) mappings
      * @return List of maps containing complete mapping data
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<Map<String, Object>> getMappingsForAnalyzer(String analyzerId, boolean includeRetired);
 
     /**
@@ -91,6 +98,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @return Map containing complete mapping data
      * @throws LIMSRuntimeException if validation fails
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Map<String, Object> createMappingForAnalyzer(String analyzerId, String analyzerFieldId, String openelisFieldId,
             AnalyzerFieldMapping.OpenELISFieldType openelisFieldType, AnalyzerFieldMapping.MappingType mappingType,
             Boolean isRequired, Boolean isActive, String specimenTypeConstraint, String panelConstraint);
@@ -102,6 +110,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @param mappingId The mapping ID
      * @return Map containing complete mapping data
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Map<String, Object> getMappingWithCompleteData(String mappingId);
 
     /**
@@ -111,6 +120,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @param analyzerId The analyzer ID to verify against
      * @return true if mapping belongs to analyzer, false otherwise
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     boolean verifyMappingBelongsToAnalyzer(String mappingId, String analyzerId);
 
     /**
@@ -126,6 +136,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @throws LIMSRuntimeException if confirmation required but not provided, or
      *                              validation fails
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerFieldMapping updateMapping(AnalyzerFieldMapping mapping, boolean confirmed);
 
     /**
@@ -139,6 +150,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @return The disabled mapping
      * @throws LIMSRuntimeException if mapping is required or not found
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerFieldMapping disableMapping(String mappingId, String retirementReason);
 
     /**
@@ -156,6 +168,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @throws LIMSRuntimeException if any mapping does not belong to the analyzer,
      *                              or if activation fails for any mapping
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     int bulkActivateMappings(String analyzerId, List<String> mappingIds, boolean confirmed);
 
     /**
@@ -169,6 +182,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @throws LIMSRuntimeException if mapping not found or doesn't belong to
      *                              analyzer
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Map<String, Object> updatePartial(String analyzerId, String mappingId, AnalyzerFieldMappingForm form);
 
     /**
@@ -185,5 +199,6 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @return ActivationValidationResult containing validation status, missing
      *         required fields, pending message count, and warnings
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     ActivationValidationResult validateActivation(String analyzerId);
 }
