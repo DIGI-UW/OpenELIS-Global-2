@@ -105,7 +105,7 @@ public class ResultUtil {
     /**
      * The "Confirmation" referral type id, resolved on first use. The field was
      * never assigned in this class, so every referral built here reached the insert
-     * with a null referral_type_id and died on its NOT NULL constraint (OGC-1023) —
+     * with a null referral_type_id and died on its NOT NULL constraint (OGC-1023) -
      * the legacy JSP controller only ever populated its own copy.
      */
     private static String confirmationReferralTypeId() {
@@ -121,15 +121,15 @@ public class ResultUtil {
 
     private static final String RESULT_SUBJECT = "Result Note";
 
-    /** OGC-1021 (R2, FR-J1) — subject records the auto-set context axis. */
+    /** OGC-1021 (R2, FR-J1) - subject records the auto-set context axis. */
     private static final String RESULT_MODIFICATION_SUBJECT = "Result Note (Modification)";
 
-    /** OGC-1026 (R7, FR-G1) — interpretation notes are filterable by subject. */
+    /** OGC-1026 (R7, FR-G1) - interpretation notes are filterable by subject. */
     private static final String INTERPRETATION_SUBJECT = "Interpretation";
 
     /**
      * Visibility axis of the dual-axis note (FR-J1): "E" = send with result
-     * (external), anything else = internal — the legacy default.
+     * (external), anything else = internal - the legacy default.
      */
     private static NoteType noteTypeForVisibility(TestResultItem item) {
         return "E".equals(item.getNoteVisibility()) ? NoteType.EXTERNAL : NoteType.INTERNAL;
@@ -144,7 +144,7 @@ public class ResultUtil {
     }
 
     /**
-     * OGC-811 — a note authored from a component row belongs to that component;
+     * OGC-811 - a note authored from a component row belongs to that component;
      * items without a component (single-component tests, legacy pages) keep the
      * historic analysis-level scope (null).
      */
@@ -336,7 +336,7 @@ public class ResultUtil {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
             // OGC-1021 (R2, FR-B1/B2): the instrument instance is its own field.
-            // null = the client did not send it (legacy pages) — never clears;
+            // null = the client did not send it (legacy pages) - never clears;
             // blank = an explicit "no instrument" chosen in the unified panel.
             if (testResultItem.getAnalyzerId() != null) {
                 analysis.setAnalyzerId(GenericValidator.isBlankOrNull(testResultItem.getAnalyzerId()) ? null
@@ -349,7 +349,7 @@ public class ResultUtil {
 
             // OGC-1021 (R2, FR-D5): a dilution changes the reported value, so the
             // factor and the raw measured value are preserved as an internal
-            // provenance note (reuse-first — no new schema).
+            // provenance note (reuse-first - no new schema).
             if (!GenericValidator.isBlankOrNull(testResultItem.getDilutionFactor())) {
                 actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.INTERNAL,
                         MessageUtil.getMessage("note.dilution.applied",
@@ -370,11 +370,19 @@ public class ResultUtil {
             }
 
             // OGC-1026 (R7, FR-G1): the clinical interpretation goes with the
-            // result to the report — an EXTERNAL note under its own subject
+            // result to the report - an EXTERNAL note under its own subject.
+            // Skip when an identical interpretation note already exists (re-save /
+            // leftover fixture rows) so the bench save does not 500 on
+            // LIMSDuplicateRecordException.
             if (!GenericValidator.isBlankOrNull(testResultItem.getInterpretation())) {
-                actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
-                        testResultItem.getInterpretation().trim(), INTERPRETATION_SUBJECT,
-                        ControllerUtills.getSysUserId(request)), testResultItem));
+                Note interpretationNote = scopedToComponent(
+                        noteService.createSavableNote(analysis, NoteType.EXTERNAL,
+                                testResultItem.getInterpretation().trim(), INTERPRETATION_SUBJECT,
+                                ControllerUtills.getSysUserId(request)),
+                        testResultItem);
+                if (interpretationNote != null && !noteService.duplicateNoteExists(interpretationNote)) {
+                    actionDataSet.addToNoteList(interpretationNote);
+                }
             }
 
             if (testResultItem.isShadowRejected()) {
