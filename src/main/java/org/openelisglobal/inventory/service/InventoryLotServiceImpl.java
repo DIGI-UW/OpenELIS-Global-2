@@ -47,12 +47,6 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) {
-        return inventoryLotDAO.getByStorageLocationId(locationId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<InventoryLot> getExpiringLots(int daysFromNow) {
         return inventoryLotDAO.getExpiringLots(daysFromNow);
     }

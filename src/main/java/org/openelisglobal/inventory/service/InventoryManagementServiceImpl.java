@@ -1,14 +1,17 @@
 package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
-import org.openelisglobal.inventory.valueholder.InventoryStorageLocation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,14 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InventoryManagementServiceImpl implements InventoryManagementService {
 
+    private static final int LOT_NUMBER_MAX_LENGTH = 100;
+
     @Autowired
     private InventoryItemService inventoryItemService;
 
     @Autowired
     private InventoryLotService inventoryLotService;
-
-    @Autowired
-    private InventoryStorageLocationService storageLocationService;
 
     @Autowired
     private InventoryTransactionService transactionService;
@@ -103,6 +105,14 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         return consumptionRecords;
     }
 
+    private String generateLotNumber(InventoryItem item) {
+        String datePart = new SimpleDateFormat("yyyyMMdd").format(new Timestamp(System.currentTimeMillis()));
+        Set<String> existingLotNumbers = inventoryLotService.getByInventoryItemId(item.getId()).stream()
+                .map(InventoryLot::getLotNumber).collect(Collectors.toSet());
+        return CodeGenerator.generateFromName(item.getCode() + "-" + datePart, LOT_NUMBER_MAX_LENGTH, "LOT",
+                existingLotNumbers::contains);
+    }
+
     @Override
     @Transactional
     public InventoryLot receiveInventory(InventoryLot lotData, String sysUserId) {
@@ -122,14 +132,8 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         }
         lotData.setInventoryItem(managedItem);
 
-        // Fetch managed StorageLocation entity if provided
-        if (lotData.getStorageLocation() != null && lotData.getStorageLocation().getId() != null) {
-            Long locationId = lotData.getStorageLocation().getId();
-            InventoryStorageLocation managedLocation = storageLocationService.get(locationId);
-            if (managedLocation == null) {
-                throw new IllegalArgumentException("Storage location not found: " + locationId);
-            }
-            lotData.setStorageLocation(managedLocation);
+        if (lotData.getLotNumber() == null || lotData.getLotNumber().trim().isEmpty()) {
+            lotData.setLotNumber(generateLotNumber(managedItem));
         }
 
         // Set initial values
