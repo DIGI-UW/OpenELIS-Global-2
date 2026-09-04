@@ -41,14 +41,36 @@ This will enable you to call docker without calling sudo.
 2. `su - ${USER}`
 3. `id -nG`
 
-## Install Docker-Compose
+## Install Docker Compose
 
-Detailed instructions found
-[here](https://www.digitalocean.com/community/tutorials/how-to-install-docker-compose-on-ubuntu-18-04)
+> **Note:** Docker Compose v2+ is required. The legacy standalone `docker-compose` (v1) binary is
+> deprecated and incompatible with the compose files in this project (which use the `platform` option).
+> Use the `docker compose` command (with a space) provided by the Docker CLI plugin.
 
-1. `` sudo curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose ``
-2. `sudo chmod +x /usr/local/bin/docker-compose`
-3. `docker-compose --version`
+### Option 1 — Install via Docker's apt repository (recommended)
+
+If you installed Docker Engine using Docker's official apt repository (as described above),
+the Compose plugin may already be available. If not, install it with:
+
+1. `sudo apt-get update`
+2. `sudo apt-get install docker-compose-plugin`
+3. `docker compose version`
+
+### Option 2 — Install Docker Desktop
+
+Docker Desktop for Linux ships with Docker Compose v2 built-in. See the
+[Docker Desktop install guide](https://docs.docker.com/desktop/install/linux/) for details.
+
+### Verify the installation
+
+```bash
+docker compose version
+# Expected output: Docker Compose version v2.x.x
+```
+
+> **Tip:** Throughout this project, all commands use `docker compose` (space-separated, v2 syntax).
+> If you see references to the legacy `docker-compose` (hyphenated) elsewhere, they can safely be
+> replaced with `docker compose`.
 
 ## Install Chrome
 
