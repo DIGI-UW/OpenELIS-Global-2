@@ -7,7 +7,9 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 
 /**
  * Pure rules behind the Validation queue's "Check before release" signals
@@ -103,5 +105,57 @@ public final class ValidationSignals {
         }
         return alerts.stream().anyMatch(alert -> alert != null && alert.getAlertType() == AlertType.CRITICAL_RESULT
                 && alert.getStatus() == AlertStatus.OPEN);
+    }
+
+    /**
+     * Who entered the result (OGC-1028 review summary). Mirrors Results Entry's
+     * technician resolution in {@code ResultsLoadUtility}: the bench signature is
+     * the last non-supervisor {@link ResultSignature}; supervisor signatures are
+     * legacy and ignored. Blank when no bench signature exists.
+     */
+    public static String enteredBy(List<ResultSignature> signatures) {
+        String name = "";
+        if (signatures == null) {
+            return name;
+        }
+        for (ResultSignature signature : signatures) {
+            if (signature != null && !signature.getIsSupervisor()
+                    && !GenericValidator.isBlankOrNull(signature.getNonUserName())) {
+                name = signature.getNonUserName();
+            }
+        }
+        return name;
+    }
+
+    /**
+     * The analysis revision after a validator modifies its result (OGC-1028,
+     * FR-D4). Results Entry stamps "1" on first save and increments on later saves
+     * ({@code ResultUtil}); a validation-side change must likewise read as
+     * {@link #isModified(String) modified}, so the outcome is never below 2 even
+     * for a legacy analysis whose revision is blank or 0.
+     */
+    public static String nextRevision(String current) {
+        int revision = 0;
+        if (!GenericValidator.isBlankOrNull(current)) {
+            try {
+                revision = Integer.parseInt(current.trim());
+            } catch (NumberFormatException e) {
+                revision = 0;
+            }
+        }
+        return String.valueOf(Math.max(revision, 1) + 1);
+    }
+
+    /**
+     * The result component a queue row belongs to, or {@code null} for a
+     * single-component (legacy) test — lets the review panel list a multi-component
+     * test's rows in {@code display_order} (FR-C4).
+     */
+    public static TestResultComponent componentOf(List<TestResultComponent> components, String componentId) {
+        if (components == null || GenericValidator.isBlankOrNull(componentId)) {
+            return null;
+        }
+        return components.stream().filter(component -> component != null && componentId.equals(component.getId()))
+                .findFirst().orElse(null);
     }
 }

@@ -14,7 +14,12 @@ import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 
 vi.mock("../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, postToOpenElisServer: vi.fn() };
+  return {
+    ...actual,
+    postToOpenElisServer: vi.fn(),
+    postToOpenElisServerJsonResponse: vi.fn(),
+    getFromOpenElisServer: vi.fn(),
+  };
 });
 
 vi.mock("../esignature/ESignatureButton", () => ({
@@ -112,6 +117,22 @@ describe("Validation — Check before release (OGC-1027)", () => {
       "aria-pressed",
       "true",
     );
+  });
+
+  it("expanding a row opens its review panel (OGC-1028)", () => {
+    renderValidation([
+      row(0, { methodName: "ICP-MS", analyzerName: "Leonardo" }),
+      row(1),
+    ]);
+    expect(screen.queryByTestId("validation-review-panel-0")).toBeNull();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /expand row/i })[0]);
+
+    const panel = screen.getByTestId("validation-review-panel-0");
+    expect(panel).toBeInTheDocument();
+    expect(panel).toHaveTextContent("ICP-MS");
+    expect(panel).toHaveTextContent("Leonardo");
+    expect(screen.queryByTestId("validation-review-panel-1")).toBeNull();
   });
 
   it("fail-safe: QC not evaluated keeps a chip-less row out of the Clear lane", () => {

@@ -350,6 +350,10 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.RESULTS_ENTRY_UNIFIED_ROUTE));
         configs.put(Property.REQUESTER_REQUIRED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.REQUESTER_REQUIRED));
+        configs.put(Property.notesRequiredForModifyResults.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.notesRequiredForModifyResults));
+        configs.put(Property.roleRequiredForModifyResults.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.roleRequiredForModifyResults));
         return configs;
     }
 

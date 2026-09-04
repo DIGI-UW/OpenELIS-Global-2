@@ -1,6 +1,8 @@
 package org.openelisglobal.resultvalidation.util;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -10,7 +12,9 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 
 /**
  * OGC-1027 — the pure "Check before release" rules. Plain JUnit: no Spring, no
@@ -154,5 +158,78 @@ public class ValidationSignalsTest {
     public void hasOpenCriticalAlert_noAlertsIsNotPending() {
         assertFalse(ValidationSignals.hasOpenCriticalAlert(null));
         assertFalse(ValidationSignals.hasOpenCriticalAlert(Collections.emptyList()));
+    }
+
+    // ---- entered by (OGC-1028) ----------------------------------------------
+
+    private static ResultSignature signature(String name, boolean supervisor) {
+        ResultSignature signature = new ResultSignature();
+        signature.setNonUserName(name);
+        signature.setIsSupervisor(supervisor);
+        return signature;
+    }
+
+    @Test
+    public void enteredBy_usesTheBenchSignatureAndIgnoresSupervisors() {
+        assertEquals("Tech One", ValidationSignals
+                .enteredBy(Arrays.asList(signature("Tech One", false), signature("Supervisor", true))));
+    }
+
+    @Test
+    public void enteredBy_lastBenchSignatureWins() {
+        assertEquals("Tech Two",
+                ValidationSignals.enteredBy(Arrays.asList(signature("Tech One", false), signature("Tech Two", false))));
+    }
+
+    @Test
+    public void enteredBy_blankWhenNoBenchSignature() {
+        assertEquals("", ValidationSignals.enteredBy(null));
+        assertEquals("", ValidationSignals.enteredBy(Collections.emptyList()));
+        assertEquals("", ValidationSignals.enteredBy(Collections.singletonList(signature("Supervisor", true))));
+        assertEquals("", ValidationSignals.enteredBy(Collections.singletonList(signature("", false))));
+    }
+
+    // ---- next revision after a validator's modification (OGC-1028, FR-D4) ----
+
+    @Test
+    public void nextRevision_incrementsASavedRevision() {
+        assertEquals("2", ValidationSignals.nextRevision("1"));
+        assertEquals("4", ValidationSignals.nextRevision(" 3 "));
+    }
+
+    @Test
+    public void nextRevision_alwaysReadsAsModifiedEvenForLegacyAnalyses() {
+        assertEquals("2", ValidationSignals.nextRevision("0"));
+        assertEquals("2", ValidationSignals.nextRevision(null));
+        assertEquals("2", ValidationSignals.nextRevision(""));
+        assertEquals("2", ValidationSignals.nextRevision("abc"));
+        assertTrue(ValidationSignals.isModified(ValidationSignals.nextRevision(null)));
+        assertTrue(ValidationSignals.isModified(ValidationSignals.nextRevision("0")));
+    }
+
+    // ---- component of a row (OGC-1028, FR-C4) -------------------------------
+
+    private static TestResultComponent component(String id, String label, int order) {
+        TestResultComponent component = new TestResultComponent();
+        component.setId(id);
+        component.setLabel(label);
+        component.setDisplayOrder(order);
+        return component;
+    }
+
+    @Test
+    public void componentOf_matchesTheRowsComponentById() {
+        TestResultComponent match = ValidationSignals
+                .componentOf(Arrays.asList(component("1", "Ct N2", 2), component("2", "Ct E", 3)), "2");
+        assertEquals("Ct E", match.getLabel());
+        assertEquals(Integer.valueOf(3), match.getDisplayOrder());
+    }
+
+    @Test
+    public void componentOf_nullForLegacySingleComponentRows() {
+        assertNull(ValidationSignals.componentOf(Arrays.asList(component("1", "Ct N2", 2)), null));
+        assertNull(ValidationSignals.componentOf(Arrays.asList(component("1", "Ct N2", 2)), ""));
+        assertNull(ValidationSignals.componentOf(Arrays.asList(component("1", "Ct N2", 2)), "99"));
+        assertNull(ValidationSignals.componentOf(null, "1"));
     }
 }

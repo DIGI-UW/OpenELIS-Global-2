@@ -16,6 +16,7 @@ package org.openelisglobal.resultvalidation.bean;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
@@ -217,6 +218,26 @@ public class AnalysisItem implements Serializable {
     private boolean critical = false;
 
     private String qcStatus;
+
+    private String criticalRange;
+
+    private String enteredBy;
+
+    private String enteredDate;
+
+    private String componentLabel;
+
+    private Integer componentDisplayOrder;
+
+    private String methodName;
+
+    private String analyzerName;
+
+    private String noteVisibility;
+
+    private String noteContext;
+
+    private List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> analysisNotes;
 
     public String getRejectReasonId() {
         return rejectReasonId;
@@ -867,6 +888,94 @@ public class AnalysisItem implements Serializable {
 
     public void setQcStatus(String qcStatus) {
         this.qcStatus = qcStatus;
+    }
+
+    public String getCriticalRange() {
+        return criticalRange;
+    }
+
+    public void setCriticalRange(String criticalRange) {
+        this.criticalRange = criticalRange;
+    }
+
+    public String getEnteredBy() {
+        return enteredBy;
+    }
+
+    public void setEnteredBy(String enteredBy) {
+        this.enteredBy = enteredBy;
+    }
+
+    public String getEnteredDate() {
+        return enteredDate;
+    }
+
+    public void setEnteredDate(String enteredDate) {
+        this.enteredDate = enteredDate;
+    }
+
+    public String getComponentLabel() {
+        return componentLabel;
+    }
+
+    public void setComponentLabel(String componentLabel) {
+        this.componentLabel = componentLabel;
+    }
+
+    public Integer getComponentDisplayOrder() {
+        return componentDisplayOrder;
+    }
+
+    public void setComponentDisplayOrder(Integer componentDisplayOrder) {
+        this.componentDisplayOrder = componentDisplayOrder;
+    }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
+    }
+
+    public String getAnalyzerName() {
+        return analyzerName;
+    }
+
+    public void setAnalyzerName(String analyzerName) {
+        this.analyzerName = analyzerName;
+    }
+
+    /**
+     * OGC-1028 (FR-F1) — "E" send with result, "I" internal; blank = legacy
+     * inference.
+     */
+    public String getNoteVisibility() {
+        return noteVisibility;
+    }
+
+    public void setNoteVisibility(String noteVisibility) {
+        this.noteVisibility = noteVisibility;
+    }
+
+    /**
+     * OGC-1028 (FR-F1) — "VALIDATION" or "MODIFICATION"; blank = legacy "Result
+     * Note".
+     */
+    public String getNoteContext() {
+        return noteContext;
+    }
+
+    public void setNoteContext(String noteContext) {
+        this.noteContext = noteContext;
+    }
+
+    public List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> getAnalysisNotes() {
+        return analysisNotes == null ? new ArrayList<>() : analysisNotes;
+    }
+
+    public void setAnalysisNotes(List<org.openelisglobal.test.beanItems.TestResultItem.AnalysisNote> analysisNotes) {
+        this.analysisNotes = analysisNotes;
     }
 
     public double getLowerCritical() {

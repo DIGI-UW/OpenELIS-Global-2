@@ -32,6 +32,7 @@ import {
   filterTriaged,
   triageRows,
 } from "./validationTriage";
+import ValidationReviewPanel from "./ValidationReviewPanel";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -269,6 +270,22 @@ const Validation = (props) => {
       message: message,
     });
     setNotificationVisible(true);
+  };
+
+  /**
+   * OGC-1028 — a per-row action (release / modify) succeeded: reload the queue
+   * the same way the batch save does so the row's new state is served fresh.
+   */
+  const handleRowActionDone = (outcome) => {
+    addNotification({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: `label.validation.review.success.${outcome}`,
+      }),
+    });
+    setNotificationVisible(true);
+    window.location.assign("/validation" + props.params);
   };
 
   /**
@@ -760,6 +777,19 @@ const Validation = (props) => {
               data={visibleRows.slice((page - 1) * pageSize, page * pageSize)}
               columns={columns}
               isSortable
+              expandableRows
+              expandableRowsComponent={ValidationReviewPanel}
+              expandableRowsComponentProps={{
+                rows: props.results?.resultList || [],
+                triageByRowId,
+                configurationProperties,
+                qcAck: {
+                  required: qcAckRequired,
+                  satisfied: qcAckSatisfied,
+                  beforeSign: handleBeforeSign,
+                },
+                onActionDone: handleRowActionDone,
+              }}
             ></DataTable>
             <Pagination
               onChange={handlePageChange}

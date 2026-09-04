@@ -103,6 +103,17 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     private FhirTransformService fhirTransformService;
 
     private final String RESULT_SUBJECT = "Result Note";
+    /**
+     * OGC-1028 (FR-F1) — the context axis of a note authored on the Validation
+     * page.
+     */
+    private static final String VALIDATION_NOTE_SUBJECT = "Result Note (Validation)";
+    /**
+     * OGC-1028 (FR-D4) — same subject Results Entry stamps on a modification note.
+     */
+    private static final String MODIFICATION_NOTE_SUBJECT = "Result Note (Modification)";
+    private static final String NOTE_CONTEXT_VALIDATION = "VALIDATION";
+    private static final String NOTE_CONTEXT_MODIFICATION = "MODIFICATION";
     private final String RESULT_TABLE_ID;
     private final String RESULT_REPORT_ID;
 
@@ -533,11 +544,200 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         }
 
         if (!GenericValidator.isBlankOrNull(analysisItem.getNote())) {
-            NoteType noteType = analysisItem.getIsAccepted() ? NoteType.EXTERNAL : NoteType.INTERNAL;
-            Note note = noteService.createSavableNote(analysis, noteType, analysisItem.getNote(), RESULT_SUBJECT,
-                    getSysUserId(request));
+            Note note = noteService.createSavableNote(analysis, noteTypeFor(analysisItem), analysisItem.getNote(),
+                    noteSubjectFor(analysisItem), getSysUserId(request));
             noteUpdateList.add(note);
         }
+    }
+
+    /**
+     * Visibility axis (FR-F1): a chosen "E"/"I" wins; a row saved without a choice
+     * keeps the legacy inference — external when accepted, internal otherwise.
+     */
+    private NoteType noteTypeFor(AnalysisItem analysisItem) {
+        if (Note.EXTERNAL.equals(analysisItem.getNoteVisibility())) {
+            return NoteType.EXTERNAL;
+        }
+        if (Note.INTERNAL.equals(analysisItem.getNoteVisibility())) {
+            return NoteType.INTERNAL;
+        }
+        return analysisItem.getIsAccepted() ? NoteType.EXTERNAL : NoteType.INTERNAL;
+    }
+
+    /** Context axis (FR-F1): recorded in the subject, as Results Entry does. */
+    private String noteSubjectFor(AnalysisItem analysisItem) {
+        if (NOTE_CONTEXT_MODIFICATION.equals(analysisItem.getNoteContext())) {
+            return MODIFICATION_NOTE_SUBJECT;
+        }
+        if (NOTE_CONTEXT_VALIDATION.equals(analysisItem.getNoteContext())) {
+            return VALIDATION_NOTE_SUBJECT;
+        }
+        return RESULT_SUBJECT;
+    }
+
+    /**
+     * OGC-1028 (Validation v4 slice V2, FR-D1) — validate and release ONE analysis
+     * from its review panel. Unlike the batch save this is not bound to the session
+     * page cache: the analysis is resolved by path id and must still be awaiting
+     * validation, otherwise 409 tells the panel the page has gone stale. The row's
+     * note is saved with the visibility the validator chose.
+     */
+    @PostMapping(value = "AccessionValidation/analysis/{analysisId}/release", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<Map<String, Object>> releaseAnalysis(@PathVariable String analysisId,
+            @RequestBody AnalysisItem item) {
+        Analysis analysis = findAnalysis(analysisId);
+        if (analysis == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        if (!isAwaitingValidation(analysis)) {
+            return errorResponse(409, "notAwaitingValidation");
+        }
+        bindRowToAnalysis(item, analysis);
+        item.setIsAccepted(true);
+        item.setIsRejected(false);
+        if (isBlankOrNull(item.getNoteContext())) {
+            item.setNoteContext(NOTE_CONTEXT_VALIDATION);
+        }
+        Errors errors = new BaseErrors();
+        validateQuantifiableItems(item, errors);
+        if (errors.hasErrors()) {
+            return errorResponse(400, "invalidResult");
+        }
+
+        List<IResultUpdate> updaters = ValidationUpdateRegister.getRegisteredUpdaters();
+        IResultSaveService resultSaveService = new ResultValidationSaveService();
+        List<Analysis> analysisUpdateList = new ArrayList<>();
+        ArrayList<Result> resultUpdateList = new ArrayList<>();
+        ArrayList<Note> noteUpdateList = new ArrayList<>();
+        List<Result> deletableList = new ArrayList<>();
+        List<AnalysisItem> items = new ArrayList<>();
+        items.add(item);
+        createUpdateList(items, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList, resultSaveService,
+                !updaters.isEmpty());
+        return persistSingleAnalysis(analysisId, items, analysisUpdateList, resultUpdateList, noteUpdateList,
+                deletableList, resultSaveService, updaters, "released");
+    }
+
+    /**
+     * OGC-1028 (FR-D4) — a validator corrects a result without releasing it. Gated
+     * by the same two settings Results Entry honours: {@code modify results role}
+     * (403) and {@code modify results note required} (400). The analysis stays
+     * awaiting validation, its revision advances so the queue's "Modified" signal
+     * lights, and the reason is stored as a modification note with the chosen
+     * visibility. Nothing is dispatched downstream until the row is released.
+     */
+    @PostMapping(value = "AccessionValidation/analysis/{analysisId}/modify", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<Map<String, Object>> modifyAnalysisResult(
+            @PathVariable String analysisId, @RequestBody AnalysisItem item) {
+        Analysis analysis = findAnalysis(analysisId);
+        if (analysis == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        if (!isAwaitingValidation(analysis)) {
+            return errorResponse(409, "notAwaitingValidation");
+        }
+        if (org.openelisglobal.result.action.util.ResultUtil.modifyResultsRoleBased()
+                && org.openelisglobal.result.action.util.ResultUtil.userNotInRole(request)) {
+            return errorResponse(403, "modifyRoleRequired");
+        }
+        if (ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(ConfigurationProperties.Property.notesRequiredForModifyResults, "true")
+                && isBlankOrNull(item.getNote())) {
+            return errorResponse(400, "modificationReasonRequired");
+        }
+        bindRowToAnalysis(item, analysis);
+        item.setIsAccepted(false);
+        item.setIsRejected(false);
+        item.setNoteContext(NOTE_CONTEXT_MODIFICATION);
+        if (!areResults(item)) {
+            return errorResponse(400, "resultRequired");
+        }
+        Errors errors = new BaseErrors();
+        validateQuantifiableItems(item, errors);
+        if (errors.hasErrors()) {
+            return errorResponse(400, "invalidResult");
+        }
+
+        analysis.setSysUserId(getSysUserId(request));
+        analysis.setRevision(
+                org.openelisglobal.resultvalidation.util.ValidationSignals.nextRevision(analysis.getRevision()));
+        List<Analysis> analysisUpdateList = new ArrayList<>();
+        analysisUpdateList.add(analysis);
+        ArrayList<Note> noteUpdateList = new ArrayList<>();
+        if (!isBlankOrNull(item.getNote())) {
+            noteUpdateList.add(noteService.createSavableNote(analysis, noteTypeFor(item), item.getNote(),
+                    MODIFICATION_NOTE_SUBJECT, getSysUserId(request)));
+        }
+        List<Result> deletableList = new ArrayList<>();
+        ArrayList<Result> resultUpdateList = new ArrayList<>(
+                createResultFromAnalysisItem(item, analysis, analysis, noteUpdateList, deletableList));
+        List<AnalysisItem> items = new ArrayList<>();
+        items.add(item);
+        return persistSingleAnalysis(analysisId, items, analysisUpdateList, resultUpdateList, noteUpdateList,
+                deletableList, new ResultValidationSaveService(), ValidationUpdateRegister.getRegisteredUpdaters(),
+                "modified");
+    }
+
+    private org.springframework.http.ResponseEntity<Map<String, Object>> persistSingleAnalysis(String analysisId,
+            List<AnalysisItem> items, List<Analysis> analysisUpdateList, ArrayList<Result> resultUpdateList,
+            ArrayList<Note> noteUpdateList, List<Result> deletableList, IResultSaveService resultSaveService,
+            List<IResultUpdate> updaters, String outcome) {
+        ArrayList<Sample> sampleUpdateList = new ArrayList<>();
+        try {
+            resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, items,
+                    sampleUpdateList, noteUpdateList, resultSaveService, updaters, getSysUserId(request));
+        } catch (org.openelisglobal.resultvalidation.exception.QcAcknowledgmentRequiredException e) {
+            return errorResponse(409, "qcAcknowledgmentRequired");
+        } catch (LIMSRuntimeException e) {
+            LogEvent.logError(e);
+            return errorResponse(500, "persistFailed");
+        }
+        try {
+            fhirTransformService.transformPersistResultValidationFhirObjects(deletableList, analysisUpdateList,
+                    resultUpdateList, items, sampleUpdateList, noteUpdateList);
+        } catch (FhirLocalPersistingException e) {
+            LogEvent.logError(e);
+        }
+        Map<String, Object> body = new HashMap<>();
+        body.put("analysisId", analysisId);
+        body.put("outcome", outcome);
+        return org.springframework.http.ResponseEntity.ok(body);
+    }
+
+    private Analysis findAnalysis(String analysisId) {
+        try {
+            return analysisService.get(analysisId);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private boolean isAwaitingValidation(Analysis analysis) {
+        return analysis.getStatusId() != null && getValidationStatus().contains(analysis.getStatusId());
+    }
+
+    /**
+     * The row echoes what the queue GET served; the identifiers that drive the save
+     * are re-derived from the analysis itself so a stale or edited row cannot
+     * redirect the write.
+     */
+    private void bindRowToAnalysis(AnalysisItem item, Analysis analysis) {
+        item.setAnalysisId(analysis.getId());
+        item.setReadOnly(false);
+        if (analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null) {
+            item.setAccessionNumber(analysis.getSampleItem().getSample().getAccessionNumber());
+        }
+        if (isBlankOrNull(item.getTestId()) && analysis.getTest() != null) {
+            item.setTestId(analysis.getTest().getId());
+        }
+    }
+
+    private org.springframework.http.ResponseEntity<Map<String, Object>> errorResponse(int status, String code) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", code);
+        return org.springframework.http.ResponseEntity.status(status).body(body);
     }
 
     private void addResultSets(Analysis analysis, Result result, IResultSaveService resultValidationSave) {
