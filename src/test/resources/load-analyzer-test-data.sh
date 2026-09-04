@@ -2,7 +2,7 @@
 # Load Analyzer Test Data Fixtures
 #
 # Purpose: Load analyzer-related test data into OpenELIS database
-# Reference: specs/004-astm-analyzer-mapping/plan.md
+# Historical context: Git history for specs/004-astm-analyzer-mapping
 #
 # This script uses DBUnit XML as the SINGLE SOURCE OF TRUTH for test data.
 # The DBUnit dataset is: testdata/analyzer-mapping-test-data.xml

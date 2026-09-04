@@ -27,7 +27,7 @@ on:
         type: string
         default: "core"
       setup_analyzer_harness:
-        description: "Run analyzer harness setup (plugin jars, seeding, cert validation)"
+        description: "Run analyzer harness setup (runtime, seeding, cert validation)"
         required: false
         type: boolean
         default: false
@@ -223,30 +223,6 @@ jobs:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
 
-      - name: Download plugin jars (cross-run)
-        if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars
-          run-id: ${{ inputs.build_run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download plugin jars (same-run)
-        if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars
-
-      - name: Restore plugin jars for runtime loading
-        if: inputs.setup_analyzer_harness
-        run: |
-          mkdir -p volume/plugins
-          rm -rf volume/plugins/*
-          cp /tmp/e2e-plugin-jars/*.jar volume/plugins/
-          ls -lah volume/plugins
-
       # ── Docker Setup ────────────────────────────────────────────────────────
 
       - name: Login to GHCR
@@ -387,8 +363,6 @@ jobs:
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           ANALYZER_HARNESS: ${{ inputs.setup_analyzer_harness && 'true' || '' }}
-          FILE_IMPORT_POLL_MS: ${{ inputs.setup_analyzer_harness && '1000' || '' }}
-          FILE_IMPORT_DROP_BUFFER_MS: ${{ inputs.setup_analyzer_harness && '15000' || '' }}
 
       - name: Memory snapshot (post-test) + monitor dump
         if: ${{ !cancelled() }}

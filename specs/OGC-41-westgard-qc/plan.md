@@ -1,5 +1,13 @@
 # Implementation Plan: Westgard QC Rules Dashboard
 
+> **Superseded analyzer-identification plan:** The operational-QC portions of
+> this plan remain historical implementation context. Any task, component, or
+> data model involving `AnalyzerQcRule`, OpenELIS-pushed classifiers, or
+> profile-to-rule copying is superseded by the
+> [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+> and must not be executed or extended. Git history preserves the original
+> plan; this notice is the current direction.
+
 **Branch**: `feat/qc_westgard_rules` | **Date**: 2026-04-13 | **Spec**:
 [spec.md](spec.md) **Jira**:
 [OGC-41](https://uwdigi.atlassian.net/browse/OGC-41) | **Design**:
@@ -7,12 +15,12 @@
 
 ## Summary
 
-Implement a Westgard-rules-based quality control system for laboratory analyzer
-instruments, covering automated QC sample identification, statistical evaluation
-of 8 standard rules, a real-time compliance dashboard with Levey-Jennings
-charts, and configurable alerting. The full scope spans the design spec's
-FR1-FR13 across 5 milestones, with M1 delivering the MVP already implemented in
-PR #3390 + Bridge #33.
+Implement a Westgard-rules-based operational quality control system for
+laboratory instruments, covering control lots and results, statistical
+evaluation of 8 standard rules, a real-time compliance dashboard with
+Levey-Jennings charts, and configurable alerting. Bridge profile-owned
+control-result recognition is an external input boundary governed by OGC-1054,
+not configurable operational-QC state in this plan.
 
 ## Technical Context
 
@@ -40,11 +48,11 @@ analyzer ingestion pipeline (async); all QC data immutable for audit
 - [x] **Test Coverage**: ~285 backend+bridge tests exist (~233 QC module + ~26
       analyzer-QC + ~26 bridge-QC @Test methods); frontend 0 tests and E2E 0
       tests are the M1 completion gap
-- [x] **Schema Management**: Liquibase for all tables; runtime metadata (QC
-      rules) comes from profiles, not seed data
+- [x] **Schema Management**: Liquibase for operational-QC tables; profile-owned
+      control recognition is not copied into OpenELIS tables
 - [x] **Internationalization**: All QC UI strings use React Intl; ~923 new
-      en.json keys added vs develop (QC dashboard, charts, rule config, control
-      lot setup, alerts, per-analyzer QC rules)
+      en.json keys added vs develop (QC dashboard, charts, Westgard rule config,
+      control lot setup, and alerts)
 - [x] **Security & Compliance**: RBAC (GLOBAL_ADMIN + LAB_SUPERVISOR),
       sys_user_id audit trail on all entities, violations immutable
 
@@ -52,11 +60,9 @@ analyzer ingestion pipeline (async); all QC data immutable for audit
 
 ### Current State
 
-**Implementation**: PR #3390 (OE) + Bridge #33 implement all M1 backend, bridge,
-and frontend code. The code is stacked on the Madagascar FILE analyzer PR #3372,
-builds pass in CI, and the local harness runs with 10 seeded analyzers and
-profile-driven QC rules (all 7 FILE profiles and 6 ASTM profiles verified
-populated).
+**Implementation**: PR #3390 supplied the OpenELIS operational-QC foundation.
+Its OpenELIS-owned analyzer classifier and Bridge-pulled rule path are
+superseded and removed by OGC-1054; they are not evidence for this plan.
 
 **Remaining before M1 is deploy-ready**: (1) end-to-end flow validation (M1.1 —
 create lot → mock QC → violation → dashboard), (2) REST controller integration
@@ -67,7 +73,7 @@ tests (M1.2), (3) one Playwright smoke test (M1.3), (4) cleanup + CI green
 
 | ID         | Branch Suffix         | Scope                                                                                                        | User Stories   | Verification                                                                                                         | Depends On |
 | ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------- | ---------- |
-| **M1**     | m1-mvp                | QC pipeline + dashboard + charts + alerts + rule config + bridge QC identification                           | US1-7 (all)    | Backend tests pass, 1 Playwright smoke test, controller tests, local harness flow validated                          | -          |
+| **M1**     | m1-mvp                | Operational-QC pipeline + dashboard + charts + alerts + Westgard configuration                               | US1-6          | Backend tests pass, 1 Playwright smoke test, controller tests, local harness flow validated                          | -          |
 | **M2**     | m2-corrective-actions | Corrective action workflow: entity, service, UI (recalibration, maintenance, repeat control, reagent change) | FR7            | Corrective action CRUD + link to violations; violation cannot close without corrective action for REJECTION severity | M1         |
 | **[P] M3** | m3-email-alerts       | Email notification transport + per-user notification preferences                                             | FR11.2-11.7    | Email sent on violation; user can configure which severities trigger email                                           | M1         |
 | **[P] M4** | m4-trend-reporting    | Trend analysis charts + reporting (PDF/CSV export) + violation history log                                   | FR10, FR12     | Trend graph renders; PDF export works; violation log filterable                                                      | M1         |
@@ -271,13 +277,6 @@ src/main/java/org/openelisglobal/qc/
 ├── form/                # QCControlLotForm, WestgardRuleConfigForm
 └── valueholder/         # QCControlLot, QCResult, QCStatistics, QCRuleViolation, QCAlert
 
-# Backend (analyzer QC rules)
-src/main/java/org/openelisglobal/analyzer/
-├── controller/          # AnalyzerQcRuleRestController
-├── dao/                 # AnalyzerQcRuleDAO
-├── service/             # AnalyzerQcRuleService, QcRuleDto
-└── valueholder/         # AnalyzerQcRule
-
 # Frontend (QC components)
 frontend/src/components/qc/
 ├── dashboard/           # QCDashboard, QCSummaryTiles, InstrumentsTab, AlertsTab, InstrumentDetailPage
@@ -286,26 +285,8 @@ frontend/src/components/qc/
 ├── ruleConfig/          # RuleConfigPanel, RuleConfigFormModal
 └── index.js             # Module exports
 
-# Frontend (analyzer QC rules page)
-frontend/src/components/analyzers/QcRules/
-├── QcRuleBuilderModal.jsx  # Now a routed page at /analyzers/:id/qc-rules
-└── QcRuleRow.jsx
-
-# Analyzer profiles (QC rules source of truth)
-projects/analyzer-profiles/
-├── astm/                # 6 ASTM profiles with FIELD_EQUALS O.12=Q
-└── file/                # 7 FILE profiles with instrument-specific QC rules
-
-# Bridge (QC rule evaluation engine)
-tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/
-├── qc/                  # QcRule, QcRuleEvaluator
-├── fhir/                # ASTMResultParser, FileResultParser, HL7ResultParser (rule-driven isControl)
-└── startup/             # AnalyzerRegistryBootstrap (pulls qcRules from OE)
-
-# Liquibase — QC changesets split across two directories
+# Liquibase - operational-QC changesets
 src/main/resources/liquibase/
-├── analyzer/            # 004-012-create-analyzer-qc-rule.xml (table)
-│                        # 004-013-seed-default-qc-rules.xml (no-op; rules come from profiles via validCheckSum ANY)
 └── qc/                  # 001-create-qc-tables.xml (control lot, result, statistics)
                          # 002-create-westgard-rule-config.xml
                          # 003-create-qc-violation-tables.xml
@@ -318,8 +299,9 @@ src/main/resources/liquibase/
 
 ## Testing Strategy
 
-**Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
-and [Playwright best practices](.specify/guides/playwright-best-practices.md)
+**Reference**:
+[OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md) and
+[Playwright best practices](../../.specify/guides/playwright-best-practices.md)
 
 **Note**: This project has deprecated Cypress E2E (per CLAUDE.md). All new E2E
 tests use **Playwright** with the harness-foundational / harness-demo project

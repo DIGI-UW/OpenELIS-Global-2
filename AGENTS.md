@@ -4,15 +4,86 @@
 
 For FILE-based analyzer workflows in OpenELIS Global 2:
 
-- Bridge is the runtime owner of directory watching/polling and file transport.
-- OpenELIS owns configuration, bridge registration, direct ingestion endpoint,
-  and result processing.
-- No OpenELIS app-side FILE poller is implemented in this branch. If a fallback
-  poller is added later, it must remain disabled by default unless explicitly
-  enabled.
+- Bridge owns the analyzer connection, its runtime configuration, directory
+  watching/polling, parsing, archive/error handling, and file transport.
+- OpenELIS owns the lab-facing connection reference, local clinical bindings,
+  direct normalized ingestion endpoint, result processing, review, and audit.
+- An OpenELIS app-side FILE poller is outside the target architecture and must
+  not be added. Any proposal to change this requires an explicit architecture
+  decision that supersedes this ownership model.
 
 When guidance conflicts, this ownership model takes precedence for remediation
 work in feature 014.
+
+## OpenELIS Work Product/Engineering Boundary
+
+For analyzer work, `DIGI-UW/openelis-work` is a non-technical product and design
+source only.
+
+- It may define user goals, lab-facing workflows, visible information and
+  states, functional acceptance behavior, and visual/interaction intent.
+- It does not define entities, tables, persistence, JSON structures, APIs,
+  routes, events, payloads, repository ownership, runtime processes,
+  synchronization, migration, or test-layer ownership.
+- Technical-looking labels, annotations, or examples in that repository are
+  non-normative. Do not use them for or against an implementation choice.
+- Derive implementation only from current OpenELIS, Analyzer Bridge, and
+  analyzer-mock code; repository-owned engineering specifications; and an
+  explicit ADR or versioned contract when a new decision is required.
+- Use `openelis-work` screenshots and prototypes for functional and visual
+  comparison, never as an implementation specification.
+
+For the target analyzer architecture, Analyzer Bridge owns portable analyzer
+profiles, durable analyzer connections and their runtime configuration, and
+analyzer-facing behavior (listeners, parsing, probes, protocol execution, and
+FILE watching/transport). OpenELIS owns lab-facing orchestration, the reference
+to a Bridge connection, lab units, local clinical catalog bindings,
+verification/audit, activation intent, operational QC, held results, and review.
+Do not recreate Bridge runtime or connection-configuration authority in
+OpenELIS.
+
+The established working analyzer profile system is the implementation baseline,
+not a disposable legacy model. A profile has exactly two jobs: define
+communication/runtime behavior for one analyzer type, and supply defaults for
+creating a new Bridge connection for that type through the OpenELIS setup
+workflow. Bridge persists the connection's profile pin and runtime values;
+OpenELIS persists only its Bridge connection reference and LIMS-owned state.
+Moving catalog packaging to Bridge, making revisions immutable, and adding
+lifecycle/management UX must evolve those semantics additively. Do not introduce
+a second profile contract, replace profile-owned defaults with frontend/server
+constants, or accept a profile-contract change without unabridged GeneXpert ASTM
+and FluoroCycler compatibility tests across OE setup, Bridge runtime, and
+analyzer mock traffic.
+
+Existing profile content is curated from instrument evidence. A current row is
+retained, corrected, represented as a proven alias, split, or removed according
+to its semantics; current storage or equal LOINC values never create a
+preservation obligation. Do not introduce `LEGACY_UNBOUND`, a legacy profile-row
+domain, or a runtime compatibility path for superseded profile/config storage.
+
+Profile execution is fully data-driven. Production code must not special-case a
+hard-coded profile ID/revision, manufacturer, model, display name, analyzer test
+code, fixture name, or vendor-specific field/value, and it must not duplicate a
+profile-owned default in frontend or server constants. Generic lookup by values
+read from a profile or analyzer pin is expected. Named analyzer profiles belong
+only in profile data and parameterized test fixtures; validators, consumers,
+runtime handlers, and UI composition remain profile-agnostic.
+
+Control-result recognition is Analyzer Type behavior owned by the pinned Bridge
+profile revision. Bridge must use only the profile's explicit recognition mode
+and rules; it must not use an OpenELIS-pushed classifier or a hard-coded
+fallback. `AnalyzerQcRule` is not part of the target architecture. OpenELIS
+operational QC (`QCControlLot`, `QCResult`, statistics, Westgard evaluation,
+violations, and alerts) remains a separate linked workflow and must not gate
+analyzer activation or stale analyzer mapping/recognition verification.
+
+Published Bridge profile revisions are immutable and retained while referenced.
+A Bridge connection pins a profile ID/revision; an OpenELIS analyzer references
+that connection and records the acknowledged profile reference needed for local
+binding verification and audit. Update shared and Duplicate Profile never move a
+configured connection implicitly, and OpenELIS must not keep an authoritative
+copied-profile snapshot, runtime-configuration copy, or per-analyzer mapping
+editor.
 
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
