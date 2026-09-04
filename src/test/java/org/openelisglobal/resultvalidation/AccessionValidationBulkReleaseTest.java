@@ -99,18 +99,7 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
                 .getTargetObject(resultLimitService)).initializeGlobalVariables();
         authenticateAs("testUser");
         statusService.refreshCache();
-        // The queue is filtered by the validator's lab-unit roles: grant the
-        // Validation role on every lab unit (as ResultEntryRestControllerTest does).
-        jdbcTemplate.update("INSERT INTO clinlims.user_lab_unit_roles (system_user_id, last_updated) VALUES (1, NOW())"
-                + " ON CONFLICT (system_user_id) DO NOTHING");
-        jdbcTemplate.update("INSERT INTO clinlims.lab_unit_role_map (lab_unit_role_map_id, lab_unit) VALUES (9401,"
-                + " 'AllLabUnits') ON CONFLICT (lab_unit_role_map_id) DO NOTHING");
-        jdbcTemplate
-                .update("INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES (1, 9401)"
-                        + " ON CONFLICT DO NOTHING");
-        jdbcTemplate.update("INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role)"
-                + " SELECT 9401, CAST(id AS VARCHAR) FROM clinlims.system_role WHERE name = 'Validation'"
-                + " ON CONFLICT DO NOTHING");
+        ValidationLabUnitRoles.grantValidationOnAllLabUnits(jdbcTemplate, 9401);
         // DisplayListService is a Mockito mock in the test profile (AppTestConfig), so
         // the active-section list the filter consults has to be stubbed explicitly.
         DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);

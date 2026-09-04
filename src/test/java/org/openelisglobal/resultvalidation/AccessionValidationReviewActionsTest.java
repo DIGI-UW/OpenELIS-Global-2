@@ -63,16 +63,7 @@ public class AccessionValidationReviewActionsTest extends BaseWebContextSensitiv
         executeDataSetWithStateManagement("testdata/validation-review-panel.xml");
         authenticateAs("testUser");
         statusService.refreshCache();
-        jdbcTemplate.update("INSERT INTO clinlims.user_lab_unit_roles (system_user_id, last_updated) VALUES (1, NOW())"
-                + " ON CONFLICT (system_user_id) DO NOTHING");
-        jdbcTemplate.update("INSERT INTO clinlims.lab_unit_role_map (lab_unit_role_map_id, lab_unit) VALUES (9402,"
-                + " 'AllLabUnits') ON CONFLICT (lab_unit_role_map_id) DO NOTHING");
-        jdbcTemplate
-                .update("INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES (1, 9402)"
-                        + " ON CONFLICT DO NOTHING");
-        jdbcTemplate.update("INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role)"
-                + " SELECT 9402, CAST(id AS VARCHAR) FROM clinlims.system_role WHERE name = 'Validation'"
-                + " ON CONFLICT DO NOTHING");
+        ValidationLabUnitRoles.grantValidationOnAllLabUnits(jdbcTemplate, 9402);
         DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);
         when(displayList.getList(DisplayListService.ListType.TEST_SECTION_ACTIVE))
                 .thenReturn(List.of(new IdValuePair("1", "Environmental")));

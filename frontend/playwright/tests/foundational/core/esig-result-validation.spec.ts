@@ -30,6 +30,10 @@ const password = process.env.TEST_PASS || "adminADMIN!";
 test("E-Signature — full result entry and validation flow", async ({
   page,
 }) => {
+  // Two full signing ceremonies plus an admin toggle round-trip: the default
+  // 30s budget leaves no headroom on a CI runner.
+  test.setTimeout(60_000);
+
   // ── Step 1: Enable e-signatures via admin UI ──────────────────
 
   await test.step("Enable e-signatures in Site Information", async () => {
@@ -73,6 +77,17 @@ test("E-Signature — full result entry and validation flow", async ({
     await expect(main.getByRole("button", { name: "Save" })).toBeVisible({
       timeout: NAV_TIMEOUT,
     });
+  });
+
+  await test.step("Enter a result so the analysis reaches the validation queue", async () => {
+    // A saved value is what moves the analysis to "awaiting validation";
+    // saving an empty row persists nothing and leaves the queue empty.
+    const resultInput = page
+      .getByRole("main")
+      .locator('input[id^="ResultValue"]')
+      .first();
+    await expect(resultInput).toBeVisible({ timeout: UI_TIMEOUT });
+    await resultInput.fill("6");
   });
 
   await test.step("Click Save — e-sig modal appears", async () => {
@@ -129,11 +144,21 @@ test("E-Signature — full result entry and validation flow", async ({
     await pwInput.click();
     await pwInput.pressSequentially(password, { delay: 30 });
 
+    // The signature releases the result save; sync on that request so the
+    // navigation that follows cannot cancel it mid-flight.
+    const resultsSaved = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/LogbookResults") &&
+        response.request().method() === "POST",
+      { timeout: LONG_TIMEOUT },
+    );
+
     // Click Sign
     await modal.getByRole("button", { name: /sign/i }).click();
 
     // Modal should close after successful signature
     await expect(modal).toBeHidden({ timeout: LONG_TIMEOUT });
+    await resultsSaved;
   });
 
   // ── Step 4: Validation — VALIDATED_AND_RELEASED signature ─────
