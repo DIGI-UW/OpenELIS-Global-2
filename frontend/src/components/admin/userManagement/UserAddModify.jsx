@@ -45,6 +45,23 @@ const passwordPatternRegex = /^(?=.*[*$#!])(?=.*[a-zA-Z0-9]).{7,}$/;
 const loginNameRegex = /^[a-zA-Z]+$/;
 const nameRegex = /^(?=.*[a-zA-Z])[a-zA-Z .'_@-]*$/;
 
+const labUnitRoleIds = (labUnitRoles) =>
+  (labUnitRoles || []).map((role) => role.roleId);
+
+// A lab unit with no roles on offer must not read as "everything selected".
+const hasEveryLabUnitRole = (selectedRoles, roleIds) =>
+  roleIds.length > 0 &&
+  roleIds.every((roleId) => (selectedRoles || []).includes(roleId));
+
+const toggleEveryLabUnitRole = (selectedRoles, roleIds) => {
+  const currentRoles = selectedRoles || [];
+  return hasEveryLabUnitRole(currentRoles, roleIds)
+    ? currentRoles.filter((roleId) => !roleIds.includes(roleId))
+    : currentRoles.concat(
+        roleIds.filter((roleId) => !currentRoles.includes(roleId)),
+      );
+};
+
 function UserAddModify() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -768,6 +785,8 @@ function UserAddModify() {
     );
   }
 
+  const availableLabUnitRoleIds = labUnitRoleIds(userDataShow?.labUnitRoles);
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -1318,34 +1337,17 @@ function UserAddModify() {
                           id={`all-permissions-${key}`}
                           data-testid={`all-permissions-${(userDataShow?.testSections?.find((s) => s.id === key)?.value || key).replace(/\s+/g, "-")}`}
                           labelText={"All Permissions"}
-                          checked={["4", "5", "7", "10"].every(
-                            (num) =>
-                              selectedTestSectionLabUnits[key] &&
-                              selectedTestSectionLabUnits[key].includes(num),
+                          checked={hasEveryLabUnitRole(
+                            selectedTestSectionLabUnits[key],
+                            availableLabUnitRoleIds,
                           )}
                           onChange={() => {
-                            const numbersToAdd = ["4", "5", "7", "10"];
-                            const updatedRoles = selectedTestSectionLabUnits[
-                              key
-                            ]
-                              ? [...selectedTestSectionLabUnits[key]]
-                              : [];
-                            const numbersToRemove = numbersToAdd.filter((num) =>
-                              updatedRoles.includes(num),
-                            );
-                            if (numbersToRemove.length > 0) {
-                              numbersToRemove.forEach((num) => {
-                                const index = updatedRoles.indexOf(num);
-                                if (index !== -1) {
-                                  updatedRoles.splice(index, 1);
-                                }
-                              });
-                            } else {
-                              updatedRoles.push(...numbersToAdd);
-                            }
                             setSelectedTestSectionLabUnits((prev) => ({
                               ...prev,
-                              [key]: updatedRoles,
+                              [key]: toggleEveryLabUnitRole(
+                                prev[key],
+                                availableLabUnitRoleIds,
+                              ),
                             }));
                             setSaveButton(false);
                             setValidation({ ...validation, selectedLab: true });
