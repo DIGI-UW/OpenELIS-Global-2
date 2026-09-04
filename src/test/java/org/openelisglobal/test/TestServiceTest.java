@@ -5,8 +5,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -344,6 +346,25 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(tests);
         assertEquals(1, tests.size());
         assertEquals("Blood Test", tests.get(0).getDescription());
+    }
+
+    @Test
+    public void getTestsByIds_shouldReturnMatchingTests() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByIds(Set.of("1", "2"));
+
+        assertNotNull(tests);
+        assertEquals(2, tests.size());
+
+        assertTrue(tests.stream().anyMatch(test -> "Blood Test".equals(test.getDescription())));
+        assertTrue(tests.stream().anyMatch(test -> "Urine Test".equals(test.getDescription())));
+    }
+
+    @Test
+    public void getTestsByIds_shouldReturnEmptyListForEmptySet() {
+        List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByIds(Collections.emptySet());
+
+        assertNotNull(tests);
+        assertTrue(tests.isEmpty());
     }
 
 }
