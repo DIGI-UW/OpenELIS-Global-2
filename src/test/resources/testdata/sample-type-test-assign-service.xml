@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <!-- localization for type_of_sample name_localization_id FK -->
+    <localization id="9900" description="Blood"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="9901" description="Urine"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="9902" description="GeneXpert Test"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="9903" description="Sputum Culture Test"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- TypeOfSample: active sample type with an existing mapping -->
+    <type_of_sample id="9900" description="Blood" domain="H"
+        local_abbrev="B" is_active="1" sort_order="1"
+        name_localization_id="9900" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- TypeOfSample: active sample type with no existing mapping -->
+    <type_of_sample id="9901" description="Urine" domain="H"
+        local_abbrev="U" is_active="1" sort_order="2"
+        name_localization_id="9901" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- TypeOfSample: to be deactivated in the deactivate branch test -->
+    <type_of_sample id="9902" description="Legacy Sputum"
+        domain="E" local_abbrev="LS" is_active="1" sort_order="3"
+        name_localization_id="9900" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- test_section and test_formats required by Test FK -->
+    <test_section id="9900" name="Hematology"
+        description="Hematology section" is_external="0" sort_order="1"
+        display_key="hematology" domain="CLINICAL" name_localization_id="9900"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <test_formats id="9900" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Test: to be assigned to a sample type -->
+    <test id="9900" name="GeneXpert" description="GeneXpert MTB/RIF"
+        loinc="99001-1" is_active="1" is_reportable="1" orderable="true"
+        sort_order="1" guid="test-genexpert-9900" test_section_id="9900"
+        test_format_id="9900" name_localization_id="9902"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Test: second test used in multi-assign scenarios -->
+    <test id="9901" name="SputumCulture" description="Sputum Culture"
+        loinc="99002-2" is_active="1" is_reportable="1" orderable="true"
+        sort_order="2" guid="test-sputum-9901" test_section_id="9900"
+        test_format_id="9900" name_localization_id="9903"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Existing sampletype_test mapping: Blood (9900) <-> GeneXpert (9900) -->
+    <sampletype_test id="9900" sample_type_id="9900"
+        test_id="9900" />
+
+</dataset>
