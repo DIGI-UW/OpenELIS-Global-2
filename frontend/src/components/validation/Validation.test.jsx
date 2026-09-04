@@ -135,6 +135,34 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(screen.queryByTestId("validation-review-panel-1")).toBeNull();
   });
 
+  it("the queue has no Notes input of its own; the panel's note feeds the batch release (OGC-1028)", () => {
+    const results = { resultList: [row(0)], qcFailureList: [] };
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { AccessionFormat: "" } }}
+      >
+        <NotificationContext.Provider
+          value={{ setNotificationVisible: vi.fn(), addNotification: vi.fn() }}
+        >
+          <IntlProvider locale="en" messages={messages}>
+            <Validation params="" results={results} />
+          </IntlProvider>
+        </NotificationContext.Provider>
+      </ConfigurationContext.Provider>,
+    );
+    expect(screen.queryByRole("textbox")).toBeNull();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /expand row/i })[0]);
+    const composer = screen.getByLabelText("Validation note");
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+
+    fireEvent.change(composer, { target: { value: "Batch note" } });
+
+    expect(results.resultList[0].note).toBe("Batch note");
+    expect(results.resultList[0].noteVisibility).toBe("E");
+    expect(results.resultList[0].noteContext).toBe("VALIDATION");
+  });
+
   it("fail-safe: QC not evaluated keeps a chip-less row out of the Clear lane", () => {
     renderValidation([row(0, { qcStatus: "UNKNOWN" })]);
 

@@ -89,6 +89,7 @@ const ValidationReviewPanel = ({
   configurationProperties,
   qcAck,
   onActionDone,
+  onNoteChange,
 }) => {
   const intl = useIntl();
   const triage =
@@ -116,11 +117,34 @@ const ValidationReviewPanel = ({
   const order = useOrderContext(row.accessionNumber);
 
   const [layout, setLayout] = useState(() => loadSectionLayout());
-  const [noteText, setNoteText] = useState("");
+  // The composer is the row's single note input (the queue has no Notes
+  // column): it starts from whatever the row already carries, so collapsing
+  // and re-expanding keeps the text, and every change is published back to
+  // the row for the legacy batch release.
+  const [noteText, setNoteText] = useState(row.note || "");
   // Release notes print on the patient report unless the validator opts out
   // (legacy parity); a modification reason stays internal unless opted in.
-  const [noteVisibility, setNoteVisibility] = useState(NOTE_EXTERNAL);
+  const [noteVisibility, setNoteVisibility] = useState(
+    row.noteVisibility === NOTE_INTERNAL ? NOTE_INTERNAL : NOTE_EXTERNAL,
+  );
   const [visibilityChosen, setVisibilityChosen] = useState(false);
+
+  const publishNote = (text, visibility) => {
+    if (onNoteChange) {
+      onNoteChange(row.id, text, visibility);
+    }
+  };
+  const changeNoteText = (text) => {
+    setNoteText(text);
+    publishNote(text, noteVisibility);
+  };
+  const changeNoteVisibility = (visibility, chosen) => {
+    setNoteVisibility(visibility);
+    if (chosen) {
+      setVisibilityChosen(true);
+    }
+    publishNote(noteText, visibility);
+  };
   const [modifying, setModifying] = useState(false);
   const [newValue, setNewValue] = useState(row.result ?? "");
   const [busy, setBusy] = useState(false);
@@ -412,7 +436,7 @@ const ValidationReviewPanel = ({
             })}
             rows={2}
             value={noteText}
-            onChange={(event) => setNoteText(event.target.value)}
+            onChange={(event) => changeNoteText(event.target.value)}
             invalid={modifying && reasonMissing}
             invalidText={intl.formatMessage({
               id: "label.validation.review.modify.reasonRequired",
@@ -424,10 +448,7 @@ const ValidationReviewPanel = ({
               id: "label.validation.review.notes.visibility",
             })}
             valueSelected={noteVisibility}
-            onChange={(value) => {
-              setNoteVisibility(value);
-              setVisibilityChosen(true);
-            }}
+            onChange={(value) => changeNoteVisibility(value, true)}
             data-testid="review-note-visibility"
           >
             <RadioButton
@@ -504,7 +525,7 @@ const ValidationReviewPanel = ({
               onClick={() => {
                 setModifying(true);
                 if (!visibilityChosen) {
-                  setNoteVisibility(NOTE_INTERNAL);
+                  changeNoteVisibility(NOTE_INTERNAL, false);
                 }
               }}
               data-testid="review-modify"
@@ -532,7 +553,7 @@ const ValidationReviewPanel = ({
                 setNewValue(row.result ?? "");
                 setErrorKey("");
                 if (!visibilityChosen) {
-                  setNoteVisibility(NOTE_EXTERNAL);
+                  changeNoteVisibility(NOTE_EXTERNAL, false);
                 }
               }}
               data-testid="review-cancel-modification"

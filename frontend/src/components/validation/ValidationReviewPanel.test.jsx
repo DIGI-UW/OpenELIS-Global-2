@@ -204,7 +204,39 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(onActionDone).toHaveBeenCalledWith("released", expect.anything());
   });
 
-  it("a note typed in the queue's Notes column is kept when releasing from the panel", () => {
+  it("the composer publishes the note, its visibility and the Validation context to the row for the batch release", () => {
+    const onNoteChange = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ValidationReviewPanel
+          data={row()}
+          rows={[row()]}
+          configurationProperties={{}}
+          qcAck={{ required: false, satisfied: true }}
+          onActionDone={vi.fn()}
+          onNoteChange={onNoteChange}
+        />
+      </IntlProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText("Validation note"), {
+      target: { value: "For the batch too" },
+    });
+    expect(onNoteChange).toHaveBeenLastCalledWith(0, "For the batch too", "E");
+
+    fireEvent.click(screen.getByLabelText("Internal"));
+    expect(onNoteChange).toHaveBeenLastCalledWith(0, "For the batch too", "I");
+  });
+
+  it("re-expanding a row shows the note it already carries", () => {
+    renderPanel(row({ note: "Kept across collapse", noteVisibility: "I" }));
+    expect(screen.getByLabelText("Validation note")).toHaveValue(
+      "Kept across collapse",
+    );
+    expect(screen.getByLabelText("Internal")).toBeChecked();
+  });
+
+  it("a note already carried by the row is kept when releasing from the panel", () => {
     renderPanel(row({ note: "Typed in the row" }));
 
     fireEvent.click(screen.getByText("Validate & release"));
