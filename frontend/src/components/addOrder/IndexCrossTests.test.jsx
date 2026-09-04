@@ -82,7 +82,11 @@ const crossTestOrder = () => ({
 const renderWithOrder = () => {
   window.history.pushState({}, "", "/SamplePatientEntry?ID=EORD1145X1");
   global.fetch = vi.fn(() =>
-    Promise.resolve({ json: () => Promise.resolve(crossTestOrder()) }),
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(crossTestOrder()),
+    }),
   );
   return render(
     <MemoryRouter>
@@ -123,5 +127,37 @@ describe("e-order awaiting-specimen chooser (OGC-1145 FR-8)", () => {
         screen.queryByTestId("awaiting-specimen-chooser"),
       ).not.toBeInTheDocument(),
     );
+  });
+});
+
+describe("e-order lookup error handling", () => {
+  it("surfaces the server's error message instead of the bare HTTP status", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    window.history.pushState({}, "", "/SamplePatientEntry?ID=EORD1145X1");
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ message: "Order already accessioned" }),
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <Index />
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(consoleError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Order already accessioned" }),
+      ),
+    );
+
+    consoleError.mockRestore();
   });
 });

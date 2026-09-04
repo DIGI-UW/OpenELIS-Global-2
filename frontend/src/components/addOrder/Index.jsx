@@ -163,11 +163,27 @@ const Index = () => {
       {
         method: "get",
         headers: {
+          Accept: "application/json",
           "X-CSRF-Token": localStorage.getItem("CSRF"),
         },
       },
     )
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          // Parse the error body first, THEN throw: chaining .catch() after a
+          // .then() that throws would swallow the message we just extracted.
+          return response
+            .json()
+            .catch(() => null)
+            .then((errorJson) => {
+              throw new Error(
+                errorJson?.message || `HTTP error! status: ${response.status}`,
+              );
+            });
+        }
+
+        return response.json();
+      })
       .then((jsonResponse) => {
         success(jsonResponse);
         setIsLoadingReferral(false);

@@ -67,10 +67,25 @@ function CsvImportPreview({ year, onClose, onImportComplete }) {
         {
           method: "POST",
           credentials: "include",
-          headers: { "X-CSRF-Token": localStorage.getItem("CSRF") },
+          headers: {
+            Accept: "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
           body: formData,
         },
       );
+
+      if (!response.ok) {
+        let errorMessage = `Failed to import holidays: HTTP ${response.status}`;
+        try {
+          const errorJson = await response.json();
+          errorMessage = errorJson.message || errorMessage;
+        } catch (e) {
+          console.log("Error fetching data", e);
+          // Fallback if the error response wasn't valid JSON
+        }
+        throw new Error(errorMessage);
+      }
       const data = await response.json();
       setResult(data);
       if (data.imported > 0) {

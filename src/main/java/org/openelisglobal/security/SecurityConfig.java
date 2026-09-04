@@ -45,6 +45,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
@@ -87,7 +88,9 @@ import org.springframework.security.web.authentication.logout.LogoutSuccessHandl
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.web.accept.HeaderContentNegotiationStrategy;
 import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.multipart.support.MultipartFilter;
 
@@ -437,7 +440,14 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin"))
                 .exceptionHandling(ex -> ex.accessDeniedHandler((request, response, accessDeniedException) -> {
                     String path = request.getRequestURI().substring(request.getContextPath().length());
-                    if (path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider")) {
+
+                    MediaTypeRequestMatcher requestMatcher = new MediaTypeRequestMatcher(
+                            new HeaderContentNegotiationStrategy(), MediaType.TEXT_HTML);
+                    requestMatcher.setIgnoredMediaTypes(Set.of(MediaType.ALL));
+
+                    if (requestMatcher.matches(request)) {
+                        response.sendRedirect(request.getContextPath() + "/Home?access=denied");
+                    } else {
                         response.setStatus(403);
                         response.setContentType("application/json");
                         response.setCharacterEncoding("UTF-8");
@@ -445,8 +455,6 @@ public class SecurityConfig {
                                 ? "CSRF token missing or invalid"
                                 : "Access denied";
                         response.getWriter().write("{ \"status\": 403, \"message\": \"" + message + "\" }");
-                    } else {
-                        response.sendRedirect(request.getContextPath() + "/Home?access=denied");
                     }
                 }))
                 // add security headers

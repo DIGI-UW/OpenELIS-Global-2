@@ -412,8 +412,19 @@ const StorageLocationModal = ({
             setIsSubmitting(false);
             if (status >= 200 && status < 300) {
               // Success - fetch updated location
-              fetch(`${window.location.origin}${endpoint}`)
-                .then((res) => res.json())
+              fetch(`${window.location.origin}${endpoint}`, {
+                headers: {
+                  Accept: "application/json",
+                },
+              })
+                .then((res) => {
+                  if (!res.ok) {
+                    throw new Error(
+                      `Failed to fetch updated resource: HTTP ${res.status}`,
+                    );
+                  }
+                  return res.json();
+                })
                 .then((data) => {
                   if (onSave) {
                     onSave(data);
