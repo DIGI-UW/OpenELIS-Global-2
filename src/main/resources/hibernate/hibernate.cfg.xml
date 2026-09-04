@@ -44,9 +44,7 @@
         <mapping resource="hibernate/hbm/Organization.hbm.xml" />
         <mapping resource="hibernate/hbm/Panel.hbm.xml" />
         <mapping resource="hibernate/hbm/PanelItem.hbm.xml" />
-        <mapping resource="hibernate/hbm/Patient.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientType.hbm.xml" />
-        <mapping resource="hibernate/hbm/Person.hbm.xml" />
         <mapping resource="hibernate/hbm/Program.hbm.xml" />
         <mapping resource="hibernate/hbm/Project.hbm.xml" />
         <mapping resource="hibernate/hbm/ProjectOrganization.hbm.xml" />
@@ -92,9 +90,6 @@
         <mapping resource="hibernate/hbm/SamplePdf.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleNewborn.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientRelation.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientIdentity.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientIdentityType.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientPatientType.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSamplePanel.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSampleTest.hbm.xml" />
         <mapping resource="hibernate/hbm/Role.hbm.xml" />
@@ -162,7 +157,6 @@
             class="org.openelisglobal.qaevent.valueholder.NceHistory" />
         <mapping resource="hibernate/hbm/LabComponent.hbm.xml" />
         <mapping resource="hibernate/hbm/Report.hbm.xml" />
-        <mapping resource="hibernate/hbm/PatientContact.hbm.xml" />
 
         <!-- Sample Storage Management mappings (001-sample-storage) -->
         <!-- Moved to annotation-based mappings (JPA) - entities registered in

@@ -231,6 +231,22 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
+        <!-- PatientIdentity entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.patientidentity.valueholder.PatientIdentity</class>
+
+        <!-- PatientIdentityType entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType</class>
+
+        <!-- PatientPatientType entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.patienttype.valueholder.PatientPatientType</class>
+
+        <!-- Person entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.person.valueholder.Person</class>
+
+        <!-- Patient entities (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.patient.valueholder.Patient</class>
+        <class>org.openelisglobal.patient.valueholder.PatientContact</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />

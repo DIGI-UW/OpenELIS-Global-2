@@ -13,9 +13,24 @@
  */
 package org.openelisglobal.patient.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.hibernate.search.engine.backend.types.ObjectStructure;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
@@ -23,86 +38,114 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IndexedEmb
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.person.valueholder.Person;
 
 @Indexed
+@Setter
+@Getter
+@Entity
+@DynamicUpdate
+@Table(name = "PATIENT")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class Patient extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
     @GenericField
+    @GeneratedValue(generator = "patient_seq_gen")
+    @GenericGenerator(name = "patient_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "patient_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
 
+    @Column(name = "RACE", length = 5)
     private String race;
 
     @GenericField
+    @Column(name = "GENDER", length = 1)
     private String gender;
 
+    @Column(name = "BIRTH_DATE", length = 7)
     private Timestamp birthDate;
 
     @GenericField
+    @Column(name = "entered_birth_date", length = 10)
     private String birthDateForDisplay;
 
+    @Column(name = "EPI_FIRST_NAME", length = 25)
     private String epiFirstName;
 
+    @Column(name = "EPI_MIDDLE_NAME", length = 25)
     private String epiMiddleName;
 
+    @Column(name = "EPI_LAST_NAME", length = 240)
     private String epiLastName;
 
+    @Column(name = "BIRTH_TIME", length = 7)
     private Date birthTime;
 
+    @Transient
     private String birthTimeForDisplay;
 
+    @Column(name = "DEATH_DATE", length = 7)
     private Date deathDate;
 
+    @Transient
     private String deathDateForDisplay;
 
     @KeywordField(normalizer = "lowercase")
+    @Column(name = "NATIONAL_ID")
     private String nationalId;
 
+    @Column(name = "ETHNICITY", length = 1)
     private String ethnicity;
 
+    @Column(name = "SCHOOL_ATTEND", length = 240)
     private String schoolAttend;
 
+    @Column(name = "MEDICARE_ID", length = 240)
     private String medicareId;
 
+    @Column(name = "MEDICAID_ID", length = 240)
     private String medicaidId;
 
+    @Column(name = "BIRTH_PLACE")
     private String birthPlace;
 
     @IndexedEmbedded(structure = ObjectStructure.NESTED)
-    private ValueHolderInterface person;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "PERSON_ID", nullable = false)
+    private Person person;
 
     @KeywordField(normalizer = "lowercase")
+    @Column(name = "EXTERNAL_ID")
     private String externalId;
 
+    @Column(name = "upid_code")
     private String upidCode;
 
+    @Transient
     private String selectedPersonId;
 
+    @Column(name = "CHART_NUMBER", length = 20)
     private String chartNumber;
 
+    @Column(name = "fhir_uuid", length = 20)
     private UUID fhirUuid;
 
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "merged_into_patient_id", precision = 10, scale = 0)
     private String mergedIntoPatientId;
 
+    @Column(name = "is_merged", nullable = false)
     private Boolean isMerged = false;
 
+    @Column(name = "merge_date", length = 7)
     private Timestamp mergeDate;
-
-    public String getChartNumber() {
-        return chartNumber;
-    }
-
-    public void setChartNumber(String chartNumber) {
-        this.chartNumber = chartNumber;
-    }
 
     public Patient() {
         super();
-        person = new ValueHolder();
     }
 
     @Override
@@ -115,25 +158,9 @@ public class Patient extends BaseObject<String> {
         return id;
     }
 
-    public Timestamp getBirthDate() {
-        return birthDate;
-    }
-
     public void setBirthDate(Timestamp birthDate) {
         this.birthDate = birthDate;
         birthDateForDisplay = DateUtil.convertTimestampToStringDate(birthDate);
-    }
-
-    public String getBirthPlace() {
-        return birthPlace;
-    }
-
-    public void setBirthPlace(String birthPlace) {
-        this.birthPlace = birthPlace;
-    }
-
-    public Date getBirthTime() {
-        return birthTime;
     }
 
     public void setBirthTime(Date birthTime) {
@@ -141,121 +168,17 @@ public class Patient extends BaseObject<String> {
         birthTimeForDisplay = DateUtil.convertSqlDateToStringDate(birthTime);
     }
 
-    public Date getDeathDate() {
-        return deathDate;
-    }
-
     public void setDeathDate(Date deathDate) {
         this.deathDate = deathDate;
         deathDateForDisplay = DateUtil.convertSqlDateToStringDate(deathDate);
     }
 
-    public String getEpiFirstName() {
-        return epiFirstName;
-    }
-
-    public void setEpiFirstName(String epiFirstName) {
-        this.epiFirstName = epiFirstName;
-    }
-
-    public String getEpiLastName() {
-        return epiLastName;
-    }
-
-    public void setEpiLastName(String epiLastName) {
-        this.epiLastName = epiLastName;
-    }
-
-    public String getEpiMiddleName() {
-        return epiMiddleName;
-    }
-
-    public void setEpiMiddleName(String epiMiddleName) {
-        this.epiMiddleName = epiMiddleName;
-    }
-
-    public String getEthnicity() {
-        return ethnicity;
-    }
-
-    public void setEthnicity(String ethnicity) {
-        this.ethnicity = ethnicity;
-    }
-
-    public String getExternalId() {
-        return externalId;
-    }
-
-    public void setExternalId(String externalId) {
-        this.externalId = externalId;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-
-    public void setGender(String gender) {
-        this.gender = gender;
-    }
-
-    public String getMedicaidId() {
-        return medicaidId;
-    }
-
-    public void setMedicaidId(String medicaidId) {
-        this.medicaidId = medicaidId;
-    }
-
-    public String getMedicareId() {
-        return medicareId;
-    }
-
-    public void setMedicareId(String medicareId) {
-        this.medicareId = medicareId;
-    }
-
-    public String getNationalId() {
-        return nationalId;
-    }
-
-    public void setNationalId(String nationalId) {
-        this.nationalId = nationalId;
-    }
-
-    public Person getPerson() {
-        return (Person) this.person.getValue();
-    }
-
-    protected ValueHolderInterface getPersonHolder() {
+    protected Person getPersonHolder() {
         return this.person;
     }
 
-    public void setPerson(Person person) {
-        this.person.setValue(person);
-    }
-
-    protected void setPersonHolder(ValueHolderInterface person) {
+    protected void setPersonHolder(Person person) {
         this.person = person;
-    }
-
-    public String getRace() {
-        return race;
-    }
-
-    public void setRace(String race) {
-        this.race = race;
-    }
-
-    public String getSchoolAttend() {
-        return schoolAttend;
-    }
-
-    public void setSchoolAttend(String schoolAttend) {
-        this.schoolAttend = schoolAttend;
-    }
-
-    public String getBirthDateForDisplay() {
-        return birthDateForDisplay;
     }
 
     public void setBirthDateForDisplay(String birthDateForDisplay) {
@@ -264,10 +187,6 @@ public class Patient extends BaseObject<String> {
         if (birthDateForDisplay != null) {
             birthDate = DateUtil.convertAmbiguousStringDateToTimestamp(birthDateForDisplay);
         }
-    }
-
-    public String getBirthTimeForDisplay() {
-        return birthTimeForDisplay;
     }
 
     public void setBirthTimeForDisplay(String birthTimeForDisplay) {
@@ -280,59 +199,7 @@ public class Patient extends BaseObject<String> {
         this.deathDate = DateUtil.convertStringDateToSqlDate(deathDateForDisplay);
     }
 
-    public String getDeathDateForDisplay() {
-        return deathDateForDisplay;
-    }
-
-    public void setSelectedPersonId(String selectedPersonId) {
-        this.selectedPersonId = selectedPersonId;
-    }
-
-    public String getSelectedPersonId() {
-        return this.selectedPersonId;
-    }
-
-    public UUID getFhirUuid() {
-        return fhirUuid;
-    }
-
     public String getFhirUuidAsString() {
         return fhirUuid == null ? "" : fhirUuid.toString();
-    }
-
-    public void setFhirUuid(UUID fhirUuid) {
-        this.fhirUuid = fhirUuid;
-    }
-
-    public String getUpidCode() {
-        return upidCode;
-    }
-
-    public void setUpidCode(String upidCode) {
-        this.upidCode = upidCode;
-    }
-
-    public String getMergedIntoPatientId() {
-        return mergedIntoPatientId;
-    }
-
-    public void setMergedIntoPatientId(String mergedIntoPatientId) {
-        this.mergedIntoPatientId = mergedIntoPatientId;
-    }
-
-    public Boolean getIsMerged() {
-        return isMerged;
-    }
-
-    public void setIsMerged(Boolean isMerged) {
-        this.isMerged = isMerged;
-    }
-
-    public Timestamp getMergeDate() {
-        return mergeDate;
-    }
-
-    public void setMergeDate(Timestamp mergeDate) {
-        this.mergeDate = mergeDate;
     }
 }
