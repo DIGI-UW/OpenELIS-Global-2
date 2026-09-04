@@ -81,14 +81,15 @@ const TestConnectionModal = ({
       });
     }, 200);
 
-    testConnection(analyzer.id, (response: AnalyzerApiResponse) => {
+    testConnection(analyzer.id, (response?: AnalyzerApiResponse) => {
       clearInterval(progressInterval);
       setProgress(100);
 
       // Check for errors: HTTP errors, network errors, OR success=false from backend
       if (
+        !response ||
         response.error ||
-        response.statusCode >= 400 ||
+        (response.statusCode ?? 0) >= 400 ||
         response.success === false
       ) {
         setStatus("error");

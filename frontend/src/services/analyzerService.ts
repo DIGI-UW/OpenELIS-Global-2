@@ -22,7 +22,7 @@ import config from "../config.json";
 type ExtraParams = unknown;
 type JsonObject = Record<string, unknown>;
 type ApiCallback<T = AnalyzerApiResponse> = (
-  response: T,
+  response: T | undefined,
   extraParams?: ExtraParams,
 ) => void;
 type DataCallback<T> = (data: T) => void;
@@ -47,20 +47,6 @@ export interface AnalyzersResponse {
   analyzers?: Analyzer[];
 }
 
-export interface PreviewMappingRequest {
-  astmMessage?: string;
-  includeDetailedParsing?: boolean;
-  validateAllMappings?: boolean;
-  [key: string]: unknown;
-}
-
-export interface CopyMappingsRequest {
-  sourceAnalyzerId?: string;
-  overwriteExisting?: boolean;
-  skipIncompatible?: boolean;
-  [key: string]: unknown;
-}
-
 export interface AnalyzerTypeSummary {
   profileId: string;
   revision: number;
@@ -73,6 +59,11 @@ export interface AnalyzerTypeSummary {
   protocol: AnalyzerProtocol;
   parentProfileId?: string | null;
   parentRevision?: number | null;
+  affectedAnalyzers?: Array<{
+    id: string;
+    name: string;
+    active: boolean;
+  }>;
 }
 
 export interface AnalyzerTypeCatalog {
@@ -85,6 +76,109 @@ export interface AnalyzerTypeCatalog {
     deactivated: number;
   };
   types: AnalyzerTypeSummary[];
+}
+
+export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
+
+export interface AnalyzerMappingTestOption {
+  id: string;
+  name: string;
+  code?: string | null;
+  loincCodes: string[];
+}
+
+export interface AnalyzerMappingResultOption {
+  id: string;
+  value: string;
+  label: string;
+}
+
+export interface AnalyzerTypeMappingResultRow {
+  rawValue: string;
+  mappingState: AnalyzerMappingState;
+  resultOptionId?: string | null;
+  selectedOption?: AnalyzerMappingResultOption | null;
+}
+
+export interface AnalyzerTypeMappingTestRow {
+  sourceRowKey: string;
+  rawCode: string;
+  aliases: string[];
+  testNameHint?: string | null;
+  loinc?: string | null;
+  unit?: string | null;
+  resultType?: string | null;
+  normalizedCoding?: {
+    system: string;
+    code: string;
+    display?: string | null;
+  } | null;
+  mappingState: AnalyzerMappingState;
+  testId?: string | null;
+  selectedTest?: AnalyzerMappingTestOption | null;
+  suggestedTest?: AnalyzerMappingTestOption | null;
+  results: AnalyzerTypeMappingResultRow[];
+}
+
+export interface AnalyzerTypeMappingView {
+  profileId: string;
+  profileRevision: number;
+  profileFingerprint: string;
+  displayName: string;
+  protocol: AnalyzerProtocol;
+  siteBindingId?: string | null;
+  siteBindingRevision: number;
+  bindingFingerprint?: string | null;
+  tests: AnalyzerTypeMappingTestRow[];
+  controlRecognition: {
+    recognitionFingerprint: string;
+    mode: "RULES" | "NONE" | string;
+    description: string;
+    affirmedNoControlResults: boolean;
+    conditions: Array<{
+      key: string;
+      kind: string;
+      sourceLabel: string;
+      value?: string | null;
+      description: string;
+      controlLevel?: string | null;
+      controlType?: string | null;
+    }>;
+  };
+  confirmation: {
+    state: "UNCONFIRMED" | "CURRENT" | "STALE" | string;
+    profileId?: string | null;
+    profileRevision: number;
+    bindingFingerprint?: string | null;
+    recognitionFingerprint?: string | null;
+    confirmedBy?: string | null;
+    confirmedByDisplayName?: string | null;
+    confirmedAt?: string | null;
+    confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+    excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+  };
+}
+
+export interface AnalyzerTypeMappingUpdate {
+  baseBindingFingerprint?: string | null;
+  tests: Array<{
+    sourceRowKey: string;
+    mappingState: AnalyzerMappingState;
+    testId?: string | null;
+  }>;
+  results: Array<{
+    sourceRowKey: string;
+    rawValue: string;
+    mappingState: AnalyzerMappingState;
+    testResultId?: string | null;
+  }>;
+}
+
+export interface AnalyzerTypeMappingConfirmationRequest {
+  baseBindingFingerprint: string;
+  recognitionFingerprint: string;
+  confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+  excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
 }
 
 export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
@@ -106,41 +200,48 @@ export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
   validationIssues?: string[];
 }
 
-/**
- * Preview mapping for analyzer
- * @param {String} analyzerId - Analyzer ID
- * @param {Object} previewData - Preview data { astmMessage, includeDetailedParsing, validateAllMappings }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const previewMapping = (
-  analyzerId: string,
-  previewData: PreviewMappingRequest,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/preview-mapping`;
-  const payload = JSON.stringify(previewData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
+export interface AnalyzerControlRecognitionCondition {
+  key?: string | null;
+  kind: string;
+  sourceKey?: string | null;
+  sourceLabel?: string | null;
+  description?: string | null;
+  value?: string | null;
+  editable?: boolean;
+  controlLevel?: string | null;
+  controlType?: string | null;
+}
 
-/**
- * Copy mappings from source analyzer to target analyzer
- * @param {String} targetAnalyzerId - Target analyzer ID
- * @param {Object} copyData - Copy data { sourceAnalyzerId, overwriteExisting, skipIncompatible }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const copyMappings = (
-  targetAnalyzerId: string,
-  copyData: CopyMappingsRequest,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${targetAnalyzerId}/copy-mappings`;
-  const payload = JSON.stringify(copyData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
+export interface AnalyzerControlRecognitionDraft extends AnalyzerApiError {
+  draftId?: string;
+  kind?: "CREATE" | "DUPLICATE" | "UPDATE" | string;
+  baseProfileId?: string | null;
+  baseRevision?: number | null;
+  displayName?: string;
+  updatedBy?: string;
+  updatedAt?: string;
+  validationIssues?: string[];
+  recognition?: {
+    mode?: "RULES" | "NONE" | string | null;
+    affirmedNoControlResults: boolean;
+    description?: string;
+    conditions: AnalyzerControlRecognitionCondition[];
+    availableSources: Array<{ key: string; label: string }>;
+  };
+}
+
+export interface AnalyzerControlRecognitionUpdate {
+  mode: "RULES" | "NONE" | string;
+  affirmedNoControlResults: boolean;
+  conditions: Array<{
+    key?: string | null;
+    kind: string;
+    sourceKey?: string | null;
+    value?: string | null;
+    controlLevel?: string | null;
+    controlType?: string | null;
+  }>;
+}
 
 /**
  * Get all analyzers with optional filters
@@ -223,7 +324,7 @@ export const updateAnalyzer = (
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
     body: payload,
   })
@@ -278,7 +379,7 @@ export const deleteAnalyzer = (id: string, callback: SuccessCallback) => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken,
+      "X-CSRF-Token": csrfToken || "",
     },
   })
     .then(async (response) => {
@@ -352,182 +453,6 @@ export const testConnection = (
 };
 
 /**
- * Query analyzer for available fields (ASTM query)
- * @param {String} id - Analyzer ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const queryAnalyzer = (
-  id: string,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${id}/query`;
-  postToOpenElisServerJsonResponse(
-    endpoint,
-    JSON.stringify({}),
-    callback,
-    extraParams,
-  );
-};
-
-/**
- * Get query job status
- * @param {String} analyzerId
- * @param {String} jobId
- * @param {Function} callback - Callback (data) => void
- */
-export const getQueryStatus = (
-  analyzerId: string,
-  jobId: string,
-  callback: DataCallback<AnalyzerApiResponse | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/query/${jobId}/status`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Get all analyzer fields for an analyzer
- * @param {String} analyzerId - Analyzer ID
- * @param {Function} callback - Callback function (data) => void
- */
-export const getFields = (
-  analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/fields`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Get all field mappings for an analyzer
- * @param {String} analyzerId - Analyzer ID
- * @param {Function} callback - Callback function (data) => void
- */
-export const getMappings = (
-  analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Create new field mapping
- * @param {String} analyzerId - Analyzer ID
- * @param {Object} mappingData - Mapping data { analyzerFieldId, openelisFieldId, openelisFieldType, mappingType, isRequired, isActive, specimenTypeConstraint, panelConstraint }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const createMapping = (
-  analyzerId: string,
-  mappingData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings`;
-  const payload = JSON.stringify(mappingData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
-
-/**
- * Update field mapping
- * @param {String} analyzerId - Analyzer ID
- * @param {String} mappingId - Mapping ID
- * @param {Object} mappingData - Mapping data to update
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const updateMapping = (
-  analyzerId: string,
-  mappingId: string,
-  mappingData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings/${mappingId}`;
-  const payload = JSON.stringify(mappingData);
-
-  // Use fetch directly to get JSON response (controllers return Map<String, Object>)
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      if (!response.ok) {
-        // For error responses, try to parse JSON error message
-        const errorJson = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(
-          {
-            ...errorJson,
-            status: response.status,
-            statusCode: response.status,
-            statusText: response.statusText,
-          },
-          extraParams,
-        );
-        return;
-      }
-      // For successful responses, parse JSON normally
-      const json = await response.json();
-      callback(json, extraParams);
-    })
-    .catch((error: Error) => {
-      callback(
-        {
-          error: error.message || "Network error",
-          message: error.message || "Network error",
-          status: 0,
-        },
-        extraParams,
-      );
-    });
-};
-
-/**
- * Delete field mapping
- * @param {String} analyzerId - Analyzer ID
- * @param {String} mappingId - Mapping ID
- * @param {Function} callback - Callback function (success, error) => void
- */
-export const deleteMapping = (
-  analyzerId: string,
-  mappingId: string,
-  callback: SuccessCallback,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings/${mappingId}`;
-
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-  })
-    .then(async (response) => {
-      if (response.ok || response.status === 204) {
-        callback(true, null);
-      } else {
-        const errorData = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
-};
-
-/**
  * Create a new OpenELIS field
  * @param {Object} fieldData - Field data { fieldName, entityType, loincCode, description, fieldType, acceptedUnits }
  * @param {Function} callback - Callback function (response, extraParams) => void
@@ -541,272 +466,6 @@ export const createField = (
   const endpoint = "/rest/analyzer/openelis-fields";
   const payload = JSON.stringify(fieldData);
   postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
-
-/**
- * Get all custom field types
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const getCustomFieldTypes = (
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = "/rest/analyzer/custom-field-types";
-  getFromOpenElisServer(endpoint, callback, extraParams);
-};
-
-/**
- * Get active custom field types
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const getActiveCustomFieldTypes = (
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = "/rest/analyzer/custom-field-types/active";
-  getFromOpenElisServer(endpoint, callback, extraParams);
-};
-
-/**
- * Get a specific custom field type by ID
- * @param {String} id - Custom field type ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const getCustomFieldType = (
-  id: string,
-  callback: DataCallback<AnalyzerApiResponse | undefined>,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${id}`;
-  getFromOpenElisServer(endpoint, callback, extraParams);
-};
-
-/**
- * Create a new custom field type
- * @param {Object} fieldTypeData - Field type data { typeName, displayName, validationPattern, valueRangeMin, valueRangeMax, allowedCharacters, isActive }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const createCustomFieldType = (
-  fieldTypeData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = "/rest/analyzer/custom-field-types";
-  const payload = JSON.stringify(fieldTypeData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
-
-/**
- * Update an existing custom field type
- * @param {String} id - Custom field type ID
- * @param {Object} fieldTypeData - Field type data { typeName, displayName, validationPattern, valueRangeMin, valueRangeMax, allowedCharacters, isActive }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const updateCustomFieldType = (
-  id: string,
-  fieldTypeData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${id}`;
-  const payload = JSON.stringify(fieldTypeData);
-  fetch(`${config.serverBaseUrl}${endpoint}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const data = await response.json().catch(() => ({}));
-      if (response.ok) {
-        callback(data, extraParams);
-      } else {
-        callback(null, {
-          ...asExtraParamsObject(extraParams),
-          error: data.error || `HTTP ${response.status}`,
-        });
-      }
-    })
-    .catch((error: Error) => {
-      callback(null, {
-        ...asExtraParamsObject(extraParams),
-        error: error.message || "Network error",
-      });
-    });
-};
-
-/**
- * Delete a custom field type
- * @param {String} id - Custom field type ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const deleteCustomFieldType = (
-  id: string,
-  callback: SuccessCallback,
-  _extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${id}`;
-  fetch(`${config.serverBaseUrl}${endpoint}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-  })
-    .then(async (response) => {
-      if (response.ok || response.status === 204) {
-        callback(true, null);
-      } else {
-        const errorData = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
-};
-
-/**
- * Get validation rules for a custom field type
- * @param {String} customFieldTypeId - Custom field type ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const getValidationRules = (
-  customFieldTypeId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules`;
-  getFromOpenElisServer(endpoint, callback, extraParams);
-};
-
-/**
- * Create a validation rule for a custom field type
- * @param {String} customFieldTypeId - Custom field type ID
- * @param {Object} ruleData - Rule data { ruleName, ruleType, ruleExpression, errorMessage, isActive }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const createValidationRule = (
-  customFieldTypeId: string,
-  ruleData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules`;
-  const payload = JSON.stringify(ruleData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
-
-/**
- * Update a validation rule
- * @param {String} customFieldTypeId - Custom field type ID
- * @param {String} ruleId - Validation rule ID
- * @param {Object} ruleData - Rule data { ruleName, ruleType, ruleExpression, errorMessage, isActive }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const updateValidationRule = (
-  customFieldTypeId: string,
-  ruleId: string,
-  ruleData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules/${ruleId}`;
-  const payload = JSON.stringify(ruleData);
-  fetch(`${config.serverBaseUrl}${endpoint}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const data = await response.json().catch(() => ({}));
-      if (response.ok) {
-        callback(data, extraParams);
-      } else {
-        callback(null, {
-          ...asExtraParamsObject(extraParams),
-          error: data.error || `HTTP ${response.status}`,
-        });
-      }
-    })
-    .catch((error: Error) => {
-      callback(null, {
-        ...asExtraParamsObject(extraParams),
-        error: error.message || "Network error",
-      });
-    });
-};
-
-/**
- * Delete a validation rule
- * @param {String} customFieldTypeId - Custom field type ID
- * @param {String} ruleId - Validation rule ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-/**
- * Validate a field value against custom field type validation rules
- * @param {String} analyzerId - Analyzer ID
- * @param {String} fieldId - Analyzer field ID
- * @param {String} value - Value to validate
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const validateFieldValue = (
-  analyzerId: string,
-  fieldId: string,
-  value: string,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/fields/${fieldId}/validate-value`;
-  const payload = JSON.stringify({ value });
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
-
-export const deleteValidationRule = (
-  customFieldTypeId: string,
-  ruleId: string,
-  callback: SuccessCallback,
-  _extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules/${ruleId}`;
-  fetch(`${config.serverBaseUrl}${endpoint}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-  })
-    .then(async (response) => {
-      if (response.ok || response.status === 204) {
-        callback(true, null);
-      } else {
-        const errorData = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
 };
 
 export const getAnalyzerTypeCatalog = (
@@ -823,6 +482,100 @@ export const getAnalyzerTypeRevision = (
 ) => {
   getFromOpenElisServer(
     `/rest/analyzer-types/${encodeURIComponent(profileId)}?revision=${revision}`,
+    callback,
+  );
+};
+
+export const getAnalyzerTypeMapping = (
+  profileId: string,
+  revision: number,
+  callback: DataCallback<AnalyzerTypeMappingView | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping?revision=${revision}`,
+    callback,
+  );
+};
+
+export const getAnalyzerMappingTests = (
+  callback: DataCallback<AnalyzerMappingTestOption[] | undefined>,
+) => {
+  getFromOpenElisServer("/rest/analyzer-types/mapping-catalog/tests", callback);
+};
+
+export const getAnalyzerMappingResultOptions = (
+  testId: string,
+  callback: DataCallback<AnalyzerMappingResultOption[] | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/mapping-catalog/tests/${encodeURIComponent(testId)}/result-options`,
+    callback,
+  );
+};
+
+const mutateAnalyzerType = <T>(
+  endpoint: string,
+  method: "POST" | "PUT",
+  body: JsonObject,
+  callback: ApiCallback<T & AnalyzerApiError>,
+) => {
+  fetch(config.serverBaseUrl + endpoint, {
+    credentials: "include",
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
+    },
+    body: JSON.stringify(body),
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        callback({
+          ...json,
+          status: response.status,
+          statusCode: response.status,
+          statusText: response.statusText,
+        });
+        return;
+      }
+      callback(json);
+    })
+    .catch((error: Error) => {
+      callback({
+        error: error.message || "Network error",
+        message: error.message || "Network error",
+        status: 0,
+      } as T & AnalyzerApiError);
+    });
+};
+
+export const saveAnalyzerTypeMapping = (
+  profileId: string,
+  revision: number,
+  update: AnalyzerTypeMappingUpdate,
+  callback: ApiCallback<AnalyzerTypeMappingView & AnalyzerApiError>,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping?revision=${revision}`,
+    "PUT",
+    update as unknown as JsonObject,
+    callback,
+  );
+};
+
+export const confirmAnalyzerTypeMapping = (
+  profileId: string,
+  revision: number,
+  request: AnalyzerTypeMappingConfirmationRequest,
+  callback: ApiCallback<
+    AnalyzerTypeMappingView["confirmation"] & AnalyzerApiError
+  >,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping/confirm?revision=${revision}`,
+    "POST",
+    request as unknown as JsonObject,
     callback,
   );
 };
@@ -844,6 +597,29 @@ export const getAnalyzerTypeDraft = (
 ) => {
   getFromOpenElisServer(
     `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}`,
+    callback,
+  );
+};
+
+export const getAnalyzerTypeControlRecognition = (
+  draftId: string,
+  callback: DataCallback<AnalyzerControlRecognitionDraft | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}/control-recognition`,
+    callback,
+  );
+};
+
+export const updateAnalyzerTypeControlRecognition = (
+  draftId: string,
+  update: AnalyzerControlRecognitionUpdate,
+  callback: ApiCallback<AnalyzerControlRecognitionDraft>,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}/control-recognition`,
+    "PUT",
+    update as unknown as JsonObject,
     callback,
   );
 };
@@ -882,237 +658,4 @@ export const publishAnalyzerTypeDraft = (
     "{}",
     callback,
   );
-};
-
-/**
- * Get plugin-config JSON payload for an analyzer.
- * @param {String} analyzerId
- * @param {Function} callback - Callback function (data) => void
- */
-export const getPluginConfig = (
-  analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/plugin-config`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Update plugin-config JSON payload for an analyzer.
- * @param {String} analyzerId
- * @param {Object} pluginConfig
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams
- */
-export const updatePluginConfig = (
-  analyzerId: string,
-  pluginConfig: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/plugin-config`;
-  const payload = JSON.stringify(pluginConfig);
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        callback(
-          {
-            ...json,
-            status: response.status,
-            statusCode: response.status,
-            statusText: response.statusText,
-            error:
-              json.error || `HTTP ${response.status}: ${response.statusText}`,
-          },
-          extraParams,
-        );
-        return;
-      }
-      callback(json, extraParams);
-    })
-    .catch((error: Error) => {
-      callback(
-        {
-          error: error.message || "Network error",
-          status: 0,
-        },
-        extraParams,
-      );
-    });
-};
-
-/**
- * Get pending unmapped codes for an analyzer.
- * @param {String} analyzerId
- * @param {Function} callback - Callback function (data) => void
- */
-export const getPendingCodes = (
-  analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-codes`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Update pending-code status for an analyzer.
- * @param {String} analyzerId
- * @param {String} pendingCodeId
- * @param {String} status - PENDING, MAPPED, IGNORED
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams
- */
-// ============================================================
-// FR-15: QC Sample Identification Rules
-// ============================================================
-
-export const getQcRules = (
-  analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-export const createQcRule = (
-  analyzerId: string,
-  ruleData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules`;
-  const payload = JSON.stringify(ruleData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
-
-export const updateQcRule = (
-  analyzerId: string,
-  ruleId: string,
-  ruleData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules/${ruleId}`;
-  const payload = JSON.stringify(ruleData);
-
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        callback(
-          {
-            ...json,
-            status: response.status,
-            error: json.error || `HTTP ${response.status}`,
-          },
-          extraParams,
-        );
-        return;
-      }
-      callback(json, extraParams);
-    })
-    .catch((error: Error) => {
-      callback(
-        { error: error.message || "Network error", status: 0 },
-        extraParams,
-      );
-    });
-};
-
-export const deleteQcRule = (
-  analyzerId: string,
-  ruleId: string,
-  callback: SuccessCallback,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules/${ruleId}`;
-
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-  })
-    .then(async (response) => {
-      if (response.ok || response.status === 204) {
-        callback(true, null);
-      } else {
-        const errorData = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
-};
-
-// ============================================================
-// Pending Codes
-// ============================================================
-
-export const updatePendingCodeStatus = (
-  analyzerId: string,
-  pendingCodeId: string,
-  status: string,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-codes/${pendingCodeId}/status`;
-  const payload = JSON.stringify({ status });
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        callback(
-          {
-            ...json,
-            status: response.status,
-            statusCode: response.status,
-            statusText: response.statusText,
-            error:
-              json.error || `HTTP ${response.status}: ${response.statusText}`,
-          },
-          extraParams,
-        );
-        return;
-      }
-      callback(json, extraParams);
-    })
-    .catch((error: Error) => {
-      callback(
-        {
-          error: error.message || "Network error",
-          status: 0,
-        },
-        extraParams,
-      );
-    });
 };

@@ -12,11 +12,9 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
-import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.service.BridgeHttpClient;
-import org.openelisglobal.analyzer.service.QcRuleDto;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -25,9 +23,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
-import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -79,17 +75,7 @@ public class AnalyzerRestController extends BaseRestController {
     private BridgeHttpClient bridgeHttpClient;
 
     @Autowired
-    private AnalyzerQcRuleService analyzerQcRuleService;
-
-    // Optional — null in older deployments before control-lot support.
-    @Autowired(required = false)
-    private org.openelisglobal.qc.service.QCControlLotService qcControlLotService;
-
-    @Autowired
     private AnalyzerErrorService analyzerErrorService;
-
-    @Autowired
-    private AnalyzerTestMappingService analyzerTestMappingService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -614,19 +600,6 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("hasHeader", analyzer.getHasHeader());
         map.put("skipRows", analyzer.getSkipRows());
 
-        // Expose the analyzer's configured test code vocabulary so the bridge can
-        // populate the /admin/upload UI Test dropdown and feed the file-level
-        // self-declaration scanner's whitelist. Source: AnalyzerTestMapping rows
-        // linked to this analyzer (populated at analyzer-create time from the
-        // profile's default_test_mappings). This is NOT a default — just the
-        // allowed set. Test identity at ingestion time comes from the file's
-        // own content OR the tech's upload-time declaration, never from
-        // persistent config on the analyzer instance. See plan
-        // mellow-honking-cascade §2.WIRE.
-        List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(analyzer.getId()).stream()
-                .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
-        map.put("testMappings", testMappings);
-
         // Derive plugin type info from analyzer_type FK
         boolean isGeneric = analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin();
         map.put("genericPlugin", isGeneric);
@@ -646,39 +619,6 @@ public class AnalyzerRestController extends BaseRestController {
         // dashboard. Jackson serializes Timestamp as epoch millis; the frontend
         // formats with toLocaleDateString().
         map.put("lastModified", analyzer.getLastupdated());
-
-        // FR-15: Active QC rules for bridge consumption
-        List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(analyzer.getId());
-        map.put("qcRules", qcRules);
-
-        // Active QC control lots for bridge consumption — bridge attaches
-        // matching lotNumber to inbound QC samples (FILE: substring scan
-        // sample-name; ASTM: cross-check Q-segment field 3) so OE's Tier 1
-        // resolver picks the right lot when multiple are active per analyzer.
-        // Always emit `controlLots` (empty list if no data) so the bridge
-        // contract is stable — missing field would mean "key absent" rather
-        // than "no active lots".
-        List<Map<String, Object>> lotsPayload = new ArrayList<>();
-        if (qcControlLotService != null) {
-            // analyzer.getId() is String + LIMSStringNumberUserType, matching
-            // QCControlLot.instrumentId's typing — no parsing/bridging needed.
-            List<org.openelisglobal.qc.valueholder.QCControlLot> lots = qcControlLotService
-                    .getActiveControlLotsByInstrument(analyzer.getId());
-            for (org.openelisglobal.qc.valueholder.QCControlLot lot : lots) {
-                if (lot.getLotNumber() == null || lot.getLotNumber().isBlank())
-                    continue;
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("lotNumber", lot.getLotNumber());
-                if (lot.getControlLevel() != null && !lot.getControlLevel().isBlank()) {
-                    m.put("controlLevel", lot.getControlLevel());
-                }
-                if (lot.getTestId() != null) {
-                    m.put("testId", lot.getTestId());
-                }
-                lotsPayload.add(m);
-            }
-        }
-        map.put("controlLots", lotsPayload);
 
         return map;
     }

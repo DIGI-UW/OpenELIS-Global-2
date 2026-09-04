@@ -28,11 +28,8 @@ import java.util.Optional;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
-import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
 import org.openelisglobal.test.service.TestService;
@@ -51,15 +48,10 @@ public class PluginAnalyzerService {
     protected static final String CSV_TEST_MAP_COULMN_ACTUAL_TEST_NAME = "ACTUAL_TEST_NAME";
 
     @Autowired
-    private AnalyzerTestMappingService analyzerMappingService;
-    @Autowired
-    private AnalyzerService analyzerService;
-    @Autowired
     private AnalyzerTypeService analyzerTypeService;
     @Autowired
     private TestService testService;
 
-    private List<AnalyzerTestMapping> existingMappings;
     private Map<String, AnalyzerImporterPlugin> pluginByAnalyzerId = new HashMap<>();
 
     private List<AnalyzerImporterPlugin> analyzerPlugins = new ArrayList<>();
@@ -115,96 +107,14 @@ public class PluginAnalyzerService {
         }
     }
 
-    /**
-     * Register test mappings for a plugin at the AnalyzerType level.
-     *
-     * <p>
-     * Does NOT create an Analyzer row. Test mappings are a property of the plugin
-     * type (capability), not a physical device. Physical Analyzer instances are
-     * created through the dashboard when a real device is configured.
-     *
-     * @return The AnalyzerType ID, or null if the type wasn't found
-     */
+    /** Returns the existing AnalyzerType ID without writing analyzer mappings. */
     public String addAnalyzerDatabaseParts(String name, String description, List<TestMapping> nameMappings) {
-        loadNamingMappingsFromCSV(nameMappings, name);
-        return addAnalyzerDatabasePartsInternal(name, nameMappings);
+        return resolveAnalyzerTypeId(name);
     }
 
     public String addAnalyzerDatabaseParts(String name, String description, List<TestMapping> nameMappings,
             boolean hasSetupPage) {
-        loadNamingMappingsFromCSV(nameMappings, name);
-        return addAnalyzerDatabasePartsInternal(name, nameMappings);
-    }
-
-    private String addAnalyzerDatabasePartsInternal(String name, List<TestMapping> nameMappings) {
-        // Look up AnalyzerType by name (registered by PluginRegistryService)
-        String analyzerTypeId = resolveAnalyzerTypeId(name);
-        if (analyzerTypeId == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "addAnalyzerDatabaseParts",
-                    "No AnalyzerType found for plugin '" + name + "' — test mappings not persisted");
-            return null;
-        }
-
-        // Find or create an Analyzer row for this legacy plugin.
-        // Each legacy plugin IS a specific analyzer config (OGC-492).
-        String analyzerId = findOrCreateAnalyzerForType(name, analyzerTypeId);
-        if (analyzerId == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "addAnalyzerDatabaseParts",
-                    "Could not find or create Analyzer for plugin '" + name + "' — test mappings not persisted");
-            return null;
-        }
-
-        List<AnalyzerTestMapping> testMappings = createTestMappings(nameMappings);
-        if (!testMappings.isEmpty() && existingMappings == null) {
-            existingMappings = analyzerMappingService.getAll();
-        }
-
-        try {
-            analyzerService.persistTestMappings(analyzerId, testMappings, existingMappings);
-        } catch (RuntimeException e) {
-            LogEvent.logError(e);
-        }
-        return analyzerTypeId;
-    }
-
-    /**
-     * Find an existing Analyzer for this type, or create one. Legacy plugins
-     * represent a single analyzer config — they need an Analyzer row to own their
-     * test mappings (OGC-492).
-     */
-    private String findOrCreateAnalyzerForType(String pluginName, String analyzerTypeId) {
-        try {
-            // Check if an Analyzer already exists for this type
-            AnalyzerType type = analyzerTypeService.get(analyzerTypeId);
-            if (type == null) {
-                return null;
-            }
-
-            // Try to find existing analyzer by name (legacy analyzers use type name)
-            Optional<org.openelisglobal.analyzer.valueholder.Analyzer> existing = analyzerService.getByName(pluginName);
-            if (existing.isEmpty()) {
-                // Also try the derived type name (PluginRegistryService may use a different
-                // name)
-                existing = analyzerService.getByName(type.getName());
-            }
-            if (existing.isPresent()) {
-                return existing.get().getId();
-            }
-
-            // Create a new Analyzer row for this legacy plugin
-            org.openelisglobal.analyzer.valueholder.Analyzer analyzer = new org.openelisglobal.analyzer.valueholder.Analyzer();
-            analyzer.setName(type.getName());
-            analyzer.setAnalyzerType(type);
-            analyzer.setActive(true);
-            String id = analyzerService.insert(analyzer);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "findOrCreateAnalyzerForType",
-                    "Created Analyzer '" + type.getName() + "' (id=" + id + ") for legacy plugin '" + pluginName + "'");
-            return id;
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "findOrCreateAnalyzerForType",
-                    "Failed to find/create Analyzer for plugin '" + pluginName + "': " + e.getMessage());
-            return null;
-        }
+        return resolveAnalyzerTypeId(name);
     }
 
     /**
@@ -239,42 +149,6 @@ public class PluginAnalyzerService {
             }
         }
 
-        return null;
-    }
-
-    private List<AnalyzerTestMapping> createTestMappings(List<TestMapping> nameMappings) {
-        ArrayList<AnalyzerTestMapping> testMappings = new ArrayList<>();
-        for (TestMapping names : nameMappings) {
-            List<Test> tests = testService.getTestsByLoincCode(names.getDbbTestLoincCode());
-            if (tests == null || tests.size() == 0) {
-                testMappings.add(createAnalyzerTestMapping(names, getIdForTestName(names.getDbbTestName())));
-            } else {
-                for (Test test : tests) {
-                    testMappings.add(createAnalyzerTestMapping(names, test.getId()));
-                }
-            }
-        }
-        return testMappings;
-    }
-
-    private AnalyzerTestMapping createAnalyzerTestMapping(TestMapping names, String testId) {
-        AnalyzerTestMapping analyzerMapping = new AnalyzerTestMapping();
-        analyzerMapping.setAnalyzerTestName(names.getAnalyzerTestName());
-        analyzerMapping.setTestId(testId);
-        return analyzerMapping;
-    }
-
-    private String getIdForTestName(String dbbTestName) {
-        List<Test> tests = testService.getTestsByName(dbbTestName);
-        Test test;
-        if (tests != null && !tests.isEmpty()) {
-            test = tests.get(0);
-            if (test != null) {
-                return test.getId();
-            }
-        }
-        LogEvent.logError(this.getClass().getSimpleName(), "getIdForTestName",
-                "Unable to find test " + dbbTestName + " in test catalog");
         return null;
     }
 

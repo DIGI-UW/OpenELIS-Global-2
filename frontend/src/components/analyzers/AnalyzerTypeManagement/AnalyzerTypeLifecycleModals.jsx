@@ -22,9 +22,12 @@ import {
   createAnalyzerTypeDraft,
   duplicateAnalyzerType,
   getAnalyzerTypeDraft,
+  getAnalyzerTypeRevision,
   publishAnalyzerTypeDraft,
   updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
+import ControlRecognitionDraftEditor from "./ControlRecognitionDraftEditor";
+import AffectedAnalyzerList from "./AffectedAnalyzerList";
 
 const nextDuplicateName = (displayName, types) => {
   const existing = new Set(types.map((type) => type.displayName));
@@ -189,6 +192,7 @@ const CreateProfileModal = ({
 const DuplicateProfileModal = ({
   types,
   initialProfileId,
+  initialRevision,
   draftId,
   onClose,
   onSuccess,
@@ -203,12 +207,51 @@ const DuplicateProfileModal = ({
   const initialSource = activeTypes.find(
     (type) => type.profileId === initialProfileId,
   );
+  const initialPinnedSource =
+    initialSource && initialSource.revision === initialRevision
+      ? initialSource
+      : null;
   const [sourceId, setSourceId] = useState(initialSource?.profileId || "");
   const [displayName, setDisplayName] = useState(
     initialSource ? nextDuplicateName(initialSource.displayName, types) : "",
   );
+  const [pinnedSource, setPinnedSource] = useState(initialPinnedSource);
   const [draft, setDraft] = useState(null);
+  const [recognitionState, setRecognitionState] = useState({
+    loaded: false,
+    dirty: false,
+    valid: false,
+    publishable: false,
+    validationIssues: [],
+  });
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (
+      draftId ||
+      !initialProfileId ||
+      !initialRevision ||
+      initialPinnedSource
+    ) {
+      return;
+    }
+    getAnalyzerTypeRevision(initialProfileId, initialRevision, (response) => {
+      if (hasError(response)) {
+        onError(response?.error);
+        return;
+      }
+      setPinnedSource(response);
+      setSourceId(response.profileId);
+      setDisplayName(nextDuplicateName(response.displayName, types));
+    });
+  }, [
+    draftId,
+    initialPinnedSource,
+    initialProfileId,
+    initialRevision,
+    onError,
+    types,
+  ]);
 
   useEffect(() => {
     if (!draftId || draft?.draftId === draftId) {
@@ -226,19 +269,25 @@ const DuplicateProfileModal = ({
   }, [draft?.draftId, draftId, onError]);
 
   const activeDraft = draft?.draftId === draftId ? draft : null;
-  const source = activeTypes.find((type) => type.profileId === sourceId);
+  const exactInitialRevisionRequested =
+    !draftId && initialProfileId === sourceId && Boolean(initialRevision);
+  const source = exactInitialRevisionRequested
+    ? pinnedSource?.profileId === sourceId
+      ? pinnedSource
+      : null
+    : activeTypes.find((type) => type.profileId === sourceId);
   const normalizedName = displayName.trim();
   const duplicateName = types.some(
     (type) => type.displayName.toLowerCase() === normalizedName.toLowerCase(),
   );
-  const publishable =
-    Boolean(activeDraft) && (activeDraft.validationIssues || []).length === 0;
+  const publishable = Boolean(activeDraft) && recognitionState.publishable;
   const valid = activeDraft
     ? publishable
     : Boolean(source) && Boolean(normalizedName) && !duplicateName;
 
   const changeSource = (profileId) => {
     const nextSource = activeTypes.find((type) => type.profileId === profileId);
+    setPinnedSource(null);
     setSourceId(profileId);
     setDisplayName(
       nextSource ? nextDuplicateName(nextSource.displayName, types) : "",
@@ -304,22 +353,35 @@ const DuplicateProfileModal = ({
       onRequestClose={onClose}
       onSecondarySubmit={onClose}
       onRequestSubmit={submit}
-      size="sm"
+      size={activeDraft ? "lg" : "sm"}
     >
       <div className="analyzer-type-modal__form">
         {activeDraft ? (
-          <InlineNotification
-            kind="success"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({
-              id: "analyzerType.draft.publish.ready.title",
-            })}
-            subtitle={intl.formatMessage(
-              { id: "analyzerType.draft.publish.ready.subtitle" },
-              { name: normalizedName },
-            )}
-          />
+          <>
+            <InlineNotification
+              kind={publishable ? "success" : "info"}
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: publishable
+                  ? "analyzerType.draft.publish.ready.title"
+                  : "analyzerType.draft.publish.review.title",
+              })}
+              subtitle={intl.formatMessage(
+                {
+                  id: publishable
+                    ? "analyzerType.draft.publish.ready.subtitle"
+                    : "analyzerType.draft.publish.review.subtitle",
+                },
+                { name: normalizedName },
+              )}
+            />
+            <ControlRecognitionDraftEditor
+              key={activeDraft.draftId}
+              draftId={activeDraft.draftId}
+              onStateChange={setRecognitionState}
+            />
+          </>
         ) : (
           <>
             <Select
@@ -387,11 +449,19 @@ const UpdateSharedProfileModal = ({
   profile,
   draftId,
   onClose,
+  onSuccess,
   onError,
   onDraftCreated,
 }) => {
   const intl = useIntl();
   const [draft, setDraft] = useState(null);
+  const [recognitionState, setRecognitionState] = useState({
+    loaded: false,
+    dirty: false,
+    valid: false,
+    publishable: false,
+    validationIssues: [],
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -417,10 +487,21 @@ const UpdateSharedProfileModal = ({
   );
 
   const submit = () => {
-    if (submitting) {
+    if (submitting || (activeDraft && !recognitionState.publishable)) {
       return;
     }
     setSubmitting(true);
+    if (activeDraft) {
+      publishAnalyzerTypeDraft(activeDraft.draftId, (response) => {
+        setSubmitting(false);
+        if (hasError(response)) {
+          onError(response?.error);
+          return;
+        }
+        onSuccess("update");
+      });
+      return;
+    }
     updateSharedAnalyzerType(
       profile.profileId,
       profile.revision,
@@ -453,22 +534,37 @@ const UpdateSharedProfileModal = ({
     return (
       <Modal
         open
-        passiveModal
         modalHeading={title}
+        primaryButtonText={intl.formatMessage({
+          id: "analyzerType.button.publish",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "analyzerType.button.cancel",
+        })}
+        primaryButtonDisabled={!recognitionState.publishable || submitting}
         onRequestClose={onClose}
-        size="sm"
+        onSecondarySubmit={onClose}
+        onRequestSubmit={submit}
+        size="lg"
       >
-        <InlineNotification
-          kind="success"
-          lowContrast
-          hideCloseButton
-          title={intl.formatMessage({
-            id: "analyzerType.draft.update.title",
-          })}
-          subtitle={intl.formatMessage({
-            id: "analyzerType.draft.update.subtitle",
-          })}
-        />
+        <div className="analyzer-type-modal__form">
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "analyzerType.draft.update.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "analyzerType.draft.update.subtitle",
+            })}
+          />
+          <ControlRecognitionDraftEditor
+            key={activeDraft.draftId}
+            draftId={activeDraft.draftId}
+            onStateChange={setRecognitionState}
+          />
+        </div>
       </Modal>
     );
   }
@@ -495,6 +591,7 @@ const UpdateSharedProfileModal = ({
           { count: profile.usedBy, revision: profile.revision },
         )}
       </p>
+      <AffectedAnalyzerList analyzers={profile.affectedAnalyzers} />
     </Modal>
   );
 };
@@ -684,6 +781,7 @@ const ProfileHistoryModal = ({ profile, onClose, onError }) => {
 const AnalyzerTypeLifecycleModals = ({
   action,
   profileId,
+  revision,
   draftId,
   types,
   onClose,
@@ -709,6 +807,7 @@ const AnalyzerTypeLifecycleModals = ({
       <DuplicateProfileModal
         types={types}
         initialProfileId={profileId}
+        initialRevision={revision}
         draftId={draftId}
         onClose={onClose}
         onSuccess={onSuccess}
@@ -736,6 +835,7 @@ const AnalyzerTypeLifecycleModals = ({
         profile={profile}
         draftId={draftId}
         onClose={onClose}
+        onSuccess={onSuccess}
         onError={onError}
         onDraftCreated={onDraftCreated}
       />

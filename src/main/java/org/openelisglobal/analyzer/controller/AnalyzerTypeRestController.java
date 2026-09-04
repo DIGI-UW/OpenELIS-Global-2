@@ -2,8 +2,16 @@ package org.openelisglobal.analyzer.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import org.openelisglobal.analyzer.service.AnalyzerControlRecognitionUpdate;
+import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationRequest;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingUpdate;
+import org.openelisglobal.analyzer.service.AnalyzerTypeMappingView;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
@@ -29,12 +37,17 @@ public class AnalyzerTypeRestController extends BaseRestController {
 
     private final AnalyzerTypeCatalogService catalogService;
     private final BridgeProfileManagementService managementService;
+    private final AnalyzerMappingCatalogService mappingCatalogService;
+    private final AnalyzerTypeMappingService mappingService;
 
     @Autowired
     public AnalyzerTypeRestController(AnalyzerTypeCatalogService catalogService,
-            BridgeProfileManagementService managementService) {
+            BridgeProfileManagementService managementService, AnalyzerMappingCatalogService mappingCatalogService,
+            AnalyzerTypeMappingService mappingService) {
         this.catalogService = catalogService;
         this.managementService = managementService;
+        this.mappingCatalogService = mappingCatalogService;
+        this.mappingService = mappingService;
     }
 
     @GetMapping
@@ -46,6 +59,38 @@ public class AnalyzerTypeRestController extends BaseRestController {
     public ResponseEntity<AnalyzerTypeCatalogView.TypeSummary> getAnalyzerType(@PathVariable String profileId,
             @RequestParam int revision) {
         return ResponseEntity.ok(catalogService.getType(profileId, revision));
+    }
+
+    @GetMapping("/{profileId}/mapping")
+    public ResponseEntity<AnalyzerTypeMappingView> getMapping(@PathVariable String profileId,
+            @RequestParam int revision) {
+        return ResponseEntity.ok(mappingService.getMapping(profileId, revision));
+    }
+
+    @PutMapping("/{profileId}/mapping")
+    public ResponseEntity<AnalyzerTypeMappingView> saveMapping(@PathVariable String profileId,
+            @RequestParam int revision, @RequestBody AnalyzerTypeMappingUpdate update, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(mappingService.saveMapping(profileId, revision, update, getSysUserId(httpRequest)));
+    }
+
+    @PostMapping("/{profileId}/mapping/confirm")
+    public ResponseEntity<AnalyzerSiteBindingConfirmationView> confirmMapping(@PathVariable String profileId,
+            @RequestParam int revision, @RequestBody AnalyzerSiteBindingConfirmationRequest request,
+            HttpServletRequest httpRequest) {
+        return ResponseEntity
+                .ok(mappingService.confirmMapping(profileId, revision, request, getSysUserId(httpRequest)));
+    }
+
+    @GetMapping("/mapping-catalog/tests")
+    public ResponseEntity<List<AnalyzerMappingCatalogService.TestOption>> searchMappingTests(
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(mappingCatalogService.searchActiveTests(search));
+    }
+
+    @GetMapping("/mapping-catalog/tests/{testId}/result-options")
+    public ResponseEntity<List<AnalyzerMappingCatalogService.ResultOption>> getMappingResultOptions(
+            @PathVariable String testId) {
+        return ResponseEntity.ok(mappingCatalogService.getActiveResultOptions(testId));
     }
 
     @PostMapping("/drafts")
@@ -61,11 +106,23 @@ public class AnalyzerTypeRestController extends BaseRestController {
         return ResponseEntity.ok(managementService.getDraft(draftId));
     }
 
+    @GetMapping("/drafts/{draftId}/control-recognition")
+    public ResponseEntity<JsonNode> getControlRecognition(@PathVariable String draftId) {
+        return ResponseEntity.ok(managementService.getControlRecognition(draftId));
+    }
+
     @PutMapping("/drafts/{draftId}")
     public ResponseEntity<JsonNode> updateDraft(@PathVariable String draftId,
             @RequestBody ProfileMutationRequest request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(managementService.updateDraft(draftId, request == null ? null : request.profile(),
                 getSysUserId(httpRequest)));
+    }
+
+    @PutMapping("/drafts/{draftId}/control-recognition")
+    public ResponseEntity<JsonNode> updateControlRecognition(@PathVariable String draftId,
+            @RequestBody AnalyzerControlRecognitionUpdate update, HttpServletRequest httpRequest) {
+        return ResponseEntity
+                .ok(managementService.updateControlRecognition(draftId, update, getSysUserId(httpRequest)));
     }
 
     @PostMapping("/drafts/{draftId}/publish")
@@ -114,6 +171,11 @@ public class AnalyzerTypeRestController extends BaseRestController {
     @ExceptionHandler(BridgeProfileCatalogException.class)
     public ResponseEntity<ErrorResponse> handleProfileCatalogError(BridgeProfileCatalogException exception) {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(new ErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidMapping(IllegalArgumentException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(exception.getMessage()));
     }
 
     public record ProfileMutationRequest(JsonNode profile) {

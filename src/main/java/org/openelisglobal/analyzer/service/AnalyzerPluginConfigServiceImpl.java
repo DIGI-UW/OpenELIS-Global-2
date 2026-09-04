@@ -86,15 +86,6 @@ public class AnalyzerPluginConfigServiceImpl extends BaseObjectServiceImpl<Analy
         update(entity);
     }
 
-    @Autowired
-    private AnalyzerQcRuleService analyzerQcRuleService;
-
-    @Override
-    @Transactional(readOnly = true)
-    public boolean hasAtLeastOneActiveQcRule(String analyzerId) {
-        return analyzerQcRuleService.hasAtLeastOneActiveRule(analyzerId);
-    }
-
     private Map<String, Object> parseConfigMap(String json) {
         if (json == null || json.trim().isEmpty()) {
             return new LinkedHashMap<>();

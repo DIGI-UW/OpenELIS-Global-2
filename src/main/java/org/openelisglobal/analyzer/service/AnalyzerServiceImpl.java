@@ -5,8 +5,6 @@ import java.util.Date;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -17,15 +15,11 @@ import org.openelisglobal.analyzer.dao.AnalyzerErrorDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerFileUploadDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
-import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
-import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
-import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.notebook.dao.NoteBookDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -43,22 +37,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     protected AnalyzerDAO baseObjectDAO;
 
     @Autowired
-    private AnalyzerTestMappingService analyzerMappingService;
-
-    @Autowired
     private AnalyzerResultsService analyzerResultsService;
-
-    @Autowired
-    private org.openelisglobal.test.service.TestService testService;
-
-    @Autowired
-    private AnalyzerPluginConfigService analyzerPluginConfigService;
-
-    @Autowired
-    private AnalyzerQcRuleService analyzerQcRuleService;
-
-    @Autowired
-    PluginAnalyzerService pluginAnalyzerService;
 
     @Autowired
     private AnalyzerErrorDAO analyzerErrorDAO;
@@ -106,50 +85,6 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         return matches.stream().filter(a -> a.getStatus() != Analyzer.AnalyzerStatus.DELETED)
                 .max(java.util.Comparator.comparing(a -> Integer.parseInt(a.getId())))
                 .orElse(matches.get(matches.size() - 1));
-    }
-
-    @Override
-    @Transactional
-    public void persistData(Analyzer analyzer, List<AnalyzerTestMapping> testMappings,
-            List<AnalyzerTestMapping> existingMappings) {
-        if (analyzer.getId() == null) {
-            insert(analyzer);
-        } else {
-            update(analyzer);
-        }
-
-        persistTestMappings(analyzer.getId(), testMappings, existingMappings);
-    }
-
-    @Override
-    @Transactional
-    public void persistTestMappings(String analyzerId, List<AnalyzerTestMapping> testMappings,
-            List<AnalyzerTestMapping> existingMappings) {
-        if (analyzerId == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "persistTestMappings",
-                    "analyzerId is null — skipping " + testMappings.size() + " mapping(s)");
-            return;
-        }
-        for (AnalyzerTestMapping mapping : testMappings) {
-            mapping.setAnalyzerId(analyzerId);
-            if (newMapping(mapping, existingMappings)) {
-                analyzerMappingService.insert(mapping);
-                existingMappings.add(mapping);
-            } else {
-                mapping.setLastupdated(analyzerMappingService.get(mapping.getId()).getLastupdated());
-                analyzerMappingService.update(mapping);
-            }
-        }
-    }
-
-    private boolean newMapping(AnalyzerTestMapping mapping, List<AnalyzerTestMapping> existingMappings) {
-        for (AnalyzerTestMapping existingMap : existingMappings) {
-            if (Objects.equals(existingMap.getAnalyzerId(), mapping.getAnalyzerId())
-                    && existingMap.getAnalyzerTestName().equals(mapping.getAnalyzerTestName())) {
-                return false;
-            }
-        }
-        return true;
     }
 
     // --- Methods migrated from AnalyzerConfigurationService ---
@@ -370,145 +305,6 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                 + " status manually changed from " + oldStatus + " to " + status + " by user " + userId);
 
         return analyzer;
-    }
-
-    @Override
-    @Transactional
-    @SuppressWarnings("unchecked")
-    public void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId) {
-        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                "Called for analyzer " + analyzerId + ", config keys: " + config.keySet());
-
-        analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
-
-        // FR-15: Auto-create QC rules from profile configDefaults
-        createQcRulesFromProfile(analyzerId, config.get("configDefaults"), sysUserId);
-
-        Object mappingsObj = config.get("default_test_mappings");
-        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                "default_test_mappings type: " + (mappingsObj != null ? mappingsObj.getClass().getSimpleName() : "null")
-                        + ", is List: " + (mappingsObj instanceof List));
-        if (!(mappingsObj instanceof List)) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                    "No default_test_mappings list found in config — skipping");
-            return;
-        }
-
-        List<Map<String, Object>> mappings = (List<Map<String, Object>>) mappingsObj;
-        int created = 0;
-        Analyzer analyzer = get(analyzerId);
-        List<AnalyzerTestMapping> dbTestMappings = analyzerMappingService.getAll();
-        for (Map<String, Object> mapping : mappings) {
-            String analyzerCode = (String) mapping.get("test_code");
-            String loinc = (String) mapping.get("loinc");
-
-            if (analyzerCode == null || loinc == null || analyzerCode.isEmpty() || loinc.isEmpty()) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                        "Skipping test mapping with missing analyzer_code or loinc");
-                continue;
-            }
-
-            List<org.openelisglobal.test.valueholder.Test> tests = testService.getActiveTestsByLoinc(loinc);
-            if (tests == null || tests.isEmpty()) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                        "No active test found for LOINC '" + loinc + "' (analyzer_code '" + analyzerCode + "')");
-                continue;
-            }
-
-            org.openelisglobal.test.valueholder.Test test = tests.get(0);
-
-            AnalyzerTestMapping atm = new AnalyzerTestMapping();
-            atm.setAnalyzerId(analyzerId);
-            atm.setAnalyzerTestName(analyzerCode);
-            atm.setTestId(test.getId());
-            atm.setSysUserId(sysUserId);
-
-            try {
-                if (newMapping(atm, dbTestMappings)) {
-                    analyzerMappingService.insert(atm);
-                    dbTestMappings.add(atm);
-                    created++;
-                } else {
-                    // Update existing mapping if test_id changed (e.g., profile updated)
-                    for (AnalyzerTestMapping existing : dbTestMappings) {
-                        if (Objects.equals(existing.getAnalyzerId(), atm.getAnalyzerId())
-                                && existing.getAnalyzerTestName().equals(atm.getAnalyzerTestName())
-                                && !Objects.equals(existing.getTestId(), atm.getTestId())) {
-                            existing.setTestId(atm.getTestId());
-                            existing.setSysUserId(sysUserId);
-                            analyzerMappingService.update(existing);
-                            created++;
-                            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                                    "Updated stale test mapping for '" + analyzerCode + "' → test " + test.getId());
-                            break;
-                        }
-                    }
-                }
-
-            } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                        "Failed to create test mapping for analyzer_code '" + analyzerCode + "': " + e.getMessage());
-            }
-        }
-        // Invalidate cache AFTER the transaction commits — not during.
-        // If reloadCache() runs during the transaction, a concurrent thread may
-        // reload stale data before the mappings are committed to the DB.
-        org.springframework.transaction.support.TransactionSynchronizationManager
-                .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        LogEvent.logInfo("AnalyzerServiceImpl", "afterCommit",
-                                "Transaction committed — reloading AnalyzerTestNameCache");
-                        AnalyzerTestNameCache.getInstance().reloadCache();
-                    }
-                });
-
-        if (created > 0) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
-                    "Auto-created " + created + " test mappings for analyzer " + analyzerId);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void createQcRulesFromProfile(String analyzerId, Object configDefaultsObj, String sysUserId) {
-        if (!(configDefaultsObj instanceof Map)) {
-            return;
-        }
-        Map<String, Object> configDefaults = (Map<String, Object>) configDefaultsObj;
-        Object qcRulesObj = configDefaults.get("qcRules");
-        if (!(qcRulesObj instanceof List)) {
-            return;
-        }
-        List<Map<String, Object>> qcRules = (List<Map<String, Object>>) qcRulesObj;
-        int created = 0;
-        for (Map<String, Object> ruleMap : qcRules) {
-            try {
-                String ruleType = (String) ruleMap.get("ruleType");
-                if (ruleType == null) {
-                    continue;
-                }
-                org.openelisglobal.analyzer.valueholder.AnalyzerQcRule rule = new org.openelisglobal.analyzer.valueholder.AnalyzerQcRule();
-                rule.setRuleType(org.openelisglobal.analyzer.valueholder.AnalyzerQcRule.RuleType.valueOf(ruleType));
-                rule.setTargetField((String) ruleMap.get("targetField"));
-                rule.setOperand((String) ruleMap.get("operand"));
-                rule.setActive(ruleMap.get("isActive") == null || Boolean.TRUE.equals(ruleMap.get("isActive")));
-                Object sortOrder = ruleMap.get("sortOrder");
-                rule.setDisplayOrder(sortOrder instanceof Number ? ((Number) sortOrder).intValue() : 0);
-                if (analyzerQcRuleService.ruleExists(analyzerId, rule.getRuleType(), rule.getTargetField(),
-                        rule.getOperand())) {
-                    continue;
-                }
-                analyzerQcRuleService.createRule(analyzerId, rule, sysUserId);
-                created++;
-            } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "createQcRulesFromProfile",
-                        "Failed to create QC rule from profile for analyzer " + analyzerId + ": " + e.getMessage());
-            }
-        }
-        if (created > 0) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "createQcRulesFromProfile",
-                    "Auto-created " + created + " QC rules from profile for analyzer " + analyzerId);
-        }
     }
 
     @Override

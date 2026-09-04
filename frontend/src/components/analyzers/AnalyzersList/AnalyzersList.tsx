@@ -33,8 +33,6 @@ import {
 // AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
-// QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
-import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
@@ -107,11 +105,6 @@ const AnalyzersList = () => {
     open: false,
     analyzer: null,
   });
-  const [copyMappingsModal, setCopyMappingsModal] =
-    useState<AnalyzerModalState>({
-      open: false,
-      analyzer: null,
-    });
   // Banner shown in the list view after a successful save from AnalyzerForm.
   // The form's own InlineNotification disappears when the modal closes 1s
   // after save, and then loadAnalyzers() re-sorts the table — users had no
@@ -645,19 +638,6 @@ const AnalyzersList = () => {
                                   >
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
-                                        id: "analyzer.action.fieldMappings",
-                                      })}
-                                      onClick={() => {
-                                        if (analyzer?.id) {
-                                          history.push(
-                                            `/analyzers/${analyzer.id}/mappings`,
-                                          );
-                                        }
-                                      }}
-                                      data-testid={`analyzer-action-mappings-${row.id}`}
-                                    />
-                                    <OverflowMenuItem
-                                      itemText={intl.formatMessage({
                                         id: "analyzer.action.testConnection",
                                       })}
                                       onClick={() => {
@@ -670,18 +650,6 @@ const AnalyzersList = () => {
                                     />
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
-                                        id: "analyzer.action.copyMappings",
-                                      })}
-                                      onClick={() => {
-                                        setCopyMappingsModal({
-                                          open: true,
-                                          analyzer: analyzer,
-                                        });
-                                      }}
-                                      data-testid={`analyzer-action-copy-mappings-${row.id}`}
-                                    />
-                                    <OverflowMenuItem
-                                      itemText={intl.formatMessage({
                                         id: "analyzer.action.edit",
                                       })}
                                       onClick={() =>
@@ -690,17 +658,6 @@ const AnalyzersList = () => {
                                         )
                                       }
                                       data-testid={`analyzer-action-edit-${row.id}`}
-                                    />
-                                    <OverflowMenuItem
-                                      itemText={intl.formatMessage({
-                                        id: "analyzer.action.qcRules",
-                                      })}
-                                      onClick={() =>
-                                        history.push(
-                                          `/analyzers/${analyzer.id}/qc-rules`,
-                                        )
-                                      }
-                                      data-testid={`analyzer-action-qc-rules-${row.id}`}
                                     />
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
@@ -757,22 +714,6 @@ const AnalyzersList = () => {
           onConfirm={() => {
             loadAnalyzers();
           }}
-        />
-      )}
-
-      {copyMappingsModal.open && copyMappingsModal.analyzer && (
-        <CopyMappingsModal
-          open={copyMappingsModal.open}
-          sourceAnalyzerId={copyMappingsModal.analyzer.id}
-          sourceAnalyzerName={copyMappingsModal.analyzer.name}
-          sourceAnalyzerType={
-            copyMappingsModal.analyzer.analyzerType ||
-            copyMappingsModal.analyzer.type
-          }
-          onClose={() => {
-            setCopyMappingsModal({ open: false, analyzer: null });
-          }}
-          onSuccess={() => undefined}
         />
       )}
     </div>

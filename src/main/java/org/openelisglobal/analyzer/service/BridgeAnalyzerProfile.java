@@ -69,6 +69,7 @@ public final class BridgeAnalyzerProfile {
         List<TestDefinition> tests = new ArrayList<>();
         for (JsonNode mapping : document.path("default_test_mappings")) {
             String analyzerCode = requiredText(mapping, "test_code");
+            List<String> aliases = textList(mapping.path("aliases"), "profile analyzer alias");
             List<String> values = new ArrayList<>();
             for (JsonNode value : mapping.path("values")) {
                 if (!value.isTextual() || value.asText().isBlank()) {
@@ -76,7 +77,13 @@ public final class BridgeAnalyzerProfile {
                 }
                 values.add(value.asText());
             }
-            tests.add(new TestDefinition(analyzerCode, values));
+            JsonNode coding = mapping.path("normalized_coding");
+            NormalizedCoding normalizedCoding = coding.isMissingNode() || coding.isNull() ? null
+                    : new NormalizedCoding(requiredText(coding, "system"), requiredText(coding, "code"),
+                            nullableText(coding, "display"));
+            tests.add(new TestDefinition(analyzerCode, aliases, nullableText(mapping, "test_name_hint"),
+                    requiredText(mapping, "loinc"), nullableText(mapping, "unit"), nullableText(mapping, "result_type"),
+                    values, normalizedCoding));
         }
 
         JsonNode lineage = catalog.path("lineage");
@@ -180,10 +187,26 @@ public final class BridgeAnalyzerProfile {
         return value.isIntegralNumber() && value.canConvertToInt() ? value.asInt() : null;
     }
 
-    public record TestDefinition(String analyzerCode, List<String> resultValues) {
+    private static List<String> textList(JsonNode values, String label) {
+        List<String> result = new ArrayList<>();
+        for (JsonNode value : values) {
+            if (!value.isTextual() || value.asText().isBlank()) {
+                throw new IllegalArgumentException("Bridge analyzer " + label + " must be nonblank text");
+            }
+            result.add(value.asText());
+        }
+        return List.copyOf(result);
+    }
+
+    public record TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, String loinc,
+            String unit, String resultType, List<String> resultValues, NormalizedCoding normalizedCoding) {
         public TestDefinition {
+            aliases = aliases == null ? List.of() : List.copyOf(aliases);
             resultValues = resultValues == null ? List.of() : List.copyOf(resultValues);
         }
+    }
+
+    public record NormalizedCoding(String system, String code, String display) {
     }
 
     public record InstanceDefaults(String transport, String connectionRole, Integer port) {

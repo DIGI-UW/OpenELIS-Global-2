@@ -13,6 +13,7 @@ import {
 import { ArrowLeft } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { safeInternalPath } from "../../utils/UrlUtils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
@@ -52,6 +53,9 @@ const TestCatalogEditor = () => {
   const base = location.pathname.startsWith("/admin")
     ? "/admin"
     : "/MasterListsPage";
+  const returnTo = safeInternalPath(
+    new URLSearchParams(location.search).get("returnTo"),
+  );
   const { addNotification, setNotificationVisible, notificationVisible } =
     useContext(NotificationContext);
 
@@ -76,7 +80,12 @@ const TestCatalogEditor = () => {
   // Canonicalize the section into the URL so deep-links + the SideNav agree.
   useEffect(() => {
     if (testId && (!section || !isValidSection(section))) {
-      history.replace(`${base}/TestCatalogEditor/${testId}/${DEFAULT_SECTION}`);
+      const canonicalPath = `${base}/TestCatalogEditor/${testId}/${DEFAULT_SECTION}`;
+      history.replace(
+        location.search
+          ? { pathname: canonicalPath, search: location.search }
+          : canonicalPath,
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId, section]);
@@ -100,7 +109,7 @@ const TestCatalogEditor = () => {
   ];
 
   const handleCancel = () => {
-    history.push(`${base}/TestCatalogList`);
+    history.push(returnTo || `${base}/TestCatalogList`);
   };
 
   // FR-7: open the combined editor over this test's specimen siblings (tests

@@ -84,23 +84,17 @@ function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
 }
 
 const AnalyzersPage = lazyWithRetry(() => import("./pages/AnalyzersPage"));
-const FieldMapping = lazyWithRetry(
-  () => import("./components/analyzers/FieldMapping/FieldMapping"),
-);
 const ErrorDashboardPage = lazyWithRetry(
   () => import("./pages/ErrorDashboardPage"),
-);
-const CustomFieldTypeManagementPage = lazyWithRetry(
-  () => import("./pages/CustomFieldTypeManagementPage"),
 );
 const AnalyzerTypesPage = lazyWithRetry(
   () => import("./pages/AnalyzerTypesPage"),
 );
+const AnalyzerTypeMappingPage = lazyWithRetry(
+  () => import("./pages/AnalyzerTypeMappingPage"),
+);
 const AnalyzerFormPage = lazyWithRetry(
   () => import("./components/analyzers/AnalyzerForm/AnalyzerForm"),
-);
-const QcRulePage = lazyWithRetry(
-  () => import("./components/analyzers/QcRules/QcRuleBuilderModal"),
 );
 import {
   QCDashboard,
@@ -1140,36 +1134,12 @@ export default function App() {
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
-                  path="/analyzers/:id/qc-rules"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <QcRulePage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
                   path="/analyzers"
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
                       <Suspense fallback={null}>
                         <AnalyzersPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/mappings"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <FieldMapping />
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
@@ -1188,18 +1158,6 @@ export default function App() {
                   role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
-                  path="/analyzers/custom-field-types"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <CustomFieldTypeManagementPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.ANALYSER_IMPORT}
-                />
-                <SecureRoute
                   path="/analyzers/types"
                   exact
                   component={() => (
@@ -1210,6 +1168,18 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/analyzers/types/:profileId/mapping"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypeMappingPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/qc/instruments/:instrumentId"

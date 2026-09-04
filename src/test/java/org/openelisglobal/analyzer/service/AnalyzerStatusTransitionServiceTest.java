@@ -91,6 +91,16 @@ public class AnalyzerStatusTransitionServiceTest {
         verify(analyzerService).update(any(Analyzer.class));
     }
 
+    @Test
+    public void transitionToActive_DoesNotRequireOperationalQc() {
+        testAnalyzer.setStatus(AnalyzerStatus.VALIDATION);
+        when(analyzerService.get("1")).thenReturn(testAnalyzer);
+
+        Analyzer result = transitionService.transitionToActive("1");
+
+        assertEquals(AnalyzerStatus.ACTIVE, result.getStatus());
+    }
+
     @Test(expected = IllegalStateException.class)
     public void testTransitionToActive_FromSetup_ThrowsException() {
         testAnalyzer.setStatus(AnalyzerStatus.SETUP);

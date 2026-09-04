@@ -5,18 +5,10 @@ services:
       dockerfile: Dockerfile
     image: openelis-astm-simulator.ci
     container_name: openelis-astm-simulator
-    # Harness lane accession (HARN-GX-*) — main repo copy so CI does not depend on
-    # analyzer-mock-server submodule revision for Playwright expectations.
     volumes:
-      - ./projects/analyzer-harness/e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
       - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
-      # Canonical analyzer profiles — the mock derives each analyzer's assay menu
-      # (the OBX results it emits) from these via profile_adapter. Templates are
-      # transport-only and carry NO embedded result fields, so without this mount
-      # the profile lookup FileNotFounds, falls back to an empty template, and the
-      # mock emits OBX-less ORUs that the bridge rejects (MSA|AE). Must match
-      # ANALYZER_PROFILES_DIR below.
-      - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
+      # Priority simulations resolve exact immutable Bridge profile revisions.
+      - ./tools/openelis-analyzer-bridge/src/main/resources/analyzer-profiles:/data/bridge-profiles:ro
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       # Host port is parameterized so this file can also be run locally, which is
@@ -33,10 +25,7 @@ services:
       - RESPONSE_DELAY_MS=0
       - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
       - MOCK_CONTAINER_NAME=openelis-astm-simulator
-      # Profiles ROOT (profile_adapter appends {astm,hl7,file}/<name>.json). Without
-      # this the unset-env fallback resolves to /projects/analyzer-profiles (dirname
-      # bottoms out at / from WORKDIR /app) which does not exist in the container.
-      - ANALYZER_PROFILES_DIR=/data/analyzer-profiles
+      - ANALYZER_BRIDGE_PROFILES_DIR=/data/bridge-profiles
     command: >
       python -u server.py
       --port 9600
@@ -101,9 +90,7 @@ services:
       # Bridge owns FILE polling (FileAlterationMonitor); OE polling is disabled.
       - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
     volumes:
-      - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
       - ./projects/analyzer-harness/config-templates:/var/lib/openelis-global/configuration/backend:ro
-      - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     networks:
       - default
       - analyzer-net

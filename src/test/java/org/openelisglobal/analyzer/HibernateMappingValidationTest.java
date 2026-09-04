@@ -18,6 +18,12 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CustomFieldType;
 import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
@@ -50,6 +56,12 @@ public class HibernateMappingValidationTest {
 
         // Annotation-based entities (no XML entity references)
         configuration.addAnnotatedClass(Analyzer.class); // Migrated in Phase 1
+        configuration.addAnnotatedClass(AnalyzerProfileBinding.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBinding.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingConfirmation.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingRevision.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingTest.class);
+        configuration.addAnnotatedClass(AnalyzerSiteBindingResult.class);
         configuration.addAnnotatedClass(AnalyzerType.class); // Type/Instance separation
         configuration.addAnnotatedClass(AnalyzerField.class); // Migrated in Phase 2A
         configuration.addAnnotatedClass(AnalyzerResults.class); // Migrated in Phase 2B
@@ -90,6 +102,18 @@ public class HibernateMappingValidationTest {
     public void testAnalyzerMappingsLoadSuccessfully() {
         // Verify each entity is registered in Hibernate metamodel
         assertNotNull("Analyzer should be registered", sessionFactory.getMetamodel().entity(Analyzer.class)); // Phase 1
+        assertNotNull("AnalyzerProfileBinding should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerProfileBinding.class));
+        assertNotNull("AnalyzerSiteBinding should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBinding.class));
+        assertNotNull("AnalyzerSiteBindingConfirmation should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingConfirmation.class));
+        assertNotNull("AnalyzerSiteBindingRevision should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingRevision.class));
+        assertNotNull("AnalyzerSiteBindingTest should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingTest.class));
+        assertNotNull("AnalyzerSiteBindingResult should be registered",
+                sessionFactory.getMetamodel().entity(AnalyzerSiteBindingResult.class));
         assertNotNull("AnalyzerType should be registered", sessionFactory.getMetamodel().entity(AnalyzerType.class));
         // AnalyzerConfiguration removed: merged into Analyzer entity
         assertNotNull("AnalyzerField should be registered", sessionFactory.getMetamodel().entity(AnalyzerField.class));
@@ -121,7 +145,9 @@ public class HibernateMappingValidationTest {
      */
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
-        Class<?>[] entities = { Analyzer.class, AnalyzerType.class, AnalyzerField.class, AnalyzerResults.class,
+        Class<?>[] entities = { Analyzer.class, AnalyzerProfileBinding.class, AnalyzerSiteBinding.class,
+                AnalyzerSiteBindingConfirmation.class, AnalyzerSiteBindingRevision.class, AnalyzerSiteBindingTest.class,
+                AnalyzerSiteBindingResult.class, AnalyzerType.class, AnalyzerField.class, AnalyzerResults.class,
                 AnalyzerTestMapping.class, AnalyzerFieldMapping.class, QualitativeResultMapping.class,
                 UnitMapping.class, AnalyzerError.class, CustomFieldType.class, ValidationRuleConfiguration.class,
                 SerialPortConfiguration.class };

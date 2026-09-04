@@ -259,6 +259,31 @@ describe("TestConnectionModal", () => {
     });
   });
 
+  test("testConnectionEmptyResponse_ShowsErrorTag", async () => {
+    const mockAnalyzer = createMockAnalyzer();
+    testConnection.mockImplementation((id, callback) => {
+      callback(undefined);
+    });
+
+    renderWithIntl(
+      <TestConnectionModal
+        analyzer={mockAnalyzer}
+        open={true}
+        onClose={mockOnClose}
+      />,
+    );
+
+    await user.click(screen.getByTestId("test-connection-test-button"));
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("test-connection-error")).toBeInTheDocument();
+    });
+  });
+
   /**
    * Test: Close button calls onClose handler
    */

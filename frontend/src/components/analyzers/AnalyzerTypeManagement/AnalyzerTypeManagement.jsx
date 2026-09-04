@@ -27,6 +27,7 @@ import { Add, Copy } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { safeInternalPath } from "../../utils/UrlUtils";
 import { getAnalyzerTypeCatalog } from "../../../services/analyzerService";
 import AnalyzerTypeLifecycleModals from "./AnalyzerTypeLifecycleModals";
 import "./AnalyzerTypeManagement.scss";
@@ -55,10 +56,7 @@ const getMappingState = (type) => {
   const summaries = [type.testMappings, type.resultMappings].filter(
     (summary) => summary && summary.state !== "NOT_APPLICABLE",
   );
-  return summaries.every(
-    (summary) =>
-      summary.state === "COMPLETE" && summary.mapped === summary.total,
-  )
+  return summaries.every((summary) => summary.state === "COMPLETE")
     ? "COMPLETE"
     : "INCOMPLETE";
 };
@@ -84,10 +82,15 @@ const AnalyzerTypeManagement = () => {
   const [notification, setNotification] = useState(null);
   const actionState = useMemo(() => {
     const params = new URLSearchParams(location.search);
+    const requestedRevision = Number(params.get("revision"));
     return {
       action: params.get("action"),
       profileId: params.get("profile"),
       draftId: params.get("draft"),
+      revision:
+        Number.isInteger(requestedRevision) && requestedRevision > 0
+          ? requestedRevision
+          : null,
     };
   }, [location.search]);
 
@@ -115,9 +118,16 @@ const AnalyzerTypeManagement = () => {
 
   const closeAction = useCallback(() => {
     const params = new URLSearchParams(location.search);
+    const returnTo = safeInternalPath(params.get("returnTo"));
+    if (returnTo) {
+      history.push(returnTo);
+      return;
+    }
     params.delete("action");
     params.delete("profile");
     params.delete("draft");
+    params.delete("revision");
+    params.delete("returnTo");
     history.push({
       pathname: location.pathname,
       search: params.toString() ? `?${params.toString()}` : "",
@@ -273,12 +283,21 @@ const AnalyzerTypeManagement = () => {
     if (!summary || summary.state === "NOT_APPLICABLE") {
       return intl.formatMessage({ id: "analyzerType.mapping.notApplicable" });
     }
-    if (summary.state === "NOT_STARTED") {
-      return intl.formatMessage({ id: "analyzerType.mapping.notStarted" });
+    const percent = Math.round((summary.mapped / summary.total) * 100);
+    if (summary.excluded > 0) {
+      return intl.formatMessage(
+        { id: "analyzerType.mapping.countWithExcluded" },
+        {
+          mapped: summary.mapped,
+          total: summary.total,
+          percent,
+          excluded: summary.excluded,
+        },
+      );
     }
     return intl.formatMessage(
       { id: "analyzerType.mapping.count" },
-      { mapped: summary.mapped, total: summary.total },
+      { mapped: summary.mapped, total: summary.total, percent },
     );
   };
 
@@ -292,6 +311,18 @@ const AnalyzerTypeManagement = () => {
     }
     history.push({
       pathname: location.pathname,
+      search: `?${params.toString()}`,
+    });
+  };
+
+  const openMapping = (type) => {
+    const returnTo = `${location.pathname}${location.search}`;
+    const params = new URLSearchParams({
+      revision: String(type.revision),
+      returnTo,
+    });
+    history.push({
+      pathname: `/analyzers/types/${encodeURIComponent(type.profileId)}/mapping`,
       search: `?${params.toString()}`,
     });
   };
@@ -702,6 +733,12 @@ const AnalyzerTypeManagement = () => {
                                   >
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
+                                        id: "analyzerType.action.editMappings",
+                                      })}
+                                      onClick={() => openMapping(type)}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
                                         id: "analyzerType.button.duplicate",
                                       })}
                                       onClick={() =>
@@ -760,10 +797,11 @@ const AnalyzerTypeManagement = () => {
       </Grid>
       {catalog && actionState.action && (
         <AnalyzerTypeLifecycleModals
-          key={`${actionState.action}:${actionState.profileId || ""}`}
+          key={`${actionState.action}:${actionState.profileId || ""}:${actionState.revision || ""}`}
           action={actionState.action}
           profileId={actionState.profileId}
           draftId={actionState.draftId}
+          revision={actionState.revision}
           types={catalog.types}
           onClose={closeAction}
           onSuccess={handleActionSuccess}

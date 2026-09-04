@@ -15,8 +15,11 @@ import {
   createAnalyzerTypeDraft,
   duplicateAnalyzerType,
   getAnalyzerTypeCatalog,
+  getAnalyzerTypeControlRecognition,
   getAnalyzerTypeDraft,
+  getAnalyzerTypeRevision,
   publishAnalyzerTypeDraft,
+  updateAnalyzerTypeControlRecognition,
   updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
 import AnalyzerTypeManagement from "./AnalyzerTypeManagement";
@@ -29,8 +32,11 @@ vi.mock("../../../services/analyzerService", () => ({
   createAnalyzerTypeDraft: vi.fn(),
   duplicateAnalyzerType: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
+  getAnalyzerTypeControlRecognition: vi.fn(),
   getAnalyzerTypeDraft: vi.fn(),
+  getAnalyzerTypeRevision: vi.fn(),
   publishAnalyzerTypeDraft: vi.fn(),
+  updateAnalyzerTypeControlRecognition: vi.fn(),
   updateSharedAnalyzerType: vi.fn(),
 }));
 
@@ -57,9 +63,18 @@ const catalog = {
       parentProfileId: null,
       parentRevision: null,
       siteBindingId: "11",
-      testMappings: { mapped: 4, total: 4, state: "COMPLETE" },
-      resultMappings: { mapped: 5, total: 6, state: "INCOMPLETE" },
+      testMappings: { mapped: 3, excluded: 1, total: 4, state: "COMPLETE" },
+      resultMappings: {
+        mapped: 5,
+        excluded: 0,
+        total: 6,
+        state: "INCOMPLETE",
+      },
       usedBy: 2,
+      affectedAnalyzers: [
+        { id: "501", name: "GeneXpert - Main Lab", active: true },
+        { id: "502", name: "GeneXpert - TB Bench", active: true },
+      ],
       readiness: "NEEDS_ATTENTION",
       publicationAction: "SHIPPED",
       publicationActor: "system",
@@ -78,9 +93,18 @@ const catalog = {
       parentProfileId: "shipped.mindray",
       parentRevision: 3,
       siteBindingId: "12",
-      testMappings: { mapped: 13, total: 13, state: "COMPLETE" },
-      resultMappings: { mapped: 0, total: 0, state: "NOT_APPLICABLE" },
-      usedBy: 0,
+      testMappings: { mapped: 13, excluded: 0, total: 13, state: "COMPLETE" },
+      resultMappings: {
+        mapped: 0,
+        excluded: 0,
+        total: 0,
+        state: "NOT_APPLICABLE",
+      },
+      usedBy: 2,
+      affectedAnalyzers: [
+        { id: "601", name: "Mindray - Main Lab", active: true },
+        { id: "602", name: "Mindray - Night Bench", active: true },
+      ],
       readiness: "READY",
       publicationAction: "DUPLICATED",
       publicationActor: "17",
@@ -99,8 +123,8 @@ const catalog = {
       parentProfileId: null,
       parentRevision: null,
       siteBindingId: null,
-      testMappings: { mapped: 0, total: 1, state: "INCOMPLETE" },
-      resultMappings: { mapped: 0, total: 3, state: "INCOMPLETE" },
+      testMappings: { mapped: 0, excluded: 0, total: 1, state: "INCOMPLETE" },
+      resultMappings: { mapped: 0, excluded: 0, total: 3, state: "INCOMPLETE" },
       usedBy: 0,
       readiness: "NEEDS_ATTENTION",
       publicationAction: "DEACTIVATED",
@@ -109,6 +133,31 @@ const catalog = {
     },
   ],
 };
+
+const recognitionDraft = (draftId) => ({
+  draftId,
+  kind: draftId === "draft-update" ? "UPDATE" : "DUPLICATE",
+  validationIssues: [],
+  recognition: {
+    mode: "RULES",
+    affirmedNoControlResults: false,
+    description: "Any listed condition identifies a control result.",
+    conditions: [
+      {
+        key: "order-action-control",
+        kind: "FIELD_VALUE_EQUALS",
+        sourceKey: "source-safe-1",
+        sourceLabel: "Order field 12",
+        description: "Order field 12 equals Q",
+        value: "Q",
+        editable: true,
+        controlLevel: null,
+        controlType: null,
+      },
+    ],
+    availableSources: [{ key: "source-safe-1", label: "Order field 12" }],
+  },
+});
 
 const renderPage = () =>
   render(
@@ -137,6 +186,14 @@ describe("AnalyzerTypeManagement", () => {
     getAnalyzerTypeCatalog.mockImplementation((callback) => {
       callback(catalog);
     });
+    getAnalyzerTypeRevision.mockImplementation(
+      (profileId, revision, callback) => {
+        const latest = catalog.types.find(
+          (type) => type.profileId === profileId,
+        );
+        callback(latest ? { ...latest, revision } : undefined);
+      },
+    );
     createAnalyzerTypeDraft.mockImplementation((displayName, callback) => {
       callback({
         draftId: "draft-create",
@@ -223,6 +280,26 @@ describe("AnalyzerTypeManagement", () => {
         },
       });
     });
+    getAnalyzerTypeControlRecognition.mockImplementation((draftId, callback) =>
+      callback(recognitionDraft(draftId)),
+    );
+    updateAnalyzerTypeControlRecognition.mockImplementation(
+      (draftId, update, callback) =>
+        callback({
+          ...recognitionDraft(draftId),
+          recognition: {
+            ...recognitionDraft(draftId).recognition,
+            mode: update.mode,
+            affirmedNoControlResults: update.affirmedNoControlResults,
+            conditions: update.conditions.map((condition) => ({
+              ...condition,
+              sourceLabel: "Order field 12",
+              description: `Order field 12 equals ${condition.value}`,
+              editable: true,
+            })),
+          },
+        }),
+    );
     postToOpenElisServerJsonResponse.mockImplementation(
       (endpoint, payload, callback) => {
         callback({ profile: { profileId: "site.created" } });
@@ -275,6 +352,9 @@ describe("AnalyzerTypeManagement", () => {
     expect(screen.getByRole("columnheader", { name: "Used by" })).toBeVisible();
     expect(screen.getByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
     expect(screen.getByText("Mindray BC-5380")).toBeVisible();
+    expect(
+      screen.getByText("3 / 4 · 75% · 1 marked Do not receive"),
+    ).toBeVisible();
     expect(screen.queryByText("Tecan Infinite F50")).not.toBeInTheDocument();
 
     expect(screen.queryByText("Plugin class")).not.toBeInTheDocument();
@@ -351,6 +431,35 @@ describe("AnalyzerTypeManagement", () => {
       ),
     );
     expect(screen.getByText("Tecan Infinite F50")).toBeVisible();
+  });
+
+  it("opens the sole shared mapping editor and preserves the filtered return URL", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?source=SHIPPED&mapping=INCOMPLETE",
+    );
+    renderPage();
+    await screen.findByText("Cepheid GeneXpert MTB/RIF");
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Actions for Cepheid GeneXpert MTB/RIF",
+      }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Edit mappings" }),
+    );
+
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(
+        "/analyzers/types/shipped.genexpert/mapping",
+      ),
+    );
+    expect(window.location.search).toContain("revision=2");
+    expect(new URLSearchParams(window.location.search).get("returnTo")).toBe(
+      "/analyzers/types?source=SHIPPED&mapping=INCOMPLETE",
+    );
   });
 
   it("starts a Bridge-owned site profile draft without fabricating a profile document", async () => {
@@ -461,6 +570,162 @@ describe("AnalyzerTypeManagement", () => {
     ).toBeEnabled();
   });
 
+  it("blocks duplicate publication until recognition changes are saved", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=duplicate&profile=shipped.genexpert&draft=draft-duplicate",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    expect(
+      await within(dialog).findByRole("heading", {
+        name: "Control result recognition",
+      }),
+    ).toBeVisible();
+    const publish = within(dialog).getByRole("button", {
+      name: "Publish Profile",
+    });
+    await waitFor(() => expect(publish).toBeEnabled());
+
+    const value = within(dialog).getByRole("textbox", {
+      name: "Order field 12 value",
+    });
+    await userEvent.clear(value);
+    await userEvent.type(value, "CONTROL");
+    expect(publish).toBeDisabled();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Save control recognition",
+      }),
+    );
+    await waitFor(() => expect(publish).toBeEnabled());
+  });
+
+  it("duplicates the exact bookmarked profile revision instead of the latest revision", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=duplicate&profile=shipped.genexpert&revision=1&returnTo=%2Fanalyzers%2Ftypes%2Fshipped.genexpert%2Fmapping%3Frevision%3D1",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    await waitFor(() =>
+      expect(getAnalyzerTypeRevision).toHaveBeenCalledWith(
+        "shipped.genexpert",
+        1,
+        expect.any(Function),
+      ),
+    );
+    expect(within(dialog).getByText(/revision 1/)).toBeVisible();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Duplicate Profile" }),
+    );
+
+    expect(duplicateAnalyzerType).toHaveBeenCalledWith(
+      "shipped.genexpert",
+      1,
+      "Cepheid GeneXpert MTB/RIF -1",
+      expect.any(Function),
+    );
+  });
+
+  it("waits for the exact bookmarked revision before enabling duplication", async () => {
+    let finishRevisionLoad;
+    getAnalyzerTypeRevision.mockImplementation(
+      (_profileId, _revision, callback) => {
+        finishRevisionLoad = callback;
+      },
+    );
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=duplicate&profile=shipped.genexpert&revision=1",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    const duplicate = within(dialog).getByRole("button", {
+      name: "Duplicate Profile",
+    });
+    expect(duplicate).toBeDisabled();
+
+    act(() => {
+      finishRevisionLoad({ ...catalog.types[0], revision: 1 });
+    });
+
+    await waitFor(() => expect(duplicate).toBeEnabled());
+    await userEvent.click(duplicate);
+    expect(duplicateAnalyzerType).toHaveBeenCalledWith(
+      "shipped.genexpert",
+      1,
+      "Cepheid GeneXpert MTB/RIF -1",
+      expect.any(Function),
+    );
+  });
+
+  it("returns to the mapping page that launched a profile action", async () => {
+    const returnTo =
+      "/analyzers/types/shipped.genexpert/mapping?revision=1&returnTo=%2Fanalyzers%2Ftypes%3Fprotocol%3DASTM";
+    window.history.replaceState(
+      {},
+      "",
+      `/analyzers/types?action=duplicate&profile=shipped.genexpert&revision=1&returnTo=${encodeURIComponent(
+        returnTo,
+      )}`,
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+
+    await waitFor(() =>
+      expect(`${window.location.pathname}${window.location.search}`).toBe(
+        returnTo,
+      ),
+    );
+  });
+
+  it("rejects an external profile-action return URL", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=duplicate&profile=shipped.genexpert&returnTo=%2F%2Fevil.example",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Duplicate Profile",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/analyzers/types");
+      expect(window.location.search).toBe("");
+    });
+  });
+
   it("deactivates a shipped profile through a confirmation dialog and exposes no delete action", async () => {
     renderPage();
     await screen.findByText("Cepheid GeneXpert MTB/RIF");
@@ -507,7 +772,7 @@ describe("AnalyzerTypeManagement", () => {
     const dialog = screen.getByRole("dialog", {
       name: "Update Mindray BC-5380",
     });
-    expect(within(dialog).getByText(/0 analyzers/)).toBeVisible();
+    expect(within(dialog).getByText(/2 analyzers/)).toBeVisible();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Start update" }),
     );
@@ -521,6 +786,29 @@ describe("AnalyzerTypeManagement", () => {
       expect(window.location.search).toContain("draft=draft-update"),
     );
     expect(screen.getByText("Profile update draft created")).toBeVisible();
+  });
+
+  it("names every affected analyzer before starting a shared-profile update", async () => {
+    renderPage();
+    await screen.findByText("Mindray BC-5380");
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Actions for Mindray BC-5380",
+      }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Update shared" }),
+    );
+
+    const dialog = screen.getByRole("dialog", {
+      name: "Update Mindray BC-5380",
+    });
+    expect(within(dialog).getByText("Mindray - Main Lab")).toBeVisible();
+    expect(within(dialog).getByText("Mindray - Night Bench")).toBeVisible();
+    expect(
+      within(dialog).getByText(/remain pinned to their current revisions/),
+    ).toBeVisible();
   });
 
   it("restores the exact shared-profile update draft from a bookmarked URL", async () => {
@@ -543,6 +831,36 @@ describe("AnalyzerTypeManagement", () => {
       within(dialog).getByText("Profile update draft created"),
     ).toBeVisible();
     expect(updateSharedAnalyzerType).not.toHaveBeenCalled();
+  });
+
+  it("publishes a shared-profile update through the same recognition editor", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers/types?action=update&profile=site.mindray&draft=draft-update",
+    );
+
+    renderPage();
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Update Mindray BC-5380",
+    });
+    expect(
+      await within(dialog).findByRole("heading", {
+        name: "Control result recognition",
+      }),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText(/Existing analyzers remain pinned/),
+    ).toBeVisible();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Publish Profile" }),
+    );
+    expect(publishAnalyzerTypeDraft).toHaveBeenCalledWith(
+      "draft-update",
+      expect.any(Function),
+    );
   });
 
   it("loads revision history through the profile history action", async () => {

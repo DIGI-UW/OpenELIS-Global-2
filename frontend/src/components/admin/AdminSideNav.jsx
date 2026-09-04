@@ -587,12 +587,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         )}
       </SideNavMenu>
       <SideNavLink
-        renderIcon={ListDropdown}
-        {...navProps(`${path}/AnalyzerTestName`)}
-      >
-        <FormattedMessage id="sidenav.label.admin.analyzerTest" />
-      </SideNavLink>
-      <SideNavLink
         data-cy="labNumberMgmnt"
         renderIcon={CharacterWholeNumber}
         {...navProps(`${path}/labNumber`)}

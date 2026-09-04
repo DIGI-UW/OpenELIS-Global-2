@@ -1,4 +1,7 @@
 testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
+# Priority analyzer qualitative options for the catalog-bound mapping story
+Xpert RIF Resistance,D,RESISTANT,1,N,Y,N,,
+Xpert RIF Resistance,D,Susceptible,2,N,Y,Y,,
 # Hematology numeric precision aligned to demo mock templates
 White Blood Cells,N,,1,Y,Y,N,1,
 Red Blood Cells,N,,1,Y,Y,N,2,
