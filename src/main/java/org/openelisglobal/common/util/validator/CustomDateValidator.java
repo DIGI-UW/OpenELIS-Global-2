@@ -141,15 +141,17 @@ public class CustomDateValidator extends DateValidator {
         calendarDate.set(Calendar.MILLISECOND, 0);
         date = calendarDate.getTime();
 
-        int dateDiff = date.compareTo(today);
+        long diffInMillis = date.getTime() - today.getTime();
+        // Allow 24 hours buffer for timezone differences
+        long buffer = 24 * 60 * 60 * 1000;
 
-        if (relative.equals(DateRelation.PAST) && dateDiff > 0) {
+        if (relative.equals(DateRelation.PAST) && diffInMillis > buffer) {
             result = IActionConstants.INVALID_TO_LARGE;
-        } else if (relative.equals(DateRelation.FUTURE) && dateDiff < 0) {
+        } else if (relative.equals(DateRelation.FUTURE) && diffInMillis < -buffer) {
             result = IActionConstants.INVALID_TO_SMALL;
-        } else if (relative.equals(DateRelation.TODAY) && dateDiff > 0) {
+        } else if (relative.equals(DateRelation.TODAY) && diffInMillis > buffer) {
             result = IActionConstants.INVALID_TO_SMALL;
-        } else if (relative.equals(DateRelation.TODAY) && dateDiff < 0) {
+        } else if (relative.equals(DateRelation.TODAY) && diffInMillis < -buffer) {
             result = IActionConstants.INVALID_TO_SMALL;
         }
 
