@@ -1731,6 +1731,8 @@
   "error.informedConsent.formReferenceMaxLength": "Consent form reference must be 100 characters or fewer",
   "error.informedConsent.formReferenceInvalidChars": "Only letters, numbers, hyphens, and spaces are allowed",
   "coldstorage.label.dashboard": "Cold Storage Dashboard",
+  "coldstorage.alert.acknowledge": "Acknowledge",
+  "coldstorage.alert.clear": "Clear",
   "collection.date": "Collection Date",
   "collector": "Collector",
   "collector.label": "Collector",
