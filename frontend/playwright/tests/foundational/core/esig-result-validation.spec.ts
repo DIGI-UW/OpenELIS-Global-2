@@ -150,19 +150,26 @@ test("E-Signature — full result entry and validation flow", async ({
     await searchInput.fill(accessionNumber);
     await main.getByRole("button", { name: /search/i }).click();
 
-    await expect(main.getByRole("button", { name: "Validate" })).toBeVisible({
-      timeout: NAV_TIMEOUT,
-    });
+    // OGC-1030: release is per row, from the review panel — the queue row's
+    // expander is what appears once the search has loaded.
+    await expect(
+      main.getByRole("button", { name: /expand row/i }).first(),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
   });
 
-  await test.step("Select all results and click Validate — e-sig modal shows VALIDATED_AND_RELEASED", async () => {
-    // Select all results for validation
-    const saveAllLabel = page.locator('label[for="saveallresults"]');
-    if (await saveAllLabel.isVisible()) {
-      await saveAllLabel.click();
-    }
+  await test.step("Expand the row and click Validate & release — e-sig modal shows VALIDATED_AND_RELEASED", async () => {
+    const main = page.getByRole("main");
+    await main
+      .getByRole("button", { name: /expand row/i })
+      .first()
+      .click();
 
-    await page.getByRole("button", { name: "Validate" }).click();
+    const panel = main.locator('[data-testid^="validation-review-panel-"]');
+    await expect(panel).toBeVisible({ timeout: UI_TIMEOUT });
+    await panel
+      .getByRole("button", { name: /validate & release/i })
+      .first()
+      .click();
 
     const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: UI_TIMEOUT });
