@@ -24,7 +24,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "lodash-es": "^4.18.1",
-    "qs": "6.14.2",
+    "qs": "6.16.0",
     "react": "^17.0.2",
     "react-avatar": "5.0.3",
     "react-confirm-alert": "^2.7.0",
@@ -110,7 +110,7 @@
     "vitest": "^4.1.4"
   },
   "overrides": {
-    "qs": "6.14.2",
+    "qs": "6.16.0",
     "lodash": "4.18.1"
   },
   "type": "module"
