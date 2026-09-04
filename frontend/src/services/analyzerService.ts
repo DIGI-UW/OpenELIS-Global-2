@@ -1,7 +1,7 @@
 /**
  * Analyzer Service API Client
  *
- * Provides methods for CRUD operations on analyzers and analyzer field mappings
+ * Provides the lab-facing analyzer instance and Analyzer Type operations.
  * Follows OpenELIS pattern using getFromOpenElisServer, postToOpenElisServerJsonResponse, and fetch for PUT/DELETE
  *
  * Pattern Reference: AGENTS.md Section 5 (Frontend Data Fetching Pattern)
@@ -16,6 +16,7 @@ import type {
   AnalyzerApiError,
   AnalyzerApiResponse,
   AnalyzerProtocol,
+  AnalyzerProfileRef,
 } from "../components/analyzers/types";
 import config from "../config.json";
 
@@ -26,15 +27,6 @@ type ApiCallback<T = AnalyzerApiResponse> = (
   extraParams?: ExtraParams,
 ) => void;
 type DataCallback<T> = (data: T) => void;
-type SuccessCallback = (
-  success: boolean,
-  error: AnalyzerApiError | null,
-) => void;
-
-const asExtraParamsObject = (extraParams?: ExtraParams): JsonObject =>
-  typeof extraParams === "object" && extraParams !== null
-    ? (extraParams as JsonObject)
-    : {};
 
 export interface AnalyzerFilters {
   status?: string;
@@ -76,6 +68,74 @@ export interface AnalyzerTypeCatalog {
     deactivated: number;
   };
   types: AnalyzerTypeSummary[];
+}
+
+export interface AnalyzerLabUnit {
+  id: string;
+  name: string;
+}
+
+export interface AnalyzerInstancePayload extends JsonObject {
+  name?: string;
+  profileId?: string;
+  profileRevision?: number;
+  testUnitIds?: string[];
+  connectionValues?: Record<string, unknown>;
+}
+
+export interface AnalyzerSiteBindingSelection extends JsonObject {
+  siteBindingId: string;
+  revision: number;
+  bindingFingerprint: string;
+}
+
+export interface AnalyzerConnectionProbeCheck {
+  key: string;
+  status: "PASSED" | "FAILED" | "SKIPPED" | string;
+  messageKey: string;
+  durationMillis: number;
+  details: Record<string, unknown>;
+}
+
+export interface AnalyzerConnectionProbeView extends Omit<
+  AnalyzerApiError,
+  "status"
+> {
+  schemaVersion: "1.0";
+  requestId: string;
+  connectionId: string;
+  profileRef: AnalyzerProfileRef;
+  configRevision: number;
+  configFingerprint: string;
+  nonMutating: true;
+  status: "SUCCEEDED" | "FAILED" | "TIMEOUT" | "BLOCKED" | string;
+  startedAt: string;
+  completedAt: string;
+  checks: AnalyzerConnectionProbeCheck[];
+}
+
+export interface AnalyzerActivationResultView extends Omit<
+  AnalyzerApiError,
+  "status"
+> {
+  analyzerId: string;
+  status: string;
+  ready: boolean;
+  activated: boolean;
+  blockers: Array<{
+    code: string;
+    args?: Record<string, unknown>;
+  }>;
+}
+
+export interface AnalyzerDeactivationResultView extends Omit<
+  AnalyzerApiError,
+  "status"
+> {
+  analyzerId: string;
+  status: string;
+  deactivated: boolean;
+  failure?: string | null;
 }
 
 export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
@@ -281,19 +341,31 @@ export const getAnalyzers = (
 export const getAnalyzer = (
   id: string,
   callback: DataCallback<Analyzer | undefined>,
+  signal: AbortSignal | null = null,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${id}`;
-  getFromOpenElisServer(endpoint, callback);
+  getFromOpenElisServer(endpoint, callback, signal);
+};
+
+export const getAnalyzerLabUnits = (
+  callback: DataCallback<AnalyzerLabUnit[]>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer<AnalyzerLabUnit[]>(
+    "/rest/test-catalog/lab-units",
+    (response) => callback(response ?? []),
+    signal,
+  );
 };
 
 /**
  * Create new analyzer
- * @param {Object} analyzerData - Analyzer data { name, analyzerType, ipAddress, port, testUnitIds, active }
+ * @param {Object} analyzerData - Profile pin, lab units, and role-applicable instance settings
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const createAnalyzer = (
-  analyzerData: Partial<Analyzer> & JsonObject,
+  analyzerData: AnalyzerInstancePayload,
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) => {
@@ -309,16 +381,12 @@ export const createAnalyzer = (
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const updateAnalyzer = (
-  id: string,
-  analyzerData: Partial<Analyzer> & JsonObject,
+const putAnalyzerJson = (
+  endpoint: string,
+  data: JsonObject,
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${id}`;
-  const payload = JSON.stringify(analyzerData);
-
-  // Use fetch directly to get JSON response (controllers return Map<String, Object>)
   fetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
     method: "PUT",
@@ -326,7 +394,7 @@ export const updateAnalyzer = (
       "Content-Type": "application/json",
       "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
-    body: payload,
+    body: JSON.stringify(data),
   })
     .then(async (response) => {
       if (!response.ok) {
@@ -361,75 +429,31 @@ export const updateAnalyzer = (
     });
 };
 
-/**
- * Delete analyzer (soft delete - sets active=false)
- *
- * Note: Uses POST /delete endpoint instead of DELETE HTTP method due to Spring
- * Security 6 CSRF protection issues with DELETE requests.
- *
- * @param {String} id - Analyzer ID
- * @param {Function} callback - Callback function (success, error) => void
- */
-export const deleteAnalyzer = (id: string, callback: SuccessCallback) => {
-  const endpoint = `/rest/analyzer/analyzers/${id}/delete`;
-  const csrfToken = localStorage.getItem("CSRF");
+export const updateAnalyzer = (
+  id: string,
+  analyzerData: AnalyzerInstancePayload,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) =>
+  putAnalyzerJson(
+    `/rest/analyzer/analyzers/${id}`,
+    analyzerData,
+    callback,
+    extraParams,
+  );
 
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken || "",
-    },
-  })
-    .then(async (response) => {
-      // Read response body if present
-      let responseData = null;
-      try {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-          responseData = await response.json();
-        } else if (response.status !== 204) {
-          await response.text();
-        }
-      } catch {
-        // Response body could not be parsed
-      }
-
-      if (response.ok || response.status === 204 || response.status === 200) {
-        callback(true, null);
-      } else {
-        // Parse error response
-        let errorData;
-        try {
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.indexOf("application/json") !== -1) {
-            errorData = responseData || {
-              error: `HTTP ${response.status}: ${response.statusText}`,
-              status: response.status,
-              statusText: response.statusText,
-            };
-          } else {
-            errorData = {
-              error: `HTTP ${response.status}: ${response.statusText}`,
-              status: response.status,
-              statusText: response.statusText,
-            };
-          }
-        } catch {
-          errorData = {
-            error: `HTTP ${response.status}: ${response.statusText}`,
-            status: response.status,
-            statusText: response.statusText,
-          };
-        }
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
-};
+export const selectAnalyzerSiteBinding = (
+  id: string,
+  selection: AnalyzerSiteBindingSelection,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) =>
+  putAnalyzerJson(
+    `/rest/analyzer/analyzers/${id}/site-binding`,
+    selection,
+    callback,
+    extraParams,
+  );
 
 /**
  * Test TCP connection to analyzer
@@ -439,7 +463,7 @@ export const deleteAnalyzer = (id: string, callback: SuccessCallback) => {
  */
 export const testConnection = (
   id: string,
-  callback: ApiCallback,
+  callback: ApiCallback<AnalyzerConnectionProbeView>,
   extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${id}/test-connection`;
@@ -450,6 +474,109 @@ export const testConnection = (
     callback,
     extraParams,
   );
+};
+
+export const getAnalyzerActivationReadiness = (
+  id: string,
+  callback: DataCallback<AnalyzerActivationResultView | undefined>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer/analyzers/${id}/activation-readiness`,
+    callback,
+    signal,
+  );
+};
+
+export const activateAnalyzer = (
+  id: string,
+  callback: ApiCallback<AnalyzerActivationResultView>,
+) => {
+  postAnalyzerLifecycle<AnalyzerActivationResultView>(
+    id,
+    "activate",
+    callback,
+    (error) => ({
+      analyzerId: id,
+      status: "UNKNOWN",
+      ready: false,
+      activated: false,
+      blockers: [],
+      error,
+      statusCode: 0,
+    }),
+  );
+};
+
+export const reactivateAnalyzer = (
+  id: string,
+  callback: ApiCallback<AnalyzerActivationResultView>,
+) => {
+  postAnalyzerLifecycle<AnalyzerActivationResultView>(
+    id,
+    "reactivate",
+    callback,
+    (error) => ({
+      analyzerId: id,
+      status: "UNKNOWN",
+      ready: false,
+      activated: false,
+      blockers: [],
+      error,
+      statusCode: 0,
+    }),
+  );
+};
+
+export const deactivateAnalyzer = (
+  id: string,
+  callback: ApiCallback<AnalyzerDeactivationResultView>,
+) => {
+  postAnalyzerLifecycle<AnalyzerDeactivationResultView>(
+    id,
+    "deactivate",
+    callback,
+    (error) => ({
+      analyzerId: id,
+      status: "UNKNOWN",
+      deactivated: false,
+      failure: error,
+      error,
+      statusCode: 0,
+    }),
+  );
+};
+
+const postAnalyzerLifecycle = <T extends object>(
+  id: string,
+  action: "activate" | "deactivate" | "reactivate",
+  callback: ApiCallback<T>,
+  networkFailure: (error: string) => T,
+) => {
+  fetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/${action}`, {
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
+    },
+    body: JSON.stringify({}),
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      callback({
+        ...json,
+        ...(!response.ok
+          ? {
+              statusCode: response.status,
+              statusText: response.statusText,
+            }
+          : {}),
+      } as T);
+    })
+    .catch((error: Error) => {
+      callback(networkFailure(error.message || "Network error"));
+    });
 };
 
 /**

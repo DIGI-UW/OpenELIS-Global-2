@@ -68,6 +68,14 @@ may be stacked while predecessors are reviewed, but merge order is strict.
 Scope, architecture, contract, or acceptance changes require an approved
 roadmap amendment before production code follows them.
 
+Every review deployment comes from an open checkpoint PR whose applicable
+automated gates are green. Branch-only builds are not review targets. Preview
+feedback is fixed in the owning checkpoint PR; preview deployment does not
+change a roadmap marker or constitute acceptance.
+
+Open a companion repository PR only when a failing versioned contract proves
+that repository owns a required change. Do not create empty companion PRs.
+
 Checkpoint names and order package bounded work for review; they do not prove a
 code-level dependency. Derive dependencies from current code, versioned
 contracts, tests, and history. Do not remove a working behavior merely because
@@ -252,8 +260,12 @@ Work these slices in order within the active paired PRs:
 5. **Guided Carbon UI:** preserve the inline Instrument/Verify/Connect workflow,
    lab-unit selection, summaries, URL state, breadcrumbs, and return paths;
    replace the protocol-specific form with a reusable descriptor renderer.
-6. **Lifecycle:** show every local and Bridge blocker; activate/deactivate the
-   exact revision; make probe evidence visible but non-gating.
+6. **Lifecycle:** make one OpenELIS lifecycle service the only writer that can
+   move an analyzer into `ACTIVE`; show every local and Bridge blocker;
+   build and synchronize one immutable candidate; require its exact Bridge
+   acknowledgment; activate/deactivate that exact revision; keep draft edits
+   from mutating the last active candidate; and make probe evidence visible but
+   non-gating.
 7. **QC link:** open the existing analyzer-scoped OE QC workflow and prove QC
    changes never alter setup verification or activation; use the same analyzer
    permission at the visible route and REST boundary.
@@ -269,6 +281,9 @@ Exit:
 - no OE connection value, protocol/transport branch, full-state writer,
   `AnalyzerQcRule`, duplicate create/edit route, or duplicate connection modal
   remains;
+- create/update payloads and mapping, connection, error, or offline events
+  cannot activate an analyzer or bypass the lifecycle service, and no hard
+  delete path remains;
 - analyzer setup, probe, lifecycle, and linked QC reject unrelated
   authenticated roles at the endpoint and visible-route boundaries; and
 - focused backend, RTL, contract, assembled, accessibility, and visual gates

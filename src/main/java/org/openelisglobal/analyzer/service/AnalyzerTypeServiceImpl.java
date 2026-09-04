@@ -31,9 +31,6 @@ public class AnalyzerTypeServiceImpl extends AuditableBaseObjectServiceImpl<Anal
     @Autowired
     protected AnalyzerTypeDAO baseObjectDAO;
 
-    @Autowired
-    private AnalyzerService analyzerService;
-
     AnalyzerTypeServiceImpl() {
         super(AnalyzerType.class);
     }
@@ -113,23 +110,4 @@ public class AnalyzerTypeServiceImpl extends AuditableBaseObjectServiceImpl<Anal
         return type.getInstances();
     }
 
-    @Override
-    @Transactional
-    public Analyzer getOrCreateDefaultInstance(AnalyzerType analyzerType) {
-        // Check if any instance exists
-        List<Analyzer> instances = analyzerType.getInstances();
-        if (!instances.isEmpty()) {
-            return instances.get(0);
-        }
-
-        // Create default instance
-        Analyzer defaultInstance = new Analyzer();
-        defaultInstance.setName(analyzerType.getName());
-        defaultInstance.setDescription("Default instance for " + analyzerType.getName());
-        defaultInstance.setAnalyzerType(analyzerType);
-        defaultInstance.setActive(true);
-
-        analyzerService.insert(defaultInstance);
-        return defaultInstance;
-    }
 }

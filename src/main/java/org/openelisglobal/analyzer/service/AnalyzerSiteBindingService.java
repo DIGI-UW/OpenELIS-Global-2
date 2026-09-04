@@ -14,4 +14,6 @@ public interface AnalyzerSiteBindingService {
             String actor);
 
     Optional<AnalyzerSiteBindingSnapshot> findCurrentByProfileBindingId(String profileBindingId);
+
+    Optional<AnalyzerSiteBindingSnapshot> findByRevisionId(String revisionId);
 }

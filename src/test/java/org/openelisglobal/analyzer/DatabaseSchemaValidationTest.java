@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
-import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,37 +40,26 @@ public class DatabaseSchemaValidationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private DataSource dataSource;
 
-    private DatabaseMetaData metaData;
-
-    @Before
-    public void setUp() throws Exception {
-        super.setUp();
-        try (Connection connection = dataSource.getConnection()) {
-            metaData = connection.getMetaData();
-        }
-    }
-
     /**
-     * Test that analyzer table has all configuration columns merged from
-     * analyzer_configuration (changeset 026)
+     * OpenELIS retains LIMS-owned analyzer state and the Bridge connection
+     * reference, while analyzer-facing runtime values are absent.
      */
     @Test
-    public void testAnalyzerTableHasMergedConfigurationColumns() throws Exception {
+    public void testAnalyzerTableHasOnlyOpenElisOwnedConnectionState() throws Exception {
         String tableName = "analyzer";
         Map<String, String> expectedColumns = new HashMap<>();
-        // Original analyzer columns
         expectedColumns.put("id", "NUMERIC");
         expectedColumns.put("name", "VARCHAR");
-        // Merged from analyzer_configuration (changeset 026)
-        expectedColumns.put("ip_address", "VARCHAR");
-        expectedColumns.put("port", "INTEGER");
-        expectedColumns.put("protocol_version", "VARCHAR");
         expectedColumns.put("test_unit_ids", "TEXT");
         expectedColumns.put("status", "VARCHAR");
         expectedColumns.put("identifier_pattern", "VARCHAR");
         expectedColumns.put("last_activated_date", "TIMESTAMP");
+        expectedColumns.put("bridge_connection_id", "VARCHAR");
 
         validateTableColumns(tableName, expectedColumns);
+        assertTableDoesNotContainColumns(tableName,
+                List.of("ip_address", "port", "protocol_version", "communication_mode", "import_directory",
+                        "file_pattern", "column_mappings_json", "file_format", "delimiter", "has_header", "skip_rows"));
     }
 
     /**
@@ -172,6 +160,21 @@ public class DatabaseSchemaValidationTest extends BaseWebContextSensitiveTest {
                         "Table '%s' is missing required columns: %s. " + "Actual columns: %s. "
                                 + "This indicates a Liquibase changeset is missing or not applied.",
                         tableName, missingColumns, actualColumns.keySet()));
+            }
+        }
+    }
+
+    private void assertTableDoesNotContainColumns(String tableName, List<String> excludedColumns) throws Exception {
+        try (Connection connection = dataSource.getConnection()) {
+            Map<String, String> actualColumns = new HashMap<>();
+            try (ResultSet columns = connection.getMetaData().getColumns(null, null, tableName, null)) {
+                while (columns.next()) {
+                    actualColumns.put(columns.getString("COLUMN_NAME").toLowerCase(), columns.getString("TYPE_NAME"));
+                }
+            }
+            for (String excludedColumn : excludedColumns) {
+                assertFalse("Table '" + tableName + "' must not retain Bridge-owned column '" + excludedColumn + "'",
+                        actualColumns.containsKey(excludedColumn));
             }
         }
     }

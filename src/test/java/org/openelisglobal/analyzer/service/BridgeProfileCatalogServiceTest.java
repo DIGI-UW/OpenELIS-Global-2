@@ -151,6 +151,7 @@ public class BridgeProfileCatalogServiceTest {
                       "schemaVersion":"1.0",
                       "profileMeta":{"id":"sysmex-xn","version":"1.0.0","displayName":"Sysmex XN","confidence":"HIGH"},
                       "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                      "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
                       "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
                       "catalog":{
                         "revision":3,
@@ -190,7 +191,8 @@ public class BridgeProfileCatalogServiceTest {
                     "schemaVersion":"1.0",
                     "profileMeta":{"id":"site.mock hematology","version":"1.0.0","displayName":"Mock Hematology revision 2","confidence":"HIGH"},
                     "protocol":{"name":"ASTM","version":"LIS2-A2"},
-                    "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE","defaultPort":9200},
+                    "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
+                    "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE","port":9200},
                     "catalog":{
                       "revision":2,
                       "revisionFingerprint":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",

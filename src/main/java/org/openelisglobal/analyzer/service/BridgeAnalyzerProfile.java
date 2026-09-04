@@ -24,12 +24,11 @@ public final class BridgeAnalyzerProfile {
     private final String parentProfileId;
     private final Integer parentRevision;
     private final List<TestDefinition> testDefinitions;
-    private final InstanceDefaults instanceDefaults;
 
     private BridgeAnalyzerProfile(JsonNode document, String profileId, int revision, String revisionFingerprint,
             String displayName, String manufacturer, String model, String source, String status, String protocol,
             String protocolVersion, String communicationMode, String parentProfileId, Integer parentRevision,
-            List<TestDefinition> testDefinitions, InstanceDefaults instanceDefaults) {
+            List<TestDefinition> testDefinitions) {
         this.document = document.deepCopy();
         this.profileId = profileId;
         this.revision = revision;
@@ -45,7 +44,6 @@ public final class BridgeAnalyzerProfile {
         this.parentProfileId = parentProfileId;
         this.parentRevision = parentRevision;
         this.testDefinitions = List.copyOf(testDefinitions);
-        this.instanceDefaults = instanceDefaults;
     }
 
     public static BridgeAnalyzerProfile from(JsonNode document) {
@@ -55,7 +53,6 @@ public final class BridgeAnalyzerProfile {
         JsonNode profileMeta = document.path("profileMeta");
         JsonNode catalog = document.path("catalog");
         JsonNode protocol = document.path("protocol");
-        JsonNode configDefaults = document.path("configDefaults");
         String profileId = requiredText(profileMeta, "id");
         int revision = catalog.path("revision").asInt(-1);
         if (revision < 1) {
@@ -88,13 +85,11 @@ public final class BridgeAnalyzerProfile {
 
         JsonNode lineage = catalog.path("lineage");
         JsonNode communication = document.path("communication");
-        InstanceDefaults defaults = new InstanceDefaults(nullableText(configDefaults, "transport"),
-                nullableText(configDefaults, "connectionRole"), nullableInteger(configDefaults, "port"));
         return new BridgeAnalyzerProfile(document, profileId, revision, fingerprint,
                 requiredText(profileMeta, "displayName"), firstText(document, profileMeta, "manufacturer"),
                 nullableText(document, "model"), requiredText(catalog, "source"), requiredText(catalog, "status"),
                 requiredText(protocol, "name"), nullableText(protocol, "version"), nullableText(communication, "mode"),
-                nullableText(lineage, "parentProfileId"), nullableInteger(lineage, "parentRevision"), tests, defaults);
+                nullableText(lineage, "parentProfileId"), nullableInteger(lineage, "parentRevision"), tests);
     }
 
     public JsonNode document() {
@@ -157,10 +152,6 @@ public final class BridgeAnalyzerProfile {
         return testDefinitions;
     }
 
-    public InstanceDefaults instanceDefaults() {
-        return instanceDefaults;
-    }
-
     private static String requiredText(JsonNode node, String field) {
         String value = nullableText(node, field);
         if (value == null) {
@@ -209,6 +200,4 @@ public final class BridgeAnalyzerProfile {
     public record NormalizedCoding(String system, String code, String display) {
     }
 
-    public record InstanceDefaults(String transport, String connectionRole, Integer port) {
-    }
 }

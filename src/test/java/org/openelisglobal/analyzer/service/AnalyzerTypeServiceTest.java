@@ -30,10 +30,7 @@ public class AnalyzerTypeServiceTest extends BaseWebContextSensitiveTest {
     private static final String TYPE_ABL800_NAME = "ABL800 Type";
     private static final String TYPE_ABL800_PLUGIN = "oe.plugin.analyzer.ABL800";
     private static final String TYPE_ABL800_INSTANCE_NAME = "ABL800 FLEX";
-    private static final String ANALYZER_ABL800_ID = "911";
-
     private static final String TYPE_NO_INSTANCES = "904";
-    private static final String TYPE_NO_INSTANCES_NAME = "Empty Instance Type";
 
     private static final String TYPE_INACTIVE = "905";
 
@@ -43,9 +40,6 @@ public class AnalyzerTypeServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
-
-    @Autowired
-    private AnalyzerService analyzerService; // For round-trip persistence verification
 
     @Before
     public void setUp() throws Exception {
@@ -160,37 +154,4 @@ public class AnalyzerTypeServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(TYPE_COBAS_INSTANCE_NAME, type.getInstances().get(0).getName());
     }
 
-    @Test
-    public void getOrCreateDefaultInstance_shouldReturnExistingInstance() {
-        AnalyzerType type = analyzerTypeService.getByIdWithInitializedInstances(TYPE_ABL800);
-        Assert.assertNotNull(type);
-
-        Analyzer defaultInstance = analyzerTypeService.getOrCreateDefaultInstance(type);
-
-        Assert.assertNotNull(defaultInstance);
-        Assert.assertEquals(ANALYZER_ABL800_ID, defaultInstance.getId());
-        Assert.assertEquals(TYPE_ABL800_INSTANCE_NAME, defaultInstance.getName());
-    }
-
-    @Test
-    public void getOrCreateDefaultInstance_shouldCreateAndPersistNewInstanceWhenNoneExists() {
-        AnalyzerType typeWithoutInstances = analyzerTypeService.getByIdWithInitializedInstances(TYPE_NO_INSTANCES);
-        Assert.assertTrue(typeWithoutInstances.getInstances().isEmpty());
-
-        // Act
-        Analyzer defaultInstance = analyzerTypeService.getOrCreateDefaultInstance(typeWithoutInstances);
-
-        // Assert inline creation
-        Assert.assertNotNull(defaultInstance);
-        Assert.assertNotNull(defaultInstance.getId());
-        Assert.assertEquals(TYPE_NO_INSTANCES_NAME, defaultInstance.getName());
-        Assert.assertTrue(defaultInstance.isActive());
-        Assert.assertEquals(TYPE_NO_INSTANCES, defaultInstance.getAnalyzerType().getId());
-
-        // Assert database round-trip persistence
-        Analyzer persisted = analyzerService.get(defaultInstance.getId());
-        Assert.assertNotNull(persisted);
-        Assert.assertEquals(defaultInstance.getName(), persisted.getName());
-        Assert.assertEquals(TYPE_NO_INSTANCES, persisted.getAnalyzerType().getId());
-    }
 }

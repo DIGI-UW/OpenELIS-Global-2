@@ -7,7 +7,7 @@
  * Route: /analyzers/qc/instruments/:instrumentId
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect } from "react";
 import {
   Button,
   Tag,
@@ -18,9 +18,10 @@ import {
   TabPanels,
   TabPanel,
   Loading,
+  InlineNotification,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import {
   getComplianceTagType,
   getComplianceLabelKey,
@@ -29,7 +30,6 @@ import {
 } from "./qcDashboardUtils";
 import ActivityTimelineTab from "./ActivityTimelineTab";
 import ControlChartTab from "./ControlChartTab";
-import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import "./InstrumentDetailModal.css";
@@ -37,22 +37,72 @@ import "./InstrumentDetailModal.css";
 const InstrumentDetailPage = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const { instrumentId } = useParams();
-  const [instrument, setInstrument] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState(0);
+  const [instrumentResponse, setInstrumentResponse] = useState({
+    instrumentId: null,
+    instrument: null,
+  });
+  const loading = instrumentResponse.instrumentId !== instrumentId;
+  const instrument = loading ? null : instrumentResponse.instrument;
+  const activeSubTab =
+    new URLSearchParams(location.search).get("view") === "chart" ? 1 : 0;
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [instrumentId]);
+
+  const selectSubTab = ({ selectedIndex }) => {
+    const params = new URLSearchParams(location.search);
+    params.set("view", selectedIndex === 1 ? "chart" : "activity");
+    history.replace({
+      pathname: location.pathname,
+      search: params.toString(),
+      hash: location.hash,
+    });
+  };
+
+  const requestedReturnPath = new URLSearchParams(location.search).get(
+    "returnTo",
+  );
+  const analyzerReturnPath = (() => {
+    if (!requestedReturnPath) {
+      return "/analyzers";
+    }
+
+    try {
+      const candidate = new URL(requestedReturnPath, window.location.origin);
+      if (
+        candidate.origin === window.location.origin &&
+        candidate.pathname === "/analyzers"
+      ) {
+        return `${candidate.pathname}${candidate.search}${candidate.hash}`;
+      }
+    } catch {
+      // Ignore malformed return paths and fall back to the analyzer dashboard.
+    }
+
+    return "/analyzers";
+  })();
 
   useEffect(() => {
-    if (instrumentId) {
-      setLoading(true);
-      getFromOpenElisServer(
-        `/rest/qc/dashboard/instruments/${instrumentId}`,
-        (response) => {
-          setInstrument(response?.data || response);
-          setLoading(false);
-        },
-      );
+    if (!instrumentId) {
+      return undefined;
     }
+
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      `/rest/qc/dashboard/instruments/${instrumentId}`,
+      (response) => {
+        setInstrumentResponse({
+          instrumentId,
+          instrument: response?.data || response || null,
+        });
+      },
+      controller.signal,
+    );
+
+    return () => controller.abort();
   }, [instrumentId]);
 
   if (loading) {
@@ -65,51 +115,53 @@ const InstrumentDetailPage = () => {
         <PageBreadCrumb
           breadcrumbs={[
             { label: "home.label", link: "/" },
-            { label: "analyzer.page.hierarchy.root", link: "" },
-            { label: "qc.dashboard.title", link: "" },
-            { label: instrument?.name || "qc.dashboard.title", link: "" },
+            {
+              label: "analyzer.page.hierarchy.root",
+              link: analyzerReturnPath,
+            },
+            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
+            {
+              label: "qc.instrument.notFound",
+              isCurrentPage: true,
+            },
           ]}
         />
-        <PageTitle
-          breadcrumbs={[
-            {
-              label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),
-              link: "/analyzers",
-            },
-            {
-              label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/analyzers/qc/db",
-            },
-            { label: "..." },
-          ]}
-        />
-        <p>{intl.formatMessage({ id: "qc.instrument.notFound" })}</p>
+        <div className="instrument-detail-content">
+          <h1>{intl.formatMessage({ id: "qc.instrument.notFound" })}</h1>
+        </div>
       </div>
     );
   }
 
   const analyteDetails = instrument.analyteDetails || [];
+  const instrumentName =
+    instrument.instrumentName || instrument.name || instrumentId;
+  const operationalQcNotConfigured =
+    instrument.complianceColor?.toUpperCase() === "NOT_CONFIGURED";
 
   return (
     <div
       data-testid="instrument-detail-page"
       className="instrument-detail-page"
     >
-      <PageTitle
+      <PageBreadCrumb
         breadcrumbs={[
+          { label: "home.label", link: "/" },
           {
-            label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),
-            link: "/analyzers",
+            label: "analyzer.page.hierarchy.root",
+            link: analyzerReturnPath,
           },
           {
-            label: intl.formatMessage({ id: "qc.dashboard.title" }),
+            label: "qc.dashboard.title",
             link: "/analyzers/qc/db",
           },
-          { label: instrument.instrumentName || instrumentId },
+          { label: instrumentName, isCurrentPage: true },
         ]}
       />
 
       <div className="instrument-detail-content">
+        <h1>{instrumentName}</h1>
+
         {/* Status header */}
         <div
           className="instrument-detail-status-header"
@@ -117,10 +169,19 @@ const InstrumentDetailPage = () => {
         >
           <div>
             <span className="instrument-detail-subtitle">
-              <span>{instrument.instrumentId}</span>
-              <span className="instrument-detail-type">
-                {instrument.instrumentType}
-              </span>
+              {instrument.instrumentType && (
+                <span className="instrument-detail-type">
+                  {instrument.instrumentType}
+                </span>
+              )}
+              {instrument.instrumentType && instrument.instrumentLocation && (
+                <span className="instrument-detail-subtitle__separator">
+                  &middot;
+                </span>
+              )}
+              {instrument.instrumentLocation && (
+                <span>{instrument.instrumentLocation}</span>
+              )}
             </span>
           </div>
           <Tag
@@ -132,6 +193,20 @@ const InstrumentDetailPage = () => {
             })}
           </Tag>
         </div>
+
+        {operationalQcNotConfigured && (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "qc.instrumentDetail.notConfigured.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "qc.instrumentDetail.notConfigured.description",
+            })}
+          />
+        )}
 
         {/* Analyte cards */}
         {analyteDetails.length > 0 && (
@@ -163,16 +238,17 @@ const InstrumentDetailPage = () => {
         )}
 
         {/* Tabs */}
-        <Tabs
-          selectedIndex={activeSubTab}
-          onChange={({ selectedIndex }) => setActiveSubTab(selectedIndex)}
-        >
+        <Tabs selectedIndex={activeSubTab} onChange={selectSubTab}>
           <TabList aria-label="Instrument detail tabs">
             <Tab data-testid="tab-activity-timeline">
-              {intl.formatMessage({ id: "qc.instrument.tab.timeline" })}
+              {intl.formatMessage({
+                id: "qc.instrumentDetail.tab.activityTimeline",
+              })}
             </Tab>
             <Tab data-testid="tab-control-chart">
-              {intl.formatMessage({ id: "qc.instrument.tab.chart" })}
+              {intl.formatMessage({
+                id: "qc.instrumentDetail.tab.controlChart",
+              })}
             </Tab>
           </TabList>
           <TabPanels>

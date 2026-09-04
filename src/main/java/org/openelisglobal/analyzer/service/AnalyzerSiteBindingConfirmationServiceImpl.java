@@ -83,6 +83,7 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         confirmation.setSiteBindingRevision(candidate.revision());
         confirmation.setProfileId(context.profile.getProfileId());
         confirmation.setProfileRevision(context.profile.getProfileRevision());
+        confirmation.setProfileRevisionFingerprint(context.profileRevisionFingerprint);
         confirmation.setBindingFingerprint(context.bindingFingerprint);
         confirmation.setRecognitionFingerprint(context.recognitionFingerprint);
         confirmation.setConfirmedRowsJson(writeRows(confirmedRows));
@@ -91,8 +92,13 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         confirmation.setConfirmedAt(Timestamp.from(Instant.now()));
         confirmation.setSysUserId(effectiveActor);
         confirmationDAO.insert(confirmation);
-        auditTrailService.saveNewHistory(confirmation, effectiveActor, AUDIT_TABLE);
-        return toView(confirmation, AnalyzerSiteBindingConfirmationView.State.CURRENT);
+        String auditEventId = auditTrailService.saveNewHistory(confirmation, effectiveActor, AUDIT_TABLE);
+        if (hasText(auditEventId)) {
+            confirmation.setAuditEventId(auditEventId);
+            confirmationDAO.update(confirmation);
+            return toView(confirmation, AnalyzerSiteBindingConfirmationView.State.CURRENT);
+        }
+        return toView(confirmation, AnalyzerSiteBindingConfirmationView.State.STALE);
     }
 
     @Override
@@ -103,9 +109,29 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         return confirmationDAO.findLatestByBindingId(candidate.binding().getId())
                 .map(confirmation -> toView(confirmation,
                         isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate)
-                                ? AnalyzerSiteBindingConfirmationView.State.CURRENT
-                                : AnalyzerSiteBindingConfirmationView.State.STALE))
+                                && hasExactSavedRows(candidate, confirmation)
+                                        ? AnalyzerSiteBindingConfirmationView.State.CURRENT
+                                        : AnalyzerSiteBindingConfirmationView.State.STALE))
                 .orElseGet(AnalyzerSiteBindingConfirmationView::unconfirmed);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AnalyzerSiteBindingVerificationAssessment assessCurrent(AnalyzerSiteBindingSnapshot candidate,
+            String recognitionFingerprint) {
+        CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
+        Optional<AnalyzerSiteBindingConfirmation> stored = confirmationDAO
+                .findByRevisionId(candidate.revision().getId());
+        if (stored.isEmpty()) {
+            return AnalyzerSiteBindingVerificationAssessment.unconfirmed();
+        }
+        AnalyzerSiteBindingConfirmation confirmation = stored.get();
+        boolean durableCandidateMatch = isDurableCandidateMatch(candidate, context, confirmation);
+        boolean mappingsCurrent = durableCandidateMatch && hasCurrentCatalogBindings(candidate)
+                && hasExactSavedRows(candidate, confirmation);
+        boolean recognitionCurrent = durableCandidateMatch
+                && context.recognitionFingerprint.equals(confirmation.getRecognitionFingerprint());
+        return new AnalyzerSiteBindingVerificationAssessment(mappingsCurrent, recognitionCurrent, confirmation);
     }
 
     private static CandidateContext requireCandidate(AnalyzerSiteBindingSnapshot candidate,
@@ -117,9 +143,11 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         }
         String bindingFingerprint = requireFingerprint(candidate.revision().getBindingFingerprint(),
                 "binding fingerprint");
+        String profileRevisionFingerprint = requireFingerprint(
+                candidate.binding().getProfileBinding().getProfileFingerprint(), "profile revision fingerprint");
         String effectiveRecognitionFingerprint = requireFingerprint(recognitionFingerprint, "recognition fingerprint");
-        return new CandidateContext(candidate.binding().getProfileBinding(), bindingFingerprint,
-                effectiveRecognitionFingerprint);
+        return new CandidateContext(candidate.binding().getProfileBinding(), profileRevisionFingerprint,
+                bindingFingerprint, effectiveRecognitionFingerprint);
     }
 
     private static RowDisposition expectedRows(AnalyzerSiteBindingSnapshot candidate) {
@@ -162,13 +190,35 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
 
     private static boolean isCurrent(AnalyzerSiteBindingSnapshot candidate, CandidateContext context,
             AnalyzerSiteBindingConfirmation confirmation) {
-        return Objects.equals(candidate.revision().getId(), confirmation.getSiteBindingRevision().getId())
-                && context.bindingFingerprint.equals(confirmation.getBindingFingerprint())
+        return isDurableCandidateMatch(candidate, context, confirmation)
                 && context.recognitionFingerprint.equals(confirmation.getRecognitionFingerprint());
+    }
+
+    private static boolean isDurableCandidateMatch(AnalyzerSiteBindingSnapshot candidate, CandidateContext context,
+            AnalyzerSiteBindingConfirmation confirmation) {
+        return confirmation.getSiteBindingRevision() != null
+                && Objects.equals(candidate.revision().getId(), confirmation.getSiteBindingRevision().getId())
+                && Objects.equals(context.profile.getProfileId(), confirmation.getProfileId())
+                && context.profile.getProfileRevision() == confirmation.getProfileRevision()
+                && context.profileRevisionFingerprint.equals(confirmation.getProfileRevisionFingerprint())
+                && context.bindingFingerprint.equals(confirmation.getBindingFingerprint())
+                && hasText(confirmation.getConfirmedBy()) && confirmation.getConfirmedAt() != null
+                && hasText(confirmation.getAuditEventId());
     }
 
     private boolean hasCurrentCatalogBindings(AnalyzerSiteBindingSnapshot candidate) {
         return AnalyzerSiteBindingCatalogState.load(mappingCatalogService).validate(candidate).allRowsCurrent();
+    }
+
+    private boolean hasExactSavedRows(AnalyzerSiteBindingSnapshot candidate,
+            AnalyzerSiteBindingConfirmation confirmation) {
+        try {
+            RowDisposition expected = expectedRows(candidate);
+            return expected.confirmed.equals(readRows(confirmation.getConfirmedRowsJson()))
+                    && expected.excluded.equals(readRows(confirmation.getExcludedRowsJson()));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return false;
+        }
     }
 
     private AnalyzerSiteBindingConfirmationView toView(AnalyzerSiteBindingConfirmation confirmation,
@@ -176,11 +226,16 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         return new AnalyzerSiteBindingConfirmationView(state, confirmation.getProfileId(),
                 confirmation.getProfileRevision(), confirmation.getBindingFingerprint(),
                 confirmation.getRecognitionFingerprint(), confirmation.getConfirmedBy(),
-                resolveActorDisplayName(confirmation.getConfirmedBy()), confirmation.getConfirmedAt().toInstant(),
-                readRows(confirmation.getConfirmedRowsJson()), readRows(confirmation.getExcludedRowsJson()));
+                resolveActorDisplayName(confirmation.getConfirmedBy()),
+                confirmation.getConfirmedAt() == null ? null : confirmation.getConfirmedAt().toInstant(),
+                readRowsForView(confirmation.getConfirmedRowsJson()),
+                readRowsForView(confirmation.getExcludedRowsJson()));
     }
 
     private String resolveActorDisplayName(String actorId) {
+        if (!hasText(actorId)) {
+            return null;
+        }
         SystemUser actor = systemUserService.getUserById(actorId);
         if (actor == null) {
             return actorId;
@@ -213,6 +268,14 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         }
     }
 
+    private List<AnalyzerSiteBindingSourceRow> readRowsForView(String json) {
+        try {
+            return readRows(json);
+        } catch (IllegalStateException exception) {
+            return List.of();
+        }
+    }
+
     private static void requireMatchingFingerprint(String submitted, String expected, String message) {
         if (!expected.equals(submitted)) {
             throw new IllegalArgumentException(message);
@@ -234,8 +297,12 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
         return value.trim();
     }
 
-    private record CandidateContext(AnalyzerProfileBinding profile, String bindingFingerprint,
-            String recognitionFingerprint) {
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private record CandidateContext(AnalyzerProfileBinding profile, String profileRevisionFingerprint,
+            String bindingFingerprint, String recognitionFingerprint) {
     }
 
     private record RowDisposition(List<AnalyzerSiteBindingSourceRow> confirmed,

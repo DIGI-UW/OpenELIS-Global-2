@@ -38,8 +38,6 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     private String error;
     private boolean hasResponse = false;
     private String responseBody;
-    private String clientIpAddress;
-    private Integer clientPort;
     private String registeredAnalyzerId;
 
     @Override
@@ -238,28 +236,11 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * Set client IP address for analyzer identification
-     *
-     * @param ip The client IP address
-     */
-    public void setClientIpAddress(String ip) {
-        this.clientIpAddress = ip;
-    }
-
-    /**
-     * Set client port from bridge X-Source-Port header for analyzer identification
-     */
-    public void setClientPort(Integer port) {
-        this.clientPort = port;
-    }
-
-    /**
-     * Identify analyzer from ASTM message using a tiered strategy:
+     * Identify analyzer from the Bridge registration or message metadata:
      * <ol>
-     * <li>Strategy 0: Exact IP+port from bridge headers (deterministic)</li>
-     * <li>Strategy 1: ASTM H-segment name → getByName()</li>
-     * <li>Strategy 2: Client IP only → getByIpAddress()</li>
-     * <li>Strategy 3: Identifier pattern regex → fallback only</li>
+     * <li>Bridge-resolved OpenELIS analyzer ID</li>
+     * <li>ASTM H-segment name</li>
+     * <li>Identifier pattern fallback</li>
      * </ol>
      */
     private Optional<Analyzer> identifyAnalyzerFromMessage() {
@@ -276,7 +257,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 return Optional.empty();
             }
 
-            // Strategy -1: Bridge-registered analyzer ID (highest priority, deterministic)
+            // Bridge-registered analyzer ID is highest priority and deterministic.
             // Set from X-Analyzer-Id header — the bridge looked up the source in its
             // registry and resolved the OE analyzer ID before forwarding.
             if (registeredAnalyzerId != null && !registeredAnalyzerId.trim().isEmpty()) {
@@ -290,18 +271,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                         + registeredAnalyzerId + "' not found in database — falling back to other strategies");
             }
 
-            // Strategy 0: Exact IP+port lookup from bridge headers (deterministic)
-            if (clientIpAddress != null && !clientIpAddress.trim().isEmpty() && clientPort != null) {
-                Optional<Analyzer> analyzerOpt = analyzerService.getByIpAddressAndPort(clientIpAddress.trim(),
-                        clientPort);
-                if (analyzerOpt.isPresent()) {
-                    LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
-                            "Identified analyzer from IP+port: " + clientIpAddress + ":" + clientPort);
-                    return analyzerOpt;
-                }
-            }
-
-            // Strategy 1: Parse ASTM H-segment for manufacturer/model
+            // Parse ASTM H-segment for manufacturer/model.
             String analyzerName = parseAnalyzerNameFromHeader();
             if (analyzerName != null && !analyzerName.trim().isEmpty()) {
                 Optional<Analyzer> analyzerOpt = analyzerService.getByName(analyzerName.trim());
@@ -312,17 +282,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 }
             }
 
-            // Strategy 2: Client IP address only (from bridge X-Source-Id header)
-            if (clientIpAddress != null && !clientIpAddress.trim().isEmpty()) {
-                Optional<Analyzer> analyzerOpt = analyzerService.getByIpAddress(clientIpAddress.trim());
-                if (analyzerOpt.isPresent()) {
-                    LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
-                            "Identified analyzer from IP address: " + clientIpAddress);
-                    return analyzerOpt;
-                }
-            }
-
-            // Strategy 3: Identifier pattern match (regex fallback)
+            // Identifier pattern match remains until the raw reader is removed in M4.
             String identifier = parseIdentifierFromAstmHeader();
             if (identifier != null && !identifier.trim().isEmpty()) {
                 Optional<Analyzer> analyzerOpt = analyzerService.findByIdentifierPatternMatch(identifier.trim());

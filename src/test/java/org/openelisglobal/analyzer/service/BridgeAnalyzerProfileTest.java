@@ -17,6 +17,7 @@ public class BridgeAnalyzerProfileTest {
                 {
                   "profileMeta":{"id":"site.mock-analyzer","displayName":"Mock Analyzer"},
                   "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                  "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":true},
                   "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
                   "catalog":{
                     "revision":2,

@@ -25,7 +25,10 @@ public interface AuditTrailService {
     void saveHistory(BaseObject newObject, BaseObject existingObject, String sysUserId, String event, String tableName)
             throws LIMSRuntimeException;
 
-    void saveNewHistory(BaseObject newObject, String sysUserId, String tableName) throws LIMSRuntimeException;
+    /**
+     * Returns the inserted history ID, or {@code null} when history is disabled.
+     */
+    String saveNewHistory(BaseObject newObject, String sysUserId, String tableName) throws LIMSRuntimeException;
 
     String getXML(String table, String id) throws LIMSRuntimeException;
 

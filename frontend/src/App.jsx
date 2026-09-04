@@ -53,7 +53,7 @@ import LandingPage from "./components/home/LandingPage";
  * surfaces as an E2E failure: the RouteErrorBoundary catches the
  * `TypeError: Failed to fetch dynamically imported module` and shows
  * its "module could not be loaded" fallback. Seen as a recurring
- * develop-CI flake on AnalyzerForm chunk fetch; the retry wrapper
+ * develop-CI flake on route chunk fetch; the retry wrapper
  * gives the browser three chances with backoff before giving up.
  *
  * Backoff is intentionally short (0.5s/1s/1.5s): the real failures
@@ -62,9 +62,8 @@ import LandingPage from "./components/home/LandingPage";
  * chunk is genuinely missing (e.g., deploy mismatch).
  */
 function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
-  // eslint-disable-next-line local/no-raw-react-lazy --
-  // This IS the lazyWithRetry helper: it legitimately wraps React.lazy
-  // with retry semantics. The rule flags direct callers elsewhere.
+  // This helper is the one legitimate wrapper around React.lazy.
+  // eslint-disable-next-line local/no-raw-react-lazy
   return React.lazy(async () => {
     let lastError;
     for (let attempt = 0; attempt < retries; attempt += 1) {
@@ -92,9 +91,6 @@ const AnalyzerTypesPage = lazyWithRetry(
 );
 const AnalyzerTypeMappingPage = lazyWithRetry(
   () => import("./pages/AnalyzerTypeMappingPage"),
-);
-const AnalyzerFormPage = lazyWithRetry(
-  () => import("./components/analyzers/AnalyzerForm/AnalyzerForm"),
 );
 import {
   QCDashboard,
@@ -241,7 +237,6 @@ export default function App() {
         });
         if (response.status === 200) {
           const jsonResp = await response.json();
-          console.debug(JSON.stringify(jsonResp));
           if (jsonResp.authenticated) {
             localStorage.setItem("CSRF", jsonResp.csrf);
           }
@@ -1110,30 +1105,6 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/analyzers/new"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
-                  path="/analyzers/:id/edit"
-                  exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerFormPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.GLOBAL_ADMIN}
-                />
-                <SecureRoute
                   path="/analyzers"
                   exact
                   component={() => (
@@ -1185,43 +1156,43 @@ export default function App() {
                   path="/analyzers/qc/instruments/:instrumentId"
                   exact
                   component={() => <InstrumentDetailPage />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/db"
                   exact
                   component={() => <QCDashboard />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/charts/:analyzerId"
                   exact
                   component={() => <ControlChartDetail />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots"
                   exact
                   component={() => <ControlLotList />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots/new"
                   exact
                   component={() => <ControlLotSetup />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/control-lots/:id"
                   exact
                   component={() => <ControlLotSetup />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/analyzers/qc/rule-config"
                   exact
                   component={() => <RuleConfigPanel />}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/PatientHistory"

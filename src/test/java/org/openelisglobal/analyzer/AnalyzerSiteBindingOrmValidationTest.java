@@ -8,6 +8,7 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.junit.Test;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
@@ -22,6 +23,7 @@ public class AnalyzerSiteBindingOrmValidationTest {
     public void siteBindingMappingsBuildWithoutDatabaseAccess() {
         Configuration configuration = new Configuration();
         configuration.addAnnotatedClass(Analyzer.class);
+        configuration.addAnnotatedClass(AnalyzerActivationRecord.class);
         configuration.addAnnotatedClass(AnalyzerType.class);
         configuration.addAnnotatedClass(AnalyzerProfileBinding.class);
         configuration.addAnnotatedClass(AnalyzerSiteBinding.class);
@@ -36,12 +38,15 @@ public class AnalyzerSiteBindingOrmValidationTest {
                 .applySettings(configuration.getProperties());
         try (SessionFactory sessionFactory = configuration.buildSessionFactory(registry.build())) {
             assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerSiteBinding.class));
+            assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerActivationRecord.class));
             assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerSiteBindingConfirmation.class));
             assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerSiteBindingRevision.class));
             assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerSiteBindingTest.class));
             assertNotNull(sessionFactory.getMetamodel().entity(AnalyzerSiteBindingResult.class));
             assertEquals(AnalyzerSiteBindingRevision.class, sessionFactory.getMetamodel().entity(Analyzer.class)
                     .getAttribute("siteBindingRevision").getJavaType());
+            assertEquals(AnalyzerActivationRecord.class, sessionFactory.getMetamodel().entity(Analyzer.class)
+                    .getAttribute("latestActivationRecord").getJavaType());
         }
     }
 }

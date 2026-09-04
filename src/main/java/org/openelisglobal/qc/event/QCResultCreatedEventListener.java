@@ -44,17 +44,25 @@ public class QCResultCreatedEventListener {
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleQCResultCreated(QCResultCreatedEvent event) {
-        QCResult result = event.getResult();
+        QCResult eventResult = event.getResult();
 
-        if (result == null) {
+        if (eventResult == null) {
             LogEvent.logWarn(this.getClass().getName(), "handleQCResultCreated", "Event received with null result");
             return;
         }
 
-        LogEvent.logInfo(this.getClass().getName(), "handleQCResultCreated",
-                "Processing QC result: " + result.getId() + " for control lot: " + result.getControlLotId());
-
         try {
+            Optional<QCResult> persistedResult = resultDAO.get(eventResult.getId());
+            if (persistedResult.isEmpty()) {
+                LogEvent.logWarn(this.getClass().getName(), "handleQCResultCreated",
+                        "Persisted QC result not found: " + eventResult.getId());
+                return;
+            }
+            QCResult result = persistedResult.get();
+
+            LogEvent.logInfo(this.getClass().getName(), "handleQCResultCreated",
+                    "Processing QC result: " + result.getId() + " for control lot: " + result.getControlLotId());
+
             // Evaluate all enabled Westgard rules
             List<RuleEvaluationResult> evaluationResults = ruleEvaluationService.evaluateAllRules(result.getId());
 
@@ -75,12 +83,8 @@ public class QCResultCreatedEventListener {
                     .anyMatch(r -> r.isViolated() && "REJECTION".equals(r.getSeverity()));
             String newStatus = hasRejection ? "REJECTED" : "ACCEPTED";
 
-            Optional<QCResult> freshResult = resultDAO.get(result.getId());
-            if (freshResult.isPresent()) {
-                QCResult toUpdate = freshResult.get();
-                toUpdate.setResultStatus(newStatus);
-                resultDAO.update(toUpdate);
-            }
+            result.setResultStatus(newStatus);
+            resultDAO.update(result);
 
             if (violationsCreated > 0) {
                 LogEvent.logInfo(this.getClass().getName(), "handleQCResultCreated", "Created " + violationsCreated
@@ -92,7 +96,7 @@ public class QCResultCreatedEventListener {
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "handleQCResultCreated",
-                    "Error evaluating rules for result " + result.getId() + ": " + e.getMessage());
+                    "Error evaluating rules for result " + eventResult.getId() + ": " + e.getMessage());
             // Don't rethrow - we don't want to fail the main transaction
         }
     }

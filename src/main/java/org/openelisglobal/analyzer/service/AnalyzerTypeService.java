@@ -95,11 +95,4 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      */
     List<Analyzer> getInstancesForType(String analyzerTypeId);
 
-    /**
-     * Create a default analyzer instance for a type if none exists.
-     *
-     * @param analyzerType The analyzer type
-     * @return The created or existing default Analyzer instance
-     */
-    Analyzer getOrCreateDefaultInstance(AnalyzerType analyzerType);
 }

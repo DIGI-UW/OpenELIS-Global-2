@@ -6,4 +6,7 @@ public interface AnalyzerSiteBindingConfirmationService {
             AnalyzerSiteBindingConfirmationRequest request, String actor);
 
     AnalyzerSiteBindingConfirmationView getStatus(AnalyzerSiteBindingSnapshot candidate, String recognitionFingerprint);
+
+    AnalyzerSiteBindingVerificationAssessment assessCurrent(AnalyzerSiteBindingSnapshot candidate,
+            String recognitionFingerprint);
 }

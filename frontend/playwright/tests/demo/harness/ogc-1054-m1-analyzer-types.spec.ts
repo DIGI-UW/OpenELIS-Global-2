@@ -1,6 +1,6 @@
 import { expect, test } from "../../../helpers/test-base";
 import type { Locator, Page } from "@playwright/test";
-import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
+import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import {
   LONG_TIMEOUT,
@@ -87,13 +87,10 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       .getByRole("combobox", { name: "Created" })
       .selectOption("SHIPPED");
     await page.getByRole("combobox", { name: "Protocol" }).selectOption("ASTM");
-    await page
-      .getByRole("combobox", { name: "Mapping status" })
-      .selectOption("INCOMPLETE");
     await page.getByText("Show deactivated", { exact: true }).click();
 
     const filteredUrl =
-      "/analyzers/types?q=gene&source=SHIPPED&protocol=ASTM&mapping=INCOMPLETE&showDeactivated=true";
+      "/analyzers/types?q=gene&source=SHIPPED&protocol=ASTM&showDeactivated=true";
     await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
     await expect(analyzerTypeRow(page, SOURCE_PROFILE)).toBeVisible();
     await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
@@ -111,15 +108,12 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       "ASTM",
     );
     await expect(
-      page.getByRole("combobox", { name: "Mapping status" }),
-    ).toHaveValue("INCOMPLETE");
-    await expect(
       page.getByRole("checkbox", { name: "Show deactivated" }),
     ).toBeChecked();
 
     await page.goBack();
     await expect(page).toHaveURL(
-      /\/analyzers\/types\?q=gene&source=SHIPPED&protocol=ASTM&mapping=INCOMPLETE$/,
+      /\/analyzers\/types\?q=gene&source=SHIPPED&protocol=ASTM$/,
     );
     await page.goForward();
     await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
@@ -201,19 +195,18 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(dialog).not.toBeVisible();
 
     const list = new AnalyzerListPage(page);
-    const form = new AnalyzerFormPage(page);
+    const setup = new AnalyzerSetupPage(page);
     await page
       .getByRole("navigation", { name: "Breadcrumb" })
       .getByRole("link", { name: "Analyzers", exact: true })
       .click();
     await list.expectLoaded();
     await list.clickAdd();
-    await form.expectOpen();
-    await form.profileDropdown
-      .locator('button[role="combobox"], .cds--list-box__field')
-      .click();
+    await setup.expectOpen();
+    await setup.typePicker.click();
+    await setup.typePicker.fill(draftName);
     await expect(
-      form.profileDropdown.getByRole("option", { name: draftName }),
+      page.getByRole("option", { name: new RegExp(draftName, "i") }),
     ).toHaveCount(0);
   });
 

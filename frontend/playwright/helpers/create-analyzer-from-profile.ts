@@ -4,17 +4,17 @@
  * Handles the full creation flow:
  * 1. (TCP only) Create mock network to get unique analyzer IP
  * 2. Open dashboard → click Add
- * 3. Select the reusable Analyzer Type/profile → fill the instance name
- * 4. (TCP only) Fill IP address and port
- * 5. Save → verify success
+ * 3. Select the reusable Analyzer Type/profile, lab unit, and instance name
+ * 4. Review the currently confirmed profile mappings
+ * 5. Configure and visibly test the connection
  *
  * Returns the IP assigned to the analyzer (for TCP push destinations).
  */
 
 import { Page, expect } from "@playwright/test";
-import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import { AnalyzerSetupPage } from "../fixtures/analyzer-setup";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
-import { cleanupAnalyzerByName } from "./cleanup-analyzer";
+import { deactivateAnalyzerByName } from "./deactivate-analyzer";
 import {
   resolveMockSimulatorUrl,
   type AnalyzerTestConfig,
@@ -112,10 +112,7 @@ export async function createAnalyzerFromProfile(
   config: AnalyzerTestConfig,
 ): Promise<string | null> {
   const list = new AnalyzerListPage(page);
-  const form = new AnalyzerFormPage(page);
-
-  // Clean up any leftover from a previous failed run
-  await cleanupAnalyzerByName(page, config.name);
+  const setup = new AnalyzerSetupPage(page);
 
   // For TCP analyzers: create mock network to get a unique IP.
   // Delete any leftover network first (from a previous failed run).
@@ -140,52 +137,32 @@ export async function createAnalyzerFromProfile(
   await list.expectLoaded();
 
   await list.clickAdd();
-  // A transient fetch failure on the lazy AnalyzerForm chunk renders the
-  // route error boundary, and the browser caches the failed dynamic import
-  // for the page's lifetime — only a reload recovers. Retry once.
-  try {
-    await form.expectOpen();
-  } catch {
-    await page.reload();
-    await list.goto();
-    await list.expectLoaded();
-    await list.clickAdd();
-    await form.expectOpen();
-  }
+  await setup.expectOpen();
+  await setup.selectProfile(config.profileName);
+  await setup.fillName(config.name);
+  await setup.selectFirstLabUnit();
+  await setup.continueToVerify();
+  await setup.continueToConnect();
 
-  await form.selectProfile(config.profileName);
-
-  // Fill name
-  await form.fillName(config.name);
-
-  // Fill IP and port for TCP analyzers
   if (config.protocol !== "FILE") {
     const ip = assignedIp || config.ipAddress;
     if (ip) {
-      await form.fillIpAddress(ip);
+      await setup.fillNetworkAddress(ip);
     }
     if (config.port) {
-      await form.fillPort(String(config.port));
+      await setup.fillPort(String(config.port));
     }
   }
 
-  // Fill required import directory for FILE analyzers. The UI intentionally
-  // does NOT auto-generate this (per product decision) — tests must set it
-  // explicitly. Mirror the mock server's targetDir so the analyzer watches
-  // where the mock drops fixtures.
   if (config.protocol === "FILE") {
     const importDir =
       config.push.targetDir ||
       `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`;
-    await form.fillImportDirectory(importDir);
+    await setup.fillImportDirectory(importDir);
   }
 
-  // Save
-  await form.save();
-  await form.expectSuccessNotification();
-
-  // Creation returns to the analyzer list.
-  await expect(form.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
+  await setup.testConnection();
+  await setup.close();
   const createdRow = page.locator("tbody tr", {
     hasText: new RegExp(escapeRegExp(config.name), "i"),
   });
@@ -197,24 +174,24 @@ export async function createAnalyzerFromProfile(
 }
 
 /**
- * Delete an analyzer via the UI dashboard (teardown).
+ * Deactivate an analyzer via the UI dashboard.
  */
-export async function deleteAnalyzerFromDashboard(
+export async function deactivateAnalyzerFromDashboard(
   page: Page,
   analyzerName: string,
 ): Promise<void> {
-  await cleanupAnalyzerByName(page, analyzerName);
+  await deactivateAnalyzerByName(page, analyzerName);
 }
 
 /**
- * Cleanup uses the visible delete workflow, then removes the mock transport.
+ * Teardown uses the visible deactivate workflow, then removes the mock transport.
  */
 export async function teardownAnalyzer(
   page: Page,
   config: AnalyzerTestConfig,
 ): Promise<void> {
-  // Step 1: Soft-delete via UI (tests the production user flow)
-  await deleteAnalyzerFromDashboard(page, config.name);
+  // Step 1: Deactivate through the production user flow.
+  await deactivateAnalyzerFromDashboard(page, config.name);
 
   // Step 2: Remove mock network
   if (config.mockAnalyzerName) {

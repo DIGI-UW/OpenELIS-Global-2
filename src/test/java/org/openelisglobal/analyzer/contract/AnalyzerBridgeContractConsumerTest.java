@@ -68,10 +68,6 @@ public class AnalyzerBridgeContractConsumerTest {
         assertTrue(fileProfile.path("supported_extensions").size() > 0);
         assertTrue(fileProfile.path("column_mapping").size() > 0);
 
-        String schema = Files.readString(CONTRACT_ROOT.resolve("analyzer-profile.schema.json"));
-        assertFalse(schema.contains("openelisTestId"));
-        assertFalse(schema.contains("openelisResultOptionId"));
-        assertFalse(schema.contains("labUnitId"));
     }
 
     @Test
@@ -90,12 +86,12 @@ public class AnalyzerBridgeContractConsumerTest {
     }
 
     @Test
-    public void priorityProfileValuesRemainOpaqueToOpenElis() throws IOException {
+    public void priorityProfileValuesComeDirectlyFromTheBridgeDocument() throws IOException {
         BridgeAnalyzerProfile geneXpert = BridgeAnalyzerProfile.from(fixture("analyzer-profile-astm.json"));
 
         assertEquals("E-1394-97", geneXpert.protocolVersion());
         assertEquals("BOTH", geneXpert.communicationMode());
-        assertEquals("TCP/IP", geneXpert.instanceDefaults().transport());
+        assertEquals("TCP/IP", geneXpert.document().path("configDefaults").path("transport").asText());
     }
 
     @Test

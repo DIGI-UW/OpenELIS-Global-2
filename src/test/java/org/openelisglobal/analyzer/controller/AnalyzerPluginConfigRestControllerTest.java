@@ -46,22 +46,23 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
 
     @Test
     public void testGetPluginConfig_AsAdmin_Returns200() throws Exception {
-        when(analyzerPluginConfigService.getConfigAsMap("101")).thenReturn(Map.of("connectionRole", "SERVER"));
+        when(analyzerPluginConfigService.getConfigAsMap("101"))
+                .thenReturn(Map.of("aggregationMode", "PER_MESSAGE"));
 
         mockMvc.perform(get("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.connectionRole").value("SERVER"));
+                .andExpect(jsonPath("$.aggregationMode").value("PER_MESSAGE"));
     }
 
     @Test
     public void testUpdatePluginConfig_WithValidPayload_Returns200() throws Exception {
-        Map<String, Object> config = Map.of("connectionRole", "SERVER", "serverListenPort", 17001);
+        Map<String, Object> config = Map.of("aggregationMode", "BY_SESSION", "aggregationWindowSeconds", 60);
         when(analyzerPluginConfigService.getConfigAsMap("101")).thenReturn(config);
 
         mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
                 .with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"connectionRole\":\"SERVER\",\"serverListenPort\":17001}")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.serverListenPort").value(17001));
+                .content("{\"aggregationMode\":\"BY_SESSION\",\"aggregationWindowSeconds\":60}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.aggregationWindowSeconds").value(60));
     }
 
     @Test

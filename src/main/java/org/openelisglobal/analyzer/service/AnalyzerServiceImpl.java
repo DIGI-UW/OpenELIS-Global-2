@@ -1,8 +1,5 @@
 package org.openelisglobal.analyzer.service;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -11,16 +8,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
-import org.openelisglobal.analyzer.dao.AnalyzerErrorDAO;
-import org.openelisglobal.analyzer.dao.AnalyzerFileUploadDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
-import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
-import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
-import org.openelisglobal.notebook.dao.NoteBookDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,25 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer, String> implements AnalyzerService {
 
-    public static final int SOFT_DELETE_WINDOW_DAYS = 90;
-
-    private static final Set<AnalyzerStatus> MANUALLY_SETTABLE_STATUSES = EnumSet.of(AnalyzerStatus.INACTIVE,
-            AnalyzerStatus.SETUP, AnalyzerStatus.VALIDATION);
-
     @Autowired
     protected AnalyzerDAO baseObjectDAO;
-
-    @Autowired
-    private AnalyzerResultsService analyzerResultsService;
-
-    @Autowired
-    private AnalyzerErrorDAO analyzerErrorDAO;
-
-    @Autowired
-    private AnalyzerFileUploadDAO analyzerFileUploadDAO;
-
-    @Autowired
-    private NoteBookDAO noteBookDAO;
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
@@ -82,35 +55,14 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         if (matches == null || matches.isEmpty()) {
             return null;
         }
-        return matches.stream().filter(a -> a.getStatus() != Analyzer.AnalyzerStatus.DELETED)
-                .max(java.util.Comparator.comparing(a -> Integer.parseInt(a.getId())))
+        return matches.stream().max(java.util.Comparator.comparing(a -> Integer.parseInt(a.getId())))
                 .orElse(matches.get(matches.size() - 1));
-    }
-
-    // --- Methods migrated from AnalyzerConfigurationService ---
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> getByIpAddress(String ipAddress) {
-        return baseObjectDAO.findByIpAddress(ipAddress);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> getByIpAddressAndPort(String ipAddress, Integer port) {
-        return baseObjectDAO.findByIpAddressAndPort(ipAddress, port);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Analyzer> getByName(String name) {
         return baseObjectDAO.findByName(name);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Analyzer> findActiveByListenPort(Integer port) {
-        return baseObjectDAO.findActiveByPort(port);
     }
 
     @Override
@@ -208,150 +160,27 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public boolean hasRecentResults(String analyzerId) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.DAY_OF_MONTH, -SOFT_DELETE_WINDOW_DAYS);
-        Date cutoffDate = calendar.getTime();
-
-        List<AnalyzerResults> results = analyzerResultsService.getResultsbyAnalyzer(analyzerId);
-        for (AnalyzerResults result : results) {
-            Date resultDate = null;
-            if (result.getCompleteDate() != null) {
-                resultDate = new Date(result.getCompleteDate().getTime());
-            } else if (result.getLastupdated() != null) {
-                resultDate = new Date(result.getLastupdated().getTime());
-            }
-            if (resultDate != null && resultDate.after(cutoffDate)) {
-                return true;
-            }
-        }
-        return false;
+    public void delete(Analyzer analyzer) {
+        throw hardDeleteUnsupported();
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public boolean canTransitionTo(String analyzerId, AnalyzerStatus newStatus) {
-        Analyzer analyzer = get(analyzerId);
-        if (analyzer == null) {
-            return false;
-        }
-        AnalyzerStatus currentStatus = analyzer.getStatus();
-        return validateStatusTransition(currentStatus, newStatus);
+    public void delete(String id, String sysUserId) {
+        throw hardDeleteUnsupported();
     }
 
     @Override
-    public boolean validateStatusTransition(AnalyzerStatus currentStatus, AnalyzerStatus newStatus) {
-        if (currentStatus == null || newStatus == null) {
-            return false;
-        }
-        if (currentStatus == newStatus) {
-            return true;
-        }
-        if (newStatus == AnalyzerStatus.INACTIVE) {
-            return true;
-        }
-        if (newStatus == AnalyzerStatus.DELETED) {
-            return currentStatus == AnalyzerStatus.INACTIVE;
-        }
-
-        switch (currentStatus) {
-        case INACTIVE:
-            return newStatus == AnalyzerStatus.SETUP;
-        case SETUP:
-            return newStatus == AnalyzerStatus.VALIDATION;
-        case VALIDATION:
-            return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.SETUP;
-        case ACTIVE:
-            return newStatus == AnalyzerStatus.ERROR_PENDING || newStatus == AnalyzerStatus.OFFLINE;
-        case ERROR_PENDING:
-            return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.OFFLINE;
-        case OFFLINE:
-            return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.ERROR_PENDING;
-        case DELETED:
-            return newStatus == AnalyzerStatus.INACTIVE;
-        case PENDING_REGISTRATION:
-            return newStatus == AnalyzerStatus.SETUP || newStatus == AnalyzerStatus.INACTIVE;
-        default:
-            return false;
-        }
+    public void deleteAll(List<Analyzer> analyzers) {
+        throw hardDeleteUnsupported();
     }
 
     @Override
-    @Transactional
-    public Analyzer setStatusManually(String analyzerId, AnalyzerStatus status, String userId) {
-        if (!MANUALLY_SETTABLE_STATUSES.contains(status)) {
-            throw new LIMSRuntimeException(
-                    "Status " + status + " cannot be set manually. Only INACTIVE, SETUP, and VALIDATION are allowed.");
-        }
-
-        Analyzer analyzer = get(analyzerId);
-        if (analyzer == null) {
-            throw new LIMSRuntimeException("Analyzer not found: " + analyzerId);
-        }
-
-        AnalyzerStatus oldStatus = analyzer.getStatus();
-        if (!validateStatusTransition(oldStatus, status)) {
-            throw new LIMSRuntimeException("Invalid status transition from " + oldStatus + " to " + status);
-        }
-
-        analyzer.setStatus(status);
-        analyzer.setSysUserId(userId);
-        analyzer.setLastupdatedFields();
-
-        update(analyzer);
-
-        LogEvent.logInfo(this.getClass().getSimpleName(), "setStatusManually", "Analyzer " + analyzerId
-                + " status manually changed from " + oldStatus + " to " + status + " by user " + userId);
-
-        return analyzer;
+    public void deleteAll(List<String> ids, String sysUserId) {
+        throw hardDeleteUnsupported();
     }
 
-    @Override
-    @Transactional
-    public void deleteWithDependents(Analyzer analyzer) {
-        String id = analyzer.getId();
-
-        // Tiered FK strategy — matches Liquibase 004 constraints:
-        //
-        // RESTRICT tier: analyzer_results, notebook_analysers
-        // → Must not exist; throw if they do (clinical/reference data).
-        // SET NULL tier: analyzer_error, analyzer_file_upload
-        // → Preserve audit trail by nulling the FK, not deleting rows.
-        // CASCADE tier: config tables
-        // → DB ON DELETE CASCADE handles these automatically.
-
-        // 1. RESTRICT tier — block if clinical/reference data exists
-        List<AnalyzerResults> results = analyzerResultsService.getResultsbyAnalyzer(id);
-        if (!results.isEmpty()) {
-            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + results.size()
-                    + " analyzer_results rows exist. Remove or reassign results first.");
-        }
-
-        long notebookCount = noteBookDAO.countByAnalyzerId(id);
-        if (notebookCount > 0) {
-            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + notebookCount
-                    + " notebook references exist. Remove references first.");
-        }
-
-        // 2. SET NULL tier — preserve audit trail
-        int errorsNulled = analyzerErrorDAO.nullifyAnalyzerId(id);
-        int uploadsNulled = analyzerFileUploadDAO.nullifyAnalyzerId(Integer.valueOf(id));
-        if (errorsNulled > 0 || uploadsNulled > 0) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents", "Set analyzer_id = NULL on "
-                    + errorsNulled + " error(s) and " + uploadsNulled + " upload(s) for analyzer " + id);
-        }
-
-        // 3. CASCADE tier — DB ON DELETE CASCADE handles config tables:
-        // analyzer_field, analyzer_field_mapping, serial_port_configuration,
-        // analyzer_plugin_config,
-        // analyzer_pending_code, analyzer_experiment
-
-        // Delete the analyzer — DB cascades config tables automatically
-        delete(analyzer);
-
-        LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
-                "Deleted analyzer " + id + " (" + analyzer.getName() + ") with all dependents");
+    private UnsupportedOperationException hardDeleteUnsupported() {
+        return new UnsupportedOperationException("Analyzer hard deletion is not supported");
     }
 
     @Override

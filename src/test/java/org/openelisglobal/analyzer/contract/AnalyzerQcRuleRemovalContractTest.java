@@ -29,13 +29,14 @@ public class AnalyzerQcRuleRemovalContractTest {
                 JAVA_ROOT.resolve("service/AnalyzerQcRuleServiceImpl.java"),
                 JAVA_ROOT.resolve("service/QcRuleDto.java"),
                 JAVA_ROOT.resolve("controller/AnalyzerQcRuleRestController.java"),
+                JAVA_ROOT.resolve("service/AnalyzerStatusEventListeners.java"),
+                JAVA_ROOT.resolve("service/AnalyzerStatusTransitionService.java"),
+                JAVA_ROOT.resolve("service/AnalyzerStatusTransitionServiceImpl.java"),
                 FRONTEND_ROOT.resolve("components/analyzers/QcRules/QcRuleBuilderModal.jsx"),
                 FRONTEND_ROOT.resolve("components/analyzers/QcRules/QcRuleRow.jsx"))) {
             assertFalse("superseded runtime file remains: " + path, Files.exists(path));
         }
 
-        assertDoesNotContain(JAVA_ROOT.resolve("service/AnalyzerStatusTransitionServiceImpl.java"),
-                "hasAtLeastOneActiveQcRule");
         assertDoesNotContain(JAVA_ROOT.resolve("service/AnalyzerServiceImpl.java"), "createQcRulesFromProfile");
         assertDoesNotContain(JAVA_ROOT.resolve("controller/AnalyzerRestController.java"), "qcRules");
         assertDoesNotContain(JAVA_ROOT.resolve("controller/AnalyzerRestController.java"), "controlLots");

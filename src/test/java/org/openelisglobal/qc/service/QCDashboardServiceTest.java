@@ -251,14 +251,17 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getInstrumentComplianceStatus_instrumentWithNoViolations_returnsGreen() {
-        // Instrument 999 doesn't exist in test data — no violations
-        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus("999");
+    public void getInstrumentComplianceStatus_instrumentWithoutOperationalQc_returnsNotConfigured() {
+        // Instrument 300 has no QC results, active control lots, or unresolved
+        // violations.
+        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus("300");
 
         assertNotNull(status);
-        assertEquals("GREEN", status.getComplianceColor());
+        assertEquals("NOT_CONFIGURED", status.getComplianceColor());
         assertEquals(0, status.getUnresolvedRejections());
         assertEquals(0, status.getUnresolvedWarnings());
+        assertEquals(0, status.getActiveControlLots());
+        assertTrue(status.getAnalyteDetails().isEmpty());
     }
 
     // ==================== Instruments with QC results but no violations

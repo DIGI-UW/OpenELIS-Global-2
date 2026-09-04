@@ -1,9 +1,13 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +42,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
 
     private static final String BINDING_FINGERPRINT = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     private static final String RECOGNITION_FINGERPRINT = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+    private static final String PROFILE_FINGERPRINT = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     @Mock
     private AnalyzerSiteBindingConfirmationDAO confirmationDAO;
@@ -72,6 +77,8 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
             confirmation.setId("71");
             return confirmation.getId();
         });
+        when(auditTrailService.saveNewHistory(any(AnalyzerSiteBindingConfirmation.class), eq("17"),
+                eq("analyzer_site_binding_confirmation"))).thenReturn("91");
     }
 
     @Test
@@ -88,8 +95,10 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         assertSame(candidate.revision(), saved.getValue().getSiteBindingRevision());
         assertEquals("site.mock-analyzer", saved.getValue().getProfileId());
         assertEquals(2, saved.getValue().getProfileRevision());
+        assertEquals(PROFILE_FINGERPRINT, saved.getValue().getProfileRevisionFingerprint());
         assertEquals(BINDING_FINGERPRINT, saved.getValue().getBindingFingerprint());
         assertEquals(RECOGNITION_FINGERPRINT, saved.getValue().getRecognitionFingerprint());
+        assertEquals("91", saved.getValue().getAuditEventId());
         assertEquals("17", saved.getValue().getConfirmedBy());
         assertEquals(AnalyzerSiteBindingConfirmationView.State.CURRENT, confirmed.state());
         assertEquals("17", confirmed.confirmedBy());
@@ -97,6 +106,22 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         assertEquals(request.confirmedRows(), confirmed.confirmedRows());
         assertEquals(request.excludedRows(), confirmed.excludedRows());
         verify(auditTrailService).saveNewHistory(saved.getValue(), "17", "analyzer_site_binding_confirmation");
+    }
+
+    @Test
+    public void disabledHistoryLeavesTheSavedConfirmationStaleWithoutASecondWrite() {
+        when(auditTrailService.saveNewHistory(any(AnalyzerSiteBindingConfirmation.class), eq("17"),
+                eq("analyzer_site_binding_confirmation"))).thenReturn(null);
+
+        AnalyzerSiteBindingConfirmationView confirmed = service.confirm(completeCandidate("61", BINDING_FINGERPRINT),
+                RECOGNITION_FINGERPRINT, exactRequest(), "17");
+
+        ArgumentCaptor<AnalyzerSiteBindingConfirmation> saved = ArgumentCaptor
+                .forClass(AnalyzerSiteBindingConfirmation.class);
+        verify(confirmationDAO).insert(saved.capture());
+        assertNull(saved.getValue().getAuditEventId());
+        verify(confirmationDAO, never()).update(any(AnalyzerSiteBindingConfirmation.class));
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, confirmed.state());
     }
 
     @Test
@@ -145,24 +170,71 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
         when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
 
         AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate,
+                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
+        AnalyzerSiteBindingVerificationAssessment assessment = service.assessCurrent(candidate,
                 "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
 
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
         assertEquals(RECOGNITION_FINGERPRINT, status.recognitionFingerprint());
+        assertTrue(assessment.mappingsCurrent());
+        assertFalse(assessment.recognitionCurrent());
+        assertEquals(Optional.empty(), assessment.currentConfirmation());
+    }
+
+    @Test
+    public void reportsHistoricalConfirmationWithoutDurableEvidenceAsStale() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setProfileRevisionFingerprint(null);
+        stored.setAuditEventId(null);
+        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+
+        AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
+    }
+
+    @Test
+    public void confirmationMustMatchTheExactPinnedProfileIdentity() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setProfileId("another.profile");
+        stored.setProfileRevision(3);
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+
+        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
+    }
+
+    @Test
+    public void confirmationRequiresItsDurableActorAndTime() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setConfirmedBy(null);
+        stored.setConfirmedAt(null);
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+
+        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
     }
 
     @Test
     public void reportsAConfirmationAsStaleWhenItsCatalogBindingIsNoLongerCurrent() throws Exception {
         AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
-        when(confirmationDAO.findLatestByBindingId("51"))
-                .thenReturn(Optional.of(storedConfirmation(candidate, exactRequest())));
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
 
         AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+        AnalyzerSiteBindingVerificationAssessment assessment = service.assessCurrent(candidate,
+                RECOGNITION_FINGERPRINT);
 
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
+        assertFalse(assessment.mappingsCurrent());
+        assertTrue(assessment.recognitionCurrent());
+        assertEquals(Optional.empty(), assessment.currentConfirmation());
     }
 
     @Test
@@ -175,6 +247,34 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
 
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
+    }
+
+    @Test
+    public void exactSavedRowsAreRequiredForAConfirmationToRemainCurrent() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setConfirmedRowsJson(
+                new ObjectMapper().writeValueAsString(List.of(new AnalyzerSiteBindingSourceRow("RAW-A", null))));
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+
+        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE,
+                service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
+    }
+
+    @Test
+    public void malformedSavedRowsAreStaleInsteadOfBreakingVerificationStatus() throws Exception {
+        AnalyzerSiteBindingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingConfirmation stored = storedConfirmation(candidate, exactRequest());
+        stored.setConfirmedRowsJson("not-json");
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+
+        assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
+        AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
+        assertEquals(List.of(), status.confirmedRows());
     }
 
     @Test
@@ -202,6 +302,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         profile.setId("41");
         profile.setProfileId("site.mock-analyzer");
         profile.setProfileRevision(2);
+        profile.setProfileFingerprint(PROFILE_FINGERPRINT);
 
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setId("51");
@@ -251,8 +352,10 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         confirmation.setSiteBindingRevision(snapshot.revision());
         confirmation.setProfileId("site.mock-analyzer");
         confirmation.setProfileRevision(2);
+        confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
         confirmation.setBindingFingerprint(snapshot.revision().getBindingFingerprint());
         confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
+        confirmation.setAuditEventId("90");
         confirmation.setConfirmedRowsJson(mapper.writeValueAsString(request.confirmedRows()));
         confirmation.setExcludedRowsJson(mapper.writeValueAsString(request.excludedRows()));
         confirmation.setConfirmedBy("16");

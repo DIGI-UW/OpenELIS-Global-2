@@ -92,7 +92,12 @@ export class AnalyzerListPage {
   /** Click an action from an open overflow menu */
   async clickAction(
     id: string,
-    action: "mappings" | "test-connection" | "edit" | "delete",
+    action:
+      | "edit-setup"
+      | "configure-connection"
+      | "quality-control"
+      | "deactivate"
+      | "reactivate",
   ) {
     const actionItem = this.page.locator(
       `[data-testid="analyzer-action-${action}-${id}"]`,

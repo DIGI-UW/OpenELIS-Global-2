@@ -26,7 +26,6 @@ import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReaderFactory;
 import org.openelisglobal.analyzerimport.analyzerreaders.HL7AnalyzerReader;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.service.LoginUserService;
@@ -190,20 +189,7 @@ public class AnalyzerImportController implements IActionConstants {
         return analyzer;
     }
 
-    /**
-     * Extract bridge source-identification headers and pass to reader. The analyzer
-     * bridge sends X-Source-Id (IP) and X-Source-Port headers that enable
-     * deterministic analyzer lookup without regex pattern matching.
-     *
-     * <p>
-     * <b>Security note:</b> These headers are trusted because /analyzer/astm and
-     * /analyzer/hl7 are designed to receive traffic exclusively from the analyzer
-     * bridge, which runs as trusted infrastructure on the internal Docker network.
-     * In production, these endpoints should be firewalled to accept traffic only
-     * from the bridge container's IP. The headers themselves are set by the bridge
-     * from actual TCP connection metadata, not from external client input.
-     * </p>
-     */
+    /** Pass the Bridge-resolved analyzer identifier to transitional raw readers. */
     private void setBridgeHeaders(AnalyzerReader reader, HttpServletRequest request) {
         // X-Analyzer-Id: analyzer identifier from bridge (e.g., MSH-3+MSH-4 for HL7).
         // ASTM: used as direct DB ID lookup. HL7: resolved via identifier-pattern
@@ -217,37 +203,6 @@ public class AnalyzerImportController implements IActionConstants {
             }
         }
 
-        String sourceIp = request.getHeader("X-Source-Id");
-        String sourcePort = request.getHeader("X-Source-Port");
-
-        if (reader instanceof ASTMAnalyzerReader astmReader) {
-            if (sourceIp != null && !sourceIp.trim().isEmpty()) {
-                astmReader.setClientIpAddress(sourceIp.trim());
-            }
-            setPortOnReader(sourcePort, port -> astmReader.setClientPort(port));
-        } else if (reader instanceof HL7AnalyzerReader hl7Reader) {
-            if (sourceIp != null && !sourceIp.trim().isEmpty()) {
-                hl7Reader.setClientIpAddress(sourceIp.trim());
-            }
-            setPortOnReader(sourcePort, port -> hl7Reader.setClientPort(port));
-        }
-    }
-
-    private void setPortOnReader(String sourcePort, java.util.function.IntConsumer portSetter) {
-        if (sourcePort != null && !sourcePort.trim().isEmpty()) {
-            try {
-                int port = Integer.parseInt(sourcePort.trim());
-                if (port < 1 || port > 65535) {
-                    LogEvent.logWarn(getClass().getSimpleName(), "setBridgeHeaders",
-                            "X-Source-Port out of range (1-65535): " + port);
-                    return;
-                }
-                portSetter.accept(port);
-            } catch (NumberFormatException e) {
-                LogEvent.logWarn(getClass().getSimpleName(), "setBridgeHeaders",
-                        "Invalid X-Source-Port header value (not an integer)");
-            }
-        }
     }
 
     private String getSysUserId(HttpServletRequest request) {

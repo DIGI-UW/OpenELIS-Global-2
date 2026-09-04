@@ -32,7 +32,6 @@ import SearchResultFormValues from "../formModel/innitialValues/SearchResultForm
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import SearchPatientForm from "../patient/SearchPatientForm";
-import SendToAnalyzerButton from "../modifyOrder/SendToAnalyzerButton";
 import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
@@ -185,19 +184,6 @@ function ResultSearchPage() {
     setResultForm(resultForm);
   };
 
-  // Single-accession context → offer LIS-initiated dispatch of this order to an
-  // analyzer. Derived from the active accession-number search param (set when the
-  // page is loaded/searched by accession, e.g. /AccessionResults?accessionNumber=…);
-  // suppressed for range/logbook/patient searches that span multiple accessions.
-  const accessionMatch = /accessionNumber=([^&]+)/.exec(param || "");
-  const loadedAccession =
-    accessionMatch &&
-    accessionMatch[1] &&
-    !(param || "").includes("upperAccessionNumber")
-      ? decodeURIComponent(accessionMatch[1])
-      : "";
-  const hasResults = (resultForm?.testResult?.length || 0) > 0;
-
   return (
     <>
       <SearchResultForm
@@ -217,15 +203,6 @@ function ResultSearchPage() {
         totalRows={allRows.length}
         filteredRowCount={filteredRowCount}
       />
-      {loadedAccession && hasResults && (
-        <Grid>
-          <Column lg={16} md={8} sm={4}>
-            <div style={{ margin: "0.5rem 0" }}>
-              <SendToAnalyzerButton accessionNumber={loadedAccession} />
-            </div>
-          </Column>
-        </Grid>
-      )}
       <SearchResults
         extraParams={param}
         searchBy={searchBy}

@@ -30,7 +30,10 @@ public final class AnalyzerTestProfileCatalog {
         profileMeta.put("displayName", "Generic analyzer test profile");
         profileMeta.put("confidence", "VALIDATED");
         profile.putObject("protocol").put("name", "ASTM").put("version", "LIS2-A2");
+        profile.putArray("transport").add("TCP/IP");
         profile.putObject("communication").put("mode", "ANALYZER_INITIATED").put("supports_lis_initiated", false);
+        profile.putObject("capabilities").put("inboundResults", true).put("outboundOrders", false).put("connectionTest",
+                true);
         profile.putArray("default_test_mappings");
         profile.putObject("configDefaults").put("connectionRole", "SERVER").put("transport", "TCP/IP").put("port", 9100)
                 .put("aggregationMode", "PER_MESSAGE");
@@ -51,7 +54,10 @@ public final class AnalyzerTestProfileCatalog {
         profileMeta.put("displayName", "Generic HL7 analyzer test profile");
         profileMeta.put("confidence", "VALIDATED");
         profile.putObject("protocol").put("name", "HL7").put("version", "HL7 v2.3.1");
+        profile.putArray("transport").add("MLLP");
         profile.putObject("communication").put("mode", "ANALYZER_INITIATED").put("supports_lis_initiated", false);
+        profile.putObject("capabilities").put("inboundResults", true).put("outboundOrders", false).put("connectionTest",
+                true);
         profile.putArray("default_test_mappings");
         profile.putObject("configDefaults").put("connectionRole", "SERVER").put("transport", "MLLP")
                 .put("aggregationMode", "PER_MESSAGE");

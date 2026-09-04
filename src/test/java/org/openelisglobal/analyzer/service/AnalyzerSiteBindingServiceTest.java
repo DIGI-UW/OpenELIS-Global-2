@@ -158,6 +158,25 @@ public class AnalyzerSiteBindingServiceTest {
     }
 
     @Test
+    public void findByRevisionIdReturnsThatExactSnapshotWithoutWriting() {
+        AnalyzerSiteBinding binding = binding(profileBinding());
+        AnalyzerSiteBindingRevision revision = revision(binding);
+        AnalyzerSiteBindingTest test = new AnalyzerSiteBindingTest();
+        AnalyzerSiteBindingResult result = new AnalyzerSiteBindingResult();
+        when(revisionDAO.get("61")).thenReturn(Optional.of(revision));
+        when(testDAO.findByRevisionId("61")).thenReturn(List.of(test));
+        when(resultDAO.findByRevisionId("61")).thenReturn(List.of(result));
+
+        AnalyzerSiteBindingSnapshot snapshot = service.findByRevisionId("61").orElseThrow();
+
+        assertSame(binding, snapshot.binding());
+        assertSame(revision, snapshot.revision());
+        assertEquals(List.of(test), snapshot.tests());
+        assertEquals(List.of(result), snapshot.results());
+        verifyZeroInteractions(bindingDAO, auditTrailService);
+    }
+
+    @Test
     public void resolveInitialRevisionRejectsMismatchedPortableIdentityBeforeWriting() throws Exception {
         JsonNode wrongRevision = portableProfile().deepCopy();
         ((com.fasterxml.jackson.databind.node.ObjectNode) wrongRevision.path("catalog")).put("revision", 4);
@@ -331,6 +350,7 @@ public class AnalyzerSiteBindingServiceTest {
                 {
                   "profileMeta":{"id":"site.mock-hematology","displayName":"Mock Hematology"},
                   "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                  "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
                   "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
                   "catalog":{
                     "revision":3,
