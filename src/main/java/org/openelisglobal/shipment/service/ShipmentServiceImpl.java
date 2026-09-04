@@ -88,6 +88,18 @@ public class ShipmentServiceImpl implements ShipmentService {
                 shipment.setStatus(ShipmentStatus.PENDING);
             }
 
+            if (shipment.getSystemUserId() == null) {
+                String sysUserId = shipment.getSysUserId();
+                if (sysUserId == null || sysUserId.isBlank()) {
+                    throw new LIMSRuntimeException("System user ID is required for audit but was not provided.");
+                }
+                try {
+                    shipment.setSystemUserId(Integer.parseInt(sysUserId));
+                } catch (NumberFormatException e) {
+                    throw new LIMSRuntimeException("Malformed system user ID provided: " + sysUserId, e);
+                }
+            }
+
             Integer id = shipmentDAO.insert(shipment);
             logger.info("Created shipment with ID: {}", id);
             return shipmentDAO.get(id).orElse(null);
@@ -101,6 +113,15 @@ public class ShipmentServiceImpl implements ShipmentService {
     public Shipment updateShipment(Shipment shipment) {
         try {
             shipment.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+            if (shipment.getSystemUserId() == null && shipment.getId() != null) {
+                Integer storedUserId = shipmentDAO.findSystemUserIdById(shipment.getId());
+                if (storedUserId == null) {
+                    throw new IllegalArgumentException("Shipment not found with ID: " + shipment.getId());
+                }
+                shipment.setSystemUserId(storedUserId);
+            }
+
             shipmentDAO.update(shipment);
             logger.info("Updated shipment with ID: {}", shipment.getId());
             return shipment;
