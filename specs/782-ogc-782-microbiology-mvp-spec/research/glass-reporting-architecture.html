@@ -1,0 +1,1454 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GLASS reporting without WHONET</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #f4f4f4;
+      --foreground: #161616;
+      --muted: #e8e8e8;
+      --muted-foreground: #525252;
+      --accent: #e0e0e0;
+      --border: #c6c6c6;
+      --primary: #0f62fe;
+      --primary-foreground: #ffffff;
+      --blue: #0f62fe;
+      --green: #198038;
+      --yellow: #f1c21b;
+      --red: #da1e28;
+      --viz-series-1: #0f62fe;
+      --viz-series-2: #198038;
+      --viz-series-3: #8a3ffc;
+      --viz-series-4: #d12771;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #161616;
+        --foreground: #f4f4f4;
+        --muted: #262626;
+        --muted-foreground: #c6c6c6;
+        --accent: #393939;
+        --border: #525252;
+        --primary: #78a9ff;
+        --primary-foreground: #161616;
+        --blue: #78a9ff;
+        --green: #42be65;
+        --yellow: #f1c21b;
+        --red: #fa4d56;
+        --viz-series-1: #78a9ff;
+        --viz-series-2: #42be65;
+        --viz-series-3: #be95ff;
+        --viz-series-4: #ff7eb6;
+      }
+    }
+
+    html {
+      background: var(--background);
+    }
+
+    body {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 32px;
+      background: var(--background);
+      color: var(--foreground);
+      font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    .btn,
+    .form-select {
+      min-height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 12px;
+      background: var(--background);
+      color: var(--foreground);
+      font: inherit;
+    }
+
+    .btn {
+      cursor: pointer;
+    }
+
+    .btn:hover,
+    .btn:focus-visible,
+    .btn[aria-pressed="true"],
+    .btn[aria-selected="true"] {
+      border-color: var(--primary);
+      outline: 2px solid transparent;
+      background: color-mix(in srgb, var(--primary) 12%, var(--background));
+    }
+
+    .btn-primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+
+    .btn-primary:hover,
+    .btn-primary:focus-visible {
+      background: color-mix(in srgb, var(--primary) 85%, #000000);
+    }
+
+    .btn-ghost {
+      background: transparent;
+    }
+
+    .viz-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 20px 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="glass-replacement-architecture" class="gr-root">
+  <style>
+    #glass-replacement-architecture {
+      color: var(--foreground);
+      width: 100%;
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture * {
+      box-sizing: border-box;
+      letter-spacing: 0;
+    }
+
+    #glass-replacement-architecture .gr-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    #glass-replacement-architecture .gr-title-block {
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-title-block h1 {
+      margin: 0 0 6px;
+    }
+
+    #glass-replacement-architecture .gr-title-block p,
+    #glass-replacement-architecture .gr-section-head p,
+    #glass-replacement-architecture .gr-caption,
+    #glass-replacement-architecture .gr-source-note {
+      color: var(--muted-foreground);
+      margin: 0;
+    }
+
+    #glass-replacement-architecture .gr-thesis {
+      max-width: 310px;
+      text-align: right;
+      color: var(--foreground);
+    }
+
+    #glass-replacement-architecture .gr-summary {
+      margin-bottom: 18px;
+    }
+
+    #glass-replacement-architecture .gr-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 4px 0 22px;
+    }
+
+    #glass-replacement-architecture .gr-panel[hidden] {
+      display: none;
+    }
+
+    #glass-replacement-architecture .gr-panel {
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-section {
+      margin: 0 0 28px;
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    #glass-replacement-architecture .gr-section-head h2,
+    #glass-replacement-architecture .gr-section-head h3 {
+      margin: 0 0 3px;
+    }
+
+    #glass-replacement-architecture .gr-tag-row,
+    #glass-replacement-architecture .gr-inline,
+    #glass-replacement-architecture .gr-source-list {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #glass-replacement-architecture .gr-status-good {
+      background: color-mix(in srgb, var(--green) 17%, transparent);
+      color: var(--foreground);
+    }
+
+    #glass-replacement-architecture .gr-status-warn {
+      background: color-mix(in srgb, var(--yellow) 20%, transparent);
+      color: var(--foreground);
+    }
+
+    #glass-replacement-architecture .gr-status-bad {
+      background: color-mix(in srgb, var(--red) 14%, transparent);
+      color: var(--foreground);
+    }
+
+    #glass-replacement-architecture .gr-status-info {
+      background: color-mix(in srgb, var(--blue) 15%, transparent);
+      color: var(--foreground);
+    }
+
+    #glass-replacement-architecture .gr-lanes {
+      display: grid;
+      gap: 22px;
+    }
+
+    #glass-replacement-architecture .gr-lane {
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-lane-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    #glass-replacement-architecture .gr-lane-head h3 {
+      margin: 0;
+    }
+
+    #glass-replacement-architecture .gr-flow {
+      display: grid;
+      grid-template-columns: repeat(11, minmax(0, auto));
+      align-items: stretch;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-flow .btn {
+      min-width: 0;
+      white-space: normal;
+      text-align: left;
+    }
+
+    #glass-replacement-architecture .gr-arrow {
+      align-self: center;
+      color: var(--muted-foreground);
+      text-align: center;
+    }
+
+    #glass-replacement-architecture .gr-detail-strip {
+      display: grid;
+      grid-template-columns: minmax(140px, 0.35fr) minmax(0, 1fr);
+      gap: 14px;
+      padding: 13px 0;
+      margin-top: 12px;
+      background: color-mix(in srgb, var(--accent) 48%, transparent);
+    }
+
+    #glass-replacement-architecture .gr-detail-strip > * {
+      padding-inline: 13px;
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-detail-strip strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    #glass-replacement-architecture .gr-invariants {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    #glass-replacement-architecture .gr-invariant {
+      padding-left: 11px;
+      border-left: 3px solid var(--viz-series-1);
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-invariant strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    #glass-replacement-architecture .gr-controls {
+      margin-bottom: 14px;
+    }
+
+    #glass-replacement-architecture .gr-mapping-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    #glass-replacement-architecture .gr-config {
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-config pre {
+      margin: 8px 0 0;
+      padding: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      color: var(--foreground);
+      background: var(--muted);
+      max-width: 100%;
+    }
+
+    #glass-replacement-architecture .gr-context-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px 18px;
+    }
+
+    #glass-replacement-architecture .gr-context-item {
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-context-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    #glass-replacement-architecture .gr-context-item code {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    #glass-replacement-architecture .gr-mapping-state {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      margin-top: 14px;
+      padding: 12px 0;
+      background: color-mix(in srgb, var(--yellow) 10%, transparent);
+    }
+
+    #glass-replacement-architecture .gr-mapping-state > * {
+      padding-inline: 12px;
+    }
+
+    #glass-replacement-architecture .gr-map-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    #glass-replacement-architecture .gr-model {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(0, auto));
+      align-items: center;
+      gap: 7px;
+      margin: 14px 0;
+    }
+
+    #glass-replacement-architecture .gr-model .btn {
+      min-width: 0;
+      white-space: normal;
+    }
+
+    #glass-replacement-architecture .gr-model-support {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    #glass-replacement-architecture .gr-support-block {
+      min-width: 0;
+      padding-top: 9px;
+      border-top: 3px solid var(--viz-series-2);
+    }
+
+    #glass-replacement-architecture .gr-support-block:nth-child(2) {
+      border-top-color: var(--viz-series-3);
+    }
+
+    #glass-replacement-architecture .gr-support-block:nth-child(3) {
+      border-top-color: var(--viz-series-4);
+    }
+
+    #glass-replacement-architecture .gr-support-block strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    #glass-replacement-architecture .gr-compile-flow {
+      display: grid;
+      grid-template-columns: repeat(11, minmax(0, auto));
+      align-items: stretch;
+      gap: 6px;
+      margin: 14px 0 18px;
+    }
+
+    #glass-replacement-architecture .gr-compile-step {
+      padding: 10px;
+      min-width: 0;
+      background: color-mix(in srgb, var(--blue) 10%, transparent);
+    }
+
+    #glass-replacement-architecture .gr-compile-step strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    #glass-replacement-architecture .gr-example {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    #glass-replacement-architecture .gr-output-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    #glass-replacement-architecture .gr-output-block {
+      min-width: 0;
+    }
+
+    #glass-replacement-architecture .gr-output-block h3 {
+      margin: 0 0 7px;
+    }
+
+    #glass-replacement-architecture .gr-metric-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 7px 0;
+      align-items: baseline;
+    }
+
+    #glass-replacement-architecture .gr-metric-line + .gr-metric-line {
+      border-top: 1px solid var(--border);
+    }
+
+    #glass-replacement-architecture .gr-metric-line strong {
+      font-variant-numeric: tabular-nums;
+    }
+
+    #glass-replacement-architecture .gr-scenario-result {
+      margin-top: 12px;
+      min-height: 42px;
+      color: var(--foreground);
+    }
+
+    #glass-replacement-architecture .gr-schema-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+      margin-top: 20px;
+    }
+
+    #glass-replacement-architecture .gr-schema-grid h3 {
+      margin: 0 0 7px;
+    }
+
+    #glass-replacement-architecture .gr-compact-list,
+    #glass-replacement-architecture .gr-roadmap {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    #glass-replacement-architecture .gr-compact-list li,
+    #glass-replacement-architecture .gr-roadmap li {
+      margin: 0 0 6px;
+    }
+
+    #glass-replacement-architecture .gr-roadmap {
+      list-style: none;
+      padding-left: 0;
+      counter-reset: roadmap;
+    }
+
+    #glass-replacement-architecture .gr-roadmap li {
+      counter-increment: roadmap;
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 9px 0;
+    }
+
+    #glass-replacement-architecture .gr-roadmap li::before {
+      content: counter(roadmap);
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      color: var(--primary-foreground);
+      background: var(--primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    #glass-replacement-architecture .gr-roadmap strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    #glass-replacement-architecture .gr-decision {
+      display: grid;
+      grid-template-columns: minmax(150px, 0.65fr) minmax(0, 1fr) minmax(170px, 0.8fr);
+      gap: 14px;
+      align-items: start;
+      padding: 11px 0;
+    }
+
+    #glass-replacement-architecture .gr-decision + .gr-decision {
+      border-top: 1px solid var(--border);
+    }
+
+    #glass-replacement-architecture .gr-decision strong {
+      display: block;
+    }
+
+    #glass-replacement-architecture .gr-drift {
+      background: color-mix(in srgb, var(--red) 8%, transparent);
+    }
+
+    #glass-replacement-architecture .gr-drift td:first-child {
+      color: var(--foreground);
+      font-weight: 500;
+    }
+
+    #glass-replacement-architecture .gr-sources {
+      margin-top: 26px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    #glass-replacement-architecture .gr-sources h2 {
+      margin: 0 0 8px;
+    }
+
+    #glass-replacement-architecture .gr-source-list a {
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 860px) {
+      #glass-replacement-architecture .gr-header,
+      #glass-replacement-architecture .gr-mapping-layout,
+      #glass-replacement-architecture .gr-example {
+        grid-template-columns: 1fr;
+      }
+
+      #glass-replacement-architecture .gr-thesis {
+        max-width: none;
+        text-align: left;
+      }
+
+      #glass-replacement-architecture .gr-flow,
+      #glass-replacement-architecture .gr-compile-flow {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      #glass-replacement-architecture .gr-arrow {
+        transform: rotate(90deg);
+      }
+
+      #glass-replacement-architecture .gr-invariants,
+      #glass-replacement-architecture .gr-context-grid,
+      #glass-replacement-architecture .gr-model-support {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #glass-replacement-architecture .gr-model {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 560px) {
+      #glass-replacement-architecture .gr-section-head,
+      #glass-replacement-architecture .gr-lane-head,
+      #glass-replacement-architecture .gr-detail-strip,
+      #glass-replacement-architecture .gr-mapping-state,
+      #glass-replacement-architecture .gr-decision {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      #glass-replacement-architecture .gr-section-head {
+        display: grid;
+      }
+
+      #glass-replacement-architecture .gr-invariants,
+      #glass-replacement-architecture .gr-context-grid,
+      #glass-replacement-architecture .gr-model-support,
+      #glass-replacement-architecture .gr-output-pair,
+      #glass-replacement-architecture .gr-schema-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #glass-replacement-architecture .gr-map-actions {
+        width: 100%;
+      }
+    }
+  </style>
+
+  <header class="gr-header">
+    <div class="gr-title-block">
+      <h1>Replacing WHONET in the GLASS reporting path</h1>
+      <p>Open ingestion, canonical line-level records, traceable national aggregation, and WHO-ready outputs.</p>
+    </div>
+    <div class="gr-thesis">
+      <strong>Target boundary</strong><br>
+      No WHONET executable, file, code set, or breakpoint bundle is required to produce GLASS reports.
+    </div>
+  </header>
+
+  <div class="viz-grid gr-summary" aria-label="Core architecture anchors">
+    <div class="card viz-stat">
+      <span class="text-muted">Clinical authority</span>
+      <span class="viz-stat-value">CLSI / EUCAST</span>
+      <span class="text-small">Versioned breakpoints and interpretation provenance</span>
+    </div>
+    <div class="card viz-stat">
+      <span class="text-muted">Canonical record</span>
+      <span class="viz-stat-value">Specimen → isolate → AST</span>
+      <span class="text-small">Negative cultures retained for denominators</span>
+    </div>
+    <div class="card viz-stat">
+      <span class="text-muted">WHO submission</span>
+      <span class="viz-stat-value">RIS + SAMPLE</span>
+      <span class="text-small">National aggregates, reviewed and manually uploaded</span>
+    </div>
+  </div>
+
+  <nav class="gr-tabs" role="tablist" aria-label="GLASS replacement views">
+    <button class="btn btn-ghost" type="button" role="tab" aria-selected="true" aria-controls="gr-panel-flow" id="gr-tab-flow" data-gr-tab="flow">End-to-end</button>
+    <button class="btn btn-ghost" type="button" role="tab" aria-selected="false" aria-controls="gr-panel-mapping" id="gr-tab-mapping" data-gr-tab="mapping">Mapping workbench</button>
+    <button class="btn btn-ghost" type="button" role="tab" aria-selected="false" aria-controls="gr-panel-model" id="gr-tab-model" data-gr-tab="model">Canonical data</button>
+    <button class="btn btn-ghost" type="button" role="tab" aria-selected="false" aria-controls="gr-panel-glass" id="gr-tab-glass" data-gr-tab="glass">GLASS compiler</button>
+    <button class="btn btn-ghost" type="button" role="tab" aria-selected="false" aria-controls="gr-panel-gap" id="gr-tab-gap" data-gr-tab="gap">Current gaps</button>
+    <button class="btn btn-ghost" type="button" role="tab" aria-selected="false" aria-controls="gr-panel-decisions" id="gr-tab-decisions" data-gr-tab="decisions">Decisions &amp; build order</button>
+  </nav>
+
+  <section class="gr-panel" id="gr-panel-flow" role="tabpanel" aria-labelledby="gr-tab-flow" data-gr-panel="flow">
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>The transformation chain</h2>
+          <p>WHONET's useful idea is the staged conversion. Its tool-specific intermediate representation is optional.</p>
+        </div>
+        <span class="viz-badge gr-status-info">Click a stage for its contract</span>
+      </div>
+
+      <div class="gr-lanes">
+        <div class="gr-lane">
+          <div class="gr-lane-head">
+            <h3>WHONET path today</h3>
+            <span class="viz-badge gr-status-warn">Dependency chain</span>
+          </div>
+          <div class="gr-flow" aria-label="WHONET transformation path">
+            <button class="btn btn-ghost" type="button" data-flow-key="wh-source">CSV / Excel / LIS export</button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="wh-config">BacLink <code>.cfg</code></button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="wh-file">WHONET isolate file</button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="wh-aggregate">WHONET GLASS aggregation</button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="wh-output">RIS + SAMPLE</button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="upload">Human upload</button>
+          </div>
+        </div>
+
+        <div class="gr-lane">
+          <div class="gr-lane-head">
+            <h3>OpenELIS replacement</h3>
+            <span class="viz-badge gr-status-good">No WHONET dependency</span>
+          </div>
+          <div class="gr-flow" aria-label="Recommended OpenELIS transformation path">
+            <button class="btn btn-ghost" type="button" data-flow-key="oe-source">FHIR / CSV / Excel / legacy WHONET</button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="oe-profile" aria-pressed="true">Open import profile</button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="oe-store">Canonical line-level store</button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="oe-aggregate">National scope + de-duplication</button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="oe-output">Versioned GLASS compiler</button>
+            <span class="gr-arrow" aria-hidden="true">→</span>
+            <button class="btn btn-ghost" type="button" data-flow-key="upload">Human upload</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="gr-detail-strip" aria-live="polite">
+        <div>
+          <strong id="gr-flow-detail-title">Open import profile</strong>
+          <span class="text-small text-muted">Selected stage</span>
+        </div>
+        <div id="gr-flow-detail-body">Created from a representative source file and its layout. Reused only for later files that match the same delimiter, header, row shape, field meanings, and code dictionaries.</div>
+      </div>
+
+      <div class="gr-invariants" aria-label="Architecture invariants">
+        <div class="gr-invariant">
+          <strong>Preserve line-level data</strong>
+          <span class="text-small">No early facility aggregation; cross-site patient repeats remain detectable.</span>
+        </div>
+        <div class="gr-invariant">
+          <strong>Retain negatives</strong>
+          <span class="text-small">No-growth cultures are required to build the SAMPLE denominator.</span>
+        </div>
+        <div class="gr-invariant">
+          <strong>Map to canonical concepts</strong>
+          <span class="text-small">WHONET codes are compatibility aliases, never internal clinical authority.</span>
+        </div>
+        <div class="gr-invariant">
+          <strong>Compile once nationally</strong>
+          <span class="text-small">One versioned scope, repeat-isolate rule, and output contract per run.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Replacement boundary</h2>
+          <p>Compatibility remains at the edge; WHONET disappears from the internal path.</p>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr><th>Surface</th><th>Supported</th><th>Internal dependency</th><th>Reason</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>OpenELIS FHIR</td><td><span class="viz-badge gr-status-good">Primary</span></td><td>None</td><td>Structured, continuous site feed</td></tr>
+            <tr><td>General CSV / Excel</td><td><span class="viz-badge gr-status-good">Primary</span></td><td>Open import profile</td><td>Lets non-OpenELIS sites participate without WHONET</td></tr>
+            <tr><td>WHONET isolate file</td><td><span class="viz-badge gr-status-info">Legacy adapter</span></td><td>None after ingest</td><td>Migration and interoperability, not a required workflow</td></tr>
+            <tr><td>BacLink <code>.cfg</code></td><td><span class="viz-badge gr-status-warn">Import only if documented</span></td><td>Never</td><td>Our UI emits an open, versioned profile instead</td></tr>
+            <tr><td>WHONET executable / code tables / breakpoint bundle</td><td><span class="viz-badge gr-status-bad">Not required</span></td><td>None</td><td>Replaced by open adapters, canonical mappings, and direct standards sources</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="gr-panel" id="gr-panel-mapping" role="tabpanel" aria-labelledby="gr-tab-mapping" data-gr-panel="mapping" hidden>
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Contextual import, at least as capable as BacLink</h2>
+          <p>A mapping profile is authored against one concrete source layout, saved, versioned, and reused only while that layout still matches.</p>
+        </div>
+      </div>
+
+      <div class="viz-controls gr-controls">
+        <label class="form-label" for="gr-source-shape">Source shape
+          <select class="form-select" id="gr-source-shape">
+            <option value="wide">CSV / Excel: one isolate per row</option>
+            <option value="long">CSV / Excel: one antibiotic result per row</option>
+            <option value="fhir">OpenELIS FHIR: structured resources</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="gr-mapping-layout">
+        <div>
+          <div class="table-responsive">
+            <table class="table table-sm" aria-label="Source to canonical field mappings">
+              <thead>
+                <tr>
+                  <th>Source header / path</th>
+                  <th>Sample value</th>
+                  <th>Canonical target</th>
+                  <th>Contextualization</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="gr-mapping-body"></tbody>
+            </table>
+          </div>
+
+          <div class="gr-mapping-state">
+            <div>
+              <strong><code id="gr-unknown-code">HEMOC_PED</code> · specimen code · 96 rows</strong>
+              <div id="gr-map-result" class="text-small">Suggested: Blood specimen. Human decision required; affected rows stay quarantined.</div>
+            </div>
+            <div class="gr-map-actions" aria-label="Example code mapping decision">
+              <button class="btn btn-primary" type="button" data-map-action="map">Map</button>
+              <button class="btn" type="button" data-map-action="ignore">Ignore with reason</button>
+              <button class="btn" type="button" data-map-action="block">Keep blocked</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="gr-config">
+          <strong>Config created from this source layout</strong>
+          <p class="gr-caption text-small">Open, portable, reviewable; every import run records the exact profile version and source checksum.</p>
+          <pre><code id="gr-config-preview"></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>What the profile must understand</h2>
+          <p>Header matching alone is not enough; the profile defines file grammar, record identity, clinical context, and value semantics.</p>
+        </div>
+      </div>
+      <div class="gr-context-grid">
+        <div class="gr-context-item">
+          <strong>File grammar</strong>
+          <span class="text-small">CSV, workbook sheet, delimiter, quote rules, encoding, header row, decimal convention.</span>
+        </div>
+        <div class="gr-context-item">
+          <strong>Record shape</strong>
+          <span class="text-small">One isolate or one AST result per row; horizontal or vertical antibiotics; fixed or variable sequence.</span>
+        </div>
+        <div class="gr-context-item">
+          <strong>Grouping identity</strong>
+          <span class="text-small">Patient, specimen, isolate, and AST keys; repeated columns checked for consistency.</span>
+        </div>
+        <div class="gr-context-item">
+          <strong>Field semantics</strong>
+          <span class="text-small">Dates, sex, origin, location, specimen, culture purpose, organism, antibiotic, method, measurement, interpretation.</span>
+        </div>
+        <div class="gr-context-item">
+          <strong>AST grammar</strong>
+          <span class="text-small">Disk zone, MIC, Etest, comparator values such as <code>&lt;=0.25</code>, units, source interpretation, guideline and year.</span>
+        </div>
+        <div class="gr-context-item">
+          <strong>Code dictionaries</strong>
+          <span class="text-small">Frequency-ranked unknowns; suggested mappings; explicit map, ignore, or block decisions; no silent drops.</span>
+        </div>
+        <div class="gr-context-item">
+          <strong>Header drift</strong>
+          <span class="text-small">Missing, renamed, duplicated, and newly added columns produce a reviewable profile mismatch.</span>
+        </div>
+        <div class="gr-context-item">
+          <strong>Preview</strong>
+          <span class="text-small">Raw row, parsed fields, canonical record, warnings, and first records shown before commit.</span>
+        </div>
+        <div class="gr-context-item">
+          <strong>Run ledger</strong>
+          <span class="text-small">Source checksum, profile version, accepted/quarantined counts, corrections, reruns, and lineage.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>WHONET parity and improvement gate</h2>
+          <p>The first release is complete only when recurring site files can be converted safely without WHONET.</p>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Capability</th><th>WHONET / BacLink behavior</th><th>Required replacement</th><th>Better-than-WHONET target</th></tr></thead>
+          <tbody>
+            <tr><td>Saved conversion setup</td><td><code>.cfg</code> per source format</td><td>Versioned open profile per site + layout</td><td>Readable diff, ownership, approval, rollback</td></tr>
+            <tr><td>Input formats</td><td>Delimited/fixed text, DBF/SQLite, Access, vendor formats; current versions add direct Excel</td><td>CSV, TSV, XLSX, WHONET line-level, FHIR</td><td>Plugin adapters with one canonical validation contract</td></tr>
+            <tr><td>Structural variants</td><td>One/multiple rows per isolate; fixed/variable antibiotic sequence</td><td>Wide and long AST pivots with explicit grouping keys</td><td>Detect likely shape, require confirmation, save tests with profile</td></tr>
+            <tr><td>Code mapping</td><td>Local-to-WHONET dictionaries and unknown-code review</td><td>Local-to-canonical dictionaries; optional WHONET aliases at boundary</td><td>Frequency, provenance, collision checks, reversible decisions</td></tr>
+            <tr><td>Conversion inspection</td><td>First records plus source/converted values</td><td>Sample preview and whole-file validation summary</td><td>Every error links to rows; no unreported loss</td></tr>
+            <tr><td>Clinical interpretation</td><td>Bundled WHONET breakpoint tables</td><td>Direct, versioned CLSI/EUCAST inputs with licensing respected</td><td>Retain raw + source result + computed result + exact rule provenance</td></tr>
+            <tr><td>Repeat imports</td><td>Reuse config when structure stays identical</td><td>Layout fingerprint and explicit compatibility check</td><td>Schema drift diff before any data is accepted</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="gr-panel" id="gr-panel-model" role="tabpanel" aria-labelledby="gr-tab-model" data-gr-panel="model" hidden>
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Canonical line-level surveillance model</h2>
+          <p>This replaces the WHONET isolate file as the normalized intermediate representation.</p>
+        </div>
+        <span class="viz-badge gr-status-info">Select an entity</span>
+      </div>
+
+      <div class="gr-model" aria-label="Canonical surveillance model relationships">
+        <button class="btn btn-ghost" type="button" data-model-key="patient">Patient token</button>
+        <span class="gr-arrow" aria-hidden="true">→</span>
+        <button class="btn btn-ghost" type="button" data-model-key="specimen" aria-pressed="true">Specimen</button>
+        <span class="gr-arrow" aria-hidden="true">→</span>
+        <button class="btn btn-ghost" type="button" data-model-key="culture">Culture outcome</button>
+        <span class="gr-arrow" aria-hidden="true">→</span>
+        <button class="btn btn-ghost" type="button" data-model-key="isolate">Isolate</button>
+        <span class="gr-arrow" aria-hidden="true">→</span>
+        <button class="btn btn-ghost" type="button" data-model-key="ast">AST result</button>
+      </div>
+
+      <div class="gr-detail-strip" aria-live="polite">
+        <div>
+          <strong id="gr-model-title">Specimen</strong>
+          <span class="text-small text-muted">Canonical entity</span>
+        </div>
+        <div id="gr-model-body">Site and source identifiers, collection time, specimen type, culture purpose, patient origin, final status, and positive/no-growth outcome. Negative records must survive even when no isolate exists.</div>
+      </div>
+
+      <div class="gr-model-support">
+        <div class="gr-support-block">
+          <strong>Import envelope</strong>
+          <span class="text-small">Site, source system, import run, source checksum, profile version, raw row/resource pointer, received time.</span>
+        </div>
+        <div class="gr-support-block">
+          <strong>Terminology crosswalk</strong>
+          <span class="text-small">Stable canonical concept plus local, WHO GLASS, LOINC, SNOMED, UCUM, and optional WHONET aliases.</span>
+        </div>
+        <div class="gr-support-block">
+          <strong>Interpretation provenance</strong>
+          <span class="text-small">Raw measurement, method, unit, source S/I/R, computed S/I/R, authority, document/version, override and reviewer.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>FHIR representation for OpenELIS sites</h2>
+          <p>Use the existing R4 transport, but publish microbiology as structured observations rather than one report remark.</p>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>FHIR resource</th><th>Role</th><th>Required microbiology content</th></tr></thead>
+          <tbody>
+            <tr><td><code>Patient</code> + <code>Encounter</code></td><td>Person and care context</td><td>Privacy-safe national match key; sex, birth date/age, admission/origin evidence</td></tr>
+            <tr><td><code>ServiceRequest</code></td><td>Ordered investigation</td><td>Culture purpose and requested laboratory service where available</td></tr>
+            <tr><td><code>Specimen</code></td><td>Collected material</td><td>Source identifier, type, collection time, subject</td></tr>
+            <tr><td><code>DiagnosticReport</code></td><td>Final report container</td><td>Status, issued time, specimen, performer, result observation references</td></tr>
+            <tr><td>Culture <code>Observation</code></td><td>Culture panel/outcome</td><td>No growth or members for each organism identified</td></tr>
+            <tr><td>Isolate <code>Observation</code></td><td>Organism identity</td><td>Coded organism and <code>hasMember</code> susceptibility panel</td></tr>
+            <tr><td>AST <code>Observation</code></td><td>Atomic susceptibility</td><td>Antibiotic code, raw quantity/comparator, method, interpretation, specimen, provenance</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="gr-source-note text-small">HL7 R4 explicitly supports a DiagnosticReport containing nested culture, isolate, and susceptibility Observations; the current HL7 Europe example uses <code>Observation.hasMember</code> for this relationship.</p>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Terminology rule</h2>
+          <p>Separate clinical meaning from every transport-specific code.</p>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Meaning</th><th>Canonical handling</th><th>Boundary mappings</th></tr></thead>
+          <tbody>
+            <tr><td>Organism</td><td>Internal stable concept with scientific display and versioned status</td><td>Local LIS, SNOMED where licensed/available, WHO GLASS pathogen, WHONET alias</td></tr>
+            <tr><td>Specimen</td><td>Internal stable specimen concept</td><td>Local code, SNOMED, WHO GLASS specimen category, WHONET alias</td></tr>
+            <tr><td>Antibiotic</td><td>Internal stable antimicrobial concept</td><td>Local code, LOINC test code, WHO GLASS antimicrobial, WHONET alias</td></tr>
+            <tr><td>Measurement</td><td>Comparator + numeric value + UCUM unit</td><td>Source text retained verbatim for traceability</td></tr>
+            <tr><td>Interpretation</td><td>S / I / R plus authority-specific meaning</td><td>EUCAST <code>I</code> is preserved as increased exposure; CLSI meaning is not silently substituted</td></tr>
+            <tr><td>Breakpoint</td><td>Authority + document/table version + organism/drug/method/specimen context</td><td>Direct CLSI licensed source or EUCAST published source; never WHONET as authority</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="gr-panel" id="gr-panel-glass" role="tabpanel" aria-labelledby="gr-tab-glass" data-gr-panel="glass" hidden>
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>National GLASS compiler</h2>
+          <p>Both aggregate files are compiled from the same accepted line-level cohort.</p>
+        </div>
+      </div>
+      <div class="gr-compile-flow" aria-label="GLASS compilation stages">
+        <div class="gr-compile-step"><strong>Accepted records</strong><span class="text-small">All sites, positives + negatives</span></div>
+        <span class="gr-arrow" aria-hidden="true">→</span>
+        <div class="gr-compile-step"><strong>Scope</strong><span class="text-small">Period, specimen, pathogen, subset</span></div>
+        <span class="gr-arrow" aria-hidden="true">→</span>
+        <div class="gr-compile-step"><strong>Patient matching</strong><span class="text-small">Privacy-safe across sites</span></div>
+        <span class="gr-arrow" aria-hidden="true">→</span>
+        <div class="gr-compile-step"><strong>Repeat rule</strong><span class="text-small">Versioned GLASS policy</span></div>
+        <span class="gr-arrow" aria-hidden="true">→</span>
+        <div class="gr-compile-step"><strong>Aggregate</strong><span class="text-small">RIS + SAMPLE dimensions</span></div>
+        <span class="gr-arrow" aria-hidden="true">→</span>
+        <div class="gr-compile-step"><strong>Validate + sign off</strong><span class="text-small">Traceable files for upload</span></div>
+      </div>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Why aggregation belongs at the national layer</h2>
+          <p>Worked example: the same patient has the same organism recorded at two sites; another patient has no growth.</p>
+        </div>
+      </div>
+      <div class="viz-controls gr-controls" role="group" aria-label="Aggregation scenario">
+        <button class="btn" type="button" aria-pressed="true" data-scenario="line">Line-level records arrive</button>
+        <button class="btn" type="button" aria-pressed="false" data-scenario="aggregate">Sites pre-aggregate</button>
+      </div>
+      <div class="gr-example">
+        <div class="table-responsive">
+          <table class="table table-sm" aria-label="Worked source record example">
+            <thead><tr><th>Patient token</th><th>Site</th><th>Specimen</th><th>Culture</th><th>AST</th></tr></thead>
+            <tbody>
+              <tr><td>A</td><td>Site 1</td><td>Blood</td><td><i>E. coli</i></td><td>Cefotaxime R</td></tr>
+              <tr><td>A</td><td>Site 2</td><td>Blood</td><td><i>E. coli</i></td><td>Cefotaxime R</td></tr>
+              <tr><td>B</td><td>Site 1</td><td>Blood</td><td>No growth</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="gr-metric-line"><span>Unique tested patients</span><strong id="gr-patient-count">2</strong></div>
+          <div class="gr-metric-line"><span>RIS resistant count</span><strong id="gr-ris-count">1</strong></div>
+          <div class="gr-metric-line"><span>SAMPLE negative count</span><strong id="gr-negative-count">1</strong></div>
+          <div class="gr-scenario-result" id="gr-scenario-result" aria-live="polite">National matching sees Patient A at both sites, keeps one qualifying isolate, and retains Patient B for the denominator.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Output contracts</h2>
+          <p>Aggregate rows, not line-level isolates; required dimensions use the active WHO GLASS profile.</p>
+        </div>
+      </div>
+      <div class="gr-schema-grid">
+        <div>
+          <h3>RIS dataset</h3>
+          <ul class="gr-compact-list">
+            <li>Country, collection year, national subset</li>
+            <li>Specimen, pathogen, antimicrobial</li>
+            <li>Sex, age group, infection origin</li>
+            <li>Counts R, I, S</li>
+            <li>AST not reported and performed without interpretation</li>
+          </ul>
+        </div>
+        <div>
+          <h3>SAMPLE dataset</h3>
+          <ul class="gr-compact-list">
+            <li>Country, collection year, national subset</li>
+            <li>Specimen, sex, age group, infection origin</li>
+            <li>Patients sampled for bacterial isolation</li>
+            <li>GLASS-pathogen positive</li>
+            <li>Non-GLASS positive and negative/no-growth</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Compiler acceptance gates</h2>
+          <p>Deterministic evidence needed before a person downloads the two files.</p>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Gate</th><th>Pass condition</th></tr></thead>
+          <tbody>
+            <tr><td>Same cohort</td><td>RIS and SAMPLE reference the same immutable accepted-record snapshot and scope profile</td></tr>
+            <tr><td>Completeness</td><td>Required dimensions are present; unavailable values use the WHO-defined unknown code</td></tr>
+            <tr><td>Negatives</td><td>No-growth specimens remain in SAMPLE and never fabricate an isolate in RIS</td></tr>
+            <tr><td>Repeat isolates</td><td>One centrally configured rule runs once against cross-site patient identity</td></tr>
+            <tr><td>Traceability</td><td>Every aggregate count drills back to contributing canonical records and their source rows/resources</td></tr>
+            <tr><td>Privacy</td><td>Names and direct identifiers are absent from aggregate output; access to line-level evidence is controlled</td></tr>
+            <tr><td>Reproducibility</td><td>Same data snapshot + mappings + standards + GLASS profile produces byte-identical outputs</td></tr>
+            <tr><td>Human release</td><td>Named authorized reviewer records validation and manually uploads to WHO</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="gr-panel" id="gr-panel-gap" role="tabpanel" aria-labelledby="gr-tab-gap" data-gr-panel="gap" hidden>
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Current OpenELIS implementation</h2>
+          <p>Observed in the deployed AMR code: useful foundations exist, but the current export is not a GLASS replacement.</p>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Capability</th><th>Observed state</th><th>Assessment</th><th>Required move</th></tr></thead>
+          <tbody>
+            <tr><td>FHIR R4 transport</td><td>Configurable subscriptions/export for Patient, Specimen, ServiceRequest, Observation, DiagnosticReport</td><td><span class="viz-badge gr-status-good">Reuse</span></td><td>Add a structured microbiology profile and transformation</td></tr>
+            <tr><td>Microbiology source data</td><td>Cases, isolates, reviewed AST readings, methods, interpretations, release states</td><td><span class="viz-badge gr-status-good">Reuse</span></td><td>Project atomic microbiology content into FHIR</td></tr>
+            <tr><td>Patient report projection</td><td>Culture is flattened into one remark value with a 200-character limit</td><td><span class="viz-badge gr-status-bad">Insufficient</span></td><td>Keep human report text, add structured culture/isolate/AST observations</td></tr>
+            <tr><td>Current “WHONET” output</td><td>15-column identifiable CSV, one row per reviewed AST reading</td><td><span class="viz-badge gr-status-warn">Prototype only</span></td><td>Do not evolve it into GLASS; feed canonical records to a separate compiler</td></tr>
+            <tr><td>Negative cultures</td><td>AST-driven export excludes cases with no isolate/readings</td><td><span class="viz-badge gr-status-bad">Missing denominator</span></td><td>Send finalized no-growth specimen outcomes through FHIR/canonical ingest</td></tr>
+            <tr><td>Mapping targets</td><td>Organisms and antibiotics carry WHONET codes; breakpoint import refers to antibiotic WHONET code</td><td><span class="viz-badge gr-status-bad">Dependency leak</span></td><td>Canonical concepts first; WHONET codes become optional aliases</td></tr>
+            <tr><td>First-isolate logic</td><td>Facility export can de-duplicate in 7/14/30-day windows</td><td><span class="viz-badge gr-status-warn">Wrong layer for GLASS</span></td><td>Send complete line-level records; perform GLASS repeat logic nationally</td></tr>
+            <tr><td>General file import</td><td>No BacLink-equivalent CSV/XLSX mapping and saved profile flow</td><td><span class="viz-badge gr-status-bad">Missing</span></td><td>Build source-layout profiles, code mapping, preview, quarantine, rerun</td></tr>
+            <tr><td>GLASS compiler</td><td>No versioned RIS/SAMPLE aggregate generator</td><td><span class="viz-badge gr-status-bad">Missing</span></td><td>Build in the national report application, not the facility LIS</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Functional mock drift to correct</h2>
+          <p>OpenELIS Work remains the functional design source, but two WHONET assumptions now contradict the stated replacement goal and WHO reporting semantics.</p>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Mock statement</th><th>Problem</th><th>Product-safe correction</th></tr></thead>
+          <tbody>
+            <tr class="gr-drift"><td>“Each local code resolves to a WHONET code”</td><td>Makes WHONET's vocabulary the internal target</td><td>Resolve to a canonical concept and its WHO GLASS output code; retain WHONET as an optional alias for legacy import</td></tr>
+            <tr class="gr-drift"><td>“WHONET file upload” as the non-OpenELIS route</td><td>Still requires sites to run WHONET/BacLink</td><td>Offer general line-level CSV/XLSX upload with a saved import profile; also accept WHONET files for migration compatibility</td></tr>
+            <tr class="gr-drift"><td>RIS described as “per isolate”</td><td>WHO defines RIS submission data as aggregate R/I/S counts across required strata</td><td>Show contributing isolate count separately; label output rows as aggregate GLASS records</td></tr>
+            <tr><td>National first-isolate selection</td><td>Aligned with cross-site de-duplication need</td><td>Keep; require privacy-safe patient matching and full line-level ingest</td></tr>
+            <tr><td>Manual focal-point upload</td><td>Aligned with current product boundary</td><td>Keep; record download, review, upload date, and output version</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="gr-panel" id="gr-panel-decisions" role="tabpanel" aria-labelledby="gr-tab-decisions" data-gr-panel="decisions" hidden>
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Architecture decisions</h2>
+          <p>Recommended defaults separate confirmed product direction from decisions that need explicit validation.</p>
+        </div>
+      </div>
+
+      <div class="gr-decision">
+        <div><strong>Application boundary</strong><span class="viz-badge gr-status-good">Recommended</span></div>
+        <div>Separate national reporting application consuming multiple laboratories; OpenELIS remains a facility data producer.</div>
+        <div class="text-small">Prevents GLASS-specific aggregation and national identity logic from distorting routine LIS workflows.</div>
+      </div>
+      <div class="gr-decision">
+        <div><strong>Open profile format</strong><span class="viz-badge gr-status-good">Recommended</span></div>
+        <div>UI-authored, versioned JSON or YAML profile with parser settings, field rules, dictionaries, validation policy, and tests.</div>
+        <div class="text-small">Exportable and reviewable; not a WHONET <code>.cfg</code> clone.</div>
+      </div>
+      <div class="gr-decision">
+        <div><strong>Clinical interpretation</strong><span class="viz-badge gr-status-good">Recommended</span></div>
+        <div>Preserve reviewed site interpretation. When only raw AST exists, compute from explicitly selected CLSI/EUCAST version; retain both source and computed values.</div>
+        <div class="text-small">No silent standard mixing; direct CLSI use requires licensed distribution or site-supplied data.</div>
+      </div>
+      <div class="gr-decision">
+        <div><strong>Canonical terminology</strong><span class="viz-badge gr-status-good">Recommended</span></div>
+        <div>Internal stable concepts with aliases for local, WHO GLASS, FHIR terminology, and optional WHONET codes.</div>
+        <div class="text-small">Avoids replacing one tool-specific coupling with another brittle transport coupling.</div>
+      </div>
+      <div class="gr-decision">
+        <div><strong>National patient matching</strong><span class="viz-badge gr-status-warn">Needs design</span></div>
+        <div>Choose a privacy-preserving, stable cross-site patient key and define collision/absence handling.</div>
+        <div class="text-small">Without it, national repeat-isolate selection cannot be correct across facilities.</div>
+      </div>
+      <div class="gr-decision">
+        <div><strong>Current GLASS contract</strong><span class="viz-badge gr-status-warn">Needs source fixture</span></div>
+        <div>Obtain the active WHO templates/data dictionary and freeze them as a versioned compiler profile with official validation examples.</div>
+        <div class="text-small">Do not infer current file columns from old WHONET output or mock labels.</div>
+      </div>
+      <div class="gr-decision">
+        <div><strong>Replacement scope</strong><span class="viz-badge gr-status-info">Proposed boundary</span></div>
+        <div>Eliminate WHONET from the GLASS submission path; preserve optional compatibility imports. Local outbreak analytics and every WHONET analysis screen are separate product scope.</div>
+        <div class="text-small">Keeps the deliverable testable while removing operational dependence for national reporting.</div>
+      </div>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Manageable build order</h2>
+          <p>Each slice has a visible, testable exit condition.</p>
+        </div>
+      </div>
+      <ol class="gr-roadmap">
+        <li><div><strong>Freeze external contracts</strong><span class="text-small">Acquire current WHO RIS/SAMPLE templates, representative FHIR bundles, real wide/long site files, a WHONET isolate file, and authorized CLSI/EUCAST fixtures. Exit: golden inputs and expected outputs are review-approved.</span></div></li>
+        <li><div><strong>Canonical model + lineage</strong><span class="text-small">Implement specimens, culture outcomes, isolates, AST, terminology aliases, import runs, and source pointers. Exit: positives, negatives, amendments, and multiple isolates round-trip without loss.</span></div></li>
+        <li><div><strong>Open mapping profile</strong><span class="text-small">Define portable profile schema and execution engine. Exit: same file + profile produces identical canonical records; incompatible headers block before import.</span></div></li>
+        <li><div><strong>CSV / Excel workbench</strong><span class="text-small">Add sheet/header/delimiter/encoding, wide/long AST, code frequencies, preview, map/ignore/block, quarantine, and rerun. Exit: a non-OpenELIS site completes a recurring import without WHONET.</span></div></li>
+        <li><div><strong>Structured OpenELIS FHIR</strong><span class="text-small">Publish culture, no growth, isolate, and AST observations through existing transport. Exit: national ingest reconstructs the same canonical record as the facility case.</span></div></li>
+        <li><div><strong>Standards interpretation service</strong><span class="text-small">Load versioned CLSI/EUCAST data legally, retain raw/source/computed values, and explain every result. Exit: a published conformance set matches expected S/I/R behavior.</span></div></li>
+        <li><div><strong>National scope + repeat logic</strong><span class="text-small">Apply period, subset, specimen/pathogen eligibility, patient matching, and current GLASS repeat policy once. Exit: cross-site repeats and no-growth denominators pass worked examples.</span></div></li>
+        <li><div><strong>RIS + SAMPLE compiler</strong><span class="text-small">Generate versioned outputs, quality report, traceable counts, review sign-off, and run history. Exit: official validator accepts both files and every aggregate cell traces to inputs.</span></div></li>
+        <li><div><strong>Operational qualification</strong><span class="text-small">Accessibility, performance, security, backup/recovery, mapping governance, staged rollout, and UAT. Exit: representative national volume and failure recovery are demonstrated.</span></div></li>
+      </ol>
+    </div>
+
+    <div class="gr-section">
+      <div class="gr-section-head">
+        <div>
+          <h2>Non-negotiable acceptance criteria</h2>
+          <p>These are the replacement test, not visual similarity to WHONET.</p>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Area</th><th>Deterministic criterion</th></tr></thead>
+          <tbody>
+            <tr><td>Profile reuse</td><td>A profile created from one source layout imports a later matching file without remapping; drift blocks with an exact diff</td></tr>
+            <tr><td>Structural coverage</td><td>CSV/XLSX, wide and long AST, one/multiple rows per isolate, and disk/MIC/Etest examples reach equivalent canonical records</td></tr>
+            <tr><td>Unknowns</td><td>Every unmapped code has kind, source, frequency, affected rows, and explicit disposition; no row disappears silently</td></tr>
+            <tr><td>FHIR parity</td><td>The same laboratory case ingested by FHIR and tabular import normalizes to equivalent specimen/isolate/AST meaning</td></tr>
+            <tr><td>Standards</td><td>Every computed interpretation identifies authority, version, rule inputs, and result; reviewed source interpretation remains visible</td></tr>
+            <tr><td>Denominator</td><td>Finalized no-growth records contribute to SAMPLE even though they produce no RIS isolate</td></tr>
+            <tr><td>De-duplication</td><td>Cross-site repeats are evaluated once at national level against a versioned policy and privacy-safe patient identity</td></tr>
+            <tr><td>GLASS output</td><td>RIS and SAMPLE pass the current official validation fixture and derive from one immutable cohort</td></tr>
+            <tr><td>Auditability</td><td>Any output count can be explained from aggregate cell → canonical records → source rows/resources → profile and code decisions</td></tr>
+            <tr><td>Independence</td><td>A clean deployment with no WHONET software or data tables can ingest, contextualize, interpret, aggregate, validate, and export</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="gr-sources" aria-labelledby="gr-sources-title">
+    <h2 id="gr-sources-title">Primary evidence</h2>
+    <div class="gr-source-list text-small">
+      <a href="https://www.who.int/initiatives/glass" target="_blank" rel="noreferrer">WHO GLASS</a>
+      <a href="https://iris.who.int/bitstream/handle/10665/372741/9789240076600-eng.pdf" target="_blank" rel="noreferrer">WHO GLASS AMR manual</a>
+      <a href="https://whonet.org/WebDocs/BacLink%202.Excel%2C%20text%20files%2C%20other%20applications.html" target="_blank" rel="noreferrer">BacLink file mapping</a>
+      <a href="https://whonet.org/WebDocs/BacLink.9_BacLink_and_data_conversion_and_code_mapping.pdf" target="_blank" rel="noreferrer">BacLink conversion and code mapping</a>
+      <a href="https://whonet.org/WebDocs/WHONET_for_GLASS.English.pdf" target="_blank" rel="noreferrer">WHONET for GLASS</a>
+      <a href="https://hl7.eu/fhir/laboratory/Bundle-BundleLabResultMicroCultureSusc.html" target="_blank" rel="noreferrer">HL7 microbiology FHIR example</a>
+      <a href="https://hl7.org/fhir/R4/diagnosticreport.html" target="_blank" rel="noreferrer">FHIR R4 DiagnosticReport</a>
+      <a href="https://hl7.org/fhir/R4/observation.html" target="_blank" rel="noreferrer">FHIR R4 Observation</a>
+      <a href="https://clsi.org/shop/standards/m100/" target="_blank" rel="noreferrer">CLSI M100</a>
+      <a href="https://www.eucast.org/bacteria/clinical-breakpoints-and-interpretation/clinical-breakpoint-tables/" target="_blank" rel="noreferrer">EUCAST breakpoint tables</a>
+      <a href="https://digi-uw.github.io/openelis-work/designs/microbiology/glass-submission-console.html" target="_blank" rel="noreferrer">OpenELIS Work GLASS console</a>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const root = document.getElementById('glass-replacement-architecture');
+      if (!root) return;
+
+      const flowDetails = {
+        'wh-source': ['Source extract', 'A site exports a CSV, spreadsheet, instrument file, or laboratory-system file. Its headers, row shape, dates, codes, and AST layout are local.'],
+        'wh-config': ['BacLink configuration', 'A .cfg records file grammar, field matches, date formats, AST layout, and code mappings for one source format. It can be reused for later files with the same structure.'],
+        'wh-file': ['WHONET isolate file', 'BacLink converts local data into WHONET\'s normalized isolate representation, historically dBASE and now also SQLite. WHONET codes and laboratory configuration become part of the dependency chain.'],
+        'wh-aggregate': ['WHONET GLASS aggregation', 'WHONET combines isolate-level data, applies scope and repeat-isolate logic, and generates the GLASS exchange datasets.'],
+        'wh-output': ['WHONET-generated RIS + SAMPLE', 'Two aggregate text datasets are generated: susceptibility counts and patient/specimen denominator counts.'],
+        'oe-source': ['Open source adapters', 'OpenELIS sites send structured FHIR. Other sites upload CSV/XLSX directly. A WHONET isolate adapter remains optional for migration, not required operation.'],
+        'oe-profile': ['Open import profile', 'Created from a representative source file and its layout. Reused only for later files that match the same delimiter, header, row shape, field meanings, and code dictionaries.'],
+        'oe-store': ['Canonical line-level store', 'The replacement for a WHONET isolate file: specimens, positive and negative culture outcomes, isolates, AST measurements, interpretations, and complete source lineage.'],
+        'oe-aggregate': ['National scope + de-duplication', 'All sites remain line-level until the national layer can apply one current GLASS scope and identify repeats across facilities.'],
+        'oe-output': ['Versioned GLASS compiler', 'A versioned WHO profile produces RIS and SAMPLE from the same immutable cohort, with validation, traceability, and reproducible reruns.'],
+        'upload': ['Authorized human upload', 'The national focal person reviews and uploads the generated files with personal WHO credentials; the reporting application records the release event.']
+      };
+
+      const mappingSets = {
+        wide: {
+          rows: [
+            ['Patient No', 'P-10492', 'patient.sourceId', 'Trim; site-scoped identity rule', 'Mapped'],
+            ['Collected', '08/31/2026', 'specimen.collectedAt', 'Parse MM/DD/YYYY; reject ambiguity', 'Mapped'],
+            ['Specimen', 'HEMOC_PED', 'specimen.type', 'Local-code dictionary → canonical specimen', 'Needs map'],
+            ['ORG', 'E_COLI_ESBL', 'isolate.organism', 'Local-code dictionary → canonical organism', 'Needs map'],
+            ['CTX_MIC', '>=64', 'ast.measurement', 'Header rule CTX + MIC; parse comparator + value', 'Review'],
+            ['CTX_INT', 'R', 'ast.sourceInterpretation', 'Validate controlled S/I/R value', 'Mapped']
+          ],
+          config: `profile: ipci-monthly-lis-v3
+source:
+  kind: csv
+  delimiter: comma
+  encoding: utf-8
+  headerRow: 2
+  recordShape: one-isolate-per-row
+  antibioticLayout: horizontal
+layoutMatch:
+  compare: headers + parser + row shape
+  onMismatch: block-and-version
+identity:
+  patientKey: [Patient No]
+  specimenKey: [Specimen No]
+  isolateKey: [Specimen No, ORG]
+policies:
+  unknownCode: quarantine
+  missingRequiredHeader: block
+  preserveRawRow: true`
+        },
+        long: {
+          rows: [
+            ['PatientID', 'P-10492', 'patient.sourceId', 'Trim; site-scoped identity rule', 'Mapped'],
+            ['CollectionDate', '2026-08-31', 'specimen.collectedAt', 'Parse ISO date', 'Mapped'],
+            ['SpecimenCode', 'HEMOC_PED', 'specimen.type', 'Local-code dictionary → canonical specimen', 'Needs map'],
+            ['OrganismCode', 'E_COLI_ESBL', 'isolate.organism', 'Local-code dictionary → canonical organism', 'Needs map'],
+            ['Drug / Method', 'CTX / MIC', 'ast.antibiotic + method', 'Dictionary map + method vocabulary', 'Review'],
+            ['Value / Interpretation', '>=64 / R', 'ast.measurement + sourceInterpretation', 'Group repeated rows into one isolate', 'Mapped']
+          ],
+          config: `profile: ipci-ast-long-v2
+source:
+  kind: xlsx
+  sheet: Final AST
+  headerRow: 1
+  recordShape: one-antibiotic-per-row
+  antibioticLayout: vertical
+layoutMatch:
+  compare: sheet + headers + row shape
+  onMismatch: block-and-version
+identity:
+  patientKey: [PatientID]
+  specimenKey: [Accession]
+  isolateKey: [Accession, IsolateNo]
+  astKey: [Accession, IsolateNo, Drug, Method]
+policies:
+  conflictingRepeatedField: quarantine
+  unknownCode: quarantine
+  preserveRawRow: true`
+        },
+        fhir: {
+          rows: [
+            ['Patient.identifier', 'site/P-10492', 'patient.sourceId', 'Select approved identifier system', 'Mapped'],
+            ['Specimen.collection.collectedDateTime', '2026-08-31T09:12Z', 'specimen.collectedAt', 'Preserve instant + source timezone', 'Mapped'],
+            ['Specimen.type', 'local:HEMOC_PED', 'specimen.type', 'Coding crosswalk → canonical specimen', 'Needs map'],
+            ['Isolate Observation.valueCodeableConcept', 'local:E_COLI_ESBL', 'isolate.organism', 'Coding crosswalk → canonical organism', 'Needs map'],
+            ['AST Observation.code / valueQuantity', 'LOINC CTX / >=64 mg/L', 'ast.antibiotic + measurement', 'Code + comparator + UCUM unit', 'Review'],
+            ['Observation.interpretation / method', 'R / MIC', 'ast.sourceInterpretation + method', 'Preserve coded values and provenance', 'Mapped']
+          ],
+          config: `profile: openelis-microbiology-fhir-r4-v1
+source:
+  kind: fhir-r4
+  resources: [Patient, Encounter, ServiceRequest,
+              Specimen, DiagnosticReport, Observation]
+  structure: culture-isolate-ast-hasMember
+layoutMatch:
+  compare: canonical profile + version
+  onMismatch: reject-resource
+identity:
+  eventKey: [server, resourceType, id, versionId]
+  patientKey: [approvedIdentifierSystem]
+policies:
+  requireFinalReport: true
+  unknownCoding: quarantine
+  preserveSourceResource: true`
+        }
+      };
+
+      const modelDetails = {
+        patient: ['Patient token', 'Site-scoped patient identifier plus a privacy-preserving national match key, sex, birth date or age, and controlled missingness. Names are not needed for GLASS output.'],
+        specimen: ['Specimen', 'Site and source identifiers, collection time, specimen type, culture purpose, patient origin, final status, and positive/no-growth outcome. Negative records must survive even when no isolate exists.'],
+        culture: ['Culture outcome', 'Final no growth, non-GLASS organism growth, or one/more isolates. The outcome links directly to the specimen and reporting status.'],
+        isolate: ['Isolate', 'Organism concept, isolate number, significance, identification method/status, reportability, and links to every AST run.'],
+        ast: ['AST result', 'Antibiotic, method, raw comparator/value/unit, source interpretation, computed interpretation, breakpoint authority/version, review status, and override provenance.']
+      };
+
+      const tabs = Array.from(root.querySelectorAll('[data-gr-tab]'));
+      const panels = Array.from(root.querySelectorAll('[data-gr-panel]'));
+
+      function showPanel(name) {
+        tabs.forEach((tab) => {
+          const selected = tab.dataset.grTab === name;
+          tab.setAttribute('aria-selected', String(selected));
+        });
+        panels.forEach((panel) => {
+          panel.hidden = panel.dataset.grPanel !== name;
+        });
+      }
+
+      tabs.forEach((tab) => tab.addEventListener('click', () => showPanel(tab.dataset.grTab)));
+
+      root.querySelectorAll('[data-flow-key]').forEach((button) => {
+        button.addEventListener('click', () => {
+          root.querySelectorAll('[data-flow-key]').forEach((peer) => peer.setAttribute('aria-pressed', 'false'));
+          button.setAttribute('aria-pressed', 'true');
+          const detail = flowDetails[button.dataset.flowKey];
+          root.querySelector('#gr-flow-detail-title').textContent = detail[0];
+          root.querySelector('#gr-flow-detail-body').textContent = detail[1];
+        });
+      });
+
+      const mappingBody = root.querySelector('#gr-mapping-body');
+      const configPreview = root.querySelector('#gr-config-preview');
+      const sourceShape = root.querySelector('#gr-source-shape');
+
+      function mappingBadge(status) {
+        const kind = status === 'Mapped' ? 'gr-status-good' : status === 'Review' ? 'gr-status-warn' : 'gr-status-bad';
+        return `<span class="viz-badge ${kind}">${status}</span>`;
+      }
+
+      function renderMapping(name) {
+        const set = mappingSets[name];
+        mappingBody.innerHTML = set.rows.map((row) => `<tr><td><code>${row[0]}</code></td><td><code>${row[1]}</code></td><td><code>${row[2]}</code></td><td>${row[3]}</td><td>${mappingBadge(row[4])}</td></tr>`).join('');
+        configPreview.textContent = set.config;
+      }
+
+      sourceShape.addEventListener('change', () => renderMapping(sourceShape.value));
+      renderMapping('wide');
+
+      root.querySelectorAll('[data-map-action]').forEach((button) => {
+        button.addEventListener('click', () => {
+          root.querySelectorAll('[data-map-action]').forEach((peer) => {
+            peer.setAttribute('aria-pressed', String(peer === button));
+          });
+          const messages = {
+            map: 'Mapped to canonical Blood specimen after human approval. The decision is versioned; 96 quarantined rows are eligible for reprocessing.',
+            ignore: 'Explicitly ignored with a required reason. The 96 rows remain traceable and excluded; the decision is reviewable and reversible.',
+            block: 'Kept unresolved. All 96 affected rows stay quarantined and cannot enter GLASS aggregation.'
+          };
+          root.querySelector('#gr-map-result').textContent = messages[button.dataset.mapAction];
+        });
+      });
+
+      root.querySelectorAll('[data-model-key]').forEach((button) => {
+        button.addEventListener('click', () => {
+          root.querySelectorAll('[data-model-key]').forEach((peer) => peer.setAttribute('aria-pressed', String(peer === button)));
+          const detail = modelDetails[button.dataset.modelKey];
+          root.querySelector('#gr-model-title').textContent = detail[0];
+          root.querySelector('#gr-model-body').textContent = detail[1];
+        });
+      });
+
+      root.querySelectorAll('[data-scenario]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const lineLevel = button.dataset.scenario === 'line';
+          root.querySelectorAll('[data-scenario]').forEach((peer) => peer.setAttribute('aria-pressed', String(peer === button)));
+          root.querySelector('#gr-patient-count').textContent = lineLevel ? '2' : '3 reported';
+          root.querySelector('#gr-ris-count').textContent = lineLevel ? '1' : '2 reported';
+          root.querySelector('#gr-negative-count').textContent = '1';
+          root.querySelector('#gr-scenario-result').textContent = lineLevel
+            ? 'National matching sees Patient A at both sites, keeps one qualifying isolate, and retains Patient B for the denominator.'
+            : 'Adding site aggregates double-counts Patient A. Patient identity and source records are gone, so the national layer cannot repair the count.';
+        });
+      });
+    })();
+  </script>
+</div>
+</body>
+</html>
