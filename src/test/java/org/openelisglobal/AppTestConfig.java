@@ -15,6 +15,8 @@ import org.itech.fhir.dataexport.core.dao.DataExportTaskDAO;
 import org.itech.fhir.dataexport.core.service.DataExportTaskService;
 import org.jasypt.util.text.TextEncryptor;
 import org.mockito.Mockito;
+import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
+import org.openelisglobal.analyzer.service.BridgeProfileCatalogService;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
@@ -51,6 +53,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.http.MediaType;
@@ -136,6 +139,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.login.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qc.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerTypeRestControllerSecurityTest.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.scheduler.*"),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PrintBarcodeController.class),
                 @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = WHONetReportServiceImpl.class),
@@ -150,6 +154,29 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.compliance.controller.rest.ComplianceReportReissueSecurityTest.*") })
 @EnableWebMvc
 public class AppTestConfig implements WebMvcConfigurer {
+
+    @Bean
+    @Primary
+    @Profile("test")
+    public BridgeProfileCatalogService bridgeProfileCatalogService() {
+        return new BridgeProfileCatalogService() {
+            @Override
+            public org.openelisglobal.analyzer.service.BridgeProfileCatalog getCatalog() {
+                return AnalyzerTestProfileCatalog.catalog();
+            }
+
+            @Override
+            public org.openelisglobal.analyzer.service.BridgeProfileCatalog.ProfileRevision getProfile(String profileId,
+                    int revision) {
+                return AnalyzerTestProfileCatalog.catalog().profiles().stream()
+                        .filter(candidate -> profileId
+                                .equals(candidate.profile().path("profileMeta").path("id").asText()))
+                        .filter(candidate -> revision == candidate.profile().path("catalog").path("revision").asInt())
+                        .findFirst().orElseThrow(() -> new IllegalArgumentException(
+                                "Unknown test analyzer profile revision: " + profileId + "@" + revision));
+            }
+        };
+    }
 
     @Bean
     @Profile("test")

@@ -3,63 +3,45 @@ import {
   Button,
   ButtonSet,
   TextInput,
-  TextArea,
   Dropdown,
-  Checkbox,
   InlineNotification,
   FormGroup,
   Loading,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import {
   createAnalyzer,
   updateAnalyzer,
   getAnalyzer,
-  getDefaultConfigs,
-  getDefaultConfig,
-  getAnalyzerTypes,
+  getAnalyzerTypeCatalog,
+  getAnalyzerTypeRevision,
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
-import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import {
-  PROTOCOL_VERSIONS,
-  PLUGIN_PROTOCOL_DEFAULTS,
-  DEFAULT_PROTOCOL_VERSION,
-  COMMUNICATION_MODES,
-  DEFAULT_COMMUNICATION_MODE,
-  resolveAnalyzerApiMessage,
-} from "../constants";
+import { COMMUNICATION_MODES, resolveAnalyzerApiMessage } from "../constants";
 import "./AnalyzerForm.css";
 
 const AnalyzerForm = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const { id: analyzerId } = useParams();
   const isEditMode = !!analyzerId;
   const [analyzer, setAnalyzer] = useState(null);
-  const [loadingAnalyzer, setLoadingAnalyzer] = useState(false);
+  const [loadingAnalyzer, setLoadingAnalyzer] = useState(isEditMode);
 
   const [formData, setFormData] = useState({
     name: "",
-    analyzerType: "",
-    pluginTypeId: "",
+    profileId: "",
+    profileRevision: null,
     ipAddress: "",
-    port: "",
-    protocolVersion: DEFAULT_PROTOCOL_VERSION,
-    communicationMode: DEFAULT_COMMUNICATION_MODE,
+    port: null,
+    protocolVersion: null,
+    communicationMode: null,
     testUnitIds: [],
     status: "SETUP",
-    identifierPattern: "",
-    // FILE protocol fields
     importDirectory: "",
-    fileFormat: "CSV",
-    filePattern: "*.csv",
-    columnMappings: "{}",
-    delimiter: ",",
-    hasHeader: true,
-    skipRows: 0,
   });
 
   const [errors, setErrors] = useState({});
@@ -68,26 +50,9 @@ const AnalyzerForm = () => {
   const [testConnectionModalOpen, setTestConnectionModalOpen] = useState(false);
   const closeTimeoutRef = useRef(null);
 
-  const [defaultConfigs, setDefaultConfigs] = useState([]);
-  const [loadingDefaults, setLoadingDefaults] = useState(false);
-  const [selectedDefault, setSelectedDefault] = useState(null);
-
-  const [pluginTypes, setPluginTypes] = useState([]);
-  const [loadingPluginTypes, setLoadingPluginTypes] = useState(false);
-
-  // Analyzer type options (must match DB analyzer_type column values)
-  const analyzerTypeOptions = [
-    { id: "HEMATOLOGY", text: "Hematology" },
-    { id: "CHEMISTRY", text: "Chemistry" },
-    { id: "IMMUNOLOGY", text: "Immunology" },
-    { id: "MICROBIOLOGY", text: "Microbiology" },
-    { id: "MOLECULAR", text: "Molecular" },
-    { id: "COAGULATION", text: "Coagulation" },
-    {
-      id: "OTHER",
-      text: intl.formatMessage({ id: "analyzer.form.type.other" }),
-    },
-  ];
+  const [profileCatalog, setProfileCatalog] = useState(null);
+  const [loadingProfiles, setLoadingProfiles] = useState(true);
+  const [pinnedProfileLookup, setPinnedProfileLookup] = useState(null);
 
   // Unified status options (manual transitions only - ACTIVE, ERROR_PENDING, OFFLINE are automatic).
   // PENDING_REGISTRATION stubs (discovered by the bridge) can only transition to SETUP or
@@ -122,37 +87,24 @@ const AnalyzerForm = () => {
   // Fetch analyzer data when editing (route-param driven)
   useEffect(() => {
     if (isEditMode) {
-      setLoadingAnalyzer(true);
       getAnalyzer(analyzerId, (data) => {
         setLoadingAnalyzer(false);
         const a = data?.analyzers?.[0] || data;
         setAnalyzer(a);
         setFormData({
           name: a.name || "",
-          analyzerType: a.analyzerType || a.type || "",
-          pluginTypeId: a.pluginTypeId || a.analyzerTypeId || "",
+          profileId: a.profileId || "",
+          profileRevision: a.profileRevision || null,
           ipAddress: a.ipAddress || "",
-          port: a.port ? String(a.port) : "",
-          protocolVersion: a.protocolVersion || DEFAULT_PROTOCOL_VERSION,
-          communicationMode: a.communicationMode || DEFAULT_COMMUNICATION_MODE,
+          port: a.port == null ? null : String(a.port),
+          protocolVersion: a.protocolVersion || null,
+          communicationMode: a.communicationMode || null,
           testUnitIds: a.testUnitIds || [],
           status: a.status || "SETUP",
-          identifierPattern: a.identifierPattern || "",
           importDirectory: a.importDirectory || "",
-          fileFormat: a.fileFormat || "CSV",
-          filePattern: a.filePattern || "*.csv",
-          columnMappings: a.columnMappings
-            ? JSON.stringify(a.columnMappings, null, 2)
-            : "{}",
-          delimiter: a.delimiter || ",",
-          hasHeader: a.hasHeader ?? true,
-          skipRows: a.skipRows ?? 0,
         });
       });
     }
-    setErrors({});
-    setNotification(null);
-    setSelectedDefault(null);
   }, [analyzerId, isEditMode]);
 
   useEffect(() => {
@@ -172,38 +124,176 @@ const AnalyzerForm = () => {
     history.push("/analyzers");
   };
 
-  // Load plugin types on mount
   useEffect(() => {
-    setLoadingPluginTypes(true);
-    getAnalyzerTypes({ active: true }, (data) => {
-      setLoadingPluginTypes(false);
-      if (Array.isArray(data) && data.length > 0) {
-        setPluginTypes(data);
+    getAnalyzerTypeCatalog((data) => {
+      setLoadingProfiles(false);
+      if (data && Array.isArray(data.types)) {
+        setProfileCatalog(data);
       } else {
-        setPluginTypes([]);
+        setProfileCatalog(null);
+        setNotification({
+          kind: "error",
+          title: intl.formatMessage({
+            id: "analyzer.form.type.loadError",
+          }),
+        });
       }
     });
-  }, []);
+  }, [intl]);
 
-  const selectedPluginType = pluginTypes.find(
-    (t) => t.id === formData.pluginTypeId,
+  const activeProfiles = useMemo(
+    () =>
+      (profileCatalog?.types || [])
+        .filter((profile) => profile.status === "ACTIVE")
+        .sort((left, right) =>
+          left.displayName.localeCompare(right.displayName),
+        ),
+    [profileCatalog],
   );
-  const isGenericPlugin = selectedPluginType?.isGenericPlugin === true;
-  const isFileProtocol = selectedPluginType?.protocol?.toUpperCase() === "FILE";
 
-  const sortedPluginTypes = useMemo(() => {
-    const protocolOrder = { ASTM: 0, HL7: 1, FILE: 2 };
-    return [...pluginTypes].sort((a, b) => {
-      if (a.isGenericPlugin !== b.isGenericPlugin)
-        return b.isGenericPlugin ? 1 : -1;
-      if (a.isGenericPlugin && b.isGenericPlugin) {
-        return (
-          (protocolOrder[a.protocol] ?? 99) - (protocolOrder[b.protocol] ?? 99)
-        );
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [pluginTypes]);
+  const requestedPin = useMemo(() => {
+    if (isEditMode) {
+      return null;
+    }
+    const params = new URLSearchParams(location.search);
+    const profileId = params.get("profile");
+    const revisionText = params.get("revision");
+    if (!profileId && !revisionText) {
+      return null;
+    }
+    return {
+      profileId,
+      revision: Number(revisionText),
+    };
+  }, [isEditMode, location.search]);
+
+  const requestedProfile = useMemo(
+    () =>
+      requestedPin
+        ? activeProfiles.find(
+            (profile) =>
+              profile.profileId === requestedPin.profileId &&
+              profile.revision === requestedPin.revision,
+          ) || null
+        : null,
+    [activeProfiles, requestedPin],
+  );
+
+  const catalogPinnedProfile = useMemo(
+    () =>
+      (profileCatalog?.types || []).find(
+        (profile) =>
+          profile.profileId === formData.profileId &&
+          profile.revision === formData.profileRevision,
+      ) || null,
+    [formData.profileId, formData.profileRevision, profileCatalog],
+  );
+
+  const needsPinnedProfileLookup = Boolean(
+    isEditMode &&
+    profileCatalog &&
+    formData.profileId &&
+    formData.profileRevision &&
+    !catalogPinnedProfile,
+  );
+
+  useEffect(() => {
+    if (!needsPinnedProfileLookup) {
+      return undefined;
+    }
+
+    const requestedProfileId = formData.profileId;
+    const requestedRevision = formData.profileRevision;
+    let cancelled = false;
+    getAnalyzerTypeRevision(
+      requestedProfileId,
+      requestedRevision,
+      (profile) => {
+        if (cancelled) {
+          return;
+        }
+        const exactProfile =
+          profile?.profileId === requestedProfileId &&
+          profile?.revision === requestedRevision
+            ? profile
+            : null;
+        setPinnedProfileLookup({
+          profileId: requestedProfileId,
+          revision: requestedRevision,
+          profile: exactProfile,
+        });
+        if (!exactProfile) {
+          setNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "analyzer.form.type.loadError",
+            }),
+          });
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    formData.profileId,
+    formData.profileRevision,
+    intl,
+    needsPinnedProfileLookup,
+  ]);
+
+  const exactPinnedProfile =
+    needsPinnedProfileLookup &&
+    pinnedProfileLookup?.profileId === formData.profileId &&
+    pinnedProfileLookup?.revision === formData.profileRevision
+      ? pinnedProfileLookup.profile
+      : null;
+  const loadingPinnedProfile =
+    needsPinnedProfileLookup &&
+    (pinnedProfileLookup?.profileId !== formData.profileId ||
+      pinnedProfileLookup?.revision !== formData.profileRevision);
+
+  const selectedProfile = useMemo(() => {
+    if (!isEditMode && requestedProfile) {
+      return requestedProfile;
+    }
+    return catalogPinnedProfile || (isEditMode ? exactPinnedProfile : null);
+  }, [catalogPinnedProfile, exactPinnedProfile, isEditMode, requestedProfile]);
+
+  const formMatchesSelectedProfile =
+    Boolean(selectedProfile) &&
+    (isEditMode ||
+      (formData.profileId === selectedProfile.profileId &&
+        formData.profileRevision === selectedProfile.revision));
+  const selectedDefaults = selectedProfile?.instanceDefaults || {};
+  const effectiveProtocolVersion =
+    (formMatchesSelectedProfile && formData.protocolVersion) ||
+    selectedDefaults.protocolVersion ||
+    null;
+  const effectiveCommunicationMode =
+    (formMatchesSelectedProfile && formData.communicationMode) ||
+    selectedDefaults.communicationMode ||
+    "";
+  const effectivePort =
+    formMatchesSelectedProfile && formData.port != null
+      ? formData.port
+      : selectedDefaults.port == null
+        ? ""
+        : String(selectedDefaults.port);
+
+  const isFileProtocol = selectedProfile?.protocol?.toUpperCase() === "FILE";
+  const invalidProfileSelection =
+    Boolean(profileCatalog) && Boolean(requestedPin) && !requestedProfile;
+  const visibleNotification =
+    notification ||
+    (invalidProfileSelection
+      ? {
+          kind: "error",
+          title: intl.formatMessage({
+            id: "analyzer.form.type.invalidSelection",
+          }),
+        }
+      : null);
 
   const communicationModeItems = useMemo(
     () =>
@@ -213,26 +303,6 @@ const AnalyzerForm = () => {
       })),
     [intl],
   );
-
-  const filteredDefaultConfigs = useMemo(() => {
-    if (!selectedPluginType?.protocol) return defaultConfigs;
-    const proto = selectedPluginType.protocol.toUpperCase();
-    return defaultConfigs.filter((c) => c.protocol === proto);
-  }, [defaultConfigs, selectedPluginType]);
-
-  // Load default configs once on mount — form is always rendered as a page,
-  // so no modal-open gate is needed.
-  useEffect(() => {
-    setLoadingDefaults(true);
-    getDefaultConfigs((data) => {
-      setLoadingDefaults(false);
-      if (Array.isArray(data)) {
-        setDefaultConfigs(data);
-      } else {
-        setDefaultConfigs([]);
-      }
-    });
-  }, []);
 
   const validateIPAddress = (ip) => {
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
@@ -254,7 +324,16 @@ const AnalyzerForm = () => {
   };
 
   const handleFieldChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((previous) => ({
+      ...previous,
+      ...(!isEditMode && selectedProfile
+        ? {
+            profileId: selectedProfile.profileId,
+            profileRevision: selectedProfile.revision,
+          }
+        : {}),
+      [field]: value,
+    }));
     if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -264,117 +343,30 @@ const AnalyzerForm = () => {
     }
   };
 
-  const fileFormatOptions = [
-    { id: "CSV", text: "CSV" },
-    { id: "TSV", text: "TSV" },
-    { id: "EXCEL", text: "Excel (.xls/.xlsx)" },
-  ];
-
-  const FILE_FORMAT_PATTERNS = {
-    CSV: "*.csv",
-    TSV: "*.tsv",
-    EXCEL: "*.{xls,xlsx}",
-  };
-
-  const handleFileFormatChange = (format) => {
-    setFormData((prev) => ({
-      ...prev,
-      fileFormat: format,
-      filePattern: FILE_FORMAT_PATTERNS[format] || prev.filePattern,
-      delimiter:
-        format === "TSV" ? "\t" : format === "CSV" ? "," : prev.delimiter,
-    }));
-  };
-
-  const handleDefaultConfigSelect = (defaultItem) => {
-    if (!defaultItem || !defaultItem.id) {
+  const handleProfileSelect = (profile) => {
+    if (!profile) {
       return;
     }
+    setFormData((previous) => ({
+      ...previous,
+      profileId: profile.profileId,
+      profileRevision: profile.revision,
+      protocolVersion: null,
+      communicationMode: null,
+      port: null,
+    }));
+    setErrors((previous) => {
+      const next = { ...previous };
+      delete next.profileId;
+      return next;
+    });
 
-    setSelectedDefault(defaultItem);
-
-    // Parse protocol and name from id (e.g., "hl7/mindray-bc2000")
-    const [protocol, name] = defaultItem.id.split("/");
-
-    getDefaultConfig(protocol, name, (configData) => {
-      if (configData && !configData.error) {
-        // Set plugin/protocol-level fields only — NOT instance-level (name, port, IP)
-        const protocolUpper = protocol.toUpperCase();
-        // Auto-resolve pluginTypeId from config protocol
-        const matchingPluginType = pluginTypes.find(
-          (t) =>
-            t.isGenericPlugin && t.protocol?.toUpperCase() === protocolUpper,
-        );
-
-        // Base fields from profile
-        const baseUpdates = {
-          identifierPattern: configData.identifier_pattern || undefined,
-          analyzerType:
-            configData.category ||
-            configData.profileMeta?.category ||
-            undefined,
-          protocolVersion: PLUGIN_PROTOCOL_DEFAULTS[protocolUpper] || undefined,
-          communicationMode:
-            configData.communication_mode ||
-            configData.communication?.mode ||
-            undefined,
-          pluginTypeId: matchingPluginType?.id || undefined,
-        };
-
-        // FILE protocol: auto-fill file import fields from profile
-        const fileUpdates = {};
-        if (protocolUpper === "FILE") {
-          const defaults = configData.configDefaults || {};
-          const extensions = configData.supported_extensions || [];
-          const format =
-            defaults.fileFormat || configData.protocol?.format || "CSV";
-          fileUpdates.fileFormat = format;
-          fileUpdates.filePattern =
-            extensions.length > 0
-              ? `*{${extensions.join(",")}}`
-              : FILE_FORMAT_PATTERNS[format] || "*.csv";
-          fileUpdates.delimiter =
-            defaults.delimiter ||
-            (format === "CSV" ? "," : format === "TSV" ? "\t" : ",");
-          fileUpdates.hasHeader = defaults.hasHeader ?? true;
-          fileUpdates.skipRows = defaults.skipRows ?? 0;
-          if (configData.column_mapping) {
-            fileUpdates.columnMappings = JSON.stringify(
-              configData.column_mapping,
-              null,
-              2,
-            );
-          }
-        }
-
-        setFormData((prev) => ({
-          ...prev,
-          ...Object.fromEntries(
-            Object.entries(baseUpdates).filter(([, v]) => v !== undefined),
-          ),
-          ...fileUpdates,
-        }));
-
-        setNotification({
-          kind: "info",
-          title: intl.formatMessage({ id: "analyzer.form.defaults.loaded" }),
-          subtitle: intl.formatMessage(
-            { id: "analyzer.form.defaults.loaded.subtitle" },
-            {
-              name:
-                configData.analyzer_name || configData.profileMeta?.displayName,
-            },
-          ),
-        });
-      } else {
-        setNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "analyzer.form.defaults.error" }),
-          subtitle:
-            configData?.error ||
-            intl.formatMessage({ id: "analyzer.form.error.unknown" }),
-        });
-      }
+    const params = new URLSearchParams(location.search);
+    params.set("profile", profile.profileId);
+    params.set("revision", String(profile.revision));
+    history.push({
+      pathname: location.pathname,
+      search: `?${params.toString()}`,
     });
   };
 
@@ -387,8 +379,8 @@ const AnalyzerForm = () => {
       });
     }
 
-    if (!formData.analyzerType) {
-      newErrors.analyzerType = intl.formatMessage({
+    if (!selectedProfile) {
+      newErrors.profileId = intl.formatMessage({
         id: "analyzer.form.validation.type.required",
       });
     }
@@ -407,8 +399,8 @@ const AnalyzerForm = () => {
       }
     }
 
-    if (!isFileProtocol && formData.port) {
-      const portNum = parseInt(formData.port, 10);
+    if (!isFileProtocol && effectivePort) {
+      const portNum = parseInt(effectivePort, 10);
       if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
         newErrors.port = intl.formatMessage({
           id: "analyzer.form.validation.port.invalid",
@@ -428,49 +420,27 @@ const AnalyzerForm = () => {
     setIsSubmitting(true);
     setNotification(null);
 
-    // Parse column mappings JSON for FILE protocol
-    let columnMappingsObj = {};
-    if (isFileProtocol && formData.columnMappings) {
-      try {
-        columnMappingsObj = JSON.parse(formData.columnMappings);
-      } catch {
-        setNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "analyzer.form.error.save" }),
-          subtitle: intl.formatMessage({
-            id: "analyzer.form.validation.columnMappings.invalid",
-            defaultMessage: "Column mappings must be valid JSON",
-          }),
-        });
-        setIsSubmitting(false);
-        return;
-      }
-    }
-
     const submitData = {
       ...formData,
-      port: formData.port ? parseInt(formData.port, 10) : null,
-      defaultConfigId: selectedDefault?.id || null,
+      profileId: selectedProfile.profileId,
+      profileRevision: selectedProfile.revision,
+      protocolVersion: effectiveProtocolVersion,
+      communicationMode: effectiveCommunicationMode || null,
+      port: effectivePort ? parseInt(effectivePort, 10) : null,
       // Clear network/protocol fields for FILE protocol — not applicable
       ...(isFileProtocol && {
         ipAddress: null,
         port: null,
         protocolVersion: null,
-        columnMappings: columnMappingsObj,
       }),
-      // Clear file import fields for non-FILE protocol — not applicable
+      // Only the Bridge watches FILE directories. OpenELIS stores and
+      // registers the configured directory for that installed connection.
       ...(!isFileProtocol && {
         importDirectory: null,
-        filePattern: null,
-        fileFormat: null,
-        columnMappings: null,
-        delimiter: null,
-        hasHeader: null,
-        skipRows: null,
       }),
     };
 
-    const callback = (response, extraParams) => {
+    const callback = (response, _extraParams) => {
       setIsSubmitting(false);
       if (response.error || response.statusCode >= 400) {
         setNotification({
@@ -505,7 +475,7 @@ const AnalyzerForm = () => {
     }
   };
 
-  if (loadingAnalyzer) {
+  if (loadingAnalyzer || loadingProfiles || loadingPinnedProfile) {
     return <Loading withOverlay={false} />;
   }
 
@@ -519,39 +489,33 @@ const AnalyzerForm = () => {
           <PageBreadCrumb
             breadcrumbs={[
               { label: "home.label", link: "/" },
-              { label: "analyzer.page.hierarchy.root", link: "" },
+              { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
               {
                 label: isEditMode
                   ? "analyzer.form.editTitle"
                   : "analyzer.form.addTitle",
                 link: "",
+                isCurrentPage: true,
               },
             ]}
           />
-          <PageTitle
-            breadcrumbs={[
-              {
-                label: intl.formatMessage({
-                  id: "analyzer.page.hierarchy.root",
-                }),
-                link: "/analyzers",
-              },
-              {
-                label: intl.formatMessage({
-                  id: isEditMode
-                    ? "analyzer.form.editTitle"
-                    : "analyzer.form.addTitle",
-                }),
-              },
-            ]}
-          />
+          <div className="analyzer-form-heading">
+            <h1>
+              {intl.formatMessage({
+                id: isEditMode
+                  ? "analyzer.form.editTitle"
+                  : "analyzer.form.addTitle",
+              })}
+            </h1>
+            <p>{intl.formatMessage({ id: "analyzer.form.subtitle" })}</p>
+          </div>
         </div>
         <div className="analyzer-form-content">
-          {notification && (
+          {visibleNotification && (
             <InlineNotification
-              kind={notification.kind}
-              title={notification.title}
-              subtitle={notification.subtitle}
+              kind={visibleNotification.kind}
+              title={visibleNotification.title}
+              subtitle={visibleNotification.subtitle}
               onClose={() => setNotification(null)}
               data-testid="analyzer-form-notification"
             />
@@ -599,100 +563,8 @@ const AnalyzerForm = () => {
             />
           </FormGroup>
 
-          {/* Section 2 — Plugin Configuration */}
+          {/* Section 2 — Reusable Analyzer Type */}
           <FormGroup legendText="">
-            <Dropdown
-              id="analyzer-plugin-type"
-              data-testid="analyzer-form-plugin-type-dropdown"
-              titleText={intl.formatMessage({
-                id: "analyzer.form.pluginType",
-                defaultMessage: "Plugin Type",
-              })}
-              label={intl.formatMessage({
-                id: "analyzer.form.pluginType.placeholder",
-                defaultMessage: "Select plugin type...",
-              })}
-              items={sortedPluginTypes}
-              selectedItem={
-                sortedPluginTypes.find(
-                  (opt) => opt.id === formData.pluginTypeId,
-                ) || null
-              }
-              itemToString={(item) =>
-                item ? `${item.name} (${item.protocol})` : ""
-              }
-              onChange={({ selectedItem }) => {
-                handleFieldChange("pluginTypeId", selectedItem?.id || "");
-                // Reset profile selection when plugin type changes
-                setSelectedDefault(null);
-                // Auto-set protocol version based on plugin type
-                if (selectedItem?.protocol) {
-                  handleFieldChange(
-                    "protocolVersion",
-                    PLUGIN_PROTOCOL_DEFAULTS[selectedItem.protocol] ||
-                      formData.protocolVersion,
-                  );
-                }
-              }}
-              disabled={loadingPluginTypes}
-              helperText={intl.formatMessage({
-                id: "analyzer.form.pluginType.helperText",
-                defaultMessage:
-                  "The analyzer plugin that will handle incoming messages",
-              })}
-            />
-
-            {isGenericPlugin && (
-              <Dropdown
-                id="analyzer-default-config"
-                data-testid="analyzer-form-default-config-dropdown"
-                titleText={intl.formatMessage({
-                  id: "analyzer.form.loadDefaultConfig",
-                })}
-                label={intl.formatMessage({
-                  id: "analyzer.form.loadDefaultConfig.placeholder",
-                })}
-                items={filteredDefaultConfigs}
-                selectedItem={selectedDefault}
-                itemToString={(item) =>
-                  item
-                    ? `${item.analyzerName || item.id?.split("/")[1] || item.id} (${item.protocol})`
-                    : ""
-                }
-                onChange={({ selectedItem }) =>
-                  handleDefaultConfigSelect(selectedItem)
-                }
-                disabled={loadingDefaults}
-                helperText={intl.formatMessage({
-                  id: "analyzer.form.loadDefaultConfig.helperText",
-                })}
-              />
-            )}
-
-            {isGenericPlugin && (
-              <TextInput
-                id="analyzer-identifier-pattern"
-                data-testid="analyzer-form-identifier-pattern-input"
-                labelText={intl.formatMessage({
-                  id: "analyzer.form.identifierPattern",
-                  defaultMessage: "Identifier Pattern",
-                })}
-                placeholder={intl.formatMessage({
-                  id: "analyzer.form.identifierPattern.placeholder",
-                  defaultMessage: "e.g., ^ABX\\^PENTRA.*",
-                })}
-                value={formData.identifierPattern}
-                onChange={(e) =>
-                  handleFieldChange("identifierPattern", e.target.value)
-                }
-                helperText={intl.formatMessage({
-                  id: "analyzer.form.identifierPattern.helperText",
-                  defaultMessage:
-                    "Regex pattern to match incoming message identifiers for routing",
-                })}
-              />
-            )}
-
             <Dropdown
               id="analyzer-type"
               data-testid="analyzer-form-type-dropdown"
@@ -700,43 +572,34 @@ const AnalyzerForm = () => {
               label={intl.formatMessage({
                 id: "analyzer.form.type.placeholder",
               })}
-              items={analyzerTypeOptions}
-              selectedItem={
-                analyzerTypeOptions.find(
-                  (opt) => opt.id === formData.analyzerType,
-                ) || null
+              items={activeProfiles}
+              selectedItem={selectedProfile}
+              itemToString={(item) =>
+                item
+                  ? intl.formatMessage(
+                      { id: "analyzer.form.type.revision" },
+                      {
+                        name: item.displayName,
+                        revision: item.revision,
+                        protocol: item.protocol,
+                      },
+                    )
+                  : ""
               }
-              itemToString={(item) => (item ? item.text : "")}
-              onChange={({ selectedItem }) =>
-                handleFieldChange("analyzerType", selectedItem?.id || "")
+              onChange={({ selectedItem }) => handleProfileSelect(selectedItem)}
+              disabled={
+                loadingProfiles ||
+                Boolean(
+                  isEditMode && formData.profileId && formData.profileRevision,
+                )
               }
-              invalid={!!errors.analyzerType}
-              invalidText={errors.analyzerType}
+              helperText={intl.formatMessage({
+                id: "analyzer.form.type.helperText",
+              })}
+              invalid={!!errors.profileId}
+              invalidText={errors.profileId}
               required
             />
-
-            {!isFileProtocol && (
-              <Dropdown
-                id="analyzer-protocol-version"
-                data-testid="analyzer-form-protocol-version-dropdown"
-                titleText={intl.formatMessage({
-                  id: "analyzer.form.protocolVersion",
-                  defaultMessage: "Message Protocol",
-                })}
-                items={PROTOCOL_VERSIONS}
-                selectedItem={
-                  PROTOCOL_VERSIONS.find(
-                    (opt) => opt.value === formData.protocolVersion,
-                  ) || PROTOCOL_VERSIONS[0]
-                }
-                itemToString={(item) => (item ? item.label : "")}
-                onChange={({ selectedItem }) => {
-                  if (selectedItem) {
-                    handleFieldChange("protocolVersion", selectedItem.value);
-                  }
-                }}
-              />
-            )}
           </FormGroup>
 
           {/* Section 3 — Connection (hidden for FILE protocol) */}
@@ -748,10 +611,13 @@ const AnalyzerForm = () => {
                 titleText={intl.formatMessage({
                   id: "analyzer.form.communicationMode",
                 })}
+                label={intl.formatMessage({
+                  id: "analyzer.form.communicationMode",
+                })}
                 items={communicationModeItems}
                 selectedItem={
                   communicationModeItems.find(
-                    (opt) => opt.value === formData.communicationMode,
+                    (opt) => opt.value === effectiveCommunicationMode,
                   ) || null
                 }
                 itemToString={(item) => (item ? item.label : "")}
@@ -792,7 +658,7 @@ const AnalyzerForm = () => {
                   placeholder={intl.formatMessage({
                     id: "analyzer.form.port.placeholder",
                   })}
-                  value={formData.port}
+                  value={effectivePort}
                   onChange={(e) => handleFieldChange("port", e.target.value)}
                   invalid={!!errors.port}
                   invalidText={errors.port}
@@ -817,25 +683,6 @@ const AnalyzerForm = () => {
                 defaultMessage: "File Import Settings",
               })}
             >
-              <Dropdown
-                id="analyzer-file-format"
-                data-testid="analyzer-form-file-format-dropdown"
-                titleText={intl.formatMessage({
-                  id: "analyzer.form.fileFormat",
-                  defaultMessage: "File Format",
-                })}
-                items={fileFormatOptions}
-                selectedItem={
-                  fileFormatOptions.find(
-                    (opt) => opt.id === formData.fileFormat,
-                  ) || fileFormatOptions[0]
-                }
-                itemToString={(item) => (item ? item.text : "")}
-                onChange={({ selectedItem }) =>
-                  handleFileFormatChange(selectedItem?.id || "CSV")
-                }
-              />
-
               <TextInput
                 id="analyzer-import-directory"
                 data-testid="analyzer-form-import-directory-input"
@@ -843,7 +690,9 @@ const AnalyzerForm = () => {
                   id: "analyzer.form.importDirectory",
                   defaultMessage: "Import Directory",
                 })}
-                placeholder="/data/analyzer-imports/my-analyzer/incoming"
+                placeholder={intl.formatMessage({
+                  id: "analyzer.form.importDirectory.placeholder",
+                })}
                 value={formData.importDirectory}
                 onChange={(e) =>
                   handleFieldChange("importDirectory", e.target.value)
@@ -856,75 +705,6 @@ const AnalyzerForm = () => {
                     "Directory the bridge watches for incoming result files",
                 })}
               />
-
-              <TextInput
-                id="analyzer-file-pattern"
-                data-testid="analyzer-form-file-pattern-input"
-                labelText={intl.formatMessage({
-                  id: "analyzer.form.filePattern",
-                  defaultMessage: "File Pattern",
-                })}
-                placeholder="*.csv"
-                value={formData.filePattern}
-                onChange={(e) =>
-                  handleFieldChange("filePattern", e.target.value)
-                }
-                helperText={intl.formatMessage({
-                  id: "analyzer.form.filePattern.helperText",
-                  defaultMessage: "Glob pattern to match result files",
-                })}
-              />
-
-              <TextArea
-                id="analyzer-column-mappings"
-                data-testid="analyzer-form-column-mappings-input"
-                labelText={intl.formatMessage({
-                  id: "analyzer.form.columnMappings",
-                  defaultMessage: "Column Mappings (JSON)",
-                })}
-                placeholder='{"Sample Name": "sampleId", "Target Name": "testCode", "Quantity Mean": "result"}'
-                value={formData.columnMappings}
-                onChange={(e) =>
-                  handleFieldChange("columnMappings", e.target.value)
-                }
-                rows={4}
-                helperText={intl.formatMessage({
-                  id: "analyzer.form.columnMappings.helperText",
-                  defaultMessage:
-                    "Maps file column names to internal field names",
-                })}
-              />
-
-              {formData.fileFormat !== "EXCEL" && (
-                <>
-                  <TextInput
-                    id="analyzer-delimiter"
-                    data-testid="analyzer-form-delimiter-input"
-                    labelText={intl.formatMessage({
-                      id: "analyzer.form.delimiter",
-                      defaultMessage: "Delimiter",
-                    })}
-                    placeholder=","
-                    value={formData.delimiter}
-                    onChange={(e) =>
-                      handleFieldChange("delimiter", e.target.value)
-                    }
-                  />
-
-                  <Checkbox
-                    id="analyzer-has-header"
-                    data-testid="analyzer-form-has-header-checkbox"
-                    labelText={intl.formatMessage({
-                      id: "analyzer.form.hasHeader",
-                      defaultMessage: "File has header row",
-                    })}
-                    checked={formData.hasHeader}
-                    onChange={(_, { checked }) =>
-                      handleFieldChange("hasHeader", checked)
-                    }
-                  />
-                </>
-              )}
             </FormGroup>
           )}
         </div>
@@ -948,11 +728,11 @@ const AnalyzerForm = () => {
       </div>
       <TestConnectionModal
         analyzer={
-          formData.ipAddress && formData.port
+          formData.ipAddress && effectivePort
             ? {
                 id: analyzer?.id || "test",
                 ipAddress: formData.ipAddress,
-                port: parseInt(formData.port, 10),
+                port: parseInt(effectivePort, 10),
               }
             : null
         }

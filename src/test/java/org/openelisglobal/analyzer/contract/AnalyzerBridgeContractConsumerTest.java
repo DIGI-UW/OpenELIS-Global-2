@@ -16,9 +16,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.hl7.fhir.r4.model.Bundle;
 import org.junit.Test;
+import org.openelisglobal.analyzer.service.BridgeAnalyzerProfile;
 
 /**
  * Consumer-side executable contract for Bridge-owned OGC-1054 v1 artifacts.
@@ -34,7 +36,10 @@ public class AnalyzerBridgeContractConsumerTest {
             "v1");
     private static final Path FIXTURE_ROOT = CONTRACT_ROOT.resolve("fixtures");
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final JsonSchemaFactory SCHEMAS = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
+    private static final JsonSchemaFactory SCHEMAS = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012,
+            builder -> builder
+                    .schemaMappers(mappers -> mappers.mapPrefix("https://openelis-global.org/contracts/analyzer/v1/",
+                            CONTRACT_ROOT.toAbsolutePath().toUri().toString())));
     private static final FhirContext FHIR = FhirContext.forR4();
     private static final String FINGERPRINT_PATTERN = "sha256:[0-9a-f]{64}";
     private static final String RAW_CODE_SYSTEM = "https://openelis-global.org/fhir/CodeSystem/analyzer-raw-code";
@@ -67,6 +72,47 @@ public class AnalyzerBridgeContractConsumerTest {
         assertFalse(schema.contains("openelisTestId"));
         assertFalse(schema.contains("openelisResultOptionId"));
         assertFalse(schema.contains("labUnitId"));
+    }
+
+    @Test
+    public void priorityProfilesExposeOnlyMockProvenDefaultMappings() throws IOException {
+        JsonNode geneXpert = fixture("analyzer-profile-astm.json");
+        JsonNode fluoroCycler = fixture("analyzer-profile-file.json");
+        JsonNode quantStudio = fixture("analyzer-profile-quantstudio.json");
+
+        assertMappingCodes(geneXpert, Set.of("MTB-RIF", "RIF", "HIV-VL", "COVID19"));
+        assertMappingValues(geneXpert, "MTB-RIF", Set.of("MTB DETECTED", "NOT DETECTED", "HIGH", "MEDIUM", "LOW",
+                "VERY LOW", "INDETERMINATE", "ERROR", "NO RESULT"));
+        assertMappingValues(geneXpert, "RIF", Set.of("DETECTED", "NOT DETECTED", "INDETERMINATE"));
+        assertMappingValues(geneXpert, "COVID19", Set.of("POSITIVE", "NEGATIVE", "INDETERMINATE", "ERROR"));
+        assertMappingCodes(fluoroCycler, Set.of("VIH-1"));
+        assertMappingCodes(quantStudio, Set.of("VIH-1", "IC"));
+    }
+
+    @Test
+    public void priorityProfileValuesRemainOpaqueToOpenElis() throws IOException {
+        BridgeAnalyzerProfile geneXpert = BridgeAnalyzerProfile.from(fixture("analyzer-profile-astm.json"));
+
+        assertEquals("E-1394-97", geneXpert.protocolVersion());
+        assertEquals("BOTH", geneXpert.communicationMode());
+        assertEquals("TCP/IP", geneXpert.instanceDefaults().transport());
+    }
+
+    @Test
+    public void profileCatalogComposesImmutablePortableProfileRevisions() throws IOException {
+        JsonNode response = fixture("profile-catalog-response.json");
+
+        assertConforms("profile-catalog-response.schema.json", response);
+        assertEquals("1.0", response.path("schemaVersion").asText());
+        assertTrue(response.path("catalogFingerprint").asText().matches(FINGERPRINT_PATTERN));
+
+        JsonNode entry = response.path("profiles").path(0);
+        assertEquals("SHIPPED", entry.path("publication").path("action").asText());
+        assertEquals("fluorocycler-xt", entry.path("profile").path("profileMeta").path("id").asText());
+        assertTrue(entry.path("profile").path("catalog").path("revisionFingerprint").asText()
+                .matches(FINGERPRINT_PATTERN));
+        assertFalse(entry.path("profile").has("openelisTestId"));
+        assertFalse(entry.path("profile").has("qcIdentification"));
     }
 
     @Test
@@ -142,17 +188,6 @@ public class AnalyzerBridgeContractConsumerTest {
         assertFalse(validationMessages("connection-create.schema.json", connection).isEmpty());
     }
 
-    @Test
-    public void noParallelProfileOrCompatibilityContractIsConsumable() {
-        for (String removed : new String[] { "portable-profile.schema.json", "legacy-registration.schema.json",
-                "compatibility.json", "registration-sync.schema.json", "registration-sync-result.schema.json",
-                "fixtures/portable-profile.json", "fixtures/portable-profile-none.json",
-                "fixtures/legacy-registration.json", "fixtures/registration-initial.json",
-                "fixtures/registration-next.json", "fixtures/registration-result.json" }) {
-            assertFalse(removed, Files.exists(CONTRACT_ROOT.resolve(removed)));
-        }
-    }
-
     private static void assertConforms(String schemaName, JsonNode fixture) throws IOException {
         Set<ValidationMessage> messages = validationMessages(schemaName, fixture);
         assertTrue(schemaName + " violations: " + messages, messages.isEmpty());
@@ -165,6 +200,22 @@ public class AnalyzerBridgeContractConsumerTest {
 
     private static JsonNode fixture(String name) throws IOException {
         return JSON.readTree(FIXTURE_ROOT.resolve(name).toFile());
+    }
+
+    private static void assertMappingCodes(JsonNode profile, Set<String> expectedCodes) {
+        Set<String> actualCodes = StreamSupport.stream(profile.path("default_test_mappings").spliterator(), false)
+                .map(mapping -> mapping.path("test_code").asText()).collect(Collectors.toSet());
+        assertEquals(expectedCodes, actualCodes);
+        assertEquals(expectedCodes.size(), profile.path("default_test_mappings").size());
+    }
+
+    private static void assertMappingValues(JsonNode profile, String testCode, Set<String> expectedValues) {
+        JsonNode mapping = StreamSupport.stream(profile.path("default_test_mappings").spliterator(), false)
+                .filter(candidate -> testCode.equals(candidate.path("test_code").asText())).findFirst().orElseThrow();
+        Set<String> actualValues = StreamSupport.stream(mapping.path("values").spliterator(), false)
+                .map(JsonNode::asText).collect(Collectors.toSet());
+        assertEquals(expectedValues, actualValues);
+        assertEquals(expectedValues.size(), mapping.path("values").size());
     }
 
     private static JsonNode firstResource(JsonNode bundle, String resourceType) {

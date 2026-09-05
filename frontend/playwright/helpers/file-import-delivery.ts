@@ -1,17 +1,10 @@
-import { Page } from "@playwright/test";
-
 /**
  * Harness helper for FILE analyzer fixture delivery.
  *
- * Two modes:
- *   1. Watched-dir drop (default): mock copies fixture into the analyzer's
- *      watched folder. Works when the file carries per-row test codes.
- *   2. Bridge upload (when opts.uploadTestCode is set): mock multipart-
- *      POSTs the fixture to bridge /admin/upload with the admin-declared
- *      test code, matching the real lab-tech workflow.
+ * The mock copies the analyzer's real fixture into its Bridge-watched folder.
  *
  * This is foundational transport support. UI-only demo stories cannot import
- * it because it resolves analyzer state and triggers mock delivery directly.
+ * it because it triggers mock delivery directly.
  */
 
 export type MockFileResult = {
@@ -33,61 +26,22 @@ export type MockFileResponse = {
 
 export interface DropFixtureOptions {
   readonly mockTemplate: string;
-  /** Bridge-registered analyzer name to look up when using upload path. */
-  readonly analyzerName: string;
-  /** Legacy watched-dir sub-path (used when uploadTestCode isn't set). */
+  /** Sub-path of the analyzer's Bridge-watched import directory. */
   readonly importDirSafeName: string;
-  /** When set, route through bridge /admin/upload with this testCode. */
-  readonly uploadTestCode?: string;
   /** Mock server URL (defaults to env MOCK_SIMULATOR_URL or localhost:8085). */
   readonly mockApiUrl?: string;
 }
 
 export async function dropFixtureViaMock(
-  page: Page,
   opts: DropFixtureOptions,
 ): Promise<MockFileResponse> {
   const mockUrl =
     opts.mockApiUrl ||
     process.env.MOCK_SIMULATOR_URL ||
     "http://localhost:8085";
-  const body: Record<string, unknown> = {};
-
-  if (opts.uploadTestCode) {
-    const baseUrl = (process.env.BASE_URL || "https://localhost").replace(
-      /\/$/,
-      "",
-    );
-    const resp = await page.request.get(
-      `${baseUrl}/api/OpenELIS-Global/rest/analyzer/analyzers`,
-    );
-    if (!resp.ok()) {
-      throw new Error(
-        `Analyzer list fetch failed: ${resp.status()} — cannot resolve id for ${opts.analyzerName}`,
-      );
-    }
-    const json = (await resp.json()) as
-      | Array<{ id: string; name: string }>
-      | { analyzers?: Array<{ id: string; name: string }> };
-    await resp.dispose();
-    const list = Array.isArray(json) ? json : (json.analyzers ?? []);
-    const match = list.find((a) => a.name === opts.analyzerName);
-    if (!match) {
-      throw new Error(
-        `No analyzer named ${JSON.stringify(opts.analyzerName)} found. ` +
-          `Available: ${list
-            .map((a) => a.name)
-            .slice(0, 10)
-            .join(", ")}`,
-      );
-    }
-    body.bridge_upload = {
-      analyzer_id: match.id,
-      test_code: opts.uploadTestCode,
-    };
-  } else {
-    body.target_dir = `/data/analyzer-imports/${opts.importDirSafeName}/incoming`;
-  }
+  const body: Record<string, unknown> = {
+    target_dir: `/data/analyzer-imports/${opts.importDirSafeName}/incoming`,
+  };
 
   const response = await fetch(
     `${mockUrl}/simulate/file/${opts.mockTemplate}`,

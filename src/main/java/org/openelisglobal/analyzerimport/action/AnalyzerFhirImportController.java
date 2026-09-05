@@ -1,12 +1,8 @@
 package org.openelisglobal.analyzerimport.action;
 
 import ca.uhn.fhir.context.FhirContext;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -14,9 +10,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
-import java.util.stream.Stream;
 import org.hibernate.ObjectNotFoundException;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Device;
@@ -75,13 +68,6 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
 
     @Autowired
     private FhirContext fhirContext;
-
-    // Not @Autowired — Spring doesn't expose an ObjectMapper bean in this
-    // webapp's context (see AnalyzerRestController for the same pattern).
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    private static final String[] PROFILE_PROTOCOL_DIRS = { "astm", "hl7", "file" };
-    private static final int MIN_PROFILE_MATCH_SCORE = 2;
 
     @Autowired
     private QCResultProcessingService qcResultProcessingService;
@@ -546,7 +532,6 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             String analyzerId = analyzerService.insert(stub);
             LogEvent.logInfo(CLASS_NAME, "findOrCreateStubFromDevice",
                     "Created PENDING_REGISTRATION stub analyzerId=" + analyzerId + " for sourceId=" + sourceId);
-            applyMatchedProfile(analyzerId, device, stub.getSysUserId());
             return analyzerService.get(analyzerId);
         } catch (RuntimeException e) {
             if (isDuplicateKeyViolation(e)) {
@@ -559,115 +544,6 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
         }
     }
 
-    /**
-     * Match the Device against the profile registry and apply the winning profile's
-     * {@code default_test_mappings} to the newly-created stub.
-     *
-     * <p>
-     * Without this step, stubs land with zero analyzer_test_map rows — every result
-     * stays {@code read_only=true} until an admin manually configures mappings.
-     * With the match-and-apply, the first message from a known analyzer family
-     * (GeneXpert, Mindray, etc.) arrives with mappings pre-populated from the
-     * profile's UNION of device-emitted codes, so results land accept-ready.
-     *
-     * <p>
-     * Best-effort: mapping failures don't roll back the stub (separate
-     * 
-     * @Transactional boundary inside autoCreateTestMappings). Unknown analyzers
-     *                with no profile match leave the stub bare and log a clear WARN
-     *                so an operator can add a profile.
-     */
-    private void applyMatchedProfile(String analyzerId, Device device, String sysUserId) {
-        try {
-            ProfileMatch match = matchProfileFromDevice(device);
-            if (match != null) {
-                LogEvent.logInfo(CLASS_NAME, "applyMatchedProfile", "Matched profile " + match.fileName + " (score="
-                        + match.score + ") for analyzer " + analyzerId + " — applying default_test_mappings");
-                analyzerService.autoCreateTestMappings(analyzerId, match.config, sysUserId);
-            } else {
-                LogEvent.logWarn(CLASS_NAME, "applyMatchedProfile",
-                        "No matching profile found for analyzer " + analyzerId + " — staging will remain read-only "
-                                + "until admin creates a matching profile in /data/analyzer-profiles/");
-            }
-        } catch (RuntimeException e) {
-            LogEvent.logWarn(CLASS_NAME, "applyMatchedProfile", "Profile apply failed for analyzer " + analyzerId
-                    + " (stub persists): " + e.getClass().getSimpleName() + ": " + e.getMessage());
-        }
-    }
-
-    /**
-     * Iterate all profile JSONs under {@code $ANALYZER_PROFILES_DIR} (default
-     * {@code /data/analyzer-profiles}) and return the highest-scoring match for the
-     * Device, or null if no profile scores at least
-     * {@link #MIN_PROFILE_MATCH_SCORE}. Matching is data-driven — drop a new
-     * profile in the directory and it becomes selectable without code change.
-     */
-    private ProfileMatch matchProfileFromDevice(Device device) {
-        Path baseDir = resolveProfilesBaseDir();
-        if (!Files.isDirectory(baseDir)) {
-            return null;
-        }
-        String mfr = device.hasManufacturer() ? device.getManufacturer() : null;
-        String name = device.hasDeviceName() ? device.getDeviceNameFirstRep().getName() : null;
-        String senderToken = extractSenderTokenFromDevice(device);
-
-        ProfileMatch best = null;
-        for (String protocol : PROFILE_PROTOCOL_DIRS) {
-            Path protocolDir = baseDir.resolve(protocol);
-            if (!Files.isDirectory(protocolDir)) {
-                continue;
-            }
-            try (Stream<Path> stream = Files.list(protocolDir)) {
-                List<Path> files = stream.filter(p -> p.toString().endsWith(".json")).sorted().toList();
-                for (Path file : files) {
-                    try {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> profile = objectMapper.readValue(file.toFile(), Map.class);
-                        int score = scoreProfile(profile, mfr, name, senderToken);
-                        if (score >= MIN_PROFILE_MATCH_SCORE && (best == null || score > best.score)) {
-                            best = new ProfileMatch(file.getFileName().toString(), profile, score);
-                        }
-                    } catch (IOException ioe) {
-                        LogEvent.logWarn(CLASS_NAME, "matchProfileFromDevice",
-                                "Skipping unreadable profile " + file + ": " + ioe.getMessage());
-                    }
-                }
-            } catch (IOException e) {
-                LogEvent.logWarn(CLASS_NAME, "matchProfileFromDevice",
-                        "Failed to list " + protocolDir + ": " + e.getMessage());
-            }
-        }
-        return best;
-    }
-
-    private int scoreProfile(Map<String, Object> profile, String deviceMfr, String deviceName, String senderToken) {
-        int score = 0;
-        String profileMfr = asString(profile.get("manufacturer"));
-        String profileName = asString(profile.get("analyzer_name"));
-        String pattern = asString(profile.get("identifier_pattern"));
-
-        if (deviceMfr != null && profileMfr != null && profileMfr.equalsIgnoreCase(deviceMfr)) {
-            score += 2;
-        }
-        if (deviceName != null && profileName != null && profileName.toUpperCase().contains(deviceName.toUpperCase())) {
-            score += 2;
-        }
-        if (pattern != null && !pattern.isBlank()) {
-            try {
-                Pattern p = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
-                if (deviceName != null && p.matcher(deviceName).find()) {
-                    score += 1;
-                }
-                if (senderToken != null && p.matcher(senderToken).find()) {
-                    score += 1;
-                }
-            } catch (PatternSyntaxException ignored) {
-                // Malformed profile regex — score only via other signals.
-            }
-        }
-        return score;
-    }
-
     private String extractSenderTokenFromDevice(Device device) {
         if (!device.hasIdentifier()) {
             return null;
@@ -676,21 +552,6 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
                 .filter(id -> "https://openelis-global.org/fhir/sender-token".equals(id.getSystem()))
                 .map(org.hl7.fhir.r4.model.Identifier::getValue).filter(v -> v != null && !v.isBlank()).findFirst()
                 .orElse(null);
-    }
-
-    private Path resolveProfilesBaseDir() {
-        String dir = System.getenv("ANALYZER_PROFILES_DIR");
-        if (dir == null || dir.isBlank()) {
-            dir = "/data/analyzer-profiles";
-        }
-        return Path.of(dir);
-    }
-
-    private static String asString(Object o) {
-        return o instanceof String s ? s : null;
-    }
-
-    private record ProfileMatch(String fileName, Map<String, Object> config, int score) {
     }
 
     private String extractSourceIdFromDevice(Device device) {

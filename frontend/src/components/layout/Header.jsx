@@ -244,12 +244,16 @@ function OEHeader({
   };
 
   useEffect(() => {
+    if (!userSessionDetails.authenticated) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       getNotifications();
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [userSessionDetails.authenticated]);
 
   // Click-outside handler: close the drawer whenever the nav is an overlay
   // (small viewports, or desktop with the nav unpinned)
@@ -792,6 +796,7 @@ function OEHeader({
               <HelpMenu
                 helpOpen={helpOpen}
                 handlePanelToggle={handlePanelToggle}
+                enabled={userSessionDetails.authenticated === true}
               />
             </HeaderGlobalBar>
             <HeaderPanel
@@ -934,26 +939,30 @@ function OEHeader({
               </>
             )}
           </Header>
-          <div style={{ flex: 1 }}>
-            <SlideOver
-              open={notificationsOpen}
-              setOpen={(open) => setNotificationsOpen(open)}
-              slideFrom="right"
-              title="Notifications"
-            >
-              <SlideOverNotifications
-                loading={loading}
-                notifications={
-                  showRead ? readNotifications : unReadNotifications
-                }
-                showRead={showRead}
-                markNotificationAsRead={markNotificationAsRead}
-                getNotifications={getNotifications}
-                setShowRead={setShowRead}
-                markAllNotificationsAsRead={markAllNotificationsAsRead}
-              />
-            </SlideOver>
-          </div>
+          {userSessionDetails.authenticated && (
+            <div style={{ flex: 1 }}>
+              <SlideOver
+                open={notificationsOpen}
+                setOpen={(open) => setNotificationsOpen(open)}
+                slideFrom="right"
+                title="Notifications"
+              >
+                {notificationsOpen && (
+                  <SlideOverNotifications
+                    loading={loading}
+                    notifications={
+                      showRead ? readNotifications : unReadNotifications
+                    }
+                    showRead={showRead}
+                    markNotificationAsRead={markNotificationAsRead}
+                    getNotifications={getNotifications}
+                    setShowRead={setShowRead}
+                    markAllNotificationsAsRead={markAllNotificationsAsRead}
+                  />
+                )}
+              </SlideOver>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -9,43 +9,30 @@ import { UI_TIMEOUT } from "../helpers/timeouts";
  */
 export class AnalyzerFormPage {
   readonly page: Page;
-  readonly modal: Locator;
+  readonly surface: Locator;
   readonly header: Locator;
   readonly nameInput: Locator;
-  readonly typeDropdown: Locator;
-  readonly pluginTypeDropdown: Locator;
-  readonly defaultConfigDropdown: Locator;
-  readonly identifierPatternInput: Locator;
-  readonly protocolVersionDropdown: Locator;
+  readonly profileDropdown: Locator;
+  readonly communicationModeDropdown: Locator;
   readonly ipAddressInput: Locator;
   readonly portInput: Locator;
   readonly importDirectoryInput: Locator;
   readonly statusDropdown: Locator;
   readonly connectionFields: Locator;
-  readonly fileProtocolInfo: Locator;
   readonly saveButton: Locator;
   readonly cancelButton: Locator;
   readonly notification: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.modal = page.locator('[data-testid="analyzer-form"]');
+    this.surface = page.locator('[data-testid="analyzer-form"]');
     this.header = page.locator('[data-testid="analyzer-form-header"]');
     this.nameInput = page.locator('[data-testid="analyzer-form-name-input"]');
-    this.typeDropdown = page.locator(
+    this.profileDropdown = page.locator(
       '[data-testid="analyzer-form-type-dropdown"]',
     );
-    this.pluginTypeDropdown = page.locator(
-      '[data-testid="analyzer-form-plugin-type-dropdown"]',
-    );
-    this.defaultConfigDropdown = page.locator(
-      '[data-testid="analyzer-form-default-config-dropdown"]',
-    );
-    this.identifierPatternInput = page.locator(
-      '[data-testid="analyzer-form-identifier-pattern-input"]',
-    );
-    this.protocolVersionDropdown = page.locator(
-      '[data-testid="analyzer-form-protocol-version-dropdown"]',
+    this.communicationModeDropdown = page.locator(
+      '[data-testid="analyzer-form-communication-mode-dropdown"]',
     );
     this.ipAddressInput = page.locator(
       '[data-testid="analyzer-form-ip-input"]',
@@ -60,9 +47,6 @@ export class AnalyzerFormPage {
     this.connectionFields = page.locator(
       '[data-testid="analyzer-form-connection-fields"]',
     );
-    this.fileProtocolInfo = page.locator(
-      '[data-testid="analyzer-form-file-protocol-info"]',
-    );
     this.saveButton = page.locator('[data-testid="analyzer-form-save-button"]');
     this.cancelButton = page.locator(
       '[data-testid="analyzer-form-cancel-button"]',
@@ -72,9 +56,9 @@ export class AnalyzerFormPage {
     );
   }
 
-  /** Assert the form modal is open and visible */
+  /** Assert the analyzer setup page is open and visible. */
   async expectOpen() {
-    await expect(this.modal).toBeVisible();
+    await expect(this.surface).toBeVisible();
     await expect(this.header).toBeVisible();
   }
 
@@ -110,19 +94,9 @@ export class AnalyzerFormPage {
     await expect(listbox).not.toBeVisible({ timeout: UI_TIMEOUT });
   }
 
-  /** Select an analyzer type (category) from the dropdown */
-  async selectType(typeText: string) {
-    await this.selectDropdownItem(this.typeDropdown, typeText);
-  }
-
-  /** Select a plugin type from the dropdown */
-  async selectPluginType(typeText: string) {
-    await this.selectDropdownItem(this.pluginTypeDropdown, typeText);
-  }
-
-  /** Select a default config template from the dropdown */
-  async selectDefaultConfig(configText: string) {
-    await this.selectDropdownItem(this.defaultConfigDropdown, configText);
+  /** Select an exact reusable Analyzer Type/profile revision. */
+  async selectProfile(profileName: string) {
+    await this.selectDropdownItem(this.profileDropdown, profileName);
   }
 
   /** Fill the IP address field */
@@ -159,11 +133,6 @@ export class AnalyzerFormPage {
   /** Assert a notification of any kind appeared */
   async expectNotification() {
     await expect(this.notification).toBeVisible({ timeout: UI_TIMEOUT });
-  }
-
-  /** Get the current value of the identifier pattern input */
-  async getIdentifierPattern(): Promise<string> {
-    return (await this.identifierPatternInput.inputValue()) || "";
   }
 
   /** Get the current value of the name input */

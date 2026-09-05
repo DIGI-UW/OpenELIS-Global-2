@@ -32,7 +32,10 @@ export class AnalyzerListPage {
 
   /** Navigate to the analyzers list page */
   async goto() {
-    await this.page.goto("analyzers", { waitUntil: "domcontentloaded" });
+    await this.page.goto("/analyzers", {
+      waitUntil: "domcontentloaded",
+      timeout: NAV_TIMEOUT,
+    });
   }
 
   /** Assert the page has loaded (root + header + stats visible) */

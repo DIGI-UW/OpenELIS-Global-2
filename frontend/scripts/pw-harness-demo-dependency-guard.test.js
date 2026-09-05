@@ -133,6 +133,23 @@ describe("harness demo dependency guard", () => {
     ]);
   });
 
+  test("includes the shared authentication setup in the UI-only dependency graph", () => {
+    const frontendRoot = createFrontend({
+      "playwright/tests/demo/harness/story.spec.ts":
+        "test('story', async ({ page }) => page.goto('/'));",
+      "playwright/tests/auth.setup.ts":
+        "test('authenticate', async ({ request }) => request.post('/ValidateLogin'));",
+    });
+
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([
+      expect.objectContaining({
+        dependencyPath: "playwright/tests/auth.setup.ts",
+        messageId: "backendRequest",
+        specPath: "playwright/tests/demo/harness/story.spec.ts",
+      }),
+    ]);
+  });
+
   test("allows runner diagnostics but rejects backend access in test-base", () => {
     const frontendRoot = createFrontend({
       "playwright/tests/demo/harness/story.spec.ts":
