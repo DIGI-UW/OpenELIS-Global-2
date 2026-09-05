@@ -390,21 +390,15 @@ public class MicroReportProjectionServiceTest {
     }
 
     @Test
-    public void finalizedLegacyCaseWithAmbiguousRunsRecoversReleasedResultContent() {
+    public void finalizedCaseRecoversReleasedResultContent() {
         MicroCase microCase = microCase("case-1", MicroCaseStage.FINAL_RELEASED);
         MicroCaseAnalysis link = link("case-1", "42", "17");
         link.setProjectedResultId("201");
-        MicroIsolate isolate = isolate("iso-1");
-        MicroAstRun original = reviewedRun("run-1", "iso-1");
-        MicroAstRun repeat = reviewedRun("run-2", "iso-1");
         Result releasedResult = new Result();
         releasedResult.setId("201");
         releasedResult.setValue("Isolate A: Escherichia coli; Ciprofloxacin S");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(link));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
-        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(original, repeat));
-        when(organismDAO.get("org-1")).thenReturn(Optional.of(organism("org-1", "Escherichia coli")));
         when(resultService.getResultById("201")).thenReturn(releasedResult);
 
         MicroReportProjectionResult projection = service.preview("case-1");
@@ -414,13 +408,30 @@ public class MicroReportProjectionServiceTest {
     }
 
     @Test
-    public void finalizedLegacyCaseRejectsConflictingReleasedResultContent() {
+    public void finalizedNoGrowthCaseRecoversReleasedResultContent() {
+        MicroCase microCase = microCase("case-1", MicroCaseStage.FINAL_RELEASED);
+        MicroCaseAnalysis link = link("case-1", "42", "17");
+        link.setProjectedResultId("201");
+        Result releasedResult = new Result();
+        releasedResult.setId("201");
+        releasedResult.setValue("No growth");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(link));
+        when(resultService.getResultById("201")).thenReturn(releasedResult);
+
+        MicroReportProjectionResult projection = service.preview("case-1");
+
+        assertEquals("No growth", projection.getContent());
+        assertEquals(List.of("201"), projection.getProjectedResultIds());
+    }
+
+    @Test
+    public void finalizedCaseRejectsConflictingReleasedResultContent() {
         MicroCase microCase = microCase("case-1", MicroCaseStage.FINAL_RELEASED);
         MicroCaseAnalysis firstLink = link("case-1", "42", "17");
         firstLink.setProjectedResultId("201");
         MicroCaseAnalysis secondLink = link("case-1", "43", "18");
         secondLink.setProjectedResultId("202");
-        MicroIsolate isolate = isolate("iso-1");
         Result firstResult = new Result();
         firstResult.setId("201");
         firstResult.setValue("Isolate A: Escherichia coli; Ciprofloxacin S");
@@ -429,10 +440,6 @@ public class MicroReportProjectionServiceTest {
         secondResult.setValue("Isolate A: Escherichia coli; Ciprofloxacin R");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         when(caseAnalysisDAO.getByCaseId("case-1")).thenReturn(List.of(firstLink, secondLink));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
-        when(astRunDAO.getByIsolateId("iso-1"))
-                .thenReturn(List.of(reviewedRun("run-1", "iso-1"), reviewedRun("run-2", "iso-1")));
-        when(organismDAO.get("org-1")).thenReturn(Optional.of(organism("org-1", "Escherichia coli")));
         when(resultService.getResultById("201")).thenReturn(firstResult);
         when(resultService.getResultById("202")).thenReturn(secondResult);
 

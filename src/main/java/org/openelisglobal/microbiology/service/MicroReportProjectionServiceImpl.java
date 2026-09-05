@@ -136,6 +136,9 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
     @Transactional(readOnly = true)
     public MicroReportProjectionResult preview(String caseId) {
         MicroCase microCase = getCase(caseId);
+        if (MicroCaseStage.FINAL_RELEASED.name().equals(microCase.getStage())) {
+            return projectionResult(releasedProjectionInput(microCase));
+        }
         ProjectionInput input;
         try {
             input = projectionInput(microCase);
@@ -143,10 +146,12 @@ public class MicroReportProjectionServiceImpl implements MicroReportProjectionSe
             if (!"REPORTABLE_AST_RUN_REQUIRED".equals(conflict.getMessage())) {
                 throw conflict;
             }
-            input = MicroCaseStage.FINAL_RELEASED.name().equals(microCase.getStage())
-                    ? releasedProjectionInput(microCase)
-                    : projectionInput(microCase, "");
+            input = projectionInput(microCase, "");
         }
+        return projectionResult(input);
+    }
+
+    private MicroReportProjectionResult projectionResult(ProjectionInput input) {
         List<String> projectedResultIds = input.links().stream().map(MicroCaseAnalysis::getProjectedResultId)
                 .filter(this::hasText).toList();
         return new MicroReportProjectionResult(input.content(), input.mappingConfigured(), projectedResultIds);
