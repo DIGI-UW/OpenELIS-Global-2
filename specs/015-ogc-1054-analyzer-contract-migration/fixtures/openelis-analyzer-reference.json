@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "1.0",
+  "analyzerId": "oe-analyzer-42",
+  "name": "Synthetic chemistry analyzer",
+  "labUnitIds": ["lab-unit-chemistry"],
+  "bridgeConnectionId": "bridge-connection-7f3c",
+  "bindingRef": {
+    "bindingId": "site-binding-42",
+    "profileRef": {
+      "profileId": "fixture.synthetic-socket",
+      "revision": 2,
+      "fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "revision": 5,
+    "fingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "verification": {
+    "status": "VERIFIED",
+    "profileRef": {
+      "profileId": "fixture.synthetic-socket",
+      "revision": 2,
+      "fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "bindingRevision": 5,
+    "bindingFingerprint": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "recognitionFingerprint": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "rowStates": [
+      {
+        "rowKey": "fixture-result-a",
+        "state": "BOUND",
+        "testId": "openelis-test-17",
+        "resultOptionIds": ["result-option-positive", "result-option-negative"]
+      },
+      {
+        "rowKey": "fixture-result-b",
+        "state": "ACKNOWLEDGED_INCOMPLETE"
+      }
+    ],
+    "actor": {
+      "id": "user-7",
+      "display": "Lab Supervisor"
+    },
+    "verifiedAt": "2026-08-24T19:04:00Z"
+  },
+  "activation": {
+    "intent": "ACTIVE",
+    "acknowledgement": {
+      "commandId": "activate-fixture-004",
+      "connectionId": "bridge-connection-7f3c",
+      "profileRef": {
+        "profileId": "fixture.synthetic-socket",
+        "revision": 2,
+        "fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "configRevision": 4,
+      "configFingerprint": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "runtimeRevision": 9,
+      "runtimeFingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "actualRuntimeState": "ACTIVE",
+      "acknowledgedAt": "2026-08-24T19:05:05Z"
+    }
+  }
+}
