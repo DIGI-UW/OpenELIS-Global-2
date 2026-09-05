@@ -1,22 +1,24 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
-import { Field, Formik } from "formik";
 import {
   Button,
   Checkbox,
   Column,
-  Form,
   Grid,
   InlineNotification,
+  Modal,
   Pagination,
   Tag,
   TextArea,
+  Toggle,
 } from "@carbon/react";
-import { Copy, Launch } from "@carbon/icons-react";
+import { Copy, Launch, WarningAltFilled } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
-import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
-import { postToOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
@@ -25,6 +27,17 @@ import config from "../../config.json";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
+import {
+  FILTERS,
+  LANE_CLEAR,
+  bulkOutcomeKey,
+  bulkReleaseRequest,
+  clearRows,
+  countByFilter,
+  filterTriaged,
+  triageRows,
+} from "./validationTriage";
+import ValidationReviewPanel from "./ValidationReviewPanel";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -75,9 +88,15 @@ const Validation = (props) => {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [qcAckChecked, setQcAckChecked] = useState(false);
   const [qcJustification, setQcJustification] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [expandedRowIds, setExpandedRowIds] = useState([]);
+  // OGC-1030 (FR-A4): auto-validated rows live behind a toggle, read-only.
+  const [includeAutoValidated, setIncludeAutoValidated] = useState(false);
+  const [autoValidatedRows, setAutoValidatedRows] = useState(null);
 
   // S-08 FR-04: failed QC samples in the current batch, populated by the GET.
   // The acknowledgment is only required when there's a release pending — if the
@@ -93,6 +112,20 @@ const Validation = (props) => {
     qcFailures[0]?.accessionNumber ||
     props.results?.accessionNumber ||
     props.results?.resultList?.[0]?.accessionNumber;
+
+  const triaged = triageRows(props.results?.resultList);
+  const filterCounts = countByFilter(triaged);
+  const visibleRows = filterTriaged(triaged, activeFilter).map(
+    (item) => item.row,
+  );
+  const triageByRowId = new Map(triaged.map((item) => [item.row.id, item]));
+  const clearLaneCount = triaged.filter(
+    (item) => item.lane === LANE_CLEAR,
+  ).length;
+  const clearLaneRows = clearRows(triaged);
+  // OGC-1029 (FR-B4): the whole bulk capability is an admin switch.
+  const bulkAllowed =
+    configurationProperties?.ALLOW_BULK_RELEASE_CLEAR === "true";
 
   useEffect(() => {
     componentMounted.current = true;
@@ -146,28 +179,12 @@ const Validation = (props) => {
       width: "8rem",
     },
     {
-      id: "save",
-      name: intl.formatMessage({ id: "label.button.validate" }),
+      id: "checkBeforeRelease",
+      name: intl.formatMessage({ id: "label.validation.checkBeforeRelease" }),
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "8rem",
-    },
-    {
-      id: "retest",
-      name: intl.formatMessage({ id: "column.name.retest" }),
-      cell: (row, index, column, id) => {
-        return renderCell(row, index, column, id);
-      },
-      width: "8rem",
-    },
-    {
-      id: "notes",
-      name: intl.formatMessage({ id: "column.name.notes" }),
-      cell: (row, index, column, id) => {
-        return renderCell(row, index, column, id);
-      },
-      width: "15rem",
+      width: "14rem",
     },
     {
       id: "pastNotes",
@@ -179,70 +196,40 @@ const Validation = (props) => {
     },
   ];
 
-  const buildSignContext = () => {
-    const results = (props.results && props.results.resultList) || [];
-    const count = results.length;
-    const accessions = [
-      ...new Set(results.map((r) => r.accessionNumber).filter(Boolean)),
-    ];
-    if (accessions.length === 1) {
-      return intl.formatMessage(
-        {
-          id: "esig.context.validateResults",
-          defaultMessage:
-            "Validate {count} result(s) for accession {accession}",
-        },
-        {
-          count,
-          accession:
-            convertAlphaNumLabNumForDisplay(accessions[0]) || accessions[0],
-        },
-      );
-    }
-    return intl.formatMessage(
-      {
-        id: "esig.context.validateResultsMulti",
-        defaultMessage:
-          "Validate {count} result(s) across {accessionCount} accessions",
-      },
-      { count, accessionCount: accessions.length },
-    );
-  };
-
-  const getFirstAnalysisId = () => {
-    const results = (props.results && props.results.resultList) || [];
-    for (const r of results) {
-      if (r.analysisId) return Number(r.analysisId);
-    }
-    return 0;
-  };
-
-  const handleSave = () => {
-    if (isSubmitting) {
-      return;
-    }
-    setIsSubmitting(true);
-    postToOpenElisServer(
-      "/rest/AccessionValidation",
-      JSON.stringify(props.results),
-      handleResponse,
-    );
-  };
-  const handleResponse = (status) => {
-    let message = intl.formatMessage({ id: "validation.save.error" });
-    let kind = NotificationKinds.error;
-    setIsSubmitting(false);
-    if (status == 200) {
-      message = intl.formatMessage({ id: "validation.save.success" });
-      kind = NotificationKinds.success;
-      window.location.href = "/validation" + props.params;
-    }
+  /**
+   * OGC-1030 (FR-J1) — another validator acted on the row since this page
+   * loaded: say who and when, then reload so nobody works from a stale queue.
+   */
+  const handleStale = (response) => {
     addNotification({
-      kind: kind,
+      kind: NotificationKinds.warning,
       title: intl.formatMessage({ id: "notification.title" }),
-      message: message,
+      message: intl.formatMessage(
+        { id: "label.validation.review.error.stale" },
+        {
+          who: response?.modifiedBy || "",
+          when: response?.modifiedAt || "",
+        },
+      ),
     });
     setNotificationVisible(true);
+    window.location.assign("/validation" + props.params);
+  };
+
+  /**
+   * OGC-1028 — a per-row action (release / modify / retest / reject) succeeded:
+   * reload the queue so the row's new state is served fresh.
+   */
+  const handleRowActionDone = (outcome) => {
+    addNotification({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: `label.validation.review.success.${outcome}`,
+      }),
+    });
+    setNotificationVisible(true);
+    window.location.assign("/validation" + props.params);
   };
 
   /**
@@ -299,32 +286,96 @@ const Validation = (props) => {
     }
   };
 
-  const handleChange = (e, rowId) => {
-    const { name, id, value } = e.target;
+  /**
+   * OGC-1030 (FR-A4) — the accession's auto-validated results, fetched only when
+   * the validator asks for them; an accession search is the only scope served.
+   */
+  const accessionSearch = new URLSearchParams(
+    (props.params || "").replace(/^\?/, ""),
+  );
+  const autoValidatedAccession =
+    accessionSearch.get("type") === "order"
+      ? props.results?.accessionNumber ||
+        accessionSearch.get("accessionNumber") ||
+        ""
+      : "";
+  useEffect(() => {
+    if (!includeAutoValidated || !autoValidatedAccession) {
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/AccessionValidation/auto-validated?accessionNumber=${encodeURIComponent(
+        autoValidatedAccession,
+      )}`,
+      (rows) => setAutoValidatedRows(Array.isArray(rows) ? rows : []),
+    );
+  }, [includeAutoValidated, autoValidatedAccession]);
+
+  /**
+   * OGC-1028 — the review panel's composer is the single note input for a row.
+   * It writes the note, its visibility and the Validation context onto the row
+   * so the bulk release carries it too.
+   */
+  const handleRowNoteChange = (rowId, note, noteVisibility) => {
     let form = props.results;
-    jpSet(form, name, value);
+    jpSet(form, "resultList[" + rowId + "].note", note);
+    jpSet(form, "resultList[" + rowId + "].noteVisibility", noteVisibility);
+    jpSet(form, "resultList[" + rowId + "].noteContext", "VALIDATION");
   };
 
-  const handleDatePickerChange = (date, rowId) => {
-    console.debug("handleDatePickerChange:" + date);
-    const d = new Date(date).toLocaleDateString("fr-FR");
-    var form = props.results;
-    jpSet(form, "resultList[" + rowId + "].sentDate_", d);
-  };
-  const handleCheckBox = (e, rowId) => {
-    const { name, id, checked } = e.target;
-    let form = props.results;
-    jpSet(form, name, checked);
+  const toggleExpanded = (rowId) => {
+    setExpandedRowIds((ids) =>
+      ids.includes(rowId) ? ids.filter((id) => id !== rowId) : [...ids, rowId],
+    );
   };
 
-  const handleAutomatedCheck = (checked, name) => {
-    let form = props.results;
-    jpSet(form, name, checked);
+  /**
+   * OGC-1029 (FR-B2) — the guarded bulk release: only the Clear lane is sent,
+   * and the server re-derives the lane before releasing anything. Skipped rows
+   * (no longer clear) are reported, never released.
+   */
+  const handleReleaseAllClear = () => {
+    if (bulkBusy) {
+      return;
+    }
+    setBulkBusy(true);
+    postToOpenElisServerJsonResponse(
+      "/rest/AccessionValidation/release-clear",
+      JSON.stringify(
+        bulkReleaseRequest(props.results, props.params, clearLaneRows),
+      ),
+      (response) => {
+        setBulkBusy(false);
+        const released = response?.released?.length || 0;
+        const skipped = response?.skipped?.length || 0;
+        if (response?.error || released === 0) {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({ id: bulkOutcomeKey(response) }),
+          });
+          setNotificationVisible(true);
+          return;
+        }
+        addNotification({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: skipped
+            ? intl.formatMessage(
+                { id: "label.validation.bulk.partial" },
+                { released, skipped },
+              )
+            : intl.formatMessage(
+                { id: "label.validation.bulk.success" },
+                { count: released },
+              ),
+        });
+        setNotificationVisible(true);
+        setBulkOpen(false);
+        window.location.assign("/validation" + props.params);
+      },
+    );
   };
-  const validateResults = (e, rowId) => {
-    handleChange(e, rowId);
-  };
-
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const fullTestName = row.testName;
@@ -438,58 +489,59 @@ const Validation = (props) => {
         );
       }
 
-      case "save":
+      case "checkBeforeRelease": {
+        const triage = triageByRowId.get(row.id);
+        if (!triage) {
+          return null;
+        }
+        const needsReview = triage.lane !== LANE_CLEAR;
+        if (triage.chips.length === 0 && !needsReview) {
+          return null;
+        }
         return (
-          <>
-            <div data-testid="Checkbox">
-              <Field name="isAccepted">
-                {({ field }) => (
-                  <Checkbox
-                    id={"resultList" + row.id + ".isAccepted"}
-                    name={"resultList[" + row.id + "].isAccepted"}
-                    labelText=""
-                    value={true}
-                    onChange={(e) => handleCheckBox(e, row.id)}
-                  />
-                )}
-              </Field>
-            </div>
-          </>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: "0.25rem",
+            }}
+          >
+            {triage.chips.length > 0 && (
+              <div
+                data-testid={`check-before-release-${row.id}`}
+                style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}
+              >
+                {triage.chips.map((chip) => (
+                  <Tag
+                    key={chip}
+                    type="red"
+                    size="sm"
+                    renderIcon={WarningAltFilled}
+                  >
+                    <strong>
+                      {intl.formatMessage({
+                        id: `label.validation.signal.${chip}`,
+                      })}
+                    </strong>
+                  </Tag>
+                ))}
+              </div>
+            )}
+            {needsReview && (
+              <Button
+                kind="ghost"
+                size="sm"
+                data-testid={`review-row-${row.id}`}
+                aria-expanded={expandedRowIds.includes(row.id)}
+                onClick={() => toggleExpanded(row.id)}
+              >
+                <FormattedMessage id="label.validation.review.action.review" />
+              </Button>
+            )}
+          </div>
         );
-
-      case "retest":
-        return (
-          <>
-            <Field name="isRejected">
-              {({ field }) => (
-                <Checkbox
-                  id={"resultList" + row.id + ".isRejected"}
-                  name={"resultList[" + row.id + "].isRejected"}
-                  labelText=""
-                  value={true}
-                  onChange={(e) => handleCheckBox(e, row.id)}
-                />
-              )}
-            </Field>
-          </>
-        );
-
-      case "notes":
-        return (
-          <>
-            <div className="note">
-              <TextArea
-                id={"resultList" + row.id + ".note"}
-                name={"resultList[" + row.id + "].note"}
-                disabled={false}
-                type="text"
-                labelText=""
-                rows={2}
-                onChange={(e) => handleChange(e, row.id)}
-              ></TextArea>
-            </div>
-          </>
-        );
+      }
 
       case "pastNotes":
         return (
@@ -593,93 +645,254 @@ const Validation = (props) => {
               <FormattedMessage id="validation.label.nonconform" />
             </b>
           </Column>
-          <Column lg={3} md={2} sm={4}>
-            <Checkbox
-              id={"saveallnormal"}
-              name={"autochecks"}
-              labelText={intl.formatMessage({ id: "validation.accept.normal" })}
-              onChange={(e) => {
-                const nomalResults = props.results.resultList?.filter(
-                  (result) => result.normal == true,
-                );
-                nomalResults.forEach((result) => {
-                  const checkbox = document.getElementById(
-                    "resultList" + result.id + ".isAccepted",
-                  );
-                  checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
-                });
-              }}
-            />
-          </Column>
-          <Column lg={3} md={2} sm={4}>
-            <Checkbox
-              id={"saveallresults"}
-              name={"autochecks"}
-              labelText={intl.formatMessage({ id: "validation.accept.all" })}
-              onChange={(e) => {
-                const nomalResults = props.results.resultList;
-                nomalResults.forEach((result) => {
-                  const checkbox = document.getElementById(
-                    "resultList" + result.id + ".isAccepted",
-                  );
-                  checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
-                });
-              }}
-            />
-          </Column>
-          <Column lg={3} md={2} sm={4}>
-            <Checkbox
-              id={"retestalltests"}
-              name={"autochecks"}
-              labelText={intl.formatMessage({ id: "validation.reject.all" })}
-              onChange={(e) => {
-                const nomalResults = props.results.resultList;
-                nomalResults.forEach((result) => {
-                  const checkbox = document.getElementById(
-                    "resultList" + result.id + ".isRejected",
-                  );
-                  checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
-                });
-              }}
-            />
+          <Column
+            lg={9}
+            md={8}
+            sm={4}
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            {bulkAllowed ? (
+              <Button
+                size="sm"
+                data-testid="release-all-clear"
+                disabled={clearLaneRows.length === 0 || bulkBusy}
+                onClick={() => setBulkOpen(true)}
+              >
+                {intl.formatMessage(
+                  { id: "label.validation.bulk.releaseAllClear" },
+                  { count: clearLaneRows.length },
+                )}
+              </Button>
+            ) : (
+              <span
+                className="cds--label"
+                data-testid="release-all-clear-disabled"
+              >
+                {intl.formatMessage({ id: "label.validation.bulk.disabled" })}
+              </span>
+            )}
           </Column>
         </Grid>
       )}
-      <Formik
-        initialValues={ValidationSearchFormValues}
-        //validationSchema={}
-        onSubmit
-        onChange
-      >
-        {({ values, errors, touched, handleChange }) => (
-          <Form onChange={handleChange}>
+      {bulkOpen && (
+        <Modal
+          open
+          passiveModal
+          size="lg"
+          modalHeading={intl.formatMessage({
+            id: "label.validation.bulk.heading",
+          })}
+          onRequestClose={() => setBulkOpen(false)}
+        >
+          <div data-testid="release-all-clear-modal">
+            <p>
+              {intl.formatMessage(
+                { id: "label.validation.bulk.body" },
+                { count: clearLaneRows.length },
+              )}
+            </p>
+            <table
+              className="cds--data-table cds--data-table--sm"
+              style={{ width: "100%", margin: "1rem 0" }}
+              data-testid="release-all-clear-list"
+            >
+              <thead>
+                <tr>
+                  <th>
+                    <FormattedMessage id="label.validation.bulk.column.accession" />
+                  </th>
+                  <th>
+                    <FormattedMessage id="column.name.testName" />
+                  </th>
+                  <th>
+                    <FormattedMessage id="column.name.result" />
+                  </th>
+                  <th>
+                    <FormattedMessage id="column.name.normalRange" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {clearLaneRows.map((row) => (
+                  <tr
+                    key={row.id}
+                    data-testid={`release-all-clear-row-${row.id}`}
+                  >
+                    <td>
+                      {configurationProperties.AccessionFormat === "ALPHANUM"
+                        ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
+                        : row.accessionNumber}
+                    </td>
+                    <td>{row.testName}</td>
+                    <td>{row.result}</td>
+                    <td>{row.normalRange}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {qcAckRequired && !qcAckSatisfied && (
+              <p data-testid="release-all-clear-qc-hint">
+                <FormattedMessage id="label.validation.review.release.qcAckFirst" />
+              </p>
+            )}
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+              <span data-testid="release-all-clear-sign">
+                <ESignatureButton
+                  meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+                  context={intl.formatMessage(
+                    {
+                      id: "esig.context.releaseAllClear",
+                      defaultMessage:
+                        "Release {count} clear result(s) for {accession}",
+                    },
+                    {
+                      count: clearLaneRows.length,
+                      accession:
+                        props.results?.accessionNumber ||
+                        clearLaneRows[0]?.accessionNumber ||
+                        "",
+                    },
+                  )}
+                  recordType="VALIDATION_BATCH"
+                  recordId={Number(clearLaneRows[0]?.analysisId) || 0}
+                  onBeforeSign={handleBeforeSign}
+                  onSign={handleReleaseAllClear}
+                  disabled={
+                    bulkBusy || !qcAckSatisfied || clearLaneRows.length === 0
+                  }
+                  size="sm"
+                >
+                  {intl.formatMessage(
+                    { id: "label.validation.bulk.releaseAllClear" },
+                    { count: clearLaneRows.length },
+                  )}
+                </ESignatureButton>
+              </span>
+              <Button
+                kind="secondary"
+                size="sm"
+                onClick={() => setBulkOpen(false)}
+                data-testid="release-all-clear-cancel"
+              >
+                <FormattedMessage id="label.validation.review.action.cancel" />
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {triaged.length > 0 && (
+        <div
+          data-testid="validation-triage-filters"
+          role="group"
+          aria-label={intl.formatMessage({
+            id: "label.validation.triage.filterLabel",
+          })}
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+            alignItems: "center",
+            margin: "1rem 0",
+          }}
+        >
+          {FILTERS.map((filter) => (
+            <Button
+              key={filter}
+              size="sm"
+              kind={activeFilter === filter ? "primary" : "tertiary"}
+              aria-pressed={activeFilter === filter}
+              data-testid={`triage-filter-${filter}`}
+              onClick={() => {
+                setActiveFilter(filter);
+                setPage(1);
+              }}
+            >
+              {intl.formatMessage({ id: `label.validation.filter.${filter}` })}{" "}
+              ({filterCounts[filter]})
+            </Button>
+          ))}
+          <span
+            data-testid="validation-lane-summary"
+            style={{ marginLeft: "auto", display: "flex", gap: "0.25rem" }}
+          >
+            <Tag type="green" size="sm">
+              {intl.formatMessage({ id: "label.validation.lane.clear" })}:{" "}
+              {clearLaneCount}
+            </Tag>
+            <Tag type="gray" size="sm">
+              {intl.formatMessage({ id: "label.validation.lane.needsReview" })}:{" "}
+              {triaged.length - clearLaneCount}
+            </Tag>
+          </span>
+        </div>
+      )}
+      {triaged.length > 0 && autoValidatedAccession && (
+        <div
+          data-testid="auto-validated-toggle"
+          style={{ margin: "0 0 0.5rem 0" }}
+        >
+          <Toggle
+            id="include-auto-validated"
+            size="sm"
+            hideLabel
+            labelText={intl.formatMessage({
+              id: "label.validation.autoValidated.toggle",
+            })}
+            labelA={intl.formatMessage({
+              id: "label.validation.autoValidated.toggle",
+            })}
+            labelB={intl.formatMessage({
+              id: "label.validation.autoValidated.toggle",
+            })}
+            toggled={includeAutoValidated}
+            onToggle={(checked) => setIncludeAutoValidated(checked)}
+          />
+        </div>
+      )}
+      <>
+        <>
+          <>
             <DataTable
-              data={
-                props.results
-                  ? props?.results?.resultList?.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )
-                  : []
-              }
+              data={visibleRows.slice((page - 1) * pageSize, page * pageSize)}
               columns={columns}
               isSortable
+              expandableRows
+              expandableRowExpanded={(row) => expandedRowIds.includes(row.id)}
+              onRowExpandToggled={(expanded, row) =>
+                setExpandedRowIds((ids) =>
+                  expanded
+                    ? ids.includes(row.id)
+                      ? ids
+                      : [...ids, row.id]
+                    : ids.filter((id) => id !== row.id),
+                )
+              }
+              expandableRowsComponent={ValidationReviewPanel}
+              expandableRowsComponentProps={{
+                rows: props.results?.resultList || [],
+                triageByRowId,
+                configurationProperties,
+                qcAck: {
+                  required: qcAckRequired,
+                  satisfied: qcAckSatisfied,
+                  beforeSign: handleBeforeSign,
+                },
+                onActionDone: handleRowActionDone,
+                onNoteChange: handleRowNoteChange,
+                onStale: handleStale,
+              }}
             ></DataTable>
             <Pagination
               onChange={handlePageChange}
               page={page}
               pageSize={pageSize}
               pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={
-                props.results
-                  ? props.results.resultList
-                    ? props.results.resultList.length
-                    : 0
-                  : 0
-              }
+              totalItems={visibleRows.length}
               forwardText={intl.formatMessage({ id: "pagination.forward" })}
               backwardText={intl.formatMessage({ id: "pagination.backward" })}
               itemRangeText={(min, max, total) =>
@@ -805,21 +1018,84 @@ const Validation = (props) => {
               </div>
             )}
 
-            <ESignatureButton
-              meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
-              context={buildSignContext()}
-              recordType="VALIDATION_BATCH"
-              recordId={getFirstAnalysisId()}
-              onBeforeSign={handleBeforeSign}
-              onSign={handleSave}
-              disabled={isSubmitting || !qcAckSatisfied}
-              style={{ marginTop: "16px" }}
-            >
-              <FormattedMessage id="label.button.validate" />
-            </ESignatureButton>
-          </Form>
-        )}
-      </Formik>
+            {includeAutoValidated && autoValidatedAccession && (
+              <div
+                data-testid="auto-validated-section"
+                style={{ marginTop: "1rem" }}
+              >
+                <h5 style={{ marginBottom: "0.5rem" }}>
+                  {intl.formatMessage(
+                    { id: "label.validation.autoValidated.heading" },
+                    { count: autoValidatedRows ? autoValidatedRows.length : 0 },
+                  )}
+                </h5>
+                <span className="cds--label">
+                  <FormattedMessage id="label.validation.autoValidated.hint" />
+                </span>
+                {autoValidatedRows && autoValidatedRows.length === 0 && (
+                  <p data-testid="auto-validated-empty">
+                    <FormattedMessage id="label.validation.autoValidated.empty" />
+                  </p>
+                )}
+                {autoValidatedRows && autoValidatedRows.length > 0 && (
+                  <table
+                    className="cds--data-table cds--data-table--sm"
+                    style={{ width: "100%" }}
+                    data-testid="auto-validated-table"
+                  >
+                    <thead>
+                      <tr>
+                        <th>
+                          <FormattedMessage id="label.validation.bulk.column.accession" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="column.name.testName" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="column.name.result" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="column.name.normalRange" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="label.validation.autoValidated.releasedOn" />
+                        </th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {autoValidatedRows.map((row, index) => (
+                        <tr
+                          key={`${row.analysisId}-${index}`}
+                          data-testid={`auto-validated-row-${row.analysisId}`}
+                        >
+                          <td>
+                            {configurationProperties.AccessionFormat ===
+                            "ALPHANUM"
+                              ? convertAlphaNumLabNumForDisplay(
+                                  row.accessionNumber,
+                                )
+                              : row.accessionNumber}
+                          </td>
+                          <td>{row.testName}</td>
+                          <td>{row.result}</td>
+                          <td>{row.normalRange}</td>
+                          <td>{row.resultDate}</td>
+                          <td>
+                            <Tag size="sm" type="gray">
+                              <FormattedMessage id="label.validation.autoValidated.tag" />
+                            </Tag>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </>
+        </>
+      </>
     </>
   );
 };

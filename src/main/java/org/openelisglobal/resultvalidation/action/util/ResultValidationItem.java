@@ -58,6 +58,8 @@ public class ResultValidationItem implements ResultItem, Serializable {
     private String resultType;
 
     private boolean isModified = false;
+    private boolean critical = false;
+    private String criticalRange = "";
     private Analysis analysis;
     private String resultId;
     private Result result;
@@ -389,6 +391,22 @@ public class ResultValidationItem implements ResultItem, Serializable {
 
     public void setReflexGroup(boolean isReflexGroup) {
         this.isReflexGroup = isReflexGroup;
+    }
+
+    public boolean isCritical() {
+        return critical;
+    }
+
+    public void setCritical(boolean critical) {
+        this.critical = critical;
+    }
+
+    public String getCriticalRange() {
+        return criticalRange;
+    }
+
+    public void setCriticalRange(String criticalRange) {
+        this.criticalRange = criticalRange;
     }
 
     public boolean isChildReflex() {

@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Fixture for the Validation v4 per-row review actions (OGC-1028). One
+        accession with two client analyses awaiting validation (Technical Acceptance):
+        id=100 is the one the tests release / modify, id=102 stays put so the sample
+        never rolls up to "finished" during a test. No QC analyses, so the S-08 QC
+        release gate is not in play here — that gate has its own fixture (validation-qc-ack.xml). -->
+
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- status_of_sample names must match StatusService.addTo*Map(). id=1 is
+        the sample/sample_item status; id=2 "Technical Acceptance" is where analyses
+        await validation; id=6 "Finalized" is the release target. -->
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" name="Entered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="2"
+        description="Technical Acceptance" code="2" status_type="ANALYSIS"
+        name="Technical Acceptance" lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" name="Finalized"
+        lastupdated="2025-01-01 12:00:00" />
+    <!-- id=9 "Biologist Rejection": where retest / reject (OGC-1030) send an
+        analysis. -->
+    <status_of_sample id="9"
+        description="Biologist Rejection" code="9" status_type="ANALYSIS"
+        name="Biologist Rejection" lastupdated="2025-01-01 12:00:00" />
+
+    <localization id="1" description="Test Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Lead (Pb)" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <type_of_sample id="1" description="Water Sample"
+        domain="E" name_localization_id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test_section id="1" name="Environmental"
+        description="Environmental Testing" is_external="N"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="env" domain="ENVIRONMENTAL" />
+
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test id="1" description="Lead (Pb)" loinc="10368-9" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="1" name="Lead"
+        guid="test-lead-001" name_localization_id="1" />
+
+    <!-- The numeric test_result row the modify path binds a corrected value
+        to. -->
+    <test_result id="1" test_id="1" result_group="1"
+        tst_rslt_type="N" significant_digits="2"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        is_quantifiable="false" is_active="true" is_normal="true" />
+
+    <sample id="100" accession_number="VAL-RP-001" status_id="1"
+        received_date="2025-06-01 00:00:00.0"
+        entered_date="2025-06-01 00:00:00.0"
+        collection_date="2025-06-01 00:00:00.0"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <sample_item id="100" sort_order="1" status_id="1"
+        samp_id="100" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <analysis id="100" sampitem_id="100" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+    <analysis id="102" sampitem_id="100" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+
+    <result id="100" analysis_id="100" result_type="N" value="10.5"
+        is_reportable="Y" lastupdated="2025-06-01 12:00:00" />
+    <result id="102" analysis_id="102" result_type="N" value="8.0"
+        is_reportable="Y" lastupdated="2025-06-01 12:00:00" />
+</dataset>
