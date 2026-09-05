@@ -337,9 +337,13 @@ the existing stack.
    integration tests and visible behavior in real-router RTL before the
    assembled story.
 3. **Connection and QC.** In M3, restore the Bridge-provided latest probe after
-   reload; make the canonical New Control Lot action submit successfully;
-   restrict its Test choices to active tests mapped for the selected analyzer;
-   and show profile display names rather than raw identifiers. Rerun activation
+   reload. Starting Add Analyzer while another analyzer is open must clear the
+   prior identity and create a new analyzer, while setup breadcrumbs and
+   lifecycle confirmations must name the current analyzer and focused action.
+   Make the canonical New Control Lot action submit successfully; restrict its
+   Test choices to active tests mapped for the selected analyzer; surface
+   required statistics and server validation beside their owning fields; and
+   show profile display names rather than raw identifiers. Rerun activation
    against the current build and fix it in this candidate if the historical
    server failure remains; do not change activation from stale evidence alone.
    Prove probe persistence in Bridge/OE consumer tests and QC behavior in OE
