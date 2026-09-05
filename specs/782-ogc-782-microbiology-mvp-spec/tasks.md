@@ -242,6 +242,27 @@ product sequence.
   behavior waits for a functional episode boundary. Retained repeats and their
   `FIRST_OR_REPEAT = R` marker move with the qualified output contract instead
   of changing the legacy 15-column CSV in isolation.
+
+  **Next-deployment acceptance remediation:** Do not deploy another AMR build
+  or move this iteration to `[x]` until every current actionable review finding
+  is resolved in this top PR or disproved against its current code:
+
+  - Keep a released no-growth result visible from its persisted patient-report
+    projection. The finalized case must not show report-content,
+    isolate-required, or release blockers that contradict the successful final
+    release. WHONET may remain ineligible when there is no isolate, but its
+    explanation must be accurate and separate from patient-report readiness.
+  - Reproduce the reported order-entry carry-over and non-culture submission
+    failure from a clean, service-created scenario. Fix both if they remain; if
+    either does not reproduce, retain explicit rerun evidence rather than
+    changing unrelated order behavior.
+  - Correct unclear or misfiled review instructions in Grist, preserve the
+    submitted answers, and link each actionable answer directly to this top PR.
+    Do not mirror issue state in this roadmap.
+  - Prove the corrected behavior with focused service and Carbon component
+    tests plus the affected registered Playwright journeys. Run one code-qa
+    pass, restore the required E2E checkpoint, deploy the exact top-PR head,
+    and rerun the affected human-review stories before moving to another slice.
 - [ ] Complete M-09 readiness and repair for patient origins, patient types,
   departments, breakpoint standards, and phenotype flags, reusing each owning
   catalog and avoiding parallel mapping stores.
