@@ -102,22 +102,30 @@ Analyzer rows used by harness tests are created via REST API seeding:
 to prove user stories through visible UI evidence. They are not the place for
 backend or infrastructure assertions.
 
+The harness demo bucket is intentionally empty after legacy transport scenarios
+were reclassified as foundational coverage. A feature adds a harness demo only
+when its complete user story can satisfy this contract; OGC-1054 does so at M4.
+
 Allowed in demo stories:
 
 - User-triggered UI actions
 - Visible page transitions and durable DOM evidence
 - Presentation helpers such as `videoPause()`, `showTitleCard()`, and `showStepCard()`
-- Non-UI setup inputs only when unavoidable, such as simulator triggers or watched-folder drops
+- Deterministic fixture loading before the user story begins
 
 Banned in demo specs and demo-facing helpers:
 
 - `page.on("console")` or `page.on("pageerror")`
 - `captureDebugContext`
-- `page.request.get()`, `page.request.put()`, `page.request.delete()`
+- Playwright request APIs or browser `fetch()`
 - `waitForResponse()` used as proof
+- `expect.poll()`; use Playwright's web-first visible UI assertions
+- Network interception or stubbing
 - Filesystem or server-state polling to decide success
 
-`expect.poll()` is allowed only for DOM predicates (not backend/file polling).
+The guard follows runtime local imports from harness demo specs, so moving a
+prohibited operation into a helper does not make the story UI-only. Runner-level
+diagnostics remain separate from demo-facing behavior helpers.
 
 If a behavior needs backend consistency checks, config persistence checks, or
 bridge/file-watcher proof, move it to backend integration tests or CI health
@@ -142,7 +150,7 @@ Canonical directories:
 Only `demo/**` specs participate in auto-video CI evidence policy. `manual-only/**`
 specs never run in ordinary PR CI.
 
-### File import wait tuning (`file-import-results.spec.ts`)
+### File import wait tuning (`analyzer-file-results.spec.ts`)
 
 CI sets **`FILE_IMPORT_POLL_MS=5000`** and **`FILE_IMPORT_DROP_BUFFER_MS=45000`** on
 Playwright jobs (see
@@ -269,10 +277,8 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
 cd frontend
 # Core stack (e.g. OGC-284 barcode stories)
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:core-demo-video
-# Full harness (QuantStudio / file import / GeneXpert demos) via parity bootstrap
+# Full harness demo story via parity bootstrap
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo-video
-# Analyzer demo flow only (7 Madagascar-scoped flows) via parity bootstrap
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:analyzer-demo-flow-video
 # Videos saved to frontend/test-results/<test-name>/video.webm
 ```
 

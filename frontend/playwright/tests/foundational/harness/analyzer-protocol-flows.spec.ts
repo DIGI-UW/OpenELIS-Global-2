@@ -1,5 +1,5 @@
 /**
- * Unified Madagascar Analyzer Demo Flows
+ * Unified Madagascar Analyzer Protocol Flows
  *
  * Each test exercises the full E2E lifecycle:
  *   1. Create analyzer from profile via dashboard UI
@@ -15,7 +15,6 @@
  */
 
 import { expect, test } from "../../../helpers/test-base";
-import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import { findAnalyzerRow } from "../../../helpers/analyzer-dashboard";
 import {
   createAnalyzerFromProfile,
@@ -211,7 +210,6 @@ async function verifyResults(
   config: AnalyzerTestConfig,
   pushResults: PushResult[],
   primarySampleId: string,
-  presentation: import("../../../helpers/demo-presentation").DemoPresentation,
 ) {
   const allAccessions = pushResults
     .map((r) => r.sampleId || primarySampleId)
@@ -235,45 +233,26 @@ async function verifyResults(
       await expectResultVisible(resultsRegion, expected.result);
     }
   }
-
-  await presentation.pause(2_000);
 }
 
 // ── Test Suite ───────────────────────────────────────────────────
 
-test.describe("Madagascar analyzer demo flows", () => {
+test.describe("Madagascar analyzer protocol integrations", () => {
   test.setTimeout(240_000);
 
   for (const config of CONFIGS) {
-    test(`${config.displayName}: full E2E flow`, async ({ page }, testInfo) => {
-      const presentation = createDemoPresentation(page, testInfo);
-
-      await presentation.title(
-        config.displayName,
-        `${config.protocol} → Bridge → OpenELIS → Review → Accept`,
-      );
-
+    test(`${config.displayName}: transport integration flow`, async ({
+      page,
+    }, testInfo) => {
       // Step 1: Create analyzer from profile via dashboard UI
-      await presentation.step(
-        1,
-        `Create ${config.name} from profile via dashboard`,
-      );
-      const dynamicIp = await createAnalyzerFromProfile(
-        page,
-        config,
-        presentation,
-      );
+      const dynamicIp = await createAnalyzerFromProfile(page, config);
       await findAnalyzerRow(page, config.name, testInfo);
 
       // Step 2: Test connection (skip for FILE — no TCP)
       if (config.protocol !== "FILE") {
-        await presentation.step(2, "Test analyzer connection");
         const analyzerRow = await findAnalyzerRow(page, config.name, testInfo);
-        await testAnalyzerConnection(page, analyzerRow, presentation);
+        await testAnalyzerConnection(page, analyzerRow);
       }
-
-      const hasTestConnection = config.protocol !== "FILE";
-      let step = hasTestConnection ? 3 : 2;
 
       // Override push destination with dynamic bridge IP for TCP analyzers
       let pushConfig = config.push;
@@ -291,15 +270,7 @@ test.describe("Madagascar analyzer demo flows", () => {
       }
 
       // Step 3: Push result via mock server
-      await presentation.step(
-        step,
-        `Send ${config.protocol} result → Bridge → OpenELIS`,
-      );
-      const pushResults = await pushAnalyzerResult(
-        page,
-        pushConfig,
-        presentation,
-      );
+      const pushResults = await pushAnalyzerResult(page, pushConfig);
 
       expect(
         pushResults.length,
@@ -313,29 +284,10 @@ test.describe("Madagascar analyzer demo flows", () => {
       ).toBeTruthy();
 
       // Step 4: Wait for results from bridge
-      step++;
-      await presentation.step(
-        step,
-        "Waiting for results from analyzer bridge...",
-      );
-      await verifyResults(
-        page,
-        config,
-        pushResults,
-        primarySampleId,
-        presentation,
-      );
-
-      await presentation.step(step, "Results staged — ready to accept");
-      await presentation.pause(3_000);
+      await verifyResults(page, config, pushResults, primarySampleId);
 
       // Step 5: Accept results
-      await acceptAndVerifyResults(page, presentation, step, primarySampleId);
-
-      await presentation.title(
-        "Flow Complete",
-        `${config.displayName}: ${pushResults.length} results accepted.`,
-      );
+      await acceptAndVerifyResults(page, primarySampleId);
 
       // Teardown: delete analyzer + remove mock network
       await teardownAnalyzer(page, config);

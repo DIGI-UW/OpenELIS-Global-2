@@ -12,7 +12,6 @@
  */
 
 import { expect, Page } from "@playwright/test";
-import type { DemoPresentation } from "./demo-presentation";
 import type { PushConfig, PushResult } from "./analyzer-test-config";
 
 /**
@@ -70,7 +69,6 @@ async function resolveAnalyzerId(
 export async function pushAnalyzerResult(
   page: Page,
   push: PushConfig,
-  presentation: DemoPresentation,
 ): Promise<PushResult[]> {
   // Address the provisioned instance (single identity key) for TCP analyzers so
   // the mock sources the push from the analyzer's own IP; FILE has no instance,
@@ -126,8 +124,6 @@ export async function pushAnalyzerResult(
       ).toBe(true);
     }
   }
-
-  await presentation.pause(push.protocol === "FILE" ? 2_000 : 1_000);
 
   // Normalize response into PushResult[] regardless of protocol
   if (json.metadata?.results) {

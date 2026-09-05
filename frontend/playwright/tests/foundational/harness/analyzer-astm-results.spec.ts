@@ -1,7 +1,6 @@
-import { expect, Locator, Page, test } from "../../../helpers/test-base";
+import type { Locator, Page } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
-import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import type { DemoPresentation } from "../../../helpers/demo-presentation";
 import {
   findAnalyzerRow,
   goToAnalyzerDashboard,
@@ -28,17 +27,12 @@ const RESULTS_TIMEOUT = 90_000;
 
 const EXPECTED_RESULT = "NEGATIVE";
 
-async function testConnection(
-  page: Page,
-  analyzerRow: Locator,
-  presentation: DemoPresentation,
-) {
+async function testConnection(page: Page, analyzerRow: Locator) {
   const overflow = analyzerRow
     .first()
     .locator('[data-testid^="analyzer-row-overflow-"]')
     .first();
   await overflow.click();
-  await presentation.pause(500);
 
   const testConnectionAction = page
     .locator('[data-testid*="analyzer-action-test-connection"]')
@@ -74,7 +68,6 @@ async function testConnection(
     }
   }
   expect(connected).toBeTruthy();
-  await presentation.pause(1_500);
 
   await connectionModal
     .locator('[data-testid="test-connection-close-button"]')
@@ -82,10 +75,7 @@ async function testConnection(
   await expect(connectionModal).toBeHidden({ timeout: UI_TIMEOUT });
 }
 
-async function pushAstmMessage(
-  page: Page,
-  presentation: DemoPresentation,
-): Promise<string> {
+async function pushAstmMessage(page: Page): Promise<string> {
   const response = await page.request.post(
     `${SIMULATOR_URL}/simulate/astm/genexpert_astm`,
     {
@@ -111,7 +101,6 @@ async function pushAstmMessage(
   }
   const sampleId = result.sample_id;
   if (!sampleId) throw new Error("Push returned no sample_id");
-  await presentation.pause(1_000);
   return sampleId;
 }
 
@@ -119,7 +108,6 @@ async function verifyResults(
   page: Page,
   analyzerName: string,
   sampleId: string,
-  presentation: DemoPresentation,
 ) {
   await openAnalyzerResultsAndWaitForText(page, analyzerName, sampleId, {
     timeoutMs: RESULTS_TIMEOUT,
@@ -133,21 +121,12 @@ async function verifyResults(
     resultsRegion.getByText(accessionTextRegExp(sampleId)).first(),
   ).toBeVisible({ timeout: UI_TIMEOUT });
   await expectResultVisible(resultsRegion, EXPECTED_RESULT);
-
-  await presentation.pause(2_000);
 }
 
-test.describe("GeneXpert ASTM demo story", () => {
+test.describe("GeneXpert ASTM harness integration", () => {
   test.setTimeout(180_000);
 
   test("review and accept staged ASTM results", async ({ page }, testInfo) => {
-    const presentation = createDemoPresentation(page, testInfo);
-
-    await presentation.title(
-      "GeneXpert ASTM Results",
-      "Find analyzer, review staged results, and accept them.",
-    );
-
     await goToAnalyzerDashboard(page, testInfo);
 
     await cleanupAnalyzersMatching(
@@ -155,23 +134,14 @@ test.describe("GeneXpert ASTM demo story", () => {
       /Cepheid GeneXpert \(ASTM Mode\) E2E/i,
     );
 
-    await presentation.step(1, "Find the pre-loaded GeneXpert analyzer");
     const analyzerRow = await findAnalyzerRow(page, PRELOADED_NAME, testInfo);
 
-    await presentation.step(2, "Confirm the analyzer connection");
-    await testConnection(page, analyzerRow, presentation);
+    await testConnection(page, analyzerRow);
 
-    await presentation.step(3, "Send a GeneXpert ASTM message");
-    const sampleId = await pushAstmMessage(page, presentation);
+    const sampleId = await pushAstmMessage(page);
 
-    await presentation.step(4, "Review the staged results");
-    await verifyResults(page, PRELOADED_NAME, sampleId, presentation);
+    await verifyResults(page, PRELOADED_NAME, sampleId);
 
-    await acceptAndVerifyResults(page, presentation, 4, sampleId);
-
-    await presentation.title(
-      "Story Complete",
-      "The GeneXpert workflow stayed UI-only in both demo modes.",
-    );
+    await acceptAndVerifyResults(page, sampleId);
   });
 });
