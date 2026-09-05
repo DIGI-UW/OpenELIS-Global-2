@@ -1,7 +1,17 @@
 # Feature Specification: Westgard QC Rules Dashboard
 
-**Feature Branch**: `003-westgard-qc` **Created**: 2026-04-13 **Status**: Draft
-(v1 implementation in review) **Jira**:
+> **Analyzer-boundary amendment (2026-08-24):** This specification governs
+> OpenELIS operational Quality Control: control lots, QC results, statistics,
+> Westgard evaluation, violations, alerts, and their user workflows. Its older
+> per-analyzer editable identification-rule design is superseded by the
+> [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+> Control-result recognition is immutable behavior of the pinned Bridge profile
+> revision. `AnalyzerQcRule`, profile-to-rule copying, and OpenELIS-pushed
+> classifiers are not part of the target architecture and must not be extended.
+
+**Feature Branch**: `003-westgard-qc` **Created**: 2026-04-13 **Status**:
+Operational-QC foundation implemented; analyzer-identification path superseded
+**Jira**:
 [OGC-41 — Westgard Rules Dashboard for Analyzers](https://uwdigi.atlassian.net/browse/OGC-41)
 **Labels**: Madagascar, Indonesia
 
@@ -101,12 +111,11 @@ for initial/rolling, ACTIVE for manufacturer-fixed).
 
 ### User Story 3 — Automatic QC Detection from Analyzer Files (Priority: P1)
 
-When the analyzer bridge processes a result file (Excel, CSV) or ASTM message,
-it evaluates configurable QC identification rules (e.g., specimen ID starts with
-"CNEG", or the Task column says "STANDARD") to determine which rows are QC
-control samples vs patient samples. QC samples are tagged before results reach
-OpenELIS. OpenELIS routes tagged results to the QC pipeline, computes z-scores,
-and triggers Westgard rule evaluation.
+When the analyzer bridge processes analyzer traffic, it uses only the exact
+pinned profile revision's explicit control-result recognition behavior to
+distinguish control results from patient results. Control results are tagged
+before they reach OpenELIS. OpenELIS routes tagged results to the QC pipeline,
+computes z-scores, and triggers Westgard rule evaluation.
 
 **Why this priority**: This is the data intake path. Without automatic QC
 identification, no results flow into the Westgard evaluation engine.
@@ -120,8 +129,9 @@ as QC, creates a QC result, and (if the lot is active) runs Westgard evaluation.
 1. **Given** a QuantStudio Excel file contains rows with Task="STANDARD",
    **When** the bridge processes the file, **Then** those rows are identified as
    QC control samples.
-2. **Given** a FILE analyzer has no QC rules configured, **When** a file is
-   processed, **Then** all rows are treated as patient samples (no QC tagging).
+2. **Given** the pinned profile explicitly declares that the analyzer does not
+   transmit controls, **When** traffic is processed, **Then** no result is
+   classified as a control and Bridge does not guess.
 3. **Given** a QC-tagged result arrives and the control lot is ACTIVE, **When**
    the result is persisted, **Then** a z-score is computed and Westgard rules
    are evaluated without blocking the result ingestion pipeline.
@@ -203,33 +213,6 @@ appears in the Alerts tab within seconds, verify the acknowledge action works.
 
 ---
 
-### User Story 7 — Admin Configures Per-Analyzer QC Rules (Priority: P3)
-
-A system administrator opens an analyzer's QC rules page to customize which
-patterns identify QC samples for that specific instrument. Rules support four
-types: field value equals, field value contains, specimen ID prefix matching,
-and specimen ID regex patterns. Rules are seeded automatically from the
-analyzer's profile when the analyzer is created, and the admin can add, edit, or
-disable individual rules.
-
-**Why this priority**: Profile-driven defaults cover most instruments. Manual
-customization is for edge cases where the lab's naming convention differs from
-the profile default.
-
-**Independent Test**: Navigate to an analyzer's QC rules page, verify rules
-seeded from profile appear, add a new rule, verify it persists and is picked up
-by the bridge.
-
-**Acceptance Scenarios**:
-
-1. **Given** a QuantStudio analyzer is created from its profile, **When** the
-   admin opens the QC rules page, **Then** 6 rules are pre-populated (2
-   field-equals for STANDARD/NTC + 4 specimen-ID prefixes).
-2. **Given** the admin adds a new specimen ID prefix rule, **When** the bridge
-   next refreshes, **Then** the new rule appears in the bridge's active rules.
-
----
-
 ### Edge Cases
 
 - What happens when a QC result arrives but no matching control lot exists? The
@@ -238,8 +221,10 @@ by the bridge.
 - What happens when a lot is still in ESTABLISHMENT phase? Results are stored
   and contribute to statistics accumulation, but Westgard rules are NOT
   evaluated (no z-score baseline available yet).
-- What happens when the bridge has no QC rules for an analyzer? All samples are
-  treated as patient samples. No QC identification occurs.
+- What happens when a published profile explicitly declares no transmitted
+  controls? Bridge classifies no result as a control and does not guess. A
+  missing or invalid recognition declaration is a profile-contract error, not
+  an implicit patient-result default.
 - What happens if rule evaluation fails (e.g., database timeout)? The QC result
   is already saved. The evaluation failure is logged but does not block the
   analyzer ingestion pipeline.
@@ -252,14 +237,14 @@ by the bridge.
 
 **QC Identification**
 
-- **FR-001**: The system MUST evaluate configurable per-analyzer rules to
-  identify QC samples before results reach the LIS. Rule evaluation happens on
-  the analyzer bridge component, which pulls the active rule set from OpenELIS's
-  analyzer registration API at bootstrap.
-- **FR-002**: Four rule types MUST be supported: field value equals, field value
-  contains, specimen ID prefix matching, and specimen ID regex patterns.
-- **FR-003**: QC identification rules MUST be seeded from the analyzer's profile
-  when the analyzer is created. Administrators can customize rules afterward.
+- **FR-001**: Bridge MUST use only the exact pinned profile revision's explicit
+  control-result recognition behavior before results reach OpenELIS.
+- **FR-002**: Recognition MUST be profile-owned and data-driven. OpenELIS MUST
+  NOT publish an analyzer classifier or maintain a per-analyzer recognition
+  override.
+- **FR-003**: A profile MUST explicitly declare recognition rules or affirm
+  that the analyzer transmits no controls. Missing declarations and nonmatches
+  MUST NOT trigger a hidden fallback.
 - **FR-004**: Identified QC observations MUST be clearly marked in the data
   pipeline so they are routed to QC processing rather than patient result
   acceptance.
@@ -355,9 +340,10 @@ by the bridge.
   linking the triggering result and any related historical results.
 - **QC Alert**: Notification record per user per violation, with read/unread
   tracking and batching for warnings.
-- **Analyzer QC Rule**: Per-analyzer identification rule that determines which
-  incoming samples are QC controls vs patient samples. Seeded from the
-  analyzer's profile and customizable by administrators.
+- **Control-result recognition**: Immutable behavior of the pinned Bridge
+  profile revision that identifies transported control results. It is separate
+  from OpenELIS operational Quality Control and has no per-analyzer OpenELIS
+  editor or entity.
 
 ## Success Criteria _(mandatory)_
 
@@ -384,9 +370,8 @@ by the bridge.
 
 - The analyzer bridge is always in the communication path between analyzers and
   OpenELIS. QC identification happens on the bridge side.
-- QC rules are defined per analyzer profile and seeded at analyzer creation
-  time. Database migrations handle schema only; runtime data comes from the
-  application layer.
+- Control-result recognition is defined and executed by the pinned Bridge
+  profile revision. OpenELIS does not seed or push classifier rules.
 - v1 delivers in-app alerts only. Email and real-time push notifications are
   deferred to v2.
 - v1 does not include corrective action workflows (recalibration, maintenance
@@ -401,11 +386,13 @@ by the bridge.
 
 ## v1 Implementation Status
 
-All v1 features are implemented across PR #3390 (OpenELIS) and Bridge PR #33.
-327 backend + bridge tests cover the core evaluation engine, calculators,
-services, event listener, and bridge-side rule evaluation. Frontend components
-and REST controllers are implemented but lack automated test coverage (frontend
-unit tests and E2E Playwright tests are v1 completion targets).
+PR #3390 implemented the OpenELIS operational-QC foundation and also introduced
+the superseded `AnalyzerQcRule` path. The control-lot, QC-result, statistics,
+Westgard, violation, alert, and dashboard work remains the operational
+foundation. OGC-1054 removes the classifier entity, service, controller, user
+interface, profile-copy behavior, and Bridge fallback before analyzer MVP
+acceptance. Historical test counts do not prove that removal or current user
+acceptance.
 
 ## v2+ Roadmap (deferred from design spec)
 

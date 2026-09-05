@@ -1,6 +1,6 @@
 # ASTM LIS2-A2 Sample: Complete Blood Count (CBC)
 # Purpose: Test hematology analyzer field mapping (User Story 1)
-# Reference: specs/004-astm-analyzer-mapping/research.md Section 1
+# Historical context: Git history for specs/004-astm-analyzer-mapping
 #
 # Segments:
 #   H - Header Record: Sender/receiver identification
@@ -25,7 +25,6 @@ R|8|^^^PLT^Platelet Count|245|10^3/μL|150-400|N||F|20250115080100
 R|9|^^^RDW^Red Cell Distribution Width|13.2|%|11.5-14.5|N||F|20250115080100
 R|10|^^^MPV^Mean Platelet Volume|9.1|fL|7.5-11.5|N||F|20250115080100
 L|1|N
-
 
 
 

@@ -1,6 +1,6 @@
 # ASTM LIS2-A2 Sample: Immunology Screening Panel
 # Purpose: Test qualitative result mapping (User Story 1, FR-005)
-# Reference: specs/004-astm-analyzer-mapping/spec.md FR-005
+# Historical context: Git history for specs/004-astm-analyzer-mapping
 #
 # This sample includes qualitative results that need many-to-one mapping:
 # - HIV: Various positive/negative formats
@@ -32,7 +32,6 @@ R|3|^^^HCV^Hepatitis C Antibody|NON-REACTIVE||Negative|N||F|20250115103100
 R|4|^^^SYPHILIS^Syphilis RPR|WEAKLY REACTIVE||Weak Positive|P||F|20250115103100
 R|5|^^^CD4^CD4+ T-Cell Count|320|cells/μL|500-1500|L||F|20250115103100
 L|1|N
-
 
 
 
