@@ -113,13 +113,22 @@ removes it must also contain and test the replacement.
 - [ ] **R2 - Site rollout.** Future.
 
 All listed PRs are stacked and unmerged. `[x]` means review-ready, not merged or
-accepted. Corrections are made in the owning existing PR; do not create a
-parallel remediation stack.
+accepted. Keep review-ready lower branches intact unless a versioned companion
+contract requires an owning-repository correction; do not create a parallel
+remediation stack.
 
-M4 is the active integrated checkpoint. Review corrections still land in the
-earliest owning review-ready PR, from the bottom of each stack upward, and are
-then carried into M4 by restacking. Those corrections do not change an `[x]`
-marker. M4 becomes `[x]` only after all four remediation slices below pass.
+M4 is the active integrated checkpoint. Current acceptance corrections land in
+the existing M4 top PR so they do not create another remediation layer or churn
+review-ready lower branches. A correction that changes a versioned companion
+contract must still be made in its owning repository and carried into M4. These
+corrections do not change an `[x]` marker. M4 becomes `[x]` only after all four
+remediation slices below pass.
+
+The next analyzer deployment is the single M4 remediation candidate. Do not
+deploy it until every current actionable review finding is fixed or disproved
+against the current top, the required E2E checkpoint is green, and each
+actionable Grist answer links directly to the top PR. GitHub owns resolution
+state; neither Grist nor this roadmap duplicates it.
 
 ## Execution Loop
 
@@ -322,26 +331,33 @@ the existing stack.
    and unknown values one catalog-backed resolution workflow; allow only valid
    active local targets, audit the decision, leave the original held result
    unchanged, and apply it deterministically to the next matching message.
-   Prove domain behavior in OE integration tests and visible behavior in
-   real-router RTL before the assembled story.
+   Expose the site-binding mapping history in that workflow with its actor,
+   time, profile revision, and mapping decisions; profile-publication history
+   must not masquerade as local mapping history. Prove domain behavior in OE
+   integration tests and visible behavior in real-router RTL before the
+   assembled story.
 3. **Connection and QC.** In M3, restore the Bridge-provided latest probe after
    reload; make the canonical New Control Lot action submit successfully;
    restrict its Test choices to active tests mapped for the selected analyzer;
-   and show profile display names rather than raw identifiers. Prove probe
-   persistence in Bridge/OE consumer tests and QC behavior in OE integration
-   tests plus real-router RTL. Operational QC remains separate and never gates
-   verification or activation.
+   and show profile display names rather than raw identifiers. Rerun activation
+   against the current build and fix it in this candidate if the historical
+   server failure remains; do not change activation from stale evidence alone.
+   Prove probe persistence in Bridge/OE consumer tests and QC behavior in OE
+   integration tests plus real-router RTL. Operational QC remains separate and
+   never gates verification or activation.
 4. **Result review.** In M4, show source analyzer identity and raw source context
-   for normal, held, control, and FILE traffic. Use Bridge and analyzer-mock
-   transport tests for transmission and an external demo-operator action for
-   resend; do not add an OE mock control. Finish with the UI-only patient,
-   control, unknown-test, unknown-value, and FILE Playwright stories.
+   for normal, held, control, and FILE traffic, including the source unit when
+   the analyzer supplied one. Use Bridge and analyzer-mock transport tests for
+   transmission and an external demo-operator action for resend; do not add an
+   OE mock control. Finish with the UI-only patient, control, unknown-test,
+   unknown-value, and FILE Playwright stories.
 
-Exit: all four remediation slices are green; their owning PRs are restacked;
-patient/control/unknown behavior is proven in owning tests and UI-only assembled
-Playwright stories; focused console, trace, runtime, accessibility, and
-desktop/mobile screenshot review passes; and no old analyzer runtime path
-survives. The resulting M4 tip is then deployed for updated Grist review.
+Exit: all four remediation slices are green in the M4 top and any required
+companion PRs; patient/control/unknown behavior is proven in owning tests and
+UI-only assembled Playwright stories; focused console, trace, runtime,
+accessibility, and desktop/mobile screenshot review passes; and no old analyzer
+runtime path survives. The resulting M4 tip is then deployed for updated Grist
+review.
 
 ### G0 - Exact Deployment And Human Acceptance
 
