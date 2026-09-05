@@ -173,6 +173,17 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
 
+        <!-- TypeOfSample entities (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.typeofsample.valueholder.TypeOfSample</class>
+        <class>org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel</class>
+
+        <!-- TypeOfTestResult entities (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.typeoftestresult.valueholder.TypeOfTestResult</class>
+
+        <!-- UnitOfMeasure entities (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure</class>
+
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
