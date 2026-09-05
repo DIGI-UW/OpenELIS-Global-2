@@ -8,9 +8,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "result_file")
 public class ResultFile extends BaseObject<Integer> {
@@ -36,46 +40,8 @@ public class ResultFile extends BaseObject<Integer> {
     public ResultFile() {
     }
 
-    public Integer getId() {
-        return id;
-    }
-
-    public String getFileName() {
-        return fileName;
-    }
-
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
-
-    public String getFileType() {
-        return fileType;
-    }
-
-    public void setFileType(String fileType) {
-        this.fileType = fileType;
-    }
-
-    public byte[] getContent() {
-        return content;
-    }
-
-    public void setContent(byte[] content) {
-        this.content = content;
-    }
-
-    public Timestamp getUploadedAt() {
-        return uploadedAt;
-    }
-
-    public void setUploadedAt(Timestamp uploadedAt) {
-        this.uploadedAt = uploadedAt;
-    }
-
     @Override
     public void setId(Integer id) {
         this.id = id;
-
     }
-
 }

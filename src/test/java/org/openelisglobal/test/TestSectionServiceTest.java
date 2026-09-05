@@ -1,7 +1,6 @@
 package org.openelisglobal.test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.util.List;
 import org.junit.Assert;
@@ -35,7 +34,7 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertFalse("The test_sections table should not be empty!", testSections.isEmpty());
 
         for (TestSection testSection : testSections) {
-            Assert.assertNotNull("Test section name should not be null", testSection.getTestSectionName());
+            assertNotNull("Test section name should not be null", testSection.getTestSectionName());
         }
     }
 
@@ -129,6 +128,15 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
         TestSection testSection1 = testSectionService.get("1");
         String localizedName = testSectionService.getUserLocalizedTesSectionName(testSection1);
         assertEquals("", localizedName);
+    }
+
+    @Test
+    public void testLoadTestSectionDisplayKey() {
+        TestSection section = testSectionService.get("1");
+
+        assertNotNull("TestSection should exist", section);
+        assertNotNull("nameKey (display_key) must not be null for reports/work plans", section.getNameKey());
+        assertEquals("TestKey1", section.getNameKey());
     }
 
     @Test

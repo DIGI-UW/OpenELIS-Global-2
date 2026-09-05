@@ -17,6 +17,16 @@
  */
 package org.openelisglobal.observationhistory.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.SimpleBaseEntity;
 
@@ -29,6 +39,12 @@ import org.openelisglobal.common.valueholder.SimpleBaseEntity;
  * @author Paul A. Hill
  * @since 2010-04-16
  */
+
+@Setter
+@Getter
+@Entity
+@Table(name = "observation_history")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class ObservationHistory extends BaseObject<String> implements SimpleBaseEntity<String> {
     private static final long serialVersionUID = 1L;
 
@@ -51,12 +67,34 @@ public class ObservationHistory extends BaseObject<String> implements SimpleBase
 
     // Fields
 
+    @Id
+    @GeneratedValue(generator = "observation_history_seq_gen")
+    @GenericGenerator(name = "observation_history_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
+            @org.hibernate.annotations.Parameter(name = "sequence_name", value = "observation_history_seq") })
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0, nullable = false)
     private String id;
+
+    @Column(name = "observation_history_type_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String observationHistoryTypeId;
+
+    @Column(name = "patient_id", precision = 10, scale = 0, nullable = false)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String patientId;
+
+    @Column(name = "sample_id", precision = 10, scale = 0, nullable = false)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String sampleId;
+
+    @Column(name = "VALUE", length = 40)
     private String value;
+
+    @Column(name = "VALUE_TYPE", length = 1)
     private String valueType;
+
+    @Column(name = "sample_item_id", precision = 10, scale = 0, nullable = true)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String sampleItemId;
 
     // Constructors
@@ -95,54 +133,12 @@ public class ObservationHistory extends BaseObject<String> implements SimpleBase
         this.id = id;
     }
 
-    public String getObservationHistoryTypeId() {
-        return this.observationHistoryTypeId;
-    }
-
-    public void setObservationHistoryTypeId(String observationHistoryTypeId) {
-        this.observationHistoryTypeId = observationHistoryTypeId;
-    }
-
-    public String getPatientId() {
-        return this.patientId;
-    }
-
-    public void setPatientId(String patientId) {
-        this.patientId = patientId;
-    }
-
-    public String getSampleId() {
-        return this.sampleId;
-    }
-
-    public void setSampleId(String sampleId) {
-        this.sampleId = sampleId;
-    }
-
-    public void setValue(String value) {
-        this.value = value;
-    }
-
-    public String getValue() {
-        return value;
-    }
-
     public void setValueType(String valueType) {
         this.valueType = valueType;
     }
 
     public void setValueType(ValueType valueType) {
         this.valueType = valueType.getCode();
-    }
-
-    /**
-     * value type indicates whether the value is a literal ("L") or the value is an
-     * index to a fixed value from Dictionary ("D")
-     *
-     * @return "L" or "D"
-     */
-    public String getValueType() {
-        return valueType;
     }
 
     @Override
@@ -212,13 +208,5 @@ public class ObservationHistory extends BaseObject<String> implements SimpleBase
             return false;
         }
         return true;
-    }
-
-    public void setSampleItemId(String sampleItemId) {
-        this.sampleItemId = sampleItemId;
-    }
-
-    public String getSampleItemId() {
-        return sampleItemId;
     }
 }

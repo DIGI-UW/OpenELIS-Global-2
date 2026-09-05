@@ -13,74 +13,77 @@
  */
 package org.openelisglobal.method.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.sql.Date;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.localization.valueholder.Localization;
 
+@Getter
+@Setter
+@DynamicUpdate
+@Entity
+@Table(name = "method")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
 public class Method extends EnumValueItemImpl {
 
+    @Id
+    @GeneratedValue(generator = "method_seq_gen")
+    @GenericGenerator(name = "method_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
+            @org.hibernate.annotations.Parameter(name = "sequence_name", value = "method_seq") })
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
 
+    @Column(name = "NAME", length = 20, nullable = false)
     private String methodName;
 
+    @Column(name = "DESCRIPTION", length = 60, nullable = false)
     private String description;
 
+    @Column(name = "REPORTING_DESCRIPTION", length = 60)
     private String reportingDescription;
 
+    @Column(name = "ACTIVE_BEGIN", length = 7)
     private Date activeBeginDate = null;
 
+    @Transient
     private String activeBeginDateForDisplay = null;
 
+    @Column(name = "ACTIVE_END", length = 7)
     private Date activeEndDate = null;
 
+    @Transient
     private String activeEndDateForDisplay = null;
 
+    @Column(name = "IS_ACTIVE", length = 1)
     private String isActive;
 
+    @Column(name = "CODE", length = 20)
     private String code;
 
-    private ValueHolderInterface localization;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "name_localization_id")
+    private Localization localization;
 
     public Method() {
         super();
-        localization = new ValueHolder();
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setMethodName(String methodName) {
-        this.methodName = methodName;
-    }
-
-    public String getMethodName() {
-        return methodName;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setReportingDescription(String reportingDescription) {
-        this.reportingDescription = reportingDescription;
-    }
-
-    public String getReportingDescription() {
-        return reportingDescription;
     }
 
     public void setActiveBeginDate(Date activeBeginDate) {
@@ -88,33 +91,9 @@ public class Method extends EnumValueItemImpl {
         this.activeBeginDateForDisplay = DateUtil.convertSqlDateToStringDate(activeBeginDate);
     }
 
-    public Date getActiveBeginDate() {
-        return activeBeginDate;
-    }
-
     public void setActiveEndDate(Date activeEndDate) {
         this.activeEndDate = activeEndDate;
         this.activeEndDateForDisplay = DateUtil.convertSqlDateToStringDate(activeEndDate);
-    }
-
-    public Date getActiveEndDate() {
-        return activeEndDate;
-    }
-
-    public void setIsActive(String isActive) {
-        this.isActive = isActive;
-    }
-
-    public String getIsActive() {
-        return isActive;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getCode() {
-        return code;
     }
 
     public void setActiveBeginDateForDisplay(String activeBeginDateForDisplay) {
@@ -124,27 +103,11 @@ public class Method extends EnumValueItemImpl {
         this.activeBeginDate = DateUtil.convertStringDateToSqlDate(this.activeBeginDateForDisplay, locale);
     }
 
-    public String getActiveBeginDateForDisplay() {
-        return activeBeginDateForDisplay;
-    }
-
     public void setActiveEndDateForDisplay(String activeEndDateForDisplay) {
         this.activeEndDateForDisplay = activeEndDateForDisplay;
         // also update the java.sql.Date
         String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         this.activeEndDate = DateUtil.convertStringDateToSqlDate(activeEndDateForDisplay, locale);
-    }
-
-    public String getActiveEndDateForDisplay() {
-        return activeEndDateForDisplay;
-    }
-
-    public Localization getLocalization() {
-        return (Localization) localization.getValue();
-    }
-
-    public void setLocalization(Localization localization) {
-        this.localization.setValue(localization);
     }
 
     public String getLocalizedValue() {

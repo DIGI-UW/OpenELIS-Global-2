@@ -28,7 +28,6 @@
 
 
         <mapping resource="hibernate/hbm/Action.hbm.xml" />
-        <mapping resource="hibernate/hbm/Analysis.hbm.xml" />
         <mapping resource="hibernate/hbm/AnalysisQaEvent.hbm.xml" />
         <mapping
             resource="hibernate/hbm/AnalysisQaEventAction.hbm.xml" />
@@ -39,8 +38,6 @@
         <mapping resource="hibernate/hbm/StateView.hbm.xml" />
         <mapping resource="hibernate/hbm/County.hbm.xml" />
         <mapping resource="hibernate/hbm/Label.hbm.xml" />
-        <mapping resource="hibernate/hbm/Method.hbm.xml" />
-        <mapping resource="hibernate/hbm/Note.hbm.xml" />
         <mapping resource="hibernate/hbm/Organization.hbm.xml" />
         <mapping resource="hibernate/hbm/Panel.hbm.xml" />
         <mapping resource="hibernate/hbm/PanelItem.hbm.xml" />
@@ -73,8 +70,6 @@
         <mapping resource="hibernate/hbm/SourceOfSample.hbm.xml" />
         <mapping resource="hibernate/hbm/StatusOfSample.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemUser.hbm.xml" />
-        <mapping resource="hibernate/hbm/Test.hbm.xml" />
-        <mapping resource="hibernate/hbm/TestSection.hbm.xml" />
         <mapping resource="hibernate/hbm/RenameTestSection.hbm.xml" />
         <mapping resource="hibernate/hbm/RenameMethod.hbm.xml" />
         <mapping resource="hibernate/hbm/TestAnalyte.hbm.xml" />
@@ -106,7 +101,6 @@
         <mapping resource="hibernate/hbm/SiteInformation.hbm.xml" />
         <mapping
             resource="hibernate/hbm/SiteInformationDomain.hbm.xml" />
-        <mapping resource="hibernate/hbm/ObservationHistory.hbm.xml" />
         <mapping
             resource="hibernate/hbm/ObservationHistoryType.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferralReason.hbm.xml" />
@@ -136,7 +130,6 @@
         <mapping resource="hibernate/hbm/QaObservation.hbm.xml" />
         <mapping resource="hibernate/hbm/ElectronicOrder.hbm.xml" />
         <mapping resource="hibernate/hbm/TestDictionary.hbm.xml" />
-        <mapping resource="hibernate/hbm/Image.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferringTestResult.hbm.xml" />
         <mapping resource="hibernate/hbm/BarcodeLabelInfo.hbm.xml" />
         <mapping resource="hibernate/hbm/HL7MessageOut.hbm.xml" />

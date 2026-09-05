@@ -14,15 +14,20 @@
 package org.openelisglobal.test.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
 import java.sql.Date;
 import java.util.Objects;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.label.valueholder.Label;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.valueholder.Method;
@@ -35,95 +40,167 @@ import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 /**
  * @author benzd1
  */
+
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "TEST")
+@AttributeOverrides({ @AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED")),
+        @AttributeOverride(name = "name", column = @Column(name = "name")) })
 public class Test extends EnumValueItemImpl {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(generator = "test_seq_gen")
+    @GenericGenerator(name = "test_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "test_seq"))
+    @Column(name = "ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
+    @Transient
     private String methodName;
 
-    private ValueHolderInterface method;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "METHOD_ID")
+    private Method method;
 
+    @Transient
     private String labelName;
 
-    private ValueHolderInterface label;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "LABEL_ID")
+    private Label label;
 
+    @Transient
     private String testTrailerName;
 
-    private ValueHolderInterface testTrailer;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "TEST_TRAILER_ID")
+    private TestTrailer testTrailer;
 
+    @Transient
     private String testSectionName;
 
-    private ValueHolderInterface testSection;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "TEST_SECTION_ID")
+    private TestSection testSection;
 
+    @Transient
     private String scriptletName;
 
-    private ValueHolderInterface scriptlet;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "SCRIPTLET_ID")
+    private Scriptlet scriptlet;
 
+    @Column(name = "DESCRIPTION", length = 60, nullable = false, unique = true)
     private String description;
 
+    @Column(name = "NORMALIZED_DESCRIPTION", length = 225)
     private String normalizedDescription;
 
+    @Column(name = "LOINC", length = 240)
     private String loinc;
 
     // OGC-949 M1 / OGC-936: test catalog v2.5 domain (the AMR flag reuses the
     // existing antimicrobialResistance field below — no parallel column)
+    @Column(name = "DOMAIN", length = 20)
     private String domain = "CLINICAL";
 
+    @Column(name = "STICKER_REQ_FLAG", length = 1)
     private String stickerRequiredFlag;
 
+    @Transient
     private String alternateTestDisplayValue;
 
+    @Column(name = "ACTIVE_BEGIN", length = 7)
     private Date activeBeginDate = null;
 
+    @Transient
     private String activeBeginDateForDisplay;
 
+    @Column(name = "ACTIVE_END", length = 7)
     private Date activeEndDate = null;
 
+    @Transient
     private String activeEndDateForDisplay;
 
+    @Column(name = "IS_REPORTABLE", length = 1)
     private String isReportable;
 
+    @Column(name = "TIME_HOLDING", precision = 22, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String timeHolding;
 
+    @Column(name = "TIME_WAIT", precision = 22, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String timeWait;
 
+    @Column(name = "TIME_TA_AVERAGE", precision = 22, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String timeAverage;
 
+    @Column(name = "TIME_TA_WARNING", precision = 22, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String timeWarning;
 
+    @Column(name = "TIME_TA_MAX", precision = 22, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String timeMax;
 
+    @Column(name = "LABEL_QTY", precision = 22, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String labelQuantity;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "UOM_ID")
     private UnitOfMeasure unitOfMeasure;
 
+    @Column(name = "SORT_ORDER", length = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String sortOrder;
 
+    @Column(name = "LOCAL_CODE", length = 10, unique = true)
     private String localCode;
 
+    @Column(name = "orderable")
     private Boolean orderable;
 
-    private ValueHolder localizedTestName;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "name_localization_id")
+    private Localization localizedTestName;
 
-    private ValueHolder localizedReportingName;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "reporting_name_localization_id")
+    private Localization localizedReportingName;
 
-    private ValueHolder localizedTestSectionName;
+    @Transient
+    private TestSection localizedTestSectionName;
 
-    private ValueHolder localizedReportingTestSectionName;
+    @Transient
+    private TestSection localizedReportingTestSectionName;
 
+    @Column(name = "guid")
     private String guid;
 
     @JsonIgnore
-    private ValueHolder defaultTestResult;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "default_test_result_id")
+    private TestResult defaultTestResult;
 
+    @Column(name = "in_lab_only")
     private boolean inLabOnly;
 
     // should we notify patient of a finalized result
+    @Column(name = "notify_results")
     private Boolean notifyResults;
 
+    @Column(name = "antimicrobial_resistance")
     private Boolean antimicrobialResistance;
+
+    @Column(name = "IS_ACTIVE", length = 1)
+    private String isActive = IActionConstants.YES;
 
     @Override
     public String getSortOrder() {
@@ -137,16 +214,6 @@ public class Test extends EnumValueItemImpl {
 
     public Test() {
         super();
-        this.method = new ValueHolder();
-        this.label = new ValueHolder();
-        this.testTrailer = new ValueHolder();
-        this.testSection = new ValueHolder();
-        this.scriptlet = new ValueHolder();
-        localizedTestName = new ValueHolder();
-        localizedReportingName = new ValueHolder();
-        localizedTestSectionName = new ValueHolder();
-        localizedReportingTestSectionName = new ValueHolder();
-        this.defaultTestResult = new ValueHolder();
     }
 
     @Override
@@ -160,19 +227,11 @@ public class Test extends EnumValueItemImpl {
         return id;
     }
 
-    public Date getActiveBeginDate() {
-        return activeBeginDate;
-    }
-
     public void setActiveBeginDate(Date activeBeginDate) {
         this.activeBeginDate = activeBeginDate;
         if (activeBeginDate != null) {
             this.activeBeginDateForDisplay = DateUtil.convertSqlDateToStringDate(activeBeginDate);
         }
-    }
-
-    public String getActiveBeginDateForDisplay() {
-        return activeBeginDateForDisplay;
     }
 
     public void setActiveBeginDateForDisplay(String activeBeginDateForDisplay) {
@@ -182,10 +241,6 @@ public class Test extends EnumValueItemImpl {
         this.activeBeginDate = DateUtil.convertStringDateToSqlDate(this.activeBeginDateForDisplay, locale);
     }
 
-    public Date getActiveEndDate() {
-        return activeEndDate;
-    }
-
     public void setActiveEndDate(Date activeEndDate) {
         this.activeEndDate = activeEndDate;
         if (activeEndDate != null) {
@@ -193,50 +248,11 @@ public class Test extends EnumValueItemImpl {
         }
     }
 
-    public String getActiveEndDateForDisplay() {
-        return activeEndDateForDisplay;
-    }
-
     public void setActiveEndDateForDisplay(String activeEndDateForDisplay) {
         this.activeEndDateForDisplay = activeEndDateForDisplay;
         // also update the java.sql.Date
         String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         this.activeEndDate = DateUtil.convertStringDateToSqlDate(this.activeEndDateForDisplay, locale);
-    }
-
-    /**
-     * This is descriptive only and should not be displayed to the end user
-     *
-     * @return the description
-     */
-    public String getDescription() {
-        return description;
-    }
-
-    /**
-     * Description of this test
-     *
-     * @param description the description
-     */
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    /**
-     * Normalized description for efficient fuzzy matching. Removes parentheses and
-     * non-alphanumeric characters. Automatically maintained by database trigger.
-     *
-     * @return the normalized description
-     */
-    public String getNormalizedDescription() {
-        return normalizedDescription;
-    }
-
-    /**
-     * @param normalizedDescription the normalized description
-     */
-    public void setNormalizedDescription(String normalizedDescription) {
-        this.normalizedDescription = normalizedDescription;
     }
 
     @Override
@@ -251,190 +267,6 @@ public class Test extends EnumValueItemImpl {
     @Override
     public void setIsActive(String isActive) {
         this.isActive = isActive;
-    }
-
-    public String getIsReportable() {
-        return isReportable;
-    }
-
-    public void setIsReportable(String isReportable) {
-        this.isReportable = isReportable;
-    }
-
-    public String getLabelQuantity() {
-        return labelQuantity;
-    }
-
-    public void setLabelQuantity(String labelQuantity) {
-        this.labelQuantity = labelQuantity;
-    }
-
-    public String getLoinc() {
-        return loinc;
-    }
-
-    public void setLoinc(String loinc) {
-        this.loinc = loinc;
-    }
-
-    public String getDomain() {
-        return domain;
-    }
-
-    public void setDomain(String domain) {
-        this.domain = domain;
-    }
-
-    public String getStickerRequiredFlag() {
-        return stickerRequiredFlag;
-    }
-
-    public void setStickerRequiredFlag(String stickerRequiredFlag) {
-        this.stickerRequiredFlag = stickerRequiredFlag;
-    }
-
-    public String getTimeAverage() {
-        return timeAverage;
-    }
-
-    public void setTimeAverage(String timeAverage) {
-        this.timeAverage = timeAverage;
-    }
-
-    public String getTimeHolding() {
-        return timeHolding;
-    }
-
-    public void setTimeHolding(String timeHolding) {
-        this.timeHolding = timeHolding;
-    }
-
-    public String getTimeMax() {
-        return timeMax;
-    }
-
-    public void setTimeMax(String timeMax) {
-        this.timeMax = timeMax;
-    }
-
-    public String getTimeWait() {
-        return timeWait;
-    }
-
-    public void setTimeWait(String timeWait) {
-        this.timeWait = timeWait;
-    }
-
-    public String getTimeWarning() {
-        return timeWarning;
-    }
-
-    public void setTimeWarning(String timeWarning) {
-        this.timeWarning = timeWarning;
-    }
-
-    public String getMethodName() {
-        return methodName;
-    }
-
-    public void setMethodName(String methodName) {
-        this.methodName = methodName;
-    }
-
-    public String getLabelName() {
-        return labelName;
-    }
-
-    public void setLabelName(String labelName) {
-        this.labelName = labelName;
-    }
-
-    public String getTestTrailerName() {
-        return testTrailerName;
-    }
-
-    public void setTestTrailerName(String testTrailerName) {
-        this.testTrailerName = testTrailerName;
-    }
-
-    public String getTestSectionName() {
-        return testSectionName;
-    }
-
-    public void setTestSectionName(String testSectionName) {
-        this.testSectionName = testSectionName;
-    }
-
-    public String getScriptletName() {
-        return scriptletName;
-    }
-
-    public void setScriptletName(String scriptletName) {
-        this.scriptletName = scriptletName;
-    }
-
-    public void setMethod(Method method) {
-        this.method.setValue(method);
-    }
-
-    public Method getMethod() {
-        return (Method) this.method.getValue();
-    }
-
-    public void setLabel(Label label) {
-        this.label.setValue(label);
-    }
-
-    public Label getLabel() {
-        return (Label) this.label.getValue();
-    }
-
-    public void setTestTrailer(TestTrailer testTrailer) {
-        this.testTrailer.setValue(testTrailer);
-    }
-
-    public TestTrailer getTestTrailer() {
-        return (TestTrailer) this.testTrailer.getValue();
-    }
-
-    public void setTestSection(TestSection testSection) {
-        this.testSection.setValue(testSection);
-    }
-
-    public TestSection getTestSection() {
-        return (TestSection) this.testSection.getValue();
-    }
-
-    public Localization getLocalizedTestSectionName() {
-        return (Localization) localizedTestSectionName.getValue();
-    }
-
-    public void setLocalizedTestSectionName(Localization localizedName) {
-        this.localizedTestSectionName.setValue(localizedName);
-    }
-
-    public Localization getLocalizedReportingTestSectionName() {
-        return (Localization) localizedReportingTestSectionName.getValue();
-    }
-
-    public void setLocalizedReportingTestSectionName(Localization localizedReportingName) {
-        this.localizedReportingTestSectionName.setValue(localizedReportingName);
-    }
-
-    public void setScriptlet(Scriptlet scriptlet) {
-        this.scriptlet.setValue(scriptlet);
-    }
-
-    public Scriptlet getScriptlet() {
-        return (Scriptlet) this.scriptlet.getValue();
-    }
-
-    public UnitOfMeasure getUnitOfMeasure() {
-        return this.unitOfMeasure;
-    }
-
-    public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
-        this.unitOfMeasure = unitOfMeasure;
     }
 
     public String getTestDisplayValue() {
@@ -454,53 +286,9 @@ public class Test extends EnumValueItemImpl {
         return alternateTestDisplayValue;
     }
 
-    public void setAlternateTestDisplayValue(String alternateTestDisplayValue) {
-        this.alternateTestDisplayValue = alternateTestDisplayValue;
-    }
-
     @Override
     protected String getDefaultLocalizedName() {
         return TestServiceImpl.getUserLocalizedTestName(this);
-    }
-
-    public void setLocalCode(String localCode) {
-        this.localCode = localCode;
-    }
-
-    public String getLocalCode() {
-        return localCode;
-    }
-
-    public Boolean getOrderable() {
-        return orderable;
-    }
-
-    public void setOrderable(Boolean orderable) {
-        this.orderable = orderable;
-    }
-
-    public Localization getLocalizedTestName() {
-        return (Localization) localizedTestName.getValue();
-    }
-
-    public void setLocalizedTestName(Localization localizedName) {
-        this.localizedTestName.setValue(localizedName);
-    }
-
-    public Localization getLocalizedReportingName() {
-        return (Localization) localizedReportingName.getValue();
-    }
-
-    public void setLocalizedReportingName(Localization localizedReportingName) {
-        this.localizedReportingName.setValue(localizedReportingName);
-    }
-
-    public String getGuid() {
-        return guid;
-    }
-
-    public void setGuid(String guid) {
-        this.guid = guid;
     }
 
     @Override
@@ -510,14 +298,6 @@ public class Test extends EnumValueItemImpl {
             return localizedName.getLocalizedValue();
         }
         return description;
-    }
-
-    public TestResult getDefaultTestResult() {
-        return (TestResult) defaultTestResult.getValue();
-    }
-
-    public void setDefaultTestResult(TestResult defaultTestResult) {
-        this.defaultTestResult.setValue(defaultTestResult);
     }
 
     public Boolean isNotifyResults() {
@@ -533,22 +313,6 @@ public class Test extends EnumValueItemImpl {
 
     public String getAugmentedTestName() {
         return TestServiceImpl.getLocalizedTestNameWithType(this.id);
-    }
-
-    public boolean isInLabOnly() {
-        return inLabOnly;
-    }
-
-    public void setInLabOnly(boolean inLabOnly) {
-        this.inLabOnly = inLabOnly;
-    }
-
-    public void setAntimicrobialResistance(Boolean antimicrobialResistance) {
-        this.antimicrobialResistance = antimicrobialResistance;
-    }
-
-    public Boolean getAntimicrobialResistance() {
-        return antimicrobialResistance;
     }
 
     @Override

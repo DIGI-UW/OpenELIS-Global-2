@@ -17,18 +17,35 @@ package org.openelisglobal.analysis.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.note.service.NoteObject;
 import org.openelisglobal.note.service.NoteServiceImpl.BoundTo;
@@ -38,68 +55,178 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "ANALYSIS")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class Analysis extends BaseObject<String> implements NoteObject {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(generator = "analysis_seq_gen")
+    @GenericGenerator(name = "analysis_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "analysis_seq"))
+    @Column(name = "ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
+
+    @Column(name = "fhir_uuid")
     private UUID fhirUuid;
-    private ValueHolderInterface sampleItem;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "SAMPITEM_ID")
+    private SampleItem sampleItem;
+
+    @Column(name = "ANALYSIS_TYPE", length = 10, nullable = false)
     private String analysisType;
-    private ValueHolderInterface testSection;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "TEST_SECT_ID")
+    private TestSection testSection;
+
+    @Transient
     private String testSectionName;
-    private ValueHolderInterface test;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "TEST_ID")
+    private Test test;
+
+    @Transient
     private String testName;
+
+    @Column(name = "REVISION", precision = 22, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String revision;
+
+    @Column(name = "STATUS", length = 3)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String status;
+
+    @Column(name = "STARTED_DATE", length = 7)
     private Timestamp startedDate = null;
+
+    @Transient
     private String startedDateForDisplay = null;
+
+    @Column(name = "COMPLETED_DATE", length = 7)
     private Timestamp completedDate = null;
+
+    @Column(name = "ENTRY_DATE", length = 7)
     private Timestamp enteredDate = null;
+
+    @Transient
     private String completedDateForDisplay = null;
+
+    @Column(name = "RELEASED_DATE", length = 7)
     private Timestamp releasedDate = null;
+
+    @Transient
     private String releasedDateForDisplay = null;
+
+    @Column(name = "PRINTED_DATE", length = 7)
     private Date printedDate = null;
+
+    @Transient
     private String printedDateForDisplay = null;
+
+    @Column(name = "IS_REPORTABLE", length = 1)
     private String isReportable;
+
+    @Column(name = "SO_SEND_READY_DATE", length = 7)
     private Date soSendReadyDate = null;
+
+    @Transient
     private String soSendReadyDateForDisplay = null;
+
+    @Column(name = "SO_CLIENT_REFERENCE", length = 240)
     private String soClientReference;
+
+    @Column(name = "SO_NOTIFY_RECEIVED_DATE", length = 7)
     private Date soNotifyReceivedDate = null;
+
+    @Transient
     private String soNotifyReceivedDateForDisplay = null;
+
+    @Column(name = "SO_NOTIFY_SEND_DATE", length = 7)
     private Date soNotifySendDate = null;
+
+    @Transient
     private String soNotifySendDateForDisplay = null;
+
+    @Column(name = "SO_SEND_DATE", length = 7)
     private Date soSendDate = null;
+
+    @Transient
     private String soSendDateForDisplay = null;
+
+    @Column(name = "SO_SEND_ENTRY_BY", length = 240)
     private String soSendEntryBy;
+
+    @Column(name = "SO_SEND_ENTRY_DATE", length = 7)
     private Date soSendEntryDate = null;
+
+    @Transient
     private String soSendEntryDateForDisplay = null;
-    private ValueHolderInterface parentAnalysis;
-    private ValueHolderInterface parentResult;
-    private ValueHolderInterface panel;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "PARENT_ANALYSIS_ID")
+    private Analysis parentAnalysis;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "PARENT_RESULT_ID")
+    private Result parentResult;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "panel_id")
+    private Panel panel;
+
     /** Mutually exclusive with {@link #sampleItem} (DB CHECK constraint). */
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "vector_pool_id", precision = 10, scale = 0)
     private String vectorPoolId;
+
+    @Column(name = "reflex_trigger")
     private Boolean triggeredReflex = false;
+
+    @Column(name = "result_calculated")
     private Boolean resultCalculated = false;
+
+    @Column(name = "status_id", precision = 10)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String statusId;
+
+    @Transient
     private String assignedSortedTestTreeDisplayValue;
+
+    @Column(name = "referred_out")
     private boolean referredOut = false;
+
+    @Column(name = "type_of_sample_name")
     private String sampleTypeName;
+
+    @Transient
     private List<Analysis> children;
+
+    @Column(name = "corrected")
     private boolean correctedSincePatientReport;
-    private ValueHolderInterface method;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "method_id")
+    private Method method;
+
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @Fetch(FetchMode.JOIN)
+    @JoinColumn(name = "result_file_id", unique = true, nullable = true)
     private ResultFile resultFile;
+
+    @Column(name = "analyzer_id", precision = 10)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String analyzerId;
 
     public Analysis() {
         super();
-        sampleItem = new ValueHolder();
-        testSection = new ValueHolder();
-        test = new ValueHolder();
-        parentAnalysis = new ValueHolder();
-        parentResult = new ValueHolder();
-        panel = new ValueHolder();
-        method = new ValueHolder();
     }
 
     @Override
@@ -112,44 +239,8 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         return id;
     }
 
-    public String getSampleTypeName() {
-        return sampleTypeName;
-    }
-
-    public void setSampleTypeName(String sampleTypeName) {
-        this.sampleTypeName = sampleTypeName;
-    }
-
-    public String getAssignedSortedTestTreeDisplayValue() {
-        return assignedSortedTestTreeDisplayValue;
-    }
-
-    public List<Analysis> getChildren() {
-        return children;
-    }
-
-    public void setChildren(List<Analysis> children) {
-        this.children = children;
-    }
-
-    public void setAssignedSortedTestTreeDisplayValue(String assignedSortedTestTreeDisplayValue) {
-        this.assignedSortedTestTreeDisplayValue = assignedSortedTestTreeDisplayValue;
-    }
-
-    public String getAnalysisType() {
-        return analysisType;
-    }
-
-    public void setAnalysisType(String analysisType) {
-        this.analysisType = analysisType;
-    }
-
-    public SampleItem getSampleItem() {
-        return (SampleItem) sampleItem.getValue();
-    }
-
     public void setSampleItem(SampleItem sampleItem) {
-        this.sampleItem.setValue(sampleItem);
+        this.sampleItem = sampleItem;
 
         if (GenericValidator.isBlankOrNull(sampleTypeName) && sampleItem != null
                 && sampleItem.getTypeOfSample() != null) {
@@ -157,16 +248,20 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         }
     }
 
-    public Timestamp getCompletedDate() {
-        return completedDate;
-    }
-
-    @JsonSetter
     public void setCompletedDate(Timestamp completedDate) {
         this.completedDate = completedDate;
-        completedDateForDisplay = completedDate != null
-                ? DateUtil.convertSqlDateToStringDate(new Date(completedDate.getTime()))
+        updateCompletedDateForDisplay();
+    }
+
+    private void updateCompletedDateForDisplay() {
+        this.completedDateForDisplay = this.completedDate != null
+                ? DateUtil.convertSqlDateToStringDate(new Date(this.completedDate.getTime()))
                 : null;
+    }
+
+    @PostLoad
+    private void postLoad() {
+        updateCompletedDateForDisplay();
     }
 
     /** @deprecated Use {@link #setCompletedDate(Timestamp)} instead */
@@ -177,27 +272,11 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         completedDateForDisplay = DateUtil.convertSqlDateToStringDate(completedDate);
     }
 
-    public String getCompletedDateForDisplay() {
-        return completedDateForDisplay;
-    }
-
     public void setCompletedDateForDisplay(String completedDateForDisplay) {
         this.completedDateForDisplay = completedDateForDisplay;
         String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         Date sqlDate = DateUtil.convertStringDateToSqlDate(this.completedDateForDisplay, locale);
         completedDate = sqlDate != null ? new Timestamp(sqlDate.getTime()) : null;
-    }
-
-    public String getRevision() {
-        return revision;
-    }
-
-    public void setRevision(String revision) {
-        this.revision = revision;
-    }
-
-    public Timestamp getStartedDate() {
-        return startedDate;
     }
 
     @JsonSetter
@@ -216,10 +295,6 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         startedDateForDisplay = DateUtil.convertSqlDateToStringDate(startedDate);
     }
 
-    public String getStartedDateForDisplay() {
-        return startedDateForDisplay;
-    }
-
     public void setStartedDateForDisplay(String startedDateForDisplay) {
         this.startedDateForDisplay = startedDateForDisplay;
         String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
@@ -227,33 +302,9 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         startedDate = sqlDate != null ? new Timestamp(sqlDate.getTime()) : null;
     }
 
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getIsReportable() {
-        return isReportable;
-    }
-
-    public void setIsReportable(String isReportable) {
-        this.isReportable = isReportable;
-    }
-
-    public Date getPrintedDate() {
-        return printedDate;
-    }
-
     public void setPrintedDate(Date printedDate) {
         this.printedDate = printedDate;
         printedDateForDisplay = DateUtil.convertSqlDateToStringDate(printedDate);
-    }
-
-    public String getPrintedDateForDisplay() {
-        return printedDateForDisplay;
     }
 
     public void setPrintedDateForDisplay(String printedDateForDisplay) {
@@ -261,10 +312,6 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         // also update the java.sql.Date
         String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         printedDate = DateUtil.convertStringDateToSqlDate(this.printedDateForDisplay, locale);
-    }
-
-    public Timestamp getReleasedDate() {
-        return releasedDate;
     }
 
     @JsonSetter
@@ -283,10 +330,6 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         releasedDateForDisplay = DateUtil.convertSqlDateToStringDate(releasedDate);
     }
 
-    public String getReleasedDateForDisplay() {
-        return releasedDateForDisplay;
-    }
-
     public void setReleasedDateForDisplay(String releasedDateForDisplay) {
         this.releasedDateForDisplay = releasedDateForDisplay;
         String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
@@ -294,25 +337,9 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         releasedDate = sqlDate != null ? new Timestamp(sqlDate.getTime()) : null;
     }
 
-    public String getSoClientReference() {
-        return soClientReference;
-    }
-
-    public void setSoClientReference(String soClientReference) {
-        this.soClientReference = soClientReference;
-    }
-
-    public Date getSoNotifyReceivedDate() {
-        return soNotifyReceivedDate;
-    }
-
     public void setSoNotifyReceivedDate(Date soNotifyReceivedDate) {
         this.soNotifyReceivedDate = soNotifyReceivedDate;
         soNotifyReceivedDateForDisplay = DateUtil.convertSqlDateToStringDate(soNotifyReceivedDate);
-    }
-
-    public String getSoNotifyReceivedDateForDisplay() {
-        return soNotifyReceivedDateForDisplay;
     }
 
     public void setSoNotifyReceivedDateForDisplay(String soNotifyReceivedDateForDisplay) {
@@ -322,17 +349,9 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         soNotifyReceivedDate = DateUtil.convertStringDateToSqlDate(this.soNotifyReceivedDateForDisplay, locale);
     }
 
-    public Date getSoNotifySendDate() {
-        return soNotifySendDate;
-    }
-
     public void setSoNotifySendDate(Date soNotifySendDate) {
         this.soNotifySendDate = soNotifySendDate;
         soNotifySendDateForDisplay = DateUtil.convertSqlDateToStringDate(soNotifySendDate);
-    }
-
-    public String getSoNotifySendDateForDisplay() {
-        return soNotifySendDateForDisplay;
     }
 
     public void setSoNotifySendDateForDisplay(String soNotifySendDateForDisplay) {
@@ -342,17 +361,9 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         soNotifySendDate = DateUtil.convertStringDateToSqlDate(this.soNotifySendDateForDisplay, locale);
     }
 
-    public Date getSoSendDate() {
-        return soSendDate;
-    }
-
     public void setSoSendDate(Date soSendDate) {
         this.soSendDate = soSendDate;
         soSendDateForDisplay = DateUtil.convertSqlDateToStringDate(soSendDate);
-    }
-
-    public String getSoSendDateForDisplay() {
-        return soSendDateForDisplay;
     }
 
     public void setSoSendDateForDisplay(String soSendDateForDisplay) {
@@ -362,25 +373,9 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         soSendDate = DateUtil.convertStringDateToSqlDate(this.soSendDateForDisplay, locale);
     }
 
-    public String getSoSendEntryBy() {
-        return soSendEntryBy;
-    }
-
-    public void setSoSendEntryBy(String soSendEntryBy) {
-        this.soSendEntryBy = soSendEntryBy;
-    }
-
-    public Date getSoSendEntryDate() {
-        return soSendEntryDate;
-    }
-
     public void setSoSendEntryDate(Date soSendEntryDate) {
         this.soSendEntryDate = soSendEntryDate;
         soSendEntryDateForDisplay = DateUtil.convertSqlDateToStringDate(soSendEntryDate);
-    }
-
-    public String getSoSendEntryDateForDisplay() {
-        return soSendEntryDateForDisplay;
     }
 
     public void setSoSendEntryDateForDisplay(String soSendEntryDateForDisplay) {
@@ -390,17 +385,9 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         soSendEntryDate = DateUtil.convertStringDateToSqlDate(this.soSendEntryDateForDisplay, locale);
     }
 
-    public Date getSoSendReadyDate() {
-        return soSendReadyDate;
-    }
-
     public void setSoSendReadyDate(Date soSendReadyDate) {
         this.soSendReadyDate = soSendReadyDate;
         soSendReadyDateForDisplay = DateUtil.convertSqlDateToStringDate(soSendReadyDate);
-    }
-
-    public String getSoSendReadyDateForDisplay() {
-        return soSendReadyDateForDisplay;
     }
 
     public void setSoSendReadyDateForDisplay(String soSendReadyDateForDisplay) {
@@ -408,118 +395,6 @@ public class Analysis extends BaseObject<String> implements NoteObject {
         // also update the java.sql.Date
         String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         soSendReadyDate = DateUtil.convertStringDateToSqlDate(this.soSendReadyDateForDisplay, locale);
-    }
-
-    public TestSection getTestSection() {
-        return (TestSection) testSection.getValue();
-    }
-
-    public void setTestSection(TestSection testSection) {
-        this.testSection.setValue(testSection);
-    }
-
-    public Test getTest() {
-        return (Test) test.getValue();
-    }
-
-    public void setTest(Test test) {
-        this.test.setValue(test);
-    }
-
-    public String getTestSectionName() {
-        return testSectionName;
-    }
-
-    public void setTestSectionName(String testSectionName) {
-        this.testSectionName = testSectionName;
-    }
-
-    public String getTestName() {
-        return testName;
-    }
-
-    public void setTestName(String testName) {
-        this.testName = testName;
-    }
-
-    public Analysis getParentAnalysis() {
-        return (Analysis) parentAnalysis.getValue();
-    }
-
-    public void setParentAnalysis(Analysis parentAnalysis) {
-        this.parentAnalysis.setValue(parentAnalysis);
-    }
-
-    public Result getParentResult() {
-        return (Result) parentResult.getValue();
-    }
-
-    public void setParentResult(Result parentResult) {
-        this.parentResult.setValue(parentResult);
-    }
-
-    public void setTriggeredReflex(Boolean triggeredReflex) {
-        this.triggeredReflex = triggeredReflex;
-    }
-
-    public Boolean getTriggeredReflex() {
-        return triggeredReflex;
-    }
-
-    public Boolean getResultCalculated() {
-        return resultCalculated;
-    }
-
-    public void setResultCalculated(Boolean resultCalculated) {
-        this.resultCalculated = resultCalculated;
-    }
-
-    public void setStatusId(String statusId) {
-        this.statusId = statusId;
-    }
-
-    public String getStatusId() {
-        return statusId;
-    }
-
-    public void setEnteredDate(Timestamp enteredDate) {
-        this.enteredDate = enteredDate;
-    }
-
-    public Timestamp getEnteredDate() {
-        return enteredDate;
-    }
-
-    public Panel getPanel() {
-        return (Panel) panel.getValue();
-    }
-
-    public void setPanel(Panel panel) {
-        this.panel.setValue(panel);
-    }
-
-    public String getVectorPoolId() {
-        return vectorPoolId;
-    }
-
-    public void setVectorPoolId(String vectorPoolId) {
-        this.vectorPoolId = vectorPoolId;
-    }
-
-    public boolean isReferredOut() {
-        return referredOut;
-    }
-
-    public void setReferredOut(boolean referredOut) {
-        this.referredOut = referredOut;
-    }
-
-    public boolean isCorrectedSincePatientReport() {
-        return correctedSincePatientReport;
-    }
-
-    public void setCorrectedSincePatientReport(boolean correctedSincePatientReport) {
-        this.correctedSincePatientReport = correctedSincePatientReport;
     }
 
     @Override
@@ -540,37 +415,4 @@ public class Analysis extends BaseObject<String> implements NoteObject {
     public String getFhirUuidAsString() {
         return fhirUuid == null ? "" : fhirUuid.toString();
     }
-
-    public UUID getFhirUuid() {
-        return fhirUuid;
-    }
-
-    public void setFhirUuid(UUID fhirUuid) {
-        this.fhirUuid = fhirUuid;
-    }
-
-    public Method getMethod() {
-        return (Method) method.getValue();
-    }
-
-    public void setMethod(Method method) {
-        this.method.setValue(method);
-    }
-
-    public ResultFile getResultFile() {
-        return resultFile;
-    }
-
-    public void setResultFile(ResultFile resultFile) {
-        this.resultFile = resultFile;
-    }
-
-    public String getAnalyzerId() {
-        return analyzerId;
-    }
-
-    public void setAnalyzerId(String analyzerId) {
-        this.analyzerId = analyzerId;
-    }
-
 }

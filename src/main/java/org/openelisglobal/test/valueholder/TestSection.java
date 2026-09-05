@@ -13,54 +13,99 @@
  */
 package org.openelisglobal.test.valueholder;
 
-import java.sql.Timestamp;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.util.Objects;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestSectionService;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "TEST_SECTION")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class TestSection extends EnumValueItemImpl {
 
     private static final long serialVersionUID = -1574344492809195601L;
 
+    @Id
+    @GeneratedValue(generator = "test_section_seq_gen")
+    @GenericGenerator(name = "test_section_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "test_section_seq"))
+    @Column(name = "ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
+    @Column(name = "IS_EXTERNAL", length = 1)
     private String isExternal;
 
-    private Timestamp lastupdated;
-
+    @Column(name = "NAME", length = 20)
     private String testSectionName;
 
+    @Column(name = "DESCRIPTION", length = 60, nullable = false)
     private String description;
 
-    private ValueHolderInterface organization;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ORG_ID")
+    private Organization organization;
 
+    @Transient
     private String selectedOrganizationId;
 
+    @Column(name = "sort_order")
     private int sortOrderInt;
 
+    @Transient
     private String selectedParentTestSectionId;
 
-    private ValueHolderInterface parentTestSection;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "PARENT_TEST_SECTION")
+    private TestSection parentTestSection;
 
-    private ValueHolderInterface localization;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "name_localization_id")
+    private Localization localization;
 
+    @Column(name = "is_active")
     private String isActive;
 
     // OGC-1020 (R1): lab-unit domain drives the Results page rendering
     // (CLINICAL / ENVIRONMENTAL / VECTOR); mirrors the OGC-936 Test.domain
     // pattern
+    @Column(name = "DOMAIN", length = 20)
     private String domain = "CLINICAL";
+
+    @Column(name = "display_key", length = 60)
+    private String nameKey;
+
+    @Override
+    public String getNameKey() {
+        return nameKey;
+    }
+
+    @Override
+    public void setNameKey(String nameKey) {
+        this.nameKey = nameKey;
+    }
 
     public TestSection() {
         super();
-        organization = new ValueHolder();
-        parentTestSection = new ValueHolder();
-        localization = new ValueHolder();
     }
 
     @Override
@@ -68,88 +113,14 @@ public class TestSection extends EnumValueItemImpl {
         return id;
     }
 
-    public String getIsExternal() {
-        return isExternal;
-    }
-
-    public String getTestSectionName() {
-        return testSectionName;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
     @Override
     public void setId(String id) {
         this.id = id;
     }
 
-    public void setIsExternal(String isExternal) {
-        this.isExternal = isExternal;
-    }
-
-    public void setTestSectionName(String testSectionName) {
-        this.testSectionName = testSectionName;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Organization getOrganization() {
-        return (Organization) organization.getValue();
-    }
-
-    public void setOrganization(Organization organization) {
-        this.organization.setValue(organization);
-    }
-
-    public void setSelectedOrganizationId(String selectedOrganizationId) {
-        this.selectedOrganizationId = selectedOrganizationId;
-    }
-
-    public String getSelectedOrganizationId() {
-        return selectedOrganizationId;
-    }
-
-    @Override
-    public void setLastupdated(Timestamp lastupdated) {
-        this.lastupdated = lastupdated;
-    }
-
-    @Override
-    public Timestamp getLastupdated() {
-        return lastupdated;
-    }
-
-    public TestSection getParentTestSection() {
-        return (TestSection) parentTestSection.getValue();
-    }
-
-    public void setParentTestSection(TestSection parentTestSection) {
-        this.parentTestSection.setValue(parentTestSection);
-    }
-
-    public void setSelectedParentTestSectionId(String selectedParentTestSectionId) {
-        this.selectedParentTestSectionId = selectedParentTestSectionId;
-    }
-
-    public String getSelectedParentTestSectionId() {
-        return selectedParentTestSectionId;
-    }
-
     @Override
     protected String getDefaultLocalizedName() {
         return SpringContext.getBean(TestSectionService.class).getUserLocalizedTesSectionName(this);
-    }
-
-    public int getSortOrderInt() {
-        return sortOrderInt;
-    }
-
-    public void setSortOrderInt(int sortOrderInt) {
-        this.sortOrderInt = sortOrderInt;
     }
 
     @Override
@@ -160,22 +131,6 @@ public class TestSection extends EnumValueItemImpl {
     @Override
     public void setIsActive(String isActive) {
         this.isActive = isActive;
-    }
-
-    public String getDomain() {
-        return domain;
-    }
-
-    public void setDomain(String domain) {
-        this.domain = domain;
-    }
-
-    public Localization getLocalization() {
-        return (Localization) localization.getValue();
-    }
-
-    public void setLocalization(Localization localization) {
-        this.localization.setValue(localization);
     }
 
     @Override

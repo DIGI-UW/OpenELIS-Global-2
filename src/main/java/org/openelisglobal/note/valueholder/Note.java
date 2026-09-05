@@ -15,10 +15,31 @@
  */
 package org.openelisglobal.note.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "NOTE")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class Note extends BaseObject<String> {
     public static final String EXTERNAL = "E";
     public static final String INTERNAL = "I";
@@ -26,20 +47,36 @@ public class Note extends BaseObject<String> {
     public static final String NON_CONFORMITY = "N";
     public static final String UNCONDITIONAL_ACCEPTANCE_REASON = "U";
 
+    @Id
+    @GeneratedValue(generator = "note_seq_gen")
+    @GenericGenerator(name = "note_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
+            @org.hibernate.annotations.Parameter(name = "sequence_name", value = "note_seq") })
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0, nullable = false)
     private String id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "SYS_USER_ID")
     private SystemUser systemUser;
 
+    @Transient
     private String systemUserId;
 
+    @Column(name = "REFERENCE_ID")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String referenceId;
 
+    @Column(name = "REFERENCE_TABLE")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String referenceTableId;
 
+    @Column(name = "NOTE_TYPE", length = 1)
     private String noteType;
 
+    @Column(name = "SUBJECT", length = 60)
     private String subject;
 
+    @Column(name = "TEXT")
     private String text;
 
     /**
@@ -47,79 +84,8 @@ public class Note extends BaseObject<String> {
      * multi-component test. Null means analysis-level (legacy notes and notes
      * authored outside a component context), which displays on every component row.
      */
+    @Column(name = "TEST_RESULT_COMPONENT_ID", length = 36)
     private String testResultComponentId;
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getNoteType() {
-        return noteType;
-    }
-
-    public void setNoteType(String noteType) {
-        this.noteType = noteType;
-    }
-
-    public String getReferenceId() {
-        return referenceId;
-    }
-
-    public void setReferenceId(String referenceId) {
-        this.referenceId = referenceId;
-    }
-
-    public String getReferenceTableId() {
-        return referenceTableId;
-    }
-
-    public void setReferenceTableId(String referenceTableId) {
-        this.referenceTableId = referenceTableId;
-    }
-
-    public String getSubject() {
-        return subject;
-    }
-
-    public void setSubject(String subject) {
-        this.subject = subject;
-    }
-
-    public void setSystemUser(SystemUser systemUser) {
-        this.systemUser = systemUser;
-    }
-
-    public SystemUser getSystemUser() {
-        return this.systemUser;
-    }
-
-    public String getText() {
-        return text;
-    }
-
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    public String getSystemUserId() {
-        return systemUserId;
-    }
-
-    public void setSystemUserId(String systemUserId) {
-        this.systemUserId = systemUserId;
-    }
-
-    public String getTestResultComponentId() {
-        return testResultComponentId;
-    }
-
-    public void setTestResultComponentId(String testResultComponentId) {
-        this.testResultComponentId = testResultComponentId;
-    }
 
     public void setReferenceTables(ReferenceTables referenceTables) {
         if (referenceTables != null) {
