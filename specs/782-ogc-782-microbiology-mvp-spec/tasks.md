@@ -256,6 +256,15 @@ product sequence.
     failure from a clean, service-created scenario. Fix both if they remain; if
     either does not reproduce, retain explicit rerun evidence rather than
     changing unrelated order behavior.
+  - Inspect the successful order-submission state against the established order
+    workflow. It must prevent accidental duplicate submission and present an
+    unambiguous completed or next-action state; if the current behavior is the
+    intended shared pattern, correct the review instruction instead of creating
+    a microbiology-only redirect.
+  - Resolve the lab meaning of Number of sets versus specimen quantity before
+    changing labels or validation. Once ruled, make the visible workflow and
+    review instructions use the distinction consistently; do not infer it from
+    the current form implementation.
   - Correct unclear or misfiled review instructions in Grist, preserve the
     submitted answers, and link each actionable answer directly to this top PR.
     Do not mirror issue state in this roadmap.
