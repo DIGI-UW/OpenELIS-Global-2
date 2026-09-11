@@ -72,6 +72,27 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
         }
     }
 
+
+    /** Encode a resource for trace logs; null-safe when FhirContext is mocked/unavailable. */
+    private String encodeResourceSafe(org.hl7.fhir.instance.model.api.IBaseResource resource) {
+        if (resource == null || fhirContext == null) {
+            return "<fhir-unavailable>";
+        }
+        try {
+            ca.uhn.fhir.parser.IParser parser = fhirContext.newJsonParser();
+            if (parser == null) {
+                return "<fhir-unavailable>";
+            }
+            return parser.encodeResourceToString(resource);
+        } catch (RuntimeException e) {
+            return "<fhir-encode-error>";
+        }
+    }
+
+    private boolean isLocalFhirStoreAvailable() {
+        return localFhirClient != null && fhirContext != null;
+    }
+
     @Override
     public Bundle createFhirResourceInFhirStore(Resource resource) throws FhirLocalPersistingException {
         String id = resource.getIdElement().getIdPart() == null ? "" : resource.getIdElement().getIdPart();
@@ -88,6 +109,12 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
         Bundle transactionBundle = makeTransactionBundleForCreate(resources);
         Bundle transactionResponseBundle = new Bundle();
         try {
+            if (!isLocalFhirStoreAvailable()) {
+                LogEvent.logError(this.getClass().getSimpleName(), "createFhirResourcesInFhirStore",
+                        "Local FHIR client is null - store unavailable");
+                throw new FhirLocalPersistingException("Local FHIR store unavailable");
+            }
+
             transactionResponseBundle = localFhirClient.transaction().withBundle(transactionBundle).execute();
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -101,6 +128,12 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
         Bundle transactionBundle = makeTransactionBundleForUpdate(resources);
         Bundle transactionResponseBundle = new Bundle();
         try {
+            if (!isLocalFhirStoreAvailable()) {
+                LogEvent.logError(this.getClass().getSimpleName(), "updateFhirResourcesInFhirStore",
+                        "Local FHIR client is null - store unavailable");
+                throw new FhirLocalPersistingException("Local FHIR store unavailable");
+            }
+
             transactionResponseBundle = localFhirClient.transaction().withBundle(transactionBundle).execute();
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -118,11 +151,17 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
         addCreateToTransactionBundle(createResources, transactionBundle);
         Bundle transactionResponseBundle = new Bundle();
         try {
+            if (!isLocalFhirStoreAvailable()) {
+                LogEvent.logError(this.getClass().getSimpleName(), "createUpdateFhirResourcesInFhirStore",
+                        "Local FHIR client is null - store unavailable");
+                throw new FhirLocalPersistingException("Local FHIR store unavailable");
+            }
+
             LogEvent.logTrace(this.getClass().getSimpleName(), "",
-                    "creating resources: " + fhirContext.newJsonParser().encodeResourceToString(transactionBundle));
+                    "creating resources: " + encodeResourceSafe(transactionBundle));
             transactionResponseBundle = localFhirClient.transaction().withBundle(transactionBundle).execute();
             LogEvent.logTrace(this.getClass().getSimpleName(), "", "created resources: "
-                    + fhirContext.newJsonParser().encodeResourceToString(transactionResponseBundle));
+                    + encodeResourceSafe(transactionResponseBundle));
         } catch (Exception e) {
             LogEvent.logError(e);
             throw new FhirLocalPersistingException(e);
@@ -148,11 +187,17 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
         }
         Bundle transactionResponseBundle = new Bundle();
         try {
+            if (!isLocalFhirStoreAvailable()) {
+                LogEvent.logError(this.getClass().getSimpleName(), "createUpdateFhirResourcesInFhirStore",
+                        "Local FHIR client is null - store unavailable");
+                throw new FhirLocalPersistingException("Local FHIR store unavailable");
+            }
+
             LogEvent.logTrace(this.getClass().getSimpleName(), "",
-                    "creating resources: " + fhirContext.newJsonParser().encodeResourceToString(transactionBundle));
+                    "creating resources: " + encodeResourceSafe(transactionBundle));
             transactionResponseBundle = localFhirClient.transaction().withBundle(transactionBundle).execute();
             LogEvent.logTrace(this.getClass().getSimpleName(), "", "created resources: "
-                    + fhirContext.newJsonParser().encodeResourceToString(transactionResponseBundle));
+                    + encodeResourceSafe(transactionResponseBundle));
         } catch (Exception e) {
             LogEvent.logError(e);
             throw new FhirLocalPersistingException(e);
@@ -200,7 +245,7 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
             if (localFhirClient == null) {
                 LogEvent.logError(this.getClass().getSimpleName(), "getPatientByUuid",
-                        "Local FHIR client is null — store unavailable");
+                        "Local FHIR client is null - store unavailable");
                 return Optional.empty();
             }
 
