@@ -339,6 +339,7 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
         analysis.setTest(test);
         analysis.setIsReportable(test.getIsReportable());
         analysis.setAnalysisType(DEFAULT_ANALYSIS_TYPE);
+        analysis.setMethod(test.getMethod());
         analysis.setRevision("0");
         analysis.setStartedDate(DateUtil.getNowAsTimestamp());
         analysis.setStatusId(
