@@ -25,6 +25,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         super.setUp();
         objectMapper = new ObjectMapper();
         executeDataSetWithStateManagement("testdata/flexible-assignment-test-data.xml");
+        authenticateAs("testuser");
     }
 
     @Test
