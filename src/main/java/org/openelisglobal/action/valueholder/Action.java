@@ -13,56 +13,54 @@
  */
 package org.openelisglobal.action.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+@Setter
+@Getter
+@Entity
+@DynamicUpdate
+@Table(name = "ACTION")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class Action extends BaseObject<String> {
 
-    private String code;
-
+    @Id
+    @GeneratedValue(generator = "action_seq_gen")
+    @GenericGenerator(name = "action_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
+            @Parameter(name = "sequence_name", value = "action_seq") })
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0, nullable = false)
     private String id;
 
+    @Column(name = "CODE", length = 10, nullable = false)
+    private String code;
+
+    @Column(name = "DESCRIPTION", length = 256, nullable = false)
     private String description;
 
+    @Column(name = "TYPE", length = 10, nullable = false)
     private String type;
 
     // (concatenate action code name/desc)
+    // Marked as transient because it's a computed property, not a database column
+    @Transient
     private String actionDisplayValue;
 
     public Action() {
         super();
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 
     public String getActionDisplayValue() {
