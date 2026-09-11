@@ -305,10 +305,10 @@ public abstract class BaseController extends ControllerUtills implements IAction
     protected <T extends BaseForm> T resetFormSessionObject(String objectName, T form) {
         try {
             @SuppressWarnings("unchecked")
-            T newForm = (T) form.getClass().newInstance();
+            T newForm = (T) form.getClass().getDeclaredConstructor().newInstance();
             request.getSession().setAttribute(objectName, newForm);
             return newForm;
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (ReflectiveOperationException e) {
             LogEvent.logError(e.getMessage(), e);
             return form;
         }
@@ -316,10 +316,10 @@ public abstract class BaseController extends ControllerUtills implements IAction
 
     public <T extends BaseForm> T resetSessionFormToType(BaseForm form, Class<T> classType) {
         try {
-            T newForm = classType.newInstance();
+            T newForm = classType.getDeclaredConstructor().newInstance();
             request.getSession().setAttribute("form", newForm);
             return newForm;
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (ReflectiveOperationException e) {
             LogEvent.logError(e.getMessage(), e);
             return null;
         }
