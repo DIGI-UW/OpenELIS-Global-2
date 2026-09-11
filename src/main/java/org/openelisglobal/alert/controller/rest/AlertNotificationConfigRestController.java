@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class AlertNotificationConfigRestController {
 
+    private static final String INVALID_ESCALATION_DELAY_MESSAGE = "Invalid escalationDelayMinutes: must be an integer";
+
     @Autowired
     private AlertNotificationConfigService alertNotificationConfigService;
 
@@ -43,6 +45,8 @@ public class AlertNotificationConfigRestController {
         try {
             alertNotificationConfigService.saveAlertNotificationConfig(config, sysUserId);
             return ResponseEntity.ok(Map.of("message", "Alert notification configuration saved successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", INVALID_ESCALATION_DELAY_MESSAGE));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to save configuration: " + e.getMessage()));
