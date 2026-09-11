@@ -20,7 +20,7 @@ import {
 } from "./InventoryService";
 import StorageLocationModal from "./StorageLocationModal";
 
-const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
+const LotEntryModal = ({ open, onClose, onSave, onReopen, lot = null }) => {
   const intl = useIntl();
   const isEdit = !!lot;
 
@@ -118,6 +118,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     setLocationModalOpen(false);
     fetchLocations();
     handleChange("storageLocation", newLocation);
+    onReopen();
   };
 
   const handleChange = (field, value) => {
@@ -291,7 +292,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
                 kind="ghost"
                 size="sm"
                 renderIcon={Add}
-                onClick={() => setLocationModalOpen(true)}
+                //                onClick={() => setLocationModalOpen(true)}
+                onClick={() => {
+                  onClose(); // close parent modal first
+                  setLocationModalOpen(true); // then open child modal
+                }}
               >
                 <FormattedMessage id="storage.location.add.button" />
               </Button>
@@ -352,7 +357,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       {/* Storage Location Creation Modal */}
       <StorageLocationModal
         open={locationModalOpen}
-        onClose={() => setLocationModalOpen(false)}
+        onClose={() => {
+          setLocationModalOpen(false);
+          onReopen(); // ← reopen LotEntryModal when cancel is clicked too
+        }}
         onSave={handleLocationCreated}
       />
     </>

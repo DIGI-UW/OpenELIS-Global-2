@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.dao.InventoryStorageLocationDAO;
@@ -122,5 +123,14 @@ public class InventoryStorageLocationServiceImpl extends AuditableBaseObjectServ
         }
 
         return String.join(" > ", path);
+    }
+
+    @Override
+    @Transactional
+    public InventoryStorageLocation save(InventoryStorageLocation location) {
+        if (location.getFhirUuid() == null) {
+            location.setFhirUuid(UUID.randomUUID());
+        }
+        return super.save(location);
     }
 }
