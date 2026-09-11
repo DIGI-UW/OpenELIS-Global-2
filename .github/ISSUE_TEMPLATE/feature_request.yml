@@ -1,0 +1,58 @@
+name: Feature
+description: Suggest an idea for this project
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a new feature for OpenELIS Global 2! 🚀
+        
+        Please search existing issues before proposing a new feature.
+        For general design discussions or proposals, check our [Talk Forum](https://talk.openelis-global.org/).
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Proposed Component / Area
+      description: Select which part of the application this feature targets.
+      options:
+        - "Frontend (React / Carbon UI)"
+        - "Backend (Java / Spring)"
+        - "Testing (JUnit / Playwright / Cypress)"
+        - "Database (PostgreSQL / Liquibase)"
+        - "Configuration (System / Localization)"
+        - "Other / Multiple"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: Is your feature request related to a problem? Describe the problem clearly.
+      placeholder: "e.g., I'm frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see implemented.
+      placeholder: Describe the desired feature behavior and how users should interact with it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you've considered.
+      placeholder: "e.g., We could do X instead, but that has trade-offs..."
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched for existing feature requests to avoid duplicates.
+          required: true

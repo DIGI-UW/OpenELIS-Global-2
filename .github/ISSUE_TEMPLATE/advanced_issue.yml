@@ -1,0 +1,116 @@
+name: Advanced Issue Template
+description: Create a high-impact issue for experienced contributors with deep familiarity with the codebase
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing! 🚀
+        We really appreciate your interest in working on an Advanced issue.
+        
+        This template is for larger, more impactful tasks that shape how **OpenELIS Global 2** evolves over time. These issues often involve deeper design thinking, broader context, and long-term considerations.
+        They’re a great fit for contributors who enjoy tackling complex architectural problems and helping guide the direction of the project.
+
+        ### 🧠 Advanced Level
+        **Who is this issue for?**
+        This issue is well-suited for contributors who are very familiar with OpenELIS Global 2 and enjoy working with its core abstractions and design patterns.
+        Advanced Issues often involve:
+        * Exploring and shaping architecture (FHIR R4 compliance, transaction management, performance optimization)
+        * Reasoning about trade-offs and long-term impact
+        * Working across multiple modules or systems
+        * Updating tests and documentation alongside code
+
+        ### 🧭 About Advanced Issues
+        Advanced Issues usually focus on larger changes that influence how OpenELIS works as a whole. These issues often:
+        * Touch core abstractions or shared utilities
+        * Span multiple parts of the codebase
+        * Involves design decisions and trade-offs
+        * Consider long-term maintainability and compatibility
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Component / Area
+      description: Select the main technical area of this issue.
+      options:
+        - "Frontend (React / Carbon UI)"
+        - "Backend (Java / Spring)"
+        - "Testing (JUnit / Playwright / Cypress)"
+        - "Database (PostgreSQL / Liquibase)"
+        - "Configuration (System / Localization)"
+        - "Other / Multiple"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 🐞 Problem Description
+      description: Describe the problem in detail. What is the current behavior? Why could it be improved? Which parts of the codebase are involved?
+      placeholder: |
+        Describe the problem here. Example:
+        The current FHIR Patient mapping in FhirTransformService handles basic demographics but does not synchronize external identifier systems efficiently, leading to N+1 query problems.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_outcome
+    attributes:
+      label: 💡 Proposed / Expected Outcome
+      description: Describe the intended direction or design. Include the overall approach, any new or updated abstractions, and constraints.
+      placeholder: |
+        Describe the proposed solution here. Example:
+        Introduce a batch fetching strategy for patient identifiers within the DAO layer and map them to the FHIR Identifier list in a single pass.
+    validations:
+      required: true
+
+  - type: textarea
+    id: design_notes
+    attributes:
+      label: 🧠 Implementation & Design Notes
+      description: Share detailed technical guidance to support implementation (key modules, suggested refactoring, performance/security considerations).
+      placeholder: Add detailed implementation and design notes here.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: acceptance_criteria
+    attributes:
+      label: ✅ Acceptance Criteria
+      description: A pull request for this issue should
+      options:
+        - label: Address the problem and goals described above
+          required: false
+        - label: Maintain backwards compatibility unless discussed otherwise
+          required: false
+        - label: Follow existing architectural, security, and database guidelines
+          required: false
+        - label: Include comprehensive unit and integration tests
+          required: false
+        - label: Update relevant documentation
+          required: false
+        - label: Pass all CI checks
+          required: false
+
+  - type: checkboxes
+    id: contribution_guide
+    attributes:
+      label: 📋 Contribution Guide
+      description: |
+        *Read [CONTRIBUTING.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/CONTRIBUTING.md) for contribution guidance.*
+        *Read [README.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/README.md) for setup instructions.*
+      options:
+        - label: Comment on the issue to indicate interest, and a maintainer will help with assignment
+          required: false
+        - label: Fork the repository and create a branch from `develop`
+          required: false
+        - label: Follow the repository contribution guidance and prepare a clean pull request for review
+          required: false
+        - label: Push your branch and open a pull request
+          required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: 📚 Additional Context, Links, or Prior Art
+      description: Add any references that may help (design documents, discussions, related PRs, or external resources).
+      placeholder: Optional references.

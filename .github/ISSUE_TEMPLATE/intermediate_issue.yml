@@ -1,0 +1,95 @@
+name: Intermediate Issue Template
+description: Create a well-documented issue for contributors with some familiarity with the codebase
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing! 🚀
+        We really appreciate your time and effort.
+        
+        This template is designed to help you create an **Intermediate-level issue** — a well-scoped task suitable for contributors who are familiar with the OpenELIS Global 2 codebase, its architecture, and development workflow.
+
+        ### 👤 Intermediate Level
+        **Who is this issue for?**
+        This issue is well-suited for contributors who:
+        * Understand the 5-layer architecture of the backend (Valueholder -> DAO -> Service -> Controller -> Form).
+        * Are comfortable working with React/Carbon UI elements and hooks/SWR.
+        * Can write and run integration/unit/E2E tests (JUnit, Playwright) independently.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Component / Area
+      description: Select the main technical area of this issue.
+      options:
+        - "Frontend (React / Carbon UI)"
+        - "Backend (Java / Spring)"
+        - "Testing (JUnit / Playwright / Cypress)"
+        - "Database (PostgreSQL / Liquibase)"
+        - "Configuration (System / Localization)"
+        - "Other / Multiple"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 👾 Description of the Issue
+      description: Describe the issue in detail. Explain the context, existing behavior, and why the change is needed.
+      placeholder: Describe the issue context here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: 💡 Proposed Solution & Architecture Guidelines
+      description: Explain the design direction and the high-level implementation strategy. Identify which layers/modules should be modified.
+      placeholder: |
+        Specify the architectural guidance:
+        - Valueholders, DAOs, Services, or Controllers to modify/create.
+        - UI components or state management changes required.
+        - Database migrations required (Liquibase).
+    validations:
+      required: true
+
+  - type: textarea
+    id: testing_guidelines
+    attributes:
+      label: 🧪 Testing Requirements
+      description: Specify what testing needs to be performed or added (unit tests, integration tests, E2E).
+      placeholder: "e.g., Add integration tests in GenericSampleOrderServiceTest to cover the new validation logic."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: acceptance_criteria
+    attributes:
+      label: ✅ Acceptance Criteria
+      description: A pull request for this issue should
+      options:
+        - label: "**Scope:** Changes are limited to this issue"
+          required: false
+        - label: "**Behavior:** Expected behavior matches the description above"
+          required: false
+        - label: "**Tests:** Existing and new tests pass"
+          required: false
+        - label: "**Review:** All code review feedback addressed"
+          required: false
+
+  - type: checkboxes
+    id: contribution_guide
+    attributes:
+      label: 📋 Contribution Guide
+      description: |
+        *Read [CONTRIBUTING.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/CONTRIBUTING.md) for contribution guidance.*
+        *Read [README.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/README.md) for setup instructions.*
+      options:
+        - label: Comment on the issue to indicate interest, and a maintainer will help with assignment
+          required: false
+        - label: Fork the repository and create a branch from `develop`
+          required: false
+        - label: Follow the repository contribution guidance and prepare a clean pull request for review
+          required: false
+        - label: Push your branch and open a pull request
+          required: false
