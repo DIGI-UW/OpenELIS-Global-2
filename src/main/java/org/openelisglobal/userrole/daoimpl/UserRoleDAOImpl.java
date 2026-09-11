@@ -104,9 +104,9 @@ public class UserRoleDAOImpl extends BaseDAOImpl<UserRole, UserRolePK> implement
     public void deleteLabUnitRoleMap(LabUnitRoleMap roleMap) {
         try {
             entityManager.unwrap(Session.class).delete(roleMap);
-        } catch (HibernateException e) {
+        } catch (RuntimeException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in UserRoleDAOImpl userInRole()", e);
+            throw new LIMSRuntimeException("Error in UserRoleDAOImpl deleteLabUnitRoleMap()", e);
         }
     }
 
@@ -121,7 +121,7 @@ public class UserRoleDAOImpl extends BaseDAOImpl<UserRole, UserRolePK> implement
             userIds = query.list();
         } catch (HibernateException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in UserRoleDAOImpl userInRole()", e);
+            throw new LIMSRuntimeException("Error in UserRoleDAOImpl getUserIdsForRole()", e);
         }
         return userIds;
     }
