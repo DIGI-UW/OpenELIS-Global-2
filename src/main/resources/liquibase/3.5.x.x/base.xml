@@ -392,6 +392,7 @@
   <include relativeToChangelogFile="true" file="096-analyzer-result-source-context.xml"/>
   <include relativeToChangelogFile="true" file="097-remove-openelis-analyzer-error-queue.xml"/>
   <include relativeToChangelogFile="true" file="098-remove-superseded-analyzer-schema.xml"/>
+  <include relativeToChangelogFile="true" file="099-analyzer-delivery-receipt.xml"/>
 
   <!-- OGC-782 M1: microbiology catalog/reference foundations. The historical
        filename is retained so already-applied demo migrations keep identity. -->

@@ -158,6 +158,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord</class>
+        <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
 
         <!-- Westgard QC entities (003-westgard-qc) -->

@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.analyzer.daoimpl;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.hibernate.Session;
@@ -84,6 +85,14 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         query.setParameter("connectionId", bridgeConnectionId.trim());
         return Optional.ofNullable(query.uniqueResult());
+    }
+
+    @Override
+    public Optional<Analyzer> findByBridgeConnectionIdForUpdate(String bridgeConnectionId) {
+        // Lock only the analyzer row, not the shared profile/site-binding rows.
+        return entityManager.createQuery("FROM Analyzer a WHERE a.bridgeConnectionId = :connectionId", Analyzer.class)
+                .setParameter("connectionId", bridgeConnectionId).setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .getResultStream().findFirst();
     }
 
     @Override

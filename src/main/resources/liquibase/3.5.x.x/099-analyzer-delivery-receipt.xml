@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="099-analyzer-delivery-receipt" author="pmanko">
+        <createTable schemaName="clinlims" tableName="analyzer_delivery_receipt">
+            <column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="connection_id" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="message_id" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="analyzer_id" type="numeric(10,0)"><constraints nullable="false"/></column>
+            <column name="profile_id" type="varchar(128)"><constraints nullable="false"/></column>
+            <column name="profile_revision" type="integer"><constraints nullable="false"/></column>
+            <column name="results_staged" type="integer"><constraints nullable="false"/></column>
+            <column name="results_held" type="integer"><constraints nullable="false"/></column>
+            <column name="controls_processed" type="integer"><constraints nullable="false"/></column>
+            <column name="accepted_by" type="varchar(36)"><constraints nullable="false"/></column>
+            <column name="accepted_at" type="timestamp"><constraints nullable="false"/></column>
+            <column name="last_updated" type="timestamp"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_delivery_receipt" columnNames="connection_id,message_id"
+            constraintName="uq_analyzer_delivery_receipt"/>
+        <rollback><dropTable schemaName="clinlims" tableName="analyzer_delivery_receipt"/></rollback>
+    </changeSet>
+</databaseChangeLog>

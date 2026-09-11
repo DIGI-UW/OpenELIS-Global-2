@@ -29,5 +29,7 @@ public interface AnalyzerDAO extends BaseDAO<Analyzer, String> {
 
     Optional<Analyzer> findByBridgeConnectionId(String bridgeConnectionId);
 
+    Optional<Analyzer> findByBridgeConnectionIdForUpdate(String bridgeConnectionId);
+
     List<AnalyzerTestCapability> findCapabilitiesByTestId(String testId);
 }

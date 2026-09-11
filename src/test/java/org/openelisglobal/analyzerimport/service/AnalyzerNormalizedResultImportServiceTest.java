@@ -59,6 +59,9 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Mock
     private QCResultProcessingService qcResultProcessingService;
 
+    @Mock
+    private org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO receiptDAO;
+
     private AnalyzerNormalizedResultImportServiceImpl service;
     private Analyzer analyzer;
     private AnalyzerSiteBindingRevision revision;
@@ -67,9 +70,11 @@ public class AnalyzerNormalizedResultImportServiceTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, siteBindingService,
-                analyzerResultsService, testResultService, qcResultProcessingService, FHIR);
+                analyzerResultsService, testResultService, qcResultProcessingService, FHIR, receiptDAO);
+        when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
         analyzer = analyzer("site.mock-hematology", 1);
-        when(analyzerService.findByBridgeConnectionId("bridge-connection-7f3c")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
     }
 
     @Test
@@ -101,7 +106,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Test
     public void unknownTestIsDurablyHeldInsteadOfUsingLoincOrNameFallback() throws IOException {
         analyzer = analyzer("site.unknown-capable", 3);
-        when(analyzerService.findByBridgeConnectionId("bridge-connection-7f3c")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
 
         AnalyzerNormalizedResultImportSummary summary = service
@@ -202,6 +208,19 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void operationalQcFailureIsNotAcknowledgedAsAnAcceptedDelivery() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        // The fixture supplies the timestamp; the failure is independent of its
+        // timezone conversion.
+        org.mockito.Mockito.doThrow(new IllegalStateException("QC storage unavailable")).when(qcResultProcessingService)
+                .processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), eq("LOT-WBC-2026-08"), eq("NORMAL"),
+                        eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"), any(java.time.LocalDateTime.class));
+        Bundle bundle = fixture("normalized-qc.fhir.json");
+
+        assertThrows(IllegalStateException.class, () -> service.importBundle(bundle, "7"));
+    }
+
+    @Test
     public void recognizedControlUsesThePinnedBindingThenEntersOperationalQc() throws IOException {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
 
@@ -223,7 +242,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
 
     @Test
     public void unknownConnectionIsRejectedWithoutCreatingOrStagingAnything() throws IOException {
-        when(analyzerService.findByBridgeConnectionId("bridge-connection-7f3c")).thenReturn(Optional.empty());
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c")).thenReturn(Optional.empty());
 
         AnalyzerNormalizedResultImportException error = assertThrows(AnalyzerNormalizedResultImportException.class,
                 () -> service.importBundle(fixture("normalized-known-test.fhir.json"), "7"));
@@ -236,7 +255,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Test
     public void mismatchedPinnedProfileIsRejectedBeforeMapping() throws IOException {
         analyzer = analyzer("different-profile", 1);
-        when(analyzerService.findByBridgeConnectionId("bridge-connection-7f3c")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
 
         AnalyzerNormalizedResultImportException error = assertThrows(AnalyzerNormalizedResultImportException.class,
                 () -> service.importBundle(fixture("normalized-known-test.fhir.json"), "7"));
