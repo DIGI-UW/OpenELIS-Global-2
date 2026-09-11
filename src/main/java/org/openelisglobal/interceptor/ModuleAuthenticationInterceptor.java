@@ -21,10 +21,13 @@ import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.security.web.DefaultRedirectStrategy;
 import org.springframework.security.web.RedirectStrategy;
+import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
+import org.springframework.web.accept.HeaderContentNegotiationStrategy;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -57,15 +60,20 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             LogEvent.logInfo("ModuleAuthenticationInterceptor", "preHandle()",
                     "======> NOT ALLOWED ACCESS TO THIS MODULE");
             LogEvent.logInfo(this.getClass().getSimpleName(), "preHandle", "has no permission"); //
-            if (isRestFullPath(path)) {
+
+            MediaTypeRequestMatcher requestMatcher = new MediaTypeRequestMatcher(new HeaderContentNegotiationStrategy(),
+                    MediaType.TEXT_HTML);
+            requestMatcher.setIgnoredMediaTypes(Set.of(MediaType.ALL));
+
+            if (requestMatcher.matches(request)) {
+                response.sendRedirect(request.getContextPath() + "/Home?access=denied");
+            } else {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
                 String jsonResponse = "{ \"status\": 401, \"message\": \"Not Authorized\" }";
                 response.getWriter().write(jsonResponse);
                 response.getWriter().flush();
-            } else {
-                redirectStrategy.sendRedirect(request, response, "/Home?access=denied");
             }
             return false;
         }
@@ -108,7 +116,12 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             // auto-allowed for any authenticated user. Admin-only controllers are
             // protected via @PreAuthorize("hasRole('ADMIN')") (added in PR #2794).
             // Full per-role module mappings are a future enhancement.
-            if (isRestFullPath(path)) {
+
+            MediaTypeRequestMatcher requestMatcher = new MediaTypeRequestMatcher(new HeaderContentNegotiationStrategy(),
+                    MediaType.TEXT_HTML);
+            requestMatcher.setIgnoredMediaTypes(Set.of(MediaType.ALL));
+
+            if (requestMatcher.matches(request)) {
                 return true;
             }
             LogEvent.logWarn("ModuleAuthenticationInterceptor", "hasPermissionForUrl()",
@@ -163,13 +176,5 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             }
         }
         return usd.getSystemUserId();
-    }
-
-    private boolean isRestFullPath(String path) {
-        if (path.startsWith("/rest") || path.startsWith("/api") || path.startsWith("/Provider")
-                || path.startsWith("/dbImage") || path.startsWith("/logging")) {
-            return true;
-        }
-        return false;
     }
 }
