@@ -26,6 +26,7 @@ import {
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
+import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import {
@@ -451,6 +452,8 @@ const BoxDetails = () => {
   if (!box) {
     return (
       <div className="error-container">
+        {/* The fetch failure that lands here raises a message of its own. */}
+        <AlertDialog />
         <p>
           <FormattedMessage id="shipment.error.boxNotFound" />
         </p>
@@ -460,6 +463,9 @@ const BoxDetails = () => {
 
   return (
     <div className="box-details">
+      {/* Without this every message this page raises is discarded, so sending a
+          box, removing a sample or a failed state change all passed in silence. */}
+      <AlertDialog />
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },

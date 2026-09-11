@@ -185,6 +185,10 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
             box.setLastupdated(now);
             box.setState(BoxState.DRAFT);
             box.setArchived(false);
+            // A new box is empty whatever the caller says it holds. The count belongs to
+            // the samples that are actually added afterwards, each of which moves it by
+            // one; taking a figure from the caller as well counts every sample twice.
+            box.setActualSampleCount(0);
 
             Integer id = shippingBoxDAO.insert(box);
             logger.info("Created shipping box with ID: {}", id);

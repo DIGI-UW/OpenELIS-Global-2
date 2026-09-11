@@ -219,11 +219,11 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
             Integer id = boxSampleItemDAO.insert(boxSampleItem);
             logger.info("Added sample item {} to box {}", sampleItemId, shippingBoxId);
 
-            // Update actualSampleCount
-            int newCount = boxSampleItemDAO.countByShippingBoxId(shippingBoxId);
-            box.setActualSampleCount(newCount);
-            box.setLastupdated(new Timestamp(System.currentTimeMillis()));
-            shippingBoxDAO.update(box);
+            // Adjusted in the database rather than read, set and saved back: Create Box
+            // adds its samples concurrently, and a read-modify-write on this row loses
+            // that race to its optimistic-lock version, refusing one of the samples the
+            // operator staged. See ShippingBoxDAO.adjustSampleCount.
+            shippingBoxDAO.adjustSampleCount(shippingBoxId, 1);
 
             // Assign all referrals for this sample item to this box
             List<Referral> referrals = referralDAO.getReferralsBySampleItemId(sampleItemId);
@@ -289,12 +289,9 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
             boxSampleItemDAO.delete(boxSampleItem);
             logger.info("Removed box sample item with ID: {} by user: {}", boxSampleItemId, systemUserId);
 
-            // Update actualSampleCount
-            if (boxId != null && shippingBox != null) {
-                int newCount = boxSampleItemDAO.countByShippingBoxId(boxId);
-                shippingBox.setActualSampleCount(newCount);
-                shippingBox.setLastupdated(new Timestamp(System.currentTimeMillis()));
-                shippingBoxDAO.update(shippingBox);
+            // Adjusted in the database, for the same reason the add path does it there.
+            if (boxId != null) {
+                shippingBoxDAO.adjustSampleCount(boxId, -1);
             }
         } catch (IllegalArgumentException e) {
             logger.error("Box sample item not found", e);

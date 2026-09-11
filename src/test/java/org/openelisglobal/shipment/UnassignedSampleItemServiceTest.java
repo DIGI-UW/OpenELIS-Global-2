@@ -4,14 +4,21 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import java.sql.Timestamp;
 import java.util.List;
+import java.util.UUID;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.shipment.dao.ShippingBoxDAO;
 import org.openelisglobal.shipment.dto.SampleItemDTO;
 import org.openelisglobal.shipment.service.UnassignedSampleItemService;
+import org.openelisglobal.shipment.valueholder.BoxState;
+import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest {
@@ -21,6 +28,12 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
 
     @Autowired
     private ReferralService referralService;
+
+    @Autowired
+    private ShippingBoxDAO shippingBoxDAO;
+
+    @Autowired
+    private OrganizationService organizationService;
 
     @Before
     public void init() throws Exception {
@@ -72,5 +85,59 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
         assertNotNull("Sample item should still be listed when its referral has no organization", item2);
         assertNull("destinationFacilityId must be null when the referral has no linked organization",
                 item2.getDestinationFacilityId());
+    }
+
+    /**
+     * Assigned sample items are excluded with a NOT IN, and a null inside a NOT IN
+     * is never true in SQL, so a single box row without a sample item empties this
+     * list for the whole site and no sample can be put in a box at all.
+     *
+     * <p>
+     * Whether that row can exist depends on the schema: this table was created with
+     * a non-null sample item, and the EQA work drops that constraint so panel
+     * material can be box contents, at which point every EQA box row is one of
+     * these. So the test asserts nothing where the column still forbids a null, and
+     * starts exercising the guard on the schema where it does not.
+     */
+    @Test
+    public void getAllUnassigned_shouldSurviveABoxRowWithNoSampleItem() {
+        Assume.assumeTrue("only meaningful where a box row may have no sample item", sampleItemIsNullable());
+
+        Integer boxId = insertBox();
+        // Inserted directly: the mapping forbids a null sample item, the column allows
+        // one, and rows like this exist in the wild from the box_sample migration.
+        jdbcTemplate.update("INSERT INTO clinlims.box_sample_item"
+                + " (id, shipping_box_id, sample_item_id, added_date, sys_user_id)"
+                + " SELECT COALESCE(MAX(id), 0) + 1, ?, NULL, now(), 1 FROM clinlims.box_sample_item", boxId);
+
+        List<SampleItemDTO> dtos = unassignedSampleItemService.getAllUnassigned();
+
+        assertNotNull("a box row with no sample item must not empty the unassigned list",
+                findByAccession(dtos, "12345"));
+        assertNotNull(findByAccession(dtos, "13333"));
+    }
+
+    private boolean sampleItemIsNullable() {
+        String nullable = jdbcTemplate
+                .queryForObject(
+                        "SELECT is_nullable FROM information_schema.columns WHERE table_schema = 'clinlims'"
+                                + " AND table_name = 'box_sample_item' AND column_name = 'sample_item_id'",
+                        String.class);
+        return "YES".equalsIgnoreCase(nullable);
+    }
+
+    private Integer insertBox() {
+        ShippingBox box = new ShippingBox();
+        box.setBoxId("BOX-NULLROW-0001");
+        box.setFhirUuid(UUID.randomUUID());
+        box.setDestinationFacility(organizationService.get("1"));
+        box.setState(BoxState.DRAFT);
+        box.setSystemUserId(1);
+        box.setArchived(false);
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        box.setCreatedDate(now);
+        box.setLastupdated(now);
+        shippingBoxDAO.insert(box);
+        return box.getId();
     }
 }

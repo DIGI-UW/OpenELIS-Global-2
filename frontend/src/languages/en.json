@@ -7239,6 +7239,7 @@
   "shipment.error.noReferralId": "No referral ID available for this sample",
   "shipment.error.noSampleSelected": "Please select at least one sample",
   "shipment.error.partialReception": "Some sample status updates failed. Please try again.",
+  "shipment.error.partialSampleAdd": "Only {added} of {total} samples were added to the box. It was left as a draft so you can add the rest.",
   "shipment.error.reasonRequired": "Please provide a reason",
   "shipment.error.reconcile": "Error reconciling box",
   "shipment.error.removeSample": "Failed to remove sample from box",
