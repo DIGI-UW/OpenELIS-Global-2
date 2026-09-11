@@ -13,7 +13,7 @@
  */
 package org.openelisglobal.common.log;
 
-import org.apache.log4j.Category;
+import org.apache.log4j.Logger;
 import org.owasp.encoder.Encode;
 
 /**
@@ -213,8 +213,8 @@ public class LogEvent {
                 "Class: " + className + ", Method: " + methodName + ", Fatal:" + sanitizeLogMessage(fatalMessage));
     }
 
-    private static Category getLog() {
-        return Category.getInstance(LogEvent.class);
+    private static Logger getLog() {
+        return Logger.getLogger(LogEvent.class);
     }
 
     // for preventing log forging
