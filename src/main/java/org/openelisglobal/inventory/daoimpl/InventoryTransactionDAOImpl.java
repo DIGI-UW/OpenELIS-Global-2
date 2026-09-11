@@ -7,6 +7,7 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.dao.InventoryTransactionDAO;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 import org.springframework.stereotype.Component;
@@ -68,7 +69,7 @@ public class InventoryTransactionDAOImpl extends BaseDAOImpl<InventoryTransactio
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryTransaction> getByReference(Long referenceId, String referenceType)
+    public List<InventoryTransaction> getByReference(Long referenceId, ReferenceType referenceType)
             throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryTransaction t WHERE t.referenceId = :referenceId AND t.referenceType = :referenceType ORDER BY t.transactionDate DESC";

@@ -52,14 +52,14 @@ public class InventoryTransactionServiceImpl extends AuditableBaseObjectServiceI
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryTransaction> getByReference(Long referenceId, String referenceType) {
+    public List<InventoryTransaction> getByReference(Long referenceId, ReferenceType referenceType) {
         return inventoryTransactionDAO.getByReference(referenceId, referenceType);
     }
 
     @Override
     @Transactional
     public InventoryTransaction recordTransaction(Long lotId, TransactionType transactionType, Double quantityChange,
-            Double quantityAfter, Long referenceId, String referenceType, String notes, String sysUserId) {
+            Double quantityAfter, Long referenceId, ReferenceType referenceType, String notes, String sysUserId) {
 
         InventoryLot lot = inventoryLotDAO.get(lotId)
                 .orElseThrow(() -> new IllegalArgumentException("Lot not found: " + lotId));
@@ -70,10 +70,7 @@ public class InventoryTransactionServiceImpl extends AuditableBaseObjectServiceI
         transaction.setQuantityChange(quantityChange);
         transaction.setQuantityAfter(quantityAfter);
         transaction.setReferenceId(referenceId);
-        // Convert String to ReferenceType enum if provided
-        if (referenceType != null) {
-            transaction.setReferenceType(ReferenceType.valueOf(referenceType));
-        }
+        transaction.setReferenceType(referenceType);
         transaction.setNotes(notes);
         transaction.setTransactionDate(new Timestamp(System.currentTimeMillis()));
         transaction.setSysUserId(sysUserId);

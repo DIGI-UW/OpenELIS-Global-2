@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 
@@ -14,19 +15,19 @@ public interface InventoryTransactionService extends BaseObjectService<Inventory
     List<InventoryTransaction> getByLotId(Long lotId);
 
     /**
-     * Get transactions by transaction type
+     * Get transactions by type
      */
     List<InventoryTransaction> getByTransactionType(TransactionType transactionType);
 
     /**
-     * Get transactions within a date range
+     * Get transactions by date range
      */
     List<InventoryTransaction> getByDateRange(Timestamp startDate, Timestamp endDate);
 
     /**
-     * Get transactions by reference (e.g., test result ID)
+     * Get transactions by reference
      */
-    List<InventoryTransaction> getByReference(Long referenceId, String referenceType);
+    List<InventoryTransaction> getByReference(Long referenceId, ReferenceType referenceType);
 
     /**
      * Record a transaction (helper method for creating transactions)
@@ -43,5 +44,5 @@ public interface InventoryTransactionService extends BaseObjectService<Inventory
      * @return The created transaction
      */
     InventoryTransaction recordTransaction(Long lotId, TransactionType transactionType, Double quantityChange,
-            Double quantityAfter, Long referenceId, String referenceType, String notes, String sysUserId);
+            Double quantityAfter, Long referenceId, ReferenceType referenceType, String notes, String sysUserId);
 }
