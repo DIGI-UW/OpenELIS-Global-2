@@ -112,9 +112,8 @@ public class TestCatalogController extends BaseController {
             catalog.setUom(testService.getUOM(test, false));
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(resultType)) {
                 List<TestResult> testResults = testService.getPossibleTestResults(test);
-                if (testResults.size() > 0) {
-                    catalog.setSignificantDigits(
-                            testService.getPossibleTestResults(test).get(0).getSignificantDigits());
+                if (testResults != null && !testResults.isEmpty()) {
+                    catalog.setSignificantDigits(testResults.get(0).getSignificantDigits());
                 } else {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "createTestList",
                             "test that doesn't have an active test result found. Possibly issue with data in"
