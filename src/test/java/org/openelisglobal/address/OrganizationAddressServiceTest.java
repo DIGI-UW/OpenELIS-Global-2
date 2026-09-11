@@ -60,4 +60,36 @@ public class OrganizationAddressServiceTest extends BaseWebContextSensitiveTest 
         Assert.assertEquals("The first element should be Amore", orgAddresses.get(0).getValue(), "Amore");
         Assert.assertEquals("The first element should be 12345678", orgAddresses.get(1).getValue(), "12345678");
     }
+
+    @Test
+    public void getAll_shouldReturnAllPreloadedOrganizationAddresses() throws Exception {
+        List<OrganizationAddress> all = addressService.getAll();
+
+        Assert.assertNotNull("getAll() must not return null", all);
+        Assert.assertEquals("Should have exactly 3 preloaded organisation addresses", 3, all.size());
+    }
+
+    @Test
+    public void getAddressPartsByOrganizationId_withUnknownOrgId_shouldReturnEmptyList() throws Exception {
+        List<OrganizationAddress> result = addressService.getAddressPartsByOrganizationId("99999");
+
+        Assert.assertNotNull("Result must not be null for an unknown org ID", result);
+        Assert.assertTrue("Should return empty list for an org with no addresses", result.isEmpty());
+    }
+
+    @Test
+    public void updateOrganizationAddress_shouldPersistNewValue() throws Exception {
+        // Fetch the first address belonging to org 1000
+        List<OrganizationAddress> addresses = addressService.getAddressPartsByOrganizationId("1000");
+        Assert.assertFalse("Need at least one address to update", addresses.isEmpty());
+
+        OrganizationAddress toUpdate = addresses.get(0);
+        toUpdate.setValue("UpdatedStreetName");
+        addressService.save(toUpdate);
+
+        // Re-fetch and verify
+        List<OrganizationAddress> reloaded = addressService.getAddressPartsByOrganizationId("1000");
+        boolean found = reloaded.stream().anyMatch(a -> "UpdatedStreetName".equals(a.getValue()));
+        Assert.assertTrue("Updated value should be persisted and visible on reload", found);
+    }
 }
