@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.method.valueholder.Method;
@@ -22,6 +23,8 @@ public interface TestService extends BaseObjectService<Test, String> {
     Test getActiveTestById(Integer id);
 
     Integer getTotalTestCount();
+
+    List<Test> getTestsByIds(Set<String> ids);
 
     List<Test> getAllActiveTests(boolean onlyTestsFullySetup);
 

@@ -1,7 +1,11 @@
 package org.openelisglobal.report.service.impl;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.service.ProviderService;
@@ -23,6 +27,7 @@ import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -166,6 +171,25 @@ public class PatientReportServiceImpl implements PatientReportService {
 
         // Define Rows
         List<ReportRow> rows = new ArrayList<>();
+
+        // creating and populating a set to store all testids
+        Set<String> testIds = new HashSet<>();
+        for (TestResultItem item : results) {
+            String testid = item.getTestId();
+            if (testid != null) {
+                testIds.add(testid);
+            }
+        }
+
+        // fetching all tests by testids
+        List<Test> tests = testService.getTestsByIds(testIds);
+
+        // storing all tests in a map for O(1) lookup
+        Map<String, Test> testsMap = new HashMap<>();
+        for (Test test : tests) {
+            testsMap.put(test.getId(), test);
+        }
+
         for (TestResultItem item : results) {
             if (item.getIsGroupSeparator()) {
                 continue;
@@ -179,7 +203,7 @@ public class PatientReportServiceImpl implements PatientReportService {
 
             // Build row data by column key so order matches definition
             for (ReportColumn col : columns) {
-                String value = getCellValue(col.getKey(), item, patient, orgName, clinician, collectionDate);
+                String value = getCellValue(col.getKey(), item, patient, orgName, clinician, collectionDate, testsMap);
                 row.addData(col.getKey(), value);
                 row.addCell(value);
             }
@@ -190,7 +214,7 @@ public class PatientReportServiceImpl implements PatientReportService {
     }
 
     private String getCellValue(String key, TestResultItem item, Patient patient, String orgName, String clinician,
-            String collectionDate) {
+            String collectionDate, Map<String, Test> testsMap) {
         if (key == null) {
             return "";
         }
@@ -217,7 +241,7 @@ public class PatientReportServiceImpl implements PatientReportService {
             return item.getTestName() != null ? item.getTestName() : "";
         case "testDescription":
             if (item.getTestId() != null) {
-                org.openelisglobal.test.valueholder.Test test = testService.getTestById(item.getTestId());
+                Test test = testsMap.get(item.getTestId());
                 if (test != null && test.getDescription() != null) {
                     return test.getDescription();
                 }
