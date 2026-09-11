@@ -12,7 +12,7 @@ services:
   db.openelis.org:
     container_name: openelisglobal-database
     ports:
-      - "15432:5432"
+      - "127.0.0.1:15432:5432"
     environment:
       DB_PASSWORD: ${OE_DB_PASSWORD:-clinlims}
       DB_SUPERUSER_PASSWORD: ${ADMIN_PASSWORD:-superuser}

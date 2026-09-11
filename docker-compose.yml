@@ -19,8 +19,6 @@ services:
         container_name: openelisglobal-database 
         image: itechuw/openelis-global-2-database:develop
         platform: linux/amd64
-        ports:
-            - "15432:5432"
         restart: always
         env_file:
             - ./volume/database/database.env

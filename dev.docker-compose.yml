@@ -18,7 +18,7 @@ services:
         container_name: openelisglobal-database 
         image: postgres:14.4
         ports:
-            - "15432:5432"
+            - "127.0.0.1:15432:5432"
         restart: always
         env_file:
             - ./volume/database/database.env
