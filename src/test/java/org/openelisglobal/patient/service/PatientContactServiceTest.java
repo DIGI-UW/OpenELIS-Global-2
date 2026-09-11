@@ -223,4 +223,30 @@ public class PatientContactServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(delectedPatientContacts);
         assertTrue(delectedPatientContacts.isEmpty());
     }
+
+    @Test
+    public void getAll_afterDelete_shouldReflectReducedCount() {
+        int countBefore = patientContactService.getAll().size();
+
+        PatientContact toDelete = patientContactService.get("8001");
+        assertNotNull("Precondition: contact must exist before delete", toDelete);
+
+        patientContactService.delete(toDelete);
+
+        int countAfter = patientContactService.getAll().size();
+        assertEquals("Count should decrease by 1 after delete", countBefore - 1, countAfter);
+    }
+
+    @Test(expected = org.hibernate.ObjectNotFoundException.class)
+    public void get_withUnknownId_shouldThrowException() {
+        patientContactService.get("99999");
+    }
+
+    @Test
+    public void get_withValidId_shouldReturnCorrectPatientContact() {
+        PatientContact contact = patientContactService.get("8001");
+
+        assertNotNull("PatientContact should not be null for a known ID", contact);
+        assertEquals("ID should match the requested ID", "8001", contact.getId());
+    }
 }
