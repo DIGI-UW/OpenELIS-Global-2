@@ -39,6 +39,19 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMockMvcTest {
 
     @Test
+    public void reprocessingRejectsAnonymousAndUnrelatedRolesBeforeCallingTheService() throws Exception {
+        mockMvc.perform(post("/rest/analyzer/analyzers/77/held-results/12/reprocess"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(
+                post("/rest/analyzer/analyzers/77/held-results/12/reprocess").with(user("results").roles("RESULTS")))
+                .andExpect(status().isForbidden());
+        org.mockito.Mockito.verifyZeroInteractions(importService);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService importService;
+
+    @Test
     public void unrelatedAuthenticatedRoleCannotOpenAnalyzerSetup() throws Exception {
         mockMvc.perform(get("/rest/analyzer/analyzers").with(user("results").roles("RESULTS"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
@@ -96,6 +109,17 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
         @Bean
         AnalyzerConnectionProbeService analyzerConnectionProbeService() {
             return mock(AnalyzerConnectionProbeService.class);
+        }
+
+        @Bean
+        org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService importService() {
+            return mock(org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService.class);
+        }
+
+        @Bean
+        AnalyzerHeldResultRestController heldResultRestController(
+                org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService service) {
+            return new AnalyzerHeldResultRestController(service);
         }
 
         @Bean

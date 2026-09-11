@@ -70,6 +70,27 @@ public class AnalyzerNormalizedResultContractTest {
         assertEquals("Normalized analyzer traffic requires one Bridge connection ID", error.getMessage());
     }
 
+    @Test
+    public void rejectsStoredObservationsWithoutExplicitReferences() {
+        for (String payload : new String[] { "{\"resourceType\":\"Observation\"}",
+                "{\"resourceType\":\"Observation\",\"specimen\":{\"display\":\"missing reference\"}}",
+                "{\"resourceType\":\"Observation\",\"specimen\":{\"reference\":\"Specimen/1\"}}",
+                "{\"resourceType\":\"Observation\",\"specimen\":{\"reference\":\"Specimen/1\"},\"device\":{\"display\":\"missing reference\"}}" }) {
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                    () -> AnalyzerNormalizedResultContract.parseStoredObservation(payload, "ACC-1", FHIR));
+            assertTrue(error.getMessage().contains("Stored analyzer Observation requires"));
+        }
+    }
+
+    @Test
+    public void reprojectsAStoredControlWithoutLosingClinicalMetadata() throws IOException {
+        var original = AnalyzerNormalizedResultContract.parse(fixture("normalized-qc.fhir.json"), FHIR).results()
+                .get(0);
+        var restored = AnalyzerNormalizedResultContract.parseStoredObservation(original.sourcePayload(),
+                original.accessionNumber(), FHIR);
+        assertEquals(original, restored);
+    }
+
     private static Bundle fixture(String name) throws IOException {
         return FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURES.resolve(name)));
     }
