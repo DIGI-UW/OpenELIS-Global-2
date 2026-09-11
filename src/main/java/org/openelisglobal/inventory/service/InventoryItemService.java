@@ -41,6 +41,11 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, L
     InventoryItem getByFhirUuid(String fhirUuid);
 
     /**
+     * Get an inventory item by its human-readable code
+     */
+    InventoryItem getByCode(String code);
+
+    /**
      * Calculate total current stock quantity for an item across all available lots
      */
     Double getTotalCurrentStock(Long itemId);

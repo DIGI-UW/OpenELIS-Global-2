@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-code.xml">
+
+    <!--
+    OGC-658 Part C: give inventory_item a human-readable code (BLOOD_CULTURE_BOTTLE)
+    alongside its surrogate primary key. The code is what users see in the catalog and
+    what derived lot numbers are built from; the id stays an opaque sequence value, as
+    everywhere else in the schema.
+
+    Purely additive: add the column, backfill existing rows from their names, then
+    tighten to NOT NULL + UNIQUE. No rows are deleted and no foreign keys are touched,
+    so this is safe to run on an instance that already holds inventory data.
+    -->
+    <changeSet id="OGC-658-part-c-add-inventory-item-code" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="code" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add inventory_item.code, backfilled from each item's name.</comment>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="code" type="VARCHAR(64)"/>
+        </addColumn>
+
+        <sql splitStatements="false">
+            UPDATE clinlims.inventory_item
+            SET code = LEFT(TRIM(BOTH '_' FROM REGEXP_REPLACE(UPPER(name), '[^A-Z0-9]+', '_', 'g')), 64)
+            WHERE code IS NULL;
+
+            UPDATE clinlims.inventory_item
+            SET code = 'ITEM_' || id
+            WHERE code IS NULL OR code = '';
+
+            DO $$
+            DECLARE
+                remaining INTEGER;
+                passes INTEGER := 0;
+            BEGIN
+                LOOP
+                    UPDATE clinlims.inventory_item outer_item
+                    SET code = LEFT(outer_item.code, GREATEST(1, 64 - LENGTH('_' || outer_item.id)))
+                               || '_' || outer_item.id
+                    WHERE EXISTS (
+                        SELECT 1 FROM clinlims.inventory_item inner_item
+                        WHERE inner_item.code = outer_item.code
+                        AND inner_item.id &lt; outer_item.id
+                    );
+
+                    SELECT COUNT(*) INTO remaining FROM (
+                        SELECT code FROM clinlims.inventory_item
+                        GROUP BY code HAVING COUNT(*) > 1
+                    ) duplicates;
+
+                    EXIT WHEN remaining = 0;
+
+                    passes := passes + 1;
+                    IF passes >= 5 THEN
+                        UPDATE clinlims.inventory_item outer_item
+                        SET code = 'ITEM_' || outer_item.id
+                        WHERE EXISTS (
+                            SELECT 1 FROM clinlims.inventory_item inner_item
+                            WHERE inner_item.code = outer_item.code
+                            AND inner_item.id &lt;&gt; outer_item.id
+                        );
+                        EXIT;
+                    END IF;
+                END LOOP;
+            END $$;
+        </sql>
+
+        <addNotNullConstraint tableName="inventory_item" schemaName="clinlims"
+            columnName="code" columnDataType="VARCHAR(64)"/>
+
+        <addUniqueConstraint tableName="inventory_item" schemaName="clinlims"
+            columnNames="code" constraintName="uq_inventory_item_code"/>
+
+        <rollback>
+            <dropUniqueConstraint tableName="inventory_item" schemaName="clinlims"
+                constraintName="uq_inventory_item_code"/>
+            <dropColumn tableName="inventory_item" schemaName="clinlims" columnName="code"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
