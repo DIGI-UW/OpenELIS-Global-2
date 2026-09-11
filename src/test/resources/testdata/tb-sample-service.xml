@@ -1,0 +1,117 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Basic setup -->
+    <system_user id="1" login_name="admin" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Address parts -->
+    <address_part id="4" part_name="phone" display_order="1"
+        display_key="phone_key" />
+    <address_part id="6" part_name="street" display_order="2"
+        display_key="street_key" />
+
+    <!-- Observation History Types for TB -->
+    <observation_history_type id="100"
+        type_name="TbOrderReason" description="TbOrderReason" />
+    <observation_history_type id="101"
+        type_name="TbDiagnosticReason" description="TbDiagnosticReason" />
+    <observation_history_type id="102"
+        type_name="TbFollowupReason" description="TbFollowupReason" />
+    <observation_history_type id="103"
+        type_name="TbSampleAspects" description="TbSampleAspects" />
+    <observation_history_type id="104"
+        type_name="TbFollowupReasonPeriodLine1"
+        description="TbFollowupReasonPeriodLine1" />
+    <observation_history_type id="105"
+        type_name="TbFollowupReasonPeriodLine2"
+        description="TbFollowupReasonPeriodLine2" />
+    <observation_history_type id="106"
+        type_name="TbAnalysisMethod" description="TbAnalysisMethod" />
+
+    <!-- Localizations -->
+    <localization id="100" description="test name"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="101" description="sampleType name"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="102" description="section name"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <localization_value id="100" localization_id="100"
+        locale="en" value="GeneXpert MTB/RIF" />
+    <localization_value id="101" localization_id="101"
+        locale="en" value="Sputum" />
+    <localization_value id="102" localization_id="102"
+        locale="en" value="TB Section" />
+
+    <supported_locale id="100" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <!-- Type of sample -->
+    <type_of_sample id="100" description="Sputum" domain="E"
+        name_localization_id="101" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Test section -->
+    <test_section id="200" name="TB" description="TB Section"
+        is_external="N" lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="102" display_key="tb" domain="CLINICAL" />
+
+    <test_formats id="100" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Test -->
+    <test id="200" description="GeneXpert MTB/RIF" loinc="12345-6"
+        is_active="Y" is_reportable="Y" orderable="true"
+        lastupdated="2025-01-01 12:00:00" test_section_id="200"
+        test_format_id="100" sort_order="1" name="GeneXpert"
+        guid="test-tb-genexpert" name_localization_id="100" />
+
+    <!-- Statuses -->
+    <status_of_sample id="1" description="Test Entered"
+        code="1" status_type="ORDER" name="Test Entered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="2" description="SampleEntered"
+        code="1" status_type="SAMPLE" name="SampleEntered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="3" description="Not Tested"
+        code="1" status_type="ANALYSIS" name="Not Tested"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Patient Identity Type -->
+    <patient_identity_type id="100"
+        identity_type="SUBJECT" />
+
+    <!-- Organization -->
+    <organization id="100" name="Referring Site A"
+        mls_sentinel_lab_flag="Y" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Data for existing patient/sample updates -->
+    <person id="900" last_name="OldName" first_name="OldFirst"
+        lastupdated="2025-01-01 12:00:00" />
+    <person_address person_id="900" address_part_id="4"
+        type="T" value="12345" />
+    <person_address person_id="900" address_part_id="6"
+        type="T" value="Old Street" />
+
+    <patient id="900" person_id="900" external_id="SUB-900"
+        national_id="SUB-900" gender="M" lastupdated="2025-01-01 12:00:00" />
+    <patient_identity id="900" patient_id="900"
+        identity_type_id="100" identity_data="SUB-900"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample id="900" accession_number="LAB-900" status_id="1"
+        received_date="2025-01-01 00:00:00.0"
+        entered_date="2025-01-01 00:00:00.0"
+        collection_date="2025-01-01 00:00:00.0"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_item id="900" sort_order="1" status_id="2"
+        samp_id="900" typeosamp_id="100" collection_date="2025-01-01 10:00:00"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Ensure tables we insert into are cleared to prevent pollution -->
+    <sample_human />
+    <observation_history />
+    <analysis />
+    <provider />
+
+</dataset>
