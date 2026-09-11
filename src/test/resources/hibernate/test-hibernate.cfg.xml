@@ -69,8 +69,6 @@
         <mapping resource="hibernate/hbm/SampleQaEventAction.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleTracking.hbm.xml" />
         <mapping resource="hibernate/hbm/Scriptlet.hbm.xml" />
-        <mapping resource="hibernate/hbm/SourceOfSample.hbm.xml" />
-        <mapping resource="hibernate/hbm/StatusOfSample.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemUser.hbm.xml" />
         <mapping resource="hibernate/hbm/Test.hbm.xml" />
         <mapping resource="hibernate/hbm/TestSection.hbm.xml" />
