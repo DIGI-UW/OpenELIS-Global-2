@@ -66,6 +66,11 @@ const ADMIN_DASHBOARD_LINKS = [
     icon: ChartBubble,
   },
   {
+    messageId: "admin.programs.title",
+    path: "programV2",
+    icon: ChartBubble,
+  },
+  {
     messageId: "sidenav.label.admin.testmgt.reflex",
     path: "reflex",
     icon: Microscope,
