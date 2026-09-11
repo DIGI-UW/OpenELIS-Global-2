@@ -13,59 +13,53 @@
  */
 package org.openelisglobal.sampleorganization.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sample.valueholder.Sample;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "SAMPLE_ORGANIZATION")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class SampleOrganization extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(generator = "sample_org_seq_gen")
+    @GenericGenerator(name = "sample_org_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "sample_org_seq"))
+    @Column(name = "ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
-    private ValueHolderInterface organization;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ORG_ID")
+    private Organization organization;
 
-    private ValueHolderInterface sample;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "SAMP_ID")
+    private Sample sample;
 
+    @Column(name = "SAMP_ORG_TYPE", length = 1)
     private String sampleOrganizationType;
 
     public SampleOrganization() {
         super();
-        this.sample = new ValueHolder();
-        this.organization = new ValueHolder();
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setSampleOrganizationType(String sampleOrganizationType) {
-        this.sampleOrganizationType = sampleOrganizationType;
-    }
-
-    public String getSampleOrganizationType() {
-        return sampleOrganizationType;
-    }
-
-    public Sample getSample() {
-        return (Sample) this.sample.getValue();
-    }
-
-    public void setSample(Sample sample) {
-        this.sample.setValue(sample);
-    }
-
-    public Organization getOrganization() {
-        return (Organization) this.organization.getValue();
-    }
-
-    public void setOrganization(Organization organization) {
-        this.organization.setValue(organization);
     }
 }
