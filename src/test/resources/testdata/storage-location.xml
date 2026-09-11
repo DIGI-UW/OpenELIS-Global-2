@@ -41,6 +41,11 @@
         name="Test Room 3" description="Inactive test room" active="false"
         sys_user_id="1" last_updated="2024-01-01 00:00:00" />
 
+    <storage_room id="5003"
+        fhir_uuid="00000000-0000-0000-0000-000000001042" code="TEST-R04"
+        name="Test Room 3" description="Inactive test room" active="false"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
     <storage_device id="5000"
         fhir_uuid="00000000-0000-0000-0000-000000002000" name="Test Freezer 1"
         code="TEST-F01" type="freezer" temperature_setting="-80.0"
@@ -64,6 +69,24 @@
         parent_room_id="5001" active="false" sys_user_id="1"
         last_updated="2024-01-01 00:00:00" />
 
+    <storage_device id="5004"
+        fhir_uuid="00000000-0000-0000-0000-000000002089"
+        name="Test Device Inactive" code="TEST-D07" type="freezer"
+        parent_room_id="5001" active="true" sys_user_id="1"
+        last_updated="2024-01-08 00:00:00" />
+
+    <storage_device id="5005"
+        fhir_uuid="00000000-0000-0000-0000-000000002532"
+        name="Test Device Inactive" code="TEST-D08" type="freezer"
+        parent_room_id="5001" active="false" sys_user_id="1"
+        last_updated="2024-01-08 00:00:00" />
+
+    <storage_device id="5008"
+        fhir_uuid="00000000-0000-0000-0000-000000002232"
+        name="Test Device Inactive" code="TEST-D08" type="freezer"
+        parent_room_id="5000" active="false" sys_user_id="1"
+        last_updated="2024-01-08 00:00:00" />
+
     <storage_shelf id="5000"
         fhir_uuid="00000000-0000-0000-0000-000000003000" label="Shelf A"
         code="TEST-SA" capacity_limit="50" parent_device_id="5000"
@@ -82,6 +105,16 @@
     <storage_shelf id="5003"
         fhir_uuid="00000000-0000-0000-0000-000000003003"
         label="Shelf Inactive" code="TEST-SI" parent_device_id="5001"
+        active="false" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_shelf id="5004"
+        fhir_uuid="00000000-0000-0000-0000-000000003089"
+        label="Shelf Inactive" code="TEST-SI" parent_device_id="5004"
+        active="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_shelf id="5005"
+        fhir_uuid="00000000-0000-0000-0000-000000003053"
+        label="Shelf 5004 Inactive" code="TEST-SI" parent_device_id="5005"
         active="false" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
 
     <storage_rack id="5000"
@@ -104,11 +137,10 @@
         code="TEST-RF" parent_shelf_id="5002" active="true" sys_user_id="1"
         last_updated="2024-01-01 00:00:00" />
 
-
-
-
-
-
+    <storage_rack id="5004"
+        fhir_uuid="00000000-0000-0000-0000-000000004053" label="Rack Flexible"
+        code="TEST-RF" parent_shelf_id="5004" active="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
 
     <sample id="50000" accession_number="TEST-SAMPLE-001"
         fhir_uuid="00000000-0000-0000-0000-000000010000" domain="H"
@@ -145,7 +177,22 @@
         assigned_by_user_id="1" notes="Test assignment 2" />
 
     <sample_storage_assignment id="5002"
-        sample_item_id="60002" location_id="5001" location_type="rack"
+        sample_item_id="60002" location_id="5003" location_type="shelf"
+        position_coordinate="1-1" assigned_date="2024-01-01 00:00:00"
+        assigned_by_user_id="1" notes="Test assignment 3" />
+
+    <sample_storage_assignment id="5004"
+        sample_item_id="60004" location_id="5004" location_type="box"
+        position_coordinate="1-1" assigned_date="2024-01-01 00:00:00"
+        assigned_by_user_id="1" notes="Test assignment 3" />
+
+    <sample_storage_assignment id="5005"
+        sample_item_id="60005" location_id="5004" location_type="box"
+        position_coordinate="1-1" assigned_date="2024-01-01 00:00:00"
+        assigned_by_user_id="1" notes="Test assignment 3" />
+
+    <sample_storage_assignment id="5006"
+        sample_item_id="60006" location_id="5002" location_type="device"
         position_coordinate="1-1" assigned_date="2024-01-01 00:00:00"
         assigned_by_user_id="1" notes="Test assignment 3" />
 
@@ -156,6 +203,15 @@
         received_date="2024-01-01 00:00:00" is_confirmation="false" />
 
     <sample_item id="60003" samp_id="50003" sort_order="1"
+        status_id="1" typeosamp_id="1" />
+
+    <sample_item id="60004" samp_id="50003" sort_order="1"
+        status_id="1" typeosamp_id="1" />
+
+    <sample_item id="60005" samp_id="50003" sort_order="1"
+        status_id="1" typeosamp_id="1" />
+
+    <sample_item id="60006" samp_id="50003" sort_order="1"
         status_id="1" typeosamp_id="1" />
 
     <!-- Sample in Room 2 for location filtering -->
@@ -170,5 +226,18 @@
 
     <status_of_sample id="3" description="Active" code="3"
         status_type="S" />
+
+
+    <storage_box id="5001"
+        fhir_uuid="22222222-3333-4444-5555-666666667777" label="Box 81-B"
+        type="9x9" rows="9" columns="9" position_schema_hint="letter-number"
+        code="BOX-02" active="true" parent_rack_id="5004" sys_user_id="1" />
+
+    <storage_box id="5004"
+        fhir_uuid="11111111-2222-3333-4444-555555556666" label="Plate 96-A"
+        type="96-well" rows="8" columns="12"
+        position_schema_hint="letter-number" code="PLT-01" active="true"
+        parent_rack_id="5004" sys_user_id="1" />
+
 
 </dataset>
