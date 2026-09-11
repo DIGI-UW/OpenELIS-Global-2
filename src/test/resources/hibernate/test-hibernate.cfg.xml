@@ -59,10 +59,6 @@
         <mapping resource="hibernate/hbm/ResultSignature.hbm.xml" />
         <mapping resource="hibernate/hbm/ResultInventory.hbm.xml" />
         <mapping resource="hibernate/hbm/ResultLimit.hbm.xml" />
-        <mapping resource="hibernate/hbm/Sample.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleDomain.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleHuman.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleItem.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleOrganization.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleProject.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleQaEvent.hbm.xml" />
