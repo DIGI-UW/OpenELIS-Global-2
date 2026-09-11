@@ -15,41 +15,71 @@
  */
 package org.openelisglobal.typeofsample.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.util.Objects;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.localization.valueholder.Localization;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "TYPE_OF_SAMPLE")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class TypeOfSample extends BaseObject<String> {
 
     /** */
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(generator = "type_of_sample_seq_gen")
+    @GenericGenerator(name = "type_of_sample_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "type_of_sample_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
+
+    @Column(name = "DESCRIPTION", length = 20, nullable = false)
     private String description;
+
+    @Column(name = "DOMAIN", length = 20)
     private String domain;
+
+    @Column(name = "LOCAL_ABBREV", length = 10, unique = true)
     private String localAbbreviation;
+
+    @Column(name = "WHONET_CODE", length = 5)
     private String whonetCode;
+
+    @Column(name = "display_key", length = 60)
+    private String nameKey;
+
+    @Column(name = "disposal_instructions")
     private String disposalInstructions;
+
+    @Column(name = "is_active", length = 1)
     private boolean isActive;
+
+    @Column(name = "sort_order")
     private int sortOrder;
-    private ValueHolder localization = new ValueHolder();
 
-    public String getLocalAbbreviation() {
-        return localAbbreviation;
-    }
-
-    public void setLocalAbbreviation(String localAbbreviation) {
-        this.localAbbreviation = localAbbreviation;
-    }
-
-    public String getWhonetCode() {
-        return whonetCode;
-    }
-
-    public void setWhonetCode(String whonetCode) {
-        this.whonetCode = whonetCode;
-    }
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @JoinColumn(name = "name_localization_id")
+    private Localization localization = new Localization();
 
     public TypeOfSample() {
         super();
@@ -63,30 +93,6 @@ public class TypeOfSample extends BaseObject<String> {
     @Override
     public String getId() {
         return id;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDomain(String domain) {
-        this.domain = domain;
-    }
-
-    public String getDomain() {
-        return domain;
-    }
-
-    public String getDisposalInstructions() {
-        return disposalInstructions;
-    }
-
-    public void setDisposalInstructions(String disposalInstructions) {
-        this.disposalInstructions = disposalInstructions;
     }
 
     @Override
@@ -115,22 +121,6 @@ public class TypeOfSample extends BaseObject<String> {
 
     public void setIsActive(boolean isActive) {
         this.isActive = isActive;
-    }
-
-    public int getSortOrder() {
-        return sortOrder;
-    }
-
-    public void setSortOrder(int sortOrder) {
-        this.sortOrder = sortOrder;
-    }
-
-    public Localization getLocalization() {
-        return (Localization) localization.getValue();
-    }
-
-    public void setLocalization(Localization localization) {
-        this.localization.setValue(localization);
     }
 
     @Override

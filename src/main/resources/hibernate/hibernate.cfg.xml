@@ -83,9 +83,6 @@
         <mapping resource="hibernate/hbm/TestReflex.hbm.xml" />
         <mapping resource="hibernate/hbm/TestResult.hbm.xml" />
         <mapping resource="hibernate/hbm/TestTrailer.hbm.xml" />
-        <mapping resource="hibernate/hbm/TypeOfSample.hbm.xml" />
-        <mapping resource="hibernate/hbm/TypeOfTestResult.hbm.xml" />
-        <mapping resource="hibernate/hbm/UnitOfMeasure.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemModule.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemUserModule.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemUserSection.hbm.xml" />
@@ -95,7 +92,6 @@
         <mapping resource="hibernate/hbm/PatientIdentity.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientIdentityType.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientPatientType.hbm.xml" />
-        <mapping resource="hibernate/hbm/TypeOfSamplePanel.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSampleTest.hbm.xml" />
         <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
