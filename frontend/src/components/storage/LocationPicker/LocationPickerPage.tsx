@@ -10,6 +10,12 @@ import {
 import { searchResultToReplaceAction } from "./searchResultToAction";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
+import type {
+  LocationLevel,
+  LocationPickerPageProps,
+  SelectedLocation,
+  StorageLocationOption,
+} from "./types";
 
 /**
  * LocationPickerPage — full-page picker for the new dedicated route
@@ -33,20 +39,20 @@ export default function LocationPickerPage({
   breadcrumb,
   onSave,
   onCancel,
-}) {
+}: LocationPickerPageProps) {
   const intl = useIntl();
   const isMovement = !!currentLocation;
   const [state, dispatch] = useLocationPicker(
     currentLocation ? { initialAssignment: currentLocation } : {},
   );
 
-  const setLevel = (level, value) =>
+  const setLevel = (level: LocationLevel, value?: SelectedLocation) =>
     dispatch({ type: "SET_LEVEL", level, value });
 
   // Flat search returns a single leaf; replacing the whole selection
   // keeps the state consistent (no stale ancestors from a different
   // branch of the hierarchy).
-  const handleSearchSelect = (result) => {
+  const handleSearchSelect = (result: StorageLocationOption) => {
     const action = searchResultToReplaceAction(result);
     if (action) dispatch(action);
   };

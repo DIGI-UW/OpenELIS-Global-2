@@ -18,6 +18,12 @@ import {
 import { searchResultToReplaceAction } from "./searchResultToAction";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
+import type {
+  LocationLevel,
+  LocationPickerModalProps,
+  SelectedLocation,
+  StorageLocationOption,
+} from "./types";
 
 /**
  * LocationPickerModal — wraps the picker in a Carbon ComposedModal for
@@ -37,7 +43,7 @@ export default function LocationPickerModal({
   currentLocation,
   onConfirm,
   onCancel,
-}) {
+}: LocationPickerModalProps) {
   const intl = useIntl();
   const isMovement = !!currentLocation;
   const [state, dispatch] = useLocationPicker(
@@ -60,16 +66,15 @@ export default function LocationPickerModal({
     }
     // dispatch is stable from useReducer; currentLocation intentionally
     // omitted — we only want to reset on the isOpen rising edge.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  const setLevel = (level, value) =>
+  const setLevel = (level: LocationLevel, value?: SelectedLocation) =>
     dispatch({ type: "SET_LEVEL", level, value });
 
   // Flat search returns a single leaf; replacing the whole selection
   // keeps the state consistent (no stale ancestors from a different
   // branch of the hierarchy).
-  const handleSearchSelect = (result) => {
+  const handleSearchSelect = (result: StorageLocationOption) => {
     const action = searchResultToReplaceAction(result);
     if (action) dispatch(action);
   };

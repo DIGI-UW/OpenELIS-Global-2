@@ -30,7 +30,7 @@ vi.mock("@carbon/react", async () => {
   const actual = await vi.importActual("@carbon/react");
   return {
     ...actual,
-    ComposedModal: ({ open, children, onClose }) =>
+    ComposedModal: ({ open, children }) =>
       open ? (
         <div role="dialog" data-testid="mock-composed-modal">
           {children}
