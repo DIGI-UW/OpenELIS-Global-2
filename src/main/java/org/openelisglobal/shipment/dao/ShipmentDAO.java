@@ -38,4 +38,15 @@ public interface ShipmentDAO extends BaseDAO<Shipment, Integer> {
      * @return List of shipments
      */
     List<Shipment> findByCourier(String courier);
+
+    /**
+     * Fetch only the sys_user_id scalar for the given shipment ID. Using a scalar
+     * projection avoids materialising a second managed entity in the current
+     * persistence context, preventing a duplicate-entry conflict when the caller
+     * subsequently merges the detached shipment.
+     *
+     * @param shipmentId the shipment primary key
+     * @return the stored sys_user_id, or {@code null} if no row exists
+     */
+    Integer findSystemUserIdById(Integer shipmentId);
 }
