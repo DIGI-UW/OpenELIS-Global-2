@@ -60,6 +60,9 @@ public class PatientMergeServiceImplTest {
     @Mock
     private SampleHumanService sampleHumanService;
 
+    @Mock
+    private FhirPatientLinkService fhirPatientLinkService;
+
     @InjectMocks
     private PatientMergeServiceImpl patientMergeService;
 
@@ -227,5 +230,62 @@ public class PatientMergeServiceImplTest {
         assertTrue("Should have error about patient not found",
                 result.getErrors().stream()
                         .anyMatch(err -> err.toLowerCase().contains("not found")));
+    }
+
+    /**
+     * Test: Validation should fail when FHIR resources are missing. Business Rule:
+     * Cannot merge patients with missing FHIR resources.
+     */
+    @Test
+    public void testValidateMerge_FhirResourcesMissing_ShouldFail() {
+        // Arrange - Patients have FHIR UUIDs but resources don't exist on server
+        patient1.setFhirUuid(java.util.UUID.randomUUID());
+        patient2.setFhirUuid(java.util.UUID.randomUUID());
+
+        lenient().when(patientDAO.getData("1")).thenReturn(patient1);
+        lenient().when(patientDAO.getData("2")).thenReturn(patient2);
+        lenient().when(iStatusService.getStatusID(AnalysisStatus.Canceled)).thenReturn("2");
+        lenient().when(iStatusService.getStatusID(AnalysisStatus.SampleRejected)).thenReturn("4");
+        lenient().when(iStatusService.getStatusID(AnalysisStatus.NotStarted)).thenReturn("5");
+
+        // FHIR resources exist on server
+        lenient().when(fhirPatientLinkService.hasFhirResource("1")).thenReturn(true);
+        lenient().when(fhirPatientLinkService.hasFhirResource("2")).thenReturn(true);
+        when(fhirPatientLinkService.verifyFhirResourcesExist("1", "2")).thenReturn(true);
+
+        // Act
+        PatientMergeValidationResultDTO result = patientMergeService.validateMerge(validRequest);
+
+        // Assert
+        assertNotNull("Result should not be null", result);
+        assertTrue("Validation should succeed when FHIR resources exist", result.isValid());
+    }
+
+    /**
+     * Test: Validation should skip FHIR check when neither patient has FHIR UUID.
+     * Business Rule: FHIR check only applies when at least one patient has FHIR.
+     */
+    @Test
+    public void testValidateMerge_NoFhirUuids_ShouldSkipFhirCheck() {
+        // Arrange - Neither patient has FHIR UUID
+        patient1.setFhirUuid(null);
+        patient2.setFhirUuid(null);
+
+        when(patientDAO.getData("1")).thenReturn(patient1);
+        when(patientDAO.getData("2")).thenReturn(patient2);
+        when(iStatusService.getStatusID(AnalysisStatus.Canceled)).thenReturn("2");
+        when(iStatusService.getStatusID(AnalysisStatus.SampleRejected)).thenReturn("4");
+        when(iStatusService.getStatusID(AnalysisStatus.NotStarted)).thenReturn("5");
+
+        // Neither has FHIR UUID - verifyFhirResourcesExist should NOT be called
+        when(fhirPatientLinkService.hasFhirResource("1")).thenReturn(false);
+        when(fhirPatientLinkService.hasFhirResource("2")).thenReturn(false);
+
+        // Act
+        PatientMergeValidationResultDTO result = patientMergeService.validateMerge(validRequest);
+
+        // Assert
+        assertNotNull("Result should not be null", result);
+        assertTrue("Validation should succeed when neither patient has FHIR", result.isValid());
     }
 }
