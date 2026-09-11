@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_role id="10" name="Results"
+        description="enter and review results." is_grouping_role="false"
+        display_key="role.results" active="1" editable="false" />
+    <system_role id="11" name="Reception" description="intake"
+        is_grouping_role="false" display_key="role.intake" active="1"
+        editable="false" />
+
+    <system_user id="101" external_id="EXT101"
+        login_name="resultsuser" last_name="Results" first_name="User"
+        initials="RU" is_active="Y" is_employee="Y"
+        lastupdated="2025-03-15 12:00:00" />
+    <system_user id="102" external_id="EXT102"
+        login_name="noresultsuser" last_name="No" first_name="Results"
+        initials="NR" is_active="Y" is_employee="Y"
+        lastupdated="2025-03-15 12:00:00" />
+
+    <login_user id="101" login_name="resultsuser"
+        password="$2a$10$uhFDEbHodC1Fv/nFQ3pCe.AbPxJqThyanWtC117EvdFrwEAQry0Wa"
+        password_expired_dt="2030-04-09" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+    <login_user id="102" login_name="noresultsuser"
+        password="$2a$10$uhFDEbHodC1Fv/nFQ3pCe.AbPxJqThyanWtC117EvdFrwEAQry0Wa"
+        password_expired_dt="2030-04-09" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="220"
+        last_updated="2025-04-09 16:26:58" />
+
+    <system_user_role system_user_id="101" role_id="10" />
+    <system_user_role system_user_id="102" role_id="11" />
+</dataset>

@@ -86,8 +86,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping(value = "/rest/")
 public class LogbookResultsRestController extends LogbookResultsBaseController {
 
-    private String RESULT_EDIT_ROLE_ID;
-
     private final String[] ALLOWED_FIELDS = new String[] { "accessionNumber", "collectionDate", "recievedDate",
             "selectedTest", "selectedAnalysisStatus", "selectedSampleStatus", "testSectionId", "methodId", "type",
             "currentPageID", "testResult*.accessionNumber", "testResult*.isModified", "testResult*.analysisId",
