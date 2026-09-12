@@ -8,7 +8,7 @@
 
 // ========== MOCKS (before imports) ==========
 // Factory must be self-contained (hoisted above imports) — no outer refs.
-vi.mock("../../../layout/Layout", async () => {
+vi.mock("../../../layout/contexts", async () => {
   const React = await import("react");
   return {
     NotificationContext: React.createContext({
@@ -33,7 +33,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import BasicInfoSection from "./BasicInfoSection";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,

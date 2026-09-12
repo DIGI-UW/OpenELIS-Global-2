@@ -1,11 +1,33 @@
 /// <reference types="vitest" />
 import { defineConfig } from "vitest/config";
+import type { PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
 import path from "path";
 
+/**
+ * @carbon/react lists its own barrel in package.json `sideEffects`, so a bundler
+ * must keep all ~9 MB of it however few components a file names. The entries in
+ * that list that matter are the stylesheets; the JS barrel is pure. Declaring it
+ * so lets the named imports across the app shake down to what they actually use.
+ */
+const carbonBarrelIsPure = (): PluginOption => ({
+  name: "carbon-barrel-is-pure",
+  enforce: "pre",
+  async resolveId(source, importer, options) {
+    if (source !== "@carbon/react" && source !== "@carbon/react/") {
+      return null;
+    }
+    const resolved = await this.resolve(source, importer, {
+      ...options,
+      skipSelf: true,
+    });
+    return resolved ? { ...resolved, moduleSideEffects: false } : null;
+  },
+});
+
 export default defineConfig({
-  plugins: [react(), svgr()],
+  plugins: [carbonBarrelIsPure(), react(), svgr()],
   resolve: {
     extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
     alias: [
@@ -32,7 +54,8 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    // Maps are 40 MB against 22 MB of JS and ship readable source in the image.
+    sourcemap: false,
   },
   test: {
     alias: [

@@ -13,7 +13,7 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import messages from "../../languages/en.json";
 import Index from "./Index";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/contexts";
 
 vi.mock("../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();

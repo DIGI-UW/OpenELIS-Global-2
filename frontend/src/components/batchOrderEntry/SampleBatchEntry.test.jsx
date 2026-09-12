@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 import { BrowserRouter } from "react-router-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/contexts";
 import SampleBatchEntry from "./SampleBatchEntry";
 import {
   getFromOpenElisServer,

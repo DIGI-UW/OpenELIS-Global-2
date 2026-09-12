@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../../languages/en.json";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import { createQueryClient } from "../../../utils/queryClient";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import ResultSelectListAdd from "../ResultSelectListAdd";
 
 vi.mock("../../../utils/Utils", async () => {

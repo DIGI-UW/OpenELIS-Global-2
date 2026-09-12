@@ -15,7 +15,7 @@ import { createQueryClient } from "../../../utils/queryClient";
 import {
   NotificationContext,
   ConfigurationContext,
-} from "../../../layout/Layout";
+} from "../../../layout/contexts";
 import ProviderMenu from "../ProviderMenu";
 
 vi.mock("../../../utils/Utils", async () => {

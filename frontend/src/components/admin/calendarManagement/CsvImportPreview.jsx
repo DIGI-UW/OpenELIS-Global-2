@@ -14,7 +14,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import config from "../../../config.json";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 
 function CsvImportPreview({ year, onClose, onImportComplete }) {
   const intl = useIntl();

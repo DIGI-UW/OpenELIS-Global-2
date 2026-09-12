@@ -13,7 +13,7 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { NotificationKinds, AlertDialog } from "../common/CustomNotification";
 
 const EOrderSearch = ({

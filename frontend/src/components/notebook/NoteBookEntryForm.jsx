@@ -39,7 +39,7 @@ import {
 } from "@carbon/react";
 import { Launch } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import {

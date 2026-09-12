@@ -40,7 +40,7 @@ import React, {
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import ShipmentNavigation from "../shipment/ShipmentNavigation";
 import {
   getFromOpenElisServer,

@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from "react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import { Route, useLocation } from "react-router-dom";
 import { useIdleTimer } from "react-idle-timer";
 import { confirmAlert } from "react-confirm-alert";

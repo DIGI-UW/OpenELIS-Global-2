@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import messages from "../../languages/en.json";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/contexts";
 import AnalyserResults from "./AnalyserResults";
 
 const { postResults } = vi.hoisted(() => ({ postResults: vi.fn() }));

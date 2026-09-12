@@ -13,7 +13,7 @@ import DeviceManagement from "./settings/DeviceManagement";
 import TemperatureThresholds from "./settings/TemperatureThresholds";
 import AlertSettings from "./settings/AlertSettings";
 import { AlertDialog } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 
 function Settings({ intl }) {
   const [selectedTab, setSelectedTab] = useState(0);

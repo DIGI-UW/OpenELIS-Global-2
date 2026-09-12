@@ -16,7 +16,7 @@ import {
 import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationKinds } from "../common/CustomNotification";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/contexts";
 
 /**
  * GPS Coordinates Capture Component

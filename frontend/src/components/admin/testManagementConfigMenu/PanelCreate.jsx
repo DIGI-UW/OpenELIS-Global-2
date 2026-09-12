@@ -15,7 +15,7 @@ import {
   useInvalidateServerData,
   useServerData,
 } from "../../utils/useServerData";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

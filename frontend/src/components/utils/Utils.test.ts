@@ -1,5 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchFromOpenElisServer, getFromOpenElisServer } from "./Utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  fetchFromOpenElisServer,
+  getFromOpenElisServer,
+  postToOpenElisServer,
+} from "./Utils";
 
 const settlePromiseChain = async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -124,5 +128,119 @@ describe("fetchFromOpenElisServer", () => {
       fetchFromOpenElisServer("/rest/TestActivation"),
     ).rejects.toThrow("Request failed (500): /rest/TestActivation");
     expect(json).not.toHaveBeenCalled();
+  });
+});
+
+describe("a rejected CSRF token", () => {
+  const CSRF_REJECTION = {
+    status: 403,
+    json: async () => ({
+      status: 403,
+      message: "CSRF token missing or invalid",
+    }),
+  };
+  const asResponse = (r: object) =>
+    ({ ...r, clone: () => ({ ...r, clone: () => r }) }) as unknown as Response;
+
+  let store: Record<string, string>;
+  let reload: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    store = { CSRF: "stale-token" };
+    reload = vi.fn();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => {
+        store[k] = v;
+      },
+    });
+    vi.stubGlobal("location", { reload });
+    vi.stubGlobal("alert", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("refreshes the token and replays the request instead of reloading", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(asResponse(CSRF_REJECTION))
+      .mockResolvedValueOnce(
+        asResponse({
+          ok: true,
+          status: 200,
+          json: async () => ({ csrf: "fresh-token" }),
+        }),
+      )
+      .mockResolvedValueOnce(
+        asResponse({ status: 200, json: async () => ({}) }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const callback = vi.fn();
+
+    postToOpenElisServer("/rest/thing", "{}" as unknown as never, callback);
+    await settlePromiseChain();
+
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.filter((u) => u.endsWith("/session"))).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(store.CSRF).toBe("fresh-token");
+    expect(fetchMock.mock.calls[2][1].headers["X-CSRF-Token"]).toBe(
+      "fresh-token",
+    );
+    expect(callback).toHaveBeenCalledWith(200, undefined);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("fetches one session for requests rejected together", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (String(url).endsWith("/session")) {
+        return Promise.resolve(
+          asResponse({
+            ok: true,
+            status: 200,
+            json: async () => ({ csrf: "fresh-token" }),
+          }),
+        );
+      }
+      return Promise.resolve(
+        store.CSRF === "fresh-token"
+          ? asResponse({ status: 200, json: async () => ({}) })
+          : asResponse(CSRF_REJECTION),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    postToOpenElisServer("/rest/a", "{}" as unknown as never, vi.fn());
+    postToOpenElisServer("/rest/b", "{}" as unknown as never, vi.fn());
+    await settlePromiseChain();
+
+    const sessions = fetchMock.mock.calls.filter((c) =>
+      String(c[0]).endsWith("/session"),
+    );
+    expect(sessions).toHaveLength(1);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("still reloads when the replay is rejected too", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        String(url).endsWith("/session")
+          ? asResponse({
+              ok: true,
+              status: 200,
+              json: async () => ({ csrf: "fresh-token" }),
+            })
+          : asResponse(CSRF_REJECTION),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    postToOpenElisServer("/rest/thing", "{}" as unknown as never, vi.fn());
+    await settlePromiseChain();
+
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });

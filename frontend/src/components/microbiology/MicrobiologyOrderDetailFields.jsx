@@ -13,7 +13,7 @@ import {
 import { format } from "date-fns";
 import { useIntl } from "react-intl";
 import CustomDatePicker from "../common/CustomDatePicker";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import {
   daysBetweenIsoDates,
   formatIsoDateForBackend,

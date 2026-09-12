@@ -7,7 +7,7 @@ import { IntlProvider } from "react-intl";
 import { Route, Router, Switch } from "react-router-dom";
 
 import messages from "../../languages/en.json";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/contexts";
 import Index from "./Index";
 
 const { getFromOpenElisServer } = vi.hoisted(() => ({

@@ -23,7 +23,7 @@ import {
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI, InventoryLotAPI } from "./InventoryService";
 import LotEntryModal from "./LotEntryModal";

@@ -22,7 +22,7 @@ import {
   updateBranding,
   resetBranding,
 } from "../../../utils/BrandingUtils";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

@@ -66,7 +66,14 @@ services:
             - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
             - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
-            - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Mount locally built WAR for development
+            # Locally built WAR. Long form so a missing target/ fails the `up`
+            # rather than being invented as a directory, which leaves Tomcat
+            # deploying nothing and blocks the next build from writing the WAR.
+            - type: bind
+              source: ./target/OpenELIS-Global.war
+              target: /usr/local/tomcat/webapps/OpenELIS-Global.war
+              bind:
+                create_host_path: false
             - ./volume/properties:/var/lib/openelis-global/properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv

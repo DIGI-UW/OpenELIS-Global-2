@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import { OrderProvider, useOrderContext } from "./OrderContext";
 
 // OGC-1192 §3 — loading an order from the URL.

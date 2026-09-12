@@ -19,7 +19,7 @@ import {
   getFromOpenElisServer,
   putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import { NotificationKinds } from "../../../common/CustomNotification";
 
 /**

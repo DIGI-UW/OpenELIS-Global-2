@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Grid, Column, TextInput, Button, Tile, Form } from "@carbon/react";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
 interface DepartmentOption {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import { Checkbox, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, putToOpenElisServer } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 
 const DAY_KEYS = [
   "calendar.management.day.sun",

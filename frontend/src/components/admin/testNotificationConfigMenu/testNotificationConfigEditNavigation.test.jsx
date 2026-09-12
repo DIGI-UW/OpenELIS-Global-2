@@ -9,7 +9,7 @@ import { MemoryRouter, Route } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../languages/en.json";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import TestNotificationConfigEdit from "./TestNotificationConfigEdit";
 
 vi.mock("../../utils/Utils", async () => {

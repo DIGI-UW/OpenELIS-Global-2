@@ -53,7 +53,7 @@ import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 
 // Context
-import { NotificationContext } from "../../../../layout/Layout";
+import { NotificationContext } from "../../../../layout/contexts";
 
 // Mock react-router-dom useHistory
 const mockHistory = {

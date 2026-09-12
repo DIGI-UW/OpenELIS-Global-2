@@ -1,7 +1,7 @@
 import React, { useState, useContext } from "react";
 import { Modal, TextArea, InlineNotification } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import { rejectPool, rejectSampleItem } from "../../api/sampleAcceptanceApi";
 

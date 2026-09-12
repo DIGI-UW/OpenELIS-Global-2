@@ -29,7 +29,7 @@ import {
 import {
   ConfigurationContext,
   NotificationContext,
-} from "../../../layout/Layout";
+} from "../../../layout/contexts";
 
 import { FormattedMessage, useIntl } from "react-intl";
 

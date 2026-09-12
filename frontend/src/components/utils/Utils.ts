@@ -28,7 +28,14 @@ interface UserSessionDetails {
   roles?: string[];
 }
 
-const csrfToken = (): string => localStorage.getItem("CSRF") as string;
+/** Absent where storage is unavailable, which is not an error worth throwing on. */
+const csrfToken = (): string => {
+  try {
+    return localStorage.getItem("CSRF") ?? "";
+  } catch {
+    return "";
+  }
+};
 
 /**
  * Get the current locale from localStorage for API requests.
@@ -79,22 +86,87 @@ export const resolveApiErrorMessage = (
   return String(intl.formatMessage({ id: fallbackId }, fallbackValues));
 };
 
-const handleSessionError = (response: Response): Response => {
-  if (response.status === 403) {
-    response
-      .clone()
-      .json()
-      .then((body: ApiMessagePayload) => {
-        if (body && body.message && body.message.includes("CSRF")) {
-          alert(
-            "Your session has expired. The page will reload so you can continue.",
-          );
-          window.location.reload();
-        }
-      })
-      .catch(() => undefined);
+/** A CSRF rejection, as the backend words it: 403 with "CSRF" in the message. */
+const isCsrfRejection = async (response: Response): Promise<boolean> => {
+  if (response.status !== 403) {
+    return false;
   }
-  return response;
+  try {
+    const body = (await response.clone().json()) as ApiMessagePayload;
+    return typeof body?.message === "string" && body.message.includes("CSRF");
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * One in-flight refresh, shared. Requests rejected together would otherwise each
+ * fetch a session and race to write the token they then replay.
+ */
+let pendingCsrfRefresh: Promise<string> | null = null;
+
+const refreshCsrfToken = (): Promise<string> => {
+  if (!pendingCsrfRefresh) {
+    pendingCsrfRefresh = fetch(config.serverBaseUrl + "/session", {
+      credentials: "include",
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { csrf?: string } | null) => {
+        const token = body?.csrf ?? "";
+        if (token) {
+          try {
+            localStorage.setItem("CSRF", token);
+          } catch {
+            /* storage unavailable; the replay below still uses the token */
+          }
+        }
+        return token;
+      })
+      .catch(() => "")
+      .finally(() => {
+        pendingCsrfRefresh = null;
+      });
+  }
+  return pendingCsrfRefresh;
+};
+
+/**
+ * The one fetch the helpers below go through. It stamps the current CSRF token,
+ * and when the backend rejects it — the token is per session and Spring rotates
+ * it on login, so a second tab or a re-login leaves this one stale — fetches a
+ * fresh token and replays the request once. Reloading the document also
+ * recovers, by remounting App and re-reading /session, but it discards whatever
+ * the user had typed, so it is the last resort rather than the first response.
+ */
+const apiFetch = async (
+  input: string,
+  init: RequestInit = {},
+): Promise<Response> => {
+  const send = (token: string): Promise<Response> =>
+    fetch(input, {
+      ...init,
+      headers: token
+        ? { ...(init.headers ?? {}), "X-CSRF-Token": token }
+        : (init.headers ?? {}),
+    });
+
+  const response = await send(csrfToken());
+  if (!(await isCsrfRejection(response))) {
+    return response;
+  }
+
+  const refreshed = await refreshCsrfToken();
+  if (!refreshed) {
+    return response;
+  }
+  const replayed = await send(refreshed);
+  if (await isCsrfRejection(replayed)) {
+    alert(
+      "Your session has expired. The page will reload so you can continue.",
+    );
+    window.location.reload();
+  }
+  return replayed;
 };
 
 export const getFromOpenElisServer = <T = LegacyApiResponse>(
@@ -102,7 +174,7 @@ export const getFromOpenElisServer = <T = LegacyApiResponse>(
   callback: (response: T | undefined) => void,
   signal: AbortSignal | null = null,
 ): void => {
-  fetch(
+  apiFetch(
     config.serverBaseUrl + endPoint,
 
     {
@@ -151,7 +223,7 @@ export const fetchFromOpenElisServer = async <T>(
   endPoint: string,
   signal?: AbortSignal,
 ): Promise<T> => {
-  const response = await fetch(config.serverBaseUrl + endPoint, {
+  const response = await apiFetch(config.serverBaseUrl + endPoint, {
     credentials: "include",
     method: "GET",
     signal,
@@ -178,7 +250,7 @@ export const postToOpenElisServer = <TExtra = unknown>(
   callback: (status: number, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(
+  apiFetch(
     config.serverBaseUrl + endPoint,
 
     {
@@ -187,13 +259,11 @@ export const postToOpenElisServer = <TExtra = unknown>(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad as BodyInit,
     },
   )
-    .then(handleSessionError)
     .then((response) => response.status)
     .then((status) => {
       callback(status, extraParams);
@@ -210,7 +280,7 @@ export const postToOpenElisServerFullResponse = <TExtra = unknown>(
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(
+  apiFetch(
     config.serverBaseUrl + endPoint,
 
     {
@@ -219,13 +289,11 @@ export const postToOpenElisServerFullResponse = <TExtra = unknown>(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad as BodyInit,
     },
   )
-    .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
@@ -239,20 +307,18 @@ export const postToOpenElisServerFormData = <TExtra = unknown>(
   callback: (status: number, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(
+  apiFetch(
     config.serverBaseUrl + endPoint,
 
     {
       credentials: "include",
       method: "POST",
       headers: {
-        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
       body: formData,
     },
   )
-    .then(handleSessionError)
     .then((response) => response.status)
     .then((status) => {
       callback(status, extraParams);
@@ -272,7 +338,7 @@ export const postToOpenElisServerJsonResponse = <
   callback: (response: T | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(
+  apiFetch(
     config.serverBaseUrl + endPoint,
 
     {
@@ -281,13 +347,11 @@ export const postToOpenElisServerJsonResponse = <
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad as BodyInit,
     },
   )
-    .then(handleSessionError)
     .then((response) => {
       // Check if response is ok (status 200-299)
       if (!response.ok) {
@@ -340,7 +404,7 @@ export const postToOpenElisServerForBlob = (
   callback: (blob: Blob, response: Response) => void,
   errorCallback?: (error: unknown) => void,
 ): void => {
-  fetch(
+  apiFetch(
     config.serverBaseUrl + endPoint,
 
     {
@@ -349,13 +413,11 @@ export const postToOpenElisServerForBlob = (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad as BodyInit,
     },
   )
-    .then(handleSessionError)
     .then((response) => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -378,13 +440,12 @@ export const getFromOpenElisServerForBlob = (
   callback: (blob: Blob, response: Response) => void,
   errorCallback?: (error: Error) => void,
 ): void => {
-  fetch(config.serverBaseUrl + endPoint, {
+  apiFetch(config.serverBaseUrl + endPoint, {
     credentials: "include",
     headers: {
       "Accept-Language": getAcceptLanguageHeader(),
     },
   })
-    .then(handleSessionError)
     .then((response) => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -407,7 +468,7 @@ export const postToOpenElisServerForPDF = (
   payLoad: RequestPayload,
   callback: (success: boolean, blob?: Blob) => void,
 ): void => {
-  fetch(
+  apiFetch(
     config.serverBaseUrl + endPoint,
 
     {
@@ -416,13 +477,11 @@ export const postToOpenElisServerForPDF = (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad as BodyInit,
     },
   )
-    .then(handleSessionError)
     .then((response) => response.blob())
     .then((blob) => {
       callback(true, blob);
@@ -451,7 +510,6 @@ export const putToOpenElisServer = (
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
   };
@@ -461,8 +519,7 @@ export const putToOpenElisServer = (
     options.body = payLoad as BodyInit;
   }
 
-  fetch(config.serverBaseUrl + endPoint, options)
-    .then(handleSessionError)
+  apiFetch(config.serverBaseUrl + endPoint, options)
     .then((response) => response.status)
     .then((status) => {
       callback(status);
@@ -479,18 +536,16 @@ export const putToOpenElisServerJsonResponse = <TExtra = unknown>(
   callback: (json: any, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(config.serverBaseUrl + endPoint, {
+  apiFetch(config.serverBaseUrl + endPoint, {
     //includes the browser sessionId in the Header for Authentication on the backend server
     credentials: "include",
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
       "Accept-Language": getAcceptLanguageHeader(),
     },
     body: payLoad,
   })
-    .then(handleSessionError)
     .then((response) => {
       if (!response.ok) {
         return response.json().then((errorJson) => ({
@@ -524,18 +579,16 @@ export const putToOpenElisServerFullResponse = <TExtra = unknown>(
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(config.serverBaseUrl + endPoint, {
+  apiFetch(config.serverBaseUrl + endPoint, {
     //includes the browser sessionId in the Header for Authentication on the backend server
     credentials: "include",
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
     body: payLoad as BodyInit,
   })
-    .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
@@ -547,17 +600,15 @@ export const deleteFromOpenElisServer = (
   endPoint: string,
   callback: (status: number) => void,
 ): void => {
-  fetch(config.serverBaseUrl + endPoint, {
+  apiFetch(config.serverBaseUrl + endPoint, {
     // includes the browser sessionId in the Header for Authentication on the backend server
     credentials: "include",
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
   })
-    .then(handleSessionError)
     .then((response) => response.status)
     .then((status) => {
       callback(status);
@@ -573,17 +624,15 @@ export const deleteFromOpenElisServerFullResponse = <TExtra = unknown>(
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(config.serverBaseUrl + endPoint, {
+  apiFetch(config.serverBaseUrl + endPoint, {
     // includes the browser sessionId in the Header for Authentication on the backend server
     credentials: "include",
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
       "Accept-Language": getAcceptLanguageHeader(),
     },
   })
-    .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
@@ -628,7 +677,7 @@ export const patchToOpenElisServerJsonResponse = <
   callback: (response: T | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(
+  apiFetch(
     config.serverBaseUrl + endPoint,
 
     {
@@ -637,13 +686,11 @@ export const patchToOpenElisServerJsonResponse = <
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
         "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad as BodyInit,
     },
   )
-    .then(handleSessionError)
     .then((response) => {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

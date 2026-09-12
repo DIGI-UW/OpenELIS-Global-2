@@ -17,7 +17,10 @@ import { Printer } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
-import { NotificationContext, ConfigurationContext } from "../../layout/Layout";
+import {
+  NotificationContext,
+  ConfigurationContext,
+} from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

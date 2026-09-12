@@ -21,7 +21,7 @@ import {
   putToOpenElisServerFullResponse,
   postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 
 /**
  * OGC-949 M9 / OGC-980..982 — Panels section.

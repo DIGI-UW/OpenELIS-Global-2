@@ -19,8 +19,8 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
-import { ConfigurationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
+import { ConfigurationContext } from "../layout/contexts";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";

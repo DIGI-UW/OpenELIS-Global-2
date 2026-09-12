@@ -33,7 +33,7 @@ vi.mock("../../utils/Utils", () => ({ getFromOpenElisServer: vi.fn() }));
 
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => null }));
 
-vi.mock("../../layout/Layout", async () => {
+vi.mock("../../layout/contexts", async () => {
   const React = await import("react");
   return {
     NotificationContext: React.createContext({

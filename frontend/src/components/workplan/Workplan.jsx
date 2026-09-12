@@ -22,9 +22,9 @@ import {
   postToOpenElisServerForPDF,
   convertAlphaNumLabNumForDisplay,
 } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import EQABadge from "../eqa/EQABadge";
 

@@ -7,7 +7,7 @@
  */
 
 // ========== MOCKS (before imports) ==========
-vi.mock("../../../layout/Layout", async () => {
+vi.mock("../../../layout/contexts", async () => {
   const React = await import("react");
   return {
     NotificationContext: React.createContext({

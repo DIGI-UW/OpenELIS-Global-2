@@ -12,7 +12,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import { createQueryClient } from "../../../utils/queryClient";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import PanelOrder from "../PanelOrder";
 import SampleTypeOrder from "../SampleTypeOrder";
 import TestSectionOrder from "../TestSectionOrder";

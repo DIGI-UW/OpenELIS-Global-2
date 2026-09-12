@@ -21,7 +21,7 @@ import CustomSelect from "../common/CustomSelect";
 import CustomTextInput from "../common/CustomTextInput";
 import CustomTimePicker from "../common/CustomTimePicker";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/contexts";
 import LocationPickerInline from "../storage/LocationPicker/LocationPickerInline";
 import { LEVEL_ORDER } from "../storage/LocationPicker/useLocationPicker";
 import { getFromOpenElisServer } from "../utils/Utils";

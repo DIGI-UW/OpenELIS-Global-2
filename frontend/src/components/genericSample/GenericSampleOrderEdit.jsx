@@ -18,7 +18,7 @@ import Questionnaire from "../common/Questionnaire";
 import { getFromOpenElisServer } from "../utils/Utils";
 import config from "../../config.json";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 
 /**
  * GenericSampleOrderEdit - Configurable sample order edit component

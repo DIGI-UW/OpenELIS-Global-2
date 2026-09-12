@@ -54,7 +54,7 @@ import AlertDetailModal from "./AlertDetailModal";
 import DeviceHistoryExpansion from "./DeviceHistoryExpansion";
 import { toDate, formatDuration } from "./shared/timeUtils";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 
 // Dashboard auto-refresh interval. The backend default Modbus poll cycle is
 // 5 minutes; refreshing every 60s is meaningfully fresher than "never" while

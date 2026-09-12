@@ -29,7 +29,7 @@ import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },

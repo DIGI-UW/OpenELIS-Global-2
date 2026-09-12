@@ -7,7 +7,7 @@ import { IntlProvider } from "react-intl";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import messages from "../languages/en.json";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
-import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { ConfigurationContext, NotificationContext } from "./layout/contexts";
 import Login from "./Login";
 
 vi.mock("./utils/BrandingUtils", () => ({

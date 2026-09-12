@@ -27,7 +27,7 @@ import {
   postToOpenElisServerFullResponse,
   putToOpenElisServer,
 } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import ShipmentNavigation from "./ShipmentNavigation";

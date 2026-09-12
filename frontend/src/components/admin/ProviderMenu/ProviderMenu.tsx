@@ -29,7 +29,10 @@ import {
   useInvalidateServerData,
   useServerData,
 } from "../../utils/useServerData";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

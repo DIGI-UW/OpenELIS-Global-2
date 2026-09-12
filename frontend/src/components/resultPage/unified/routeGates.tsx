@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
 import { Redirect } from "react-router-dom";
 import { Loading } from "@carbon/react";
-import { ConfigurationContext } from "../../layout/Layout";
+import { ConfigurationContext } from "../../layout/contexts";
 import UnifiedResults from "./UnifiedResults";
 
 /**

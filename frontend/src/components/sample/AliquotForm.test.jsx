@@ -6,7 +6,7 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../languages/en.json";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/contexts";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { SampleItemsDisplay, SearchSampleForm } from "./AliquotForm";
 

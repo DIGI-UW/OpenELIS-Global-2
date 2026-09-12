@@ -20,7 +20,7 @@ import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import config from "../../../config.json";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import AutoComplete from "../../common/AutoComplete";
-import { ConfigurationContext } from "../../layout/Layout";
+import { ConfigurationContext } from "../../layout/contexts";
 import { Formik, Field } from "formik";
 import PatientStatusReportFormValues from "../../formModel/innitialValues/PatientStatusReportFormValues";
 import SearchPatientForm from "../../patient/SearchPatientForm";

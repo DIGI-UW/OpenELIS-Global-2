@@ -14,7 +14,7 @@ import AddSample from "./AddSample";
 import AddOrder from "./AddOrder";
 import "./add-order.scss";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { NotificationContext, ConfigurationContext } from "../layout/Layout";
+import { NotificationContext, ConfigurationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import {
   getFromOpenElisServer,

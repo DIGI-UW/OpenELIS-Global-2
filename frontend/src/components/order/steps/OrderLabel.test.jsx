@@ -53,7 +53,7 @@ vi.mock("../OrderContext", () => ({
   useWorkflowPrefix: () => "/order/clinical",
 }));
 
-vi.mock("../../layout/Layout", () => ({
+vi.mock("../../layout/contexts", () => ({
   NotificationContext: React.createContext(notificationMock),
 }));
 

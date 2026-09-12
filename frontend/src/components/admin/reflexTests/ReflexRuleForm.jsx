@@ -20,7 +20,7 @@ import { Add, Subtract } from "@carbon/react/icons";
 import AutoComplete from "../../common/AutoComplete";
 import RuleBuilderFormValues from "../../formModel/innitialValues/RuleBuilderFormValues";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

@@ -11,7 +11,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import messages from "../../languages/en.json";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import CytologyDashBoard from "../cytology/CytologyDashBoard";
 import PathologyDashboard from "../pathology/PathologyDashboard";

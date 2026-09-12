@@ -32,7 +32,10 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

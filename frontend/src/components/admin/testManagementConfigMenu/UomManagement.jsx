@@ -7,7 +7,7 @@ import {
   UnorderedList,
   ClickableTile,
 } from "@carbon/react";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import { AlertDialog } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";

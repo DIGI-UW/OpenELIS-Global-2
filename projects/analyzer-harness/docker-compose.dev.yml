@@ -35,7 +35,12 @@ services:
     volumes:
       - key_trust-store-volume:/etc/openelis-global
       - lucene_index-vol:/var/lib/lucene_index
-      - ../../target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
+      # Long form: a missing WAR must fail the `up`, not become a directory.
+      - type: bind
+        source: ../../target/OpenELIS-Global.war
+        target: /usr/local/tomcat/webapps/OpenELIS-Global.war
+        bind:
+          create_host_path: false
       - ../../volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
       - ./volume/programs:/var/lib/openelis-global/programs
       - ./volume/logs/oeLogs:/var/lib/openelis-global/logs

@@ -26,7 +26,7 @@ import {
 import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
-import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { ConfigurationContext, NotificationContext } from "./layout/contexts";
 import { getBranding } from "./utils/BrandingUtils";
 
 function Login(props) {

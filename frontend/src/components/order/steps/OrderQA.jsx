@@ -26,7 +26,7 @@ import SampleAcceptanceReview from "./sections/SampleAcceptanceReview";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

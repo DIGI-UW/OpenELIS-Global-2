@@ -18,7 +18,7 @@ import {
   mergeCollectedAndPendingSamples,
 } from "./api/sampleTypeRequestApi";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import {
   buildLoadedOrderData,
   buildSubmissionSampleOrderItems,

@@ -28,7 +28,7 @@ import {
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServer,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import { NotificationKinds } from "../../common/CustomNotification";
 import MultiLimitForm, { LIMIT_TYPES } from "./MultiLimitForm";
 import SelectMapForm from "./SelectMapForm";

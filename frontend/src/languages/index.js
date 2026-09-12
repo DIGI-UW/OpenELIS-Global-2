@@ -1,12 +1,15 @@
 import en from "./en.json";
 
 /**
- * Every locale bundle in this directory, loaded at build time. Dropping a new
- * Transifex pull (e.g. fr_MG.json) here is all it takes — no manual import or
- * registry edit. Vite statically analyzes the glob, so the bundles are part of
- * the build exactly as the hand-written imports were.
+ * Every locale bundle in this directory, as loaders rather than contents.
+ * Dropping a new Transifex pull (e.g. fr_MG.json) here is still all it takes —
+ * Vite statically analyzes the glob either way — but without `eager` the
+ * catalogs become their own chunks instead of 16 MB inside the entry, which the
+ * login screen was downloading in 24 languages to render in one. English stays
+ * imported above: it is the fallback every other bundle layers over, so it is
+ * needed before any choice of locale is known.
  */
-const bundleModules = import.meta.glob("./*.json", { eager: true });
+const bundleLoaders = import.meta.glob("./*.json");
 
 /**
  * Canonical form for a locale code: BCP 47 casing with hyphens. Accepts the
@@ -27,12 +30,30 @@ export const normalizeLocaleCode = (code) => {
   ].join("-");
 };
 
-/** Raw bundles keyed by canonical code, straight from the files. */
-const rawBundles = {};
-for (const [path, mod] of Object.entries(bundleModules)) {
+/** Loader per canonical code. The keys exist without reading any bundle. */
+const loaderByCode = {};
+for (const [path, load] of Object.entries(bundleLoaders)) {
   const fileCode = path.replace(/^\.\//, "").replace(/\.json$/, "");
-  rawBundles[normalizeLocaleCode(fileCode)] = mod.default ?? mod;
+  loaderByCode[normalizeLocaleCode(fileCode)] = load;
 }
+
+/** Codes this build ships a bundle for, without loading any of them. */
+export const availableLocaleCodes = Object.keys(loaderByCode);
+
+const loadedBundles = { en };
+
+const loadRawBundle = async (code) => {
+  if (code in loadedBundles) {
+    return loadedBundles[code];
+  }
+  const load = loaderByCode[code];
+  if (!load) {
+    return null;
+  }
+  const mod = await load();
+  loadedBundles[code] = mod.default ?? mod;
+  return loadedBundles[code];
+};
 
 /**
  * A bundle layered over its base language and English, so a key a translation
@@ -43,25 +64,21 @@ for (const [path, mod] of Object.entries(bundleModules)) {
  * English release and its translation round every locale would otherwise show
  * identifiers like `label.patientHistory.filterByCategory` to the user.
  */
-const withFallbacks = (code) => {
+const withFallbacks = async (code) => {
   const base = code.split("-")[0];
-  return {
-    ...en,
-    ...(base !== code && base !== "en" ? rawBundles[base] : {}),
-    ...rawBundles[code],
-  };
+  const [baseBundle, exact] = await Promise.all([
+    base !== code && base !== "en" ? loadRawBundle(base) : null,
+    loadRawBundle(code),
+  ]);
+  return { ...en, ...(baseBundle ?? {}), ...(exact ?? {}) };
 };
 
 /**
  * All available language message bundles, keyed by canonical locale code.
  * These are bundled at build time and contain UI translations.
  */
-export const languageMessages = Object.fromEntries(
-  Object.keys(rawBundles).map((code) => [
-    code,
-    code === "en" ? en : withFallbacks(code),
-  ]),
-);
+export const messagesFor = async (code) =>
+  code === "en" ? en : withFallbacks(code);
 
 /**
  * Best label we can produce without the backend: the language's own name for
@@ -82,8 +99,8 @@ const labelFor = (code) => {
  * The actual enabled languages are fetched from /rest/supportedlocales/active.
  */
 export const defaultLanguages = {
-  en: { label: "English", messages: languageMessages.en },
-  fr: { label: "Français", messages: languageMessages.fr },
+  en: { label: "English" },
+  fr: { label: "Français" },
 };
 
 /**
@@ -93,12 +110,7 @@ export const defaultLanguages = {
  * @deprecated Use ConfigurationContext.supportedLocales instead
  */
 export const languages = Object.fromEntries(
-  Object.keys(languageMessages)
-    .sort()
-    .map((code) => [
-      code,
-      { label: labelFor(code), messages: languageMessages[code] },
-    ]),
+  availableLocaleCodes.sort().map((code) => [code, { label: labelFor(code) }]),
 );
 
 /**
@@ -110,17 +122,21 @@ export const languages = Object.fromEntries(
  * undefined messages, so a stale localStorage value or an unconfigured
  * navigator.language cannot break startup or a switch.
  */
-export const resolveMessagesForLocale = (code) => {
+export const resolveMessagesForLocale = async (code) => {
   const canonical = normalizeLocaleCode(code);
   if (!canonical) {
-    return { code: "en", messages: languageMessages.en };
+    return { code: "en", messages: en };
   }
-  const messages =
-    languageMessages[canonical] ||
-    languageMessages[canonical.split("-")[0]] ||
-    languageMessages.en;
-  return { code: canonical, messages };
+  const target = loaderByCode[canonical]
+    ? canonical
+    : loaderByCode[canonical.split("-")[0]]
+      ? canonical.split("-")[0]
+      : "en";
+  return { code: canonical, messages: await messagesFor(target) };
 };
+
+/** English, synchronously, for the first render before a locale is resolved. */
+export const fallbackMessages = en;
 
 /**
  * Builds the languages object from backend-provided locales, keyed by the
@@ -145,7 +161,6 @@ export function buildLanguagesFromConfig(supportedLocales) {
     }
     result[code] = {
       label: locale.displayName || code,
-      messages: resolveMessagesForLocale(code).messages,
       fallback: locale.fallback || false,
     };
   }

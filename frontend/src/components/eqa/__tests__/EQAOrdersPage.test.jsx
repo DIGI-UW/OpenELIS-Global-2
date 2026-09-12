@@ -19,7 +19,7 @@ vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
 }));
 
-vi.mock("../../layout/Layout", () => {
+vi.mock("../../layout/contexts", () => {
   // Replaced inline React require
   return {
     NotificationContext: React.createContext({

@@ -3,7 +3,7 @@ import { render, cleanup, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { FormattedMessage, IntlProvider } from "react-intl";
 import en from "../en.json";
-import { languageMessages } from "../index";
+import { messagesFor } from "../index";
 import { NO_OVERRIDE, applyOverride } from "../translationOverride";
 
 /**
@@ -19,12 +19,12 @@ import { NO_OVERRIDE, applyOverride } from "../translationOverride";
  */
 
 /** Mirrors the composition App.jsx performs for IntlProvider. */
-const renderWith = (locale, override, ids) =>
+const renderWith = async (locale, override, ids) =>
   render(
     <IntlProvider
       locale={locale}
       defaultLocale="en"
-      messages={applyOverride(languageMessages[locale], override)}
+      messages={applyOverride(await messagesFor(locale), override)}
     >
       <ul>
         {ids.map((id) => (
@@ -44,29 +44,29 @@ describe("a deployment's wording, as rendered", () => {
     cleanup();
   });
 
-  it("ships the bundled wording when there is no override", () => {
-    renderWith("en", NO_OVERRIDE, [SAVE, SUBMIT]);
+  it("ships the bundled wording when there is no override", async () => {
+    await renderWith("en", NO_OVERRIDE, [SAVE, SUBMIT]);
 
     expect(screen.getByTestId(SAVE)).toHaveTextContent(en[SAVE]);
     expect(screen.getByTestId(SUBMIT)).toHaveTextContent(en[SUBMIT]);
   });
 
-  it("renders the deployment's wording for the ids it names", () => {
-    renderWith("en", { [SAVE]: "Keep" }, [SAVE]);
+  it("renders the deployment's wording for the ids it names", async () => {
+    await renderWith("en", { [SAVE]: "Keep" }, [SAVE]);
 
     expect(screen.getByTestId(SAVE)).toHaveTextContent("Keep");
   });
 
-  it("leaves every other id at its shipped wording", () => {
-    renderWith("en", { [SAVE]: "Keep" }, [SAVE, SUBMIT]);
+  it("leaves every other id at its shipped wording", async () => {
+    await renderWith("en", { [SAVE]: "Keep" }, [SAVE, SUBMIT]);
 
     expect(screen.getByTestId(SUBMIT)).toHaveTextContent(en[SUBMIT]);
   });
 
-  it("overrides a non-English locale without disturbing its English fallback", () => {
+  it("overrides a non-English locale without disturbing its English fallback", async () => {
     // French inherits English for anything Transifex has not caught up with, so
     // an override must sit on top of that rather than replacing the layer.
-    renderWith("fr", { [SAVE]: "Garder" }, [SAVE, SUBMIT]);
+    await renderWith("fr", { [SAVE]: "Garder" }, [SAVE, SUBMIT]);
 
     expect(screen.getByTestId(SAVE)).toHaveTextContent("Garder");
     expect(
@@ -75,8 +75,8 @@ describe("a deployment's wording, as rendered", () => {
     ).not.toBe(SUBMIT);
   });
 
-  it("never puts a raw message id on screen for an id the override omits", () => {
-    renderWith("en", { [SAVE]: "Keep" }, [SUBMIT]);
+  it("never puts a raw message id on screen for an id the override omits", async () => {
+    await renderWith("en", { [SAVE]: "Keep" }, [SUBMIT]);
 
     expect(screen.getByTestId(SUBMIT).textContent).not.toBe(SUBMIT);
   });

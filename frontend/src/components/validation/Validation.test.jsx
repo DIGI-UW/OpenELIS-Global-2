@@ -10,7 +10,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
 import Validation from "./Validation";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/contexts";
 
 vi.mock("../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();

@@ -16,7 +16,7 @@ import {
   TableCell,
 } from "@carbon/react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";

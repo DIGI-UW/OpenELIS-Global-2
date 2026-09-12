@@ -33,14 +33,14 @@ import {
   postToOpenElisServerFormData,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { priorities } from "../data/orderOptions";
 import { NotificationKinds } from "../common/CustomNotification";
 import AutoComplete from "../common/AutoComplete";
 import OrderResultReporting from "./OrderResultReporting";
 import LabelsSection from "../barcodeWorkflow/LabelsSection";
 import { FormattedMessage, useIntl } from "react-intl";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import MicrobiologyOrderEntrySection from "../microbiology/MicrobiologyOrderEntrySection";
 import { isMicrobiologyOrder } from "../order/orderDataUtils";
 const AddOrder = (props) => {

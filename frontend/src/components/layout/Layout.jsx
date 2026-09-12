@@ -4,12 +4,6 @@ import Header from "./Header";
 import Footer from "./Footer";
 import { Content, Theme } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { getFromOpenElisServer } from "../utils/Utils";
-import {
-  languages as defaultLanguages,
-  buildLanguagesFromConfig,
-} from "../../languages";
-import TranslationOverrideProvider from "../../languages/TranslationOverrideProvider";
 import { ConfigurationContext, NotificationContext } from "./contexts";
 
 // Declared in ./contexts so a component Layout renders can read one without
@@ -61,12 +55,6 @@ export default function Layout(props) {
   const { children } = props;
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const [resetConfig, setResetConfig] = useState(false);
-  const [configurationProperties, setConfigurationProperties] = useState({});
-  const [notificationVisible, setNotificationVisible] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [supportedLocales, setSupportedLocales] = useState([]);
-  const [enabledLanguages, setEnabledLanguages] = useState(defaultLanguages);
 
   // Determine layout config from props or route-based fallbacks
   const isStorageContext =
@@ -131,117 +119,34 @@ export default function Layout(props) {
   const isLocked =
     userSessionDetails.authenticated && navPersistent && !isFocusedAuthRoute;
 
-  const addNotification = (notificationBody) => {
-    setNotifications([...notifications, notificationBody]);
-  };
-
-  const removeNotification = (index) => {
-    const newNotifications = [...notifications];
-    newNotifications.splice(index, 1);
-    setNotifications(newNotifications);
-  };
-
-  const fetchConfigurationProperties = (res) => {
-    setConfigurationProperties(res);
-  };
-
-  const loadConfigurationProperties = useCallback(
-    (afterLoad) => {
-      const handleConfigurationProperties = (res) => {
-        fetchConfigurationProperties(res);
-        if (afterLoad) {
-          afterLoad();
-        }
-      };
-
-      if (userSessionDetails.authenticated) {
-        getFromOpenElisServer(
-          "/rest/configuration-properties",
-          handleConfigurationProperties,
-        );
-      } else {
-        getFromOpenElisServer(
-          "/rest/open-configuration-properties",
-          handleConfigurationProperties,
-        );
-      }
-    },
-    [userSessionDetails.authenticated],
-  );
-
-  useEffect(() => {
-    loadConfigurationProperties();
-  }, [loadConfigurationProperties]);
-
-  useEffect(() => {
-    if (!resetConfig) {
-      return;
-    }
-    loadConfigurationProperties(() => setResetConfig(false));
-  }, [loadConfigurationProperties, resetConfig]);
-
-  // Fetch supported locales from backend
-  useEffect(() => {
-    getFromOpenElisServer("/rest/supportedlocales/active", (response) => {
-      if (response && Array.isArray(response)) {
-        setSupportedLocales(response);
-        const builtLanguages = buildLanguagesFromConfig(response);
-        setEnabledLanguages(builtLanguages);
-      }
-    });
-  }, []);
-
   return (
-    <ConfigurationContext.Provider
-      value={{
-        configurationProperties: configurationProperties,
-        reloadConfiguration: () => {
-          setResetConfig(true);
-        },
-        supportedLocales: supportedLocales,
-        enabledLanguages: enabledLanguages,
-      }}
-    >
-      <TranslationOverrideProvider>
-        <NotificationContext.Provider
-          value={{
-            notificationVisible,
-            setNotificationVisible,
-            notifications,
-            addNotification,
-            removeNotification,
-          }}
+    <div className="d-flex flex-column min-vh-100">
+      <Header
+        onChangeLanguage={props.onChangeLanguage}
+        navOpen={navOpen}
+        isDesktop={isDesktop}
+        navPinned={navPinned}
+        navPersistent={navPersistent}
+        toggleNavPinned={toggleNavPinned}
+        toggleSideNav={() => setDrawerOpen((open) => !open)}
+        closeSideNav={closeSideNav}
+        storageKeyPrefix={storageKeyPrefix}
+        navContext={navContext}
+        showSideNav={!isFocusedAuthRoute}
+      />
+      {/* Theme wrapper creates white theme zone for content area */}
+      {/* Global SCSS theme = blue header/nav, this = light content */}
+      <Theme theme="white">
+        <Content
+          data-testid="content-wrapper"
+          className={`${isLocked ? "content-nav-locked" : ""}${
+            isAdminContext ? " content-admin-context" : ""
+          }`.trim()}
         >
-          <div className="d-flex flex-column min-vh-100">
-            <Header
-              onChangeLanguage={props.onChangeLanguage}
-              navOpen={navOpen}
-              isDesktop={isDesktop}
-              navPinned={navPinned}
-              navPersistent={navPersistent}
-              toggleNavPinned={toggleNavPinned}
-              toggleSideNav={() => setDrawerOpen((open) => !open)}
-              closeSideNav={closeSideNav}
-              storageKeyPrefix={storageKeyPrefix}
-              navContext={navContext}
-              showSideNav={!isFocusedAuthRoute}
-            />
-            {/* Theme wrapper creates white theme zone for content area */}
-            {/* Global SCSS theme = blue header/nav, this = light content */}
-            <Theme theme="white">
-              <Content
-                data-testid="content-wrapper"
-                className={`${isLocked ? "content-nav-locked" : ""}${
-                  isAdminContext ? " content-admin-context" : ""
-                }`.trim()}
-              >
-                {children}
-              </Content>
-            </Theme>
-            <Footer />
-          </div>
-        </NotificationContext.Provider>
-      </TranslationOverrideProvider>
-    </ConfigurationContext.Provider>
+          {children}
+        </Content>
+      </Theme>
+      <Footer />
+    </div>
   );
 }

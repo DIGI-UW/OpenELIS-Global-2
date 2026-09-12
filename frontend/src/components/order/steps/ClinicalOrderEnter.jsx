@@ -16,7 +16,10 @@ import SaveFailureNotice from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import { describeUnmetRequirements } from "../saveRequirements";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

@@ -33,7 +33,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import { useHistory } from "react-router-dom";
 import "./NceDashboard.css";
 

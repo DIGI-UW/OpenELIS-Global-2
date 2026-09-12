@@ -31,7 +31,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../../utils/Utils";
 

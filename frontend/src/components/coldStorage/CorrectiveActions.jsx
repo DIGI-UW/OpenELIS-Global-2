@@ -44,7 +44,7 @@ import {
   createRoom,
 } from "./api";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { useIntl, FormattedMessage } from "react-intl";
 import AddDeviceModal from "./shared/AddDeviceModal";

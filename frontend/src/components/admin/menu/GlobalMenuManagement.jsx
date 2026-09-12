@@ -14,7 +14,7 @@ import {
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 import { MenuCheckBox } from "./MenuUtil";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,

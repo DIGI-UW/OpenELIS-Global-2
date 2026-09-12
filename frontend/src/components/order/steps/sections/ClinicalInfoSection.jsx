@@ -10,7 +10,7 @@ import {
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import CustomDatePicker from "../../../common/CustomDatePicker";
-import { ConfigurationContext } from "../../../layout/Layout";
+import { ConfigurationContext } from "../../../layout/contexts";
 import { formatIsoDateForBackend } from "../../dateUtils";
 
 /**

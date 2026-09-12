@@ -20,13 +20,13 @@ import {
   postToOpenElisServerFullResponse,
   convertAlphaNumLabNumForDisplay,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
-import { ConfigurationContext } from "../../layout/Layout";
+import { ConfigurationContext } from "../../layout/contexts";
 import { jpSet } from "../../utils/JsonPath";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 

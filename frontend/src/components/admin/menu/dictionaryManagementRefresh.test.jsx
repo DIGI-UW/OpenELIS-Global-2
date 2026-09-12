@@ -17,7 +17,10 @@ import {
   postToOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../layout/contexts";
 import DictionaryManagement from "./DictionaryManagement";
 
 vi.mock("../../utils/Utils", async (importOriginal) => {

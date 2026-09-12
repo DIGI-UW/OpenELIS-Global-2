@@ -24,7 +24,10 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../layout/contexts";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,

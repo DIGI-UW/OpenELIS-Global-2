@@ -204,24 +204,18 @@
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
             <!--
-                Tomcat deploys this WAR twice into one JVM (/OpenELIS-Global and
-                /api/OpenELIS-Global, see conf/server.xml), and each context gets
-                its own classloader, EntityManagerFactory and Hibernate Search
-                backend over this one directory. A Lucene index allows a single
-                writer, so whichever context did not take the lock fails every
-                save with OverlappingFileLockException - after the row is
-                committed, so the caller sees a 500 for a patient that was
-                actually created. Patient search is served from the database, so
-                nothing reads this index; it is left unmaintained rather than
-                maintained unsafely. Rebuild it on demand with GET /rest/reindex,
-                and solve the double deployment before relying on it again.
+                Tomcat deploys this WAR once (see conf/server.xml), so one
+                EntityManagerFactory and one Hibernate Search backend own this
+                directory and the Lucene index has a single writer. Nothing
+                reads that index - patient search is served from the database -
+                so it stays unmaintained rather than maintained, and is rebuilt
+                on demand with GET /rest/reindex. Turning indexing on is an
+                untested change that needs its own verification.
             -->
             <property name="hibernate.search.automatic_indexing.enabled" value="false" />
             <!--
-                And do not create or validate that index at start-up either: both
-                contexts try it, one loses the writer lock and logs an
-                OverlappingFileLockException on every boot. Nothing reads the
-                index, so there is nothing to manage.
+                The index is not created or validated at start-up either; nothing
+                reads it, so there is nothing to manage.
             -->
             <property name="hibernate.search.schema_management.strategy" value="none" />
             <property name="hibernate.search.backend.directory.type" value="local-filesystem" />

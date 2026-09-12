@@ -35,8 +35,8 @@ import {
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { Formik, Field } from "formik";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
-import { ConfigurationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
+import { ConfigurationContext } from "../layout/contexts";
 
 // An empty search: what the screen showed after reloading itself.
 const NO_SAMPLE = { sampleItems: [], accessionNumber: "" };

@@ -23,7 +23,7 @@ import {
 import { Search } from "@carbon/react/icons";
 import { Formik, Field } from "formik";
 import CustomDatePicker from "../../common/CustomDatePicker";
-import { ConfigurationContext } from "../../layout/Layout";
+import { ConfigurationContext } from "../../layout/contexts";
 import { searchPatients, getPatientMergeDetails } from "./patientMergeService";
 import type {
   Nullable,

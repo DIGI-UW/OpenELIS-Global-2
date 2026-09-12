@@ -20,7 +20,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { ChevronDown, Edit, TaskAdd } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
-import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/contexts";
 import { NotificationKinds } from "../common/CustomNotification";
 
 const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {

@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { ToastNotification } from "@carbon/react";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 
 export const NotificationKinds = {
   info: "info",

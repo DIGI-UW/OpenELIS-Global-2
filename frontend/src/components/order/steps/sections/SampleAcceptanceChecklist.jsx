@@ -12,7 +12,7 @@ import {
 } from "@carbon/react";
 import { Warning, Renew, Close } from "@carbon/icons-react";
 import { useIntl, FormattedMessage } from "react-intl";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import { Roles, postToOpenElisServerJsonResponse } from "../../../utils/Utils";

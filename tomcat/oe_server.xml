@@ -135,8 +135,8 @@
                          resourceName="UserDatabase" />
                </Realm>
 
-               <Host name="localhost" appBase="webapps"
-                    unpackWARs="true" autoDeploy="true">
+               <Host name="localhost" appBase="webapps" deployOnStartup="false"
+                    unpackWARs="true" autoDeploy="false">
 
                     <Context docBase="ROOT" path="/api" />
                     <Context docBase="OpenELIS-Global"

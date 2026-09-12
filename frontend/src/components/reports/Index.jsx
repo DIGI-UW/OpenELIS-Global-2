@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from "react";
 import { AlertDialog } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { injectIntl, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";

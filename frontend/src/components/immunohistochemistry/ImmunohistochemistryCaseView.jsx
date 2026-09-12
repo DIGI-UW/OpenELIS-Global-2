@@ -30,7 +30,7 @@ import {
   hasRole,
 } from "../utils/Utils";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { SearchResults } from "../resultPage/SearchResultForm";
 import { FormattedMessage, useIntl } from "react-intl";

@@ -21,7 +21,7 @@ import {
   getFromOpenElisServer,
   putToOpenElisServer,
 } from "../../../utils/Utils";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 
 /**
  * OGC-949 M10 / OGC-957..958 — Terminology Mappings section.

@@ -12,7 +12,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import { createQueryClient } from "../../../utils/queryClient";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import PanelRenameEntry from "../PanelRenameEntry";
 import SampleTypeRenameEntry from "../SampleTypeRenameEntry";
 import TestSectionRenameEntry from "../TestSectionRenameEntry";

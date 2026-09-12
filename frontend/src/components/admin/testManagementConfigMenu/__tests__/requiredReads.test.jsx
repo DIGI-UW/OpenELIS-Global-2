@@ -7,7 +7,7 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../../languages/en.json";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import { fetchFromOpenElisServer } from "../../../utils/Utils";
 import { createQueryClient } from "../../../utils/queryClient";
 import UomCreate from "../UomCreate";

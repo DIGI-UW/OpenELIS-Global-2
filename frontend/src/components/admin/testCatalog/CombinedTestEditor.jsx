@@ -24,7 +24,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, putToOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { AlertDialog } from "../../common/CustomNotification";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import RangeModal from "./sections/RangeModal";
 import StorageSection from "./sections/StorageSection";
 

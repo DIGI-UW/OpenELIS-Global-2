@@ -19,7 +19,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { useOrderContext } from "../../OrderContext";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import ReferralStatusTag from "./referralStatusTag";

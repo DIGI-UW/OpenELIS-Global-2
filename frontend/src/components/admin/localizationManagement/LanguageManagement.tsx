@@ -24,7 +24,7 @@ import {
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 interface SupportedLocale {

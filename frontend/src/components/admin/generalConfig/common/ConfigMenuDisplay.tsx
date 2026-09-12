@@ -20,7 +20,7 @@ import {
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useServerData } from "../../../utils/useServerData";
-import { NotificationContext } from "../../../layout/Layout";
+import { NotificationContext } from "../../../layout/contexts";
 import { AlertDialog } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";

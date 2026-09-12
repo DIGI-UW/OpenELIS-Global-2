@@ -28,7 +28,10 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../layout/contexts";
 import "../../Style.css";
 import {
   getFromOpenElisServer,
