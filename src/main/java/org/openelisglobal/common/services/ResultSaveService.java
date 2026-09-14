@@ -134,9 +134,8 @@ public class ResultSaveService {
 
             if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(serviceBean.getResultType())
                     || isQualifiedResult) {
-                setTestResultsForDictionaryResult(serviceBean.getTestId(), serviceBean.getResultValue(), result); // support
-                // qualified
-                // result
+                setTestResultsForDictionaryResult(serviceBean.getTestId(), serviceBean.getResultValue(),
+                        serviceBean.getTestResultComponentId(), result);
             } else {
                 List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(serviceBean.getTestId());
                 // Multi-component tests post one bean per component; bind the result
@@ -224,11 +223,12 @@ public class ResultSaveService {
 
             Result result = new Result();
 
-            setTestResultsForDictionaryResult(serviceBean.getTestId(), resultAsString, result);
+            setTestResultsForDictionaryResult(serviceBean.getTestId(), resultAsString,
+                    serviceBean.getTestResultComponentId(), result);
             setNewResultValues(serviceBean, result);
             setAnalyteForResult(result);
             setStandardResultValues(resultAsString, result);
-            result.setSortOrder(getResultSortOrder(result.getValue()));
+            result.setSortOrder(getResultSortOrder(result.getValue(), serviceBean.getTestResultComponentId()));
             result.setGrouping(groupingKey);
 
             results.add(result);
@@ -271,9 +271,17 @@ public class ResultSaveService {
         }
     }
 
-    private TestResult setTestResultsForDictionaryResult(String testId, String dictValue, Result result) {
-        TestResult testResult;
-        testResult = testResultService.getTestResultsByTestAndDictonaryResult(testId, dictValue);
+    /**
+     * Binds the result to the option row of the component it was entered on. A
+     * multi-component test can offer the same dictionary entry on several
+     * components, and a lookup by test and value alone filed the value on whichever
+     * component's row came first (OGC-1186). Rows without a component are legacy
+     * rows and keep the test-wide match.
+     */
+    private TestResult setTestResultsForDictionaryResult(String testId, String dictValue, String componentId,
+            Result result) {
+        TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(testId, dictValue,
+                componentId);
 
         if (testResult != null) {
             result.setTestResult(testResult);
@@ -309,9 +317,9 @@ public class ResultSaveService {
         result.setSortOrder("0");
     }
 
-    private String getResultSortOrder(String resultValue) {
+    private String getResultSortOrder(String resultValue, String componentId) {
         TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(analysis.getTest().getId(),
-                resultValue);
+                resultValue, componentId);
         return testResult == null ? "0" : testResult.getSortOrder();
     }
 
