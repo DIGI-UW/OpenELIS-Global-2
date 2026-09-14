@@ -1283,6 +1283,7 @@
   "label.validation.signal.modified": "Modified",
   "label.validation.signal.ackPending": "Ack pending",
   "label.validation.signal.nonconforming": "Nonconforming",
+  "label.validation.signal.critical": "Critical",
   "label.validation.review.result": "Result",
   "label.validation.review.units": "Units",
   "label.validation.review.normalRange": "Reference range",
